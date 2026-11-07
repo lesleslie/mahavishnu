@@ -47,6 +47,12 @@ EXIT_REBASE_CONFLICT = 3
 EXIT_PUSH_DIVERGENCE = 4
 EXIT_CLEANUP_FAILURE = 5
 
+#: The local branch stage 5 pushes. ``run_push`` hard-codes ``main``, so
+#: the consolidation gate's eligibility range is anchored here rather
+#: than to the pipeline's ``base``: the range must describe the commits
+#: that are actually about to be pushed.
+PUSHED_BRANCH: str = "main"
+
 # Pinned crackerjack invocation for the merge gate (spec REQ-013).
 # The trailing space separates the verb from any appended flags; the
 # CI-guard test in tests/unit/core/test_merge_to_main.py asserts this
@@ -299,7 +305,10 @@ def run_squash_merge(
        ephemeral branch; the main checkout has the real ``main``
        ref. This used to fail: ``git checkout origin/main`` in the
        worktree is a detached HEAD, so the squash commit was a
-       floating ref GC'd on cleanup.
+       floating ref GC'd on cleanup. The base is resolved to a local
+       branch by ``_resolve_local_branch`` before it reaches this
+       step, so the checkout always lands on a real branch — the same
+       one the branch was replayed onto.
     4. ``git merge --squash <branch>`` in the main checkout (stages
        changes, does NOT auto-commit).
     5. Semantic commit (``merge: <branch> → <base>``) in the main
@@ -665,6 +674,7 @@ def _check_sibling_worktree_state(
         capture_output=True,
         text=True,
         check=False,
+        cwd=sibling_path,
     )
     if log_result.returncode == 0 and squash_subject in log_result.stdout:
         return None  # (a2) squash-merge commit exists on local main
@@ -672,8 +682,27 @@ def _check_sibling_worktree_state(
     return f"sibling {sibling_path.name}: branch {branch!r} has unmerged commits"
 
 
-def _check_pending_commit_eligibility(base: str) -> list[str]:
+def _check_pending_commit_eligibility(
+    branch: str = PUSHED_BRANCH,
+    *,
+    cwd: Path | None = None,
+) -> list[str]:
     """Check the pending-commit eligibility per the gate's check (2).
+
+    Per `docs/decisions/2026-10-13-prepushconsolidationgate.md` §2, the
+    range is the set of commits stage 5 will actually push::
+
+        git log origin/main..main
+
+    — the commits on local ``main`` that the remote does not yet have.
+
+    The range is deliberately NOT ``<base>..HEAD``. At stage 4.5 the
+    worktree's HEAD is still the ephemeral branch: stage 4 lands the
+    squash-merge in the *main checkout*, so the worktree never moves off
+    the branch. ``<base>..HEAD`` therefore enumerates exactly the
+    commits the squash-merge just consumed into ``main`` — the branch's
+    own history. Every branch with an ordinary commit history produced
+    at least one "ineligible" commit, and the gate held back every push.
 
     For v1: accepts commits whose subject matches the squash-merge
     template ``merge: <branch> -> <base>`` (eligibility check α).
@@ -682,13 +711,19 @@ def _check_pending_commit_eligibility(base: str) -> list[str]:
     eligibility check simple — operators use `--no-consolidation-gate`
     for the rare non-squash case.
 
+    Args:
+        branch: The local branch whose unpushed commits are checked.
+        cwd: The repository to inspect. Defaults to the process cwd.
+
     Returns the list of ineligible commit SHAs (empty list = all eligible).
     """
+    remote_ref = f"origin/{branch}"
     log_result = subprocess.run(  # nosec B603 — argv-list, no shell
-        ["git", "log", "--format=%H|%s", f"{base}..HEAD"],
+        ["git", "log", "--format=%H|%s", f"{remote_ref}..{branch}"],
         capture_output=True,
         text=True,
         check=False,
+        cwd=cwd,
     )
     if log_result.returncode != 0:
         return []  # git failure — assume eligible (don't block on git error)
@@ -724,6 +759,7 @@ def _run_consolidation_gate(
         capture_output=True,
         text=True,
         check=False,
+        cwd=worktree_root,
     )
     worktree_list_output = (
         wt_list_result.stdout if wt_list_result.returncode == 0 else ""
@@ -739,7 +775,12 @@ def _run_consolidation_gate(
         if reason is not None:
             held_back_siblings.append(reason)
 
-    ineligible = _check_pending_commit_eligibility(base)
+    # The range is the commits stage 5 will push — anchored to the
+    # pushed branch, not to ``base`` and not to the worktree's HEAD.
+    ineligible = _check_pending_commit_eligibility(
+        PUSHED_BRANCH,
+        cwd=worktree_root,
+    )
 
     return (
         not held_back_siblings and not ineligible,
@@ -900,6 +941,46 @@ def _resolve_base(base_override: str | None) -> str:
     return "main"
 
 
+def _resolve_local_branch(base: str) -> str:
+    """Resolve a base ref to the local branch that will carry the squash.
+
+    ``git checkout origin/main`` leaves a **detached HEAD**: the
+    squash-merge then commits onto a floating ref that ``git gc``
+    reclaims, so local ``main`` never moves. Stage 5 pushes ``main``,
+    so the pipeline would report success while shipping nothing — and
+    stage 6 would prune the branch that held the work.
+
+    So a remote-tracking base resolves to its local counterpart when
+    that branch exists. The resolved ref is used for *both* the rebase
+    target and the landing branch, so the branch is replayed onto the
+    same trunk the squash lands on. Rebasing onto a stale
+    ``origin/main`` while landing on local ``main`` would sweep the
+    trunk's unpushed commits into the squash.
+
+    A base that is already a local branch is returned unchanged, and a
+    remote-tracking ref with no local counterpart is returned unchanged
+    (there is no local branch to land on).
+
+    Args:
+        base: The base ref to resolve.
+
+    Returns:
+        The local branch to use as the merge base, when one exists.
+    """
+    if not base.startswith("origin/"):
+        return base
+    local_name = base[len("origin/") :]
+    show_ref_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{local_name}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if show_ref_result.returncode == 0:
+        return local_name
+    return base
+
+
 def _resolve_branch(worktree_root: Path, branch_override: str | None) -> str:
     """Resolve the merge branch: explicit override, else current branch of ``worktree_root``.
 
@@ -956,6 +1037,12 @@ def run_pipeline(
       specialist).
     """
     base = _resolve_base(base)
+    # The base must name a real local branch: stage 4 checks it out in
+    # the main checkout to land the squash-merge, and `git checkout
+    # origin/main` would leave a detached HEAD — the commit would land
+    # on a floating ref, `main` would never move, and stage 5 would
+    # push a `main` that does not contain the work.
+    base = _resolve_local_branch(base)
     branch = _resolve_branch(worktree_root, branch)
 
     # Stage 2 — ensemble review (REQ-004).
@@ -1109,7 +1196,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         dest="base",
         default=None,
         help=(
-            "rebase base override (default: origin/main if remote exists, else main)"
+            "rebase base override (default: origin/main if remote exists, else "
+            "main; a remote-tracking ref resolves to its local branch so the "
+            "squash-merge lands on a real branch)"
         ),
     )
     return parser

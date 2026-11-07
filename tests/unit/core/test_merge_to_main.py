@@ -4,6 +4,8 @@ agent-review workflow (REQ-004, REQ-013, REQ-014).
 
 from __future__ import annotations
 
+import subprocess
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -19,6 +21,8 @@ from mahavishnu.core.merge_to_main import (
     _check_sibling_worktree_state,
     _find_main_checkout_path,
     _list_repo_worktrees,
+    _resolve_local_branch,
+    _run_consolidation_gate,
     aggregate_verdicts,
     parse_verdict,
     read_review_state,
@@ -28,7 +32,6 @@ from mahavishnu.core.merge_to_main import (
     run_squash_merge,
     write_review_state,
 )
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -809,15 +812,22 @@ def test_consolidation_gate_lineage_check_passes_on_squash_merge_commit(
     Verifies the (α) eligibility-check accepts the squash-merge
     shape produced by stage 4.
     """
-    monkeypatch.setattr(
-        "subprocess.run",
-        lambda *a, **kw: _FakeProc(
+    captured: list[list[str]] = []
+
+    def fake_run(argv: list[str], **_kwargs: object) -> _FakeProc:
+        captured.append(argv)
+        return _FakeProc(
             returncode=0,
             stdout="abc123|merge: feat-x -> main\ndef456|merge: feat-y -> main",
-        ),
-    )
-    ineligible = _check_pending_commit_eligibility("origin/main")
+        )
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    ineligible = _check_pending_commit_eligibility("main")
     assert ineligible == []
+    # The range is the commits stage 5 will push. Pinning it here
+    # means a regression to `<base>..HEAD` fails here, not only in
+    # the real-git tests further down.
+    assert captured[0][-1] == "origin/main..main"
 
 
 def test_consolidation_gate_lineage_check_fails_on_unauthorized_commit(
@@ -836,8 +846,174 @@ def test_consolidation_gate_lineage_check_fails_on_unauthorized_commit(
             stdout="abc123|merge: feat-x -> main\ndef456|wip: typo\n",
         ),
     )
-    ineligible = _check_pending_commit_eligibility("origin/main")
+    ineligible = _check_pending_commit_eligibility("main")
     assert ineligible == ["def456"]
+
+
+# ── eligibility range: real git repos, no mocks ──────────────────────
+# The mocked tests above pin the *shape* check. They cannot catch a
+# wrong revision range, because the range is part of the mocked argv.
+# These tests build real repositories so the range is the real one.
+
+
+def _git(repo: Path, *args: str) -> str:
+    """Run a git command in ``repo`` and return its stdout."""
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def _init_repo(repo: Path) -> None:
+    """Create a repo with one commit on ``main`` and a fake ``origin/main``."""
+    _git(repo, "init", "--initial-branch=main")
+    _git(repo, "config", "user.email", "les@wedgwoodwebworks.com")
+    _git(repo, "config", "user.name", "les")
+    (repo / "README.md").write_text("root\n")
+    _git(repo, "add", "README.md")
+    _git(repo, "commit", "-m", "chore: root")
+    # A remote-tracking ref that stands in for `origin/main` at the root
+    # commit. The gate's documented range is `origin/main..main`.
+    root = _git(repo, "rev-parse", "main")
+    _git(repo, "update-ref", "refs/remotes/origin/main", root)
+
+
+def _make_branch(repo: Path, name: str, *subjects: str) -> None:
+    """Create ``name`` off ``main`` with one commit per subject."""
+    _git(repo, "checkout", "-b", name)
+    for index, subject in enumerate(subjects):
+        (repo / f"file-{index}.txt").write_text(f"{subject}\n")
+        _git(repo, "add", ".")
+        _git(repo, "commit", "-m", subject)
+
+
+def _squash_merge(repo: Path, branch: str, base: str = "main") -> None:
+    """Reproduce stage 4: squash-merge ``branch`` onto ``base``."""
+    _git(repo, "checkout", base)
+    _git(repo, "merge", "--squash", branch)
+    _git(repo, "commit", "-m", f"merge: {branch} -> {base}")
+
+
+def test_consolidation_gate_ignores_the_merged_branchs_own_commits(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The branch's own commits must not count as ineligible pending commits.
+
+    This is the production symptom: at stage 4.5 the worktree's HEAD is
+    still the ephemeral branch (stage 4 lands the squash-merge in the
+    main checkout), so a ``<base>..HEAD`` range enumerates exactly the
+    commits the squash-merge just consumed. Every branch with an
+    ordinary commit history then produced ineligible commits, and the
+    gate held back every push.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_repo(repo)
+    _make_branch(repo, "feat-x", "wip: one", "wip: two")
+    _squash_merge(repo, "feat-x")
+    # HEAD is the ephemeral branch again, exactly as stage 4 leaves it.
+    _git(repo, "checkout", "feat-x")
+    monkeypatch.chdir(repo)
+
+    gate_clear, held_back, ineligible = _run_consolidation_gate(repo, "main")
+
+    assert ineligible == []
+    assert held_back == []
+    assert gate_clear is True
+
+
+def test_consolidation_gate_flags_a_non_squash_commit_on_main(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A commit on ``main`` that is not squash-merge-shaped is still ineligible.
+
+    The range fix must not turn the check into a no-op: a direct commit
+    on the trunk is exactly what eligibility check (α) exists to catch.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_repo(repo)
+    (repo / "direct.txt").write_text("direct\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "wip: direct commit on main")
+    monkeypatch.chdir(repo)
+
+    gate_clear, _held_back, ineligible = _run_consolidation_gate(repo, "main")
+
+    assert ineligible == [_git(repo, "rev-parse", "main")]
+    assert gate_clear is False
+
+
+def test_consolidation_gate_accepts_a_squash_merge_commit_on_main(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A squash-merge-shaped commit on ``main`` is eligible (check α)."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_repo(repo)
+    _make_branch(repo, "feat-y", "wip: one")
+    _squash_merge(repo, "feat-y")
+    monkeypatch.chdir(repo)
+
+    gate_clear, _held_back, ineligible = _run_consolidation_gate(repo, "main")
+
+    assert ineligible == []
+    assert gate_clear is True
+
+
+# ── landing ref: the squash must land on a real branch ────────────────
+
+
+def test_resolve_local_branch_maps_origin_ref_to_local_branch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``origin/main`` resolves to ``main`` when the local branch exists.
+
+    ``git checkout origin/main`` leaves a DETACHED HEAD, so the
+    squash-merge would commit onto a floating ref that ``git gc``
+    reclaims — ``main`` never moves, and stage 5 pushes a ``main`` that
+    does not contain the work.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_repo(repo)
+    monkeypatch.chdir(repo)
+
+    assert _resolve_local_branch("origin/main") == "main"
+
+
+def test_resolve_local_branch_keeps_ref_without_local_counterpart(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A remote-tracking ref with no local branch is returned unchanged."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_repo(repo)
+    monkeypatch.chdir(repo)
+
+    assert _resolve_local_branch("origin/release-9") == "origin/release-9"
+
+
+def test_resolve_local_branch_keeps_local_branch_unchanged(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A base that is already a local branch is returned unchanged."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_repo(repo)
+    monkeypatch.chdir(repo)
+
+    assert _resolve_local_branch("main") == "main"
 
 
 def test_list_repo_worktrees_finds_siblings_excluding_self(

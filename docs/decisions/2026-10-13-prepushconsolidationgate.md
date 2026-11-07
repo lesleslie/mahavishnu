@@ -71,6 +71,23 @@ and recorded in the dev-log entry.
 For every commit in `git log origin/main..main`, the gate verifies
 the commit shape:
 
+> **Implementation note (2026-11-07).** The range above is the
+> *decision*; the implementation had drifted from it. The check
+> computed `<base>..HEAD` instead — and at stage 4.5 the worktree's
+> `HEAD` is still the ephemeral branch (stage 4 lands the squash-merge
+> in the *main checkout*), so `<base>..HEAD` enumerated exactly the
+> commits the squash-merge had just consumed. Every branch with an
+> ordinary commit history produced at least one "ineligible" commit,
+> so the gate held back every push and the auto-push never fired.
+> The range is now `origin/main..main`, anchored to the branch stage 5
+> pushes (`PUSHED_BRANCH`), and the gate's git commands run in the
+> worktree it governs rather than the process cwd.
+>
+> The same drift made the check structurally inert in the other
+> direction: a non-squash commit sitting on local `main` was *outside*
+> `<base>..HEAD`, so check (α) could never catch it. The corrected
+> range restores that coverage.
+
 - **(α) Squash-merge commit (binding).** The commit subject matches
   the squash-merge template `merge: <branch> -> <base>` (per
   `run_squash_merge`).
@@ -230,6 +247,16 @@ The user can resolve a held-back push by any of:
     helpers; `make_review_state()` extended with the sticky-failure
     marker; arg-parser gains `--no-consolidation-gate`; stage 6 is
     conditionally skipped on hold-back.
+  - `mahavishnu/core/merge_to_main.py::_resolve_local_branch()` —
+    resolves a remote-tracking base (`origin/main`) to its local
+    branch counterpart. Stage 4 checks the base out in the main
+    checkout to land the squash-merge; `git checkout origin/main`
+    leaves a **detached HEAD**, so the commit landed on a floating
+    ref, `main` never moved, and stage 5 pushed a `main` that did not
+    contain the work. Resolving the base to a local branch also puts
+    the rebase target and the landing branch on the same trunk — a
+    stale `origin/main` rebase target would otherwise sweep the
+    trunk's unpushed commits into the squash.
   - `mahavishnu/core/dev_log.py::write_entry()` — audit-log writer;
     `push.result: "error:consolidation_gate_held_back"` round-trips
     via the existing `_format_frontmatter`.
