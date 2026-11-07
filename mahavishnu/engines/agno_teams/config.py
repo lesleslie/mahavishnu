@@ -11,12 +11,12 @@ Example YAML configuration:
       leader:
         name: "review_coordinator"
         role: "Coordinates code review"
-        model: "claude-sonnet-4-6"
+        model: "MiniMax-M3"
         instructions: "Distribute tasks to specialists"
       members:
         - name: "security_analyst"
           role: "Security analysis"
-          model: "claude-sonnet-4-6"
+          model: "MiniMax-M3"
           instructions: "Analyze for security vulnerabilities"
           tools: ["search_code", "read_file"]
     ```
@@ -62,7 +62,7 @@ class MemberConfig(BaseModel):
     Attributes:
         name: Unique identifier for the member within the team.
         role: Human-readable role description (e.g., "Security Analyst").
-        model: LLM model identifier (e.g., "claude-sonnet-4-6", "gpt-4o").
+        model: LLM model identifier (e.g., "MiniMax-M3", "gpt-4o").
         instructions: Detailed instructions for the agent's behavior.
         tools: List of tool names this agent can use.
         max_tokens: Maximum tokens for responses.
@@ -73,7 +73,7 @@ class MemberConfig(BaseModel):
         member = MemberConfig(
             name="security_analyst",
             role="Security vulnerability detection",
-            model="claude-sonnet-4-6",
+            model="MiniMax-M3",
             instructions="Analyze code for security vulnerabilities...",
             tools=["search_code", "read_file", "check_dependencies"],
         )
@@ -145,14 +145,14 @@ class TeamConfig(BaseModel):
             leader=MemberConfig(
                 name="coordinator",
                 role="Coordinates review",
-                model="claude-sonnet-4-6",
+                model="MiniMax-M3",
                 instructions="Distribute tasks to specialists",
             ),
             members=[
                 MemberConfig(
                     name="security_analyst",
                     role="Security analysis",
-                    model="claude-sonnet-4-6",
+                    model="MiniMax-M3",
                     instructions="Find security vulnerabilities",
                 ),
             ],
@@ -264,12 +264,12 @@ class TeamConfigFile(BaseModel):
           leader:
             name: "coordinator"
             role: "Coordinates review"
-            model: "claude-sonnet-4-6"
+            model: "MiniMax-M3"
             instructions: "..."
           members:
             - name: "analyst"
               role: "Analysis"
-              model: "claude-sonnet-4-6"
+              model: "MiniMax-M3"
               instructions: "..."
         ```
     """
@@ -298,7 +298,7 @@ def get_builtin_team_templates() -> dict[str, dict[str, Any]]:
             "leader": {
                 "name": "review_coordinator",
                 "role": "Coordinates code review across specialists",
-                "model": "claude-sonnet-4-6",
+                "model": "MiniMax-M3",
                 "instructions": """You are a code review coordinator. Your job is to:
 1. Analyze incoming code review requests
 2. Distribute review tasks to specialist agents
@@ -309,7 +309,7 @@ def get_builtin_team_templates() -> dict[str, dict[str, Any]]:
                 {
                     "name": "security_analyst",
                     "role": "Security vulnerability detection",
-                    "model": "claude-sonnet-4-6",
+                    "model": "MiniMax-M3",
                     "instructions": """Analyze code for security vulnerabilities including:
 - SQL injection risks
 - XSS vulnerabilities
@@ -321,7 +321,7 @@ def get_builtin_team_templates() -> dict[str, dict[str, Any]]:
                 {
                     "name": "quality_engineer",
                     "role": "Code quality and best practices",
-                    "model": "claude-sonnet-4-6",
+                    "model": "MiniMax-M3",
                     "instructions": """Evaluate code quality including:
 - Adherence to style guides
 - Complexity metrics
@@ -339,7 +339,7 @@ def get_builtin_team_templates() -> dict[str, dict[str, Any]]:
             "leader": {
                 "name": "research_coordinator",
                 "role": "Coordinates research across sources",
-                "model": "claude-sonnet-4-6",
+                "model": "MiniMax-M3",
                 "instructions": """You are a research coordinator. Your job is to:
 1. Break down research questions into sub-topics
 2. Assign research tasks to specialist agents
@@ -357,14 +357,14 @@ def get_builtin_team_templates() -> dict[str, dict[str, Any]]:
                 {
                     "name": "code_researcher",
                     "role": "Code analysis and documentation",
-                    "model": "claude-sonnet-4-6",
+                    "model": "MiniMax-M3",
                     "instructions": "Analyze codebases to understand implementation patterns and best practices.",
                     "tools": ["search_code", "read_file"],
                 },
                 {
                     "name": "doc_synthesizer",
                     "role": "Synthesizes findings into reports",
-                    "model": "claude-sonnet-4-6",
+                    "model": "MiniMax-M3",
                     "instructions": "Create clear, well-structured documentation from research findings.",
                     "tools": ["write_file"],
                 },

@@ -139,11 +139,20 @@ class LLMProvider(StrEnum):
 #: (``core.model_routing.DEFAULT_LLAMA_SERVER_ROUTING`` and
 #: ``settings/models.yaml`` ``llama_server.task_routing``). llama.cpp
 #: ignores the id when a single model is loaded, so this is a label
-#: rather than a selector.
+#: rather than a selector. The Bifrost gateway is *not* indifferent to
+#: the label: it resolves a request against the key's model allowlist
+#: before the call is made, so ``qwen3.5`` has to be on that allowlist
+#: too. It is -- see the ``llama-server-local`` key in
+#: ``config/bifrost/config.template.json``.
+#:
+#: The Anthropic and OpenAI entries track the model families the
+#: gateway actually serves (Claude 5, GPT-5.4). They are the *direct*
+#: provider defaults; a gateway-routed request substitutes
+#: :data:`GATEWAY_ANTHROPIC_MODEL_ID` or the gateway's own id.
 PROVIDER_DEFAULT_MODEL: dict[LLMProvider, str] = {
     LLMProvider.MINIMAX: "MiniMax-M3",
-    LLMProvider.ANTHROPIC: "claude-sonnet-4-6",
-    LLMProvider.OPENAI: "gpt-4o",
+    LLMProvider.ANTHROPIC: "claude-sonnet-5-5",
+    LLMProvider.OPENAI: "gpt-5.4",
     LLMProvider.LLAMA_SERVER: "qwen3.5",
 }
 
@@ -153,7 +162,7 @@ PROVIDER_DEFAULT_MODEL: dict[LLMProvider, str] = {
 #: The gateway's ``minimax-anthropic`` provider is a *custom*
 #: Anthropic-protocol provider backed by MiniMax
 #: (``config/bifrost/config.template.json``), so its model catalogue is
-#: MiniMax's — ``claude-sonnet-4-6`` is not served. The gateway-prefixed id
+#: MiniMax's — no ``claude-*`` id is served by it. The gateway-prefixed id
 #: matches the pattern the repo already uses for the Qwen worker
 #: (``zai-openai/glm-5-turbo``).
 #:
@@ -212,8 +221,8 @@ class AgnoLLMConfig(BaseModel):
     model_id: str = Field(
         default=PROVIDER_DEFAULT_MODEL[LLMProvider.MINIMAX],
         description=(
-            "Model identifier for the selected provider (e.g., claude-sonnet-4-6, "
-            "gpt-4o, MiniMax-M3, qwen3.5). Defaults to the provider's own model "
+            "Model identifier for the selected provider (e.g., claude-sonnet-5-5, "
+            "gpt-5.4, MiniMax-M3, qwen3.5). Defaults to the provider's own model "
             "when not set explicitly."
         ),
     )
@@ -442,7 +451,7 @@ class AgnoAdapterConfig(BaseModel):
     Example Environment Variables:
         MAHAVISHNU_AGNO__ENABLED=true
         MAHAVISHNU_AGNO__LLM__PROVIDER=anthropic
-        MAHAVISHNU_AGNO__LLM__MODEL_ID=claude-sonnet-4-6
+        MAHAVISHNU_AGNO__LLM__MODEL_ID=claude-sonnet-5-5
     """
 
     enabled: bool = Field(default=True, description="Enable Agno adapter")
