@@ -49,6 +49,7 @@ Per Bodai pre-1.0 policy: merge directly to `main`, no PRs. Branch + squash/ff-m
   - Phase D (runbook + docs): DONE
   - Phase E (monitoring + Phase 4 ADR): IN PROGRESS
   - Fastblocks `snob-lib` maturin Rust build fails under 3.14 — real blocker for that repo's 3.14 adoption; needs upstream snob-lib or maturin/pyo3 update.
+    > **Resolved 2026-11-07.** Fastblocks dropped `pytest-snob` and `snob-lib` from its lock in `bd82e6b` (2026-09-28) and now declares `requires-python = ">=3.14"`. The blocker no longer exists: the dependency that could not be built is gone, and fastblocks adopted 3.14 without it. Crackerjack has since replaced its own `pytest-snob` integration with `pytest-testmon` (2026-11-07).
   - 22 sibling repos have `.python-version = 3.14` on disk; user must run `uv sync` from network-enabled shell to populate venvs (sandbox DNS unreachable).
 - **2026-08-24** (this session): Tool-config pin sweep across 26 sibling repos
   (Ruff target-version py313→py314, Pyright pythonVersion 3.13→3.14, mypy

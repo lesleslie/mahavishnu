@@ -44,6 +44,7 @@ Phase 3 (ADR 015 v4) shipped the streaming `tar.zst` pipeline end-to-end across 
 ### What 3.14 didn't fix (deferred Phase 4 candidates)
 
 - **Fastblocks `snob-lib` maturin Rust build fails under 3.14** — upstream pyo3 / maturin / snob-lib update still pending. Blocks fastblocks from running on 3.14 even with network access. Will re-block Phase 4 unless upstream ships a 3.15-ready release in parallel.
+  > **Resolved 2026-11-07.** Fastblocks dropped `pytest-snob` and `snob-lib` from its lock in `bd82e6b` (2026-09-28) and now declares `requires-python = ">=3.14"` — it adopted 3.14 without the dependency that could not be built. The upstream pyo3 / maturin question never had to be answered. Crackerjack has since replaced its own `pytest-snob` integration with `pytest-testmon`.
 - **Tool-config pins still 3.13 in 21 of 22 sibling repos** — Ruff `target-version = "py313"`, Pyright `pythonVersion = "3.13"`, mypy `python_version = "3.13"`, Refurb `python_version = "3.13"`. Phase 3 bumped `requires-python` but did not propagate to tool-config (only mahavishnu addressed these in commit `c1f3c18`). Phase 4 must update all tool-config pins atomically with the runtime bump.
 
 ### What 3.15 is expected to bring
@@ -127,6 +128,7 @@ If Phase 3 7-day monitoring surfaces any of:
 ### Negative / risks
 
 - **Fastblocks `snob-lib` 3.14 blocker already pending.** If upstream snob-lib / maturin / pyo3 hasn't shipped a 3.15-compatible release by Phase 4 start, fastblocks will block Phase 4 just as it blocks Phase 3.15. Mitigation: open an upstream issue + ask user to investigate before Phase 4 PR #6.
+  > **Resolved 2026-11-07.** The risk did not materialise: fastblocks removed the dependency entirely (`bd82e6b`, 2026-09-28) rather than waiting for an upstream wheel, and now declares `requires-python = ">=3.14"`. No upstream issue was filed, and Phase 4 PR #6 is not blocked by this.
 - **Tool-config pin sweep touches every repo's pyproject.toml.** Risk of formatter drift across 22 repos. Mitigation: scripted edit + crackerjack dry-run per repo before commit.
 - **Streaming-tar evolution items may never trigger.** If Phase 3 monitoring shows the current fixed-config performs well, all six deferred items may stay deferred indefinitely. That's a feature, not a bug — the ADR explicitly gates them on telemetry.
 - **Phase 4 has its own 7-day monitoring window per Phase 3's contract.** Total elapsed: 3.15.0 GA + 7-PR × 2 weeks soak + 7-day monitoring = ~3.5 months from GA to Phase 4 verified.
@@ -136,6 +138,7 @@ If Phase 3 7-day monitoring surfaces any of:
 
 1. **When is 3.15.0 GA expected?** Drives the Phase 4 start date. CPython release schedule (typically October) suggests 2027-Q4, but 3.15's release manager may shift. Track via BODAI_UPGRADE_WATCH weekly.
 2. **Will upstream snob-lib / maturin / pyo3 ship 3.15-compatible wheels in time?** If not, fastblocks PR #6 in Phase 4 will block. Owner action: file upstream issue + follow up monthly.
+   > **Answered 2026-11-07: moot.** The question was whether upstream would ship wheels fast enough. Fastblocks removed `pytest-snob` and `snob-lib` instead (`bd82e6b`, 2026-09-28) and adopted `requires-python = ">=3.14"`, so there is no wheel to ship. Crackerjack, the last `pytest-snob` consumer in the fleet, replaced it with `pytest-testmon` on 2026-11-07. No upstream issue was needed.
 3. **Is the streaming-tail-validation MHV-208 actually worth shipping?** Gated on Phase 3 abort-rate telemetry. Need a decision criterion (e.g. "abort rate > 0.1% of fetches → ship").
 4. **Where does the streaming-tar telemetry dashboard live?** Currently metrics are emitted to OTel but not visualized. Need a Grafana dashboard spec (or skip — the OTel exporter in the durable KV store already collects them).
 5. **PEP 750 (t-strings) readiness in fastblocks + jinja2?** Out of scope for the 3.15 bump itself, but if 3.15 GA lands before jinja2 ships t-string support, our template engine migration is delayed.
