@@ -6,7 +6,7 @@
 # Behavior:
 #   1. Parse args: <health-url> [--timeout SECONDS=30] -- <command> [args...]
 #   2. Start <command> in the background; capture its PID.
-#   3. Poll <health-url> every 0.5s up to --timeout seconds.
+#   3. Poll <health-url> every 0.5s until --timeout seconds elapse.
 #   4. On success: wait for the command and propagate its exit code.
 #   5. On timeout: kill the command, exit 1.
 #      This way launchd's KeepAlive.Crashed=true will trigger a restart,
@@ -31,6 +31,14 @@
 #   check that takes a second under load is SLOW, not dead. A request that
 #   gets no response at all within that budget still counts as not-up, so a
 #   genuinely wedged server is still caught and killed.
+#
+#   The poll is bounded by a WALL-CLOCK DEADLINE, not by an attempt count.
+#   An attempt count and a per-request budget MULTIPLY, so the real ceiling
+#   would be attempts * CURL_MAX_TIME -- 105 minutes for a 300-second
+#   --timeout. The per-request budget is additionally capped by whatever is
+#   left of the deadline, so the last request cannot push the total past
+#   --timeout either. Measured overshoot is ~1s, from bash's whole-second
+#   SECONDS counter.
 #
 # Usage example (from a launchd plist):
 #   <string>/Users/les/.local/state/mcp/scripts/launch_with_healthcheck.sh</string>
@@ -104,24 +112,55 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Poll /health until it responds, or until timeout.
-ATTEMPTS=$(( TIMEOUT * 2 ))  # 0.5s per attempt
+# Poll /health until it responds, or until the deadline.
+#
+# The loop is bounded by a WALL-CLOCK DEADLINE, not by an attempt count.
+# An attempt count and a per-request budget MULTIPLY: there are
+# TIMEOUT*2 attempts and each one can burn the full CURL_MAX_TIME, so the
+# real ceiling was attempts * CURL_MAX_TIME -- 105 minutes for a
+# 300-second --timeout. That breaks the contract this script documents
+# and leaves launchd waiting on a wedged server far past its ceiling.
+#
+# SECONDS is a bash builtin counting whole seconds since the shell
+# started, so the deadline costs no fork.
+#
+# The deadline covers the POLL phase only, matching the documented
+# contract ("poll up to --timeout seconds"); the command's own startup
+# time is not counted against it.
+DEADLINE=$(( SECONDS + TIMEOUT ))
 SLEEP_INTERVAL=0.5
 HEALTHY=0
-for ((i=1; i<=ATTEMPTS; i++)); do
+while :; do
   # Check the command is still alive first.
   if ! kill -0 "$PID" 2>/dev/null; then
     echo "launch_with_healthcheck: command (PID $PID) died before becoming healthy" >&2
     exit 1
   fi
+  REMAINING=$(( DEADLINE - SECONDS ))
+  if [ "$REMAINING" -le 0 ]; then
+    break
+  fi
+  # Cap the per-request budget by what is left of the overall deadline,
+  # so the last request cannot push the total past --timeout.
+  REQUEST_BUDGET=$REMAINING
+  if [ "$REQUEST_BUDGET" -gt "$CURL_MAX_TIME" ]; then
+    REQUEST_BUDGET=$CURL_MAX_TIME
+  fi
   # No -f: ANY HTTP status counts as "the server is serving". Only a
   # request that gets NO response at all within the budget means "not up".
   curl -sS -o /dev/null \
     --connect-timeout "$CONNECT_TIMEOUT" \
-    --max-time "$CURL_MAX_TIME" \
+    --max-time "$REQUEST_BUDGET" \
     "$HEALTH_URL" 2>/dev/null
   if [ $? -eq 0 ]; then
     HEALTHY=1
+    break
+  fi
+  # Never sleep past the deadline: the sleep is the last thing that could
+  # push the total beyond --timeout. REMAINING is a whole number of
+  # seconds, so a fractional comparison against SLEEP_INTERVAL is not an
+  # option here.
+  if [ $(( DEADLINE - SECONDS )) -le 0 ]; then
     break
   fi
   sleep "$SLEEP_INTERVAL"
