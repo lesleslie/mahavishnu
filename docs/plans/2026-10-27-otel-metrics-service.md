@@ -108,6 +108,31 @@ curl -s http://localhost:8682/metrics | grep mahavishnu_observability
    overrides — which matches what mahavishnu's exporter already does. The
    *endpoint* stays single; only the transport default changes.
 
+   **The transport default is not the only guard (2026-11-07).** Letting
+   the scheme decide is the SDK's *own* default, but on its own it lets
+   **any** host receive telemetry in the clear. The old `insecure=False`
+   blocked plaintext egress to a remote host only as a side effect of
+   being broken, so removing the breakage removed that side effect too.
+   oneiric now validates the endpoint before constructing an exporter:
+
+   - plaintext to a **loopback** host is allowed (the substrate case);
+   - plaintext to a **non-loopback** host requires an explicit
+     `allow_insecure=True` — one way in, not two, so the guard stays
+     greppable and there is never a question of which knob was flipped;
+   - the cloud metadata addresses (`169.254.169.254` and friends) are
+     rejected **always**, over TLS as well as plaintext — a telemetry
+     exporter has no business talking to a metadata service;
+   - **RFC1918 is deliberately not blocked**: an internal OTLP collector
+     on `10.x` is a legitimate destination here, unlike an LLM gateway.
+
+   The validator mirrors the exporter's transport resolution exactly
+   (the `https` pin, the explicit value, then
+   `OTEL_EXPORTER_OTLP_INSECURE`, then the scheme), because a guard that
+   disagrees with the exporter would either block a config the exporter
+   would have handled securely or wave through a plaintext one. Note
+   that a scheme-less `host:port` endpoint is TLS to the exporter, so
+   the guard must treat it as TLS too.
+
 ### Interim state (until Phase 2 lands)
 
 The `UNIMPLEMENTED` flood continues, but it is **one** exporter, not two:
