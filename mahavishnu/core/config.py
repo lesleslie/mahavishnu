@@ -1516,14 +1516,14 @@ class ObservabilityConfig(BaseModel):
     metrics_enabled: bool = Field(
         default=False,
         description=(
-            "Enable OpenTelemetry metric export. Off by default: akosha's "
-            "OTLP receiver implements TraceService only, so exports to :4317 "
-            "fail with UNIMPLEMENTED 'Method not found!' once a minute, "
-            "forever, and there is no other OTLP metrics sink in the fleet "
-            "(Alloy has no prometheus.scrape block; Grafana's prometheus "
-            "datasource points at a dead :9093). Instruments still record "
-            "in-process -- this gates export, not collection. Flip on when a "
-            "real metrics backend exists."
+            "Enable OpenTelemetry metric export. Off by default because "
+            "export is a deployment choice, not a capability one: the "
+            "substrate receiver on :4317 implements MetricsService as well "
+            "as TraceService, so metrics and traces share one endpoint "
+            "(observability.otlp_endpoint) and there is no separate "
+            "metrics sink to configure. Instruments still record "
+            "in-process -- this gates export, not collection. Flip on when "
+            "a deployment wants its series exported."
         ),
     )
     tracing_enabled: bool = Field(
@@ -1547,23 +1547,6 @@ class ObservabilityConfig(BaseModel):
     otlp_endpoint: str = Field(
         default="http://localhost:4317",
         description="OTLP endpoint for metrics/traces",
-    )
-    otlp_metrics_endpoint: str | None = Field(
-        default=None,
-        description=(
-            "OTLP endpoint for METRICS only. Falls back to `otlp_endpoint` "
-            "when unset, which is what every deployment did until the "
-            "substrate split traces from metrics. "
-            "The Bodai OTel substrate (2026-10-23) runs them on different "
-            "receivers: akosha's receiver on :4317 implements TraceService "
-            "ONLY, while Alloy's receiver on :14317 implements the metric "
-            "path and exports to Prometheus. Sending metrics to the "
-            "trace-only receiver fails EVERY export with gRPC "
-            "UNIMPLEMENTED 'Method not found!' -- once a minute, forever -- "
-            "and those series never reach any backend. "
-            "Set this to http://127.0.0.1:14317 when Alloy is running. "
-            "Env var override: MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT."
-        ),
     )
     # R3-L2 (round-4 observability review): the field was claimed in
     # the runbook and code but never declared on ObservabilityConfig.
@@ -2968,11 +2951,13 @@ class MahavishnuSettings(BaseSettings):
     otel_metrics_enabled: bool = Field(
         default=False,
         description=(
-            "Enable OTLP metric export. Off by default: akosha's receiver "
-            "implements TraceService only, so exports to :4317 fail with "
-            "UNIMPLEMENTED 'Method not found!' once a minute, forever. "
-            "Traces still export. Instruments still record in-process -- this "
-            "gates export, not collection. "
+            "Enable OTLP metric export. Off by default because export is a "
+            "deployment choice, not a capability one: the substrate "
+            "receiver on :4317 implements MetricsService as well as "
+            "TraceService, so metrics and traces share one endpoint and "
+            "every export succeeds. Traces still export independently. "
+            "Instruments still record in-process -- this gates export, not "
+            "collection. "
             "TOP-LEVEL on purpose: the `observability` key belongs to oneiric "
             "(its OTelStorageSettings is extra='forbid' and has no "
             "metrics_enabled field), and oneiric's project settings share the "

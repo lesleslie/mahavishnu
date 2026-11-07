@@ -57,9 +57,10 @@ def test_default_config_values():
     assert config.resilience.retry_base_delay == 1.0
     assert config.resilience.circuit_breaker_threshold == 5
     assert config.resilience.timeout_per_repo == 300
-    # OFF by default: akosha's receiver implements TraceService only, so
-    # metric exports to :4317 fail with UNIMPLEMENTED once a minute. This
-    # used to assert True and only passed because the machine's
+    # OFF by default: export is a deployment choice, not a capability one.
+    # The substrate receiver on :4317 implements MetricsService as well as
+    # TraceService, so metrics and traces share one endpoint. This used to
+    # assert True and only passed because the machine's
     # MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED env var was set.
     assert config.observability.metrics_enabled is False
     assert config.observability.tracing_enabled is True
@@ -665,11 +666,12 @@ class TestResilienceConfigDefaults:
 class TestObservabilityConfigDefaults:
     def test_defaults(self):
         cfg = ObservabilityConfig()
-        # Metric EXPORT is off by default: akosha's OTLP receiver implements
-        # TraceService only, so exports to :4317 fail with UNIMPLEMENTED
-        # "Method not found!" once a minute, forever, and there is no other
-        # OTLP metrics sink in the fleet. Instruments still record
-        # in-process -- this gates export, not collection. Opt in with
+        # Metric EXPORT is off by default: export is a deployment choice, not
+        # a capability one. The substrate receiver on :4317 implements
+        # MetricsService as well as TraceService, so metrics and traces
+        # share one endpoint and there is no separate OTLP metrics sink to
+        # configure. Instruments still record in-process -- this gates export,
+        # not collection. Opt in with
         # MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED=true.
         assert cfg.metrics_enabled is False
         assert cfg.tracing_enabled is True

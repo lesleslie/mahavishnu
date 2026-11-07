@@ -5,10 +5,10 @@ one: ``__init__`` tested ``metrics_enabled`` alone before calling
 ``_init_otel_components``. Turning metrics off therefore also turned tracing
 off and dropped the process to MockTracer/MockMeter.
 
-That coupling is not cosmetic here. akosha's OTLP receiver implements
-TraceService only, so metric exports to :4317 fail with UNIMPLEMENTED every
-60 seconds — an operator who wants the spam gone must disable metrics, and the
-old wiring then silently discards the spans the receiver actually wants.
+That coupling is not cosmetic here. The substrate receiver implements both
+OTLP services, so metric exports to :4317 now succeed — an operator who
+wants the export gone must disable metrics, and the old wiring then
+silently discards the spans the receiver actually wants.
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ def test_metrics_off_tracing_on_keeps_real_tracing(
     assert not isinstance(mgr.meter, obs.MockMeter)
     assert count_metric_readers == [], (
         "no OTLP metric reader may be built when metrics_enabled is false; "
-        ":4317 has no MetricsService and every export fails"
+        "the exporter would ship every series off-process"
     )
 
 

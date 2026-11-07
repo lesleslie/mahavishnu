@@ -488,7 +488,7 @@ server it was supposed to start. An unusable substrate is an **ongoing**
 error, not a past one: the readiness flag is re-read each probe so the
 feed cannot decay out of the halflife back to healthy.
 
-Thirteen deviations from the plan text, recorded so Phase 3 and the
+Seventeen deviations from the plan text, recorded so Phase 3 and the
 operator build against reality:
 
 1. **`service.namespace` is NOT required for a metric point.** oneiric's
@@ -596,6 +596,28 @@ operator build against reality:
     `akosha/storage/hot_store.py` has a hard 500-LOC CI cap and is "the
     code-graph overlay", not a query surface. It borrows the store's lock
     the way `SpanQuery` does — no second connection.
+16. **Phase 3's documentation task has no targets.** It asked to "update the
+    `docs/feature-tracking/` and `docs/runbooks/` notes that reference the
+    Alloy metric path". Neither directory contains such a note — a grep of
+    both for `Alloy|alloy|14317|4317` returns nothing. The documents that
+    *do* describe the split are dated specs and decision records, which are
+    records of what was true at the time and were deliberately left alone.
+    The real documentation work is Phase 4's (the stage-1 gate query and the
+    feature-tracking state), and it is still open.
+17. **Removing the config field is order-independent, and the env var
+    behaves differently from the YAML key.** mahavishnu's settings loader
+    calls `_filter_subconfig_keys` *before* `MahavishnuSettings(**merged)`,
+    which drops any key a sub-config does not declare. A leftover
+    `otlp_metrics_endpoint` under `observability:` in `local.yaml` is
+    therefore **silently dropped**, not fatal — so the code change could
+    land first without a breakage window. The `MAHAVISHNU_OBSERVABILITY__*`
+    overlay merges *after* that filter, so
+    `MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT` now raises
+    `ValidationError` and every CLI command fails loudly, naming the
+    removed key. That asymmetry is correct — a stale env var should stop
+    the process, a stale YAML key should not — but the plan did not
+    describe it, and an operator who still exports the variable will hit
+    it on the next restart.
 
 **Known gap — `/v1/metrics` on the HTTP listener is NOT implemented.** gRPC
 is the required path and it is served; the HTTP listener still exposes only
@@ -715,6 +737,42 @@ akosha; the `UNIMPLEMENTED` error is absent; the series are visible on
   instruments (`..._changepoint_evaluations_total`,
   `..._changepoint_detector_active`) become queryable on `:8682`.
 
+**Delivered 2026-11-07 — mahavishnu `feat/phase3-metrics-revert-split`**
+(base `6637d4c6`, not pushed). Five files: `mahavishnu/core/config.py` (the
+interim `otlp_metrics_endpoint` field removed; the `metrics_enabled` and
+`otel_metrics_enabled` descriptions rewritten), `mahavishnu/core/
+observability.py` (the metric exporter targets `observability.otlp_endpoint`),
+`tests/unit/test_config.py` and `tests/unit/test_observability_signal_gating.py`
+(comments that described the split as current fact), and the new
+`tests/unit/test_observability_metrics_endpoint.py` (5 tests).
+
+**The field's removal is order-independent, and the reason is not
+obvious.** mahavishnu's settings loader calls `_filter_subconfig_keys`
+*before* `MahavishnuSettings(**merged)`, which drops any key a sub-config
+does not declare. A leftover `otlp_metrics_endpoint` under `observability:`
+in `local.yaml` is therefore **silently dropped**, not fatal — the code
+change could land first, with no breakage window, contrary to what the
+plan's ordering implied. The env var is the opposite:
+`MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT` merges *after* that
+filter and now raises `ValidationError`, stopping every CLI command and
+naming the removed key. Both behaviours were verified by running them, not
+inferred.
+
+**Nine in-repo places described the split as current fact.** The plan's task
+list named only the config field and the `observability.py` branch. An audit
+of the whole repo found the same claim in **two other fields of those same
+two files** — `ObservabilityConfig.metrics_enabled` and the top-level
+`MahavishnuSettings.otel_metrics_enabled`, the latter ~1,400 lines away
+from the field being removed — plus a runtime log string ("akosha's
+receiver serves TraceService only") that would have kept telling operators
+the split was live, and four comments/assertion messages across two test
+files. Editing only the named field would have left the fleet documenting a
+topology that no longer existed.
+
+**The plan's Phase 3 documentation task had no targets** (deviation 16).
+The documentation that actually needed changing was the config field's own
+description and the runtime log line — neither of which the plan named.
+
 ### Phase 4: verification and gate enablement
 
 **Goal:** prove the end-to-end path and turn the §7 stage-1 gate from a
@@ -770,25 +828,32 @@ injected drift moves it.
       REQ-M07)
 
 **akosha** (`/Users/les/Projects/akosha`)
-- [ ] `akosha/observability/otlp_receiver.py` — `_MetricsServiceServicer`,
-      `add_MetricsServiceServicer_to_server`, `_handle_metrics_batch`
-- [ ] `akosha/observability/prometheus_metrics.py` — OTLP → `prometheus_client`
-      bridge, receiver counters
-- [ ] akosha tests — `test_otlp_metrics_receiver.py`
+- [x] `akosha/observability/otlp_receiver.py` — `_MetricsServiceServicer`,
+      `add_MetricsServiceServicer_to_server`, `_handle_metrics_batch` —
+      landed in `ab76a77`
+- [x] `akosha/observability/otlp_prometheus_bridge.py` — OTLP →
+      `prometheus_client` bridge — and `akosha/observability/otlp_metrics.py`
+      — receiver counters — landed in `ab76a77`. The plan named
+      `prometheus_metrics.py` for both; that module already existed as the
+      shared-registry owner (`get_metrics_registry()`), so the bridge got
+      its own module.
+- [x] akosha tests — `test_otlp_metrics_receiver.py`,
+      `test_metrics_health_feed.py`, `test_otlp_metrics_receiver_e2e.py` —
+      landed in `ab76a77`
 
 **mahavishnu** (`/Users/les/Projects/mahavishnu`)
-- [ ] `mahavishnu/core/config.py` — remove `otlp_metrics_endpoint` (REQ-M04)
-- [ ] `mahavishnu/core/observability.py` — metric exporter reverts to
+- [x] `mahavishnu/core/config.py` — remove `otlp_metrics_endpoint` (REQ-M04)
+- [x] `mahavishnu/core/observability.py` — metric exporter reverts to
       `otlp_endpoint` (REQ-M04); keep the liveness instruments (REQ-M05)
 - [ ] `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` — the stage-1 gate
-      query (REQ-M05)
+      query (REQ-M05) — **Phase 4**
 - [ ] `docs/feature-tracking/2026-09-10-observability-changepoint.md` —
-      gate now queryable (REQ-M05)
+      gate now queryable (REQ-M05) — **Phase 4**
 
 **operator (outside the repos)**
-- [ ] `~/.config/mahavishnu/local.yaml` — drop the
+- [x] `~/.config/mahavishnu/local.yaml` — drop the
       `otlp_metrics_endpoint` override once Phase 3 lands
-- [ ] `/usr/local/etc/grafana-alloy/config.alloy` — *no change*; the metric
+- [x] `/usr/local/etc/grafana-alloy/config.alloy` — *no change*; the metric
       path is retired, not completed (NG1)
 
 ## 7. Validation Matrix

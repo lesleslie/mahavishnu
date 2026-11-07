@@ -239,9 +239,9 @@ class ObservabilityManager:
             # Initialize meter.
             #
             # ``metrics_enabled`` was declared on ObservabilityConfig but never
-            # read here, so OTLP metrics went out unconditionally. akosha's
-            # receiver implements only the TraceService, so every export failed
-            # with UNIMPLEMENTED "Method not found!" once a minute, forever.
+            # read here, so OTLP metrics went out unconditionally. The flag
+            # exists so a deployment can turn export off without touching the
+            # instruments.
             #
             # Disabling builds a MeterProvider with NO reader rather than
             # skipping meter setup: self.meter and every instrument built from
@@ -249,20 +249,17 @@ class ObservabilityManager:
             # AttributeError at runtime. Nothing is exported either way.
             metric_readers: list[Any] = []
             if self._metrics_export_enabled():
-                # The metric exporter needs a receiver that implements the
-                # OTLP MetricsService. akosha's receiver on :4317 implements
-                # TraceService ONLY -- sending metrics there fails every
-                # export with gRPC UNIMPLEMENTED "Method not found!", once
-                # a minute, forever, and the series never reach a backend.
-                # The substrate split the two on 2026-10-23: traces go to
-                # akosha, metrics go to Alloy's receiver, which exports them
-                # to Prometheus. Fall back to the trace endpoint when
-                # unset, so nothing changes for a deployment that has not
-                # opted in.
-                metrics_endpoint = (
-                    getattr(self.config.observability, "otlp_metrics_endpoint", None)
-                    or self.config.observability.otlp_endpoint
-                )
+                # Metrics and traces share one endpoint. The substrate
+                # receiver on :4317 implements MetricsService as well as
+                # TraceService, so there is no second receiver to configure
+                # and no separate metric sink to point at.
+                #
+                # The interim split sent metrics to Alloy's receiver on
+                # :14317 because this receiver was trace-only. That split is
+                # retired: the field that configured it is gone, and with it
+                # the possibility of the two paths pointing at different
+                # receivers and one of them failing every export.
+                metrics_endpoint = self.config.observability.otlp_endpoint
                 metric_readers.append(
                     PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=metrics_endpoint))
                 )
@@ -276,8 +273,7 @@ class ObservabilityManager:
             else:
                 self.logger.info(
                     "OTLP metric export disabled (observability.metrics_enabled=false); "
-                    "instruments stay live and record in-process, nothing is exported. "
-                    "akosha's receiver serves TraceService only."
+                    "instruments stay live and record in-process, nothing is exported."
                 )
             meter_provider = MeterProvider(metric_readers=metric_readers, resource=resource)
             metrics.set_meter_provider(meter_provider)
