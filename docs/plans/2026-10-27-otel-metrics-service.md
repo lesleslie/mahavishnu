@@ -612,12 +612,17 @@ operator build against reality:
     therefore **silently dropped**, not fatal — so the code change could
     land first without a breakage window. The `MAHAVISHNU_OBSERVABILITY__*`
     overlay merges *after* that filter, so
-    `MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT` now raises
-    `ValidationError` and every CLI command fails loudly, naming the
-    removed key. That asymmetry is correct — a stale env var should stop
-    the process, a stale YAML key should not — but the plan did not
-    describe it, and an operator who still exports the variable will hit
-    it on the next restart.
+    `MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT` now raises and
+    every CLI command fails loudly, naming the removed key. (On the
+    `get_settings()` path the exception is pydantic's `ValidationError`;
+    on the app-startup path `bootstrap.load_config()` wraps it as
+    `ConfigurationError("Failed to load configuration: …")` — same
+    loudness, different type.) That asymmetry is correct — a stale env
+    var should stop the process, a stale YAML key should not — but the
+    plan did not describe it, and an operator who still exports the
+    variable will hit it on the next restart. **The field shipped in
+    v0.37.0 and v0.38.0** (see Phase 3's task list), so this is a real
+    upgrade break for anyone who set the variable, not a hypothetical.
 
 **Known gap — `/v1/metrics` on the HTTP listener is NOT implemented.** gRPC
 is the required path and it is served; the HTTP listener still exposes only
@@ -702,15 +707,29 @@ Alloy detour removed.
 **Tasks:**
 - Remove `observability.otlp_metrics_endpoint` from
   `mahavishnu/core/config.py` and the corresponding branch in
-  `mahavishnu/core/observability.py` — **replace, don't extend**. The
-  interim field was added by commit `0b0886ea` and never released, so
-  removing it costs nothing.
+  `mahavishnu/core/observability.py` — **replace, don't extend**.
+  **Correction 2026-11-07 (the plan originally said the field "was added
+  by commit `0b0886ea` and never released, so removing it costs nothing").
+  That was wrong.** `git merge-base --is-ancestor 0b0886ea v0.37.0` and
+  `... v0.38.0` both succeed, and this repo's version *is* 0.38.0 — the
+  field shipped in two releases. An operator on 0.37 or 0.38 who set
+  `MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT` will hit a hard
+  `ValidationError` on their next start, not a silent no-op. The
+  *YAML* path is harmless (the loader drops unknown sub-keys before
+  validation), but the env var stops the process.
 - Remove the `otlp_metrics_endpoint` override from
   `~/.config/mahavishnu/local.yaml`.
 - The metric exporter reverts to `observability.otlp_endpoint` (`:4317`),
   which is now a receiver that implements `MetricsService`.
 - Update the `docs/feature-tracking/` and `docs/runbooks/` notes that
   reference the Alloy metric path.
+- **Deployment order (stated 2026-11-07, previously unstated):** akosha
+  must be running a build with `MetricsService` **before** mahavishnu
+  restarts with metrics export enabled. A mahavishnu pointed at a
+  trace-only receiver gets `UNIMPLEMENTED` once a minute — and this
+  operator has metrics enabled in three places (`~/.zshenv`, the launchd
+  plist, and `~/.config/mahavishnu/local.yaml`), so the next restart
+  turns the failure on whether or not akosha has been upgraded.
 
 **Exit criteria:** mahavishnu's OTLP metrics export is accepted by
 akosha; the `UNIMPLEMENTED` error is absent; the series are visible on
@@ -728,17 +747,39 @@ akosha; the `UNIMPLEMENTED` error is absent; the series are visible on
   `Failed to export metrics` line over a 5-minute window, and
   `curl -s http://localhost:8682/metrics | grep mahavishnu_observability`
   returns the drift and liveness series.
-- **Rollback signal:** `opentelemetry.exporter.otlp.proto.grpc.exporter`
-  logging `Failed to export metrics` with any status code. Rollback = re-add
-  the field and point it at `http://127.0.0.1:14317` (Alloy's receiver
-  accepts metrics even though it does not expose them).
+- **Rollback signal (corrected 2026-11-07):** TWO clauses, because the
+  original one was reachable only in a failure mode this fleet does not
+  actually hit.
+  1. `opentelemetry.exporter.otlp.proto.grpc.exporter` logging
+     `Failed to export metrics` **with `StatusCode.UNIMPLEMENTED`** — that
+     specifically means "the receiver is trace-only", i.e. roll *forward*
+     by upgrading akosha, not back. `UNAVAILABLE` and `DEADLINE_EXCEEDED`
+     produce the same line shape and mean different things; "any status
+     code" was too loose to be a trigger.
+  2. `opentelemetry.sdk.metrics._internal.export` logging `Metric
+     collection timed out`. **This is the clause that actually fires.**
+     `MetricReader.collect()` raises `MetricsTimeoutError` *before* it
+     calls the exporter, so the export is never attempted and the "Failed
+     to export metrics" line never appears — the original signal was
+     silent exactly while metrics were being dropped. The live log shows
+     both shapes.
+  - **Rollback = revert the commit.** The plan previously said "re-add
+    the field and point it at `http://127.0.0.1:14317`", on the grounds
+    that "Alloy's receiver accepts metrics even though it does not expose
+    them". **That is false for the gRPC path**, and the fleet's own log
+    says so: 50 lines of `Failed to export metrics to 127.0.0.1:14317,
+    error code: StatusCode.DEADLINE_EXCEEDED`. The export does not get
+    accepted — it hangs until the deadline. The documented rollback would
+    have swapped `UNIMPLEMENTED` for `DEADLINE_EXCEEDED` and left the
+    operator with no working path at all.
 - **Observability added:** the drift counters
   (`mahavishnu_observability_drift_detected_total`) and the liveness
   instruments (`..._changepoint_evaluations_total`,
   `..._changepoint_detector_active`) become queryable on `:8682`.
 
 **Delivered 2026-11-07 — mahavishnu `feat/phase3-metrics-revert-split`**
-(base `6637d4c6`, not pushed). Five files: `mahavishnu/core/config.py` (the
+(base `6637d4c6`, not pushed). Six files — the five below plus this plan
+file: `mahavishnu/core/config.py` (the
 interim `otlp_metrics_endpoint` field removed; the `metrics_enabled` and
 `otel_metrics_enabled` descriptions rewritten), `mahavishnu/core/
 observability.py` (the metric exporter targets `observability.otlp_endpoint`),
@@ -768,6 +809,42 @@ receiver serves TraceService only") that would have kept telling operators
 the split was live, and four comments/assertion messages across two test
 files. Editing only the named field would have left the fleet documenting a
 topology that no longer existed.
+
+**Consolidating the two paths destroys one diagnostic, and the plan did
+not say so.** Before, "metrics failing while traces succeed" proved the
+two paths had diverged — a config problem. After, both signals share one
+endpoint, so a substrate outage fails both at once and the logs can no
+longer distinguish "one broken path" from "the whole substrate is down".
+That is an accepted consequence of consolidation, but it is the reason the
+rollback signal above names two clauses: a single symptom no longer
+identifies which half broke.
+
+**Ensemble review (spec §4.4: domain specialist + code-quality specialist
++ random generalist) — three lenses, all `needs_adjustment`, fifteen
+defects found and fixed.** The *production* change was judged correct by
+all three: the field is gone, the exporter targets `otlp_endpoint`, no
+leftover reference survives anywhere in the tree, and the load-bearing
+external fact (akosha's receiver serving MetricsService on :4317) was
+independently confirmed against akosha's source by two of the lenses.
+What the review found was that the change's own **evidence layer** did not
+support it:
+
+| Defect | Symptom |
+|---|---|
+| The endpoint test passed while **nothing was exported** | `_init_otel_components` catches every exception and falls back to mocks, and the exporters are built BEFORE the fallible work that follows — so a test asserting only on exporter construction stays green while the manager silently exports nothing. Reproduced independently by the reviewer |
+| The plan's **documented rollback did not work** | it pointed operators at Alloy's `:14317`, which the fleet's own log shows returning `DEADLINE_EXCEEDED` 50 times. The rollback would have swapped one broken path for another |
+| The plan's **rollback signal was unreachable** | `MetricReader.collect()` raises `MetricsTimeoutError` *before* calling the exporter, so "Failed to export metrics" never appears exactly while metrics are being dropped |
+| The plan said the field **"was never released"** | it shipped in v0.37.0 and v0.38.0; the current version IS 0.38.0. "Removing it costs nothing" was false for anyone who set the env var |
+| A config description claimed oneiric's schema was `extra="forbid"` | it is `extra="allow"`; the claim was contradicted by the operator's own `local.yaml`, updated in the same window |
+| Both rewritten descriptions implied the nested flag **alone** gated export | it is an OR with the top-level flag, which is the one the operator actually sets — so `observability.metrics_enabled: false` cannot turn export off |
+| `docs/CONFIGURATION.md` said the default was `True` | the code default is `False` |
+| The two "endpoint" tests **passed against the pre-change commit** | the interim field's `None` value fell back to `otlp_endpoint` anyway, so they were not regression tests for the property they name |
+
+Two of the three lenses independently reported the false `extra="forbid"`
+claim, the wrong default in `docs/CONFIGURATION.md`, and the
+mis-described fixture docstring. Three independent reports of the same
+defect is what makes those fixes trustworthy rather than one reviewer's
+reading.
 
 **The plan's Phase 3 documentation task had no targets** (deviation 16).
 The documentation that actually needed changing was the config field's own
@@ -892,6 +969,10 @@ injected drift moves it.
 - [x] `mahavishnu/core/config.py` — remove `otlp_metrics_endpoint` (REQ-M04)
 - [x] `mahavishnu/core/observability.py` — metric exporter reverts to
       `otlp_endpoint` (REQ-M04); keep the liveness instruments (REQ-M05)
+- [x] `tests/unit/test_observability_metrics_endpoint.py` — pins the
+      removal (field gone, env var fatal, YAML key dropped) and the
+      endpoint (metrics and traces share one), including the check that
+      the manager did **not** fall back to mocks
 - [ ] `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` — the stage-1 gate
       query (REQ-M05) — **Phase 4**
 - [ ] `docs/feature-tracking/2026-09-10-observability-changepoint.md` —
@@ -910,10 +991,11 @@ injected drift moves it.
 | `pytest` (oneiric) — `test_metrics_substrate.py` | passes; rows round-trip | oneiric CI |
 | `pytest` (akosha) — `test_otlp_metrics_receiver.py` | passes; export accepted, series exposed | akosha CI |
 | `pytest` (mahavishnu) — `test_change_point_tick_loop.py` | 11 passed | mahavishnu CI |
+| `pytest` (mahavishnu) — `test_observability_metrics_endpoint.py` | 6 passed; 3 of them fail against the pre-change commit | mahavishnu CI |
 | `pytest` (mahavishnu) — `test_observability.py` | no **new** failures vs. the 2026-10-27 baseline (2 pre-existing) | mahavishnu CI |
 | `curl -s localhost:8682/metrics \| grep mahavishnu_observability` | drift + liveness series present | terminal |
 | `curl -s 'localhost:9090/api/v1/query?query=mahavishnu_observability_changepoint_evaluations_total'` | a number | terminal |
-| `grep -c "Failed to export metrics" ~/.local/state/mcp/logs/mahavishnu.err` | no new lines after the change | mahavishnu stderr log |
+| `grep -c "Failed to export metrics" ~/.local/state/mcp/logs/mahavishnu.err` | **not usable as written** (corrected 2026-11-07): the log is append-only and already holds 3,062 matching lines, so the count is 3,062 forever. Count lines *after a recorded marker* — note the current count before the restart, then diff — and add the `opentelemetry.sdk.metrics._internal.export` clause, which is the one that fires when collection times out | mahavishnu stderr log |
 | `curl -s localhost:9200/_cat/indices` | unchanged (OpenSearch is not in this path) | terminal |
 
 ## 8. Risks
@@ -924,7 +1006,7 @@ injected drift moves it.
 | Unbounded label cardinality in received data points | medium | cap distinct label values per metric; drop the excess into the DLQ count, matching the trace path's discipline |
 | Cumulative-sum semantics: a restart resets the counter, Prometheus sees a counter reset | medium | document the reset; `changepoint_evaluations_total` is a counter, so a reset shows as a decrease — the gate uses `rate()`/`increase()`, which handle it |
 | Oneiric's `DuckdbHotStore` is shared with other consumers | low | the metrics table is additive; `spans_substrate` DDL and the retention sweep are untouched (NG4) |
-| The Alloy path is left half-wired (receiver accepts, nothing exposes) | low | intentional (NG1); Alloy's metric receiver keeps accepting, so any producer still pointed there is unaffected — and Phase 3 points mahavishnu back at the substrate |
+| The Alloy path is left half-wired (receiver accepts, nothing exposes) | **medium, corrected 2026-11-07** | intentional (NG1), but the plan's claim that "Alloy's metric receiver keeps accepting, so any producer still pointed there is unaffected" is **false for the gRPC path**: the fleet's log holds 50 × `Failed to export metrics to 127.0.0.1:14317, error code: StatusCode.DEADLINE_EXCEEDED`. Alloy accepts nothing and exposes nothing on that path — it hangs. Phase 3 points mahavishnu back at the substrate, which is the only working path |
 | A producer's histogram bucket boundaries differ between exports | low | accept the producer's boundaries on first sight; log and ignore later divergences rather than resetting the histogram |
 
 ## 9. Decision Rule

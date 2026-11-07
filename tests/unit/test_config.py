@@ -36,8 +36,13 @@ from mahavishnu.core.config import (
 )
 
 
-def test_default_config_values():
+def test_default_config_values(monkeypatch: pytest.MonkeyPatch):
     """Test that default configuration values are set correctly."""
+    # pydantic-settings reads this env var natively into the nested
+    # sub-config, so on a machine that exports it the assertion below would
+    # fail -- and would fail on the one host whose configuration this test
+    # is supposed to describe. Guard the default explicitly.
+    monkeypatch.delenv("MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED", raising=False)
     config = MahavishnuSettings()
 
     assert config.repos_path == "settings/ecosystem.yaml"
@@ -59,9 +64,8 @@ def test_default_config_values():
     assert config.resilience.timeout_per_repo == 300
     # OFF by default: export is a deployment choice, not a capability one.
     # The substrate receiver on :4317 implements MetricsService as well as
-    # TraceService, so metrics and traces share one endpoint. This used to
-    # assert True and only passed because the machine's
-    # MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED env var was set.
+    # TraceService, so metrics and traces share one endpoint. The env var
+    # that could flip this is deleted above.
     assert config.observability.metrics_enabled is False
     assert config.observability.tracing_enabled is True
     assert config.observability.otlp_endpoint == "http://localhost:4317"

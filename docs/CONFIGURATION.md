@@ -282,9 +282,11 @@ Use `MAHAVISHNU_AUTH__SECRET` or `MAHAVISHNU_SUBSCRIPTION_AUTH__SECRET`; the lat
 
 **`observability`**:
 
-- `metrics_enabled` — `bool`, default `True`; enables OpenTelemetry metrics.
+- `metrics_enabled` — `bool`, default `False`; enables OpenTelemetry metric **export**. Off by default because export is a deployment choice, not a capability one. OR'd with the top-level `otel_metrics_enabled` — either one turns export on.
 - `tracing_enabled` — `bool`, default `True`; enables distributed tracing.
-- `otlp_endpoint` — `str`, default `http://localhost:4317`; OTLP endpoint.
+- `otlp_endpoint` — `str`, default `http://localhost:4317`; OTLP endpoint for **both** metrics and traces.
+- `tool_enrichment_enabled` — `bool`, default `False`; enables the local tool-call span enrichment layer.
+- `drift_runbook_url` — `str \| None`, default `None`; URL of the drift-detection runbook.
 
 **`monitoring`**:
 

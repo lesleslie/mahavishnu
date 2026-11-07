@@ -157,19 +157,22 @@ class ObservabilityManager:
     def _metrics_export_enabled(self) -> bool:
         """Is OTLP metric export on?
 
-        Two sources, either of which turns it on:
+        Two sources, and they are an OR -- turning EITHER one on exports
+        metrics. That matters to an operator: with the top-level flag on,
+        setting ``observability.metrics_enabled: false`` does NOT turn
+        export off.
 
-        - ``otel_metrics_enabled`` -- the TOP-LEVEL setting. This is the
-          one that can actually be set from the environment: the
-          ``observability`` key belongs to oneiric, whose project
-          settings share the MAHAVISHNU_ env prefix, and whose
-          OTelStorageSettings is extra="forbid" with no
-          ``metrics_enabled`` field. Setting it under ``observability``
-          makes oneiric's loader raise, and every CLI command fails with
-          MHV-001.
-        - ``observability.metrics_enabled`` -- kept for programmatic
-          configuration. It can only be set in-process, not through a
-          YAML layer or an env var, for the reason above.
+        - ``otel_metrics_enabled`` -- the TOP-LEVEL setting. Preferred,
+          because it does not depend on oneiric's nested schema: the
+          ``observability`` key belongs to oneiric's OTelStorageSettings,
+          and oneiric's project settings share the ``MAHAVISHNU_`` env
+          prefix, so ``MAHAVISHNU_OBSERVABILITY__*`` lands in oneiric's
+          own model rather than in this one.
+        - ``observability.metrics_enabled`` -- the nested setting. It
+          works through BOTH a YAML layer and
+          ``MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED``: oneiric's
+          OTelStorageSettings is extra="allow", so the key survives
+          oneiric's construction and is carried through to this model.
         """
         if getattr(self.config, "otel_metrics_enabled", False):
             return True
@@ -265,15 +268,14 @@ class ObservabilityManager:
                 )
                 self.logger.info(
                     "OTLP metric export enabled",
-                    extra={
-                        "endpoint": metrics_endpoint,
-                        "trace_endpoint": self.config.observability.otlp_endpoint,
-                    },
+                    extra={"endpoint": metrics_endpoint},
                 )
             else:
                 self.logger.info(
-                    "OTLP metric export disabled (observability.metrics_enabled=false); "
-                    "instruments stay live and record in-process, nothing is exported."
+                    "OTLP metric export disabled (neither observability."
+                    "metrics_enabled nor otel_metrics_enabled is set); "
+                    "instruments stay live and record in-process, nothing "
+                    "is exported."
                 )
             meter_provider = MeterProvider(metric_readers=metric_readers, resource=resource)
             metrics.set_meter_provider(meter_provider)
