@@ -476,7 +476,8 @@ def register_tasks_handoff_tools(
 
     Returns:
         ``True`` when the tool was registered, ``False`` when the
-        session-buddy contract is not available.
+        installed session-buddy does not provide a usable task-system
+        contract (missing, outdated, or failing to import).
 
         This does NOT raise on a contract mismatch. The registration
         runs inside ``FastMCPServer.__init__``, so raising here would
@@ -489,7 +490,8 @@ def register_tasks_handoff_tools(
     if not tasks_handoff_to_workflow_available():
         logger.warning(
             "tasks_handoff_to_workflow NOT registered — the installed "
-            "session-buddy does not expose the task-system contract"
+            "session-buddy does not provide a usable task-system "
+            "contract (missing, outdated, or failing to import)"
         )
         return False
 

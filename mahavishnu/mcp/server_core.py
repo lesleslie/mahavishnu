@@ -1530,11 +1530,13 @@ class FastMCPServer:
             )
         else:
             logger.warning(
-                "tasks_handoff_to_workflow NOT wired — the task-system "
-                "contract with the installed session-buddy does not match. "
-                "The gate logs the exact drift; publish a session-buddy "
-                "that carries the link channel and install it into this "
-                "venv, and registration activates on the next start."
+                "tasks_handoff_to_workflow NOT wired — the installed "
+                "session-buddy does not provide a usable task-system "
+                "contract (missing, outdated, or failing to import). "
+                "The gate logs the exact cause; if it is version skew, "
+                "publish a session-buddy that carries the link channel "
+                "and install it into this venv, and registration "
+                "activates on the next start."
             )
 
     async def _dispatch_task_workflow(

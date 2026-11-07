@@ -134,6 +134,40 @@ def _config(metrics_enabled: bool = True) -> SimpleNamespace:
     )
 
 
+def _stub_otel_globals(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[_MetricsAPI, _TraceAPI]:
+    """Replace every real OTel global with a stub.
+
+    Without this, ``ObservabilityManager.__init__`` builds a REAL
+    ``TracerProvider`` around a REAL ``OTLPSpanExporter`` pointed at the
+    placeholder endpoint ``http://otel``. The exporter's worker thread
+    then makes genuine DNS/gRPC export attempts and prints "Failed to
+    export traces to otel" into the test log. That noise also means the
+    test exercised the network rather than the code path it names.
+    """
+    metrics_api = _MetricsAPI()
+    trace_api = _TraceAPI()
+    monkeypatch.setattr(obs, "OTEL_AVAILABLE", True)
+    monkeypatch.setattr(obs, "Resource", _Resource, raising=False)
+    monkeypatch.setattr(obs, "TracerProvider", _TraceProvider, raising=False)
+    monkeypatch.setattr(obs, "BatchSpanProcessor", _BatchSpanProcessor, raising=False)
+    monkeypatch.setattr(obs, "OTLPSpanExporter", _Exporter, raising=False)
+    monkeypatch.setattr(
+        obs, "PeriodicExportingMetricReader", _MetricReader, raising=False
+    )
+    monkeypatch.setattr(obs, "OTLPMetricExporter", _Exporter, raising=False)
+    monkeypatch.setattr(
+        obs, "MeterProvider", lambda **kwargs: SimpleNamespace(**kwargs), raising=False
+    )
+    monkeypatch.setattr(
+        obs, "SystemMetricsInstrumentor", _SystemMetricsInstrumentor, raising=False
+    )
+    monkeypatch.setattr(obs, "metrics", metrics_api, raising=False)
+    monkeypatch.setattr(obs, "trace", trace_api, raising=False)
+    return metrics_api, trace_api
+
+
 def test_fallback_mock_classes_methods_are_executable() -> None:
     counter = obs.MockCounter()
     counter.add(1, {"k": "v"})
@@ -200,21 +234,26 @@ def test_module_import_success_branch_sets_otel_available(monkeypatch: pytest.Mo
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.trace", sdk_trace_mod)
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.trace.export", sdk_trace_export_mod)
 
-    reloaded = importlib.reload(obs)
-    assert reloaded.OTEL_AVAILABLE is True
-
-    # Restore the real OTel bindings. The reload above rebound obs's module
-    # globals to the FAKES (BatchSpanProcessor became ``object``), and
-    # monkeypatch's teardown only puts the real modules back in sys.modules --
-    # it does NOT undo the rebinding of obs. Under ``pytest -n auto`` the
-    # next test to land on this worker would then call the fake and blow up
-    # with "object() takes no arguments".
-    #
-    # ``monkeypatch.undo()`` puts the REAL modules back in sys.modules
-    # (rather than deleting the fakes and letting Python re-import fresh
-    # copies), and the reload then rebinds obs to those same real classes.
-    monkeypatch.undo()
-    importlib.reload(obs)
+    try:
+        reloaded = importlib.reload(obs)
+        assert reloaded.OTEL_AVAILABLE is True
+    finally:
+        # Restore the real OTel bindings. The reload above rebound obs's module
+        # globals to the FAKES (BatchSpanProcessor became ``object``), and
+        # monkeypatch's teardown only puts the real modules back in sys.modules
+        # -- it does NOT undo the rebinding of obs. Under ``pytest -n auto``
+        # the next test to land on this worker would then call the fake and
+        # blow up with "object() takes no arguments".
+        #
+        # ``monkeypatch.undo()`` puts the REAL modules back in sys.modules
+        # (rather than deleting the fakes and letting Python re-import fresh
+        # copies), and the reload then rebinds obs to those same real classes.
+        #
+        # In a ``finally``: if the assertion above fails, obs must still be
+        # restored, or every later test on this xdist worker inherits the
+        # fakes and fails with a confusing error instead of the real one.
+        monkeypatch.undo()
+        importlib.reload(obs)
 
 
 def test_init_uses_fallback_components() -> None:
@@ -331,22 +370,7 @@ def test_observe_decorator_and_span_alias() -> None:
 
 
 def test_init_otel_components_success_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    metrics_api = _MetricsAPI()
-    trace_api = _TraceAPI()
-
-    monkeypatch.setattr(obs, "OTEL_AVAILABLE", True)
-    monkeypatch.setattr(obs, "Resource", _Resource, raising=False)
-    monkeypatch.setattr(obs, "TracerProvider", _TraceProvider, raising=False)
-    monkeypatch.setattr(obs, "BatchSpanProcessor", _BatchSpanProcessor, raising=False)
-    monkeypatch.setattr(obs, "OTLPSpanExporter", _Exporter, raising=False)
-    monkeypatch.setattr(obs, "PeriodicExportingMetricReader", _MetricReader, raising=False)
-    monkeypatch.setattr(obs, "OTLPMetricExporter", _Exporter, raising=False)
-    monkeypatch.setattr(
-        obs, "MeterProvider", lambda **kwargs: SimpleNamespace(**kwargs), raising=False
-    )
-    monkeypatch.setattr(obs, "SystemMetricsInstrumentor", _SystemMetricsInstrumentor, raising=False)
-    monkeypatch.setattr(obs, "metrics", metrics_api, raising=False)
-    monkeypatch.setattr(obs, "trace", trace_api, raising=False)
+    metrics_api, trace_api = _stub_otel_globals(monkeypatch)
 
     manager = obs.ObservabilityManager(_config(metrics_enabled=True))
     assert manager.tracer is trace_api.tracer
@@ -374,7 +398,7 @@ def test_init_otel_components_failure_falls_back(monkeypatch: pytest.MonkeyPatch
 
 @pytest.mark.asyncio
 async def test_flush_and_shutdown_otel_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(obs, "OTEL_AVAILABLE", True)
+    _stub_otel_globals(monkeypatch)
     manager = obs.ObservabilityManager(_config(metrics_enabled=False))
 
     class _Provider:
@@ -409,7 +433,7 @@ async def test_flush_and_shutdown_otel_paths(monkeypatch: pytest.MonkeyPatch) ->
 
 @pytest.mark.asyncio
 async def test_flush_and_shutdown_otel_exception_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(obs, "OTEL_AVAILABLE", True)
+    _stub_otel_globals(monkeypatch)
     manager = obs.ObservabilityManager(_config(metrics_enabled=False))
 
     class _BadProvider:
@@ -520,15 +544,23 @@ def test_span_export_does_not_block_the_calling_thread(
             return None
 
     exporter = _RecordingExporter("http://otel")
-    monkeypatch.setattr(obs, "OTLPSpanExporter", lambda endpoint: exporter, raising=False)
+    monkeypatch.setattr(
+        obs, "OTLPSpanExporter", lambda endpoint: exporter, raising=False
+    )
     # Pin the REAL processor class. ``importlib.reload`` reuses the module
     # namespace, so a sibling test that reloads obs with faked opentelemetry
     # modules leaves ``obs.BatchSpanProcessor`` bound to the fake
     # (``object``), and calling it raises "object() takes no arguments".
-    monkeypatch.setattr(obs, "BatchSpanProcessor", _RealBatchSpanProcessor, raising=False)
+    monkeypatch.setattr(
+        obs, "BatchSpanProcessor", _RealBatchSpanProcessor, raising=False
+    )
     # Keep the manager's own __init__ on the cheap mock path: the
     # behaviour under test is the processor, not the global install.
     monkeypatch.setattr(obs, "OTEL_AVAILABLE", False)
+    # The batch processor's default schedule delay is 5s, which would make
+    # this the slowest test in the file by 250x. The SDK reads this env var
+    # when the processor is constructed.
+    monkeypatch.setenv("OTEL_BSP_SCHEDULE_DELAY", "100")
 
     config = SimpleNamespace(
         observability=SimpleNamespace(
@@ -541,25 +573,31 @@ def test_span_export_does_not_block_the_calling_thread(
 
     processor = manager._build_span_processor()
     provider = TracerProvider()
-    provider.add_span_processor(processor)
-    tracer = provider.get_tracer(__name__)
+    try:
+        provider.add_span_processor(processor)
+        tracer = provider.get_tracer(__name__)
 
-    caller = threading.get_ident()
-    with tracer.start_as_current_span("export-probe"):
-        pass
+        caller = threading.get_ident()
+        with tracer.start_as_current_span("export-probe"):
+            pass
 
-    # Wait for the batch processor's worker thread to do the export.
-    #
-    # NOT processor.force_flush(): BatchProcessor.force_flush is a
-    # *blocking* export on the CALLING thread, so it would reproduce the
-    # very behaviour this test is asserting against.
-    deadline = time.monotonic() + 20
-    while not exporter.export_threads and time.monotonic() < deadline:
-        time.sleep(0.02)
+        # Wait for the batch processor's worker thread to do the export.
+        #
+        # NOT processor.force_flush(): BatchProcessor.force_flush is a
+        # *blocking* export on the CALLING thread, so it would reproduce the
+        # very behaviour this test is asserting against.
+        deadline = time.monotonic() + 20
+        while not exporter.export_threads and time.monotonic() < deadline:
+            time.sleep(0.02)
 
-    assert exporter.export_threads, "the span was never exported"
-    assert exporter.export_threads[0] != caller, (
-        "the export ran on the calling thread — a wedged OTLP receiver "
-        "would block the caller for its whole deadline"
-    )
-
+        assert exporter.export_threads, "the span was never exported"
+        assert exporter.export_threads[0] != caller, (
+            "the export ran on the calling thread — a wedged OTLP receiver "
+            "would block the caller for its whole deadline"
+        )
+    finally:
+        # Shut the provider down so the batch processor's worker thread (and
+        # its schedule timer) does not outlive the test for the rest of the
+        # pytest session. ``TracerProvider`` has no context-manager protocol
+        # in the installed OTel SDK, so this cannot be a ``with`` block.
+        provider.shutdown()

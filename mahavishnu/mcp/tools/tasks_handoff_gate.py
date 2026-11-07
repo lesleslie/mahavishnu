@@ -82,11 +82,18 @@ def _log_skip(source: str, exc: Exception) -> None:
     this guards against was a ``pydantic.ValidationError`` whose text
     embedded the operator's cloud credential values; logs are not a safe
     place for those.
+
+    The type is logged QUALIFIED (``pydantic_core.ValidationError``,
+    not a bare ``ValidationError``) so an operator can tell which
+    dependency blew up without the log carrying anything out of the
+    exception itself.
     """
+    exc_type = type(exc)
     logger.warning(
-        "task-system handoff edge skipped: %s is unavailable (%s)",
+        "task-system handoff edge skipped: %s is unavailable (%s.%s)",
         source,
-        type(exc).__name__,
+        exc_type.__module__,
+        exc_type.__qualname__,
     )
 
 
@@ -99,11 +106,13 @@ def tasks_handoff_to_workflow_available() -> bool:
     upgrade cannot break the tool signature mid-flight; this gate is
     what keeps those copies honest.
 
-    ``False`` means the installed session-buddy predates the contract
-    (or the package is missing entirely). Callers must SKIP the tool in
-    that case — never raise. The registration happens inside
-    ``FastMCPServer.__init__``, so raising there takes the whole
-    mahavishnu MCP server down over one missing tool.
+    ``False`` means the installed session-buddy does not provide a
+    usable task-system contract: it predates the contract, the package
+    is missing entirely, or the package raises while importing. Callers
+    must SKIP the tool in every one of those cases — never raise. The
+    registration happens inside ``FastMCPServer.__init__``, so raising
+    there takes the whole mahavishnu MCP server down over one missing
+    tool.
 
     That last sentence is load-bearing, so BOTH imports below catch
     ``Exception`` rather than just ``ImportError``. A dependency that

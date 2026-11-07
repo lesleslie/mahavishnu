@@ -188,11 +188,25 @@ class ObservabilityManager:
         accepts the connection but never answers (akosha's :4317 when its
         trace service stops draining) blocks the caller for the
         exporter's whole deadline. On 2026-11-06 that cost the
-        mahavishnu MCP server ~100s of startup across five exports,
-        which was enough to miss the launchd healthcheck budget and
-        never bind port 8680. The batch processor hands the export to a
-        background worker, so a wedged collector can no longer stall the
-        server (or any request path).
+        mahavishnu MCP server ~100s of startup across five exports.
+
+        Two caveats, so the next reader does not over-credit this:
+
+        * The OpenTelemetry tracer provider is global and set-once.
+          ``mcp_common.server.launcher`` installs its own provider
+          (also a BatchSpanProcessor) BEFORE the mahavishnu server is
+          built, so on the launchd path this processor is not the one
+          carrying mahavishnu's spans -- there
+          ``trace.set_tracer_provider`` is a no-op.
+        * The launchd failure that actually stopped the server from
+          binding port 8680 was the background QoS class, not the
+          export path (see the ProcessType key in
+          ``~/.claude/scripts/mcp-launchd/mcp-ctl.sh``).
+
+        The change still earns its place: it removes a
+        synchronous-export hazard from THIS module's code path, where a
+        wedged collector would block whoever calls
+        ``_init_otel_components``.
         """
         return BatchSpanProcessor(
             OTLPSpanExporter(endpoint=self.config.observability.otlp_endpoint)
