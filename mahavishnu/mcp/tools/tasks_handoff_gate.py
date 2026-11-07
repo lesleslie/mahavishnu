@@ -20,6 +20,16 @@ Two things went wrong before it did anything:
 
 So the gate now compares the shapes field-by-field, and the caller
 SKIPS registration instead of raising.
+
+Then the gate itself became a third way to take the server down: it
+caught only ``ImportError``, so a dependency that failed at import
+time for a non-import reason escaped into ``FastMCPServer.__init__``.
+On 2026-11-06 the published session-buddy 0.38.0 raised
+``pydantic.ValidationError`` while loading its settings, the
+mahavishnu MCP server died before binding port 8680, and launchd
+restarted it 28 times. Both imports now catch ``Exception``, so the
+gate degrades to a skipped tool — with a warning — instead of a dead
+orchestrator.
 """
 
 from __future__ import annotations
@@ -65,6 +75,21 @@ def _envelope_mismatches(
     return problems
 
 
+def _log_skip(source: str, exc: Exception) -> None:
+    """Record that the handoff edge was skipped, and why.
+
+    Only the exception TYPE is logged, never its message. The failure
+    this guards against was a ``pydantic.ValidationError`` whose text
+    embedded the operator's cloud credential values; logs are not a safe
+    place for those.
+    """
+    logger.warning(
+        "task-system handoff edge skipped: %s is unavailable (%s)",
+        source,
+        type(exc).__name__,
+    )
+
+
 def tasks_handoff_to_workflow_available() -> bool:
     """Return True when session-buddy exposes the task-system contract.
 
@@ -79,13 +104,21 @@ def tasks_handoff_to_workflow_available() -> bool:
     that case — never raise. The registration happens inside
     ``FastMCPServer.__init__``, so raising there takes the whole
     mahavishnu MCP server down over one missing tool.
+
+    That last sentence is load-bearing, so BOTH imports below catch
+    ``Exception`` rather than just ``ImportError``. A dependency that
+    fails at import time for a non-import reason — a settings
+    ``ValidationError``, a syntax error in a plugin, a bad plugin
+    registry — is still "the contract is not available", and it must
+    degrade to a skipped tool rather than a dead orchestrator.
     """
     try:
-        from session_buddy.mcp.tools.tasks_models import (  # ty: ignore[unresolved-import]
+        from session_buddy.mcp.tools.tasks_models import (  # ty: ignore[import-not-found]
             HandoffParams,
             HandoffResult,
         )
-    except ImportError:
+    except Exception as exc:  # gate contract — an import-time failure must skip the tool, never kill the server  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
+        _log_skip("session-buddy's task-system models", exc)
         return False
 
     try:
@@ -95,7 +128,8 @@ def tasks_handoff_to_workflow_available() -> bool:
         from mahavishnu.mcp.tools.tasks_handoff import (
             HandoffResult as LocalHandoffResult,
         )
-    except ImportError:  # pragma: no cover - this module IS tasks_handoff
+    except Exception as exc:  # gate contract — same contract for mahavishnu's own inline copies  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
+        _log_skip("mahavishnu's inline handoff envelopes", exc)
         return False
 
     local = {

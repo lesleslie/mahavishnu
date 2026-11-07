@@ -24,8 +24,8 @@ try:
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
     from opentelemetry.sdk.resources import Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
     OTEL_AVAILABLE = True
 except ImportError:
@@ -38,7 +38,7 @@ except ImportError:
 # metrics`` doesn't poison OTEL_AVAILABLE (which would silently fall
 # back to MockTracer and break the mcp_tool_call feed end-to-end).
 try:
-    from opentelemetry.instrumentation.system_metrics import (  # ty: ignore[unresolved-import]
+    from opentelemetry.instrumentation.system_metrics import (  # ty: ignore[import-not-found]
         SystemMetricsInstrumentor,
     )
 
@@ -175,6 +175,29 @@ class ObservabilityManager:
             return True
         return bool(getattr(self.config.observability, "metrics_enabled", False))
 
+    def _build_span_processor(self) -> SpanProcessor:
+        """Build the span processor the tracer provider will use.
+
+        Split out of ``_init_otel_components`` so the export path can be
+        exercised without touching the process-global OTel provider --
+        that global can only be set once per process, so a test that
+        installs it is order-dependent under ``pytest -n auto``.
+
+        BatchSpanProcessor, NOT SimpleSpanProcessor: the simple one
+        exports synchronously on the calling thread, so a receiver that
+        accepts the connection but never answers (akosha's :4317 when its
+        trace service stops draining) blocks the caller for the
+        exporter's whole deadline. On 2026-11-06 that cost the
+        mahavishnu MCP server ~100s of startup across five exports,
+        which was enough to miss the launchd healthcheck budget and
+        never bind port 8680. The batch processor hands the export to a
+        background worker, so a wedged collector can no longer stall the
+        server (or any request path).
+        """
+        return BatchSpanProcessor(
+            OTLPSpanExporter(endpoint=self.config.observability.otlp_endpoint)
+        )
+
     def _init_otel_components(self):
         """Initialize OpenTelemetry components."""
         try:
@@ -195,10 +218,7 @@ class ObservabilityManager:
 
             # Initialize tracer
             trace_provider = TracerProvider(resource=resource)
-            processor = SimpleSpanProcessor(
-                OTLPSpanExporter(endpoint=self.config.observability.otlp_endpoint)
-            )
-            trace_provider.add_span_processor(processor)
+            trace_provider.add_span_processor(self._build_span_processor())
             trace.set_tracer_provider(trace_provider)
             self.tracer = trace.get_tracer(__name__)
 

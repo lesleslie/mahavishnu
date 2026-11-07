@@ -175,6 +175,7 @@ def test_module_import_success_branch_sets_otel_available(monkeypatch: pytest.Mo
     sdk_metrics_export_mod.PeriodicExportingMetricReader = object
     sdk_resources_mod.Resource = object
     sdk_trace_mod.TracerProvider = object
+    sdk_trace_mod.SpanProcessor = object
     sdk_trace_export_mod.BatchSpanProcessor = object
 
     monkeypatch.setitem(sys.modules, "opentelemetry", opentelemetry_mod)
@@ -201,6 +202,19 @@ def test_module_import_success_branch_sets_otel_available(monkeypatch: pytest.Mo
 
     reloaded = importlib.reload(obs)
     assert reloaded.OTEL_AVAILABLE is True
+
+    # Restore the real OTel bindings. The reload above rebound obs's module
+    # globals to the FAKES (BatchSpanProcessor became ``object``), and
+    # monkeypatch's teardown only puts the real modules back in sys.modules --
+    # it does NOT undo the rebinding of obs. Under ``pytest -n auto`` the
+    # next test to land on this worker would then call the fake and blow up
+    # with "object() takes no arguments".
+    #
+    # ``monkeypatch.undo()`` puts the REAL modules back in sys.modules
+    # (rather than deleting the fakes and letting Python re-import fresh
+    # copies), and the reload then rebinds obs to those same real classes.
+    monkeypatch.undo()
+    importlib.reload(obs)
 
 
 def test_init_uses_fallback_components() -> None:
@@ -453,3 +467,99 @@ def test_import_error_branch_defines_fallback_classes(monkeypatch: pytest.Monkey
     assert meter.create_counter("c").__class__.__name__ == "MockCounter"
     assert meter.create_histogram("h").__class__.__name__ == "MockHistogram"
     assert meter.create_up_down_counter("u").__class__.__name__ == "MockUpDownCounter"
+
+
+@pytest.mark.unit
+def test_span_export_does_not_block_the_calling_thread(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The span export must not run on the calling thread.
+
+    A ``SimpleSpanProcessor`` exports synchronously on the calling
+    thread, so a receiver that accepts the connection but never answers
+    blocks the caller for the exporter's whole deadline. During startup
+    that turns every span into seconds of dead time: on 2026-11-06 the
+    mahavishnu MCP server burned ~100s on five such exports and could
+    not bind port 8680 before the launchd healthcheck budget ran out.
+
+    The assertion is on WHICH THREAD the export ran, not on how long
+    the span took to close. A wall-clock bound is not reproducible here:
+    under ``pytest -n auto`` a GIL-starved worker can spend seconds in
+    ``span.end()`` even when nothing is blocking it. Thread identity is
+    the mechanism that actually matters -- if the export is not on the
+    caller's thread, a wedged receiver cannot stall the caller.
+
+    The test drives ``_build_span_processor`` against a LOCAL tracer
+    provider rather than going through ``_init_otel_components``. The
+    OTel provider is process-global and can only be installed once, so
+    a test that installs it is order-dependent under ``pytest -n auto``
+    -- it passed in isolation and failed in the full suite.
+    """
+    import threading
+    import time
+
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import (
+        BatchSpanProcessor as _RealBatchSpanProcessor,
+    )
+
+    class _RecordingExporter:
+        """Stands in for the OTLP exporter and records its caller."""
+
+        def __init__(self, endpoint: str) -> None:
+            self.endpoint = endpoint
+            self.export_threads: list[int] = []
+
+        def export(self, spans: object) -> None:
+            self.export_threads.append(threading.get_ident())
+
+        def force_flush(self, timeout_millis: int = 30000) -> bool:
+            return True
+
+        def shutdown(self) -> None:
+            return None
+
+    exporter = _RecordingExporter("http://otel")
+    monkeypatch.setattr(obs, "OTLPSpanExporter", lambda endpoint: exporter, raising=False)
+    # Pin the REAL processor class. ``importlib.reload`` reuses the module
+    # namespace, so a sibling test that reloads obs with faked opentelemetry
+    # modules leaves ``obs.BatchSpanProcessor`` bound to the fake
+    # (``object``), and calling it raises "object() takes no arguments".
+    monkeypatch.setattr(obs, "BatchSpanProcessor", _RealBatchSpanProcessor, raising=False)
+    # Keep the manager's own __init__ on the cheap mock path: the
+    # behaviour under test is the processor, not the global install.
+    monkeypatch.setattr(obs, "OTEL_AVAILABLE", False)
+
+    config = SimpleNamespace(
+        observability=SimpleNamespace(
+            metrics_enabled=False,
+            otlp_endpoint="http://otel",
+        ),
+        log_level="INFO",
+    )
+    manager = obs.ObservabilityManager(config)
+
+    processor = manager._build_span_processor()
+    provider = TracerProvider()
+    provider.add_span_processor(processor)
+    tracer = provider.get_tracer(__name__)
+
+    caller = threading.get_ident()
+    with tracer.start_as_current_span("export-probe"):
+        pass
+
+    # Wait for the batch processor's worker thread to do the export.
+    #
+    # NOT processor.force_flush(): BatchProcessor.force_flush is a
+    # *blocking* export on the CALLING thread, so it would reproduce the
+    # very behaviour this test is asserting against.
+    deadline = time.monotonic() + 20
+    while not exporter.export_threads and time.monotonic() < deadline:
+        time.sleep(0.02)
+
+    assert exporter.export_threads, "the span was never exported"
+    assert exporter.export_threads[0] != caller, (
+        "the export ran on the calling thread — a wedged OTLP receiver "
+        "would block the caller for its whole deadline"
+    )
+
