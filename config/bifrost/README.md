@@ -23,8 +23,8 @@ Current status (verified live, 2026-10-30):
   target names the provider only (`model` is NULL, so the caller's model
   passes through), the fallback is `minimax-anthropic/MiniMax-M3.1-Flash`
   (the same protocol, so it can actually serve the request), `count_tokens`
-  is allowed with its own path override, and the key lists `MiniMax-M3`,
-  `MiniMax-M3[1m]` and `MiniMax-M3.1-Flash`. The store is authoritative and
+  is allowed with its own path override, and the key lists `MiniMax-M3` and
+  `MiniMax-M3.1-Flash`. The store is authoritative and
   the template is only its seed — see "Custom Providers: Three Silent Traps".
 - **Both harnesses route through the gateway, and both are verified.**
   `mahavishnu bifrost verify-gate` passes for Qwen Code
@@ -167,22 +167,27 @@ error, no log line, and a different price. Pin the **provider**; let the
 model through. The provider's key must then list every model id the caller
 actually sends.
 
-> **The `[1m]` suffix never reaches the gateway.** It is a Claude Code-side
-> convention: *"Claude Code strips the suffix before sending the model ID to
-> your provider"* (code.claude.com/docs/en/model-config). The shipped
-> binary carries the same logic (`strip1mTag`, `toProviderWireModelId`), and
-> a control probe with a deliberately bogus id returned MiniMax's error
-> naming the id *without* the suffix. `MiniMax-M3[1m]` is therefore not a
-> model id at all — MiniMax has no 1M-suffixed variant, and
-> `MiniMax-M3` already has a 1M-token window with a guaranteed 512K floor.
-> Sending the literal string to MiniMax is a 400
-> (`invalid params, unknown model 'MiniMax-M3[1m]' (2013)`).
+> **The `[1m]` suffix was retired on 2026-11-07.** It was never a model id.
+> It is a Claude Code-side convention: *"Claude Code strips the suffix before
+> sending the model ID to your provider"*
+> (code.claude.com/docs/en/model-config). The shipped binary carries the same
+> logic (`strip1mTag`, `toProviderWireModelId`), and a control probe with a
+> deliberately bogus id returned MiniMax's error naming the id *without* the
+> suffix. MiniMax has no 1M-suffixed variant, and `MiniMax-M3` already has a
+> 1M-token window with a guaranteed 512K floor — the suffix bought a
+> *client-side claim*, not a larger window.
 >
-> The suffix still matters *inside* Claude Code: it is how Claude Code
-> learns the model has a 1M window, and it suppresses proactive compaction
-> for that model alias. The key's model list carries the `[1m]` spelling so
-> that a client which does forward it still resolves a key and falls
-> through to the fallback, rather than failing at key resolution.
+> `ANTHROPIC_DEFAULT_OPUS_MODEL` is now plain `MiniMax-M3`, and the key's
+> model list no longer carries the `[1m]` spelling. Two reasons:
+> `CLAUDE_CODE_MAX_CONTEXT_TOKENS` already caps the session at 512K, so the
+> 1M claim bought nothing; and the inner `claude` CLI that the
+> security-review plugin spawns does not recognise `MiniMax-M3[1m]` as a
+> model id at all (`[claude-code:unrecognized_model]`), which is one of the
+> reasons its reviews kept failing.
+>
+> A client that forwards the literal suffix now fails at key resolution
+> rather than reaching MiniMax's `2013` — a clearer error, and the suffix is
+> no longer a supported spelling anywhere in this deployment.
 
 **How to tell whether a provider actually landed:** the config store is
 authoritative, so compare it against the template rather than trusting the
@@ -560,9 +565,9 @@ Notes:
   one the gateway never needed: Bifrost's `base_provider_type: openai` passes
   `image_url` blocks straight through to `/v1/chat/completions`
 - the `anthropic_native` target must pin the **provider only** — leave `model`
-  unset. A pinned model overrides the caller's, which silently downgrades
-  Claude Code's `MiniMax-M3[1m]` (1M context) to `MiniMax-M3` (512K) and
-  `MiniMax-M3.1-Flash` to `MiniMax-M3`. Verified live 2026-11-06
+  unset. A pinned model overrides the caller's, which silently moves
+  Claude Code's `MiniMax-M3.1-Flash` haiku slot onto `MiniMax-M3`.
+  Verified live 2026-11-06
 - the `llama-server-local` key allowlists **both** `qwen3-8b-q4_k_m` and the
   repo-wide `qwen3.5` label. The gateway resolves a request against the key's
   allowlist *before* the call, so a label llama.cpp would ignore is still a

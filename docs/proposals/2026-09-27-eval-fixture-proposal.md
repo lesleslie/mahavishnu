@@ -116,7 +116,7 @@ quality on a 0–4 scale per criterion:
 
 Score ≥ 2 = pass. The judge call uses **frozen parameters** —
 `temperature=0`, `seed=42`, model = one of two pinned candidates:
-`MiniMax-M3[1m]` (cloud) or local `qwen3.5`. Activation selects one
+`MiniMax-M3` (cloud) or local `qwen3.5`. Activation selects one
 and freezes the choice in the eval config. Model version is **version-stamped**
 in the test logs to prevent silent model upgrades from breaking
 reproducibility (analogous to `TestRoutingCoverage` at
@@ -289,7 +289,7 @@ parses against this schema. Adding a fixture without conforming fails CI.
 
 Settings keys (new file `settings/eval.yaml`, gitignored):
 
-- `eval_judge_model`: pinned model identifier (e.g. `MiniMax-M3[1m]`).
+- `eval_judge_model`: pinned model identifier (e.g. `MiniMax-M3`).
 - `eval_judge_temperature`: pinned to `0`.
 - `eval_judge_seed`: pinned to `42`.
 - `eval_held_out_cron`: weekly cron for the held-out-set run.

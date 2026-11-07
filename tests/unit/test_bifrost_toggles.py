@@ -1060,11 +1060,12 @@ def test_template_declares_the_anthropic_native_rule() -> None:
     # The provider is pinned -- that is what removes the ambiguity between
     # the two providers that both claim MiniMax-M3. The model is NOT
     # pinned: upstream keeps the incoming model when a target omits it, and
-    # Claude Code chooses between MiniMax-M3, MiniMax-M3[1m] and
-    # MiniMax-M3.1-Flash per request class. Pinning the model would
-    # overwrite that choice and silently drop the 1M-context variant.
+    # Claude Code chooses between MiniMax-M3 and MiniMax-M3.1-Flash per
+    # request class. Pinning the model would overwrite that choice and
+    # silently move the haiku slot onto the heavy model.
     assert rule["targets"][0]["provider"] == "minimax-anthropic"
     assert not rule["targets"][0].get("model"), (
         "the rule pins a model; upstream overwrites the caller's model "
-        "identifier with it, downgrading Claude Code's 1M-context model"
+        "identifier with it, moving Claude Code's haiku slot onto the "
+        "heavy model"
     )

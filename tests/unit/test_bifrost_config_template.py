@@ -330,18 +330,18 @@ def test_the_anthropic_native_provider_allows_count_tokens() -> None:
 def test_the_anthropic_native_rule_does_not_pin_the_model() -> None:
     """The rule must pin the provider, not the model.
 
-    Claude Code picks the model per request class -- ``MiniMax-M3``,
-    ``MiniMax-M3[1m]`` for the 1M-context variant, ``MiniMax-M3.1-Flash`` for
-    the fast slot. A target that names a model overwrites the caller's
-    choice outright, which silently downgrades the 1M-context variant with no
-    error and no log line. Upstream keeps the incoming model when the target
-    omits it.
+    Claude Code picks the model per request class -- ``MiniMax-M3`` for the
+    opus and sonnet slots, ``MiniMax-M3.1-Flash`` for the haiku slot. A
+    target that names a model overwrites the caller's choice outright, which
+    silently moves the fast slot onto the heavy model with no error and no
+    log line. Upstream keeps the incoming model when the target omits it.
     """
     for target in _rule("route-anthropic-native")["targets"]:
         assert not target.get("model"), (
             "the Anthropic-native rule pins a model; upstream overwrites the "
-            "caller's model identifier with it, which downgrades Claude Code's "
-            "1M-context model. Omit 'model' and let the incoming model through."
+            "caller's model identifier with it, which moves Claude Code's "
+            "haiku slot onto the heavy model. Omit 'model' and let the "
+            "incoming model through."
         )
 
 
@@ -357,7 +357,7 @@ def test_the_anthropic_native_provider_covers_every_model_claude_code_sends() ->
         for key in _providers()["minimax-anthropic"]["keys"]
         for model in key["models"]
     }
-    for model in ("MiniMax-M3", "MiniMax-M3[1m]", "MiniMax-M3.1-Flash"):
+    for model in ("MiniMax-M3", "MiniMax-M3.1-Flash"):
         assert model in models, (
             f"{model!r} is missing from the Anthropic-native provider's key; "
             f"Claude Code sends it and the rule no longer substitutes a model"

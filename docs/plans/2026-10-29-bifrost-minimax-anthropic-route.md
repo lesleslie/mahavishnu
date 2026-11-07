@@ -3,13 +3,38 @@ status: complete
 role: implementation
 kind: plan
 date: 2026-10-29
-last_reviewed: 2026-10-30
+last_reviewed: 2026-11-07
 superseded_by: null
 topic: bifrost-minimax-routing
 title: "Route Claude Code through Bifrost to MiniMax with genuine Anthropic responses"
 ---
 
 # Route Claude Code through Bifrost to MiniMax with genuine Anthropic responses
+
+## 0. Amendment (2026-11-07): the `[1m]` spelling is retired
+
+The body of this plan is kept as the record of the decision as it was made
+on 2026-10-29. Two things have changed since, and the operational statements
+below that mention `MiniMax-M3[1m]` should be read with this note.
+
+**`ANTHROPIC_DEFAULT_OPUS_MODEL` is now plain `MiniMax-M3`**, and the
+Anthropic-native key's model list no longer carries the `[1m]` spelling.
+
+The suffix was never a model id — it is a Claude Code-side convention that
+the harness strips before the request goes on the wire (§4 explains the
+mechanism). It bought a *client-side claim* about the window, not a larger
+one: `CLAUDE_CODE_MAX_CONTEXT_TOKENS` already caps the session at 512K, so
+nothing was gained. Meanwhile the inner `claude` CLI that the
+security-review plugin spawns does not recognise `MiniMax-M3[1m]` as a model
+id at all (`[claude-code:unrecognized_model]`), and that was one of the
+reasons its reviews kept failing.
+
+**The rule still pins the provider only.** That part of this plan is
+unchanged and still load-bearing — with the `[1m]` variant gone, a pinned
+model would move Claude Code's haiku slot (`MiniMax-M3.1-Flash`) onto
+`MiniMax-M3` instead of downgrading the 1M-context variant. The current
+contract lives in `config/bifrost/README.md`; the alias map added in the
+same window is documented there too.
 
 ## 1. Outcome
 
