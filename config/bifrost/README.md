@@ -185,9 +185,17 @@ actually sends.
 > model id at all (`[claude-code:unrecognized_model]`), which is one of the
 > reasons its reviews kept failing.
 >
-> A client that forwards the literal suffix now fails at key resolution
-> rather than reaching MiniMax's `2013` — a clearer error, and the suffix is
-> no longer a supported spelling anywhere in this deployment.
+> A client that forwards the literal suffix no longer reaches MiniMax's
+> `2013`. With the spelling gone from the key's allowlist, key selection does
+> not match it, and the request falls through to the rule's fallback —
+> `minimax-anthropic/MiniMax-M3.1-Flash` — which serves it normally. Verified
+> live 2026-11-07: `MiniMax-M3[1m]` comes back with
+> `response.model == "MiniMax-M3.1-Flash"` and the answer intact.
+>
+> That is *better* than the allowlist entry it replaced. With the entry
+> present, key selection matched the key and Bifrost then handed MiniMax an
+> id the provider rejects (`invalid params, unknown model 'MiniMax-M3[1m]'`).
+> Without it, the request is served by a model that exists.
 
 **How to tell whether a provider actually landed:** the config store is
 authoritative, so compare it against the template rather than trusting the

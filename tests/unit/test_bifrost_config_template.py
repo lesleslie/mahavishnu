@@ -364,6 +364,26 @@ def test_the_anthropic_native_provider_covers_every_model_claude_code_sends() ->
         )
 
 
+def test_the_retired_1m_spelling_is_not_allowlisted() -> None:
+    """The ``[1m]`` spelling must not be in any key's model list.
+
+    Claude Code strips the suffix before the request goes on the wire, so
+    nothing sends it. Keeping it allowlisted was actively *worse* than
+    dropping it: with the entry present, key selection matched the key and
+    Bifrost then handed MiniMax an id the provider rejects
+    (``invalid params, unknown model 'MiniMax-M3[1m]' (2013)``). Without the
+    entry, key selection does not match and the request falls through to the
+    rule's fallback -- a model that exists -- and is served.
+    """
+    for provider_id in ALIASED_PROVIDERS:
+        for key in _providers()[provider_id]["keys"]:
+            assert "MiniMax-M3[1m]" not in key["models"], (
+                f"{provider_id}/{key['name']}: the retired '[1m]' spelling is "
+                f"still allowlisted, which makes Bifrost forward an id "
+                f"MiniMax rejects"
+            )
+
+
 def test_the_anthropic_native_rule_fallback_can_serve_the_same_request() -> None:
     """A fallback must be able to serve the request type the rule produces.
 
