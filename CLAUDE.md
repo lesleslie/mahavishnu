@@ -365,7 +365,7 @@ Two resolution rules matter when editing this code:
   rejects a provider key with `401 virtual_key_required`.
 
 Model ids are provider-scoped: `AgnoLLMConfig.model_id` defaults per provider
-(`MiniMax-M3`, `claude-sonnet-4-6`, `gpt-4o`, `qwen3.5`), and a fallback
+(`MiniMax-M3`, `claude-sonnet-5-5`, `gpt-5.4`, `qwen3.5`), and a fallback
 provider uses its own default rather than inheriting the primary's.
 Plan: `docs/plans/2026-10-29-agno-llm-provider-chain.md`.
 

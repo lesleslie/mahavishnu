@@ -35,7 +35,7 @@
         "description": "Route high-reasoning tasks to MiniMax's strongest text model.",
         "enabled": true,
         "fallbacks": [
-          "minimax-openai/MiniMax-M3"
+          "minimax-openai/MiniMax-M3.1-Flash"
         ],
         "id": "route-think",
         "name": "Think Tasks",
@@ -54,7 +54,7 @@
         "description": "Prefer the strongest MiniMax text model for explicitly labeled long-context work.",
         "enabled": true,
         "fallbacks": [
-          "minimax-openai/MiniMax-M3"
+          "minimax-openai/MiniMax-M3.1-Flash"
         ],
         "id": "route-long-context",
         "name": "Long Context Tasks",
@@ -81,7 +81,7 @@
         "scope": "global",
         "targets": [
           {
-            "model": "MiniMax-M3",
+            "model": "MiniMax-M3.1-Flash",
             "provider": "minimax-openai",
             "weight": 1
           }
@@ -89,8 +89,8 @@
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"image\" || headers[\"x-bf-route\"] == \"image\"",
-        "description": "Deferred until a supported MiniMax multimodal adapter exists.",
-        "enabled": false,
+        "description": "Route vision requests to MiniMax's multimodal model. Both M3 and M3.1-Flash accept image input on the OpenAI-compatible surface (image_url blocks, verified live against this gateway on 2026-11-06); M3.1-Flash is the cheaper of the two and read charts and documents with equal accuracy in an A/B on 2026-11-06.",
+        "enabled": true,
         "fallbacks": [
           "minimax-openai/MiniMax-M3"
         ],
@@ -100,7 +100,7 @@
         "scope": "global",
         "targets": [
           {
-            "model": "MiniMax-M3",
+            "model": "MiniMax-M3.1-Flash",
             "provider": "minimax-openai",
             "weight": 1
           }
@@ -108,10 +108,10 @@
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"background\" || headers[\"x-bf-route\"] == \"background\" || headers[\"x-bf-task\"] == \"cheap\" || headers[\"x-bf-route\"] == \"cheap\" || headers[\"x-bf-task\"] == \"high_throughput\" || headers[\"x-bf-route\"] == \"high_throughput\"",
-        "description": "Prefer local llama-server (qwen3-8b-q4_k_m) for low-priority background work; fall back to MiniMax-M3 when unreachable. Phase G.",
+        "description": "Route low-priority background work to MiniMax-M3.1-Flash; fall back to the local llama-server (qwen3-8b-q4_k_m) when the cloud provider is unreachable. Phase G.",
         "enabled": true,
         "fallbacks": [
-          "minimax-openai/MiniMax-M3"
+          "llama-server/qwen3-8b-q4_k_m"
         ],
         "id": "route-background",
         "name": "Background Tasks",
@@ -119,18 +119,18 @@
         "scope": "global",
         "targets": [
           {
-            "model": "qwen3-8b-q4_k_m",
-            "provider": "llama-server",
+            "model": "MiniMax-M3.1-Flash",
+            "provider": "minimax-openai",
             "weight": 1
           }
         ]
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"classify\" || headers[\"x-bf-route\"] == \"classify\" || headers[\"x-bf-task\"] == \"extract\" || headers[\"x-bf-route\"] == \"extract\"",
-        "description": "Prefer local llama-server (qwen3-8b-q4_k_m) for cheap classification and extraction tasks; fall back to MiniMax-M3 when unreachable. Phase G.",
+        "description": "Route cheap classification and extraction tasks to MiniMax-M3.1-Flash; fall back to the local llama-server (qwen3-8b-q4_k_m) when the cloud provider is unreachable. Phase G.",
         "enabled": true,
         "fallbacks": [
-          "minimax-openai/MiniMax-M3"
+          "llama-server/qwen3-8b-q4_k_m"
         ],
         "id": "route-classify",
         "name": "Classify / Extract Tasks",
@@ -138,8 +138,8 @@
         "scope": "global",
         "targets": [
           {
-            "model": "qwen3-8b-q4_k_m",
-            "provider": "llama-server",
+            "model": "MiniMax-M3.1-Flash",
+            "provider": "minimax-openai",
             "weight": 1
           }
         ]
@@ -180,7 +180,8 @@
       "keys": [
         {
           "models": [
-            "qwen3-8b-q4_k_m"
+            "qwen3-8b-q4_k_m",
+            "qwen3.5"
           ],
           "name": "llama-server-local",
           "value": "env.LLAMA_SERVER_API_KEY",

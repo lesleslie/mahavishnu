@@ -544,7 +544,7 @@ class LLMProviderFactory:
           Agno OpenAIChat resolves to ``https://api.openai.com/v1``).
 
         Args:
-            model_id: OpenAI model identifier (e.g., 'gpt-4o', 'gpt-4o-mini')
+            model_id: OpenAI model identifier (e.g., 'gpt-5.4', 'gpt-5.4-mini')
             endpoint: Resolved endpoint and credential.
 
         Returns:
@@ -596,7 +596,7 @@ class LLMProviderFactory:
           Agno Claude resolves to ``https://api.anthropic.com``).
 
         Args:
-            model_id: Claude model identifier (e.g., 'claude-sonnet-4-6')
+            model_id: Claude model identifier (e.g., 'claude-sonnet-5-5')
             endpoint: Resolved endpoint and credential.
 
         Returns:

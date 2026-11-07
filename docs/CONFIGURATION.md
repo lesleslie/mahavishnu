@@ -384,7 +384,7 @@ Set `adapters.hatchet_enabled: true` and provide `HATCHET_CLIENT_TOKEN` to activ
 
 - `enabled` — `bool`, default `True`; enables the Agno adapter.
 - `llm.provider` — `LLMProvider`, default `minimax`; provider enum (`anthropic`, `openai`, `minimax`, `llama_server`).
-- `llm.model_id` — `str`; provider model. Defaults per provider: `MiniMax-M3`, `claude-sonnet-4-6`, `gpt-4o`, `qwen3.5`.
+- `llm.model_id` — `str`; provider model. Defaults per provider: `MiniMax-M3`, `claude-sonnet-5-5`, `gpt-5.4`, `qwen3.5`.
 - `llm.api_key_env` — `str | null`, default `None`; environment variable containing the provider key. Derived per provider when unset.
 - `llm.base_url` — `str | null`, default `None`; endpoint override. `None` lets each provider resolve its own endpoint (llama-server → `http://localhost:8081`; cloud providers → the Bifrost gateway when routed, otherwise their public API).
 - `llm.fallback_providers` — `list[LLMProvider]`, default `[llama_server]`; ordered providers tried when the primary has no usable credential. The first available provider wins.

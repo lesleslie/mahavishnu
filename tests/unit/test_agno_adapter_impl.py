@@ -303,8 +303,8 @@ class TestAgnoLLMConfigModel:
         """Model ids are provider-scoped, so the default follows the provider."""
         expected = {
             LLMProvider.MINIMAX: "MiniMax-M3",
-            LLMProvider.ANTHROPIC: "claude-sonnet-4-6",
-            LLMProvider.OPENAI: "gpt-4o",
+            LLMProvider.ANTHROPIC: "claude-sonnet-5-5",
+            LLMProvider.OPENAI: "gpt-5.4",
             LLMProvider.LLAMA_SERVER: "qwen3.5",
         }
         for provider, model_id in expected.items():
