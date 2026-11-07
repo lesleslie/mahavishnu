@@ -773,6 +773,53 @@ topology that no longer existed.
 The documentation that actually needed changing was the config field's own
 description and the runtime log line — neither of which the plan named.
 
+**Live verification 2026-11-07 — the exit criteria are met.** The running
+akosha receiver (restarted by launchd onto `ab76a77`) serves MetricsService
+on :4317. A real `ExportMetricsServiceRequest` over gRPC was answered
+`rejected_data_points=0`, `error_message=''` — no UNIMPLEMENTED — and
+mahavishnu's own exporter, built from the Phase 3 code against the real
+operator config, reported `otlp_endpoint=http://localhost:4317` and
+flushed a counter that appeared as
+`mahavishnu_phase3_probe_total{probe="phase3"} 1.0` on `:8682/metrics`,
+alongside `target_info{service_name="mahavishnu",
+service_namespace="bodai"}`.
+
+**The durable side was checked separately, because the exposure path and
+the substrate path are independent.** `/health`'s `metrics_feed` reported
+`entities_count=475`, `substrate_ready=true`, `errors_total=0` — 475 rows
+actually in `metrics_substrate`, counted by `count_metrics_points` over the
+durable table rather than over the Prometheus registry. The three batches
+include oneiric's own `OTLPObservabilityAdapter` export, so REQ-M07's
+second producer is landing live.
+
+**A caveat on what was proven, and where.** The exporter was exercised as a
+short-lived process running the Phase 3 code, not by restarting the
+long-running mahavishnu MCP server — that server still runs the
+pre-Phase-3 code and therefore still exports to :14317, and it will keep
+doing so until the change lands and the server restarts. The receiver side
+and the exporter's endpoint resolution are both proven; the long-running
+process's own restart is a deployment action, not a code one.
+
+**Known issue found during Phase 3 — forking from a multi-threaded
+mahavishnu can crash the child.** Three review dispatches through
+`pool_route_execute` each timed out at 600 s with no output, and macOS
+crash reports showed why: a child of the mahavishnu MCP server died with
+`EXC_BAD_INSTRUCTION` and *"BUG IN CLIENT OF LIBDISPATCH: trying to lock
+recursively"*. The chain is `pool_route_execute` → `_repo_has_git` →
+`asyncio.create_subprocess_exec("git", ...)` → CPython's `fork_exec`.
+CPython 3.14.10 on this build has `_HAVE_POSIX_SPAWN_CLOSEFROM = False`, so
+with the default `close_fds=True` it cannot use `posix_spawn` and must
+`fork()`. `fork()` in a multi-threaded process copies every other thread
+into the child; a gRPC thread that was inside `ares_init_sysconfig_macos`
+→ `dns_configuration_copy` → libdispatch's `os_log` held a libdispatch
+lock at fork time, so the child inherited it locked and died on its first
+libdispatch call. This is a fleet-wide hazard, not a one-off: the same
+fork-unsafe pattern appears at every `asyncio.create_subprocess_exec` and
+`subprocess.Popen` call site in a process that also runs gRPC. It is
+**outside this plan's scope** and is recorded here because it was
+discovered while verifying Phase 3 and it silently breaks any
+pool-dispatched work on this machine.
+
 ### Phase 4: verification and gate enablement
 
 **Goal:** prove the end-to-end path and turn the §7 stage-1 gate from a
