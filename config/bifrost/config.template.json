@@ -211,8 +211,30 @@
           "models": [
             "MiniMax-M3",
             "MiniMax-M3[1m]",
-            "MiniMax-M3.1-Flash"
+            "MiniMax-M3.1-Flash",
+            "claude-opus-5-5",
+            "claude-opus-5.5",
+            "claude-opus-4-6",
+            "claude-sonnet-5-5",
+            "claude-sonnet-4-6",
+            "claude-sonnet-4.6",
+            "claude-haiku-5-5",
+            "claude-haiku-4-5",
+            "claude-fable-5-1",
+            "claude-mythos-5-1"
           ],
+          "aliases": {
+            "claude-opus-5-5": "MiniMax-M3",
+            "claude-opus-5.5": "MiniMax-M3",
+            "claude-opus-4-6": "MiniMax-M3",
+            "claude-sonnet-5-5": "MiniMax-M3",
+            "claude-sonnet-4-6": "MiniMax-M3",
+            "claude-sonnet-4.6": "MiniMax-M3",
+            "claude-haiku-5-5": "MiniMax-M3.1-Flash",
+            "claude-haiku-4-5": "MiniMax-M3.1-Flash",
+            "claude-fable-5-1": "MiniMax-M3",
+            "claude-mythos-5-1": "MiniMax-M3"
+          },
           "name": "minimax-anthropic-primary",
           "value": "env.MINIMAX_API_KEY",
           "weight": 1.0
@@ -238,8 +260,30 @@
         {
           "models": [
             "MiniMax-M3",
-            "MiniMax-M3.1-Flash"
+            "MiniMax-M3.1-Flash",
+            "claude-opus-5-5",
+            "claude-opus-5.5",
+            "claude-opus-4-6",
+            "claude-sonnet-5-5",
+            "claude-sonnet-4-6",
+            "claude-sonnet-4.6",
+            "claude-haiku-5-5",
+            "claude-haiku-4-5",
+            "claude-fable-5-1",
+            "claude-mythos-5-1"
           ],
+          "aliases": {
+            "claude-opus-5-5": "MiniMax-M3",
+            "claude-opus-5.5": "MiniMax-M3",
+            "claude-opus-4-6": "MiniMax-M3",
+            "claude-sonnet-5-5": "MiniMax-M3",
+            "claude-sonnet-4-6": "MiniMax-M3",
+            "claude-sonnet-4.6": "MiniMax-M3",
+            "claude-haiku-5-5": "MiniMax-M3.1-Flash",
+            "claude-haiku-4-5": "MiniMax-M3.1-Flash",
+            "claude-fable-5-1": "MiniMax-M3",
+            "claude-mythos-5-1": "MiniMax-M3"
+          },
           "name": "minimax-openai-primary",
           "value": "env.MINIMAX_API_KEY",
           "weight": 1.0

@@ -666,6 +666,15 @@ an explicit choice:
 | `env -u ANTHROPIC_BASE_URL …` / `unset ANTHROPIC_BASE_URL` | allowed — scrubbed |
 | inline `ANTHROPIC_BASE_URL=…` | resolved from the command, then judged |
 
+The guard requires the command to **execute** the tooling, not merely name
+it — reading or grepping the probe's source cannot reach the network, and
+blocking those calls would make the guard a nuisance rather than a safeguard.
+A command that runs Python (`python`, `python3`, `python3.13`, an absolute
+path, a venv interpreter) while naming the probe or the bundled `claude-api`
+skill counts as an invocation; `grep`, `cat`, and `ls` over the same paths do
+not. A leading `VAR=value` assignment is an environment prefix, not the
+command being run, so `P=/path/probe.py grep …` is not an invocation either.
+
 To run the probe against Anthropic:
 
 ```bash
@@ -685,6 +694,85 @@ per-harness, because the hazard is machine-wide rather than repo-scoped:
 # user-scoped (every session on this machine)
 #   ~/.claude/settings.json -> hooks.PreToolUse, matcher "Bash"
 ```
+
+## Model Aliases: Claude Ids Onto MiniMax
+
+Some Claude Code **plugins** call the Anthropic API directly, in-process,
+rather than through Claude Code's own model selection. They pick their own
+model id — Anthropic's — and inherit the session's `ANTHROPIC_BASE_URL`, so
+the request lands on this gateway and is answered with
+
+```
+400 {"type":"error","error":{"type":"no_key_supports_model",
+     "message":"no keys found that support model: claude-opus-5-5"}}
+```
+
+The security-review plugin is the confirmed case: it asked for
+`claude-opus-5-5` and `claude-sonnet-4-6` on three separate commits and got
+no verdict each time, because the request never reached a model. The failure
+is silent — the review is simply skipped — and it is logged at
+`~/.claude/security/log.txt`.
+
+`ANTHROPIC_DEFAULT_*_MODEL` does not help here: it governs Claude Code's own
+model selection, not a plugin's direct SDK call. The lever that does work is
+a **key-level alias**, which Bifrost resolves after key selection and before
+the provider call.
+
+Both `minimax-anthropic` and `minimax-openai` carry the alias map, so the
+behaviour does not depend on which surface a client happens to use:
+
+```json
+"aliases": {
+  "claude-opus-5-5": "MiniMax-M3",
+  "claude-sonnet-4-6": "MiniMax-M3",
+  "claude-haiku-5-5": "MiniMax-M3.1-Flash"
+}
+```
+
+### Aliases Must Be Double-Specified
+
+Bifrost treats alias names as model identifiers for key selection and
+allowlists. When a key's `models` list is restricted — and these keys' are —
+the alias name must **also** appear in that list, or the gateway cannot
+select the key for it and the request fails exactly as it did before the
+alias was added. Upstream issue
+[maximhq/bifrost#3278](https://github.com/maximhq/bifrost/issues/3278)
+documents this. So both the alias map and the allowlist carry the Claude ids:
+
+```json
+"models": ["MiniMax-M3", "MiniMax-M3.1-Flash", "claude-opus-5-5", "…"],
+"aliases": { "claude-opus-5-5": "MiniMax-M3" }
+```
+
+`tests/unit/test_bifrost_config_template.py` pins both halves of that rule,
+plus the fact that an alias target must itself be a model the key serves.
+
+### What an Alias Does and Does Not Mean
+
+An alias **substitutes** a model: a caller that asked for `claude-opus-5-5`
+is served `MiniMax-M3`. It is a graceful-degradation mechanism for clients
+that hardcode Anthropic model ids, not a claim that MiniMax is Claude. The
+haiku ids map to `MiniMax-M3.1-Flash` because that is MiniMax's
+latency-sensitive counterpart; everything else maps to `MiniMax-M3`.
+
+The alias map deliberately covers the **current** Claude lineup plus the
+immediately previous generation. Adding an id that no client requests costs
+nothing but adds to the treadmill; the list is therefore kept to ids that
+Anthropic's own bundled skill documents or that were observed failing in the
+gateway logs.
+
+### Applying a Change to the Live Store
+
+`config.json` is only a first-run seed — the `config_store` database is
+authoritative, and it reconciles against the template per entity by content
+hash. To push a template change into the live store:
+
+```bash
+.venv/bin/mahavishnu bifrost rebootstrap   # backs up config.db, then restarts
+```
+
+Never pass `--drop-db`: it discards the store, and with it the virtual key
+and the dashboard admin account.
 
 ## Semantic Cache
 

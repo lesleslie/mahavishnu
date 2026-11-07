@@ -20,6 +20,13 @@ cleanly, health is green, and the request simply does not work:
    overrides the caller's model. Claude Code selects the model per request
    class, so a pinned model downgrades the 1M-context variant without any
    error. Upstream keeps the incoming model when a target omits it.
+4. A key-level *alias* whose name is missing from the key's ``models``
+   allowlist. Bifrost treats alias names as model identifiers for key
+   selection and allowlists, so an alias the allowlist does not list cannot
+   select the key -- the request fails with ``no_key_supports_model`` exactly
+   as it did before the alias was added. Upstream issue
+   maximhq/bifrost#3278 documents this; the alias and the allowlist entry
+   must both be present.
 
 These tests pin those contracts against the upstream Bifrost schemas.
 
@@ -37,7 +44,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "config" / "bifrost" / "config.template.json"
+TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[2] / "config" / "bifrost" / "config.template.json"
+)
 
 #: Standard provider names (Bifrost ``schemas.ModelProvider``). A custom
 #: provider may not reuse one of these -- the config store drops it.
@@ -143,6 +152,30 @@ REQUEST_TYPES = frozenset(
 )
 
 
+#: Providers whose keys carry Claude model aliases onto MiniMax models.
+#: Both surfaces get them so the behaviour does not depend on which one a
+#: client happens to reach.
+ALIASED_PROVIDERS = ("minimax-anthropic", "minimax-openai")
+
+#: Claude model ids that first-party Anthropic tooling asks for by name.
+#: The security-review plugin and Claude Code's bundled ``claude-api`` skill
+#: both request these; with no alias the gateway answers "no keys found that
+#: support model" and the caller fails silently -- a commit review that
+#: returns no verdict, a capability probe that never runs.
+CLAUDE_MODEL_IDS = (
+    "claude-opus-5-5",
+    "claude-opus-5.5",
+    "claude-opus-4-6",
+    "claude-sonnet-5-5",
+    "claude-sonnet-4-6",
+    "claude-sonnet-4.6",
+    "claude-haiku-5-5",
+    "claude-haiku-4-5",
+    "claude-fable-5-1",
+    "claude-mythos-5-1",
+)
+
+
 def _template() -> dict[str, Any]:
     return json.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
 
@@ -206,7 +239,9 @@ def test_request_path_override_keys_are_valid_request_types() -> None:
     ``/v1/responses``, not the Anthropic-native ``/v1/messages``.
     """
     for name, provider in _providers().items():
-        overrides = (provider.get("custom_provider_config") or {}).get("request_path_overrides")
+        overrides = (provider.get("custom_provider_config") or {}).get(
+            "request_path_overrides"
+        )
         if not overrides:
             continue
         unknown = set(overrides) - REQUEST_TYPES
@@ -317,7 +352,11 @@ def test_the_anthropic_native_provider_covers_every_model_claude_code_sends() ->
     support it -- a model that is not in the key's list resolves to
     ``no_key_supports_model``.
     """
-    models = {model for key in _providers()["minimax-anthropic"]["keys"] for model in key["models"]}
+    models = {
+        model
+        for key in _providers()["minimax-anthropic"]["keys"]
+        for model in key["models"]
+    }
     for model in ("MiniMax-M3", "MiniMax-M3[1m]", "MiniMax-M3.1-Flash"):
         assert model in models, (
             f"{model!r} is missing from the Anthropic-native provider's key; "
@@ -340,9 +379,120 @@ def test_the_anthropic_native_rule_fallback_can_serve_the_same_request() -> None
         assert provider is not None, (
             f"fallback {fallback!r} names a provider the template does not configure"
         )
-        allowed = (provider.get("custom_provider_config") or {}).get("allowed_requests") or {}
+        allowed = (provider.get("custom_provider_config") or {}).get(
+            "allowed_requests"
+        ) or {}
         assert allowed.get("responses") is True, (
             f"fallback {fallback!r} points at a provider that does not allow the "
             f"'responses' request type, which is what the Anthropic route "
             f"produces -- the fallback cannot serve it"
         )
+
+
+def test_claude_model_ids_are_aliased_on_both_minimax_providers() -> None:
+    """The Claude ids first-party tooling sends must resolve to a MiniMax model.
+
+    A Claude Code *plugin* calls the Anthropic API directly and picks its own
+    model id, so it asks the gateway for ``claude-opus-5-5`` regardless of
+    what the session's model settings say. Without an alias the request is
+    refused with ``no_key_supports_model`` and the caller fails silently --
+    observed on 2026-11-06 as a security review that returned no verdict on
+    three separate commits.
+    """
+    providers = _providers()
+    for provider_id in ALIASED_PROVIDERS:
+        provider = providers.get(provider_id)
+        assert provider is not None, (
+            f"provider {provider_id!r} is missing from the template"
+        )
+        aliases = {
+            alias for key in provider["keys"] for alias in (key.get("aliases") or {})
+        }
+        missing = sorted(set(CLAUDE_MODEL_IDS) - aliases)
+        assert not missing, (
+            f"provider {provider_id!r} has no alias for {missing}; a client "
+            f"asking for those ids gets 'no keys found that support model'"
+        )
+
+
+def test_alias_names_are_also_in_the_key_allowlist() -> None:
+    """An alias name must appear in the key's ``models`` list as well.
+
+    Bifrost treats alias names as model identifiers for key selection and
+    allowlists. When the allowlist is restricted -- and these keys' are --
+    the alias name has to be listed there too, or the gateway cannot select
+    the key for it and the request fails exactly as it did before the alias
+    was added. Upstream maximhq/bifrost#3278 documents this.
+    """
+    for provider_id in ALIASED_PROVIDERS:
+        for key in _providers()[provider_id]["keys"]:
+            aliases = key.get("aliases") or {}
+            models = set(key["models"])
+            missing = sorted(set(aliases) - models)
+            assert not missing, (
+                f"{provider_id}/{key['name']}: alias names {missing} are absent "
+                f"from 'models'; the gateway cannot select this key for them, "
+                f"so the alias never takes effect"
+            )
+
+
+def test_alias_targets_are_models_the_key_actually_serves() -> None:
+    """An alias must resolve to a model the same key is allowed to call.
+
+    The alias is resolved after key selection and before the provider call,
+    so a target the key does not serve fails at the provider -- a different
+    failure from the one the alias was added to fix.
+    """
+    for provider_id in ALIASED_PROVIDERS:
+        for key in _providers()[provider_id]["keys"]:
+            models = set(key["models"])
+            unsupported = sorted(
+                f"{alias} -> {target}"
+                for alias, target in (key.get("aliases") or {}).items()
+                if target not in models
+            )
+            assert not unsupported, (
+                f"{provider_id}/{key['name']}: aliases resolve to models this "
+                f"key does not serve: {unsupported}"
+            )
+
+
+def test_alias_targets_land_on_the_right_minimax_counterpart() -> None:
+    """Opus and Sonnet are MiniMax-M3; Haiku is the latency-sensitive Flash.
+
+    An alias substitutes a model, so the mapping is a deliberate choice about
+    which MiniMax model answers for the Claude id -- not an arbitrary one.
+    """
+    for provider_id in ALIASED_PROVIDERS:
+        for key in _providers()[provider_id]["keys"]:
+            for alias, target in (key.get("aliases") or {}).items():
+                if any(
+                    family in alias for family in ("opus", "sonnet", "fable", "mythos")
+                ):
+                    assert target == "MiniMax-M3", (
+                        f"{provider_id}/{key['name']}: {alias!r} resolves to "
+                        f"{target!r}; the reasoning-grade Claude ids map to "
+                        f"MiniMax-M3"
+                    )
+                if "haiku" in alias:
+                    assert target == "MiniMax-M3.1-Flash", (
+                        f"{provider_id}/{key['name']}: {alias!r} resolves to "
+                        f"{target!r}; the Haiku slot is the latency-sensitive "
+                        f"one and maps to MiniMax-M3.1-Flash"
+                    )
+
+
+def test_no_alias_points_at_a_claude_model() -> None:
+    """An alias must not chain into another Claude id.
+
+    Claude ids are not served by this gateway at all, so an alias that
+    resolved to one would fail at the provider exactly like the request it
+    was meant to rescue.
+    """
+    for provider_id in ALIASED_PROVIDERS:
+        for key in _providers()[provider_id]["keys"]:
+            for alias, target in (key.get("aliases") or {}).items():
+                assert not target.startswith("claude-"), (
+                    f"{provider_id}/{key['name']}: alias {alias!r} resolves to "
+                    f"{target!r}, which this gateway does not serve"
+                )
