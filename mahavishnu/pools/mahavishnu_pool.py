@@ -29,6 +29,59 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _initialize_shepherd_workspace(path: Path) -> bool:
+    """Create the Shepherd workspace inside ``path``.
+
+    A pool workspace is a Shepherd workspace, and a Shepherd workspace is a
+    git-backed store (``.vcscore``) that lives INSIDE the workspace
+    directory -- not the directory itself. Creating the directory alone
+    left every Shepherd worker failing closed with MHV-312 ("not a
+    Shepherd workspace. Run `sp init` first"), which put an invisible
+    operator step between "spawn a pool" and "it works": the failure
+    surfaced only as a worker that never started, with the real cause
+    buried in the pool's logs.
+
+    ``initialize_workspace`` is Shepherd's own bootstrap -- the same call
+    ``sp init`` makes -- so there is one implementation rather than two,
+    and no dependency on the ``sp`` executable being on the server's PATH
+    (it is not: it lives in the venv's ``bin/``, which launchd does not
+    put on PATH).
+
+    Args:
+        path: The workspace directory to initialize.
+
+    Returns:
+        True when the workspace is ready to be discovered.
+    """
+    try:
+        from shepherd_dialect import initialize_workspace
+    except ImportError:
+        logger.exception(
+            "Cannot auto-initialize the Shepherd workspace at %s. "
+            "Install the 'shepherd-ai' extra, or run `sp init %s` by hand.",
+            path,
+            path,
+        )
+        return False
+    try:
+        initialize_workspace(path, adopt="none")
+    except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.exception(
+            "Failed to auto-initialize the Shepherd workspace at %s. "
+            "Run `sp init %s` by hand.",
+            path,
+            path,
+        )
+        return False
+    logger.info(
+        "Auto-initialized the Shepherd workspace at %s. The pool owns "
+        "initializing it — a Shepherd worker there would otherwise fail "
+        "closed with MHV-312.",
+        path,
+    )
+    return True
+
+
 def _resolve_settings() -> Any:
     """Return the project settings, or ``None`` when they cannot be loaded.
 
@@ -147,6 +200,7 @@ class MahavishnuPool(BasePool):
         config_writable_root = getattr(config, "writable_root", None)
         if config_writable_root:
             self.writable_root = Path(config_writable_root).resolve()
+            self.writable_root.mkdir(parents=True, exist_ok=True)
         else:
             candidates = [
                 Path.home()
@@ -184,6 +238,22 @@ class MahavishnuPool(BasePool):
                 chosen = candidates[0].resolve()
             self.writable_root = chosen
 
+        # Whether the workspace directory is empty decides whether the pool
+        # initializes the Shepherd workspace inside it.
+        #
+        # An EMPTY directory is the pool's to fill: it is either one the
+        # pool just created or an empty leftover from an earlier run, and
+        # a Shepherd pool needs a Shepherd workspace in it. That is what
+        # makes the fix reach pools that were created before it existed --
+        # their workspace directory is there but uninitialized.
+        #
+        # A directory with CONTENT in it belongs to the operator, and a
+        # missing Shepherd workspace there is a misconfiguration to report
+        # rather than to paper over: initializing it would drop a
+        # ``.vcscore`` store into somebody's directory without asking.
+        if self._workspace_is_empty():
+            _initialize_shepherd_workspace(self.writable_root)
+
         # Wrap existing WorkerManager
         self.worker_manager = WorkerManager(
             terminal_manager=terminal_manager,
@@ -197,6 +267,20 @@ class MahavishnuPool(BasePool):
         self._tasks_completed = 0
         self._tasks_failed = 0
         self._task_durations: list[float] = []
+
+    def _workspace_is_empty(self) -> bool:
+        """Whether the workspace directory holds nothing.
+
+        True for a directory that does not exist yet, and for one with no
+        entries. An unreadable directory counts as NOT empty: the safe
+        answer is the one that does not mutate somebody's files.
+        """
+        try:
+            if not self.writable_root.exists():
+                return True
+            return not any(self.writable_root.iterdir())
+        except OSError:
+            return False
 
     async def start(self) -> str:
         """Initialize pool and spawn initial workers.

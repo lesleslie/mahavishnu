@@ -586,3 +586,140 @@ class TestMahavishnuPool:
             assert len(pool._task_durations) == 1
             # Wall-clock time for mocked call is very small
             assert pool._task_durations[0] < 1.0
+
+
+class TestShepherdWorkspaceAutoInit:
+    """The pool initializes the Shepherd workspace it creates.
+
+    A pool workspace is a Shepherd workspace, and a Shepherd workspace is
+    a git-backed store (``.vcscore``) inside the directory -- not the
+    directory itself. Creating the directory alone left every Shepherd
+    worker failing closed with MHV-312 ("not a Shepherd workspace. Run
+    `sp init` first"), which put an invisible operator step between
+    "spawn a pool" and "it works".
+    """
+
+    def test_the_helper_creates_the_marker(self, tmp_path):
+        from mahavishnu.pools.mahavishnu_pool import _initialize_shepherd_workspace
+
+        workspace = tmp_path / "pool" / "workspace"
+        workspace.mkdir(parents=True)
+        assert not (workspace / ".vcscore").exists()
+
+        assert _initialize_shepherd_workspace(workspace) is True
+        assert (workspace / ".vcscore").is_dir()
+
+    def test_the_helper_reports_failure_without_raising(self, tmp_path):
+        from mahavishnu.pools import mahavishnu_pool
+
+        workspace = tmp_path / "pool" / "workspace"
+        workspace.mkdir(parents=True)
+
+        with patch.object(
+            mahavishnu_pool,
+            "_initialize_shepherd_workspace",
+            return_value=False,
+        ):
+            # A failed auto-init must not take the pool down: the worker
+            # still fails closed on the workspace, which is the operator's
+            # signal to run `sp init` by hand.
+            pool = MahavishnuPool(
+                config=PoolConfig(
+                    name="auto-init-pool",
+                    pool_type="mahavishnu",
+                    min_workers=1,
+                    max_workers=1,
+                    worker_type="terminal-claude",
+                    writable_root=str(tmp_path / "pool" / "workspace"),
+                ),
+                terminal_manager=MagicMock(),
+            )
+        assert pool.writable_root.exists()
+
+    def test_a_pool_initializes_a_workspace_it_creates(self, tmp_path):
+        """The regression test.
+
+        The pool creates the workspace directory, so it owns initializing
+        the Shepherd workspace inside it. Before this, the directory was
+        created but the workspace was not, and the worker's MHV-312 was
+        the only clue.
+        """
+        workspace = tmp_path / "pool" / "workspace"
+        assert not workspace.exists()
+
+        MahavishnuPool(
+            config=PoolConfig(
+                name="auto-init-pool",
+                pool_type="mahavishnu",
+                min_workers=1,
+                max_workers=1,
+                worker_type="terminal-claude",
+                writable_root=str(workspace),
+            ),
+            terminal_manager=MagicMock(),
+        )
+
+        assert workspace.is_dir()
+        assert (workspace / ".vcscore").is_dir(), (
+            "the pool created the workspace directory but did not initialize "
+            "the Shepherd workspace inside it -- the worker will fail "
+            "closed with MHV-312"
+        )
+
+    def test_a_pool_initializes_an_existing_empty_workspace(self, tmp_path):
+        """A pre-existing but EMPTY workspace directory is initialized too.
+
+        This is what makes the fix reach pools that were created before it
+        existed: their workspace directory is there, but uninitialized, and
+        the worker failed closed on it. An empty directory holds nothing
+        of the operator's, so filling it is safe.
+        """
+        workspace = tmp_path / "legacy-pool"
+        workspace.mkdir(parents=True)
+        assert not (workspace / ".vcscore").exists()
+
+        MahavishnuPool(
+            config=PoolConfig(
+                name="legacy-pool",
+                pool_type="mahavishnu",
+                min_workers=1,
+                max_workers=1,
+                worker_type="terminal-claude",
+                writable_root=str(workspace),
+            ),
+            terminal_manager=MagicMock(),
+        )
+
+        assert (workspace / ".vcscore").is_dir(), (
+            "an existing but empty workspace directory was not initialized -- "
+            "a pool created before the fix would still fail with MHV-312"
+        )
+
+    def test_a_pool_leaves_a_directory_with_content_alone(self, tmp_path):
+        """A directory that holds something belongs to the operator.
+
+        Initializing a Shepherd workspace inside it would drop a
+        ``.vcscore`` store into somebody's directory without asking, and
+        would paper over the misconfiguration that put a pool there in the
+        first place.
+        """
+        workspace = tmp_path / "operator-owned"
+        workspace.mkdir(parents=True)
+        (workspace / "important.txt").write_text("not ours to touch")
+
+        MahavishnuPool(
+            config=PoolConfig(
+                name="operator-pool",
+                pool_type="mahavishnu",
+                min_workers=1,
+                max_workers=1,
+                worker_type="terminal-claude",
+                writable_root=str(workspace),
+            ),
+            terminal_manager=MagicMock(),
+        )
+
+        assert (workspace / "important.txt").exists()
+        assert not (workspace / ".vcscore").exists(), (
+            "the pool initialized a workspace directory that had content in it"
+        )
