@@ -89,11 +89,24 @@ curl -s http://localhost:8682/metrics | grep mahavishnu_observability
    the retention sweep.
 5. **NG5** — Not adding a second telemetry store. `metrics_substrate` is a
    table in the same DuckDB substrate, not a new database.
-6. **NG6** — Not changing oneiric's `OTLPObservabilityAdapter`. It sends
-   traces and metrics to **one** endpoint
+6. **NG6** — Not splitting oneiric's `OTLPObservabilityAdapter` endpoint. It
+   sends traces and metrics to **one** endpoint
    (`oneiric/adapters/monitoring/otlp.py:140-153`), so a receiver that
    implements both services satisfies it as-is. Splitting oneiric's endpoint
    would be a second mechanism solving the same problem.
+
+   **NG6 was wrong on one point, corrected 2026-11-06.** "No oneiric code
+   change is needed" does not hold, for a reason that has nothing to do with
+   the endpoint: `OTLPObservabilitySettings.insecure` defaults to `False`
+   and is passed **explicitly** to the exporter, which overrides the
+   exporter's own scheme detection and forces a TLS channel. akosha's `:4317`
+   is plaintext, so the handshake fails and **zero points arrive**.
+   Measured: `OTLPMetricExporter(endpoint="http://127.0.0.1:4317",
+   insecure=False)` → `_insecure = False` (TLS); with `insecure` unset →
+   `_insecure = True` (plaintext). The fix is oneiric's default becoming
+   `bool | None = None` — the scheme decides, an explicit value still
+   overrides — which matches what mahavishnu's exporter already does. The
+   *endpoint* stays single; only the transport default changes.
 
 ### Interim state (until Phase 2 lands)
 
@@ -200,8 +213,14 @@ Citations are file:line against the working tree on 2026-10-27.
 
     This is the decisive design fact: oneiric's adapter can only work
     against a receiver that implements **both** services. A MetricsService
-    on `:4317` therefore satisfies it with **no oneiric code change**, and
-    a split-endpoint fix in mahavishnu alone cannot.
+    on `:4317` therefore satisfies it, and a split-endpoint fix in
+    mahavishnu alone cannot.
+
+    **Correction 2026-11-06.** The clause "with **no oneiric code
+    change**" was wrong — see NG6 above. The single-endpoint conclusion
+    holds; the no-change conclusion did not, because oneiric's `insecure`
+    default forced TLS against the plaintext receiver. With that default
+    corrected, the adapter needs no other change.
 
 11. **The one-shot `set_meter_provider` rule makes the two exporters
     independent.** OTel allows the global meter provider to be set once;
@@ -331,6 +350,32 @@ implementation therefore develops against a local editable oneiric, and
 version bump and the publish are operator actions — they are not part of
 this plan and were not performed.
 
+Two consequences the Phase 2 review made explicit:
+
+- **The gap must be loud, not silent.** Against published oneiric 0.34.0
+  the receiver binds, accepts exports, exposes the series on
+  `:8682/metrics`, and stores **nothing** — while answering
+  `rejected_data_points=0`. A Prometheus series with no durable row behind
+  it reads as "working but quiet". The receiver now probes substrate
+  readiness at bind time, exposes
+  `akosha_otlp_metrics_substrate_ready` (1/0), labels the insert failure
+  with a reason, and reports it to the producer in
+  `partial_success.error_message`.
+- **The Phase 2 exit criterion is strengthened.** "Appears in
+  `curl http://localhost:8682/metrics`" is not sufficient on its own — the
+  exposure path does not touch the substrate, so it passes even when
+  persistence is entirely broken. The criterion now also requires a
+  **non-empty `metrics_substrate` row count** for the same export, and a
+  real OTLP export to `:4317` must be answered by the MetricsService
+  rather than `UNIMPLEMENTED`.
+
+**A second, independent cross-repo prerequisite — the transport default.**
+oneiric's `OTLPObservabilityAdapter` passed `insecure=False` explicitly,
+which forced TLS against akosha's plaintext `:4317` and delivered **zero**
+points. Fixed on the oneiric side by making the endpoint scheme decide
+(NG6 above). Until oneiric publishes that fix too, REQ-M07 is not met
+even with a published Phase 1.
+
 **Decisions taken in Phase 2 that the plan did not specify:**
 - **`ts` is epoch nanoseconds**, from the data point's `time_unix_nano`.
   Phase 1 stores `ts` as a raw `BIGINT` and constrains nothing, but
@@ -393,12 +438,34 @@ build against reality:
    as rejected would tell a producer its data was thrown away when it was
    not. The cardinality cap is **100 distinct label-value combinations per
    metric family** (the plan asked for a cap but named no number).
-7. **No bind-time assertion that `metrics_substrate` exists.** The trace
-   receiver asserts `spans_substrate_table`; the metrics receiver does not,
-   because failing the receiver's boot would take the *trace* path down
-   with it. The table is created by oneiric's `DuckdbHotStore.initialize()`,
-   which akosha's `HotStore.initialize()` calls, so it is always there; a
-   missing table shows up as `akosha_otlp_metrics_insert_failed_total`.
+7. **No bind-time assertion that `metrics_substrate` exists — but the
+   readiness is still checked, and the check does not raise.** The trace
+   receiver asserts `spans_substrate_table` and raises
+   `LifecycleError("spans_substrate_missing")`; the metrics receiver does
+   **not** raise, because failing the receiver's boot would take the
+   *trace* path down with it — and a metrics dependency gap must never be
+   able to stop trace ingestion. Instead the receiver probes readiness at
+   bind time, logs at ERROR, and exposes
+   `akosha_otlp_metrics_substrate_ready` (1/0) on `:8682/metrics`; an
+   unusable substrate is distinguishable from a normal write failure on
+   `akosha_otlp_metrics_insert_failed_total{reason}`, and it is reported
+   to the producer through `partial_success.error_message`.
+
+   **Correction 2026-11-06.** The original justification here — "the table
+   is created by oneiric's `DuckdbHotStore.initialize()`, which akosha's
+   `HotStore.initialize()` calls, so it is always there" — was **false
+   against the locked dependency**. akosha's `uv.lock` pins *published*
+   `oneiric==0.34.0`, whose `initialize()` has no metrics DDL and whose
+   wheel contains neither `insert_metrics_substrate` nor
+   `metrics_substrate_table`. In that configuration the table is never
+   created, the insert raises, and — because the insert was wrapped in a
+   blanket `except Exception` that only counted a failure — the export
+   still answered `rejected_data_points=0, error_message=""`. The producer
+   was told "accepted" for data that was thrown away, and because the
+   Prometheus exposure path does not touch the substrate, the plan's own
+   acceptance check (`curl :8682/metrics | grep mahavishnu_observability`)
+   still **passed** while REQ-M03 was entirely unmet. Measured: 12 of the
+   23 new tests fail in that shape.
 8. **`value_sum_of_squares` is always NULL.** OTLP does not carry it and it
    cannot be derived from bucket boundaries without guessing where inside
    each bucket the observations fell. NULL says "not known"; a fabricated
@@ -575,9 +642,15 @@ injected drift moves it.
 - [x] oneiric lifespan hook — idempotent `metrics_substrate` creation
 - [x] oneiric tests — `tests/adapters/test_duckdb_hot_store_metrics.py`
       (named for the module under test, beside its span sibling)
-- [x] **no change** to `oneiric/adapters/monitoring/otlp.py` — the adapter's
-      single endpoint works against a receiver that implements both services
-      (NG6, REQ-M07)
+- [x] **one change** to `oneiric/adapters/monitoring/otlp.py` (added
+      2026-11-06 by the Phase 2 review) — the adapter's single endpoint
+      works against a receiver that implements both services, but its
+      `insecure` default forced TLS against a plaintext receiver, so
+      **zero points arrived**. `insecure: bool | None = Field(default=None)`
+      lets the endpoint scheme decide (`http://` → plaintext,
+      `https://` → TLS) and an explicit value still overrides. The
+      *endpoint* stays single; only the transport default changes. (NG6,
+      REQ-M07)
 
 **akosha** (`/Users/les/Projects/akosha`)
 - [ ] `akosha/observability/otlp_receiver.py` — `_MetricsServiceServicer`,
