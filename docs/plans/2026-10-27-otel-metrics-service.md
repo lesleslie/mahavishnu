@@ -125,13 +125,39 @@ curl -s http://localhost:8682/metrics | grep mahavishnu_observability
    - **RFC1918 is deliberately not blocked**: an internal OTLP collector
      on `10.x` is a legitimate destination here, unlike an LLM gateway.
 
-   The validator mirrors the exporter's transport resolution exactly
-   (the `https` pin, the explicit value, then
-   `OTEL_EXPORTER_OTLP_INSECURE`, then the scheme), because a guard that
-   disagrees with the exporter would either block a config the exporter
-   would have handled securely or wave through a plaintext one. Note
-   that a scheme-less `host:port` endpoint is TLS to the exporter, so
+   The validator mirrors the exporter's transport resolution exactly,
+   **per protocol**, because a guard that disagrees with the exporter
+   would either block a config the exporter would have handled
+   securely or wave through a plaintext one:
+
+   - **`grpc`** — the `https` pin, then the explicit `insecure`, then
+     `OTEL_EXPORTER_OTLP_INSECURE`, then `scheme == "http"`.
+   - **`http/protobuf`** — the **scheme alone**. The HTTP exporters
+     accept no `insecure` kwarg and never read
+     `OTEL_EXPORTER_OTLP_INSECURE`, so `http://` is plaintext whatever
+     the setting says. An explicitly set `insecure` on that protocol is
+     a **hard error**, not a silent ignore: a security knob that
+     silently does nothing is the exact failure this guard exists to
+     prevent, and `insecure=False` is the most dangerous form of it —
+     the operator believes they forced TLS while the exporter sends
+     plaintext.
+
+   A scheme-less `host:port` endpoint is TLS to the gRPC exporter, so
    the guard must treat it as TLS too.
+
+   The metadata endpoints are blocked by **CIDR**, not by a literal
+   string set: `169.254.0.0/16`, `100.100.100.200/32`, `fd00:ec2::254/128`
+   and `fe80::/10`, with the host canonicalised first
+   (`ipaddress.ip_address`, then a `socket.inet_aton` fallback, so the
+   decimal `2852039166` and the hex `0xa9fea9fe` are both recognised as
+   `169.254.169.254`) and the name normalised (trailing dot stripped,
+   lowercased). A literal set is a denylist with escape hatches.
+
+   The model also sets `hide_input_in_errors=True`: Pydantic echoes the
+   whole model into **every** validation error, and this model's
+   `headers` routinely carries vendor API keys. The endpoint error
+   itself reports only the scheme, the sanitised host and the port —
+   never the raw endpoint, which can carry `user:pass@` userinfo.
 
 ### Interim state (until Phase 2 lands)
 
