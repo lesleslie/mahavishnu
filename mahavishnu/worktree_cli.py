@@ -299,6 +299,138 @@ def _configured_repos(repo_manager):
     return []
 
 
+# ---------------------------------------------------------------------------
+# prune-merged command decomposition.
+# req: REQ-CX-003
+#
+# Each helper owns one step of the prune sweep: resolve the repos, scan
+# them for candidates, and render either the dry-run preview or the
+# outcome.
+# ---------------------------------------------------------------------------
+
+
+def _resolve_prune_repos(repo, repo_manager):
+    """Resolve the repositories to scan for merged worktrees.
+
+    Returns the single named repo when ``--repo`` was given, otherwise
+    every configured repo. Exits with code 1 when the named repo is
+    unknown.
+    """
+    if repo is not None:
+        resolved = repo_manager.get_repo(repo)
+        if resolved is None:
+            typer.echo(f"Repo not found: {repo}", err=True)
+            raise typer.Exit(code=1)
+        return [resolved]
+    return list(_configured_repos(repo_manager))
+
+
+async def _scan_prune_candidates(
+    repos,
+    coordinator,
+    include_dirty: bool,
+    ttl_days: int,
+    json_output: bool,
+):
+    """Collect merged-worktree candidates across the selected repos.
+
+    A repo whose scan raises is reported on stderr (unless JSON output
+    was requested) and skipped, so one bad repo does not abort the whole
+    sweep. A repo without a canonical nickname is fatal.
+    """
+    registry = SessionWorktreeRegistry()
+
+    def registry_lookup(worktree_path: str) -> str | None:
+        for entry in registry.list_active(state=None):
+            if entry.get("worktree_path") == worktree_path:
+                return entry.get("last_seen_at") or entry.get("abandoned_at")
+        return None
+
+    candidates = []
+    for repo_info in repos:
+        if not getattr(repo_info, "nickname", None):
+            typer.echo(f"Repo has no canonical nickname: {repo_info.name}", err=True)
+            raise typer.Exit(code=1)
+        try:
+            found = find_merged_worktrees(
+                Path(repo_info.path),
+                repo_nickname=repo_info.nickname,
+                coordinator=coordinator,
+                include_dirty=include_dirty,
+                ttl_days=ttl_days,
+                registry_lookup=registry_lookup,
+            )
+            candidates.extend(await found if inspect.isawaitable(found) else found)
+        except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+            if not json_output:
+                typer.echo(f"Error scanning {repo_info.nickname}: {exc}", err=True)
+    return candidates
+
+
+def _emit_prune_dry_run(candidates, json_output: bool) -> None:
+    """Print the dry-run preview of the worktrees that would be removed."""
+    payload = {
+        "candidates": [
+            {
+                "branch": c.branch,
+                "repo_nickname": c.repo_nickname,
+                "worktree_path": str(c.worktree_path),
+                "behind": c.behind,
+                "merge_status": c.merge_status,
+                "dirty_status": c.dirty_status,
+                "last_touched_at": c.last_touched_at,
+            }
+            for c in candidates
+        ],
+        "would_remove": len(candidates),
+    }
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2))
+        return
+    typer.echo(f"Would remove {len(candidates)} merged worktree(s):")
+    for candidate in candidates:
+        typer.echo(
+            f"  {'✅' if candidate.is_clean else '⚠️'} {candidate.branch}  {candidate.worktree_path}  behind={candidate.behind}"
+        )
+
+
+def _emit_prune_results(results, json_output: bool) -> None:
+    """Print the outcome of the prune operation."""
+    if json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "removed_count": sum(result.success for result in results),
+                    "failed_count": sum(not result.success for result in results),
+                    "results": [
+                        {
+                            "branch": result.candidate.branch,
+                            "worktree_path": str(result.candidate.worktree_path),
+                            "success": result.success,
+                            "backup_path": result.backup_path,
+                            "error": result.error,
+                            "escalated": result.escalated,
+                        }
+                        for result in results
+                    ],
+                },
+                indent=2,
+            )
+        )
+        return
+    for result in results:
+        typer.echo(
+            f"{'✅' if result.success else '❌'} {result.candidate.branch}  {result.candidate.worktree_path}"
+        )
+        if result.backup_path:
+            typer.echo(f"   Backup: {result.backup_path}")
+        if result.error:
+            typer.echo(f"   Error: {result.error}")
+    typer.echo(
+        f"Removed {sum(result.success for result in results)}/{len(results)} worktree(s)."
+    )
+
+
 @worktree_app.command("prune-merged")
 def prune_merged_worktrees(
     repo: str | None = typer.Option(
@@ -346,43 +478,10 @@ def prune_merged_worktrees(
             typer.echo("force_reason is required when --include-dirty is set", err=True)
             raise typer.Exit(code=1)
 
-        if repo is not None:
-            resolved = repo_manager.get_repo(repo)
-            if resolved is None:
-                typer.echo(f"Repo not found: {repo}", err=True)
-                raise typer.Exit(code=1)
-            repos = [resolved]
-        else:
-            repos = list(_configured_repos(repo_manager))
-
-        registry = SessionWorktreeRegistry()
-
-        def registry_lookup(worktree_path: str) -> str | None:
-            for entry in registry.list_active(state=None):
-                if entry.get("worktree_path") == worktree_path:
-                    return entry.get("last_seen_at") or entry.get("abandoned_at")
-            return None
-
-        candidates = []
-        for repo_info in repos:
-            if not getattr(repo_info, "nickname", None):
-                typer.echo(
-                    f"Repo has no canonical nickname: {repo_info.name}", err=True
-                )
-                raise typer.Exit(code=1)
-            try:
-                found = find_merged_worktrees(
-                    Path(repo_info.path),
-                    repo_nickname=repo_info.nickname,
-                    coordinator=coordinator,
-                    include_dirty=include_dirty,
-                    ttl_days=ttl_days,
-                    registry_lookup=registry_lookup,
-                )
-                candidates.extend(await found if inspect.isawaitable(found) else found)
-            except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
-                if not json_output:
-                    typer.echo(f"Error scanning {repo_info.nickname}: {exc}", err=True)
+        repos = _resolve_prune_repos(repo, repo_manager)
+        candidates = await _scan_prune_candidates(
+            repos, coordinator, include_dirty, ttl_days, json_output
+        )
 
         if not candidates:
             typer.echo(
@@ -392,29 +491,7 @@ def prune_merged_worktrees(
             )
             return
         if dry_run:
-            payload = {
-                "candidates": [
-                    {
-                        "branch": c.branch,
-                        "repo_nickname": c.repo_nickname,
-                        "worktree_path": str(c.worktree_path),
-                        "behind": c.behind,
-                        "merge_status": c.merge_status,
-                        "dirty_status": c.dirty_status,
-                        "last_touched_at": c.last_touched_at,
-                    }
-                    for c in candidates
-                ],
-                "would_remove": len(candidates),
-            }
-            if json_output:
-                typer.echo(json.dumps(payload, indent=2))
-            else:
-                typer.echo(f"Would remove {len(candidates)} merged worktree(s):")
-                for candidate in candidates:
-                    typer.echo(
-                        f"  {'✅' if candidate.is_clean else '⚠️'} {candidate.branch}  {candidate.worktree_path}  behind={candidate.behind}"
-                    )
+            _emit_prune_dry_run(candidates, json_output)
             return
 
         results = await WorktreePruner(coordinator=coordinator).remove(
@@ -424,39 +501,7 @@ def prune_merged_worktrees(
             ttl_days=ttl_days,
             include_dirty=include_dirty,
         )
-        if json_output:
-            typer.echo(
-                json.dumps(
-                    {
-                        "removed_count": sum(result.success for result in results),
-                        "failed_count": sum(not result.success for result in results),
-                        "results": [
-                            {
-                                "branch": result.candidate.branch,
-                                "worktree_path": str(result.candidate.worktree_path),
-                                "success": result.success,
-                                "backup_path": result.backup_path,
-                                "error": result.error,
-                                "escalated": result.escalated,
-                            }
-                            for result in results
-                        ],
-                    },
-                    indent=2,
-                )
-            )
-        else:
-            for result in results:
-                typer.echo(
-                    f"{'✅' if result.success else '❌'} {result.candidate.branch}  {result.candidate.worktree_path}"
-                )
-                if result.backup_path:
-                    typer.echo(f"   Backup: {result.backup_path}")
-                if result.error:
-                    typer.echo(f"   Error: {result.error}")
-            typer.echo(
-                f"Removed {sum(result.success for result in results)}/{len(results)} worktree(s)."
-            )
+        _emit_prune_results(results, json_output)
         if any(not result.success for result in results):
             raise typer.Exit(code=1)
 

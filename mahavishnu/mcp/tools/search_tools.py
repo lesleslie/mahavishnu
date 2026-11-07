@@ -37,6 +37,223 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# cross_repo_search decomposition.
+# req: REQ-CX-004
+#
+# The fan-out to Akosha and Session-Buddy is independent per source: one
+# unreachable service degrades the response instead of failing the tool.
+# Each source owns its own request, unwrapping, and error entry.
+# =============================================================================
+
+
+def _extract_capability_results(payload: Any) -> list[Any]:
+    """Unwrap an Akosha capability-search payload into a result list.
+
+    ``CommonMCPClient`` unwraps the JSON-RPC envelope, so the payload may
+    be the bare dict OR a wrapper ``{"result": {"results": [...]}}``.
+    """
+    if isinstance(payload, dict):
+        return payload.get("results", []) or payload.get("result", {}).get(
+            "results", []
+        )
+    if isinstance(payload, list):
+        return payload
+    return []
+
+
+def _extract_run_results(payload: Any) -> list[Any]:
+    """Unwrap an Akosha run-history payload into a result list."""
+    if isinstance(payload, dict):
+        return payload.get("results", []) or []
+    if isinstance(payload, list):
+        return payload
+    return []
+
+
+def _extract_sb_components(payload: Any) -> list[Any]:
+    """Unwrap a Session-Buddy run-history payload into components.
+
+    The components live under ``result``, and ``result`` may itself be a
+    JSON string rather than an already-decoded object.
+    """
+    if isinstance(payload, dict):
+        sb_result = payload.get("result", {})
+    else:
+        sb_result = {}
+    if isinstance(sb_result, str):
+        import json as _json
+
+        try:
+            sb_result = _json.loads(sb_result)
+        except _json.JSONDecodeError:
+            sb_result = {}
+    if not isinstance(sb_result, dict):
+        return []
+    return sb_result.get("components", [])
+
+
+async def _fan_out_akosha(
+    akosha_url: str,
+    scope: str,
+    query: str,
+    repo_filter: str | None,
+    limit: int,
+    sources: list[dict[str, Any]],
+    combined: list[dict[str, Any]],
+) -> None:
+    """Query Akosha and record the outcome in ``sources``/``combined``.
+
+    A failure is recorded as an error entry for the ``akosha`` source
+    rather than propagating, so one unreachable service degrades the
+    response instead of failing the tool.
+    """
+    try:
+        akosha_client = CommonMCPClient(base_url=akosha_url, timeout=10.0)
+        try:
+            if scope == "capabilities":
+                akosha_args: dict[str, Any] = {
+                    "query": query,
+                    "limit": limit,
+                }
+                if repo_filter:
+                    akosha_args["repo_filter"] = repo_filter
+                akosha_payload = await akosha_client.call_tool(
+                    "cross_repo_capability_search",
+                    akosha_args,
+                )
+                akosha_results = _extract_capability_results(akosha_payload)
+            else:  # scope == "runs"
+                akosha_payload = await akosha_client.call_tool(
+                    "search_all_systems",
+                    {"query": query, "limit": limit},
+                )
+                akosha_results = _extract_run_results(akosha_payload)
+            sources.append(
+                {
+                    "name": "akosha",
+                    "status": "ok",
+                    "url": akosha_url,
+                    "count": len(akosha_results),
+                }
+            )
+            for r in akosha_results:
+                r = dict(r)
+                r["source"] = "akosha"
+                combined.append(r)
+        finally:
+            await akosha_client.aclose()
+    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.warning("cross_repo_search: akosha fan-out failed: %s", exc)
+        sources.append(
+            {
+                "name": "akosha",
+                "status": "error",
+                "url": akosha_url,
+                "error": str(exc),
+                "count": 0,
+            }
+        )
+
+
+async def _fan_out_session_buddy(
+    session_buddy_url: str,
+    scope: str,
+    query: str,
+    repo_filter: str | None,
+    sources: list[dict[str, Any]],
+    combined: list[dict[str, Any]],
+) -> None:
+    """Query Session-Buddy run history and record the outcome.
+
+    A failure is recorded as an error entry for the ``session-buddy``
+    source rather than propagating.
+    """
+    try:
+        sb_client = CommonMCPClient(base_url=session_buddy_url, timeout=10.0)
+        try:
+            sb_args: dict[str, Any] = {
+                "workflow_id": query,
+                "scope": (repo_filter or "all") if scope == "runs" else "all",
+            }
+            sb_payload = await sb_client.call_tool("ecosystem_run_history", sb_args)
+            sb_components = _extract_sb_components(sb_payload)
+            sources.append(
+                {
+                    "name": "session-buddy",
+                    "status": "ok",
+                    "url": session_buddy_url,
+                    "count": len(sb_components),
+                }
+            )
+            for c in sb_components:
+                c = dict(c)
+                c["source"] = "session-buddy"
+                combined.append(c)
+        finally:
+            await sb_client.aclose()
+    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.warning("cross_repo_search: session-buddy fan-out failed: %s", exc)
+        sources.append(
+            {
+                "name": "session-buddy",
+                "status": "error",
+                "url": session_buddy_url,
+                "error": str(exc),
+                "count": 0,
+            }
+        )
+
+
+def _dedupe_entries(combined: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """De-duplicate combined results and rank them by descending score.
+
+    Entries are keyed by ``source|repo|name`` so the same capability
+    reported by two sources survives once.
+    """
+    seen: set[str] = set()
+    deduped: list[dict[str, Any]] = []
+    for entry in combined:
+        key = "|".join(
+            [
+                str(entry.get("source", "")),
+                str(entry.get("repo", "")),
+                str(entry.get("name", "")),
+            ]
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(entry)
+
+    deduped.sort(
+        key=lambda e: float(e.get("score", 0.0) or 0.0),
+        reverse=True,
+    )
+    return deduped
+
+
+async def _broadcast_cross_repo_result(
+    channel: str,
+    result: dict[str, Any],
+) -> None:
+    """Publish the cross-repo search result to its WebSocket channel."""
+    try:
+        server = _get_websocket_server()
+        if server is not None:
+            msg = WebSocketMessage(
+                type=MessageType.EVENT,
+                data={
+                    "event_type": "cross_repo_search_result",
+                    "channel": channel,
+                    "payload": result,
+                },
+            )
+            await server.broadcast_to_room(channel, msg)
+    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.warning("cross_repo_search: websocket broadcast failed: %s", exc)
+
+
+# =============================================================================
 # Tool Registration
 # =============================================================================
 
@@ -286,148 +503,27 @@ def register_search_tools(mcp: FastMCP) -> None:
         combined: list[dict[str, Any]] = []
 
         # ---- Akosha capability search ----
-        try:
-            akosha_client = CommonMCPClient(base_url=akosha_url, timeout=10.0)
-            try:
-                if scope == "capabilities":
-                    akosha_args: dict[str, Any] = {
-                        "query": query,
-                        "limit": limit,
-                    }
-                    if repo_filter:
-                        akosha_args["repo_filter"] = repo_filter
-                    akosha_payload = await akosha_client.call_tool(
-                        "cross_repo_capability_search",
-                        akosha_args,
-                    )
-                    if isinstance(akosha_payload, dict):
-                        # CommonMCPClient unwraps the JSON-RPC envelope, so
-                        # the payload may be the bare dict OR a wrapper
-                        # ``{"result": {"results": [...]}}``. Handle both.
-                        akosha_results = akosha_payload.get(
-                            "results", []
-                        ) or akosha_payload.get("result", {}).get("results", [])
-                    elif isinstance(akosha_payload, list):
-                        akosha_results = akosha_payload
-                    else:
-                        akosha_results = []
-                else:  # scope == "runs"
-                    akosha_payload = await akosha_client.call_tool(
-                        "search_all_systems",
-                        {"query": query, "limit": limit},
-                    )
-                    if isinstance(akosha_payload, dict):
-                        akosha_results = akosha_payload.get("results", []) or []
-                    elif isinstance(akosha_payload, list):
-                        akosha_results = akosha_payload
-                    else:
-                        akosha_results = []
-                sources.append(
-                    {
-                        "name": "akosha",
-                        "status": "ok",
-                        "url": akosha_url,
-                        "count": len(akosha_results),
-                    }
-                )
-                for r in akosha_results:
-                    r = dict(r)
-                    r["source"] = "akosha"
-                    combined.append(r)
-            finally:
-                await akosha_client.aclose()
-        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning("cross_repo_search: akosha fan-out failed: %s", exc)
-            sources.append(
-                {
-                    "name": "akosha",
-                    "status": "error",
-                    "url": akosha_url,
-                    "error": str(exc),
-                    "count": 0,
-                }
-            )
+        await _fan_out_akosha(
+            akosha_url,
+            scope,
+            query,
+            repo_filter,
+            limit,
+            sources,
+            combined,
+        )
 
         # ---- Session-Buddy run history ----
-        try:
-            sb_client = CommonMCPClient(base_url=session_buddy_url, timeout=10.0)
-            try:
-                if scope == "runs":
-                    sb_args: dict[str, Any] = {
-                        "workflow_id": query,
-                        "scope": repo_filter or "all",
-                    }
-                    sb_tool = "ecosystem_run_history"
-                else:
-                    sb_args = {
-                        "workflow_id": query,
-                        "scope": "all",
-                    }
-                    sb_tool = "ecosystem_run_history"
-
-                sb_payload = await sb_client.call_tool(sb_tool, sb_args)
-                if isinstance(sb_payload, dict):
-                    sb_result = sb_payload.get("result", {})
-                else:
-                    sb_result = {}
-                if isinstance(sb_result, str):
-                    import json as _json
-
-                    try:
-                        sb_result = _json.loads(sb_result)
-                    except _json.JSONDecodeError:
-                        sb_result = {}
-                sb_components = (
-                    sb_result.get("components", [])
-                    if isinstance(sb_result, dict)
-                    else []
-                )
-                sources.append(
-                    {
-                        "name": "session-buddy",
-                        "status": "ok",
-                        "url": session_buddy_url,
-                        "count": len(sb_components),
-                    }
-                )
-                for c in sb_components:
-                    c = dict(c)
-                    c["source"] = "session-buddy"
-                    combined.append(c)
-            finally:
-                await sb_client.aclose()
-        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning("cross_repo_search: session-buddy fan-out failed: %s", exc)
-            sources.append(
-                {
-                    "name": "session-buddy",
-                    "status": "error",
-                    "url": session_buddy_url,
-                    "error": str(exc),
-                    "count": 0,
-                }
-            )
-
-        # Deduplicate by (repo, name) when possible, otherwise by source+hash.
-        seen: set[str] = set()
-        deduped: list[dict[str, Any]] = []
-        for entry in combined:
-            key = "|".join(
-                [
-                    str(entry.get("source", "")),
-                    str(entry.get("repo", "")),
-                    str(entry.get("name", "")),
-                ]
-            )
-            if key in seen:
-                continue
-            seen.add(key)
-            deduped.append(entry)
-
-        deduped.sort(
-            key=lambda e: float(e.get("score", 0.0) or 0.0),
-            reverse=True,
+        await _fan_out_session_buddy(
+            session_buddy_url,
+            scope,
+            query,
+            repo_filter,
+            sources,
+            combined,
         )
+
+        deduped = _dedupe_entries(combined)
 
         repos_seen = sorted({e.get("repo", "") for e in deduped if e.get("repo")})
         ok_count = sum(1 for s in sources if s["status"] == "ok")
@@ -448,20 +544,7 @@ def register_search_tools(mcp: FastMCP) -> None:
         if stream_channel:
             channel = f"cross-repo:{query_hash}"
             result["channel"] = channel
-            try:
-                server = _get_websocket_server()
-                if server is not None:
-                    msg = WebSocketMessage(
-                        type=MessageType.EVENT,
-                        data={
-                            "event_type": "cross_repo_search_result",
-                            "channel": channel,
-                            "payload": result,
-                        },
-                    )
-                    await server.broadcast_to_room(channel, msg)
-            except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.warning("cross_repo_search: websocket broadcast failed: %s", exc)
+            await _broadcast_cross_repo_result(channel, result)
 
         return result
 

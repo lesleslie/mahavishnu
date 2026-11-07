@@ -180,6 +180,10 @@ def check_user_repo_permission(app: Any, user_id: str, repo_path: str) -> bool:
         try:
             asyncio.get_running_loop()
             with concurrent.futures.ThreadPoolExecutor() as executor:
+                # ``submit`` cannot solve the generic of ``asyncio.run`` on
+                # its own (the callable is passed by reference rather than
+                # called), so the verdict needs an explicit cast here.
+                # req: REQ-CX-005
                 future = executor.submit(
                     asyncio.run,
                     app.rbac_manager.check_permission(
@@ -188,13 +192,10 @@ def check_user_repo_permission(app: Any, user_id: str, repo_path: str) -> bool:
                 )
                 return cast("bool", future.result(timeout=5.0))
         except RuntimeError:
-            return cast(
-                "bool",
-                asyncio.run(
-                    app.rbac_manager.check_permission(
-                        user_id, repo_path, Permission.READ_REPO
-                    )
-                ),
+            return asyncio.run(
+                app.rbac_manager.check_permission(
+                    user_id, repo_path, Permission.READ_REPO
+                )
             )
     except Exception:  # RBAC fail-open: deny-by-default would be a stronger posture, but compatibility wins here  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         return True

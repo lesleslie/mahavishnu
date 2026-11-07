@@ -289,6 +289,400 @@ async def _enforce_concurrency_limit(
         )
 
 
+# ---------------------------------------------------------------------------
+# pool_route_execute decomposition.
+# req: REQ-CX-001
+#
+# The dispatch tool is a linear pipeline with many early-exit branches.
+# Each helper below owns exactly one concern. Helpers that can abort the
+# dispatch return an explicit "early response" payload that the tool
+# returns verbatim, so no response shape is lost in the extraction.
+# ---------------------------------------------------------------------------
+
+
+def _resolve_pool_selector(pool_selector: str) -> tuple[Any, dict[str, Any] | None]:
+    """Resolve the wire selector string into a ``PoolSelector`` enum.
+
+    Returns ``(selector, None)`` on success. On failure returns
+    ``(None, response)`` where ``response`` is the structured payload
+    the tool must return verbatim.
+    """
+    if PoolSelector is None:
+        return None, {
+            "status": "failed",
+            "error": "Pool selector subsystem unavailable; pools package not loaded",
+        }
+    try:
+        return PoolSelector(pool_selector), None
+    except ValueError:
+        valid = [s.value for s in PoolSelector]
+        return None, {
+            "status": "invalid_selector",
+            "error": f"Unknown pool_selector: {pool_selector!r}. Valid: {valid}",
+        }
+
+
+def _coerce_caller_kind(caller_kind: str) -> Any:
+    """Map the wire caller-kind string onto a ``CallerKind`` enum.
+
+    ``coerce_caller_kind`` maps unknown wire strings to
+    ``CallerKind.UNKNOWN`` (one shared bucket per the indirection
+    rule). A failure inside that funnel degrades to ``None`` (no
+    bucket) rather than failing the dispatch.
+    """
+    if coerce_caller_kind is None:
+        return None
+    try:
+        return coerce_caller_kind(caller_kind)
+    except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        return None
+
+
+def _classify_prompt(prompt: str) -> TaskCategoryType | None:
+    """Classify the prompt into a ``TaskCategory``.
+
+    Returns ``None`` when the classifier is unavailable or fails — the
+    dispatch then proceeds without a per-category concurrency limit.
+    """
+    if classify_task is None:
+        return None
+    try:
+        return classify_task(prompt)
+    except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        return None
+
+
+def _resolve_auto_spawn(auto_spawn: bool | None) -> bool:
+    """Resolve ``auto_spawn`` from config when the caller did not specify.
+
+    ``None`` means "read settings"; ``False``/``True`` are explicit
+    caller overrides. A settings failure falls back to ``False`` so a
+    dispatch never auto-spawns a pool it could not confirm.
+    """
+    if auto_spawn is not None:
+        return auto_spawn
+    if get_settings is None:
+        return False
+    try:
+        return get_settings().pools.auto_spawn
+    except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        return False
+
+
+async def _lookup_idempotency(
+    idempotency: IdempotencyOptions | None,
+    prompt: str,
+) -> tuple[Any, Any, Any, dict[str, Any] | None]:
+    """Look up (or create) the idempotency record for this dispatch.
+
+    Returns ``(existing_event, idem_store, breaker, early_response)``.
+    ``early_response`` is set when the tool must return without
+    dispatching: a cached duplicate, or a fail-closed store error.
+    """
+    if idempotency is None:
+        return None, None, None, None
+
+    idem_store = get_idempotency_store() if get_idempotency_store is not None else None
+    breaker = get_idempotency_breaker() if get_idempotency_breaker is not None else None
+    if idem_store is None or breaker is None:
+        logger.exception(
+            "idempotency requested but layer not configured",
+            extra={"error_id": "IDEMPOTENCY_NOT_CONFIGURED"},
+        )
+        return (
+            None,
+            None,
+            None,
+            {
+                "status": "error",
+                "error": "idempotency store unavailable",
+            },
+        )
+
+    try:
+        # Pre-compute the payload hash so the lambda stays sync;
+        # _hash_prompt is async and would otherwise force an
+        # ``await`` inside the lambda (syntax error in sync code).
+        payload_hash = await _hash_prompt(prompt)
+        existing_event = await breaker.call(
+            lambda: idem_store.get_or_create(
+                idempotency,
+                payload_hash=payload_hash,
+                actor="pool_route_execute",
+            )
+        )
+    except IdempotencyStoreUnavailable as exc:  # ty: ignore[invalid-exception-caught]
+        logger.exception(
+            "idempotency store unreachable; failing closed",
+            extra={"error_id": "IDEMPOTENCY_STORE_UNAVAILABLE"},
+        )
+        return (
+            None,
+            idem_store,
+            breaker,
+            {
+                "status": "error",
+                "error": f"idempotency store unavailable: {exc}",
+            },
+        )
+    except IdempotencyCircuitOpen as exc:  # ty: ignore[invalid-exception-caught]
+        logger.warning(
+            "idempotency circuit open; failing closed",
+            extra={"error_id": "IDEMPOTENCY_CIRCUIT_OPEN"},
+        )
+        return (
+            None,
+            idem_store,
+            breaker,
+            {
+                "status": "error",
+                "error": f"idempotency circuit open: {exc}",
+            },
+        )
+
+    if (
+        existing_event is not None
+        and TaskEventType is not None
+        and existing_event.event_type == TaskEventType.COMPLETED
+    ):
+        cached = (existing_event.data or {}).get("result", {})
+        logger.info(
+            "idempotency hit; returning cached result",
+            extra={"idempotency_key": existing_event.idempotency_key},
+        )
+        return (
+            existing_event,
+            idem_store,
+            breaker,
+            {
+                "status": "duplicate",
+                "result": cached,
+            },
+        )
+    return existing_event, idem_store, breaker, None
+
+
+async def _acquire_concurrency_slot(
+    gate: Any,
+    task_category: TaskCategoryType | None,
+) -> tuple[bool, dict[str, Any] | None]:
+    """Acquire a per-category concurrency slot.
+
+    Returns ``(acquired, early_response)``. ``early_response`` is set
+    only when the defensive import of ``RateLimitError`` failed; the
+    normal saturation path raises ``RateLimitError`` so the caller's
+    error mapper can build the canonical rate-limit response.
+    """
+    if gate is None or task_category is None:
+        return False, None
+    if await gate.try_acquire(task_category, None):
+        return True, None
+    spec = gate.spec_for(task_category)
+    if RateLimitError is None:
+        # Sentinel: defensive import failed; surface as a
+        # generic rate-limit response so the caller still
+        # gets a structured status (matches the dispatched
+        # path's RateLimitError contract).
+        return False, {
+            "status": "rate_limited",
+            "retry_after_seconds": 0,
+            "limit": f"task_category={task_category.value}",
+        }
+    raise RateLimitError(
+        limit=spec.concurrency_limit if spec else None,
+        retry_after_seconds=(_estimate_retry(spec) if _estimate_retry else None),
+        domain=f"task_category={task_category.value}",
+    )
+
+
+async def _prepare_worktree(
+    worktree: WorktreeOptions | None,
+    prompt: str,
+    execution_id: str,
+    effective_isolation: str,
+    wt_manager: Any,
+) -> tuple[Any, Path | None, dict[str, Any] | None]:
+    """Create an isolated worktree for the dispatch.
+
+    Returns ``(worktree_info, repo_path, early_response)``. The early
+    response is set on a lock conflict; every other creation failure
+    propagates so the caller can convert it like any dispatch error.
+    """
+    if effective_isolation != "worktree":
+        return None, None, None
+    if wt_manager is None or WorktreeOptions is None:
+        return None, None, None
+
+    repo_nickname = await _resolve_repo_nickname(prompt)
+    if not await _repo_has_git(repo_nickname):
+        return None, None, None
+
+    repo_path = _resolve_repo_path(repo_nickname)
+    branch = f"feature/{execution_id}-{uuid4().hex[:8]}"
+    try:
+        worktree_info = await wt_manager.create_worktree(
+            task_id=execution_id,
+            repo_path=repo_path,
+            branch_name=branch,
+            base_branch=(worktree.base_branch if worktree is not None else "main"),
+            ttl_seconds=(worktree.ttl_seconds if worktree is not None else 86_400),
+        )
+    except (
+        Exception
+    ) as exc:  # MCP tool error handler — broad catch is the documented contract
+        if WorktreeLockedError is not None and isinstance(exc, WorktreeLockedError):
+            logger.exception(
+                "worktree lock conflict",
+                extra={"error_id": "WORKTREE_LOCK_CONFLICT"},
+            )
+            return (
+                None,
+                None,
+                {
+                    "status": "worktree_conflict",
+                    "error": str(exc),
+                },
+            )
+        logger.exception(
+            "worktree creation failed",
+            extra={"error_id": "WORKTREE_CREATION_FAILED"},
+        )
+        raise
+    return worktree_info, repo_path, None
+
+
+async def _finalize_worktree(
+    wt_manager: Any,
+    worktree_info: Any,
+    worktree: WorktreeOptions | None,
+    repo_path: Path | None,
+    result: dict[str, Any],
+) -> None:
+    """Attach the worktree diff/merge summary to the dispatch result."""
+    on_completion = worktree.on_completion if worktree is not None else "return_diff"
+    try:
+        completion = await wt_manager.complete_worktree(
+            worktree_id=worktree_info.worktree_id,
+            merge=(on_completion == "auto_merge"),
+            repo_path=repo_path,
+        )
+        worktree_info = completion.info
+        result["worktree"] = {
+            "diff": worktree_info.diff,
+            "merge": worktree_info.merge,
+            "files_touched": list(worktree_info.files_touched),
+        }
+    except (
+        Exception
+    ) as exc:  # MCP tool error handler — broad catch is the documented contract
+        logger.exception(
+            "worktree completion failed",
+            extra={"error_id": "WORKTREE_COMPLETION_FAILED"},
+        )
+        result["worktree"] = {"error": str(exc)}
+
+
+async def _cleanup_worktree(
+    wt_manager: Any,
+    worktree_info: Any,
+    repo_path: Path | None,
+) -> None:
+    """Remove the isolated worktree; a cleanup failure is non-fatal."""
+    try:
+        await wt_manager.cleanup_worktree(
+            worktree_id=worktree_info.worktree_id,
+            repo_path=repo_path,
+        )
+    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.warning(
+            "worktree cleanup failed: %s",
+            exc,
+            extra={"error_id": "WORKTREE_CLEANUP_FAILED"},
+        )
+
+
+async def _mark_idempotency_completed(
+    idem_store: Any,
+    breaker: Any,
+    existing_event: Any,
+    result: dict[str, Any],
+) -> None:
+    """Record the dispatch result on the idempotency record."""
+    # Wrap mark_completed through the same breaker so a DB
+    # hiccup at dispatch-completion time does not lose the
+    # result (FIX round-7 Tier 2).
+    try:
+        await breaker.call(lambda: idem_store.mark_completed(existing_event, result))
+    except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:  # ty: ignore[invalid-exception-caught]
+        logger.exception(
+            "failed to mark idempotency record completed",
+            extra={"error_id": "IDEMPOTENCY_MARK_COMPLETED_FAILED"},
+        )
+
+
+async def _mark_idempotency_failed(
+    idem_store: Any,
+    breaker: Any,
+    existing_event: Any,
+    exc: Exception,
+) -> None:
+    """Mark the idempotency record FAILED after a dispatch error."""
+    try:
+        # Default-arg capture binds ``exc`` at lambda-definition
+        # time so ruff's static analysis can resolve it through the
+        # nested try/except scope.
+        await breaker.call(
+            lambda _exc=str(exc): idem_store.mark_failed(
+                existing_event,
+                error=_exc,
+            )
+        )
+    except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:  # ty: ignore[invalid-exception-caught]
+        logger.exception(
+            "failed to mark idempotency record failed",
+            extra={"error_id": "IDEMPOTENCY_MARK_FAILED_FAILED"},
+        )
+
+
+def _map_dispatch_error(
+    exc: Exception,
+    worktree_info: Any,
+) -> dict[str, Any] | None:
+    """Map a dispatch exception to its structured response payload.
+
+    Returns ``None`` when the exception has no specific mapping — the
+    caller then falls back to the generic failure shape. A
+    ``RuntimeError`` raised while a worktree is active is re-raised so
+    the cleanup path stays observable to the test suite.
+    """
+    if RateLimitError is not None and isinstance(exc, RateLimitError):
+        details = getattr(exc, "details", {}) or {}
+        return {
+            "status": "rate_limited",
+            "retry_after_seconds": details.get("retry_after_seconds", 0),
+            "limit": details.get("limit", "caller_kind=unknown"),
+        }
+    if isinstance(exc, TimeoutError):
+        return {"status": "timeout"}
+    if isinstance(exc, ValueError):
+        return {
+            "status": "invalid_selector",
+            "error": str(exc),
+        }
+    if isinstance(exc, RuntimeError):
+        # C-8 round-8: when the worktree path is active, let
+        # RuntimeError propagate so the finally-block's cleanup
+        # can be verified by the test suite. Other paths
+        # continue to convert to ``{"status": "failed"}``.
+        if worktree_info is not None:
+            raise exc
+        return {
+            "status": "failed",
+            "error": str(exc),
+        }
+    return None
+
+
 def register_pool_tools(
     mcp: FastMCP,
     pool_manager,
@@ -795,35 +1189,13 @@ def register_pool_tools(
               ``{"status": "failed", "error": "..."}``.
         """
         # Selector resolution — bad input is a user error, not a system crash.
-        if PoolSelector is not None:
-            try:
-                selector_enum = PoolSelector(pool_selector)
-            except ValueError:
-                valid = [s.value for s in PoolSelector]
-                return {
-                    "status": "invalid_selector",
-                    "error": f"Unknown pool_selector: {pool_selector!r}. Valid: {valid}",
-                }
-        else:
-            return {
-                "status": "failed",
-                "error": "Pool selector subsystem unavailable; pools package not loaded",
-            }
+        selector_enum, selector_error = _resolve_pool_selector(pool_selector)
+        if selector_error is not None:
+            return selector_error
 
-        # Caller-kind funnel — coerce_caller_kind is module-level in
-        # mahavishnu.pools.manager. Unknown wire-strings map to CallerKind.UNKNOWN
+        # Caller-kind funnel — unknown wire-strings map to CallerKind.UNKNOWN
         # (one shared bucket per memory rule indirection).
-        if coerce_caller_kind is not None:
-            try:
-                coerced_kind = coerce_caller_kind(caller_kind)
-            except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                coerced_kind = None
-        else:
-            coerced_kind = None
-
-        task: dict[str, Any] = {"prompt": prompt}
-        if timeout is not None:
-            task["timeout"] = timeout
+        coerced_kind = _coerce_caller_kind(caller_kind)
 
         # C-9: per-TaskCategory concurrency gate. Pool_id is unknown at the
         # dispatch entry point (the selector picks it inside route_task), so
@@ -831,114 +1203,34 @@ def register_pool_tools(
         # Specs without an explicit limit are pass-through; failure here
         # surfaces as RateLimitError and is caught by the envelope handler
         # below (fail-closed per REQ-013).
-        task_category: TaskCategoryType | None = None
-        if classify_task is not None:
-            try:
-                task_category = classify_task(prompt)
-            except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                task_category = None
+        task_category = _classify_prompt(prompt)
 
         gate = get_concurrency_gate()
         acquired = False
+        idem_store: Any = None
+        breaker: Any = None
+        existing_event: Any = None
+        worktree_info: Any = None
+        worktree_repo_path: Path | None = None
         try:
             # C-6 idempotency: lookup-or-create BEFORE dispatch so a duplicate
             # call returns the cached result without ever entering the gate.
             # When idempotency is configured, the store is the fail-CLOSED
             # guard — if it's unreachable, we DO NOT dispatch (REQ-007).
-            existing_event: Any = None
-            idem_store = None
-            breaker = None
-            if idempotency is not None:
-                idem_store = (
-                    get_idempotency_store()
-                    if get_idempotency_store is not None
-                    else None
-                )
-                breaker = (
-                    get_idempotency_breaker()
-                    if get_idempotency_breaker is not None
-                    else None
-                )
-                if idem_store is None or breaker is None:
-                    logger.exception(
-                        "idempotency requested but layer not configured",
-                        extra={"error_id": "IDEMPOTENCY_NOT_CONFIGURED"},
-                    )
-                    return {
-                        "status": "error",
-                        "error": "idempotency store unavailable",
-                    }
-                try:
-                    # Pre-compute the payload hash so the lambda stays sync;
-                    # _hash_prompt is async and would otherwise force an
-                    # ``await`` inside the lambda (syntax error in sync code).
-                    payload_hash = await _hash_prompt(prompt)
-                    existing_event = await breaker.call(
-                        lambda: idem_store.get_or_create(
-                            idempotency,
-                            payload_hash=payload_hash,
-                            actor="pool_route_execute",
-                        )
-                    )
-                except IdempotencyStoreUnavailable as exc:  # ty: ignore[invalid-exception-caught]
-                    logger.exception(
-                        "idempotency store unreachable; failing closed",
-                        extra={"error_id": "IDEMPOTENCY_STORE_UNAVAILABLE"},
-                    )
-                    return {
-                        "status": "error",
-                        "error": f"idempotency store unavailable: {exc}",
-                    }
-                except IdempotencyCircuitOpen as exc:  # ty: ignore[invalid-exception-caught]
-                    logger.warning(
-                        "idempotency circuit open; failing closed",
-                        extra={"error_id": "IDEMPOTENCY_CIRCUIT_OPEN"},
-                    )
-                    return {
-                        "status": "error",
-                        "error": f"idempotency circuit open: {exc}",
-                    }
+            existing_event, idem_store, breaker, early = await _lookup_idempotency(
+                idempotency, prompt
+            )
+            if early is not None:
+                return early
 
-                if (
-                    existing_event is not None
-                    and TaskEventType is not None
-                    and existing_event.event_type == TaskEventType.COMPLETED
-                ):
-                    cached = (existing_event.data or {}).get("result", {})
-                    logger.info(
-                        "idempotency hit; returning cached result",
-                        extra={"idempotency_key": existing_event.idempotency_key},
-                    )
-                    return {"status": "duplicate", "result": cached}
-
-            if gate is not None and task_category is not None:
-                acquired = await gate.try_acquire(task_category, None)
-                if not acquired:
-                    spec = gate.spec_for(task_category)
-                    if RateLimitError is None:
-                        # Sentinel: defensive import failed; surface as a
-                        # generic rate-limit response so the caller still
-                        # gets a structured status (matches the dispatched
-                        # path's RateLimitError contract).
-                        return {
-                            "status": "rate_limited",
-                            "retry_after_seconds": 0,
-                            "limit": f"task_category={task_category.value}",
-                        }
-                    raise RateLimitError(
-                        limit=spec.concurrency_limit if spec else None,
-                        retry_after_seconds=(
-                            _estimate_retry(spec) if _estimate_retry else None
-                        ),
-                        domain=f"task_category={task_category.value}",
-                    )
+            acquired, gate_error = await _acquire_concurrency_slot(gate, task_category)
+            if gate_error is not None:
+                return gate_error
 
             # C-8: worktree isolation. When ``worktree.isolation == "worktree"``
             # and the resolved repo is a git working tree, create an isolated
             # worktree, dispatch inside it, and capture diff/merge/files_touched
             # on completion. WorktreeLockedError => ``status="worktree_conflict"``.
-            worktree_info: WorktreeInfo | None = None
-            worktree_repo_path: Path | None = None
             # ``worktree_storage.default_isolation`` was removed in the
             # 2026-09-27 config audit (no Bodai consumer); the worktree
             # subsystem manages its own constants/defaults. When the
@@ -947,61 +1239,24 @@ def register_pool_tools(
             effective_isolation = worktree.isolation if worktree is not None else "host"
             wt_manager = _get_worktree_manager()
             execution_id = str(uuid4())
-            if (
-                effective_isolation == "worktree"
-                and wt_manager is not None
-                and WorktreeOptions is not None
-            ):
-                repo_nickname = await _resolve_repo_nickname(prompt)
-                if await _repo_has_git(repo_nickname):
-                    repo_path = _resolve_repo_path(repo_nickname)
-                    branch = f"feature/{execution_id}-{uuid4().hex[:8]}"
-                    try:
-                        worktree_info = await wt_manager.create_worktree(
-                            task_id=execution_id,
-                            repo_path=repo_path,
-                            branch_name=branch,
-                            base_branch=(
-                                worktree.base_branch if worktree is not None else "main"
-                            ),
-                            ttl_seconds=(
-                                worktree.ttl_seconds if worktree is not None else 86_400
-                            ),
-                        )
-                        worktree_repo_path = repo_path
-                    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
-                        if WorktreeLockedError is not None and isinstance(
-                            exc, WorktreeLockedError
-                        ):
-                            logger.exception(
-                                "worktree lock conflict",
-                                extra={"error_id": "WORKTREE_LOCK_CONFLICT"},
-                            )
-                            return {
-                                "status": "worktree_conflict",
-                                "error": str(exc),
-                            }
-                        logger.exception(
-                            "worktree creation failed",
-                            extra={"error_id": "WORKTREE_CREATION_FAILED"},
-                        )
-                        raise
+            worktree_info, worktree_repo_path, wt_error = await _prepare_worktree(
+                worktree,
+                prompt,
+                execution_id,
+                effective_isolation,
+                wt_manager,
+            )
+            if wt_error is not None:
+                return wt_error
 
             # Resolve auto_spawn from config when caller didn't specify.
             # None means "read settings"; False / True are explicit overrides.
-            if auto_spawn is None:
-                if get_settings is not None:
-                    try:
-                        auto_spawn = get_settings().pools.auto_spawn
-                    except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                        auto_spawn = False  # fail-safe to existing default
-                else:
-                    auto_spawn = False  # module-level import failed; fail-safe
+            resolved_auto_spawn = _resolve_auto_spawn(auto_spawn)
             # Log the resolved value so the audit trail captures whether
             # config drove the decision (or an explicit caller override).
             logger.info(
                 "pool_route_execute: auto_spawn resolved",
-                extra={"auto_spawn_resolved": auto_spawn},
+                extra={"auto_spawn_resolved": resolved_auto_spawn},
             )
 
             try:
@@ -1018,140 +1273,58 @@ def register_pool_tools(
                     pool_affinity=pool_affinity,
                     coerced_kind=coerced_kind,
                     parent_session_id=parent_session_id,
-                    auto_spawn=auto_spawn,
+                    auto_spawn=resolved_auto_spawn,
                     pool_manager=pool_manager,
                     timeout=timeout,
                 )
 
-                if (
-                    worktree_info is not None
-                    and wt_manager is not None
-                    and effective_isolation == "worktree"
-                ):
-                    on_completion = (
-                        worktree.on_completion
-                        if worktree is not None
-                        else "return_diff"
+                if worktree_info is not None:
+                    await _finalize_worktree(
+                        wt_manager,
+                        worktree_info,
+                        worktree,
+                        worktree_repo_path,
+                        result,
                     )
-                    try:
-                        completion = await wt_manager.complete_worktree(
-                            worktree_id=worktree_info.worktree_id,
-                            merge=(on_completion == "auto_merge"),
-                            repo_path=worktree_repo_path,
-                        )
-                        worktree_info = completion.info
-                        result["worktree"] = {
-                            "diff": worktree_info.diff,
-                            "merge": worktree_info.merge,
-                            "files_touched": list(worktree_info.files_touched),
-                        }
-                    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
-                        logger.exception(
-                            "worktree completion failed",
-                            extra={"error_id": "WORKTREE_COMPLETION_FAILED"},
-                        )
-                        result["worktree"] = {"error": str(exc)}
             finally:
-                if (
-                    worktree_info is not None
-                    and wt_manager is not None
-                    and effective_isolation == "worktree"
-                ):
-                    try:
-                        await wt_manager.cleanup_worktree(
-                            worktree_id=worktree_info.worktree_id,
-                            repo_path=worktree_repo_path,
-                        )
-                    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                        logger.warning(
-                            "worktree cleanup failed: %s",
-                            exc,
-                            extra={"error_id": "WORKTREE_CLEANUP_FAILED"},
-                        )
+                if worktree_info is not None:
+                    await _cleanup_worktree(
+                        wt_manager,
+                        worktree_info,
+                        worktree_repo_path,
+                    )
 
             if (
-                idempotency is not None
+                existing_event is not None
                 and idem_store is not None
                 and breaker is not None
-                and existing_event is not None
             ):
-                # Wrap mark_completed through the same breaker so a DB
-                # hiccup at dispatch-completion time does not lose the
-                # result (FIX round-7 Tier 2).
-                try:
-                    await breaker.call(
-                        lambda: idem_store.mark_completed(existing_event, result)
-                    )
-                except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:  # ty: ignore[invalid-exception-caught]
-                    logger.exception(
-                        "failed to mark idempotency record completed",
-                        extra={"error_id": "IDEMPOTENCY_MARK_COMPLETED_FAILED"},
-                    )
+                await _mark_idempotency_completed(
+                    idem_store, breaker, existing_event, result
+                )
 
             return result
-        except (
-            Exception
-        ) as exc:  # MCP tool error handler — broad catch is the documented contract
+        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             # If idempotency is wired, mark the record FAILED so a future
             # retry does not return stale PENDING. Best-effort — a DB
             # hiccup here must not mask the original dispatch error.
             if (
-                idempotency is not None
+                existing_event is not None
                 and idem_store is not None
                 and breaker is not None
-                and existing_event is not None
             ):
-                try:
-                    # Default-arg capture binds ``exc`` at lambda-definition
-                    # time so ruff's static analysis can resolve it through the
-                    # nested try/except scope.
-                    await breaker.call(
-                        lambda _exc=str(exc): idem_store.mark_failed(
-                            existing_event,
-                            error=_exc,
-                        )
-                    )
-                except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:  # ty: ignore[invalid-exception-caught]
-                    logger.exception(
-                        "failed to mark idempotency record failed",
-                        extra={"error_id": "IDEMPOTENCY_MARK_FAILED_FAILED"},
-                    )
+                await _mark_idempotency_failed(idem_store, breaker, existing_event, exc)
 
-            # ``RateLimitError`` is conditionally imported (None on defensive
-            # failure); ``except RateLimitError`` is a ty error + silent no-op
-            # in the sentinel branch, so dispatch via isinstance + None guard.
-            if RateLimitError is not None and isinstance(exc, RateLimitError):
-                details = getattr(exc, "details", {}) or {}
-                return {
-                    "status": "rate_limited",
-                    "retry_after_seconds": details.get("retry_after_seconds", 0),
-                    "limit": details.get("limit", "caller_kind=unknown"),
-                }
-            if isinstance(exc, TimeoutError):
-                return {"status": "timeout"}
-            if isinstance(exc, ValueError):
-                return {
-                    "status": "invalid_selector",
-                    "error": str(exc),
-                }
-            if isinstance(exc, RuntimeError):
-                # C-8 round-8: when the worktree path is active, let
-                # RuntimeError propagate so the finally-block's cleanup
-                # can be verified by the test suite. Other paths
-                # continue to convert to ``{"status": "failed"}``.
-                if worktree_info is not None:
-                    raise
-                return {
+            response = _map_dispatch_error(exc, worktree_info)
+            if response is None:
+                logger.exception(
+                    "Failed to route task via pool_route_execute — see traceback"
+                )
+                response = {
                     "status": "failed",
                     "error": str(exc),
                 }
-            logger.exception(
-                "Failed to route task via pool_route_execute — see traceback"
-            )
-            return {
-                "status": "failed",
-                "error": str(exc),
-            }
+            return response
         finally:
             # Release the concurrency slot regardless of outcome (success,
             # rate-limit denial, timeout, dispatch failure). Without this,
