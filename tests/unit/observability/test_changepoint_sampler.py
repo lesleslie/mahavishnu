@@ -197,10 +197,19 @@ class TestChangepointConfig:
         """ChangepointConfig is a top-level sibling on MahavishnuSettings.
 
         Env-var contract: MAHAVISHNU_CHANGEPOINT__<FIELD>.
-        """
-        from mahavishnu.core.config import MahavishnuSettings
 
-        settings = MahavishnuSettings()
+        The settings object has to come from ``load_config()``, not from
+        ``MahavishnuSettings()`` directly. The latter is a bare
+        pydantic-settings model and reads only the environment, while
+        ``load_config()`` is the layered path production actually uses
+        (defaults -> YAML -> env). Constructing the model directly cannot
+        see the YAML's ``changepoint.enabled: true``, so the assertion
+        below failed against a correct implementation — the config was
+        right, the way the test obtained it was not.
+        """
+        from mahavishnu.core.bootstrap import load_config
+
+        settings = load_config()
         # Top-level block: settings.changepoint is a ChangepointConfig,
         # NOT nested under pools. (Audit CRITICAL #5 / HIGH #7 fix.)
         assert hasattr(settings, "changepoint")
