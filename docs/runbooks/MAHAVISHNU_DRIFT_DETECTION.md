@@ -2,7 +2,7 @@
 
 **Owner:** bodai-orchestrator
 **Created:** 2026-09-10
-**Last updated:** 2026-09-10
+**Last updated:** 2026-11-07
 **Triggered by:** `mahavishnu.observability.drift_detected` OTel span
 **Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 6]
 
@@ -32,6 +32,58 @@ fires, you see:
 - When the 3-sigma reference detector is enabled (default), an
   independent `three_sigma_anomaly` log line for the same
   metric (if both detectors fire, you see two signals).
+
+## Stage-1 gate — is the detector alive, and is drift present?
+
+Run this **before** acting on any drift signal. A missing
+`drift_detected_total` is ambiguous on its own: it means either "the
+detector ran and found nothing" or "the detector was never wired".
+Those two look identical in a query until you check liveness.
+
+**Query 1 — the gate.** "No drift" is the change-point evaluation
+counter rising **and** `drift_detected_total` absent — not
+`drift_detected_total` absent alone:
+
+```promql
+rate(mahavishnu_observability_changepoint_evaluations_total[10m]) > 0
+and on() absent(mahavishnu_observability_drift_detected_total)
+```
+
+**Query 2 — the liveness half**, detached from the drift condition:
+
+```promql
+rate(mahavishnu_observability_changepoint_evaluations_total[10m]) > 0
+```
+
+Read the pair together:
+
+| Query 1 | Query 2 | Meaning | Action |
+|---|---|---|---|
+| returns a series | returns a series | detector alive, **no drift** | normal — nothing to do |
+| empty | returns a series | detector alive, **drift present** | act on the drift: start "What to check first" below |
+| empty | empty | detector **not running** | an outage, not a quiet period — never read this as "no drift" |
+
+The `on()` is load-bearing. `absent()` yields a vector with no labels,
+and PromQL's `and` matches on the full label set by default, so
+without `on()` the two sides never match and the gate returns empty
+even when there is genuinely no drift.
+
+**Where the numbers come from.** Mahavishnu exports these counters
+over OTLP to the substrate receiver (`observability.otlp_endpoint`,
+`:4317`). Akosha's MetricsService re-exposes them in Prometheus text
+on `:8682/metrics`, and Prometheus scrapes that endpoint. The counter
+names are the OTel names with dots replaced by underscores:
+`mahavishnu.observability.changepoint_evaluations_total` becomes
+`mahavishnu_observability_changepoint_evaluations_total`.
+
+**Warmup.** `changepoint.target_mean_auto: true` derives the in-control
+mean from the sampler's rolling baseline, and the detector is not
+constructed until that window holds 30 samples — 30 minutes at the
+default 60s cadence. The evaluation counter ticks throughout, so
+Query 2 answers correctly during warmup; drift detection does not fire
+until the detector exists. `changepoint_detector_active` reads **1**
+while the tick loop is running; if the loop never started it is
+*absent* rather than 0, because the instrument has no data point.
 
 ## What to check first (≤ 5 minutes)
 

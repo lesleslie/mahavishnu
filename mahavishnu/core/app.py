@@ -619,11 +619,28 @@ class MahavishnuApp:
         # R3-C2: pass a real metric_source that reads pool queue depths
         # from PoolManager (proxy: worker counts until real queue depth
         # signal lands).
+        #
+        # 2026-11-07: the snapshot was returned keyed by POOL ID, but the
+        # tick loop reads ``snapshot.get(target_metric, 0.0)`` and
+        # ``target_metric`` is a metric NAME ("pool_queue_depth" by
+        # default) -- never a pool id. Every tick therefore evaluated a
+        # constant 0.0, the CUSUM accumulator could never cross its
+        # threshold, and the §7 stage-1 gate was vacuously green: the
+        # detector was blind, not calm. The ``metric_source`` contract is
+        # "{metric_name: value}", so the closure has to publish the
+        # aggregate under that name.
         def _pool_depths() -> dict[str, float]:
             manager = getattr(self, "pool_manager", None)
             if manager is None:
                 return {}
-            return manager.get_pool_queue_depths()
+            depths = manager.get_pool_queue_depths()
+            changepoint_cfg = getattr(
+                getattr(self, "config", None), "changepoint", None
+            )
+            target_metric = str(
+                getattr(changepoint_cfg, "target_metric", "pool_queue_depth")
+            )
+            return {target_metric: float(sum(depths.values()))}
 
         self._change_point_tick_task = self.observability.start_change_point_tick_loop(
             metric_source=_pool_depths,

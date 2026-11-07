@@ -933,6 +933,98 @@ injected drift moves it.
   `mahavishnu_observability_changepoint_evaluations_total` and
   `mahavishnu_observability_changepoint_detector_active`.
 
+**Delivered 2026-11-07.** The gate query is written, the feature-tracking
+doc records that the gate has a queryable source, and both branches of the
+gate were verified against live Prometheus.
+
+**The gate query** (`docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`,
+"Stage-1 gate"):
+
+```promql
+rate(mahavishnu_observability_changepoint_evaluations_total[10m]) > 0
+and on() absent(mahavishnu_observability_drift_detected_total)
+```
+
+with the liveness half detached so "no drift" and "detector never wired"
+can be told apart — the two differ only in whether the drift counter is
+absent, which is ambiguous on its own. The `on()` is load-bearing:
+`absent()` yields an unlabelled vector and PromQL's `and` matches on the
+full label set by default, so without it the gate returns empty even when
+there is genuinely no drift.
+
+**Verification, against live Prometheus.** With no drift the gate returned
+`0.0257` (a number). After a deliberately injected drift it went empty
+while the liveness half kept returning a number and
+`mahavishnu_observability_drift_detected_total` read `2`. The drift was
+injected by adding a 3-worker pool to the tick loop's metric source: the
+CUSUM fired at score `16.5` against a threshold of `14.0`
+(`severity=minor`, `direction=up`), and the independent 3-sigma
+reference detector fired alongside it (`z=7.617`).
+`mahavishnu_observability_changepoint_evaluations_total` read `44` and
+`changepoint_detector_active` read `44` at that point.
+
+**The gate was not merely undocumented — it was unreachable, and two
+defects had to be fixed before it could be enabled.** Phase 4's task
+list named no code changes, and this plan's §6 listed none for Phase 4
+either; the two defects are pre-existing (both from `a886942b`, the
+2026-10-24 tier-1 round-3 review), not regressions from Phases 1–3.
+
+- **The detector was blind, not calm.** The tick loop's metric source
+  returned a snapshot keyed by **pool id**, but the loop reads
+  `snapshot.get(target_metric)`, where `target_metric` is a metric
+  *name* ("pool_queue_depth" by default) and never a pool id. Every
+  tick therefore evaluated a constant `0.0`, so the CUSUM accumulator
+  could never cross its threshold and `drift_detected_total` could
+  never move. A gate built on "drift_detected_total absent" over a
+  blind detector is vacuously green forever — it would have reported
+  "no drift" through every real drift. The `metric_source` contract is
+  `{metric_name: value}`, so the closure now publishes the aggregate
+  pool depth under the configured metric name.
+- **`changepoint_detector_active` contradicted its own HELP text.** It
+  documented itself as "1 while the tick loop is running, 0 when it is
+  not" but added 1 on *every* tick, so it grew with the tick count
+  (44 after 44 ticks) and an operator querying `== 1` matched nothing.
+  It now adds 1 on the first tick and 0 thereafter, which keeps the
+  series present — so it still goes stale when the process dies — while
+  reporting the documented value.
+
+**Feeding the detector real data required a second change, or the fix
+would have been a regression.** `pool_queue_depth` is a raw count, and
+the CUSUM accumulates `observation - target_mean - slack`. With the
+default `target_mean: 0.0`, any non-zero pool depth accumulates
+`≈4.75` per tick and fires within three ticks of baseline traffic — a
+false-positive storm. `settings/mahavishnu.yaml` now sets
+`target_mean_auto: true`, which derives the in-control mean from the
+sampler's rolling baseline and is deployment-agnostic (no operator
+needs to know their own baseline). The detector is deferred until that
+window holds 30 samples (R3-M2), but the evaluation counter ticks
+throughout, so the gate stays queryable from the first tick while
+detection warms up.
+
+**Two operator-facing items were retired; one was refused.**
+`~/.config/mahavishnu/local.yaml`'s interim `otlp_metrics_endpoint`
+override is gone (2026-11-07). The Alloy metric path note — the
+`~/.zshenv` comment claiming "akosha's receiver implements TraceService
+only, so metric exports to :4317 fail with UNIMPLEMENTED once a
+minute" — is **stale and still present**: the permission classifier
+denied the edit as an unauthorized persistent-profile change, and the
+comment is now false in both halves (the receiver implements
+MetricsService, and the export succeeds). It needs the operator's
+decision. `/usr/local/etc/grafana-alloy/config.alloy` is unchanged by
+design (NG1).
+
+**Deployment note — the live service was NOT restarted.** The
+verification ran as a short-lived process using the real production
+entry point (`MahavishnuApp.start_change_point_tick_loop`), the same
+technique Phase 3 used, because restarting the service was denied as a
+production deploy. The long-running Mahavishnu MCP server (PID 21173,
+started 11:26) still runs **pre-Phase-3** code and still exports
+metrics to Alloy's `:14317`, which returns `DEADLINE_EXCEEDED`. It must
+be restarted to pick up Phase 3 and these fixes; until then its own
+drift metrics do not reach the substrate. The drift and gate numbers
+above came from the verification process, which shares the substrate
+with the live server.
+
 ## 6. Required Code Changes
 
 **oneiric** (`/Users/les/Projects/oneiric`)
@@ -973,16 +1065,34 @@ injected drift moves it.
       removal (field gone, env var fatal, YAML key dropped) and the
       endpoint (metrics and traces share one), including the check that
       the manager did **not** fall back to mocks
-- [ ] `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` — the stage-1 gate
+- [x] `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` — the stage-1 gate
       query (REQ-M05) — **Phase 4**
-- [ ] `docs/feature-tracking/2026-09-10-observability-changepoint.md` —
+- [x] `docs/feature-tracking/2026-09-10-observability-changepoint.md` —
       gate now queryable (REQ-M05) — **Phase 4**
+- [x] `mahavishnu/core/app.py` — the tick loop's metric source publishes
+      the aggregate pool depth under the configured metric NAME. It
+      returned a pool-id-keyed snapshot, so the loop read a constant
+      `0.0` and the detector could never fire — **Phase 4** (REQ-M05)
+- [x] `mahavishnu/core/observability.py` — `changepoint_detector_active`
+      reports the value its HELP text promises (1 while ticking) instead
+      of counting ticks — **Phase 4** (REQ-M05)
+- [x] `settings/mahavishnu.yaml` — `changepoint.target_mean_auto: true`,
+      so feeding the detector real data does not fire on baseline —
+      **Phase 4** (REQ-M005)
+- [x] `tests/unit/observability/test_change_point_tick_loop.py` — pins
+      the metric-source namespace (and a renamed target metric) and the
+      active gauge's value — **Phase 4**
 
 **operator (outside the repos)**
 - [x] `~/.config/mahavishnu/local.yaml` — drop the
       `otlp_metrics_endpoint` override once Phase 3 lands
 - [x] `/usr/local/etc/grafana-alloy/config.alloy` — *no change*; the metric
       path is retired, not completed (NG1)
+- [ ] `~/.zshenv` — the stale OTLP note ("akosha's receiver implements
+      TraceService only, so metric exports to :4317 fail with
+      UNIMPLEMENTED once a minute"). Now false in both halves. The
+      permission classifier denied the edit as an unauthorized
+      persistent-profile change — **needs the operator's decision**
 
 ## 7. Validation Matrix
 
@@ -994,7 +1104,8 @@ injected drift moves it.
 | `pytest` (mahavishnu) — `test_observability_metrics_endpoint.py` | 6 passed; 3 of them fail against the pre-change commit | mahavishnu CI |
 | `pytest` (mahavishnu) — `test_observability.py` | no **new** failures vs. the 2026-10-27 baseline (2 pre-existing) | mahavishnu CI |
 | `curl -s localhost:8682/metrics \| grep mahavishnu_observability` | drift + liveness series present | terminal |
-| `curl -s 'localhost:9090/api/v1/query?query=mahavishnu_observability_changepoint_evaluations_total'` | a number | terminal |
+| `curl -s 'localhost:9090/api/v1/query?query=mahavishnu_observability_changepoint_evaluations_total'` | a number | **verified 2026-11-07**: `44` |
+| `curl -s --get 'localhost:9090/api/v1/query' --data-urlencode 'query=rate(mahavishnu_observability_changepoint_evaluations_total[10m]) > 0 and on() absent(mahavishnu_observability_drift_detected_total)'` | a number while no drift; empty once drift fires | **verified 2026-11-07**: `0.0257` with no drift, empty after the injected drift |
 | `grep -c "Failed to export metrics" ~/.local/state/mcp/logs/mahavishnu.err` | **not usable as written** (corrected 2026-11-07): the log is append-only and already holds 3,062 matching lines, so the count is 3,062 forever. Count lines *after a recorded marker* — note the current count before the restart, then diff — and add the `opentelemetry.sdk.metrics._internal.export` clause, which is the one that fires when collection times out | mahavishnu stderr log |
 | `curl -s localhost:9200/_cat/indices` | unchanged (OpenSearch is not in this path) | terminal |
 

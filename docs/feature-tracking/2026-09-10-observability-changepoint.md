@@ -2,7 +2,7 @@
 name: observability-changepoint
 status: adopted
 date: 2026-09-10
-last_reviewed: 2026-10-24
+last_reviewed: 2026-11-07
 owner: bodai-orchestrator
 role: canonical
 ---
@@ -11,7 +11,7 @@ role: canonical
 
 **Owner:** bodai-orchestrator
 **Created:** 2026-09-10
-**Last updated:** 2026-10-24 (tick loop actually wired into the MCP server lifespan — see "Wired")
+**Last updated:** 2026-11-07 (the §7 stage-1 gate now has a queryable source — see "Gate queryability")
 **Repo(s):** `/Users/les/Projects/mahavishnu`
 
 ## State — pick one
@@ -34,6 +34,42 @@ Operators who opt into two-stage set
 `MAHAVISHNU_CHANGEPOINT__DETECTOR=two_stage` in the shell env. Default
 remains `cusum` until the staged rollout completes.
 
+## Gate queryability (2026-11-07)
+
+The §7 stage-1 gate was a documented hope until 2026-11-07: the
+drift counters carried labels (`metric_name`, `detector`, `severity`),
+so their series only existed *after* a drift fired, and a query that
+found no `drift_detected_total` could not tell "the detector ran and
+found nothing" from "the detector was never wired".
+
+It now has a queryable source. The change-point tick loop records
+`mahavishnu.observability.changepoint_evaluations_total` on every
+tick, and the OTLP metrics service (Phase 1–3 of
+`docs/plans/2026-10-27-otel-metrics-service.md`) carries it to the
+substrate, where it is re-exposed as
+`mahavishnu_observability_changepoint_evaluations_total` on
+`:8682/metrics` and scraped by Prometheus.
+
+The gate query and its liveness half are in
+[`docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`](../runbooks/MAHAVISHNU_DRIFT_DETECTION.md)
+("Stage-1 gate"). Both branches were verified against live Prometheus
+on 2026-11-07: with no drift the gate returns a number; after a
+deliberately injected +3-worker pool the gate goes empty while the
+liveness half keeps returning a number and
+`mahavishnu_observability_drift_detected_total` reads 2.
+
+**Two defects were found and fixed while making this true** — the
+gate was not merely undocumented, it was unreachable:
+
+- The tick loop's metric source returned a snapshot keyed by **pool
+  id**, but the loop reads `snapshot.get(target_metric)` where
+  `target_metric` is a metric *name*. Every tick therefore evaluated a
+  constant `0.0`: the detector was blind, not calm, and the gate
+  could never fire.
+- `changepoint_detector_active` documented itself as "1 while the tick
+  loop is running" but added 1 on every tick, so it grew with the
+  tick count and an operator querying `== 1` matched nothing.
+
 ## Wiring checklist
 
 - [x] Entry point registered: `ObservabilityManager._evaluate_change_point`,
@@ -48,6 +84,9 @@ remains `cusum` until the staged rollout completes.
 - [x] Observability hook in place: OTel span + structured logs
 - [x] Rollback signal defined: env-var
       `MAHAVISHNU_CHANGEPOINT__ENABLED=false`; `changepoint.enabled: false` in YAML
+- [x] Gate queryable: `changepoint_evaluations_total` reaches the
+      substrate (`:8682/metrics`) and Prometheus, so the §7 stage-1
+      gate reads a real value instead of a missing series (2026-11-07)
 
 ## Built (yes/no)
 
@@ -160,6 +199,25 @@ for i in range(100):
 "
 # Expected: detected at sample < 30 (spec §1 gate)
 ```
+
+### 3. Live gate check (2026-11-07)
+
+```bash
+# The §7 stage-1 gate: "no drift" is the evaluation counter rising AND
+# drift_detected_total absent. Expect a NUMBER while no drift is present.
+curl -s --get 'localhost:9090/api/v1/query' --data-urlencode \
+  'query=rate(mahavishnu_observability_changepoint_evaluations_total[10m]) > 0 and on() absent(mahavishnu_observability_drift_detected_total)'
+
+# The liveness half, for disambiguation: expect a NUMBER whenever the
+# tick loop is running, drift or not.
+curl -s --get 'localhost:9090/api/v1/query' --data-urlencode \
+  'query=rate(mahavishnu_observability_changepoint_evaluations_total[10m]) > 0'
+```
+
+If the gate is empty but the liveness half returns a number, drift is
+present. If both are empty, the tick loop is not running — that is an
+outage, not a quiet period. The full reading table is in the runbook
+("Stage-1 gate").
 
 ## Staged rollout playbook (Phase 8)
 

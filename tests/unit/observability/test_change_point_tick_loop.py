@@ -180,6 +180,107 @@ async def test_the_app_lifecycle_method_returns_a_task() -> None:
         await manager.stop_change_point_tick_loop(task=task)
 
 
+@pytest.mark.asyncio
+async def test_the_pool_depth_source_speaks_the_detector_metric_namespace() -> None:
+    """The metric source must publish under the configured metric NAME.
+
+    ``PoolManager.get_pool_queue_depths`` returns a snapshot keyed by
+    POOL ID, but the tick loop reads ``snapshot.get(target_metric)``
+    where ``target_metric`` is a metric name ("pool_queue_depth" by
+    default) and never a pool id. Passing the pool-id snapshot
+    straight through therefore evaluated a constant ``0.0`` on every
+    tick: the CUSUM accumulator could never cross its threshold, so
+    the §7 stage-1 gate was vacuously green -- the detector was blind,
+    not calm.
+    """
+    from mahavishnu.core.app import MahavishnuApp
+
+    # One config, as in production: ``init_observability(app.config)``
+    # hands the APP's config to the manager, so the source and the
+    # detector always agree on the metric name.
+    cfg = _config()
+
+    manager = obs.ObservabilityManager(cfg)
+    seen: list[tuple[str, float]] = []
+
+    def _record(metric_name: str, value: float) -> None:
+        seen.append((metric_name, value))
+
+    manager._evaluate_change_point = _record  # type: ignore[method-assign]
+
+    class _PoolManager:
+        def get_pool_queue_depths(self) -> dict[str, float]:
+            return {"pool_a": 3.0, "pool_b": 2.0}
+
+    fake_self = SimpleNamespace(
+        observability=manager,
+        pool_manager=_PoolManager(),
+        config=cfg,
+    )
+
+    task = await MahavishnuApp.start_change_point_tick_loop(fake_self)
+    try:
+        await asyncio.sleep(0.05)
+    finally:
+        await manager.stop_change_point_tick_loop(task=task)
+
+    assert seen, "the tick loop never evaluated the detector"
+    assert all(name == "pool_queue_depth" for name, _ in seen), (
+        "the source published pool ids, not the metric name the "
+        "detector reads -- the detector saw a constant 0.0"
+    )
+    assert all(value == 5.0 for _, value in seen), (
+        "the source published a constant 0.0 instead of the aggregate "
+        "pool depth the detector needs to see real traffic"
+    )
+
+
+@pytest.mark.asyncio
+async def test_the_pool_depth_source_honours_a_renamed_target_metric() -> None:
+    """The published name follows ``changepoint.target_metric``.
+
+    The metric name is operator-configurable, so the source cannot
+    hard-code it. A deployment that renames the target must not
+    silently fall back to the default name -- that is the same blind
+    detector under a different label.
+    """
+    from mahavishnu.core.app import MahavishnuApp
+
+    # One config, as in production: ``init_observability(app.config)``
+    # hands the APP's config to the manager, so the source and the
+    # detector always agree on the metric name.
+    cfg = _config()
+    cfg.changepoint.target_metric = "fleet_queue_depth"
+
+    manager = obs.ObservabilityManager(cfg)
+    seen: list[tuple[str, float]] = []
+
+    def _record(metric_name: str, value: float) -> None:
+        seen.append((metric_name, value))
+
+    manager._evaluate_change_point = _record  # type: ignore[method-assign]
+
+    class _PoolManager:
+        def get_pool_queue_depths(self) -> dict[str, float]:
+            return {"pool_a": 7.0}
+
+    fake_self = SimpleNamespace(
+        observability=manager,
+        pool_manager=_PoolManager(),
+        config=cfg,
+    )
+
+    task = await MahavishnuApp.start_change_point_tick_loop(fake_self)
+    try:
+        await asyncio.sleep(0.05)
+    finally:
+        await manager.stop_change_point_tick_loop(task=task)
+
+    assert seen, "the tick loop never evaluated the detector"
+    assert all(name == "fleet_queue_depth" for name, _ in seen)
+    assert all(value == 7.0 for _, value in seen)
+
+
 # ---------------------------------------------------------------------------
 # The MCP server lifespan is the production owner
 # ---------------------------------------------------------------------------
@@ -229,13 +330,21 @@ async def test_the_mcp_lifecycle_survives_a_server_without_an_app() -> None:
 
 
 class _RecordingCounter:
-    """Minimal stand-in for an OTel counter."""
+    """Minimal stand-in for an OTel counter.
+
+    ``total`` is the cumulative value the counter would report and
+    ``calls`` is how many times it was written to -- the difference
+    matters for an UpDownCounter used as a liveness flag, where the
+    value must stay at 1 while the number of writes keeps growing.
+    """
 
     def __init__(self) -> None:
         self.total = 0
+        self.calls = 0
 
     def add(self, amount: int, attributes: dict | None = None) -> None:
         self.total += amount
+        self.calls += 1
 
 
 @pytest.mark.asyncio
@@ -263,6 +372,35 @@ async def test_each_tick_records_a_evaluation_even_when_no_drift_fires() -> None
 
     assert evaluations.total > 0, "no evaluation was recorded -- detector liveness is invisible"
     assert active.total > 0, "the active flag was never set"
+
+
+@pytest.mark.asyncio
+async def test_the_active_gauge_reads_one_while_ticking_not_the_tick_count() -> None:
+    """``changepoint_detector_active`` must match its own HELP text.
+
+    The instrument is documented as "1 while the change-point detector
+    tick loop is running, 0 when it is not", and the plan's §7 gate
+    names it as one of the gate's two instruments. It used to
+    ``add(1)`` on every tick, so it grew with the tick count (44 after
+    44 ticks) and an operator querying ``== 1`` matched nothing. The
+    series must still be re-emitted on later ticks so it goes stale
+    when the process dies.
+    """
+    manager = obs.ObservabilityManager(_config(cadence=0.01))
+    active = _RecordingCounter()
+    manager.changepoint_active_counter = active
+
+    task = manager.start_change_point_tick_loop()
+    try:
+        await asyncio.sleep(0.1)
+    finally:
+        await manager.stop_change_point_tick_loop(task=task)
+
+    assert active.calls > 1, "the loop did not tick more than once"
+    assert active.total == 1, (
+        f"the active gauge reported {active.total} instead of 1 -- it is "
+        "counting ticks, not reporting liveness"
+    )
 
 
 @pytest.mark.asyncio

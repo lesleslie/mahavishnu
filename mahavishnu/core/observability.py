@@ -1143,9 +1143,21 @@ class ObservabilityManager:
             active = getattr(self, "changepoint_active_counter", None)
             if active is not None:
                 # UpDownCounter semantics: 0 -> 1 on the first tick, then
-                # unchanged. The series goes stale on its own if the
+                # UNCHANGED. The series goes stale on its own if the
                 # process dies, because Prometheus stops seeing it.
-                active.add(1)
+                #
+                # 2026-11-07: this used to ``add(1)`` on EVERY tick, so
+                # the gauge grew with the tick count (44 after 44 ticks)
+                # while its HELP text promised "1 while the tick loop is
+                # running". An operator querying
+                # ``changepoint_detector_active == 1`` matched nothing.
+                # ``add(0)`` keeps the series present -- so it still goes
+                # stale when the process dies -- without moving the value.
+                if not getattr(self, "_changepoint_active_raised", False):
+                    active.add(1)
+                    self._changepoint_active_raised = True
+                else:
+                    active.add(0)
         except Exception as exc:  # liveness is best-effort; never break the tick loop  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._log_debug("changepoint liveness record failed: %s", exc)
 

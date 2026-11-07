@@ -279,6 +279,18 @@ resilience:
 changepoint:
   enabled: true
   target_metric: "pool_queue_depth"  # REQ-005 — default per spec §12 Q3
+  # `pool_queue_depth` is a RAW COUNT, not a normalized metric, so the
+  # default `target_mean: 0.0` is only valid for the latter. Left at 0.0
+  # the CUSUM accumulates on baseline traffic and fires within a handful
+  # of samples on any non-zero pool depth (see the runbook's
+  # "target_mean for raw-count metrics" section). `target_mean_auto: true`
+  # derives the in-control mean from the sampler's rolling baseline, so
+  # the fleet default is safe on every deployment without each operator
+  # having to know their own baseline. The detector is deferred until the
+  # warmup window fills (R3-M2) — `changepoint_evaluations_total` still
+  # ticks throughout, so the §7 stage-1 gate is queryable from the first
+  # tick while detection warms up.
+  target_mean_auto: true
   detector: "cusum"  # 'cusum' | 'page_hinkley' | 'two_stage'
   slack: 0.25  # CUSUM k in σ units (0.25σ for two-sided CUSUM)
   threshold: 14.0  # CUSUM h (decision interval); empirically tuned. At slack=0.25/threshold=14.0 the round-2 sweep showed median_ARL_0 ~7,162 (vs spec's aspirational 10,000) and ~1.64 fires per 10,080 samples (well within the §7 v3.1 gate of <=2). 0.5σ median latency ~50 samples — see docs/audits/2026-09-10-changepoint-validation.md for the §1/§7 trade-off discussion.
