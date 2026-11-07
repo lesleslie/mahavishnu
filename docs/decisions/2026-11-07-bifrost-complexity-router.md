@@ -211,9 +211,36 @@ Two consequences, both measured:
    inverse of the property rule 3 claimed, and it is a quality risk rather
    than a cost one.
 
+3. **The "SIMPLE discount" is a session-wide downgrade, not a per-turn
+   one.** The binding is `(session id, requested model)` and it persists for
+   the session, so a single SIMPLE turn does not discount that turn — it
+   **rebinds the whole session's model class** to the cheap model, and every
+   later request in that class is served by it, whatever the tier says.
+   Measured on the live gateway: one session's first SIMPLE turn was followed
+   by **266 MEDIUM requests that asked for `MiniMax-M3` and were served
+   `MiniMax-M3.1-Flash`**, each with the routing rules correctly proposing
+   the caller's model and affinity discarding it.
+
+   This is larger than rule 3 assumed, and it inverts what the policy
+   actually does. The per-tier rule — SIMPLE downgrades, MEDIUM and COMPLEX
+   keep the caller's model — is not what decides the model. The session's
+   first binding is. The rule only decides whether the session *starts* on
+   the cheap model.
+
 `session-affinity` is a built-in routing engine in the pinned v2.4.0
 transport. It is not a provider setting, not a plugin, and not a
 `governance_config` key — the store exposes no switch for it.
+
+### The accounting
+
+Because the per-request outcome cannot be read from the tier alone, it is
+measured per request by
+`mahavishnu bifrost complexity-report` (see
+`docs/plans/2026-11-07-bifrost-complexity-accounting.md`). The command
+reads the gateway's own request log and separates the three outcomes — the
+rule's intent carried out, the tier's instruction overruled, and the
+classification paid for and not acted on — using the affinity line the
+routing engine writes for each request.
 
 ## Status
 
@@ -256,19 +283,24 @@ admin-auth-gated). 30/30 config-contract tests pass, and the merge gate
   send a session id: 452 of the 487 tiered requests reused a stored tier
   (`complexity_mechanism: session`). The intra-turn split this record set out
   to prevent does not happen.
-- **The realised saving is measured, and it is not yet positive.** In the
-  measured hour the classifier cost 89,406 tokens on the Claude Code path
-  (plus 125,421 more from session-less direct clients), and the model
-  downgrade it was bought with reached **no** live request: 230 of 236
-  SIMPLE-tier requests stayed on `MiniMax-M3`, because session affinity held
-  the sessions that were already bound. The saving accrues only as sessions
-  whose first request for a model class classifies as SIMPLE replace the
-  sessions already bound — a slow, traffic-shaped trickle, not a cut.
-  **This is the open decision**: as configured, the complexity router costs
-  tokens today and saves none. Either accept the classifier as observability
-  and price it, or remove the model target from the rule (which also removes
-  the escalation hazard) and disable the analyzer until session affinity can
-  be turned off.
+- **The decision (2026-11-07): keep the router, price it as observability,
+  and watch the risk.** The alternative — removing the model target from the
+  rule — was rejected: it removes the risk but leaves the operator with
+  neither the tier data nor any saving, and the classifier is cheap enough
+  (session mode holds it at 5% of classified requests) to be worth paying
+  for. The watch is `mahavishnu bifrost complexity-report`, which prices the
+  classifier and attributes every classified request to the outcome it
+  actually had.
+- **The realised saving is measured, and it is not the shape the policy
+  assumed.** In the measured hour the classifier cost 89,406 tokens on the
+  Claude Code path (plus 125,421 more from session-less direct clients).
+  The rule's per-turn intent almost never fired: 230 of 236 SIMPLE-tier
+  requests stayed on `MiniMax-M3`. What actually moved the model was the
+  session binding, and it moved it the *other* way — 279 MEDIUM and
+  COMPLEX requests were served the cheap model against their tier's
+  instruction. So the volume the router moved is large, but it is the
+  volume the policy did not intend to move, and it is bought with a
+  classifier that costs about as many tokens as the output it moved.
 
 **Two operational notes that are not defects:**
 

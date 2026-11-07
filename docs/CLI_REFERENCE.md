@@ -231,6 +231,20 @@ only when `virtual_key_name` is `bodai-pi-pool`, `status` is `success`, and
 the model is `qwen3-8b-q4_k_m` — the sole model the `llama-server` provider
 serves, so concurrent Claude Code traffic can never satisfy it.
 
+### Complexity router
+
+- `mahavishnu bifrost complexity-report [--hours N] [--json] [--fail-on-hazard]
+  [--db PATH]` — price the complexity router over a window
+
+Reports how many requests were classified, how many reused a stored session
+tier rather than paying for a decision-model call, what that cost in tokens,
+and how the routing engine's `session-affinity` binding changed the outcome:
+the rule's intent carried out, the tier's instruction overruled, or the
+classification paid for and not acted on. Reads `~/.config/bifrost/logs.db`
+read-only. `--fail-on-hazard` exits 1 when the session binding overruled a
+tier, so it can be used as a monitor. See
+`docs/plans/2026-11-07-bifrost-complexity-accounting.md`.
+
 Exit codes: `0` pass, `1` fail, `2` precondition unmet, `3` log store missing.
 
 ## Workers

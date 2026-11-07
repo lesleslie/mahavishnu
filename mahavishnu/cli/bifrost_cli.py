@@ -26,7 +26,7 @@ from pathlib import Path  # noqa: TC003 -- Typer resolves annotations at runtime
 
 import typer
 
-from ..bifrost import gateway, lifecycle, verify
+from ..bifrost import complexity_report, gateway, lifecycle, verify
 from ..bifrost.cache_eviction import sweep_from_gateway_config
 from ..bifrost.lifecycle import TARGET_PLIST
 from ..bifrost.models import VIRTUAL_KEY_ENV, resolve_harness
@@ -77,11 +77,15 @@ def cc_url(
     host: str = typer.Option(DEFAULT_BIFROST_HOST, "--host", help="Bifrost host."),
     port: int = typer.Option(DEFAULT_BIFROST_PORT, "--port", help="Bifrost port."),
     key_file: Path | None = typer.Option(
-        None, "--virtual-key-file", help=f"File holding the key. Or set ${VIRTUAL_KEY_ENV}."
+        None,
+        "--virtual-key-file",
+        help=f"File holding the key. Or set ${VIRTUAL_KEY_ENV}.",
     ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Report without writing."),
     force: bool = typer.Option(
-        False, "--force", help="Overwrite a pre-existing virtual key (it will not be restored)."
+        False,
+        "--force",
+        help="Overwrite a pre-existing virtual key (it will not be restored).",
     ),
 ) -> None:
     """Point Claude Code at Bifrost, or restore its prior endpoint."""
@@ -94,11 +98,15 @@ def qwen_url(
     host: str = typer.Option(DEFAULT_BIFROST_HOST, "--host", help="Bifrost host."),
     port: int = typer.Option(DEFAULT_BIFROST_PORT, "--port", help="Bifrost port."),
     key_file: Path | None = typer.Option(
-        None, "--virtual-key-file", help=f"File holding the key. Or set ${VIRTUAL_KEY_ENV}."
+        None,
+        "--virtual-key-file",
+        help=f"File holding the key. Or set ${VIRTUAL_KEY_ENV}.",
     ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Report without writing."),
     force: bool = typer.Option(
-        False, "--force", help="Overwrite a pre-existing virtual key (it will not be restored)."
+        False,
+        "--force",
+        help="Overwrite a pre-existing virtual key (it will not be restored).",
     ),
 ) -> None:
     """Point Qwen Code at Bifrost, or restore its prior endpoint."""
@@ -110,7 +118,9 @@ def policy(
     port: int = typer.Option(DEFAULT_BIFROST_PORT, "--port", help="Bifrost port."),
 ) -> None:
     """Report bind addresses and per-harness credential state."""
-    configured = [k for k in ("cc", "qwen") if credential_configured(resolve_harness(k))]
+    configured = [
+        k for k in ("cc", "qwen") if credential_configured(resolve_harness(k))
+    ]
     report = build_report(port=port, credential_configured=bool(configured))
     typer.echo(f"binds: {', '.join(report.binds) or '<none>'}")
     typer.echo(f"reachable off-host: {'yes' if report.reachable_off_host else 'no'}")
@@ -194,6 +204,59 @@ def bifrost_verify_gate(
     code = verify.run_gate(timeout)
     if code:
         raise typer.Exit(code)
+
+
+# --- complexity router accounting (req: REQ-BIFROST-046, REQ-BIFROST-048) ---
+
+
+@bifrost_app.command("complexity-report")
+def bifrost_complexity_report(
+    hours: float = typer.Option(
+        24.0,
+        "--hours",
+        help="How many hours back to report on.",
+    ),
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit JSON instead of the text report.",
+    ),
+    fail_on_hazard: bool = typer.Option(
+        False,
+        "--fail-on-hazard",
+        help="Exit 1 when the session binding overruled a tier.",
+    ),
+    db: Path | None = typer.Option(
+        None,
+        "--db",
+        help="Log store to read (default: the gateway's own).",
+    ),
+) -> None:
+    """Price the complexity router: what it cost, what it moved, what it overruled.
+
+    The router classifies each request as SIMPLE/MEDIUM/COMPLEX and a routing
+    rule acts on the SIMPLE tier. Bifrost's `session-affinity` engine can
+    overrule that rule, so the report prices three things separately: the
+    classifier's token cost, the traffic the cheap model actually served, and
+    the requests where the session's binding served the cheap model against
+    the tier's instruction.
+    """
+    try:
+        report = complexity_report.collect_report(hours, db_path=db)
+    except FileNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    if as_json:
+        typer.echo(complexity_report.report_json(hours, db_path=db))
+    else:
+        typer.echo(complexity_report.render_report(report))
+        if report.tier_overridden:
+            typer.echo(
+                "\n  the session binding overrode the tier: those turns asked "
+                "for the caller's model and were served the cheaper one."
+            )
+    if fail_on_hazard and report.tier_overridden:
+        raise typer.Exit(1)
 
 
 # --- cache eviction (req: REQ-BIFROST-042, REQ-BIFROST-043) ---

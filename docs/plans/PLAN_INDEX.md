@@ -322,6 +322,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-11-07-bifrost-complexity-accounting.md`](2026-11-07-bifrost-complexity-accounting.md) | 2026-11-07 | `active` | `implementation` |  | `bifrost-complexity-accounting` | Complexity-router accounting — price the classifier, watch the session binding |
 | [`docs/plans/2026-11-06-bifrost-readiness-budget-cold-start.md`](2026-11-06-bifrost-readiness-budget-cold-start.md) | 2026-11-06 | `complete` | `implementation` |  | `bifrost-readiness-budget` | Make the Bifrost readiness budget clear the observed cold start |
 | [`docs/plans/2026-11-05-config-that-nobody-reads.md`](2026-11-05-config-that-nobody-reads.md) | 2026-11-05 | `draft` | `implementation` |  | `config-that-nobody-reads` | Config that nobody reads — a `settings/` sweep for the dead-knob pattern |
 | [`docs/plans/2026-11-05-external-skill-pattern-port.md`](2026-11-05-external-skill-pattern-port.md) | 2026-11-05 | `partial` | `implementation` |  | `convergence-control-plane` | Port — External Agent-Skill Patterns into Repo-Native Gates |
@@ -526,7 +527,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (165 entries)
+### `plan` (166 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -539,9 +540,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 9 | 61 | 2 | 2 | 17 | **91** |
-| `implementation` | 6 | 9 | 3 | 7 | 18 | **43** |
+| `implementation` | 6 | 10 | 3 | 7 | 18 | **44** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 34 | **34** |
 | `superseded` | · | · | · | · | 9 | **9** |
 
-| **Total** | **15** | **70** | **5** | **9** | **79** | **178** |
+| **Total** | **15** | **71** | **5** | **9** | **79** | **179** |

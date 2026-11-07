@@ -640,7 +640,7 @@ deliberate Sonnet fallback, which `MiniMax-M3`'s adaptive thinking truncates.
 **Session affinity overrules the model target.** Bifrost runs a second routing
 engine, `session-affinity`, after the routing rules. It binds
 `(session id, requested model)` to the provider and model the session was
-first served, and it wins over a rule's proposed model. Two consequences:
+first served, and it wins over a rule's proposed model. Three consequences:
 
 - The downgrade only reaches a model class whose **first** request in a
   session classified as SIMPLE. A session bound to `MiniMax-M3` before the
@@ -648,6 +648,13 @@ first served, and it wins over a rule's proposed model. Two consequences:
 - An escalation does **not** restore the caller's model. A session that
   started SIMPLE stays on `MiniMax-M3.1-Flash` after it escalates, because
   affinity discards the routing proposal.
+- **The discount is session-wide, not per-turn.** The binding persists for
+  the session, so one SIMPLE turn rebinds that session's whole model class
+  to the cheap model — and every later request in the class is served by
+  it, including MEDIUM and COMPLEX turns whose tier said to keep the
+  caller's model. Measured on 2026-11-07: one session's first SIMPLE turn
+  was followed by 266 MEDIUM requests that asked for `MiniMax-M3` and were
+  served `MiniMax-M3.1-Flash`.
 
 Read the engine's own log to see which way it went:
 
@@ -660,6 +667,19 @@ sqlite3 ~/.config/bifrost/logs.db \
 `session-affinity` is a built-in engine in the pinned v2.4.0 transport — not
 a provider setting, not a plugin, and not a `governance_config` key. The
 store exposes no switch for it.
+
+**Pricing it.** Because the outcome of a request cannot be read from the
+tier alone, it is measured per request:
+
+```bash
+mahavishnu bifrost complexity-report --hours 24
+```
+
+The report separates the classifier's token cost, the traffic the cheap
+model actually served, the requests where the session binding overruled
+the tier, and the classifications that were paid for and not acted on. Add
+`--fail-on-hazard` to make it a monitor. See
+`docs/plans/2026-11-07-bifrost-complexity-accounting.md`.
 
 **Observability.** The request log records `complexity_tier`,
 `complexity_mechanism` (`semantic`, `decision`, `llm`, `session`, or `skipped`)
