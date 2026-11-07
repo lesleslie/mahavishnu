@@ -48,10 +48,16 @@ with full worker + terminal-adapter wiring.
 2. A Shepherd workspace initialized for the local pool. The pool's
    default writable root resolves to
    `~/.local/state/mahavishnu/worktrees/demo-pi-then-local-local/workspace`.
-   Initialize it once per dev shell:
+   Initialize it once per POOL (not per task) — `sp init` creates the
+   `.vcscore` marker in the path you give it, and the pool checks for
+   that marker in its writable root:
    ```bash
-   sp init ~/.local/state/mahavishnu/worktrees/demo-pi-then-local-local
+   sp init ~/.local/state/mahavishnu/worktrees/demo-pi-then-local-local/workspace
    ```
+   Pointing `sp init` at the parent directory leaves the marker one level
+   up, where the pool does not look for it, and the pool still fails with
+   MHV-312. `sp init` is idempotent ("creates or reuses `.vcscore`"), so
+   re-running it is safe.
 3. tmux binary on PATH (MahavishnuPool's default terminal adapter).
 
 **The command**:
