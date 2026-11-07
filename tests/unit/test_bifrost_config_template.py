@@ -458,27 +458,37 @@ def test_alias_targets_are_models_the_key_actually_serves() -> None:
 
 
 def test_alias_targets_land_on_the_right_minimax_counterpart() -> None:
-    """Opus and Sonnet are MiniMax-M3; Haiku is the latency-sensitive Flash.
+    """Opus is MiniMax-M3; Sonnet and Haiku are the concise MiniMax-M3.1-Flash.
 
     An alias substitutes a model, so the mapping is a deliberate choice about
     which MiniMax model answers for the Claude id -- not an arbitrary one.
+
+    The tiering is not cosmetic. The security-review plugin calls
+    ``claude-opus-5-5`` first and falls back to ``claude-sonnet-4-6`` when the
+    primary yields no verdict. On a review-sized diff MiniMax-M3's adaptive
+    thinking consumes the whole ``max_tokens`` budget and the response comes
+    back thinking-only -- no text block, so no verdict. MiniMax-M3.1-Flash
+    answers the same payload in a fraction of the budget with usable text.
+    Putting the concise model on the Sonnet id is therefore what makes the
+    fallback land, while Opus keeps the stronger analysis on the primary
+    attempt.
     """
     for provider_id in ALIASED_PROVIDERS:
         for key in _providers()[provider_id]["keys"]:
             for alias, target in (key.get("aliases") or {}).items():
-                if any(
-                    family in alias for family in ("opus", "sonnet", "fable", "mythos")
-                ):
+                if any(family in alias for family in ("opus", "fable", "mythos")):
                     assert target == "MiniMax-M3", (
                         f"{provider_id}/{key['name']}: {alias!r} resolves to "
                         f"{target!r}; the reasoning-grade Claude ids map to "
                         f"MiniMax-M3"
                     )
-                if "haiku" in alias:
+                if any(family in alias for family in ("sonnet", "haiku")):
                     assert target == "MiniMax-M3.1-Flash", (
                         f"{provider_id}/{key['name']}: {alias!r} resolves to "
-                        f"{target!r}; the Haiku slot is the latency-sensitive "
-                        f"one and maps to MiniMax-M3.1-Flash"
+                        f"{target!r}; the Sonnet and Haiku ids map to the "
+                        f"concise MiniMax-M3.1-Flash -- the Sonnet id is what "
+                        f"the security-review plugin falls back to, and it has "
+                        f"to fit inside the plugin's max_tokens budget"
                     )
 
 

@@ -724,7 +724,7 @@ behaviour does not depend on which surface a client happens to use:
 ```json
 "aliases": {
   "claude-opus-5-5": "MiniMax-M3",
-  "claude-sonnet-4-6": "MiniMax-M3",
+  "claude-sonnet-4-6": "MiniMax-M3.1-Flash",
   "claude-haiku-5-5": "MiniMax-M3.1-Flash"
 }
 ```
@@ -752,8 +752,33 @@ plus the fact that an alias target must itself be a model the key serves.
 An alias **substitutes** a model: a caller that asked for `claude-opus-5-5`
 is served `MiniMax-M3`. It is a graceful-degradation mechanism for clients
 that hardcode Anthropic model ids, not a claim that MiniMax is Claude. The
-haiku ids map to `MiniMax-M3.1-Flash` because that is MiniMax's
-latency-sensitive counterpart; everything else maps to `MiniMax-M3`.
+Opus, Fable and Mythos ids map to `MiniMax-M3`, MiniMax's reasoning-grade
+model; the Sonnet and Haiku ids map to `MiniMax-M3.1-Flash`, its concise
+counterpart.
+
+### Why Sonnet Is Not MiniMax-M3
+
+The tiering is load-bearing, not cosmetic. The security-review plugin calls
+`claude-opus-5-5` first and falls back to `claude-sonnet-4-6` when the
+primary yields no verdict. It sends `thinking: {"type": "adaptive"}` with
+`max_tokens=16000`.
+
+On a review-sized diff (30 changed files, measured 2026-11-07) MiniMax-M3's
+adaptive thinking consumes the *entire* output budget: the response comes
+back thinking-only with `stop_reason: max_tokens`, the plugin finds no
+`type == "text"` block, and the review ends with "no verdict from the model".
+The same payload on `MiniMax-M3.1-Flash` completes in 2193 output tokens with
+a usable text block.
+
+So the primary attempt keeps the stronger model — on a diff small enough for
+it to finish, the review gets the better analysis — while the fallback id
+carries the model that reliably fits inside the budget. That is what makes
+the fallback land instead of truncating the same way.
+
+Note the truncation mode is **not** caused by the alias: it also occurred on
+2026-11-06 at 12:59 and 13:40, before any alias existed. The alias moved
+the failure from "rejected at key selection" (HTTP 400) to "answered but
+truncated", and the Sonnet mapping closes the second gap.
 
 The alias map deliberately covers the **current** Claude lineup plus the
 immediately previous generation. Adding an id that no client requests costs
