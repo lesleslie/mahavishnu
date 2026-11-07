@@ -835,6 +835,72 @@ def _write_held_back_log(
     write_entry(metadata, body, mirror_to_session_buddy=True)
 
 
+def _origin_remote_exists() -> bool:
+    """Return True when the repo has an ``origin`` remote configured.
+
+    ``run_push`` treats a missing remote as a silent success (per
+    decision rule 5), so the caller cannot tell "pushed" from "no remote"
+    by its return code alone. The dev-log entry needs the distinction.
+    """
+    result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def _write_merge_log(
+    worktree_root: Path,
+    branch: str,
+    base: str,
+    *,
+    push_result: str,
+    cleanup_performed: bool,
+    outcome: str,
+) -> None:
+    """Write the dev-log entry for a merge that ran to a terminal outcome.
+
+    Mirrors :func:`_write_held_back_log`, which only covers the
+    pre-push consolidation gate's hold-back path. Without this, the audit
+    trail recorded merges that were *deferred* but none of the merges that
+    actually landed.
+
+    ``push.result`` uses the enum from
+    `docs/decisions/2026-10-03-mainautopush.md`: ``ok``, ``diverged``,
+    ``error:<message>``, ``no_remote`` — plus ``skipped`` for an
+    operator-deferred push (``--no-push``).
+
+    Local file is canonical; the session-buddy mirror is best-effort
+    (existing ``dev_log.write_entry()`` behavior).
+    """
+    try:
+        from .dev_log import write_entry
+    except ImportError:
+        return  # dev_log not available; skip silently
+    metadata: dict[str, Any] = {
+        "date": datetime.now(tz=UTC).strftime("%Y-%m-%d"),
+        "branch": branch,
+        "base": base,
+        "outcome": outcome,
+        "push": {
+            "result": push_result,
+            "remote": "origin",
+            "branch": "main",
+        },
+        "cleanup_performed": cleanup_performed,
+    }
+    body = (
+        f"# merge-to-main {outcome}\n\n"
+        f"Branch: {branch}\n"
+        f"Base: {base}\n"
+        f"Push result: {push_result}\n"
+        f"Cleanup performed: {cleanup_performed}\n"
+    )
+    write_entry(metadata, body, mirror_to_session_buddy=True)
+
+
 def _write_sticky_failure_marker(
     worktree_root: Path,
     branch: str,
@@ -880,21 +946,19 @@ def _write_sticky_failure_marker(
 def _default_dispatcher(agent: str, prompt: str) -> str:
     """Default stage-2 dispatcher.
 
-    Routes the prompt to ``agent`` via the Mahavishnu pool. The
-    real implementation will invoke
-    ``mcp__mahavishnu__pool_route_execute``; this v1 stub returns a
-    synthetic pass verdict so the merge cycle is exercisable end-to-end
-    before the pool-wiring lands. Operators running stage 2 in
-    production should replace this with a real dispatcher at the
-    call site (per spec REQ-004 follow-up).
+    Routes the prompt to ``agent`` via the Mahavishnu pool — the
+    ``pool_route_execute`` MCP tool — and returns the reviewer's reply
+    text. The routing itself lives in
+    :mod:`mahavishnu.core.merge_review_dispatcher`.
+
+    Fail-loud: a dispatch failure returns a reply carrying no parseable
+    verdict, which :func:`parse_verdict` maps to ``decision="block"``. A
+    merge whose reviewers could not be reached is aborted, not waved
+    through.
     """
-    return (
-        f"<verdict>\n"
-        f"  decision: pass\n"
-        f"  note: stubbed dispatcher for {agent!r}; replace with "
-        f"mcp__mahavishnu__pool_route_execute per REQ-004 follow-up\n"
-        f"</verdict>\n"
-    )
+    from .merge_review_dispatcher import dispatch_review
+
+    return dispatch_review(agent, prompt)
 
 
 def _run_cleanup(worktree_root: Path) -> tuple[int, str]:
@@ -1047,11 +1111,9 @@ def run_pipeline(
 
     # Stage 2 — ensemble review (REQ-004).
     if review_mode != "none":
-        prompt = (
-            f"Review the diff on branch {branch!r} relative to {base!r}. "
-            f"Worktree: {worktree_root}. "
-            f"Return <verdict>decision: pass|needs_adjustment|block note: ...</verdict>."
-        )
+        from .merge_review_dispatcher import build_review_prompt
+
+        prompt = build_review_prompt(branch, base, worktree_root)
         verdicts = run_review(
             domain_specialist="python-pro",
             generalist_pool=AGENT_POOL,
@@ -1116,20 +1178,48 @@ def run_pipeline(
             return EXIT_OK
 
     # Stage 5 — auto-push (skippable via --no-push; spec §4.6).
+    push_result = "skipped"
     if not no_push:
         push_rc, _push_stderr = run_push("main")
         if push_rc != 0:
+            _write_merge_log(
+                worktree_root,
+                branch,
+                base,
+                push_result="diverged",
+                cleanup_performed=False,
+                outcome="push_failed",
+            )
             return EXIT_PUSH_DIVERGENCE
+        push_result = "ok" if _origin_remote_exists() else "no_remote"
 
     # Stage 6 — cleanup (skippable via --no-cleanup; spec REQ-012).
     # ALSO skipped when the consolidation gate held back (stage 4.5):
     # the branch and worktree must remain until the push lands; otherwise
     # the squash-commit gets orphaned.
+    cleanup_performed = False
     if not no_cleanup and not held_back:
         cleanup_rc, _cleanup_stderr = _run_cleanup(worktree_root)
         if cleanup_rc != 0:
+            _write_merge_log(
+                worktree_root,
+                branch,
+                base,
+                push_result=push_result,
+                cleanup_performed=False,
+                outcome="cleanup_failed",
+            )
             return EXIT_CLEANUP_FAILURE
+        cleanup_performed = True
 
+    _write_merge_log(
+        worktree_root,
+        branch,
+        base,
+        push_result=push_result,
+        cleanup_performed=cleanup_performed,
+        outcome="merged",
+    )
     return EXIT_OK
 
 

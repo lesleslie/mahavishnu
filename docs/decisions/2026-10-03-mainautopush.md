@@ -113,8 +113,11 @@ canonical exception. Spec §4.6 is a summary of this doc.
   - `.claude/commands/merge-to-main.md` — slash command body.
 - **Audit trail:**
   `mahavishnu/core/dev_log.py::write_entry()` writes each push outcome with
-  `push.result: ok | diverged | error:<message> | no_remote`. Akosha picks
-  up via the existing `dev_log.entry_written` event.
+  `push.result: ok | diverged | error:<message> | no_remote | skipped`.
+  `skipped` covers an operator-deferred push (`--no-push`), where the
+  pipeline deliberately did not attempt a push — it is not a failure and
+  not a missing remote. Akosha picks up via the existing
+  `dev_log.entry_written` event.
 - **Sibling decision (workflow doc):**
   `docs/decisions/2026-10-03-trunk-based-agent-review.md` (REQ-008) —
   the workflow that owns this push rule.
