@@ -15,6 +15,7 @@ Validates:
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import pytest
@@ -29,11 +30,12 @@ from mahavishnu.core.eval.engine import (
     ModelConfig,
 )
 from mahavishnu.core.eval.model_backends.mock import MockModelBackend
+from mahavishnu.core.eval.scorer import Score, Scorer
 from mahavishnu.core.eval.scorers.exact_match import ExactMatchScorer
 from mahavishnu.core.eval.storage_backends.sqlite import SqliteEvalStorage
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
     from mahavishnu.core.eval.engine import ModelBackend, ModelResponse
@@ -42,6 +44,11 @@ if TYPE_CHECKING:
 #: At this price a five-character prompt costs exactly 2.00:
 #: 1 input token + 1 output token at 1000.00 per 1000 tokens.
 PRICE_PER_1K = 1000.0
+
+#: A fake credential that the repo's credential redactor recognises
+#: (it matches the ``api_key=sk-live-...`` API-key pattern). The
+#: tests below assert it never reaches the eval store or the logs.
+LEAKED_API_KEY = "sk-live-ABCDEFGHIJKLMNOPQRSTUVWX"
 
 
 def _dataset(prompts: list[str]) -> Dataset:
@@ -379,3 +386,113 @@ async def test_the_operators_budget_caps_a_larger_suite_budget(
     # the engine only flags `budget_exceeded` when the spend goes
     # strictly past the cap.
     assert result.status == "completed"
+
+
+# ── credential redaction on the failure paths ─────────────────────────
+# The exception text is whatever the failing layer wrote. A backend or
+# scorer that echoes its auth header puts a live credential in that
+# text, and this repo's logging pipeline does not redact — so the
+# engine's own redaction is the only thing standing between the
+# credential and the eval store (and the logs).
+
+
+@pytest.mark.req(["REQ-EVAL-003"])
+async def test_failing_case_error_is_credential_redacted(tmp_path: Path) -> None:
+    """A failing case's recorded error must not carry the credential.
+
+    ``record.error`` is persisted by ``add_case_result`` and rendered
+    in run reports, so the raw exception text would persist the key.
+    """
+
+    class _LeakyBackend:
+        async def complete(
+            self, prompt: str, model_config: ModelConfig
+        ) -> ModelResponse:
+            raise RuntimeError(f"model call failed: api_key={LEAKED_API_KEY}")
+
+    storage = SqliteEvalStorage(tmp_path / "runs.sqlite")
+    engine = EvalEngine(storage=storage, model_backend=_LeakyBackend())
+
+    result = await engine.run_suite(_suite(["hello"]))
+    details = await storage.get_run(result.run_id)
+    assert details is not None
+
+    failed = [record for record in details.case_results if record.error]
+    assert len(failed) == 1
+    assert LEAKED_API_KEY not in failed[0].error
+    # Only the credential is redacted — the message survives, so the
+    # operator still learns what went wrong.
+    assert "model call failed" in failed[0].error
+
+
+@pytest.mark.req(["REQ-EVAL-003"])
+async def test_failing_case_logs_no_credential(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A failing case's log output must not carry the credential.
+
+    ``logger.exception`` attaches the raw message *and* the raw
+    traceback to the log record. The engine's other failure paths
+    deliberately avoid it and log the redacted traceback at debug
+    level instead.
+    """
+
+    class _LeakyBackend:
+        async def complete(
+            self, prompt: str, model_config: ModelConfig
+        ) -> ModelResponse:
+            raise RuntimeError(f"model call failed: api_key={LEAKED_API_KEY}")
+
+    storage = SqliteEvalStorage(tmp_path / "runs.sqlite")
+    engine = EvalEngine(storage=storage, model_backend=_LeakyBackend())
+
+    with caplog.at_level(logging.DEBUG, logger="mahavishnu.core.eval.engine"):
+        await engine.run_suite(_suite(["hello"]))
+
+    assert LEAKED_API_KEY not in caplog.text
+
+
+@pytest.mark.req(["REQ-EVAL-003"])
+async def test_failing_scorer_error_is_credential_redacted(tmp_path: Path) -> None:
+    """A failing scorer's recorded error must not carry the credential.
+
+    The scorer path writes to the same ``record.error`` field as the
+    model-call path, so it needs the same redaction.
+    """
+
+    class _LeakyScorer(Scorer):
+        name = "leaky"
+        kind = "leaky"
+
+        def score(
+            self,
+            actual: str,
+            expected: str,
+            case_meta: Mapping[str, object],
+        ) -> Score:
+            raise RuntimeError(f"scorer failed: api_key={LEAKED_API_KEY}")
+
+    suite = EvalSuite(
+        name="golden",
+        version="v0",
+        dataset=_dataset(["hello"]),
+        scorers=[_LeakyScorer()],
+        model=ModelConfig(
+            name="mahavishnu.mock",
+            input_cost_per_1k_tokens=0.0,
+            output_cost_per_1k_tokens=0.0,
+        ),
+        cost_budget=CostBudget(max_usd=5.0, max_concurrency=4),
+    )
+    storage = SqliteEvalStorage(tmp_path / "runs.sqlite")
+    engine = EvalEngine(storage=storage, model_backend=MockModelBackend())
+
+    result = await engine.run_suite(suite)
+    details = await storage.get_run(result.run_id)
+    assert details is not None
+
+    failed = [record for record in details.case_results if record.error]
+    assert len(failed) == 1
+    assert LEAKED_API_KEY not in failed[0].error
+    assert "scorer failed" in failed[0].error

@@ -71,6 +71,27 @@ def _redacted_traceback(exc: BaseException) -> str:
     return CredentialRedactor().redact_string(text)
 
 
+def _redacted_message(exc: BaseException) -> str:
+    """Format an exception's message with credentials redacted.
+
+    Unlike the traceback, the message is *persisted*: it becomes
+    ``CaseRecord.error``, which ``add_case_result`` writes to the eval
+    store and the run report renders. A backend or scorer that echoes
+    its auth header puts a live credential in that text, and this
+    repo's logging pipeline does not redact -- so the redaction has to
+    happen here, before the text leaves the engine.
+
+    Args:
+        exc: The exception whose message to format.
+
+    Returns:
+        The exception's message, with credentials redacted.
+    """
+    from mahavishnu.core.secure_logging import CredentialRedactor
+
+    return CredentialRedactor().redact_string(str(exc))
+
+
 #: The closed set of attribute keys the ``eval.run_suite`` span may carry.
 #: REQ-EVAL-011: this keyspace is fixed and closed. Per-case keys
 #: (``eval.case_id``, ``eval.prompt_hash``, ``eval.case.*``) are never
@@ -356,9 +377,23 @@ class EvalEngine:
         try:
             async with semaphore:
                 response = await self._model_backend.complete(case.input, suite.model)
-        except Exception as exc:
-            logger.exception("eval.case.failed case_id=%s", case.id)
-            record.error = str(exc)
+        except Exception as exc:  # noqa: BLE001 - the backend may raise anything
+            # Same discipline as the run-failure path: the exception's
+            # text is untrusted, so the failure is *classified* rather
+            # than attached. `logger.exception` would attach the raw
+            # message and the raw traceback to the log record; the
+            # operator still gets the detail, redacted, at debug level.
+            logger.error(
+                "eval.case.failed case_id=%s error_type=%s",
+                case.id,
+                type(exc).__name__,
+            )
+            logger.debug(
+                "eval.case.failed_detail case_id=%s detail=%s",
+                case.id,
+                _redacted_traceback(exc),
+            )
+            record.error = _redacted_message(exc)
             await self._storage.add_case_result(record)
             return record, [], 0.0, 0, 0
 
@@ -391,11 +426,22 @@ class EvalEngine:
         for scorer in suite.scorers:
             try:
                 score = scorer.score(response.output, case.expected, case.metadata)
-            except Exception as exc:
-                logger.exception(
-                    "eval.scorer.error scorer=%s case_id=%s", scorer.name, case.id
+            except Exception as exc:  # noqa: BLE001 - a scorer may raise anything
+                # Same discipline as the run-failure path: classify the
+                # failure, and redact the message before it is persisted.
+                logger.error(
+                    "eval.scorer.error scorer=%s case_id=%s error_type=%s",
+                    scorer.name,
+                    case.id,
+                    type(exc).__name__,
                 )
-                record.error = str(exc)
+                logger.debug(
+                    "eval.scorer.error_detail scorer=%s case_id=%s detail=%s",
+                    scorer.name,
+                    case.id,
+                    _redacted_traceback(exc),
+                )
+                record.error = _redacted_message(exc)
                 continue
             scores.append(
                 ScoreRecord(
