@@ -41,6 +41,7 @@ from ..bootstrap import (
     _register_ecosystem_publish_url_tool,
     _register_ecosystem_state_tools,
     _register_ecosystem_tools,
+    _register_eval_tools,
     _register_git_analytics_tools,
     _register_goal_team_tools,
     _register_health_tools,
@@ -118,6 +119,12 @@ STANDARD_REGISTRATIONS: list[str] = MINIMAL_REGISTRATIONS + [
     # STANDARD-tier exposure is sufficient (clients without this tool
     # just default to public PyPI).
     "_register_ecosystem_publish_url_tool",
+    # Model evaluation — the eval tool group (eval_register_dataset,
+    # eval_run_suite, eval_get_run). STANDARD-tier: eval is an
+    # operator-facing surface, not infrastructure-critical, so it is not
+    # part of the MINIMAL profile. The registrar itself checks
+    # EvalSettings.enabled and registers nothing when eval is off.
+    "_register_eval_tools",
 ]
 STANDARD_REGISTRATIONS.append("_register_capability_tools")
 
@@ -255,6 +262,10 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # (consistent with how ``_register_pool_tools`` resolves its
     # ``pool_manager``); the lambda trampoline stays simple.
     "_register_budget_tools": lambda s: _register_budget_tools(s._mhv_server),  # type: ignore[attr-defined]
+    # Model evaluation — the eval tool group. The registrar checks
+    # EvalSettings.enabled and registers nothing when eval is off, so
+    # this entry is safe at every profile.
+    "_register_eval_tools": lambda s: _register_eval_tools(s._mhv_server),  # type: ignore[attr-defined]
     # FULL-tier groups.
     "_register_otel_tools": lambda s: _register_otel_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_self_improvement_tools": lambda s: _register_self_improvement_tools(s._mhv_server),  # type: ignore[attr-defined]

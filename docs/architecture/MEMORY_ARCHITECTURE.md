@@ -395,11 +395,11 @@ Five side-effect paths write operational state outside the MCP surface:
 
 `mahavishnu/mcp/tools/profiles.py` defines three registration lists:
 
-- `MINIMAL_REGISTRATIONS = ["_register_health_tools", "_register_skills_signer_tools", "_register_audit_health_tools"]` (3)
-- `STANDARD_REGISTRATIONS = MINIMAL + [_register_terminal_tools, _register_pool_tools, _register_worker_tools, _register_worker_contract_tools, _register_repository_messaging_tools, _register_git_analytics_tools, _register_session_buddy_tools, _register_openhands_tools, _register_primitive_tools, …]` (15)
-- `FULL_REGISTRATIONS = STANDARD + [_register_otel_tools, _register_self_improvement_tools, _register_clone_tools, _register_goal_team_tools, _register_treesitter_tools, _register_pycharm_tools, _register_search_tools, _register_plan_tools, plus the 14 inline jot_* keys]` (37)
+- `MINIMAL_REGISTRATIONS = ["_register_health_tools", "_register_skills_signer_tools", "_register_audit_health_tools", "_register_kv_tools"]` (4)
+- `STANDARD_REGISTRATIONS = MINIMAL + [_register_terminal_tools, _register_pool_tools, _register_worker_tools, _register_worker_contract_tools, _register_repository_messaging_tools, _register_git_analytics_tools, _register_session_buddy_tools, _register_openhands_tools, _register_primitive_tools, _register_budget_tools, _register_ecosystem_publish_url_tool, _register_eval_tools] + [_register_capability_tools]` (17)
+- `FULL_REGISTRATIONS = STANDARD + [_register_otel_tools, _register_self_improvement_tools, _register_clone_tools, _register_goal_team_tools, _register_treesitter_tools, _register_pycharm_tools, _register_search_tools, _register_plan_tools, plus the 14 inline jot_* keys]` (39)
 
-The three counts (3 / 15 / 37) are pinned by
+The three counts (4 / 17 / 39) are pinned by
 `tests/unit/mcp/test_profiles.py::test_profile_registration_counts_are_canonical`,
 so a change to any tier fails there rather than silently drifting from this
 document.
@@ -1255,7 +1255,7 @@ Operators reading only `profiles.py` cannot derive the per-tool count
 without reading every tool file. The registration-entry counts are now
 pinned by
 `tests/unit/mcp/test_profiles.py::test_profile_registration_counts_are_canonical`
-(3 / 15 / 37), but the per-tool total is still unpinned. Add a count
+(4 / 17 / 39), but the per-tool total is still unpinned. Add a count
 assertion to `tests/unit/test_mcp_profiles.py::test_full_profile_tool_count`
 that pins the FULL count (currently ~174) and the per-group breakdown,
 so a refactor that drops or adds tools is flagged immediately.

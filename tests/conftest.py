@@ -259,3 +259,15 @@ def clock(monkeypatch):
     state = {"now_ms": 1_700_000_000_000}
     monkeypatch.setattr(time, "time", lambda: state["now_ms"] / 1000)
     return state
+
+
+@pytest.fixture
+def mock_model_backend():
+    """A mock model backend for the eval engine (REQ-EVAL-002).
+
+    The mock echoes the prompt back, so an ``ExactMatchScorer`` scores
+    1.0 whenever a dataset's ``expected`` equals its ``input``.
+    """
+    from mahavishnu.core.eval.model_backends.mock import MockModelBackend
+
+    return MockModelBackend()

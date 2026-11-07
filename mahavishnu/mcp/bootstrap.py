@@ -294,10 +294,25 @@ async def collect_component_checks(server: FastMCPServer) -> dict[str, dict[str,
     (``launch_with_healthcheck.sh``) does not kill the process during
     the slow Akosha round-trips that complete the warm-up.
     """
+    from mahavishnu.mcp.eval_feed import get_eval_feed_state
     from mahavishnu.mcp.signer_feed import get_signer_feed_state
     from mahavishnu.plan_index.health import get_plan_index_feed_state
 
     checks: dict[str, dict[str, Any]] = {}
+
+    # Model evaluation feed (mcp-backend-wiring-discipline 4-signal
+    # contract). None means the lifespan has not installed the state
+    # yet, so report "warming up" rather than degraded — the same
+    # contract the signer feed uses.
+    eval_state = get_eval_feed_state()
+    if eval_state is None:
+        checks["eval"] = {
+            "ok": True,
+            "status": "warming_up",
+            "feed": "eval",
+        }
+    else:
+        checks["eval"] = dict(eval_state.as_dict())
 
     # Phase 1.5 — the skills_signer feed (per plan §10.3.3). Mirrors the
     # signer_feed.SignerFeedState ``warm``-flag contract: cold = always
@@ -422,7 +437,9 @@ async def _register_core_integration_tools(server: FastMCPServer, methods_set: s
         logger.info("Registered 3 Git analytics tools with MCP server")
 
     if "_register_repository_messaging_tools" in methods_set:
-        from ..mcp.tools.repository_messaging_tools import register_repository_messaging_tools
+        from ..mcp.tools.repository_messaging_tools import (
+            register_repository_messaging_tools,
+        )
 
         register_repository_messaging_tools(
             server.server, server.app, getattr(server, "mcp_client", None)
@@ -716,6 +733,23 @@ def _register_openhands_block(server: FastMCPServer) -> None:
         logger.warning("OpenHands tools not available: %s", exc)
 
 
+def _register_eval_tools_block(server: FastMCPServer) -> None:
+    """Register the model-evaluation tool group.
+
+    The group is registered only when evaluation is enabled
+    (``EvalSettings.enabled``); the registrar itself makes that call, so
+    a disabled evaluation does not put three tools in ``tools/list`` that
+    can only return "evaluation disabled".
+
+    Args:
+        server: The FastMCPServer wrapper.
+    """
+    from ..mcp.tools.eval_tools import register_eval_tools
+
+    register_eval_tools(server.server)
+    logger.info("Registered eval tools (eval_register_dataset + eval_run_suite + eval_get_run)")
+
+
 def _register_capability_block(server: FastMCPServer) -> None:
     """Register capability tools + MCP-backed get_capability_result reader.
 
@@ -922,6 +956,10 @@ _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] =
     # Self-hosted KV — the plan_index lock store's backend. The group is
     # in MINIMAL_REGISTRATIONS, so it is dispatched at every tier.
     ("_register_kv_tools", _register_kv_block),
+    # Model evaluation — the eval tool group. STANDARD-tier: the eval
+    # subsystem is operator-facing, not infrastructure-critical, so it
+    # is not part of the MINIMAL profile.
+    ("_register_eval_tools", _register_eval_tools_block),
 )
 
 
@@ -1305,6 +1343,15 @@ def _register_openhands_tools(server: FastMCPServer) -> None:
         logger.info("Registered 4 OpenHands integration tools with MCP server")
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("OpenHands tools not available: %s", exc)
+
+
+def _register_eval_tools(server: FastMCPServer) -> None:
+    """Per-group dispatch entry for the W0 ``REGISTRATION_MAP`` (eval tools).
+
+    Delegates to ``_register_eval_tools_block`` which holds the actual
+    registration logic.
+    """
+    _register_eval_tools_block(server)
 
 
 def _register_capability_tools(server: FastMCPServer) -> None:

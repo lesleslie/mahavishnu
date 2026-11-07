@@ -125,6 +125,27 @@ otel_ingester:
   similarity_threshold: 0.7  # Min similarity for search (0.0-1.0)
   turboquant_bits: 4  # TurboQuant cache compression (3 or 4 bits; null to disable)
 
+# Model evaluation (Phase 1). Nested EvalSettings model; env var form is
+# MAHAVISHNU_EVAL__<FIELD> (single underscore after the prefix, double
+# before the leaf field name).
+eval:
+  enabled: false  # Set to true to register the eval MCP tools
+  default_storage: "mahavishnu.sqlite"
+  default_dataset_loader: "mahavishnu.jsonl"
+  # `contains` is the default because a golden set grades prose
+  # expectations: an exact-match scorer scores every phrase zero, so
+  # the set would be inert data that always reports 0.000.
+  default_scorers: ["mahavishnu.contains"]
+  default_model_backend: "mahavishnu.mock"
+  cost_budget_per_run: 5.0
+  db_path: "~/.local/state/mahavishnu/eval/runs.sqlite"
+  # A dataset named by a server-reachable caller (the MCP tools, the
+  # eval pool) must live inside this directory. The operator's own shell
+  # is not confined.
+  dataset_root: "~/.local/state/mahavishnu/eval/datasets"
+  # The ceiling a caller-supplied max_tokens is clamped to.
+  max_tokens_per_call: 4096
+
 # Pool management for multi-pool orchestration
 pools:
   enabled: true  # Enable pool management

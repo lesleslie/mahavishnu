@@ -4,7 +4,8 @@ Validates:
 - ``get_pool_factory`` raises ``KeyError`` for unknown pool types (C5 fix).
 - ``register_pool_type`` rejects duplicate registration.
 - ``canonicalize_pool_type`` translates underscore to hyphen form.
-- ``list_pool_types`` returns the expected 4-tuple after D0 refactor.
+- ``list_pool_types`` returns the expected 5-tuple (the eval pool
+  joined the four D0 canonical types in the eval-adapter Phase 1 work).
 """
 
 from __future__ import annotations
@@ -20,13 +21,14 @@ from mahavishnu.pools._registry import (
 
 
 def test_list_pool_types_contains_expected_entries() -> None:
-    """All four canonical pool types are registered after D0."""
+    """All five canonical pool types are registered."""
     types = list_pool_types()
     assert "mahavishnu" in types
     assert "pi" in types
     assert "runpod" in types
     assert "session-buddy" in types
-    assert len(types) == 4
+    assert "eval" in types
+    assert len(types) == 5
 
 
 def test_get_pool_factory_known_returns_callable() -> None:

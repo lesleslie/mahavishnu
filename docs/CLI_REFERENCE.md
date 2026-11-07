@@ -78,6 +78,33 @@ hyphen forms; legacy `session_buddy` underscore form is also accepted).
 Available `--selector` values: `capability_score`, `random`,
 `least_loaded`, `round_robin`.
 
+## Model Evaluation
+
+```bash
+mahavishnu eval run-suite --suite docs/eval/dogfood-v0.jsonl
+mahavishnu eval run-suite --suite cases.jsonl --model mahavishnu.mock
+mahavishnu eval run-suite --suite cases.jsonl --budget 2.50 --scorers mahavishnu.contains
+mahavishnu eval list-runs --limit 10
+mahavishnu eval show-run <run_id>
+```
+
+`--model` names a model **backend** from the eval registry, not a model id:
+`mahavishnu.mock` is the built-in one (it echoes the prompt back and
+needs no credential). `--scorers` takes a comma-separated list of scorer
+names — `mahavishnu.exact_match` and `mahavishnu.contains` ship with
+Mahavishnu.
+
+Each run persists to the SQLite run store and writes a Markdown report
+next to it. `--budget` caps the run's cost in USD; it can only *lower*
+the operator's configured cap, never raise it.
+
+The MCP surface is the same thing for an agent: `eval_register_dataset`,
+`eval_run_suite`, and `eval_get_run`. Those tools are registered only
+when `eval.enabled` is true in the settings.
+
+See [docs/eval/DOGFOOD.md](eval/DOGFOOD.md) for the golden set and the
+operating procedure.
+
 ## Demo
 
 Opinionated one-shot demos that exercise a single substrate or a

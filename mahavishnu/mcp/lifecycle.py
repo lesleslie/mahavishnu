@@ -118,6 +118,16 @@ def build_post_start_lifespan(server: Any) -> Any:
             # Don't crash the server — /health reports skills_signer
             # as degraded with the error message.
 
+        # eval feed (pure data, no HTTP dep). Same contract as the
+        # signer feed: a failure here degrades the eval check in
+        # /health rather than taking the server down.
+        from .eval_feed import init_eval_feed_state
+
+        try:
+            init_eval_feed_state()
+        except Exception as exc:  # MCP server init — degrading gracefully is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+            logger.error(f"Failed to initialize eval feed state: {exc}")
+
         # sweeper spawn (Redis subscribe is fast; the run_forever()
         # body is the long-running part. Kept sync so the sweeper's
         # first health probe is live before the server starts serving.)

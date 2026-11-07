@@ -11,10 +11,16 @@ from .backup_cli import add_backup_commands
 from .cli.base import MahavishnuCLI
 
 # Import configuration validation CLI
-from .cli.config_validator import add_config_inventory_commands, add_config_validation_commands
+from .cli.config_validator import (
+    add_config_inventory_commands,
+    add_config_validation_commands,
+)
 
 # Import docs audit CLI
 from .cli.docs_cli import add_docs_commands
+
+# Import model-evaluation CLI
+from .cli.eval_cli import add_eval_commands
 
 # Import events CLI
 from .cli.events import add_events_commands
@@ -1435,6 +1441,9 @@ add_team_commands(app)
 add_events_commands(app)
 # Add code indexing commands
 add_index_commands(app)
+
+# Add model-evaluation commands
+add_eval_commands(app)
 
 # Add rollback commands (audit H8: bodai-crow + distilled-workflow)
 add_rollback_commands(app)

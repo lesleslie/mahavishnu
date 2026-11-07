@@ -1707,7 +1707,50 @@ _1 tool(s)_
 
 **Description:** Read back a stored `WebhookIngress` for `webhook_id`.
 
-### 28. Jot Type Reference
+### 28. Model Evaluation
+
+_3 tool(s)_
+
+The eval group is **profile-gated**: it registers only when
+`EvalSettings.enabled` is true (`eval.enabled` in
+`settings/mahavishnu.yaml`, default false), and it is part of the
+`standard` profile when it is.
+
+#### `eval_register_dataset`
+
+**Signature:** `async def eval_register_dataset(path: str)`
+
+**Source:** `mahavishnu/mcp/tools/eval_tools.py:129`
+
+**Description:** Load a JSONL evaluation dataset and describe it: name,
+version, case count, and content hash. The path must resolve inside
+`EvalSettings.dataset_root` — this tool is server-reachable, so the
+path is confined.
+
+#### `eval_run_suite`
+
+**Signature:** `async def eval_run_suite(suite: str, model: str = "", params: dict[str, Any] | None = None)`
+
+**Source:** `mahavishnu/mcp/tools/eval_tools.py:155`
+
+**Description:** Run a dataset against a model backend and score it.
+`model` names a **backend** (`mahavishnu.mock`), not a model id.
+`params` accepts `budget_usd`, `scorers`, and `max_tokens`; the
+budget and the token ceiling are clamped down to the operator's
+settings, never raised by the caller. Phase 1 runs the cases of a
+suite one at a time. Returns the run's status, id, summary, and the
+path of the Markdown report it wrote.
+
+#### `eval_get_run`
+
+**Signature:** `async def eval_get_run(run_id: str)`
+
+**Source:** `mahavishnu/mcp/tools/eval_tools.py:189`
+
+**Description:** Fetch a persisted evaluation run: its record, its case
+results, and its scores.
+
+### 29. Jot Type Reference
 
 This section is not a tool category — it documents the shapes returned by
 the Jot drain tools (which live under the parent category's broader

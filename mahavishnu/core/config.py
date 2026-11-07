@@ -28,6 +28,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ..terminal.config import TerminalSettings
 
+# EvalSettings is the nested model for the model-evaluation feature.
+# Imported at module load time (no cycle: eval.settings imports pydantic
+# only, and defers its own import of this module into the function body).
+from .eval.settings import EvalSettings
+
 # TaskCategory is referenced by ConcurrencyLimitsSettings.by_category below.
 # Imported at module load time (no risk of cycles; model_routing has no
 # dependency on this module).
@@ -3195,6 +3200,14 @@ class MahavishnuSettings(BaseSettings):
     otel_ingester: OTelIngesterConfig = Field(
         default_factory=OTelIngesterConfig,
         description="OpenTelemetry trace ingester configuration",
+    )
+
+    # Model evaluation (Phase 1). Nested Pydantic model; the env var form is
+    # MAHAVISHNU_EVAL__<FIELD> (single underscore after the prefix, double
+    # before the leaf field name).
+    eval: EvalSettings = Field(
+        default_factory=EvalSettings,
+        description="Model evaluation configuration",
     )
 
     # Worktree storage + isolation (C-1 prep). Replaces the previous

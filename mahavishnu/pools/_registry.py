@@ -87,7 +87,18 @@ def canonicalize_pool_type(name: str) -> str:
 # import error propagates to the caller at the same place it would from
 # ``mahavishnu.pools.__init__``.
 def _ensure_pool_registry_loaded() -> None:
-    pass
+    """Force the pool-type modules to register themselves.
+
+    The eager loader lives in ``mahavishnu.pools.__init__``
+    (``_load_all_pool_types``); it is the single source of truth for
+    which pool types exist. Importing a submodule imports its parent
+    package first, so the loader has normally already run by the time
+    this function is reached — this is the explicit trigger for the
+    paths that reach the registry some other way.
+    """
+    from . import _load_all_pool_types
+
+    _load_all_pool_types()
 
 
 _ensure_pool_registry_loaded()

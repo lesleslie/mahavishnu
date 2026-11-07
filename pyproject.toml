@@ -145,6 +145,36 @@ prefect = "mahavishnu.engines.prefect_adapter_impl:prefect_adapter_entries"
 agno = "mahavishnu.engines.agno_adapter_impl:agno_adapter_entries"
 worker = "mahavishnu.core.adapters.worker:worker_adapter_entries"
 
+# Eval extension points — plan docs/plans/2026-10-03-eval-adapter-phase1.md.
+# Each group declares callable extension points that
+# ``mahavishnu.core.eval._registry`` discovers by group name. These
+# declarations advertise the surface for installed distributions and let
+# third-party distributions register into the same groups. The built-in
+# table in ``mahavishnu/core/eval/_registry.py`` is the install-independent
+# runtime source: Python 3.14 removed ``importlib.metadata.entry_point()``
+# and ``EntryPoint.register()``, so there is no runtime registration and a
+# reinstall would be required to see a new declaration here.
+[project.entry-points."mahavishnu.eval.scorers"]
+# Entry-point names contain dots and MUST be quoted — an unquoted
+# "mahavishnu.exact_match" is parsed by TOML as a nested table, not a name.
+"mahavishnu.exact_match" = "mahavishnu.core.eval.scorers.exact_match:ExactMatchScorer"
+"mahavishnu.contains" = "mahavishnu.core.eval.scorers.contains:ContainsScorer"
+
+[project.entry-points."mahavishnu.eval.dataset_loaders"]
+# Entry-point names contain dots and MUST be quoted — an unquoted
+# "mahavishnu.jsonl" is parsed by TOML as a nested table, not a name.
+"mahavishnu.jsonl" = "mahavishnu.core.eval.loaders.jsonl:JsonlDatasetLoader"
+
+[project.entry-points."mahavishnu.eval.storage"]
+# Entry-point names contain dots and MUST be quoted — an unquoted
+# "mahavishnu.sqlite" is parsed by TOML as a nested table, not a name.
+"mahavishnu.sqlite" = "mahavishnu.core.eval.storage_backends.sqlite:SqliteEvalStorage"
+
+[project.entry-points."mahavishnu.eval.model_backends"]
+# Entry-point names contain dots and MUST be quoted — an unquoted
+# "mahavishnu.mock" is parsed by TOML as a nested table, not a name.
+"mahavishnu.mock" = "mahavishnu.core.eval.model_backends.mock:MockModelBackend"
+
 [dependency-groups]
 # Core development and testing
 # Includes the lazy-imported runtime groups so the test suite can exercise

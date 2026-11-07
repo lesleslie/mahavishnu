@@ -350,7 +350,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-14-decision-adapter-category.md`](2026-10-14-decision-adapter-category.md) | 2026-10-14 | `active` | `implementation` |  | `decision-adapter-category` | Decision Adapter Category Implementation Plan |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `active` | `implementation` |  | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
 | [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` |  | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
-| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `active` | `implementation` |  | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
+| [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `complete` | `implementation` |  | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
 | [`docs/plans/2026-09-20-delete-all-legacy-named-code.md`](2026-09-20-delete-all-legacy-named-code.md) | 2026-09-20 | `complete` | `implementation` |  | `delete-all-legacy-named-code` | Verified complete 2026-10-17 (crackerjack repo): |
 | [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `complete` | `umbrella` |  | `mcpserver-settings-convention` | `superseded_by` is document-level only (see the schema). This umbrella is |
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
@@ -538,9 +538,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 9 | 60 | 2 | 2 | 17 | **90** |
-| `implementation` | 6 | 10 | 3 | 7 | 17 | **43** |
+| `implementation` | 6 | 9 | 3 | 7 | 18 | **43** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 34 | **34** |
 | `superseded` | · | · | · | · | 9 | **9** |
 
-| **Total** | **15** | **70** | **5** | **9** | **78** | **177** |
+| **Total** | **15** | **69** | **5** | **9** | **79** | **177** |

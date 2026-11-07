@@ -141,11 +141,19 @@ def test_profile_registration_counts_are_canonical() -> None:
 
     These are the numbers quoted across the MCP docs and the tool-count
     summaries; a drift here means a profile silently changed its exposed
-    surface. MINIMAL 3 / STANDARD 15 / FULL 37.
+    surface. MINIMAL 4 / STANDARD 17 / FULL 39.
+
+    The counts drifted once before this test was accurate: the
+    self-hosted KV group joined MINIMAL and the capability group was
+    appended to STANDARD without the pin or the doc being updated, so
+    the test was red on ``main`` from 2026-10-04 (the C1 follow-up)
+    until the eval group landed. The pin and
+    ``docs/architecture/MEMORY_ARCHITECTURE.md`` now quote the same
+    numbers again.
     """
-    assert len(MINIMAL_REGISTRATIONS) == 3
-    assert len(STANDARD_REGISTRATIONS) == 15
-    assert len(FULL_REGISTRATIONS) == 37
+    assert len(MINIMAL_REGISTRATIONS) == 4
+    assert len(STANDARD_REGISTRATIONS) == 17
+    assert len(FULL_REGISTRATIONS) == 39
 
 
 # =============================================================================

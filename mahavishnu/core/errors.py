@@ -73,6 +73,12 @@ class ErrorCode(StrEnum):
     OPERATION_CANCELLED = "MHV-010"
     CONTEXT_NOT_INITIALIZED = "MHV-011"
 
+    # Model-evaluation errors (Phase 1).
+    EVAL_DATASET_LOAD_ERROR = "MHV-012"
+    EVAL_SCORING_ERROR = "MHV-013"
+    EVAL_STORAGE_ERROR = "MHV-014"
+    EVAL_ENGINE_ERROR = "MHV-015"
+
     # Task errors (100-199)
     TASK_NOT_FOUND = "MHV-100"
     TASK_CREATION_FAILED = "MHV-101"
@@ -711,6 +717,23 @@ class MahavishnuError(Exception):
             "Verify target_mean, slack, and threshold are valid positive numbers",
             "Ensure observations are finite (no NaN/Inf) before calling update()",
             "Call reset() if the detector state is in an unexpected regime",
+        ],
+        ErrorCode.EVAL_DATASET_LOAD_ERROR: [
+            "Check that the dataset file exists and is readable",
+            "Each non-blank line must be a JSON object carrying id, input and expected",
+            "The loader reports the offending line number in the error message",
+        ],
+        ErrorCode.EVAL_SCORING_ERROR: [
+            "Check that the scorer is registered under the mahavishnu.eval.scorers group",
+            "Verify the scorer returns a value between 0 and 1",
+        ],
+        ErrorCode.EVAL_STORAGE_ERROR: [
+            "Check that the eval db_path is writable and its parent directory exists",
+            "Verify the run store is not corrupt: sqlite3 <db_path> 'PRAGMA integrity_check'",
+        ],
+        ErrorCode.EVAL_ENGINE_ERROR: [
+            "Check the run's cost budget and the configured model backend",
+            "Re-run with a larger budget, or point the run at a different model backend",
         ],
     }
 
@@ -2162,3 +2185,85 @@ class EcosystemIntakeError(MahavishnuError):
             ErrorCode.INTERNAL_ERROR,
             details=details,
         )
+
+
+# ---------------------------------------------------------------------------
+# Model-evaluation errors (Phase 1)
+# ---------------------------------------------------------------------------
+
+
+class EvalDatasetLoadError(MahavishnuError):
+    """Raised when an evaluation dataset cannot be loaded or is malformed.
+
+    Wraps the underlying file, JSON, or validation failure and carries the
+    offending line number so the operator can fix the dataset without
+    bisecting the loader.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            ErrorCode.EVAL_DATASET_LOAD_ERROR,
+            details=details,
+        )
+
+
+class EvalScoringError(MahavishnuError):
+    """Raised when a scorer cannot produce a score for a case."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            ErrorCode.EVAL_SCORING_ERROR,
+            details=details,
+        )
+
+
+class EvalStorageError(MahavishnuError):
+    """Raised when the evaluation run store cannot be read or written."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            ErrorCode.EVAL_STORAGE_ERROR,
+            details=details,
+        )
+
+
+class EvalEngineError(MahavishnuError):
+    """Raised when an evaluation run cannot be completed.
+
+    Attributes:
+        retryable: Whether retrying the run could succeed. A provider
+            outage or an exhausted budget is retryable; a malformed suite
+            is not.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        retryable: bool = False,
+        details: dict | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            ErrorCode.EVAL_ENGINE_ERROR,
+            details=details,
+        )
+        self.retryable = retryable
