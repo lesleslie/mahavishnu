@@ -443,18 +443,53 @@ even with a published Phase 1.
   attributes)`. Two producers that share a service identity but differ in
   their resource attributes are the same point.
 
-**Implemented 2026-11-06 — in ensemble review, uncommitted.** The work
-lives on akosha branch `feat/otlp-metrics-service` (base `main` @ `f7353ca`),
-in the worktree
-`~/.local/state/mahavishnu/worktrees/akosha/feat-otlp-metrics-service`.
-Four files, ~2,300 added lines: `akosha/observability/otlp_receiver.py`
-(+771), `akosha/observability/otlp_metrics.py` (+96), the new
-`akosha/observability/otlp_prometheus_bridge.py` (722), and the new
-`tests/unit/observability/test_otlp_metrics_receiver.py` (754, 23 tests).
-**Not committed** — the operator has not authorised a commit in akosha.
+**Delivered 2026-11-07 — akosha `ab76a77` on local `main`** (base
+`f7353ca`, not pushed). Nine files, +4,253/-17: `akosha/observability/
+otlp_receiver.py` (+989), the new `akosha/observability/otlp_prometheus_bridge.py`
+(1,013), the new `akosha/storage/metrics_query.py` (49), `akosha/observability/
+otlp_metrics.py` (+155), `akosha/mcp/server.py` (+83), the new
+`tests/unit/observability/test_otlp_metrics_receiver.py` (1,298, 36 tests),
+the new `tests/unit/test_metrics_health_feed.py` (247, 4 tests), the new
+`tests/integration/test_otlp_metrics_receiver_e2e.py` (323, 3 tests over a
+real `grpc.aio` wire with a real OTel SDK exporter), and
+`tests/unit/observability/test_retention_sweep.py` (+111, 2 tests).
 
-Twelve deviations from the plan text, recorded so Phase 3 and the operator
-build against reality:
+**The trace path is byte-identical to before.** An AST comparison of
+`_handle_batch`, `pre_validate`, `_extract_spans`, `_dlq_insert`,
+`_unrenderable_row`, `_count_by_field`, `_proto_to_dict`, `_attr_key` and
+`_attr_value` against HEAD shows every body unchanged, and no function was
+removed. The metric path is deliberately *parallel* to the span path rather
+than a branch of it: sharing the code would couple the two paths' futures,
+so a change to the span batch would silently change the metric batch.
+
+**Ensemble review (spec §4.4: domain specialist + code-quality specialist
++ random generalist) — three lenses, all `needs_adjustment`, sixteen
+defects found and fixed.** The ones that mattered most were the ones that
+produced a *plausible wrong number* rather than an obvious failure:
+
+| Defect | Symptom |
+|---|---|
+| A broken substrate answered **success** | `rejected_data_points=0` for data that was thrown away, while the plan's own acceptance check still passed |
+| A cumulative histogram **clamped a producer restart to zero** | that interval lost for ever, while the counter path re-baselined correctly — the two halves disagreed about the same restart |
+| An attribute key-set change **froze the metric** | stuck at a stale value for ever; the family now mints a sibling instrument |
+| A replayed delta point was **deduped in the substrate but double-counted on Prometheus** | the two halves disagreed about what a replay is |
+| `target_info` rendered `deployment_environment=""` | the label map was keyed by *label*, so an absent attribute overwrote a present one |
+
+**`/health` gained a `metrics_feed`.** The metric path had no feed of its
+own, which was the gap: a receiver that accepts exports, exposes them on
+`/metrics` and stores **nothing** left `/health` reporting green. The
+feed's `entities_count` is the **durable** row count, not the exposed
+series, because the exposure is a separate path that keeps working when
+the substrate is broken. A receiver that has simply not been exported to
+yet reports **warming_up**, not degraded — a degraded feed is a 503, and
+the launchd wrapper polls `/health` with `curl -fsS`, so a feed that
+flapped to degraded on every cold start would make the wrapper kill the
+server it was supposed to start. An unusable substrate is an **ongoing**
+error, not a past one: the readiness flag is re-read each probe so the
+feed cannot decay out of the halflife back to healthy.
+
+Thirteen deviations from the plan text, recorded so Phase 3 and the
+operator build against reality:
 
 1. **`service.namespace` is NOT required for a metric point.** oneiric's
    `OTLPObservabilityAdapter` builds its resource with `service.name`,
@@ -539,7 +574,28 @@ build against reality:
     derived from `scale`/`offset`.
 12. **The counters are `akosha_otlp_metrics_*`**, following the receiver's
     existing `akosha_otlp_spans_*` convention, rather than the plan's
-    shorthand `otlp_metrics_*`.
+    shorthand `otlp_metrics_*`. `akosha_otlp_metrics_insert_failed_total`
+    gained a `reason` label (`substrate_unavailable` vs `write_failed`),
+    which changes the metric's identity — pre-1.0, replace-not-extend.
+    New: `akosha_otlp_metrics_batches_total`,
+    `akosha_otlp_metrics_substrate_ready` (1/0),
+    `akosha_otlp_metrics_rows_deleted_total`.
+13. **`/health` gained a `metrics_feed`**, which the plan did not ask for.
+    The plan's exit criterion could be satisfied by a live Prometheus
+    series alone, which says nothing about whether anything is being
+    *stored*. The feed reports the durable row count, so the two are
+    distinguishable. See above.
+14. **`metrics_substrate` is swept on the `spans_substrate` retention
+    setting**, filtered on `inserted_at` — Phase 1 gave the table that
+    column and no epoch-nanos one, and the schema lives in oneiric, which
+    the receiver cannot change. `inserted_at` is stamped by the
+    *database's* clock, so a skewed producer clock still cannot delete
+    fresh rows — the same reasoning as the DLQ sweep's `rejected_at`.
+15. **The substrate count lives in a new `akosha/storage/metrics_query.py`**,
+    not in `hot_store.py` as §6's checklist says, because
+    `akosha/storage/hot_store.py` has a hard 500-LOC CI cap and is "the
+    code-graph overlay", not a query surface. It borrows the store's lock
+    the way `SpanQuery` does — no second connection.
 
 **Known gap — `/v1/metrics` on the HTTP listener is NOT implemented.** gRPC
 is the required path and it is served; the HTTP listener still exposes only
@@ -581,8 +637,18 @@ remaining half of REQ-M07 for that configuration.
   namespace the exposed series by the resource's `service.name` so
   mahavishnu's and oneiric's instruments cannot collide.
 
-**Exit criteria:** an OTLP metrics export to `:4317` is accepted, appears in
-`curl http://localhost:8682/metrics`, and is queryable through Prometheus.
+**Exit criteria (strengthened 2026-11-07):** an OTLP metrics export to
+`:4317` is accepted — the MetricsService answers it rather than
+`UNIMPLEMENTED` — it appears in `curl http://localhost:8682/metrics`, and
+it is **queryable through Prometheus**. It must ALSO leave a **non-empty
+`metrics_substrate`** behind, and be **queryable through Prometheus**.
+
+The "also" clause is not decoration. The exposure path does not touch the
+substrate, so the first two clauses pass while REQ-M03 is entirely unmet:
+the review reproduced a receiver that bound happily, accepted exports,
+exposed the series, stored nothing, and answered
+`rejected_data_points=0`. "Appears on `/metrics`" is evidence about the
+exposure path alone; a durable row is evidence about the substrate.
 
 #### Integration Contract ← REQUIRED
 
