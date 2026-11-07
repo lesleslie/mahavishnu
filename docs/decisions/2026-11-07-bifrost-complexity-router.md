@@ -140,25 +140,57 @@ authoritative and the template is only its seed). The gateway came back
 healthy (`/health` → `{"components":{"db_pings":"ok"},"status":"ok"}`) and the
 transport exposes the analyzer route (`GET /api/routing/complexity-analyzer-config`
 answers 401, not 404 — the route exists in the pinned v2.4.0 binary and is
-admin-auth-gated). 30/30 config-contract tests pass.
+admin-auth-gated). 30/30 config-contract tests pass, and the merge gate
+(`crackerjack run -v -f`) passes 18/18 fast hooks.
 
-**Still open, and it is the reason to read this record as provisional on the
-verification side rather than on the design side:**
+**Verified against the live store on 2026-11-07** — read from
+`~/.config/bifrost/config.db`, not from the template:
 
-- The store reconciliation is unconfirmed from the repo side — whether the
-  template's analyzer config and the new rule actually landed in `config.db`
-  is verified by reading the live store, not by the template.
-- The credential resolution is unconfirmed — the symptom to look for is
-  `complexity_mechanism` reading `skipped` on every request, which means the
-  provider key was dropped.
-- The session-id arrival is unmeasured — `complexity_mechanism: session` in
+- **The analyzer config landed.** It reconciles into the store's
+  `complexity_semantic_config` entity: `classifier=decision`,
+  `decision={provider: typesafe, model: jev-latest, previous_message_count: 1,
+  timeout: 1.5s}`, `session.enabled=true`. Bifrost hashed each of those six
+  template fields into that entity's `_config_hashes`, which is the proof
+  that the reconcile read this template and not a stale one.
+- **The store's other complexity entity is a different thing.**
+  `complexity_analyzer_config` holds the retired lexical scorer's state
+  (`tier_boundaries` + `keywords.code_keywords`) and was left alone. An
+  operator reading the store should not read it as the router's config.
+- **The rule landed ahead of the catch-all.** `route-complexity-simple` is at
+  priority 3 with the exact CEL; `route-anthropic-native` is at 5.
+- **The credential resolves.** `TYPESAFE_API_KEY` is present in the live
+  gateway process environment, and the store's env-backed `typesafe-primary`
+  key carries `status=success` — a real validation result, not a default,
+  because the other providers' keys (`llama-server`, `minimax-anthropic`,
+  `minimax-openai`) sit at `status=unknown`. The `no_key_supports_model`
+  failure the record warns about last occurred on 2026-10-29, and for the
+  embedding model, not for the decision path.
+
+**Still open — the measurements, not the design:**
+
+- **The session-id arrival is unmeasured.** `complexity_mechanism: session` in
   the request log is the signature that Claude Code is sending a session id.
   If it never appears, session mode is a no-op on the harness path and the
   intra-turn split returns; the fix is a per-session id on the request.
-- The realised saving is unmeasured. The ceiling is the token volume in
+  No request has yet been classified, so this is the first thing to check on
+  a live turn.
+- **The realised saving is unmeasured.** The ceiling is the token volume in
   sessions that never escalate, and it has to be computed from the logs on
   cost, not on request count — simple turns are short turns, and token volume
   concentrates in the long, complex ones.
+
+**Two operational notes that are not defects:**
+
+- Bifrost **merges** the `keywords` lists on reconcile rather than replacing
+  them, so the live store holds the union of this template's 18/16/14 phrases
+  and the 50 reference phrases per tier the store already carried (68/66/64).
+  The decision classifier does not read them; a later switch to the semantic
+  classifier would read the union.
+- The `typesafe` provider carries two enabled keys of equal weight — `Jev`
+  (a literal value in the store) and `typesafe-primary` (env-backed). Both
+  validate, so classification splits across them rather than failing. The
+  literal one is a plaintext credential in `config.db`; retiring it is a
+  separate change.
 
 ## Related
 

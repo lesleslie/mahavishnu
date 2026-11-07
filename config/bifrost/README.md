@@ -658,6 +658,28 @@ so the config takes effect after:
 Never `--drop-db` — that discards the store, and with it the virtual key and
 the dashboard admin account.
 
+**Where it lands in the store.** The reconcile writes the analyzer config into
+the store's `complexity_semantic_config` entity — *not* into
+`complexity_analyzer_config`, which holds the retired lexical scorer's state
+(`tier_boundaries` + `keywords.code_keywords`) and is left alone. Reading the
+wrong entity is the easy mistake here, so read the store rather than the
+template:
+
+```bash
+sqlite3 ~/.config/bifrost/config.db \
+  "SELECT json_extract(value,'$.classifier'), \
+          json_extract(value,'$.decision.model'), \
+          json_extract(value,'$.session.enabled') \
+   FROM governance_config WHERE key='complexity_semantic_config'"
+```
+
+**Bifrost merges the keyword lists.** The reconcile unions the template's
+`keywords` lists with whatever the store already holds instead of replacing
+them, so the live counts are the union of the template's 18/16/14 phrases and
+the 50 reference phrases per tier the store already carried (68/66/64 on
+2026-11-07). The decision classifier does not read them; a later switch to the
+semantic classifier would read the union.
+
 ## Verified Bootstrap State
 
 As of 2026-04-08:
@@ -695,7 +717,11 @@ The template enables `config_store` with SQLite.
 After first bootstrap:
 
 - Bifrost imports the file config into `config.db`
-- later changes in `config.json` are ignored while `config_store` is enabled
+- later changes in `config.json` are ignored while `config_store` is enabled —
+  with one exception observed on 2026-11-07: the complexity analyzer's fields
+  were re-imported from `config.json` at startup, and their `keywords` lists
+  were merged rather than replaced. Treat `rebootstrap` as the way to land a
+  change, and read the store to confirm what landed.
 - routing rules, virtual keys, and governance settings should be managed through the Bifrost UI or public config APIs
 
 If you need to re-bootstrap from file config, use `mahavishnu bifrost rebootstrap`.
