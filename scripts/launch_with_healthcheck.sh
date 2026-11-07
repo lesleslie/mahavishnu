@@ -6,12 +6,31 @@
 # Behavior:
 #   1. Parse args: <health-url> [--timeout SECONDS=30] -- <command> [args...]
 #   2. Start <command> in the background; capture its PID.
-#   3. Poll curl -fsS <health-url> every 0.5s up to --timeout seconds.
+#   3. Poll <health-url> every 0.5s up to --timeout seconds.
 #   4. On success: wait for the command and propagate its exit code.
-#   5. On timeout or curl error: kill the command, exit 1.
+#   5. On timeout: kill the command, exit 1.
 #      This way launchd's KeepAlive.Crashed=true will trigger a restart,
 #      surfacing silent pre-bind crashes in `launchctl list` exit codes
 #      instead of as log-only restart storms.
+#
+# WHAT COUNTS AS "UP":
+#
+#   ANY HTTP response counts. The question this wrapper answers is "has the
+#   server started serving?", not "is the server healthy?" -- a 503 from a
+#   server that is still warming up is proof that it is bound and answering.
+#
+#   The earlier version used `curl -fsS`, which fails on any HTTP status
+#   >= 400, so a warming-up server (503) and a degraded server (503) both
+#   looked identical to a server that had not bound its port yet. Akosha
+#   returns 503 while its feeds warm up, so the wrapper never saw it become
+#   healthy and killed it at the ceiling -- repeatedly, on a server that was
+#   serving perfectly well. A launchd restart storm caused by a healthy
+#   server is worse than no healthcheck at all.
+#
+#   The per-request budget is generous (${CURL_MAX_TIME}s) because a health
+#   check that takes a second under load is SLOW, not dead. A request that
+#   gets no response at all within that budget still counts as not-up, so a
+#   genuinely wedged server is still caught and killed.
 #
 # Usage example (from a launchd plist):
 #   <string>/Users/les/.local/state/mcp/scripts/launch_with_healthcheck.sh</string>
@@ -53,6 +72,15 @@ fi
 
 CMD=("$@")
 
+# Per-request budget for the health poll. Generous on purpose: a health
+# check that takes a second or two under load is SLOW, not dead, and
+# cutting the request off mid-flight would make a serving server look
+# like a dead one.
+CURL_MAX_TIME=10
+# A port that is not bound yet refuses instantly on loopback, so the
+# connect timeout only bounds the pathological case.
+CONNECT_TIMEOUT=2
+
 # Start the actual command in background. We do NOT put it in its own
 # process group — we want to signal just this PID, not ourselves.
 "${CMD[@]}" &
@@ -86,7 +114,13 @@ for ((i=1; i<=ATTEMPTS; i++)); do
     echo "launch_with_healthcheck: command (PID $PID) died before becoming healthy" >&2
     exit 1
   fi
-  if curl -fsS -o /dev/null --max-time 1 "$HEALTH_URL" 2>/dev/null; then
+  # No -f: ANY HTTP status counts as "the server is serving". Only a
+  # request that gets NO response at all within the budget means "not up".
+  curl -sS -o /dev/null \
+    --connect-timeout "$CONNECT_TIMEOUT" \
+    --max-time "$CURL_MAX_TIME" \
+    "$HEALTH_URL" 2>/dev/null
+  if [ $? -eq 0 ]; then
     HEALTHY=1
     break
   fi
