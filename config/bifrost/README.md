@@ -18,7 +18,8 @@ Current status (verified live, 2026-10-30):
   `/anthropic/v1/messages` — the path Claude Code needs), `minimax-openai`
   (MiniMax's OpenAI-compatible `/v1/chat/completions` — the path the
   Mahavishnu worker uses), `llama-server` (`qwen3-8b-q4_k_m` local), `openai`
-  (`gpt-5.4` family).
+  (`gpt-5.4` family), `typesafe` (the decision model behind the complexity
+  router — see "Complexity Router" below).
 - **The `route-anthropic-native` rule is live and corrected.** The store's
   target names the provider only (`model` is NULL, so the caller's model
   passes through), the fallback is `minimax-anthropic/MiniMax-M3.1-Flash`
@@ -544,14 +545,21 @@ Current task mappings:
 - `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3.1-Flash` (fallback `llama-server/qwen3-8b-q4_k_m`)
 - `x-bf-route: anthropic_native` -> provider `minimax-anthropic`, model as sent by the caller (fallback `minimax-anthropic/MiniMax-M3.1-Flash`)
 
-The `anthropic_native` route is the **only one that can currently fire**.
-No production code in this repo emits `x-bf-task` — the package that used to
-(`mahavishnu/llm_gateway/`) has been deleted — so the five task-keyed rules
+The `anthropic_native` route is the only one the **header** rules can fire
+on. No production code in this repo emits `x-bf-task` — the package that used
+to (`mahavishnu/llm_gateway/`) has been deleted — so the five task-keyed rules
 above are unreachable in production. `x-bf-route` is sent by the Claude Code
 harness: `mahavishnu bifrost cc-url bifrost` writes
 `x-bf-route: anthropic_native` into Claude Code's `ANTHROPIC_CUSTOM_HEADERS`,
 and `cc-url direct` removes it again. `cc-url status` reports whether it is
 present.
+
+A second route fires on the **complexity tier** rather than on a header:
+`route-complexity-simple` (priority 3) matches
+`headers["x-bf-route"] == "anthropic_native" && complexity_tier == "SIMPLE"`
+and targets `minimax-anthropic/MiniMax-M3.1-Flash`. The tier is computed
+inside the gateway, so this rule needs no header the caller does not already
+send — see "Complexity Router" below.
 
 Two providers claim `MiniMax-M3`, so the route is what makes the choice
 unambiguous: `minimax-anthropic` reaches MiniMax over its Anthropic-native
@@ -596,6 +604,59 @@ Notes:
   same as Claude Code. It also gets `x-bf-route: anthropic_native`, so the
   provider choice is explicit rather than left to bare model-name
   resolution. The `openai` provider entry (DashScope) is left alone.
+
+## Complexity Router
+
+Bifrost's routing plugin can classify each request as `SIMPLE`, `MEDIUM`, or
+`COMPLEX` and publish the tier to the CEL engine as `complexity_tier`. The
+configuration lives at `governance.complexity_analyzer_config` in the template.
+
+**The decision model.** The classifier is `decision`: the request is classified
+by a decision model, here TypeSafe's `jev-latest` through the `typesafe`
+provider. That provider's key resolves from `env.TYPESAFE_API_KEY`, which the
+gateway provisions from `~/.config/secrets.env` — `TYPESAFE_API_KEY` is in
+`mahavishnu/bifrost/gateway.py::NEEDED_KEYS` for exactly that reason. Without
+it the gateway never resolves the variable, Bifrost drops the key at startup,
+and every classification fails with `no_key_supports_model` — which surfaces as
+"the router never produces a tier" rather than as a credential error.
+
+**Session-aware routing is on (`session.enabled: true`).** A turn's first
+request carries the human text and gets a tier; the turn's continuation
+requests carry only tool results and do not. Without session state one turn
+would run on two models — the model that decides the next action and the model
+that reads the tool result — and the provider's prompt cache would miss at the
+seam. With it the tier holds for the session. Session identity comes from
+`x-bf-session-id` or the harness-native `x-claude-code-session-id`; a request
+without one is classified on its own.
+
+**The tier policy is downward-only.** Only `SIMPLE` carries a model target.
+`MEDIUM` and `COMPLEX` keep the caller's model through `route-anthropic-native`,
+so nothing is ever moved onto the heavier model: Claude Code picks the model
+per request class (`MiniMax-M3` for the opus and sonnet slots,
+`MiniMax-M3.1-Flash` for the haiku slot), and a pinned model on a higher tier
+would override that — and would override the security-review plugin's
+deliberate Sonnet fallback, which `MiniMax-M3`'s adaptive thinking truncates.
+
+**Observability.** The request log records `complexity_tier`,
+`complexity_mechanism` (`semantic`, `decision`, `llm`, `session`, or `skipped`)
+and `complexity_score`. The logs API filters on the first two:
+
+```bash
+curl 'http://127.0.0.1:8471/api/logs?complexity_tiers=COMPLEX&complexity_mechanisms=decision'
+```
+
+`complexity_mechanism: session` means a stored session tier was reused;
+`skipped` means no tier was produced.
+
+**Applying it.** The store is authoritative and the template is only its seed,
+so the config takes effect after:
+
+```bash
+.venv/bin/mahavishnu bifrost rebootstrap
+```
+
+Never `--drop-db` — that discards the store, and with it the virtual key and
+the dashboard admin account.
 
 ## Verified Bootstrap State
 
@@ -827,8 +888,8 @@ Configured values and why each one is what it is:
 | `provider` | `openai` | The plugin generates embeddings through this provider's keys. |
 | `embedding_model` | `text-embedding-3-small` | 1536-dim; matches the Redis index exactly. |
 | `dimension` | `1536` | **Must** equal the model's native output size. The Redis `VECTOR` attribute is created with a fixed `dim` and RediSearch cannot resize it in place. |
-| `threshold` | `0.86` | Cosine floor for a similarity hit. `0.8` is Bifrost's generic default, tuned for single short prompts; here the embedding covers a whole conversation, so it is loose. `resolveCacheThreshold` takes `max(config, per-request)`, so a higher floor can only be raised. |
-| `conversation_history_threshold` | `8` | Bifrost skips caching **entirely** — both layers — for requests with more than this many messages. Its default of `3` disables the cache for nearly all agentic traffic, which resends the full transcript every turn. |
+| `threshold` | `0.95` | Cosine floor for a similarity hit. `0.8` is Bifrost's generic default, tuned for single short prompts; here the embedding covers a whole conversation, so it is loose. `resolveCacheThreshold` takes `max(config, per-request)`, so a higher floor can only be raised. Retuned from `0.86` on 2026-11-01: all 8 measured legitimate paraphrases score ≥ `0.9545`, and the `0.870` same-session collision class now misses instead of serving the prior turn's response. |
+| `conversation_history_threshold` | `16` | Bifrost skips caching **entirely** — both layers — for requests with more than this many messages. Its default of `3` disables the cache for nearly all agentic traffic, which resends the full transcript every turn. Raised from `8` on 2026-11-01: 98.6% of the admitted population exceeds the embedding ceiling and therefore runs the safe direct path, so only 1.4% can reach the collision-prone semantic path. |
 | `exclude_system_prompt` | `false` | **Upstream's default, and it is the safe one.** The system prompt carries the persona, the working directory, the date and the project instructions — the things that distinguish one session from another. Dropping it from the key lets two requests with identical messages but different system prompts share an entry, and one be served the other's cached response. That collision was reproduced live against this gateway before the setting was reverted. **Cost:** the system prompt now counts against the embedding model's input budget (see the 8192-token limit below), so a long session can fall off the *semantic* path sooner. The *direct* path hashes the input rather than embedding it, so it is unaffected. |
 | `default_cache_key` | *unset* | Upstream's default is empty, and it is the safe one: with no per-request `x-bf-cache-key` and no default, `resolveCacheKey` returns false and the plugin's pre-LLM hook exits before any lookup or write. Setting it to a fixed value puts every client that does not name a bucket into one shared namespace. Callers that want the cache name their own. |
 | `cache_by_model` / `cache_by_provider` | `true` | Keep model/provider in the filter so a cached response never crosses providers. |

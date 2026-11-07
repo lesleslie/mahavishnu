@@ -37,6 +37,7 @@ CREDENTIAL_NAMES = (
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
     "LLAMA_SERVER_API_KEY",
+    "TYPESAFE_API_KEY",
 )
 
 FIXTURE_STORE = """# a comment
@@ -44,6 +45,7 @@ MINIMAX_API_KEY=upstream-minimax
 export OPENAI_API_KEY="upstream-openai"
 ANTHROPIC_API_KEY=upstream-anthropic
 LLAMA_SERVER_API_KEY=local-llama-server
+TYPESAFE_API_KEY=upstream-typesafe
 BIFROST_SETUP_TOKEN=local-setup-token
 BIFROST_VIRTUAL_KEY=local-virtual-key
 SOME_OTHER_KEY=not-ours

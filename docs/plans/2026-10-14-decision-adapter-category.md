@@ -3,13 +3,72 @@ status: active
 role: implementation
 kind: plan
 date: 2026-10-14
-last_reviewed: 2026-10-19
+last_reviewed: 2026-11-07
 superseded_by: null
 topic: decision-adapter-category
 title: "Decision Adapter Category — Implementation Plan"
 ---
 
 # Decision Adapter Category Implementation Plan
+
+> ## Amendment — 2026-11-07
+>
+> **This plan is rescoped.** Bifrost's routing plugin now ships a **complexity
+> router** that classifies each request and publishes the tier to the CEL
+> engine as `complexity_tier`, with a decision-model classifier (Typesafe Jev
+> by default) and optional session-aware routing. That dissolves the plan's
+> central premise — that the orchestrator needs a decision-classifier
+> substrate *in order to route* — and it changes what is worth building.
+>
+> **Per task:**
+>
+> | Task | Before | After |
+> |---|---|---|
+> | **1** — Oneiric `decision/` category (Jev + Decision 3.0 + BGE/TEI) | three adapters, direct `typesafe-sdk` transport | **one** adapter, Bifrost transport. Decision 3.0 and BGE/TEI deferred to a follow-up plan |
+> | **2** — `task_router.py` off `HybridAdapterRegistry` | hard prerequisite for Task 3 | **already satisfied** — the live path is `Resolver.list_active("adapter")` (`mahavishnu/core/task_router.py:500-503`); the five listed references are docstrings (`mahavishnu/core/task_router.py:394, 403`) and comments (`:430`, `:493`), and the legacy `find_by_capabilities` survives only as an `hasattr` fallback for test mocks (`:504-510`) |
+> | **3** — Mahavishnu consumption | router + CLI + 2 MCP tools + 3 `task_router` selectors | router + CLI + 2 MCP tools. **The three selectors are dropped** |
+> | **4** — delete the `pgvector` fork | same change window | **separate PR**, uncoupled |
+>
+> **Why Task 3's selectors go.** Bifrost now classifies requests itself,
+> inside the gateway, where the tier is available to CEL. A second classifier
+> in the routing path would be a second opinion on the same question — and the
+> Phase-1 gate below (7-day shadow, >2σ drift, precision against the
+> hand-coded baseline) would have to run twice over it, once per classifier.
+>
+> **Why the transport changes.** Bifrost already proxies `typesafe` /
+> `jev-latest` through `/v1/decisions`, with the credential in one place and
+> the model swappable by configuration: `jev-latest` →
+> `~typesafe/jev-latest` (OpenRouter) → `@cf/cloudflare/clef-flash` → a
+> locally pulled Ollama System One model (`nimble`, `tev1`, `clef`,
+> `clef-flash`, `laya`). A direct `typesafe-sdk` transport would create a
+> second credential path and a second place to configure the model, and it
+> would reintroduce the hosted-only risk this plan's own Risk 1 records —
+> Bifrost's Ollama path closes that risk with no code. It also keeps the
+> fleet at one gateway, per REQ-COMP-06's principle. See
+> `docs/decisions/2026-11-07-bifrost-complexity-router.md`.
+>
+> **What is kept.** The typed contract is the durable part:
+> `PointwiseRequest`/`PointwiseResponse`, `RankRequest`/`RankResponse`, the
+> `Question` discriminated union (noul/choice/score), calibrated probability,
+> and the capability taxonomy. The Phase-1 shadow-mode gate is unchanged and
+> still governs the first live use.
+>
+> **What changes about the Phase-1 pilot.** The first live use is a
+> shadow-mode disagreement test against the **approval gate**
+> (`request_approval` / `mahavishnu/core/approval_manager.py`), not a routing
+> selector. A decision about whether to ask a human is not a routing
+> decision, and the gateway cannot serve it — which is the one use case the
+> complexity router does not cover.
+>
+> **One defect to fix before BGE/TEI is ever built.**
+> `BgeTeiSettings.base_url` defaults to `http://localhost:8081` — the port
+> our `llama-server` occupies (`config/bifrost/config.template.json`). The
+> reranker would point at the local model server.
+>
+> **Task 1 and Task 3 below are superseded by the rescoped versions; Task 2
+> and Task 4 are reclassified as above.** The task text is left in place so
+> the original reasoning stays readable, and so a reviewer can see what the
+> amendment is arguing with.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

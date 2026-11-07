@@ -526,3 +526,208 @@ def test_no_alias_points_at_a_claude_model() -> None:
                     f"{provider_id}/{key['name']}: alias {alias!r} resolves to "
                     f"{target!r}, which this gateway does not serve"
                 )
+
+
+#: The tiers the complexity analyzer can publish.
+COMPLEXITY_TIERS = ("SIMPLE", "MEDIUM", "COMPLEX")
+
+
+def _analyzer() -> dict[str, Any]:
+    return _template().get("governance", {}).get("complexity_analyzer_config") or {}
+
+
+def _tiers_in(rule: dict[str, Any]) -> set[str]:
+    """The complexity tiers a rule's CEL expression references."""
+    expression = rule.get("cel_expression") or ""
+    return {tier for tier in COMPLEXITY_TIERS if tier in expression}
+
+
+def test_the_complexity_analyzer_is_configured_with_the_decision_classifier() -> None:
+    """The analyzer must be present and use the decision classifier.
+
+    The decision classifier is the one that understands a *task*; the
+    semantic one matches a request against reference phrases, which is a
+    much weaker signal for coding work. Omitting the block entirely is
+    silent: the gateway starts clean, the rule that references
+    ``complexity_tier`` simply never matches, and every request falls
+    through to normal routing.
+    """
+    analyzer = _analyzer()
+    assert analyzer, (
+        "governance.complexity_analyzer_config is missing; the complexity "
+        "rule's complexity_tier never resolves and the router never fires"
+    )
+    assert analyzer.get("classifier") == "decision", (
+        f"classifier is {analyzer.get('classifier')!r}; the decision classifier "
+        f"(TypeSafe Jev) is the one that judges the task"
+    )
+    decision = analyzer.get("decision") or {}
+    assert decision.get("provider") == "typesafe", (
+        f"decision.provider is {decision.get('provider')!r}; the config "
+        f"declares a 'typesafe' provider, so the decision model must resolve "
+        f"through it"
+    )
+    assert decision.get("model"), "decision.model must name the decision model"
+
+
+def test_session_aware_routing_is_enabled() -> None:
+    """``session.enabled`` must be on.
+
+    Without it, a turn's first call (the one carrying the human text) is
+    classified and routed by tier, while the turn's continuation calls --
+    the tool-result requests -- carry no new human text, get no tier, and
+    fall through to the caller's model. One turn would then run on two
+    models: the model that decides the next action and the model that
+    reads the tool result. Session state keeps the tier for the whole
+    session, so the turn stays on one model.
+
+    The cost of enabling it is bounded because the tier policy is
+    downward-only: an escalated session stops being classified and reverts
+    to the caller's model, which is today's behaviour. A session with no
+    id is classified on its own, so the flag is a no-op there.
+    """
+    session = _analyzer().get("session") or {}
+    assert session.get("enabled") is True, (
+        "session.enabled must be true; without it a single turn is split "
+        "across two models and the provider's prompt cache misses at the "
+        "seam"
+    )
+
+
+def test_the_complexity_policy_only_ever_downgrades() -> None:
+    """Only the Simple tier may carry a model target.
+
+    Claude Code picks its model per request class -- ``MiniMax-M3`` for the
+    opus and sonnet slots, ``MiniMax-M3.1-Flash`` for the haiku slot. A
+    rule that pins a model for a higher tier overrides that selection: the
+    haiku slot would be pushed onto the heavy model, and the security-review
+    plugin's deliberate Sonnet fallback would be overridden back onto
+    ``MiniMax-M3``, whose adaptive thinking truncates the response before
+    any text block is emitted.
+
+    Downward-only also bounds the ratchet: an escalated session stops
+    being classified and reverts to the caller's model, so the policy can
+    never cost more than it does today.
+    """
+    tiered = [
+        rule
+        for rule in _rules()
+        if _tiers_in(rule)
+    ]
+    assert tiered, "no rule references complexity_tier; the router never fires"
+
+    for rule in tiered:
+        assert _tiers_in(rule) == {"SIMPLE"}, (
+            f"rule {rule.get('id')!r} references {sorted(_tiers_in(rule))}; "
+            f"only SIMPLE may be routed by tier"
+        )
+        for target in rule.get("targets") or []:
+            assert target.get("model") == "MiniMax-M3.1-Flash", (
+                f"rule {rule.get('id')!r} targets {target.get('model')!r}; the "
+                f"downward-only target is the concise MiniMax-M3.1-Flash"
+            )
+
+
+def test_the_complexity_rule_precedes_the_anthropic_native_rule() -> None:
+    """The tier rule must be evaluated first.
+
+    Routing rules are first-match-wins with the lower priority number
+    evaluated first, and Claude Code sends ``x-bf-route`` on every
+    request -- so ``route-anthropic-native`` (priority 5) matches every
+    Claude Code request. A tier rule at priority 5 or above is dead code
+    on that path: it is never reached.
+    """
+    complexity = _rule("route-complexity-simple")
+    native = _rule("route-anthropic-native")
+
+    assert complexity["priority"] < native["priority"], (
+        f"the complexity rule's priority ({complexity['priority']}) is not "
+        f"ahead of route-anthropic-native ({native['priority']}); the "
+        f"anthropic-native rule matches every Claude Code request and the "
+        f"tier rule would never be evaluated"
+    )
+
+
+def test_the_complexity_rule_is_scoped_to_the_claude_code_route() -> None:
+    """The rule must require the route header.
+
+    A Claude Code *plugin* calls the Anthropic API directly and picks its
+    own model id, so it reaches the gateway without ``x-bf-route``. An
+    unscoped tier rule would capture that traffic too and pin a model over
+    the plugin's own choice -- the choice its fallback depends on.
+    """
+    expression = _rule("route-complexity-simple")["cel_expression"]
+    assert "x-bf-route" in expression, (
+        "the complexity rule must be guarded by the x-bf-route header so it "
+        "only reaches the Claude Code harness and not direct-SDK callers"
+    )
+
+
+def test_the_typesafe_provider_is_configured_for_the_decision_model() -> None:
+    """The decision model's provider must exist with an env-backed key.
+
+    ``typesafe`` is a standard Bifrost provider name, so it takes no
+    ``custom_provider_config`` -- upstream knows its endpoint and its
+    ``decisions`` request type. The key still has to resolve, or Bifrost
+    drops it at startup and every classification fails with
+    ``no_key_supports_model``.
+    """
+    provider = _providers().get("typesafe")
+    assert provider is not None, (
+        "the 'typesafe' provider is missing; the decision classifier has "
+        "nothing to resolve against"
+    )
+    assert not provider.get("custom_provider_config"), (
+        "'typesafe' is a standard provider name; adding custom_provider_config "
+        "to it collides with upstream's standard provider"
+    )
+    values = [key.get("value") for key in provider.get("keys") or []]
+    assert "env.TYPESAFE_API_KEY" in values, (
+        f"the typesafe provider's key values are {values}; the decision model "
+        f"needs the env-backed TypeSafe credential"
+    )
+
+
+def test_the_complexity_target_model_is_allowlisted_by_the_provider_key() -> None:
+    """The target model must be servable by the provider's key.
+
+    Bifrost resolves a key before dispatching upstream. A model the key
+    does not list resolves to ``no_key_supports_model``, and the request
+    falls through to the rule's fallback instead of the intended tier.
+    """
+    models = {
+        model
+        for key in _providers()["minimax-anthropic"]["keys"]
+        for model in key["models"]
+    }
+    for target in _rule("route-complexity-simple")["targets"]:
+        assert target["model"] in models, (
+            f"{target['model']!r} is not in the Anthropic-native provider's "
+            f"key allowlist; the tier rule cannot dispatch it"
+        )
+
+
+def test_the_complexity_rule_fallback_can_serve_the_anthropic_route() -> None:
+    """The fallback must allow the ``responses`` request type.
+
+    The Anthropic HTTP route bridges every request to Bifrost's
+    ``responses`` request type. A fallback pointing at a provider that
+    only allows ``chat_completion`` is inert: the request fails hard
+    instead of degrading to a working answer.
+    """
+    providers = _providers()
+    for fallback in _rule("route-complexity-simple").get("fallbacks") or []:
+        provider_id = fallback.split("/", 1)[0]
+        provider = providers.get(provider_id)
+        assert provider is not None, (
+            f"fallback {fallback!r} names a provider the template does not "
+            f"configure"
+        )
+        allowed = (provider.get("custom_provider_config") or {}).get(
+            "allowed_requests"
+        ) or {}
+        assert allowed.get("responses") is True, (
+            f"fallback {fallback!r} points at a provider that does not allow "
+            f"the 'responses' request type, which is what the Anthropic "
+            f"route produces -- the fallback cannot serve it"
+        )

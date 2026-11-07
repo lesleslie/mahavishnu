@@ -81,7 +81,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`.claude/agents/.a2a_enrollment/a2a_enrollment_summary.md`](../../.claude/agents/.a2a_enrollment/a2a_enrollment_summary.md) | — | `unknown` | `unknown` |  | `—` | A2A Agent Enrollment Summary |
 | [`.claude/agents/accessibility-auditor.md`](../../.claude/agents/accessibility-auditor.md) | — | `unknown` | `unknown` |  | `—` | Accessibility Auditor |
 | [`.claude/agents/agent-creation-specialist.md`](../../.claude/agents/agent-creation-specialist.md) | — | `unknown` | `unknown` |  | `—` | Agent Creation Specialist |
 | [`.claude/agents/akosha-specialist.md`](../../.claude/agents/akosha-specialist.md) | — | `unknown` | `unknown` |  | `—` | Akosha Specialist |
@@ -180,6 +179,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/decisions/2026-11-07-bifrost-complexity-router.md`](../../docs/decisions/2026-11-07-bifrost-complexity-router.md) | 2026-11-07 | `active` | `canonical` | `decision` | `bifrost-complexity-router` | 2026-11-07-bifrost-complexity-router.md |
 | [`docs/decisions/2026-11-05-external-skill-pattern-port.md`](../../docs/decisions/2026-11-05-external-skill-pattern-port.md) | 2026-11-05 | `active` | `canonical` |  | `convergence-control-plane` | Decision: Absorb External Agent-Skill Patterns; Do Not Install the Packs |
 | [`docs/decisions/2026-11-05-per-component-cold-storage-buckets.md`](../../docs/decisions/2026-11-05-per-component-cold-storage-buckets.md) | 2026-11-05 | `active` | `canonical` | `decision` | `per-component-cold-storage-buckets` | Per-component cold-storage buckets |
 | [`docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md`](../../docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md) | 2026-11-05 | `active` | `canonical` | `decision` | `simdjson-abi-bump-breaks-node` | `simdjson` ABI bump breaks `node` — pin it, and rebuild node against it |
@@ -451,12 +451,13 @@ Index pages or reference docs (README files). Permanent fixtures; never a work i
 | [`docs/specs/event-envelope-spec.md`](../../docs/specs/event-envelope-spec.md) | 2026-04-06 | Event Envelope Specification |
 | [`docs/specs/prometheus-metrics-inventory.md`](../../docs/specs/prometheus-metrics-inventory.md) | 2026-04-06 | Prometheus Metrics Inventory |
 
-### `decision` (67 entries)
+### `decision` (68 entries)
 
 Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `docs/decisions/`.
 
 | Path | Date | Title |
 |---|---|---|
+| [`docs/decisions/2026-11-07-bifrost-complexity-router.md`](../../docs/decisions/2026-11-07-bifrost-complexity-router.md) | 2026-11-07 | 2026-11-07-bifrost-complexity-router.md |
 | [`docs/decisions/2026-11-05-per-component-cold-storage-buckets.md`](../../docs/decisions/2026-11-05-per-component-cold-storage-buckets.md) | 2026-11-05 | Per-component cold-storage buckets |
 | [`docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md`](../../docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md) | 2026-11-05 | `simdjson` ABI bump breaks `node` — pin it, and rebuild node against it |
 | [`docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md`](../../docs/decisions/2026-11-05-terminal-codex-worker-and-bifrost-routing.md) | 2026-11-05 | The terminal-codex worker stays, and codex joins the Bifrost gateway |
@@ -525,7 +526,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (166 entries)
+### `plan` (165 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -537,10 +538,10 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 9 | 60 | 2 | 2 | 17 | **90** |
+| `canonical` | 9 | 61 | 2 | 2 | 17 | **91** |
 | `implementation` | 6 | 9 | 3 | 7 | 18 | **43** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 34 | **34** |
 | `superseded` | · | · | · | · | 9 | **9** |
 
-| **Total** | **15** | **69** | **5** | **9** | **79** | **177** |
+| **Total** | **15** | **70** | **5** | **9** | **79** | **178** |

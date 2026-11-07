@@ -11,7 +11,94 @@
     "type": "sqlite"
   },
   "governance": {
+    "complexity_analyzer_config": {
+      "classifier": "decision",
+      "decision": {
+        "model": "jev-latest",
+        "previous_message_count": 1,
+        "provider": "typesafe",
+        "timeout": "1.5s"
+      },
+      "keywords": {
+        "complex_keywords": [
+          "refactor the authentication layer across every provider.",
+          "design a solution where several constraints compete.",
+          "find the cause of a failure we cannot reproduce.",
+          "rename a public API and update every caller and test.",
+          "migrate the storage layer to the new schema without downtime.",
+          "this change must stay consistent across six modules.",
+          "why does the whole test suite fail only in CI?",
+          "audit the fleet for every place this contract is assumed.",
+          "the model works locally but fails in production; find why.",
+          "design the retry and circuit-breaker semantics for this service.",
+          "a subtle mistake here is hard to detect without deep analysis.",
+          "coordinate this change across three repositories.",
+          "optimize the hot path so the p99 latency budget holds.",
+          "reconcile these two conflicting definitions of the same concept."
+        ],
+        "medium_keywords": [
+          "add input validation to this single function.",
+          "write a unit test for this function.",
+          "fix this failing test.",
+          "update the documentation for this module.",
+          "refactor this function to remove the duplication.",
+          "add a new field to this dataclass.",
+          "handle the error case when the file is missing.",
+          "bump the version in the changelog and package metadata.",
+          "add a CLI flag that selects the output format.",
+          "write a migration for this schema change.",
+          "make this request retryable on failure.",
+          "add a log line when this branch is taken.",
+          "update the call sites of this renamed function.",
+          "add a test that the cache is not written.",
+          "extract this block into a helper function.",
+          "write a short script that lists the stale branches."
+        ],
+        "simple_keywords": [
+          "fix the typo in this sentence.",
+          "explain what this function does.",
+          "add a docstring to this function.",
+          "what does this error message mean?",
+          "rename this variable consistently.",
+          "show me the git log for this file.",
+          "what is the current version of this package?",
+          "summarize this error output.",
+          "list the files in this directory.",
+          "add a type annotation to this argument.",
+          "what is the difference between these two functions?",
+          "format this code with the project style.",
+          "find where this constant is defined.",
+          "what does this test assert?",
+          "rewrite this sentence to be clearer.",
+          "add an entry to the changelog for this fix.",
+          "check whether this function has a docstring.",
+          "print the current git branch."
+        ]
+      },
+      "session": {
+        "enabled": true
+      }
+    },
     "routing_rules": [
+      {
+        "cel_expression": "headers[\"x-bf-route\"] == \"anthropic_native\" && complexity_tier == \"SIMPLE\"",
+        "description": "Route only the Simple tier to MiniMax-M3.1-Flash. The complexity analyzer classifies the request with TypeSafe Jev and publishes the result as the CEL variable complexity_tier; classification runs at all only because this rule references it. Deliberately downward-only: SIMPLE is the only tier with a target, so MEDIUM and COMPLEX keep the caller's model through route-anthropic-native. Pinning a model on the higher tiers would override Claude Code's per-slot selection and would move the haiku slot onto the heavy model. The header guard keeps this off direct-SDK callers: the security-review plugin asks for claude-opus-5-5 without the x-bf-route header and depends on its Sonnet fallback, which MiniMax-M3's adaptive thinking truncates. Priority 3 puts it ahead of route-anthropic-native at priority 5 -- routing rules are first-match-wins with the lower number evaluated first, and Claude Code sends x-bf-route on every request.",
+        "enabled": true,
+        "fallbacks": [
+          "minimax-anthropic/MiniMax-M3"
+        ],
+        "id": "route-complexity-simple",
+        "name": "Simple Tasks → Concise Model",
+        "priority": 3,
+        "scope": "global",
+        "targets": [
+          {
+            "model": "MiniMax-M3.1-Flash",
+            "provider": "minimax-anthropic",
+            "weight": 1
+          }
+        ]
+      },
       {
         "cel_expression": "headers[\"x-bf-route\"] == \"anthropic_native\"",
         "description": "Pin Claude Code to the Anthropic-native MiniMax provider. The gateway config defines two providers that both claim MiniMax-M3, and bare model-name resolution cannot choose between them: the OpenAI-compatible one returns reasoning inline in the assistant text, while this one returns genuine Anthropic responses with thinking blocks. The target pins the provider only -- upstream keeps the incoming model when a target omits it -- because Claude Code picks the model per request class (MiniMax-M3 for the opus and sonnet slots, MiniMax-M3.1-Flash for the haiku slot) and a pinned model would silently move the fast slot onto the heavy model. The fallback stays on the Anthropic-native provider: the Anthropic ingress bridges every request to the 'responses' request type, which the chat-completions-only 'minimax-openai' provider cannot serve.",
@@ -309,6 +396,18 @@
       "network_config": {
         "base_url": "https://api.openai.com"
       }
+    },
+    "typesafe": {
+      "keys": [
+        {
+          "models": [
+            "*"
+          ],
+          "name": "typesafe-primary",
+          "value": "env.TYPESAFE_API_KEY",
+          "weight": 1.0
+        }
+      ]
     }
   },
   "vector_store": {

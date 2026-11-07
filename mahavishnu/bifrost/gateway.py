@@ -65,12 +65,21 @@ TARGET_CONFIG: Path = APP_DIR / "config.json"
 #: ``background`` / ``classify`` governance rules onto the cloud
 #: provider. The value is a placeholder, not a secret: the local
 #: llama-server does not verify it.
+#:
+#: ``TYPESAFE_API_KEY`` is here for the same reason. The Bifrost config
+#: declares the ``typesafe`` provider's key as ``env.TYPESAFE_API_KEY``,
+#: and the complexity analyzer's decision classifier resolves through that
+#: provider. The key is not in the gateway's environment, Bifrost drops it
+#: at startup, and every classification fails with
+#: ``no_key_supports_model`` -- which surfaces as "the complexity router
+#: never produces a tier" rather than as a credential error.
 # req: REQ-BIFROST-036
 NEEDED_KEYS: tuple[str, ...] = (
     "MINIMAX_API_KEY",
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
     "LLAMA_SERVER_API_KEY",
+    "TYPESAFE_API_KEY",
 )
 
 #: ``~/.config/secrets.env`` -- the operator's credential store. Read directly
