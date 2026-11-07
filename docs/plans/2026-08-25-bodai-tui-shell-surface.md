@@ -170,7 +170,9 @@ and removes the defensive try/except.
       from bodai.admin.shell import launch_shell
   except ImportError as e:
       console.print(f"[red]bodai shell requires ipython: {e}[/red]")
-      console.print("[yellow]Install with: uv pip install 'bodai[shell]' or 'uv pip install ipython'[/yellow]")
+      console.print(
+          "[yellow]Install with: uv pip install 'bodai[shell]' or 'uv pip install ipython'[/yellow]"
+      )
       raise typer.Exit(1)
   ```
   Same pattern for `bodai dashboard` (`bodai/tui/dashboard.py`).

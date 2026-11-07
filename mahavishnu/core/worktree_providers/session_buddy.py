@@ -44,7 +44,9 @@ def _extract_tool_payload(result: Any) -> dict[str, Any]:
         if not content:
             return {}
         first = content[0]
-        text = getattr(first, "text", None) or (first if isinstance(first, str) else None)
+        text = getattr(first, "text", None) or (
+            first if isinstance(first, str) else None
+        )
         if not text:
             return {}
         parsed = json.loads(text)
@@ -85,7 +87,9 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
         self._last_health: bool = False
         self._health_checked_at: float | None = None
 
-        logger.debug(f"SessionBuddyWorktreeProvider initialized (url={session_buddy_url})")
+        logger.debug(
+            f"SessionBuddyWorktreeProvider initialized (url={session_buddy_url})"
+        )
 
     async def _get_mcp_client(self):
         """Get or create MCP client connection to Session-Buddy.
@@ -111,7 +115,9 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
                     message="MCP client not installed",
                     details={"error": str(e)},
                 ) from e
-            except Exception as e:  # translate any MCP/network error to typed WorktreeCreationError
+            except (
+                Exception
+            ) as e:  # translate any MCP/network error to typed WorktreeCreationError
                 logger.exception("Failed to connect to Session-Buddy")
                 raise WorktreeCreationError(
                     message=f"Failed to connect to Session-Buddy: {e}",
@@ -322,7 +328,9 @@ class SessionBuddyWorktreeProvider(WorktreeProvider):
 
         except WorktreeValidationError:
             raise
-        except Exception as e:  # translate any MCP error to typed WorktreeValidationError
+        except (
+            Exception
+        ) as e:  # translate any MCP error to typed WorktreeValidationError
             logger.exception("Session-Buddy list_worktrees failed")
             raise WorktreeValidationError(
                 message=f"Session-Buddy worktree listing failed: {e}",

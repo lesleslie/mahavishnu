@@ -121,10 +121,14 @@ No frontmatter here.
         assert "another-skill" in related_names
 
         # Check relationship types
-        other_skill = next(rs for rs in metadata.related_skills if rs.name == "other-skill")
+        other_skill = next(
+            rs for rs in metadata.related_skills if rs.name == "other-skill"
+        )
         assert other_skill.relationship_type == "REQUIRED"
 
-        another_skill = next(rs for rs in metadata.related_skills if rs.name == "another-skill")
+        another_skill = next(
+            rs for rs in metadata.related_skills if rs.name == "another-skill"
+        )
         assert another_skill.relationship_type == "RELATED"
 
 

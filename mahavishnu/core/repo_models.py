@@ -37,11 +37,17 @@ class Repository(BaseModel):
     path: Path = Field(..., description="Absolute path to repository")
     nickname: str | None = Field(default=None, description="Primary nickname alias")
     nicknames: list[str] = Field(default_factory=list, description="Nickname aliases")
-    role: str | None = Field(default=None, description="Repository role in the ecosystem")
+    role: str | None = Field(
+        default=None, description="Repository role in the ecosystem"
+    )
     tags: list[str] = Field(..., min_length=1, max_length=10)
     description: str = Field(..., min_length=1, max_length=500)
-    mcp: Literal["native", "3rd-party"] | None = Field(None, description="MCP server type")
-    metadata: RepositoryMetadata | None = Field(default=None, description="Additional metadata")
+    mcp: Literal["native", "3rd-party"] | None = Field(
+        None, description="MCP server type"
+    )
+    metadata: RepositoryMetadata | None = Field(
+        default=None, description="Additional metadata"
+    )
 
     @field_validator("path")
     @classmethod

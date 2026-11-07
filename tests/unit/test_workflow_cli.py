@@ -31,7 +31,11 @@ def get_functions(source: str) -> list[str]:
 
 
 def get_async_functions(source: str) -> list[str]:
-    return [n.name for n in ast.walk(ast.parse(source)) if isinstance(n, ast.AsyncFunctionDef)]
+    return [
+        n.name
+        for n in ast.walk(ast.parse(source))
+        if isinstance(n, ast.AsyncFunctionDef)
+    ]
 
 
 def check(condition: bool, msg: str) -> None:
@@ -103,19 +107,22 @@ def main() -> None:
         "HybridAdapterRegistry import",
     )
     check(
-        "from .mcp.tools.self_improvement_tools import ReviewScope, SelfImprovementTools" in source,
+        "from .mcp.tools.self_improvement_tools import ReviewScope, SelfImprovementTools"
+        in source,
         "SelfImprovementTools import",
     )
 
     print("\n=== Correct API usage ===")
     check("dlq.retry_task" in source, "Heal uses DLQ retry_task")
     check(
-        "execute_fix(pool_id=pool_id, task=task)" in source, "FixOrchestrator call without timeout"
+        "execute_fix(pool_id=pool_id, task=task)" in source,
+        "FixOrchestrator call without timeout",
     )
     check("SelfImprovementTools(maha_app)" in source, "Review creates MahavishnuApp")
     check("TaskType(task_type)" in source, "Adapter resolve uses TaskType enum")
     check(
-        "await registry.check_all_health()" in source, "Adapter health uses async check_all_health"
+        "await registry.check_all_health()" in source,
+        "Adapter health uses async check_all_health",
     )
 
     print("\n=== Legacy sweep backward compat ===")

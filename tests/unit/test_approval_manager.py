@@ -122,7 +122,9 @@ class TestApprovalManager:
             approval_type="version_bump",
             context={"suggested_version": "0.24.3"},
             options=[
-                ApprovalOption(label="Approve", description="Approve", is_recommended=True),
+                ApprovalOption(
+                    label="Approve", description="Approve", is_recommended=True
+                ),
             ],
         )
 
@@ -258,7 +260,11 @@ class TestApprovalManagerMCPPersistence:
             context={"version": "1.0.0"},
             created_at=datetime.now(UTC),
             expires_at=datetime.now(UTC) + timedelta(hours=23),
-            options=[ApprovalOption(label="Publish", description="Do it", is_recommended=True)],
+            options=[
+                ApprovalOption(
+                    label="Publish", description="Do it", is_recommended=True
+                )
+            ],
         )
         entries = [("approval/v1/valid-001", valid_request.to_dict())]
         restored = manager.restore_from_mcp_entries(entries)
@@ -279,7 +285,9 @@ class TestApprovalManagerMCPPersistence:
             "expires_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
             "options": [],
         }
-        restored = manager.restore_from_mcp_entries([(f"approval/v1/{existing.id}", entry_data)])
+        restored = manager.restore_from_mcp_entries(
+            [(f"approval/v1/{existing.id}", entry_data)]
+        )
         assert restored == 0
 
     def test_restore_ignores_malformed_entries(self) -> None:
@@ -306,5 +314,7 @@ class TestApprovalManagerMCPPersistence:
     def test_get_default_options_unknown_type_returns_empty(self) -> None:
         """_get_default_options falls back to [] for unrecognized types (line 196)."""
         manager = ApprovalManager()
-        request = manager.create_request(approval_type="unknown_custom_type", context={})
+        request = manager.create_request(
+            approval_type="unknown_custom_type", context={}
+        )
         assert request.options == []

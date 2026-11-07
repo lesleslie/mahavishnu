@@ -162,7 +162,9 @@ class TaskEvent:
             else json.loads(row["event_data"]),
             actor=row["actor"],
             occurred_at=row["occurred_at"],
-            correlation_id=str(row["correlation_id"]) if row["correlation_id"] else None,
+            correlation_id=str(row["correlation_id"])
+            if row["correlation_id"]
+            else None,
             idempotency_key=row["idempotency_key"],
             version=1,
         )
@@ -289,7 +291,9 @@ class TaskState:
             "metadata": self.metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "is_deleted": self.is_deleted,
             "version": self.version,
         }
@@ -402,7 +406,9 @@ class EventStore:
                 event.idempotency_key,
             )
 
-            logger.debug(f"Appended event {event.event_type.value} for task {task_id} by {actor}")
+            logger.debug(
+                f"Appended event {event.event_type.value} for task {task_id} by {actor}"
+            )
             return event
 
         except Exception as e:
@@ -451,7 +457,9 @@ class EventStore:
 
         if event_types:
             param_count += 1
-            placeholders = ", ".join(f"${param_count + i}" for i in range(len(event_types)))
+            placeholders = ", ".join(
+                f"${param_count + i}" for i in range(len(event_types))
+            )
             query += f" AND event_type IN ({placeholders})"
             params.extend(et.value for et in event_types)
 

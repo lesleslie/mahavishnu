@@ -142,7 +142,9 @@ class TestFastMCPServerInit:
         assert isinstance(server._registered_tool_count, int)
         assert server._registered_tool_count >= 0
 
-    def test_init_with_tracing_disabled_skips_middleware(self, mock_app: MagicMock) -> None:
+    def test_init_with_tracing_disabled_skips_middleware(
+        self, mock_app: MagicMock
+    ) -> None:
         """Telemetry middleware should NOT be added when tracing is disabled."""
         # Import via mahavishnu.mcp.server_core (not mcp_common.server.telemetry)
         # because test_fastmcp_version.py evicts mcp_common from sys.modules.
@@ -192,7 +194,9 @@ class TestFastMCPServerInit:
                 f"Tracing middleware should not be added, but got {tracing_calls}"
             )
 
-    def test_init_with_tracing_enabled_adds_middleware(self, mock_app: MagicMock) -> None:
+    def test_init_with_tracing_enabled_adds_middleware(
+        self, mock_app: MagicMock
+    ) -> None:
         """Telemetry middleware should be added when tracing is enabled."""
         # Import via mahavishnu.mcp.server_core (not mcp_common.server.telemetry)
         # because test_fastmcp_version.py evicts mcp_common from sys.modules.
@@ -259,7 +263,9 @@ class TestFastMCPServerInit:
 class TestRegisterTelemetryMiddleware:
     """Test suite for _register_telemetry_middleware."""
 
-    def test_middleware_not_added_when_observability_missing(self, server: FastMCPServer) -> None:
+    def test_middleware_not_added_when_observability_missing(
+        self, server: FastMCPServer
+    ) -> None:
         """No middleware when observability attribute is None."""
         server.app.config.observability = None
 
@@ -267,7 +273,9 @@ class TestRegisterTelemetryMiddleware:
             server._register_telemetry_middleware()
             mock_add.assert_not_called()
 
-    def test_middleware_not_added_when_tracing_disabled(self, server: FastMCPServer) -> None:
+    def test_middleware_not_added_when_tracing_disabled(
+        self, server: FastMCPServer
+    ) -> None:
         """No middleware when observability.tracing_enabled is False."""
         server.app.config.observability = MagicMock(tracing_enabled=False)
 
@@ -284,7 +292,9 @@ class TestRegisterTelemetryMiddleware:
         # middleware, so isinstance() matches after the eviction.
         from mahavishnu.mcp.server_core import FastMCPOpenTelemetryMiddleware
 
-        server.app.config.observability = MagicMock(tracing_enabled=True, environment="ci")
+        server.app.config.observability = MagicMock(
+            tracing_enabled=True, environment="ci"
+        )
         server.app.config.server_name = "test-server"
 
         with patch.object(server.server, "add_middleware") as mock_add:
@@ -296,9 +306,13 @@ class TestRegisterTelemetryMiddleware:
             assert middleware.service_name == "test-server"
             assert middleware.environment == "ci"
 
-    def test_middleware_defaults_environment_to_production(self, server: FastMCPServer) -> None:
+    def test_middleware_defaults_environment_to_production(
+        self, server: FastMCPServer
+    ) -> None:
         """When no environment is configured, fallback to 'production'."""
-        server.app.config.observability = MagicMock(tracing_enabled=True, environment=None)
+        server.app.config.observability = MagicMock(
+            tracing_enabled=True, environment=None
+        )
         server.app.config.server_name = "fallback-server"
 
         with patch.object(server.server, "add_middleware") as mock_add:
@@ -325,7 +339,9 @@ class TestRegisterTools:
         assert server._registered_tool_count > 0
 
     @pytest.mark.asyncio
-    async def test_tool_count_matches_registered_tools(self, server: FastMCPServer) -> None:
+    async def test_tool_count_matches_registered_tools(
+        self, server: FastMCPServer
+    ) -> None:
         """The internal counter should match FastMCP's reported tool list."""
         tools = await server.server.list_tools()
         tool_names = {t.name for t in tools}
@@ -360,7 +376,9 @@ class TestRegisterTools:
         gauge_value = mcp_tools_registered.labels(server=server.app.config.server_name)
         assert gauge_value._value.get() == server._registered_tool_count
 
-    def test_metric_gauge_uses_default_when_name_missing(self, mock_app: MagicMock) -> None:
+    def test_metric_gauge_uses_default_when_name_missing(
+        self, mock_app: MagicMock
+    ) -> None:
         """Gauge label should fall back to 'mahavishnu' for empty/missing names."""
         mock_app.config.server_name = ""
         with patch("mahavishnu.mcp.server_core.get_auth_from_config"):
@@ -482,7 +500,9 @@ class TestLifecycle:
         )
 
     @pytest.mark.asyncio
-    async def test_start_uses_default_host_and_port(self, server: FastMCPServer) -> None:
+    async def test_start_uses_default_host_and_port(
+        self, server: FastMCPServer
+    ) -> None:
         """start() should default to 127.0.0.1:3000 when not specified."""
         server.server.run_http_async = AsyncMock()
 
@@ -495,7 +515,9 @@ class TestLifecycle:
         )
 
     @pytest.mark.asyncio
-    async def test_stop_is_noop_when_mcp_client_absent(self, server: FastMCPServer) -> None:
+    async def test_stop_is_noop_when_mcp_client_absent(
+        self, server: FastMCPServer
+    ) -> None:
         """stop() should be a no-op when server.mcp_client is not set.
 
         Since mcpretentious removal (2026-08-12), the legacy McpretentiousMCPClient
@@ -509,7 +531,9 @@ class TestLifecycle:
         await server.stop()
 
     @pytest.mark.asyncio
-    async def test_stop_invokes_client_stop_when_present(self, mock_app: MagicMock) -> None:
+    async def test_stop_invokes_client_stop_when_present(
+        self, mock_app: MagicMock
+    ) -> None:
         """stop() should call _client.stop when mcp_client IS configured."""
         mock_client = MagicMock()
         mock_client._client.stop = AsyncMock()
@@ -566,7 +590,9 @@ class TestToolHandlerWrapping:
     """Test suite for _wrap_tool_handler and _classify_tool_result."""
 
     @pytest.mark.asyncio
-    async def test_async_wrapper_records_success_metric(self, server: FastMCPServer) -> None:
+    async def test_async_wrapper_records_success_metric(
+        self, server: FastMCPServer
+    ) -> None:
         """An async tool returning a normal value should be classified as success."""
         from monitoring.metrics import mcp_tool_calls_total
 
@@ -581,7 +607,9 @@ class TestToolHandlerWrapping:
         assert counter._value.get() >= 1
 
     @pytest.mark.asyncio
-    async def test_async_wrapper_records_error_metric(self, server: FastMCPServer) -> None:
+    async def test_async_wrapper_records_error_metric(
+        self, server: FastMCPServer
+    ) -> None:
         """An async tool that raises should be classified as error."""
         from monitoring.metrics import mcp_tool_calls_total
 

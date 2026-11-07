@@ -55,19 +55,25 @@ def _mode(path: Path) -> int:
     return stat.S_IMODE(path.stat().st_mode)
 
 
-def test_atomic_write_text_publishes_the_content(atomic: ModuleType, tmp_path: Path) -> None:
+def test_atomic_write_text_publishes_the_content(
+    atomic: ModuleType, tmp_path: Path
+) -> None:
     dest = tmp_path / "snapshot.json"
     atomic.atomic_write_text(dest, "hello")
     assert dest.read_text() == "hello"
 
 
-def test_atomic_write_bytes_publishes_binary_content(atomic: ModuleType, tmp_path: Path) -> None:
+def test_atomic_write_bytes_publishes_binary_content(
+    atomic: ModuleType, tmp_path: Path
+) -> None:
     dest = tmp_path / "blob.bin"
     atomic.atomic_write_bytes(dest, b"\x00\x01\x02")
     assert dest.read_bytes() == b"\x00\x01\x02"
 
 
-def test_atomic_write_text_leaves_no_temp_file_behind(atomic: ModuleType, tmp_path: Path) -> None:
+def test_atomic_write_text_leaves_no_temp_file_behind(
+    atomic: ModuleType, tmp_path: Path
+) -> None:
     dest = tmp_path / "snapshot.json"
     atomic.atomic_write_text(dest, "hello")
     assert [p.name for p in tmp_path.iterdir()] == ["snapshot.json"]
@@ -81,13 +87,17 @@ def test_atomic_write_text_publishes_owner_only_permissions(
     assert _mode(dest) == 0o600
 
 
-def test_atomic_write_text_honours_an_explicit_mode(atomic: ModuleType, tmp_path: Path) -> None:
+def test_atomic_write_text_honours_an_explicit_mode(
+    atomic: ModuleType, tmp_path: Path
+) -> None:
     dest = tmp_path / "snapshot.json"
     atomic.atomic_write_text(dest, "hello", mode=0o640)
     assert _mode(dest) == 0o640
 
 
-def test_a_stale_temp_file_cannot_leak_its_permissions(atomic: ModuleType, tmp_path: Path) -> None:
+def test_a_stale_temp_file_cannot_leak_its_permissions(
+    atomic: ModuleType, tmp_path: Path
+) -> None:
     """A leftover temp file from a crashed write must not be reused.
 
     ``Path.write_text`` truncates an existing file *in place* and keeps
@@ -105,7 +115,9 @@ def test_a_stale_temp_file_cannot_leak_its_permissions(atomic: ModuleType, tmp_p
     assert _mode(dest) == 0o600
 
 
-def test_a_symlinked_temp_file_is_never_written_through(atomic: ModuleType, tmp_path: Path) -> None:
+def test_a_symlinked_temp_file_is_never_written_through(
+    atomic: ModuleType, tmp_path: Path
+) -> None:
     """The writer must not follow a symlink planted at a predictable path.
 
     ``Path.write_bytes`` opens with ``O_CREAT | O_TRUNC``, which follows
@@ -212,7 +224,9 @@ def test_the_published_file_is_never_a_mixture_of_two_writes(
         try:
             barrier.wait()
             for _ in range(25):
-                atomic.atomic_write_text(dest, json.dumps({"writer": index, "filler": "x" * 4000}))
+                atomic.atomic_write_text(
+                    dest, json.dumps({"writer": index, "filler": "x" * 4000})
+                )
                 # A reader must never observe a half-written file.
                 assert json.loads(dest.read_text())["filler"] == "x" * 4000
         except BaseException as exc:  # noqa: BLE001

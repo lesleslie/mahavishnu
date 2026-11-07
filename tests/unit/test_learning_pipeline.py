@@ -18,7 +18,10 @@ from mahavishnu.core.evidence_retriever import (
     RetrievalContext,
 )
 from mahavishnu.core.evidence_store import EvidenceStore, StoreBatchResult
-from mahavishnu.core.learning_pipeline import LearningPipelineService, PipelineCycleResult
+from mahavishnu.core.learning_pipeline import (
+    LearningPipelineService,
+    PipelineCycleResult,
+)
 from mahavishnu.core.review_gate import ReviewGate
 from mahavishnu.core.skill_governance import (
     LearningEvidence,
@@ -136,7 +139,9 @@ class TestEvidenceRetriever:
             akosha_url="http://localhost:8682/mcp",
             session_buddy_url="http://localhost:8678/mcp",
         )
-        result = asyncio.get_event_loop().run_until_complete(retriever.cluster_by_pattern([]))
+        result = asyncio.get_event_loop().run_until_complete(
+            retriever.cluster_by_pattern([])
+        )
         assert result == []
 
     def test_cluster_by_pattern_groups_by_repo(self):
@@ -337,7 +342,9 @@ class TestLearningPipelineService:
 
     @pytest.mark.asyncio
     async def test_run_once_full_cycle(self):
-        config = LearningConfig(enabled=True, synthesis_min_evidence=2, max_drafts_per_cycle=5)
+        config = LearningConfig(
+            enabled=True, synthesis_min_evidence=2, max_drafts_per_cycle=5
+        )
         svc = LearningPipelineService(config=config)
 
         svc._collector.collect_recent_outcomes = AsyncMock(
@@ -353,7 +360,9 @@ class TestLearningPipelineService:
                 for idx in range(3)
             ]
         )
-        svc._store.store_batch = AsyncMock(return_value=StoreBatchResult(stored_count=3))
+        svc._store.store_batch = AsyncMock(
+            return_value=StoreBatchResult(stored_count=3)
+        )
         svc._retriever.get_retrieval_context = AsyncMock(
             return_value=RetrievalContext(
                 similar_evidence=[],
@@ -405,7 +414,9 @@ class TestLearningPipelineService:
                 )
             ]
         )
-        svc._store.store_batch = AsyncMock(return_value=StoreBatchResult(stored_count=1))
+        svc._store.store_batch = AsyncMock(
+            return_value=StoreBatchResult(stored_count=1)
+        )
         svc._retriever.get_retrieval_context = AsyncMock(
             return_value=RetrievalContext(
                 similar_evidence=[],
@@ -432,7 +443,9 @@ class TestLearningPipelineService:
     async def test_run_once_graceful_degradation_on_collect_failure(self):
         config = LearningConfig(enabled=True)
         svc = LearningPipelineService(config=config)
-        svc._collector.collect_recent_outcomes = AsyncMock(side_effect=RuntimeError("DB down"))
+        svc._collector.collect_recent_outcomes = AsyncMock(
+            side_effect=RuntimeError("DB down")
+        )
         result = await svc.run_once()
         assert result.evidence_collected == 0
         assert result.cycle_completed_at is not None
@@ -453,8 +466,12 @@ class TestLearningPipelineService:
                 )
             ]
         )
-        svc._store.store_batch = AsyncMock(return_value=StoreBatchResult(stored_count=1))
-        svc._retriever.get_retrieval_context = AsyncMock(side_effect=RuntimeError("Akosha down"))
+        svc._store.store_batch = AsyncMock(
+            return_value=StoreBatchResult(stored_count=1)
+        )
+        svc._retriever.get_retrieval_context = AsyncMock(
+            side_effect=RuntimeError("Akosha down")
+        )
 
         result = await svc.run_once()
         assert result.evidence_stored == 1
@@ -514,7 +531,9 @@ class TestSkillSecurity:
         assert len(result) <= 100_000
 
     def test_sanitize_preserves_safe_content(self):
-        body = "# Valid skill\n\n## Trigger\nWhen auth fails.\n\n## Actions\nCheck tokens."
+        body = (
+            "# Valid skill\n\n## Trigger\nWhen auth fails.\n\n## Actions\nCheck tokens."
+        )
         result = sanitize_skill_body(body)
         assert "## Trigger" in result
         assert "Check tokens" in result

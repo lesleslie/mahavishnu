@@ -481,7 +481,10 @@ def build_mahavishnu_health_body(
         if not normalised["ok"]:
             # A failing component check degrades the verdict, but never
             # softens one the aggregator already reached.
-            if _STATUS_SEVERITY.get(overall, 0) < _STATUS_SEVERITY[StatusValue.DEGRADED.value]:
+            if (
+                _STATUS_SEVERITY.get(overall, 0)
+                < _STATUS_SEVERITY[StatusValue.DEGRADED.value]
+            ):
                 overall = StatusValue.DEGRADED.value
 
     http_status = _status_to_http(StatusValue(overall))

@@ -36,7 +36,9 @@ class _Settings:
 def test_live_probe_openclaw_unhealthy() -> None:
     os.environ["OPENCLAW_GATEWAY_URL"] = "http://127.0.0.1:1"
     report = evaluate_worker_capabilities(
-        "gateway-openclaw", settings=_Settings(), force_live=True,
+        "gateway-openclaw",
+        settings=_Settings(),
+        force_live=True,
     )
     assert report.state is WorkerCapabilityState.READY
     assert any(c.kind == "openclaw_gateway" for c in report.checks)
@@ -45,6 +47,11 @@ def test_live_probe_openclaw_unhealthy() -> None:
 @pytest.mark.integration
 def test_live_probe_container_daemon() -> None:
     report = evaluate_worker_capabilities(
-        "container-executor", settings=_Settings(), force_live=True,
+        "container-executor",
+        settings=_Settings(),
+        force_live=True,
     )
-    assert report.state in {WorkerCapabilityState.READY, WorkerCapabilityState.AVAILABLE}
+    assert report.state in {
+        WorkerCapabilityState.READY,
+        WorkerCapabilityState.AVAILABLE,
+    }

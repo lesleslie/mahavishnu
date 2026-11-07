@@ -292,8 +292,16 @@ async def test_process_repository_changes(mock_app):
 
     # Define some test changes
     changes = [
-        {"type": "file_added", "path": "/path/to/new_file.py", "content": "print('hello')"},
-        {"type": "file_modified", "path": "/path/to/existing_file.py", "diff": "+ new line"},
+        {
+            "type": "file_added",
+            "path": "/path/to/new_file.py",
+            "content": "print('hello')",
+        },
+        {
+            "type": "file_modified",
+            "path": "/path/to/existing_file.py",
+            "diff": "+ new line",
+        },
         {"type": "file_deleted", "path": "/path/to/deleted_file.py"},
     ]
 

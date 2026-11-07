@@ -103,10 +103,20 @@ def _make_stub_worker_manager():
 # installs (no `ai` dep group) don't hard-fail.
 _ENGINE_LOCATIONS: list[tuple[str, str, str, dict[str, object]]] = [
     ("prefect", "mahavishnu.engines.prefect_adapter_impl", "PrefectAdapter", {}),
-    ("llamaindex", "mahavishnu.engines.llamaindex_adapter_impl", "LlamaIndexAdapter", {}),
+    (
+        "llamaindex",
+        "mahavishnu.engines.llamaindex_adapter_impl",
+        "LlamaIndexAdapter",
+        {},
+    ),
     ("agno", "mahavishnu.engines.agno_adapter_impl", "AgnoAdapter", {}),
     ("hatchet", "mahavishnu.engines.hatchet_adapter_impl", "HatchetAdapterImpl", {}),
-    ("pydantic_ai", "mahavishnu.adapters.ai.pydantic_ai_adapter", "PydanticAIAdapter", {}),
+    (
+        "pydantic_ai",
+        "mahavishnu.adapters.ai.pydantic_ai_adapter",
+        "PydanticAIAdapter",
+        {},
+    ),
     (
         "worker",
         "mahavishnu.core.adapters.worker",
@@ -116,7 +126,9 @@ _ENGINE_LOCATIONS: list[tuple[str, str, str, dict[str, object]]] = [
 ]
 
 
-def _try_load_adapter(import_path: str, class_name: str, init_kwargs: dict[str, object]):
+def _try_load_adapter(
+    import_path: str, class_name: str, init_kwargs: dict[str, object]
+):
     """Return an adapter instance, or None if the module is missing."""
     try:
         module = importlib.import_module(import_path)

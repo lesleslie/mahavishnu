@@ -66,7 +66,10 @@ short_timeout_strategy = st.integers(min_value=1, max_value=10)
 class TestCircuitBreakerStateProperties:
     """Property-based tests for circuit breaker state machine."""
 
-    @given(threshold=valid_threshold_strategy, num_failures=st.integers(min_value=0, max_value=100))
+    @given(
+        threshold=valid_threshold_strategy,
+        num_failures=st.integers(min_value=0, max_value=100),
+    )
     @settings(max_examples=50)
     def test_failure_count_increments_correctly(self, threshold, num_failures):
         """Failure count increments correctly and circuit opens at threshold."""
@@ -85,9 +88,13 @@ class TestCircuitBreakerStateProperties:
         else:
             assert cb.state == CircuitState.CLOSED
 
-    @given(threshold=valid_threshold_strategy, num_failures=st.integers(min_value=1, max_value=50))
+    @given(
+        threshold=valid_threshold_strategy,
+        num_failures=st.integers(min_value=1, max_value=50),
+    )
     @settings(
-        max_examples=40, suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow]
+        max_examples=40,
+        suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow],
     )
     def test_circuit_opens_at_threshold(self, threshold, num_failures):
         """Circuit opens exactly when failures reach threshold."""
@@ -97,7 +104,9 @@ class TestCircuitBreakerStateProperties:
 
         # Record failures up to threshold
         for i in range(threshold):
-            assert cb.state == CircuitState.CLOSED, f"Circuit opened early at failure {i + 1}"
+            assert cb.state == CircuitState.CLOSED, (
+                f"Circuit opened early at failure {i + 1}"
+            )
             cb.record_failure()
 
         # Circuit should now be open
@@ -197,7 +206,8 @@ class TestCircuitBreakerStateProperties:
         num_failures_before_success=st.integers(min_value=0, max_value=10),
     )
     @settings(
-        max_examples=40, suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow]
+        max_examples=40,
+        suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow],
     )
     def test_success_resets_failure_count(self, threshold, num_failures_before_success):
         """Success resets failure count to zero."""
@@ -257,7 +267,9 @@ class TestCircuitBreakerStateProperties:
         num_successes=st.integers(min_value=1, max_value=10),
     )
     @settings(max_examples=30)
-    def test_successes_in_closed_state_preserve_state(self, threshold, timeout, num_successes):
+    def test_successes_in_closed_state_preserve_state(
+        self, threshold, timeout, num_successes
+    ):
         """Successes in CLOSED state keep circuit closed."""
         cb = CircuitBreaker(threshold=threshold, timeout=timeout)
 
@@ -450,7 +462,9 @@ class CircuitBreakerStateMachine(RuleBasedStateMachine):
     @rule()
     def advance_time_past_timeout(self):
         """Advance time past timeout."""
-        self.cb.last_failure_time = datetime.now((UTC)) - timedelta(seconds=self.timeout + 1)
+        self.cb.last_failure_time = datetime.now((UTC)) - timedelta(
+            seconds=self.timeout + 1
+        )
 
     @invariant()
     def failure_count_never_negative(self):
@@ -466,7 +480,11 @@ class CircuitBreakerStateMachine(RuleBasedStateMachine):
     @invariant()
     def state_is_valid(self):
         """Circuit breaker is always in a valid state."""
-        assert self.cb.state in [CircuitState.CLOSED, CircuitState.OPEN, CircuitState.HALF_OPEN]
+        assert self.cb.state in [
+            CircuitState.CLOSED,
+            CircuitState.OPEN,
+            CircuitState.HALF_OPEN,
+        ]
 
     @invariant()
     def open_blocks_requests(self):
@@ -474,7 +492,9 @@ class CircuitBreakerStateMachine(RuleBasedStateMachine):
         if self.cb.state == CircuitState.OPEN:
             # Check if timeout has elapsed
             if self.cb.last_failure_time:
-                time_since_failure = (datetime.now((UTC)) - self.cb.last_failure_time).seconds
+                time_since_failure = (
+                    datetime.now((UTC)) - self.cb.last_failure_time
+                ).seconds
                 if time_since_failure <= self.timeout:
                     # Timeout hasn't elapsed, should block
                     assert self.cb.allow_request() is False
@@ -493,7 +513,9 @@ def test_circuit_breaker_state_machine():
 class TestCircuitBreakerEdgeCases:
     """Property-based tests for circuit breaker edge cases."""
 
-    @given(threshold=st.integers(min_value=1, max_value=5), timeout=short_timeout_strategy)
+    @given(
+        threshold=st.integers(min_value=1, max_value=5), timeout=short_timeout_strategy
+    )
     @settings(max_examples=30)
     def test_rapid_failures_open_circuit(self, threshold, timeout):
         """Rapid failures should open circuit correctly."""

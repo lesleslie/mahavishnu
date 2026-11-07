@@ -58,8 +58,12 @@ def fake_manager(fake_messenger):
     mgr.process_repository_changes = AsyncMock(
         return_value={"status": "success", "messages_sent": 2, "changes_notified": 3}
     )
-    mgr.notify_workflow_status = AsyncMock(return_value={"status": "success", "messages_sent": 1})
-    mgr.send_quality_alert = AsyncMock(return_value={"status": "success", "messages_sent": 1})
+    mgr.notify_workflow_status = AsyncMock(
+        return_value={"status": "success", "messages_sent": 1}
+    )
+    mgr.send_quality_alert = AsyncMock(
+        return_value={"status": "success", "messages_sent": 1}
+    )
     return mgr
 
 
@@ -399,7 +403,8 @@ class TestCoercionHelpers:
     def test_coerce_message_type(self):
         """_coerce_message_type should lowercase and convert."""
         assert (
-            rmt._coerce_message_type("WORKFLOW_STATUS_UPDATE") == MessageType.WORKFLOW_STATUS_UPDATE
+            rmt._coerce_message_type("WORKFLOW_STATUS_UPDATE")
+            == MessageType.WORKFLOW_STATUS_UPDATE
         )
         assert rmt._coerce_message_type("custom") == MessageType.CUSTOM
 

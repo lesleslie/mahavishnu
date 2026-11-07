@@ -86,8 +86,12 @@ def scan_disk_paths(repo_root: Path, yaml_module: Any | None = None) -> set[str]
         # Only stores NESTED UNDER this one are skipped, mirroring
         # regenerate_plan_index.main(). Skipping every other store would
         # drop each nested store's own files (a parent prefix would match).
-        skip = frozenset(s for s in store_set if s != store_rel and s.startswith(store_rel))
-        for abs_path, rel in discover_files(repo_root, store_rel, skip_deeper_stores=skip):
+        skip = frozenset(
+            s for s in store_set if s != store_rel and s.startswith(store_rel)
+        )
+        for abs_path, rel in discover_files(
+            repo_root, store_rel, skip_deeper_stores=skip
+        ):
             if _has_frontmatter(abs_path, yaml_module):
                 paths.add(rel)
     return paths
@@ -132,7 +136,9 @@ class AuditReport:
     @property
     def failures(self) -> int:
         return sum(
-            1 for group in (self.in_index_only, self.in_disk_only, self.in_mcp_only) if group
+            1
+            for group in (self.in_index_only, self.in_disk_only, self.in_mcp_only)
+            if group
         )
 
     @property
@@ -149,7 +155,9 @@ def audit(
     return AuditReport(
         in_index_only=frozenset(index_paths - disk_paths),
         in_disk_only=frozenset(disk_paths - index_paths),
-        in_mcp_only=frozenset(mcp_paths - index_paths) if mcp_paths is not None else frozenset(),
+        in_mcp_only=frozenset(mcp_paths - index_paths)
+        if mcp_paths is not None
+        else frozenset(),
         missing_from_mcp=frozenset(index_paths - mcp_paths)
         if mcp_paths is not None
         else frozenset(),
@@ -164,7 +172,9 @@ class _Lines:
     err: list[str] = field(default_factory=list)
 
 
-def _report_group(lines: _Lines, paths: frozenset[str], header: str, marker: str) -> None:
+def _report_group(
+    lines: _Lines, paths: frozenset[str], header: str, marker: str
+) -> None:
     if not paths:
         return
     lines.err.append(f"FAIL: {len(paths)} {header}")
@@ -177,11 +187,18 @@ def _report_group(lines: _Lines, paths: frozenset[str], header: str, marker: str
 def format_report(report: AuditReport) -> _Lines:
     """Render an :class:`AuditReport` into stdout/stderr line buffers."""
     lines = _Lines()
-    _report_group(lines, report.in_index_only, "paths in PLAN_INDEX.md but not on disk:", "-")
     _report_group(
-        lines, report.in_disk_only, "frontmatter'd files missing from PLAN_INDEX.md:", "+"
+        lines, report.in_index_only, "paths in PLAN_INDEX.md but not on disk:", "-"
     )
-    _report_group(lines, report.in_mcp_only, "MCP records missing from PLAN_INDEX.md:", "~")
+    _report_group(
+        lines,
+        report.in_disk_only,
+        "frontmatter'd files missing from PLAN_INDEX.md:",
+        "+",
+    )
+    _report_group(
+        lines, report.in_mcp_only, "MCP records missing from PLAN_INDEX.md:", "~"
+    )
     if report.missing_from_mcp:
         lines.out.append(
             f"WARN: {len(report.missing_from_mcp)} indexed paths have no MCP record "

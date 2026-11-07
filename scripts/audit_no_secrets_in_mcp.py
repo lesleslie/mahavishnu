@@ -129,7 +129,9 @@ def scan_file(path: Path) -> list[tuple[str, str, str]]:
             # Skip empty / unset values — those are explicit "no secret"
             if not value:
                 continue
-            reason = "placeholder" if looks_like_placeholder(value) else "literal-secret"
+            reason = (
+                "placeholder" if looks_like_placeholder(value) else "literal-secret"
+            )
             violations.append((key, value, reason))
 
     return violations

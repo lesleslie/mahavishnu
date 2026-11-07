@@ -7,6 +7,7 @@ exercise the entry point, not the isolated Typer app — a CLI that
 registers correctly in-process but fails to register in the parent
 app must still fail e2e.
 """
+
 from __future__ import annotations
 
 import subprocess

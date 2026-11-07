@@ -100,7 +100,9 @@ class ToolCallEnrichmentMiddleware(FastMCPOpenTelemetryMiddleware):
     (same tracer, same OTel context).
     """
 
-    async def on_message(self, context: MiddlewareContext[Any], call_next: CallNext) -> Any:
+    async def on_message(
+        self, context: MiddlewareContext[Any], call_next: CallNext
+    ) -> Any:
         """Gate on ``tools/call`` and enrich the upstream's span."""
         if context.method != "tools/call":
             # Pass through unchanged. The upstream middleware still emits

@@ -280,7 +280,9 @@ class AsyncEcosystemStateStore:  # req: REQ-SUBSTR-003
         """
         # Iterate the index; for each match, hydrate the full record so the
         # caller gets the canonical payload, not just the index entry.
-        index = _load_index(await substrate.get(_SERVICES_INDEX_KEY), _SERVICES_INDEX_KEY)
+        index = _load_index(
+            await substrate.get(_SERVICES_INDEX_KEY), _SERVICES_INDEX_KEY
+        )
         results: list[dict[str, Any]] = []
         for entry in index:
             if service_type and entry.get("service_type") != service_type:

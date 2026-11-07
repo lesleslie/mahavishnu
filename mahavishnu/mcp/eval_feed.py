@@ -143,9 +143,7 @@ def init_eval_feed_state() -> EvalFeedState:
 
     with _eval_state_lock:
         if _eval_feed_state is not None:
-            _eval_feed_state = EvalFeedState(
-                generation=_eval_feed_state.generation + 1
-            )
+            _eval_feed_state = EvalFeedState(generation=_eval_feed_state.generation + 1)
         else:
             _eval_feed_state = EvalFeedState()
         return _eval_feed_state

@@ -189,13 +189,17 @@ class FakeMCPClient:
         self._sql_log: list[tuple[str, dict[str, Any]]] = []
         self._schema_ready = False
 
-    async def execute(self, sql: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def execute(
+        self, sql: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         self._sql_log.append((sql, params or {}))
         s = " ".join(sql.split()).lower()
         if s.startswith("create table"):
             self._schema_ready = True
             return {"rowcount": 0, "status": "ok"}
-        if s.startswith("insert or replace into mahavishnu_worktree_registry_idx_principal"):
+        if s.startswith(
+            "insert or replace into mahavishnu_worktree_registry_idx_principal"
+        ):
             p = params or {}
             self._idx_principal.setdefault(p["principal"], set()).add(p["handle_id"])
             return {"rowcount": 1, "status": "ok"}
@@ -223,9 +227,15 @@ class FakeMCPClient:
             return {"rowcount": 1, "status": "ok"}
         raise ValueError(f"Unhandled SQL in fake: {sql[:80]}")
 
-    async def query(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    async def query(
+        self, sql: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         s = " ".join(sql.split()).lower()
-        if s.startswith("select * from mahavishnu_worktree_registry") and params and "handle_id" in params:
+        if (
+            s.startswith("select * from mahavishnu_worktree_registry")
+            and params
+            and "handle_id" in params
+        ):
             row = self._registry.get(params["handle_id"])
             return [row] if row else []
         if s.startswith("select * from mahavishnu_worktree_registry"):
@@ -329,9 +339,7 @@ def tmp_git_repo(tmp_path: Path, monkeypatch) -> Path:
                 out = out.joinpath(part)
         return out
 
-    monkeypatch.setattr(
-        "mahavishnu.core.paths.get_worktree_base_path", _base
-    )
+    monkeypatch.setattr("mahavishnu.core.paths.get_worktree_base_path", _base)
     monkeypatch.setattr("mahavishnu.core.paths.get_worktree_path", _path)
     monkeypatch.setattr(remote_mod, "get_worktree_base_path", _base)
     monkeypatch.setattr(remote_mod, "get_worktree_path", _path)
@@ -353,9 +361,14 @@ def tmp_git_repo(tmp_path: Path, monkeypatch) -> Path:
             capture_output=True,
         )
         (repo / "README.md").write_text("hello\n")
-        subprocess.run(["git", "add", "README.md"], cwd=repo, check=True, capture_output=True)
         subprocess.run(
-            ["git", "commit", "-q", "-m", "init"], cwd=repo, check=True, capture_output=True
+            ["git", "add", "README.md"], cwd=repo, check=True, capture_output=True
+        )
+        subprocess.run(
+            ["git", "commit", "-q", "-m", "init"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
         )
     except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
         pytest.skip("git unavailable or repo init failed")
@@ -549,7 +562,9 @@ class TestCreateWorktreeHandleStreaming:
                 base_ref="HEAD",
                 principal=_principal(),
             )
-        assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG
+        assert (
+            exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG
+        )
         # No save_stream call happened (validation aborted before upload).
         assert storage.save_stream_calls == []
 
@@ -616,13 +631,9 @@ class TestFetchStreaming:
         with storage_io.serialize_worktree_tar(wt) as (temp_path, _size, sha):
             payload = temp_path.read_bytes()
 
-        storage = _FakeCloudStorage(
-            backend="azure", stream_payload=payload
-        )
+        storage = _FakeCloudStorage(backend="azure", stream_payload=payload)
         cache = _FakeCache()
-        provider = RemoteWorktreeProvider(
-            storage=storage, cache=cache, backend="azure"
-        )
+        provider = RemoteWorktreeProvider(storage=storage, cache=cache, backend="azure")
         handle = _handle(handle_id="h-stream-1", sha=sha, size=len(payload))
 
         ref = await provider.fetch(handle)
@@ -695,13 +706,13 @@ class TestFetchStreaming:
         assert bytes_processed == len(payload)
         assert success is True
 
-    async def test_fetch_raises_on_legacy_gzip_magic_mhv213(self, tmp_materialized_base):
+    async def test_fetch_raises_on_legacy_gzip_magic_mhv213(
+        self, tmp_materialized_base
+    ):
         """First chunk starts with \\x1f\\x8b → MHV-213."""
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
-        storage = _FakeCloudStorage(
-            stream_payload=b"\x1f\x8b\x08\x00rest-of-gzip"
-        )
+        storage = _FakeCloudStorage(stream_payload=b"\x1f\x8b\x08\x00rest-of-gzip")
         provider = RemoteWorktreeProvider(storage=storage, cache=_FakeCache())
 
         handle = _handle()

@@ -67,7 +67,9 @@ class TestResolveMinimaxBaseUrl:
         assert url == "https://api.minimax.io/v1"
         assert via_gateway is False
 
-    def test_returns_router_url_with_v1_suffix(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_returns_router_url_with_v1_suffix(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _enable_bifrost(monkeypatch, routes=("qwen_route",))
         config = CloudWorkerConfig(minimax_url="https://api.minimax.io/v1")
         # The oneiric router returns http://127.0.0.1:8471/v1/ (Pydantic
@@ -117,7 +119,9 @@ class TestResolveMinimaxBaseUrl:
 class TestBuildFallbackChainBifrostRouting:
     """REQ-BIFROST-008: the chain's minimax base_url comes from oneiric."""
 
-    def test_chain_uses_router_when_enabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_chain_uses_router_when_enabled(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _enable_bifrost(monkeypatch, routes=("qwen_route",))
 
         captured: list = []
@@ -138,9 +142,13 @@ class TestBuildFallbackChainBifrostRouting:
             _build_fallback_chain(config)
 
         assert len(captured) == 1
-        assert captured[0].providers["minimax"]["base_url"] == "http://127.0.0.1:8471/v1"
+        assert (
+            captured[0].providers["minimax"]["base_url"] == "http://127.0.0.1:8471/v1"
+        )
         # llama_server is unchanged — local providers stay direct.
-        assert captured[0].providers["llama_server"]["base_url"] == "http://localhost:8081"
+        assert (
+            captured[0].providers["llama_server"]["base_url"] == "http://localhost:8081"
+        )
         # The chain order is preserved (minimax primary, llama_server
         # secondary).
         assert captured[0].fallback_chain == ["minimax", "llama_server"]
@@ -172,9 +180,13 @@ class TestBuildFallbackChainBifrostRouting:
         assert len(captured) == 1
         # No router → use config default (the operator env var or
         # the public MiniMax OpenAI-compatible endpoint).
-        assert captured[0].providers["minimax"]["base_url"] == "https://api.minimax.io/v1"
+        assert (
+            captured[0].providers["minimax"]["base_url"] == "https://api.minimax.io/v1"
+        )
 
-    def test_chain_does_not_route_anthropic(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_chain_does_not_route_anthropic(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """The router's CLAUDE_ROUTE only affects the Agno factory's
         ``ANTHROPIC_BASE_URL`` injection. The CloudWorker's
         FallbackChain has no Anthropic tier — its anthropic support
@@ -205,7 +217,9 @@ class TestBuildFallbackChainBifrostRouting:
         # minimax IS in the providers (it's the primary tier).
         assert "minimax" in captured[0].providers
         # And the minimax URL is the oneiric-router URL with /v1.
-        assert captured[0].providers["minimax"]["base_url"] == "http://127.0.0.1:8471/v1"
+        assert (
+            captured[0].providers["minimax"]["base_url"] == "http://127.0.0.1:8471/v1"
+        )
 
 
 class TestBuildFallbackChainGatewayHeaders:
@@ -244,7 +258,9 @@ class TestBuildFallbackChainGatewayHeaders:
         headers = captured[0].providers["minimax"]["default_headers"]
         assert headers["x-bf-vk"] == "sk-bf-test-key"
 
-    def test_no_gateway_headers_when_routed_direct(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_no_gateway_headers_when_routed_direct(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A direct-to-MiniMax provider must not carry gateway headers."""
         from oneiric.adapters.llm.bifrost import reset_router_for_tests
 
@@ -255,7 +271,9 @@ class TestBuildFallbackChainGatewayHeaders:
         captured = self._capture(monkeypatch)
         assert captured[0].providers["minimax"]["default_headers"] == {}
 
-    def test_cache_type_follows_the_configured_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_cache_type_follows_the_configured_mode(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``cache_mode`` reaches the request as ``x-bf-cache-type``."""
         _enable_bifrost(monkeypatch, routes=("qwen_route",))
         monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
@@ -271,7 +289,9 @@ class TestBuildFallbackChainGatewayHeaders:
         )
         assert headers["x-bf-cache-key"] != "default"
 
-    def test_off_mode_suppresses_the_cache_write(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_off_mode_suppresses_the_cache_write(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``cache_mode: off`` becomes ``x-bf-cache-no-store``."""
         _enable_bifrost(monkeypatch, routes=("qwen_route",))
         monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
@@ -298,14 +318,18 @@ class TestBuildFallbackChainGatewayHeaders:
         """
         _enable_bifrost(monkeypatch, routes=("qwen_route",))
         monkeypatch.delenv("BIFROST_VIRTUAL_KEY", raising=False)
-        monkeypatch.setattr("mahavishnu.bifrost.cache_headers.resolve_virtual_key", lambda: None)
+        monkeypatch.setattr(
+            "mahavishnu.bifrost.cache_headers.resolve_virtual_key", lambda: None
+        )
 
         captured = self._capture(monkeypatch)
         headers = captured[0].providers["minimax"]["default_headers"]
         assert "x-bf-vk" not in headers
         # No credential means the gateway rejects the request anyway, but
         # the bucket is still derived rather than shared.
-        assert headers["x-bf-cache-key"] == resolve_cache_bucket(TRAFFIC_CLASS_WORKER, None)
+        assert headers["x-bf-cache-key"] == resolve_cache_bucket(
+            TRAFFIC_CLASS_WORKER, None
+        )
         assert headers["x-bf-cache-key"] != "default"
         assert headers["x-bf-cache-type"] == "semantic"
 

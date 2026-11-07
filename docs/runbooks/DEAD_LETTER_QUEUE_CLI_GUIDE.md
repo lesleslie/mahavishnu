@@ -37,6 +37,7 @@ def dlq_status(
 
         if json_output:
             import json
+
             console.print(json.dumps(stats, indent=2))
             return
 
@@ -51,9 +52,11 @@ def dlq_status(
 
         table.add_row("Queue Size", f"{stats['queue_size']:,} / {stats['max_size']:,}")
         table.add_row("Utilization", f"{stats['utilization_percent']:.2f}%")
-        table.add_row("Processor Running", "✓" if stats['is_processor_running'] else "✗")
+        table.add_row(
+            "Processor Running", "✓" if stats["is_processor_running"] else "✗"
+        )
 
-        if stats['is_processor_running']:
+        if stats["is_processor_running"]:
             table.add_row("Retry Interval", f"{stats['retry_interval_seconds']}s")
 
         console.print(table)
@@ -64,19 +67,21 @@ def dlq_status(
         status_table.add_column("Status")
         status_table.add_column("Count")
 
-        for status, count in stats['status_breakdown'].items():
+        for status, count in stats["status_breakdown"].items():
             status_table.add_row(status.capitalize(), str(count))
 
         console.print(status_table)
 
         # Error categories
-        if stats['error_categories']:
+        if stats["error_categories"]:
             console.print("\n[bold]Error Categories[/bold]")
             cat_table = Table(show_header=True)
             cat_table.add_column("Category")
             cat_table.add_column("Count")
 
-            for category, count in sorted(stats['error_categories'].items(), key=lambda x: x[1], reverse=True):
+            for category, count in sorted(
+                stats["error_categories"].items(), key=lambda x: x[1], reverse=True
+            ):
                 cat_table.add_row(category.capitalize(), str(count))
 
             console.print(cat_table)
@@ -87,7 +92,7 @@ def dlq_status(
         lifetime_table.add_column("Metric")
         lifetime_table.add_column("Count")
 
-        for metric, count in stats['lifetime_stats'].items():
+        for metric, count in stats["lifetime_stats"].items():
             lifetime_table.add_row(metric.replace("_", " ").title(), str(count))
 
         console.print(lifetime_table)
@@ -101,8 +106,15 @@ def dlq_status(
 @app.command()
 def dlq_list(
     ctx: typer.Context,
-    status: str = typer.Option(None, "--status", "-s", help="Filter by status (pending, retrying, exhausted, completed, archived)"),
-    limit: int = typer.Option(50, "--limit", "-l", help="Maximum number of tasks to show"),
+    status: str = typer.Option(
+        None,
+        "--status",
+        "-s",
+        help="Filter by status (pending, retrying, exhausted, completed, archived)",
+    ),
+    limit: int = typer.Option(
+        50, "--limit", "-l", help="Maximum number of tasks to show"
+    ),
     json_output: bool = typer.Option(False, "--json", "-j", help="Output as JSON"),
 ):
     """List tasks in the Dead Letter Queue.
@@ -126,12 +138,14 @@ def dlq_list(
 
         # Convert status string to enum
         from mahavishnu.core.dead_letter_queue import DeadLetterStatus
+
         status_filter = DeadLetterStatus(status) if status else None
 
         tasks = await app.dlq.list_tasks(status=status_filter, limit=limit)
 
         if json_output:
             import json
+
             task_dicts = [task.to_dict() for task in tasks]
             console.print(json.dumps(task_dicts, indent=2))
             return
@@ -154,7 +168,11 @@ def dlq_list(
 
         for task in tasks:
             # Format timestamp
-            failed_at = task.failed_at.strftime("%Y-%m-%d %H:%M:%S") if task.failed_at else "N/A"
+            failed_at = (
+                task.failed_at.strftime("%Y-%m-%d %H:%M:%S")
+                if task.failed_at
+                else "N/A"
+            )
 
             # Format retries
             retry_str = f"{task.retry_count}/{task.max_retries}"
@@ -174,7 +192,9 @@ def dlq_list(
         console.print(table)
 
         if len(tasks) == limit:
-            console.print(f"\n[dim]Showing {limit} tasks (use --limit to show more)[/dim]")
+            console.print(
+                f"\n[dim]Showing {limit} tasks (use --limit to show more)[/dim]"
+            )
 
     asyncio.run(list_tasks())
 ```
@@ -228,7 +248,9 @@ def dlq_show(
         info_table.add_column("Value", style="green")
 
         info_table.add_row("Task ID", task.task_id)
-        info_table.add_row("Status", f"[{task.status_color}]{task.status.value}[/{task.status_color}]")
+        info_table.add_row(
+            "Status", f"[{task.status_color}]{task.status.value}[/{task.status_color}]"
+        )
         info_table.add_row("Error Category", task.error_category or "N/A")
         info_table.add_row("Retries", f"{task.retry_count}/{task.max_retries}")
         info_table.add_row("Total Attempts", str(task.total_attempts))
@@ -236,10 +258,14 @@ def dlq_show(
 
         if task.next_retry_at:
             retry_in = task.next_retry_at - datetime.now(task.next_retry_at.tzinfo)
-            info_table.add_row("Next Retry At", task.next_retry_at.strftime("%Y-%m-%d %H:%M:%S UTC"))
+            info_table.add_row(
+                "Next Retry At", task.next_retry_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+            )
             info_table.add_row("Retry In", f"{retry_in}")
 
-        info_table.add_row("Failed At", task.failed_at.strftime("%Y-%m-%d %H:%M:%S UTC"))
+        info_table.add_row(
+            "Failed At", task.failed_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+        )
 
         console.print(Panel(info_table, title="[bold]Basic Information[/bold]"))
 
@@ -354,7 +380,9 @@ def dlq_archive(
 def dlq_clear(
     ctx: typer.Context,
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
-    status: str = typer.Option(None, "--status", "-s", help="Only clear tasks with specific status"),
+    status: str = typer.Option(
+        None, "--status", "-s", help="Only clear tasks with specific status"
+    ),
 ):
     """Clear all tasks from the Dead Letter Queue.
 
@@ -387,7 +415,9 @@ def dlq_clear(
 
         # Confirm
         if not force:
-            console.print(f"[red]WARNING: This will remove {queue_size} tasks from the DLQ![/red]")
+            console.print(
+                f"[red]WARNING: This will remove {queue_size} tasks from the DLQ![/red]"
+            )
             if not Confirm.ask("Are you sure you want to continue?"):
                 console.print("Aborted")
                 raise typer.Exit()
@@ -405,7 +435,9 @@ def dlq_clear(
 @app.command()
 def dlq_start_processor(
     ctx: typer.Context,
-    interval: int = typer.Option(60, "--interval", "-i", help="Check interval in seconds"),
+    interval: int = typer.Option(
+        60, "--interval", "-i", help="Check interval in seconds"
+    ),
 ):
     """Start the DLQ retry processor.
 
@@ -434,7 +466,9 @@ def dlq_start_processor(
                 repos=repos,
             )
 
-        console.print(f"[cyan]Starting DLQ retry processor (interval={interval}s)...[/cyan]")
+        console.print(
+            f"[cyan]Starting DLQ retry processor (interval={interval}s)...[/cyan]"
+        )
 
         try:
             await app.dlq.start_retry_processor(
@@ -673,6 +707,7 @@ Add shell completion for task IDs and status values:
 def complete_task_ids(incomplete: str) -> List[str]:
     """Complete DLQ task IDs."""
     import asyncio
+
     app = get_app()
     if not app.dlq:
         return []
@@ -683,12 +718,11 @@ def complete_task_ids(incomplete: str) -> List[str]:
 
     return asyncio.run(get_ids())
 
+
 @app.command()
 def dlq_show(
     task_id: str = typer.Argument(
-        ...,
-        autocompletion=complete_task_ids,
-        help="Task ID to inspect"
+        ..., autocompletion=complete_task_ids, help="Task ID to inspect"
     ),
 ):
     """Show detailed task information."""

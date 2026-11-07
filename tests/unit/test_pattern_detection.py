@@ -95,7 +95,10 @@ class TestPatternDetector:
                         "status": "in_progress",
                         "timestamp": (created + timedelta(hours=1)).isoformat(),
                     },
-                    {"status": "blocked", "timestamp": (created + timedelta(hours=2)).isoformat()},
+                    {
+                        "status": "blocked",
+                        "timestamp": (created + timedelta(hours=2)).isoformat(),
+                    },
                 ]
             else:
                 task["status_history"] = [

@@ -135,7 +135,10 @@ class PoolMonitorClient:
             return False
         except Exception as e:
             logger.error(f"❌ Failed to connect: {e}")
-            if self.auto_reconnect and self._reconnect_attempts < self.max_reconnect_attempts:
+            if (
+                self.auto_reconnect
+                and self._reconnect_attempts < self.max_reconnect_attempts
+            ):
                 self._reconnect_attempts += 1
                 wait_time = min(2**self._reconnect_attempts, 30)
                 logger.info(
@@ -476,7 +479,9 @@ class PoolMonitorClient:
         elif event == "pool.scaled":
             pool_id = data.get("pool_id", "unknown")
             worker_count = data.get("worker_count", 0)
-            logger.info(f"📈 [{timestamp}] Pool {pool_id} scaled to {worker_count} workers")
+            logger.info(
+                f"📈 [{timestamp}] Pool {pool_id} scaled to {worker_count} workers"
+            )
 
         elif event == "pool.status_changed":
             pool_id = data.get("pool_id", "unknown")

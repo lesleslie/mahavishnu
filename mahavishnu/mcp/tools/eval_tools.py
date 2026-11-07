@@ -275,9 +275,7 @@ async def _do_register_dataset(path: str) -> dict[str, Any]:
         settings.default_dataset_loader,
         "dataset loader",
     )
-    dataset = await loader_cls().load(
-        resolve_dataset_path(path, settings.dataset_root)
-    )
+    dataset = await loader_cls().load(resolve_dataset_path(path, settings.dataset_root))
     return {
         "status": "ok",
         "name": dataset.name,
@@ -415,9 +413,7 @@ async def _do_get_run(run_id: str) -> dict[str, Any]:
         "status": details.run.status,
         "run_id": details.run.id,
         "summary": dict(details.run.summary),
-        "case_results": [
-            case.model_dump(mode="json") for case in details.case_results
-        ],
+        "case_results": [case.model_dump(mode="json") for case in details.case_results],
         "scores": [score.model_dump(mode="json") for score in details.scores],
     }
 
@@ -442,7 +438,7 @@ def _clamped(value: Any, ceiling: float) -> float:
     """
     try:
         requested = float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return ceiling
     if not math.isfinite(requested):
         return ceiling

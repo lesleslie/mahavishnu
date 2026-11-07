@@ -38,7 +38,10 @@ def register_learning_tools(
 
     def _pipeline_status() -> dict[str, Any]:
         if pipeline_service is None:
-            return {"available": False, "error": "Learning pipeline service not initialized"}
+            return {
+                "available": False,
+                "error": "Learning pipeline service not initialized",
+            }
         return {
             "available": True,
             "is_running": pipeline_service.is_running,
@@ -74,7 +77,10 @@ def register_learning_tools(
     async def trigger_synthesis() -> dict[str, Any]:
         """Trigger a single learning pipeline cycle manually. Returns cycle result."""
         if pipeline_service is None:
-            return {"available": False, "error": "Learning pipeline service not initialized"}
+            return {
+                "available": False,
+                "error": "Learning pipeline service not initialized",
+            }
         try:
             result = await pipeline_service.run_once()
             return {

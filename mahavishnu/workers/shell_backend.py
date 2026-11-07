@@ -391,7 +391,9 @@ class ShellWorker(BaseWorker):
         # path is unique per invocation so concurrent workers cannot
         # interleave into the same file.
         if STDERR_PATH_ENV_VAR in command:
-            fd, path = tempfile.mkstemp(prefix="mahavishnu-worker-stderr-", suffix=".log")
+            fd, path = tempfile.mkstemp(
+                prefix="mahavishnu-worker-stderr-", suffix=".log"
+            )
             os.close(fd)
             env_overrides[STDERR_PATH_ENV_VAR] = path
             self._stderr_path = path
@@ -504,7 +506,11 @@ class ShellWorker(BaseWorker):
                 "the prompt may not have been accepted by the session"
             ),
             duration_seconds=timeout_s,
-            metadata={"session_id": self._session_id, "sentinel": marker, "timed_out": True},
+            metadata={
+                "session_id": self._session_id,
+                "sentinel": marker,
+                "timed_out": True,
+            },
         )
 
     def _write_prompt_file(self, prompt: str) -> str:
@@ -605,7 +611,11 @@ class ShellWorker(BaseWorker):
                         output=_strip_markers(pane, markers),
                         error=(
                             f"CLI exited with status {exit_code}"
-                            + (f"; the CLI's stderr: {stderr_tail}" if stderr_tail else "")
+                            + (
+                                f"; the CLI's stderr: {stderr_tail}"
+                                if stderr_tail
+                                else ""
+                            )
                         ),
                         exit_code=exit_code,
                         duration_seconds=timeout_s - (deadline - time.monotonic()),

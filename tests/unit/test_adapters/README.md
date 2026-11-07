@@ -363,11 +363,13 @@ Tests use extensive mocking to avoid external dependencies:
 @pytest.fixture
 def mock_code_graph_analyzer():
     analyzer = MagicMock()
-    analyzer.analyze_repository = AsyncMock(return_value={
-        "functions_indexed": 5,
-        "total_nodes": 10,
-        # ... more data
-    })
+    analyzer.analyze_repository = AsyncMock(
+        return_value={
+            "functions_indexed": 5,
+            "total_nodes": 10,
+            # ... more data
+        }
+    )
     return analyzer
 ```
 

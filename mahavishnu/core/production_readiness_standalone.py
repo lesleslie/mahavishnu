@@ -125,7 +125,9 @@ class ProductionReadinessChecker:
         report.total_checks = len(self.checks)
         report.passed = sum(1 for c in self.checks if c.status == ReadinessStatus.PASS)
         report.failed = sum(1 for c in self.checks if c.status == ReadinessStatus.FAIL)
-        report.warnings = sum(1 for c in self.checks if c.status == ReadinessStatus.WARN)
+        report.warnings = sum(
+            1 for c in self.checks if c.status == ReadinessStatus.WARN
+        )
         report.skipped = sum(1 for c in self.checks if c.status == ReadinessStatus.SKIP)
         report.overall_score = report.calculate_score()
         report.recommendation = self._generate_recommendation(report.overall_score)
@@ -146,12 +148,17 @@ class ProductionReadinessChecker:
             message = "Security audit completed"
         else:
             status = ReadinessStatus.WARN
-            message = "Security audit not found (run: python -m monitoring.security_audit)"
+            message = (
+                "Security audit not found (run: python -m monitoring.security_audit)"
+            )
 
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
             ReadinessCheck(
-                name="Security Audit", status=status, message=message, duration_ms=duration_ms
+                name="Security Audit",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
             )
         )
 
@@ -184,8 +191,13 @@ class ProductionReadinessChecker:
                     for pattern, desc in secret_patterns:
                         if re.search(pattern, content, re.IGNORECASE):
                             # Exclude obvious placeholders/examples
-                            if "example" not in content.lower() and "test" not in content.lower():
-                                issues.append(f"{py_file.relative_to(self.project_root)}: {desc}")
+                            if (
+                                "example" not in content.lower()
+                                and "test" not in content.lower()
+                            ):
+                                issues.append(
+                                    f"{py_file.relative_to(self.project_root)}: {desc}"
+                                )
                 except Exception as e:  # per-file pattern scan can fail on read/decode; skip file and continue  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     logger.debug("Pattern scan skipped: %s", e)
 
@@ -231,7 +243,10 @@ class ProductionReadinessChecker:
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
             ReadinessCheck(
-                name="Authentication", status=status, message=message, duration_ms=duration_ms
+                name="Authentication",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
             )
         )
 
@@ -243,7 +258,11 @@ class ProductionReadinessChecker:
 
         # Check for encryption module in session-buddy
         encryption_file = (
-            self.project_root.parent / "session-buddy" / "session_buddy" / "utils" / "encryption.py"
+            self.project_root.parent
+            / "session-buddy"
+            / "session_buddy"
+            / "utils"
+            / "encryption.py"
         )
 
         if encryption_file.exists():
@@ -256,7 +275,10 @@ class ProductionReadinessChecker:
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
             ReadinessCheck(
-                name="Data Encryption", status=status, message=message, duration_ms=duration_ms
+                name="Data Encryption",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
             )
         )
 
@@ -280,7 +302,10 @@ class ProductionReadinessChecker:
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
             ReadinessCheck(
-                name="Metrics Collection", status=status, message=message, duration_ms=duration_ms
+                name="Metrics Collection",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
             )
         )
 
@@ -302,7 +327,9 @@ class ProductionReadinessChecker:
 
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
-            ReadinessCheck(name="Logging", status=status, message=message, duration_ms=duration_ms)
+            ReadinessCheck(
+                name="Logging", status=status, message=message, duration_ms=duration_ms
+            )
         )
 
     async def _check_alerting(self):
@@ -323,7 +350,9 @@ class ProductionReadinessChecker:
 
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
-            ReadinessCheck(name="Alerting", status=status, message=message, duration_ms=duration_ms)
+            ReadinessCheck(
+                name="Alerting", status=status, message=message, duration_ms=duration_ms
+            )
         )
 
     async def _check_circuit_breakers(self):
@@ -333,7 +362,9 @@ class ProductionReadinessChecker:
         start = time.time()
 
         # Check for circuit breaker module
-        circuit_breaker_file = self.project_root / "mahavishnu" / "core" / "circuit_breaker.py"
+        circuit_breaker_file = (
+            self.project_root / "mahavishnu" / "core" / "circuit_breaker.py"
+        )
 
         if circuit_breaker_file.exists():
             status = ReadinessStatus.PASS
@@ -345,7 +376,10 @@ class ProductionReadinessChecker:
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
             ReadinessCheck(
-                name="Circuit Breakers", status=status, message=message, duration_ms=duration_ms
+                name="Circuit Breakers",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
             )
         )
 
@@ -370,7 +404,10 @@ class ProductionReadinessChecker:
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
             ReadinessCheck(
-                name="Backup System", status=status, message=message, duration_ms=duration_ms
+                name="Backup System",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
             )
         )
 
@@ -393,7 +430,10 @@ class ProductionReadinessChecker:
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
             ReadinessCheck(
-                name="Rate Limiting", status=status, message=message, duration_ms=duration_ms
+                name="Rate Limiting",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
             )
         )
 
@@ -410,7 +450,15 @@ class ProductionReadinessChecker:
             # coverage run.
             await asyncio.to_thread(
                 subprocess.run,
-                ["pytest", "-m", "unit", "--cov=mahavishnu", "--cov-report=xml", "--tb=no", "-q"],
+                [
+                    "pytest",
+                    "-m",
+                    "unit",
+                    "--cov=mahavishnu",
+                    "--cov-report=xml",
+                    "--tb=no",
+                    "-q",
+                ],
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
@@ -437,10 +485,14 @@ class ProductionReadinessChecker:
                         message = f"Unit test coverage: {coverage_percent:.1f}%"
                     elif coverage_percent >= 60:
                         status = ReadinessStatus.WARN
-                        message = f"Unit test coverage: {coverage_percent:.1f}% (target: 80%)"
+                        message = (
+                            f"Unit test coverage: {coverage_percent:.1f}% (target: 80%)"
+                        )
                     else:
                         status = ReadinessStatus.FAIL
-                        message = f"Unit test coverage: {coverage_percent:.1f}% (below 60%)"
+                        message = (
+                            f"Unit test coverage: {coverage_percent:.1f}% (below 60%)"
+                        )
 
                     details = {"coverage_percent": coverage_percent}
                 except (etree.ParseError, ValueError, KeyError) as e:
@@ -493,7 +545,9 @@ class ProductionReadinessChecker:
                 message = f"Found {len(integration_test_files)} integration test files"
             elif len(integration_test_files) >= 1:
                 status = ReadinessStatus.WARN
-                message = f"Only {len(integration_test_files)} integration test file(s) found"
+                message = (
+                    f"Only {len(integration_test_files)} integration test file(s) found"
+                )
             else:
                 status = ReadinessStatus.FAIL
                 message = "No integration tests found"
@@ -504,7 +558,10 @@ class ProductionReadinessChecker:
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
             ReadinessCheck(
-                name="Integration Tests", status=status, message=message, duration_ms=duration_ms
+                name="Integration Tests",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
             )
         )
 
@@ -533,7 +590,10 @@ class ProductionReadinessChecker:
         duration_ms = (time.time() - start) * 1000
         self.checks.append(
             ReadinessCheck(
-                name="Incident Response", status=status, message=message, duration_ms=duration_ms
+                name="Incident Response",
+                status=status,
+                message=message,
+                duration_ms=duration_ms,
             )
         )
 

@@ -71,7 +71,10 @@ class TestTimeRangeValidation:
 
         assume(
             time_range in injection_patterns
-            or any(c in time_range for c in ["'", ";", "--", "union", "select", "drop", "delete"])
+            or any(
+                c in time_range
+                for c in ["'", ";", "--", "union", "select", "drop", "delete"]
+            )
         )
 
         with pytest.raises(ValueError, match="Invalid time_range"):
@@ -117,7 +120,9 @@ class TestPathSecurity:
     @settings(max_examples=100)
     def test_path_traversal_prevented(self, path_input):
         """Path traversal attempts should be prevented."""
-        assume(any(pattern in path_input for pattern in ["..", "../", "..\\", "%2e%2e"]))
+        assume(
+            any(pattern in path_input for pattern in ["..", "../", "..\\", "%2e%2e"])
+        )
 
         with pytest.raises(PathValidationError):
             get_database_path(db_path=path_input)
@@ -127,7 +132,9 @@ class TestPathSecurity:
     def test_absolute_paths_rejected(self, path_input):
         """Absolute paths should be rejected for security."""
         # Assume it's an absolute path
-        assume(path_input.startswith("/") or (len(path_input) > 1 and path_input[1] == ":"))
+        assume(
+            path_input.startswith("/") or (len(path_input) > 1 and path_input[1] == ":")
+        )
 
         with pytest.raises(PathValidationError):
             get_database_path(db_path=path_input)
@@ -182,7 +189,12 @@ class TestSQLInjectionPrevention:
             "' OR '1'='1' --",
         ]
 
-        assume(any(pattern.lower() in injection_string.lower() for pattern in injection_patterns))
+        assume(
+            any(
+                pattern.lower() in injection_string.lower()
+                for pattern in injection_patterns
+            )
+        )
 
         with pytest.raises(ValueError, match="Invalid time_range"):
             validate_time_range(injection_string)
@@ -262,7 +274,9 @@ class TestStatisticsCalculation:
             # Calculate expected success rate
             successful = sum(1 for r in execution_records if r.success)
             expected_rate = (
-                (successful / len(execution_records) * 100) if execution_records else 0.0
+                (successful / len(execution_records) * 100)
+                if execution_records
+                else 0.0
             )
 
             from mahavishnu.mcp.tools.database_tools import get_database_status
@@ -272,7 +286,10 @@ class TestStatisticsCalculation:
             # Check success rate (may be None if no data in time window)
             if status["performance"].get("daily_success_rate") is not None:
                 # Allow small rounding differences
-                assert abs(status["performance"]["daily_success_rate"] - expected_rate) < 1.0
+                assert (
+                    abs(status["performance"]["daily_success_rate"] - expected_rate)
+                    < 1.0
+                )
 
         finally:
             await db.close()
@@ -492,7 +509,7 @@ class TestEdgeCases:
         try:
             result = get_database_path(db_path=path_input)
             assert result is not None
-        except (PathValidationError, ValueError):
+        except PathValidationError, ValueError:
             # Expected for unsafe paths
             pass
 

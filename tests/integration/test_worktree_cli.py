@@ -128,7 +128,9 @@ class TestWorktreeCLI:
         result = self.runner.invoke(worktree_app, ["create"])
 
         assert result.exit_code != 0
-        assert "Missing argument" in result.output or "requires" in result.output.lower()
+        assert (
+            "Missing argument" in result.output or "requires" in result.output.lower()
+        )
 
     def test_remove_worktree_command(self, tmp_path):
         """Test 'mhv worktree remove' command."""
@@ -264,7 +266,11 @@ class TestWorktreeCLI:
                 "success": True,
                 "worktrees": [
                     {"path": "/worktrees/test/main", "branch": "main", "exists": True},
-                    {"path": "/worktrees/test/feature", "branch": "feature", "exists": True},
+                    {
+                        "path": "/worktrees/test/feature",
+                        "branch": "feature",
+                        "exists": True,
+                    },
                 ],
             }
         )
@@ -274,7 +280,11 @@ class TestWorktreeCLI:
                 "success": True,
                 "worktrees": [
                     {"path": "/worktrees/test/main", "branch": "main", "exists": True},
-                    {"path": "/worktrees/test/feature", "branch": "feature", "exists": True},
+                    {
+                        "path": "/worktrees/test/feature",
+                        "branch": "feature",
+                        "exists": True,
+                    },
                 ],
                 "total_count": 2,
             }
@@ -452,7 +462,10 @@ class TestWorktreeCLI:
 
         # Return error result instead of raising exception
         mock_coordinator.create_worktree = AsyncMock(
-            return_value={"success": False, "error": "Repository not found: nonexistent-repo"}
+            return_value={
+                "success": False,
+                "error": "Repository not found: nonexistent-repo",
+            }
         )
 
         with patch(

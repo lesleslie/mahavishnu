@@ -91,7 +91,9 @@ async def test_rate_limit_tool_allows_and_uses_user_id_key(
 
     monkeypatch.setattr(rate_limit_tools, "RateLimiter", factory)
 
-    @rate_limit_tools.rate_limit_tool(requests_per_minute=3, requests_per_hour=9, burst_size=2)
+    @rate_limit_tools.rate_limit_tool(
+        requests_per_minute=3, requests_per_hour=9, burst_size=2
+    )
     async def tool_fn(user_id: str, payload: str) -> dict[str, str]:
         return {"payload": payload}
 

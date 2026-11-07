@@ -134,20 +134,32 @@ class TestWorkerConfig:
 
     def test_error_markers_default_factory_unique_per_instance(self) -> None:
         """Default list should not be shared between instances."""
-        a = WorkerConfig(name="a", worker_type="a", command="c", category=WorkerCategory.SHELL)
-        b = WorkerConfig(name="b", worker_type="b", command="c", category=WorkerCategory.SHELL)
+        a = WorkerConfig(
+            name="a", worker_type="a", command="c", category=WorkerCategory.SHELL
+        )
+        b = WorkerConfig(
+            name="b", worker_type="b", command="c", category=WorkerCategory.SHELL
+        )
         a.error_markers.append("mutation")
         assert "mutation" not in b.error_markers
 
     def test_completion_markers_default_factory_unique(self) -> None:
-        a = WorkerConfig(name="a", worker_type="a", command="c", category=WorkerCategory.SHELL)
-        b = WorkerConfig(name="b", worker_type="b", command="c", category=WorkerCategory.SHELL)
+        a = WorkerConfig(
+            name="a", worker_type="a", command="c", category=WorkerCategory.SHELL
+        )
+        b = WorkerConfig(
+            name="b", worker_type="b", command="c", category=WorkerCategory.SHELL
+        )
         a.completion_markers.append("x")
         assert b.completion_markers == []
 
     def test_env_vars_default_factory_unique(self) -> None:
-        a = WorkerConfig(name="a", worker_type="a", command="c", category=WorkerCategory.SHELL)
-        b = WorkerConfig(name="b", worker_type="b", command="c", category=WorkerCategory.SHELL)
+        a = WorkerConfig(
+            name="a", worker_type="a", command="c", category=WorkerCategory.SHELL
+        )
+        b = WorkerConfig(
+            name="b", worker_type="b", command="c", category=WorkerCategory.SHELL
+        )
         a.env_vars["X"] = "Y"
         assert b.env_vars == {}
 
@@ -215,7 +227,11 @@ class TestWorkerRegistry:
         surfaces. This test pins the registry to not include any of
         them.
         """
-        for legacy in ("terminal-legacy-http", "terminal-openclaw", "terminal-application"):
+        for legacy in (
+            "terminal-legacy-http",
+            "terminal-openclaw",
+            "terminal-application",
+        ):
             assert legacy not in WORKER_REGISTRY
 
     def test_application_workers_have_mcp_server_or_command(self) -> None:
@@ -280,7 +296,9 @@ class TestResolveWorkerType:
 
     def test_passthrough_unrelated_worker(self) -> None:
         assert resolve_worker_type("terminal-shell") == "terminal-shell"
-        assert resolve_worker_type("terminal-shell", task_type="code") == "terminal-shell"
+        assert (
+            resolve_worker_type("terminal-shell", task_type="code") == "terminal-shell"
+        )
 
     def test_passthrough_empty_task_and_prompt(self) -> None:
         assert resolve_worker_type("terminal-claude") == "terminal-claude"
@@ -306,9 +324,14 @@ class TestResolveWorkerType:
             "chatops",
         ],
     )
-    def test_communication_task_types_for_claude_pass_through(self, task_type: str) -> None:
+    def test_communication_task_types_for_claude_pass_through(
+        self, task_type: str
+    ) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            assert resolve_worker_type("terminal-claude", task_type=task_type) == "terminal-claude"
+            assert (
+                resolve_worker_type("terminal-claude", task_type=task_type)
+                == "terminal-claude"
+            )
 
     @pytest.mark.parametrize(
         "task_type",
@@ -322,9 +345,14 @@ class TestResolveWorkerType:
             "chatops",
         ],
     )
-    def test_communication_task_types_for_qwen_pass_through(self, task_type: str) -> None:
+    def test_communication_task_types_for_qwen_pass_through(
+        self, task_type: str
+    ) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            assert resolve_worker_type("terminal-qwen", task_type=task_type) == "terminal-qwen"
+            assert (
+                resolve_worker_type("terminal-qwen", task_type=task_type)
+                == "terminal-qwen"
+            )
 
     @pytest.mark.parametrize(
         "task_type",
@@ -338,9 +366,14 @@ class TestResolveWorkerType:
             "chatops",
         ],
     )
-    def test_communication_task_types_for_codex_pass_through(self, task_type: str) -> None:
+    def test_communication_task_types_for_codex_pass_through(
+        self, task_type: str
+    ) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            assert resolve_worker_type("terminal-codex", task_type=task_type) == "terminal-codex"
+            assert (
+                resolve_worker_type("terminal-codex", task_type=task_type)
+                == "terminal-codex"
+            )
 
     # --- gateway routing ---
 
@@ -354,7 +387,9 @@ class TestResolveWorkerType:
     def test_gateway_env_var_does_not_infer_gateway_via_prompt(self) -> None:
         with patch.dict(os.environ, {"OPENCLAW_GATEWAY_URL": "http://gw:9000"}):
             assert (
-                resolve_worker_type("terminal-claude", prompt="please send slack message")
+                resolve_worker_type(
+                    "terminal-claude", prompt="please send slack message"
+                )
                 == "terminal-claude"
             )
 
@@ -389,7 +424,10 @@ class TestResolveWorkerType:
     def test_prompt_marker_does_not_route_to_openclaw(self, marker: str) -> None:
         with patch.dict(os.environ, {}, clear=True):
             prompt = f"please {marker} to the team"
-            assert resolve_worker_type("terminal-claude", prompt=prompt) == "terminal-claude"
+            assert (
+                resolve_worker_type("terminal-claude", prompt=prompt)
+                == "terminal-claude"
+            )
 
     def test_prompt_marker_case_insensitive_passes_through(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
@@ -437,10 +475,13 @@ class TestResolveWorkerType:
                 == "terminal-claude"
             )
 
-    def test_unrelated_worker_passes_through_even_with_communication_prompt(self) -> None:
+    def test_unrelated_worker_passes_through_even_with_communication_prompt(
+        self,
+    ) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
-                resolve_worker_type("terminal-shell", task_type="communication") == "terminal-shell"
+                resolve_worker_type("terminal-shell", task_type="communication")
+                == "terminal-shell"
             )
 
     def test_unrelated_worker_passes_through_with_marker(self) -> None:
@@ -461,13 +502,16 @@ class TestResolveWorkerType:
     def test_empty_string_task_type(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
-                resolve_worker_type("terminal-claude", task_type="", prompt="") == "terminal-claude"
+                resolve_worker_type("terminal-claude", task_type="", prompt="")
+                == "terminal-claude"
             )
 
     def test_prompt_only_no_task_type(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             assert (
-                resolve_worker_type("terminal-claude", task_type=None, prompt="send a message")
+                resolve_worker_type(
+                    "terminal-claude", task_type=None, prompt="send a message"
+                )
                 == "terminal-claude"
             )
 
@@ -632,10 +676,14 @@ class TestValidateWorkerDependencies:
 
     def test_shutil_which_called_with_correct_tool(self) -> None:
         calls: list[str] = []
-        with patch.object(shutil, "which", side_effect=lambda x: calls.append(x) or None):
+        with patch.object(
+            shutil, "which", side_effect=lambda x: calls.append(x) or None
+        ):
             validate_worker_dependencies()
         # Each requires_tool must have been queried
-        expected = {cfg.requires_tool for cfg in WORKER_REGISTRY.values() if cfg.requires_tool}
+        expected = {
+            cfg.requires_tool for cfg in WORKER_REGISTRY.values() if cfg.requires_tool
+        }
         assert set(calls) == expected
 
     def test_specific_tool_availability(self) -> None:

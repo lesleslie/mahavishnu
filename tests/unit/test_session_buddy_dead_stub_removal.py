@@ -92,7 +92,9 @@ def _advertised_input_schema(tool: Any) -> dict[str, Any]:
 class TestDeadStubsRemoved:
     """The pre-existing dead stubs in the integration module must be gone."""
 
-    def test_session_buddy_integration_class_no_longer_exposes_send_code_context_to_session_buddy(self):
+    def test_session_buddy_integration_class_no_longer_exposes_send_code_context_to_session_buddy(
+        self,
+    ):
         """``_send_code_context_to_session_buddy`` is a stub method on
         ``SessionBuddyIntegration`` that built a ``ProjectMessage`` and
         logged it. The real cross-repo push lives in
@@ -102,22 +104,26 @@ class TestDeadStubsRemoved:
         """
         from mahavishnu.session_buddy.integration import SessionBuddyIntegration
 
-        assert not hasattr(SessionBuddyIntegration, "_send_code_context_to_session_buddy"), (
+        assert not hasattr(
+            SessionBuddyIntegration, "_send_code_context_to_session_buddy"
+        ), (
             "_send_code_context_to_session_buddy was a stub that never actually "
             "pushed to Session-Buddy. The real push is in core.code_index.indexer. "
             "Remove the stub."
         )
 
-    def test_session_buddy_integration_class_no_longer_exposes_index_documentation_in_session_buddy(self):
+    def test_session_buddy_integration_class_no_longer_exposes_index_documentation_in_session_buddy(
+        self,
+    ):
         """``_index_documentation_in_session_buddy`` was the documentation-side
         twin of the code-context stub — same ProjectMessage-and-log pattern,
         same dead-end. Remove it.
         """
         from mahavishnu.session_buddy.integration import SessionBuddyIntegration
 
-        assert not hasattr(SessionBuddyIntegration, "_index_documentation_in_session_buddy"), (
-            "_index_documentation_in_session_buddy was a stub. Remove it."
-        )
+        assert not hasattr(
+            SessionBuddyIntegration, "_index_documentation_in_session_buddy"
+        ), "_index_documentation_in_session_buddy was a stub. Remove it."
 
     def test_integrate_code_graph_no_longer_calls_dead_stub(self):
         """``SessionBuddyIntegration.integrate_code_graph`` previously called
@@ -154,9 +160,7 @@ class TestIndexCodeGraphMcpToolDelegatesToIndexer:
             stub,
             session_manager=MagicMock(),
             mcp_client=fake_mcp_client,
-            rbac_manager=SimpleNamespace(
-                check_permission=AsyncMock(return_value=True)
-            ),
+            rbac_manager=SimpleNamespace(check_permission=AsyncMock(return_value=True)),
         )
         tool = stub.tools["index_code_graph"]
 
@@ -204,9 +208,7 @@ class TestIndexCodeGraphMcpToolDelegatesToIndexer:
             stub,
             session_manager=MagicMock(),
             mcp_client=MagicMock(),
-            rbac_manager=SimpleNamespace(
-                check_permission=AsyncMock(return_value=True)
-            ),
+            rbac_manager=SimpleNamespace(check_permission=AsyncMock(return_value=True)),
         )
         tool = stub.tools["index_code_graph"]
         source = inspect.getsource(tool)

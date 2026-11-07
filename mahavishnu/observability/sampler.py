@@ -42,7 +42,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 DEFAULT_CADENCE_SECONDS = 60.0
-DEFAULT_MAX_SAMPLES = 7_200  # 2 hours at 60s cadence; matches fitness_analyzer TTL=7200s
+DEFAULT_MAX_SAMPLES = (
+    7_200  # 2 hours at 60s cadence; matches fitness_analyzer TTL=7200s
+)
 
 
 @dataclass(frozen=True, slots=True)

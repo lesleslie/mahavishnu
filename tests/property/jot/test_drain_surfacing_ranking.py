@@ -9,6 +9,7 @@ Invariants on ``surface_relevant``:
     ``last_modified_ms`` ranks first (``sort key (-score, wall_ms)``).
   * ``limit`` is a strict upper bound on the returned candidate list.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -30,7 +31,10 @@ from mahavishnu.jot.events import HLC, JotEvent, serialize
 
 
 def _capture_event(
-    jot_id: str, text: str, *, wall_ms: int,
+    jot_id: str,
+    text: str,
+    *,
+    wall_ms: int,
 ) -> JotEvent:
     return JotEvent(
         id=jot_id,
@@ -117,7 +121,9 @@ _JOT_TEXT = st.text(
 
 @st.composite
 def _jot_set(
-    draw, min_size: int = 0, max_size: int = 4,
+    draw,
+    min_size: int = 0,
+    max_size: int = 4,
 ) -> list[tuple[str, str, int]]:
     """Generate a list of (id, text, wall_ms) tuples for surfacing tests.
 
@@ -143,7 +149,9 @@ def _jot_set(
 
 @st.composite
 def _context_with_tokens(
-    draw, min_size: int = 4, max_size: int = 12,
+    draw,
+    min_size: int = 4,
+    max_size: int = 12,
 ) -> str:
     """A context string with several recognizable tokens (≥ 50 words)."""
     n = draw(st.integers(min_value=min_size, max_value=max_size))
@@ -176,7 +184,9 @@ class TestSurfacingDeterminism:
         jots=_jot_set(min_size=1, max_size=3),
         ctx_tokens=_context_with_tokens(min_size=4, max_size=8),
     )
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_two_calls_return_identical_ordered_candidates(
         self,
         isolated_log: Path,
@@ -200,7 +210,11 @@ class TestSurfacingDeterminism:
         # ctx_tokens overlap the jot texts; with the embeddings stub
         # active, the semantic fallback is deterministic too.
         assert first.surface_reason == second.surface_reason == third.surface_reason
-        assert first.score_threshold_used == second.score_threshold_used == third.score_threshold_used
+        assert (
+            first.score_threshold_used
+            == second.score_threshold_used
+            == third.score_threshold_used
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +233,9 @@ class TestLexicalTieOrdering:
         ).filter(lambda t: t.isalpha()),
         n_jots=st.integers(min_value=2, max_value=4),
     )
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_earlier_last_modified_ranks_first_under_lexical_tie(
         self,
         isolated_log: Path,
@@ -234,7 +250,9 @@ class TestLexicalTieOrdering:
         # produces a deterministic ranking: oldest first.
         events: list[JotEvent] = []
         for i in range(n_jots):
-            jid = f"{abs(hash(token_seed + '|' + str(i))) & 0xffffffffffffffff:016x}" * 2
+            jid = (
+                f"{abs(hash(token_seed + '|' + str(i))) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
+            )
             text = f"{token_seed} filler {i}"  # all share token_seed
             wall = 1_700_000_000_000 + i * 1_000
             events.append(_capture_event(jid, text, wall_ms=wall))
@@ -246,7 +264,9 @@ class TestLexicalTieOrdering:
         ctx = f"{token_seed} " * 60  # 60 copies of the token, 60 words
 
         result = surface_relevant(
-            trigger="session_start", context_text=ctx, limit=n_jots + 2,
+            trigger="session_start",
+            context_text=ctx,
+            limit=n_jots + 2,
         )
         assert result.surface_reason == "matches"
         # Ordering should be ascending by wall_ms — earliest first.
@@ -255,20 +275,24 @@ class TestLexicalTieOrdering:
             f"expected ascending wall_ms, got {wall_times}"
         )
 
-    @given(token_seed=st.text(
-        alphabet="abcdefghijklmnopqrstuvwxyz",
-        min_size=4,
-        max_size=10,
-    ).filter(lambda t: t.isalpha()))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @given(
+        token_seed=st.text(
+            alphabet="abcdefghijklmnopqrstuvwxyz",
+            min_size=4,
+            max_size=10,
+        ).filter(lambda t: t.isalpha())
+    )
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_two_jots_lexical_tie_picks_earlier(
         self,
         isolated_log: Path,
         token_seed: str,
     ) -> None:
         """Two jots with identical lexical coverage → earlier one first."""
-        older_id = f"{abs(hash(token_seed + 'older')) & 0xffffffffffffffff:016x}" * 2
-        newer_id = f"{abs(hash(token_seed + 'newer')) & 0xffffffffffffffff:016x}" * 2
+        older_id = f"{abs(hash(token_seed + 'older')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
+        newer_id = f"{abs(hash(token_seed + 'newer')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         events = [
             _capture_event(older_id, f"{token_seed} older", wall_ms=1_700_000_000_000),
             _capture_event(newer_id, f"{token_seed} newer", wall_ms=1_700_000_010_000),
@@ -278,7 +302,9 @@ class TestLexicalTieOrdering:
         ctx = f"{token_seed} " * 60
 
         result = surface_relevant(
-            trigger="session_start", context_text=ctx, limit=5,
+            trigger="session_start",
+            context_text=ctx,
+            limit=5,
         )
         assert result.surface_reason == "matches"
         assert len(result.matches) >= 2
@@ -298,7 +324,9 @@ class TestLimitRespected:
         n_jots=st.integers(min_value=3, max_value=8),
         limit=st.integers(min_value=1, max_value=5),
     )
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_limit_caps_returned_count(
         self,
         isolated_log: Path,
@@ -310,7 +338,7 @@ class TestLimitRespected:
         token = "alpha"
         events: list[JotEvent] = []
         for i in range(n_jots):
-            jid = f"{abs(hash(f'{token}-{i}')) & 0xffffffffffffffff:016x}" * 2
+            jid = f"{abs(hash(f'{token}-{i}')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
             events.append(
                 _capture_event(jid, f"{token} {i}", wall_ms=1_700_000_000_000 + i),
             )
@@ -318,14 +346,18 @@ class TestLimitRespected:
         ctx = _pad_ctx(f"{token} " * 50 + "fill " * 20, min_words=60)
 
         result = surface_relevant(
-            trigger="session_start", context_text=ctx, limit=limit,
+            trigger="session_start",
+            context_text=ctx,
+            limit=limit,
         )
         assert len(result.matches) <= limit
         # And matches count should be exactly min(limit, n_jots).
         assert len(result.matches) == min(limit, n_jots)
 
     @given(limit=st.integers(min_value=1, max_value=10))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_limit_zero_returns_no_matches(
         self,
         isolated_log: Path,
@@ -334,13 +366,17 @@ class TestLimitRespected:
         """``limit=0`` ⇒ no candidates returned (truncate-before-sort is
         a no-op, so the list is empty by construction)."""
         events = [
-            _capture_event(f"{i:032x}"[-32:], "alpha beta", wall_ms=1_700_000_000_000 + i)
+            _capture_event(
+                f"{i:032x}"[-32:], "alpha beta", wall_ms=1_700_000_000_000 + i
+            )
             for i in range(3)
         ]
         _write_log(isolated_log, events)
         ctx = _pad_ctx("alpha beta fill " * 20, min_words=60)
         result = surface_relevant(
-            trigger="session_start", context_text=ctx, limit=limit,
+            trigger="session_start",
+            context_text=ctx,
+            limit=limit,
         )
         if limit == 0:
             assert result.matches == []
@@ -357,7 +393,9 @@ class TestEmptyInputHandling:
     """Degenerate inputs produce no spurious matches."""
 
     @given(jots=_jot_set(min_size=1, max_size=3))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_empty_jot_text_never_surfaces(
         self,
         isolated_log: Path,

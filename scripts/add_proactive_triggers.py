@@ -7,17 +7,35 @@ import re
 
 # Define agents and their appropriate triggers
 TRIGGERS = {
-    "code-reviewer.md": ("PROACTIVELY", "code reviews, pull requests, or quality checks"),
+    "code-reviewer.md": (
+        "PROACTIVELY",
+        "code reviews, pull requests, or quality checks",
+    ),
     "incident-responder.md": ("IMMEDIATELY", "production incidents or outages"),
-    "architecture-council.md": ("PROACTIVELY", "architectural decisions or design reviews"),
-    "qa-strategist.md": ("PROACTIVELY", "test strategy, quality planning, or risk assessment"),
-    "product-manager.md": ("PROACTIVELY", "product planning, prioritization, or roadmap decisions"),
-    "finops-specialist.md": ("PROACTIVELY", "cloud cost optimization or spend analysis"),
+    "architecture-council.md": (
+        "PROACTIVELY",
+        "architectural decisions or design reviews",
+    ),
+    "qa-strategist.md": (
+        "PROACTIVELY",
+        "test strategy, quality planning, or risk assessment",
+    ),
+    "product-manager.md": (
+        "PROACTIVELY",
+        "product planning, prioritization, or roadmap decisions",
+    ),
+    "finops-specialist.md": (
+        "PROACTIVELY",
+        "cloud cost optimization or spend analysis",
+    ),
     "observability-incident-lead.md": (
         "PROACTIVELY",
         "monitoring setup, incident response, or observability",
     ),
-    "context-manager.md": ("PROACTIVELY", "multi-agent coordination or complex workflows"),
+    "context-manager.md": (
+        "PROACTIVELY",
+        "multi-agent coordination or complex workflows",
+    ),
     "release-manager.md": (
         "PROACTIVELY",
         "release planning, governance, or deployment coordination",
@@ -30,17 +48,26 @@ TRIGGERS = {
         "PROACTIVELY",
         "data lifecycle, retention policies, or compliance",
     ),
-    "ux-researcher.md": ("PROACTIVELY", "user research, usability testing, or product insights"),
+    "ux-researcher.md": (
+        "PROACTIVELY",
+        "user research, usability testing, or product insights",
+    ),
     "privacy-officer.md": (
         "PROACTIVELY",
         "privacy impact, data governance, or regulatory compliance",
     ),
-    "data-scientist.md": ("PROACTIVELY", "data analysis, SQL queries, or BigQuery operations"),
+    "data-scientist.md": (
+        "PROACTIVELY",
+        "data analysis, SQL queries, or BigQuery operations",
+    ),
     "claude-environment-auditor.md": (
         "PROACTIVELY",
         "Claude configuration issues or environment optimization",
     ),
-    "content-designer.md": ("PROACTIVELY", "UX copy, product content, or knowledge assets"),
+    "content-designer.md": (
+        "PROACTIVELY",
+        "UX copy, product content, or knowledge assets",
+    ),
     "accessibility-auditor.md": (
         "PROACTIVELY",
         "accessibility compliance, WCAG audits, or inclusive design",
@@ -53,12 +80,18 @@ TRIGGERS = {
         "PROACTIVELY",
         "support data analysis or customer insights",
     ),
-    "general-assistant.md": ("PROACTIVELY", "general tasks, coordination, or basic assistance"),
+    "general-assistant.md": (
+        "PROACTIVELY",
+        "general tasks, coordination, or basic assistance",
+    ),
     "developer-enablement-lead.md": (
         "PROACTIVELY",
         "developer experience, tooling, or modernization",
     ),
-    "delivery-lead.md": ("PROACTIVELY", "delivery planning, execution, or risk management"),
+    "delivery-lead.md": (
+        "PROACTIVELY",
+        "delivery planning, execution, or risk management",
+    ),
 }
 
 

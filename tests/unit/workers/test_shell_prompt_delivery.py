@@ -104,9 +104,7 @@ class TestPromptTravelsInAFile:
 
         await worker.start(prompt="do the thing")
 
-        prologue = (
-            f'{PROMPT_ENV_VAR}="$(cat "${PROMPT_FILE_ENV_VAR}")"; export {PROMPT_ENV_VAR}; '
-        )
+        prologue = f'{PROMPT_ENV_VAR}="$(cat "${PROMPT_FILE_ENV_VAR}")"; export {PROMPT_ENV_VAR}; '
         assert manager.command.startswith(prologue)
         # The registry command still refers to the prompt by variable, so
         # the prompt is never shell text.
@@ -137,9 +135,7 @@ class TestPromptTravelsInAFile:
         await worker.start()
 
         assert PROMPT_FILE_ENV_VAR not in manager.env
-        prologue = (
-            f'{PROMPT_ENV_VAR}="$(cat "${PROMPT_FILE_ENV_VAR}")"; export {PROMPT_ENV_VAR}; '
-        )
+        prologue = f'{PROMPT_ENV_VAR}="$(cat "${PROMPT_FILE_ENV_VAR}")"; export {PROMPT_ENV_VAR}; '
         assert not manager.command.startswith(prologue)
 
 
@@ -193,7 +189,7 @@ class TestOneShotClicisAreNonInteractive:
         if not settings_path.exists():
             pytest.skip("not running from the repo root")
         text = settings_path.read_text()
-        assert 'claude -p --verbose --output-format stream-json' in text, (
+        assert "claude -p --verbose --output-format stream-json" in text, (
             "settings/mahavishnu.yaml still carries the interactive claude command"
         )
 

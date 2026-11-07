@@ -50,10 +50,14 @@ class TestWorktreeMCPTools:
 
         mock_repo = MagicMock()
         mock_repo.path = str(tmp_path / "repos" / "test")
-        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
-        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
-        app.worktree_coordinator.coordination_manager.get_blocking_dependencies = MagicMock(
-            return_value=[]
+        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(
+            return_value=mock_repo
+        )
+        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(
+            return_value=None
+        )
+        app.worktree_coordinator.coordination_manager.get_blocking_dependencies = (
+            MagicMock(return_value=[])
         )
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
@@ -90,13 +94,21 @@ class TestWorktreeMCPTools:
 
         mock_repo = MagicMock()
         mock_repo.path = str(tmp_path / "repos" / "test")
-        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
-        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
-        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
+        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(
+            return_value=mock_repo
+        )
+        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(
+            return_value=None
+        )
+        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(
+            return_value=[]
+        )
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
         )
-        app.worktree_coordinator._check_uncommitted_changes = AsyncMock(return_value=False)
+        app.worktree_coordinator._check_uncommitted_changes = AsyncMock(
+            return_value=False
+        )
         app.worktree_coordinator._verify_is_worktree = AsyncMock(return_value=True)
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
@@ -166,8 +178,12 @@ class TestWorktreeMCPTools:
 
         mock_repo = MagicMock()
         mock_repo.path = str(tmp_path / "repos" / "test")
-        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
-        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
+        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(
+            return_value=mock_repo
+        )
+        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(
+            return_value=None
+        )
         app.worktree_coordinator._branch_exists = AsyncMock(return_value=False)
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
@@ -187,12 +203,16 @@ class TestWorktreeMCPTools:
         app = MahavishnuApp.load()
         app.worktree_coordinator = _make_worktree_coordinator(tmp_path)
 
-        app.worktree_coordinator._check_uncommitted_changes = AsyncMock(return_value=False)
+        app.worktree_coordinator._check_uncommitted_changes = AsyncMock(
+            return_value=False
+        )
         app.worktree_coordinator._verify_is_worktree = AsyncMock(return_value=True)
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
         )
-        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
+        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(
+            return_value=[]
+        )
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
             from mahavishnu.mcp.tools.worktree_tools import worktree_manage
@@ -217,7 +237,9 @@ class TestWorktreeMCPTools:
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
             from mahavishnu.mcp.tools.worktree_tools import worktree_manage
 
-            result = await worktree_manage(action="provider_health", user_id="test-user")
+            result = await worktree_manage(
+                action="provider_health", user_id="test-user"
+            )
 
         assert isinstance(result, dict)
 
@@ -237,18 +259,26 @@ class TestWorktreeMCPTools:
 
         mock_repo = MagicMock()
         mock_repo.path = str(tmp_path / "repos" / "test")
-        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
-        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
-        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
+        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(
+            return_value=mock_repo
+        )
+        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(
+            return_value=None
+        )
+        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(
+            return_value=[]
+        )
 
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
         )
-        app.worktree_coordinator._check_uncommitted_changes = AsyncMock(return_value=True)
+        app.worktree_coordinator._check_uncommitted_changes = AsyncMock(
+            return_value=True
+        )
         app.worktree_coordinator._get_worktree_branch = AsyncMock(return_value="main")
         app.worktree_coordinator._verify_is_worktree = AsyncMock(return_value=True)
-        app.worktree_coordinator.backup_manager.create_backup_before_removal = AsyncMock(
-            return_value=tmp_path / "backups" / "test_main_20260218_120000"
+        app.worktree_coordinator.backup_manager.create_backup_before_removal = (
+            AsyncMock(return_value=tmp_path / "backups" / "test_main_20260218_120000")
         )
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):
@@ -273,14 +303,22 @@ class TestWorktreeMCPTools:
 
         mock_repo = MagicMock()
         mock_repo.path = str(tmp_path / "repos" / "test")
-        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(return_value=mock_repo)
-        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(return_value=None)
-        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(return_value=[])
+        app.worktree_coordinator.repo_manager.get_by_name = MagicMock(
+            return_value=mock_repo
+        )
+        app.worktree_coordinator.repo_manager.get_by_package = MagicMock(
+            return_value=None
+        )
+        app.worktree_coordinator.coordination_manager.list_dependencies = MagicMock(
+            return_value=[]
+        )
 
         app.worktree_coordinator.path_validator.validate_worktree_path = MagicMock(
             return_value=(True, None)
         )
-        app.worktree_coordinator._check_uncommitted_changes = AsyncMock(return_value=True)
+        app.worktree_coordinator._check_uncommitted_changes = AsyncMock(
+            return_value=True
+        )
         app.worktree_coordinator._verify_is_worktree = AsyncMock(return_value=True)
 
         with patch("mahavishnu.core.app.MahavishnuApp.load", return_value=app):

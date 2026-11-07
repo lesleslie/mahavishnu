@@ -1,4 +1,5 @@
 """Unit-level smoke tests for the markdown board surface (no I/O)."""
+
 from __future__ import annotations
 
 

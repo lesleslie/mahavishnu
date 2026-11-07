@@ -38,24 +38,42 @@ class ProductionReadinessChecker:
             if callable(method):
                 self.total_checks += 1
                 try:
-                    result = await method() if inspect.iscoroutinefunction(method) else method()
+                    result = (
+                        await method()
+                        if inspect.iscoroutinefunction(method)
+                        else method()
+                    )
                     if result:
                         self.checks_passed += 1
-                        logger.info(f"✅ {method.__name__[7:].replace('_', ' ').title()}: PASSED")
+                        logger.info(
+                            f"✅ {method.__name__[7:].replace('_', ' ').title()}: PASSED"
+                        )
                     else:
-                        logger.error(f"❌ {method.__name__[7:].replace('_', ' ').title()}: FAILED")
+                        logger.error(
+                            f"❌ {method.__name__[7:].replace('_', ' ').title()}: FAILED"
+                        )
                 except Exception as e:  # production readiness check — broad catch isolates each check's failure  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                    logger.error(f"❌ {method.__name__[7:].replace('_', ' ').title()}: ERROR - {e}")
+                    logger.error(
+                        f"❌ {method.__name__[7:].replace('_', ' ').title()}: ERROR - {e}"
+                    )
 
         # Calculate overall score
-        score = (self.checks_passed / self.total_checks * 100) if self.total_checks > 0 else 0
+        score = (
+            (self.checks_passed / self.total_checks * 100)
+            if self.total_checks > 0
+            else 0
+        )
 
         summary = {
             "summary": {
                 "checks_passed": self.checks_passed,
                 "total_checks": self.total_checks,
                 "score_percentage": round(score, 2),
-                "status": "PASS" if score >= 90 else "FAIL" if score < 70 else "CAUTION",
+                "status": "PASS"
+                if score >= 90
+                else "FAIL"
+                if score < 70
+                else "CAUTION",
             },
             "details": self.results,
         }
@@ -73,7 +91,9 @@ class ProductionReadinessChecker:
             config = self.app.config
 
             # Check if auth is enabled in production
-            if config.auth.enabled and (not config.auth.secret or len(config.auth.secret) < 32):
+            if config.auth.enabled and (
+                not config.auth.secret or len(config.auth.secret) < 32
+            ):
                 logger.warning(
                     "  Auth enabled but secret is too short (should be at least 32 chars)"
                 )
@@ -271,7 +291,10 @@ class ProductionReadinessChecker:
                 return False
 
             # Check timeout settings
-            if config.resilience.timeout_per_repo < 30 or config.resilience.timeout_per_repo > 3600:
+            if (
+                config.resilience.timeout_per_repo < 30
+                or config.resilience.timeout_per_repo > 3600
+            ):
                 logger.warning(
                     f"  ⚠️  Unreasonable timeout_per_repo: {config.resilience.timeout_per_repo} (should be 30-3600)"
                 )
@@ -311,11 +334,15 @@ class ProductionReadinessChecker:
                     logger.warning(f"  ⚠️  Weak auth algorithm: {config.auth.algorithm}")
                     return False
             else:
-                logger.warning("  ⚠️  Authentication is disabled - consider enabling for production")
+                logger.warning(
+                    "  ⚠️  Authentication is disabled - consider enabling for production"
+                )
 
             # Check OpenSearch security settings
             if hasattr(config, "opensearch_use_ssl") and not config.opensearch.use_ssl:
-                logger.warning("  ⚠️  OpenSearch SSL is disabled - consider enabling for production")
+                logger.warning(
+                    "  ⚠️  OpenSearch SSL is disabled - consider enabling for production"
+                )
 
             self.results["security_settings"] = {
                 "status": "PASS",
@@ -349,14 +376,24 @@ class IntegrationTestSuite:
             method = getattr(self, method_name)
             if callable(method):
                 try:
-                    result = await method() if inspect.iscoroutinefunction(method) else method()
+                    result = (
+                        await method()
+                        if inspect.iscoroutinefunction(method)
+                        else method()
+                    )
                     if result:
                         passed_tests += 1
-                        logger.info(f"✅ {method.__name__[6:].replace('_', ' ').title()}: PASSED")
+                        logger.info(
+                            f"✅ {method.__name__[6:].replace('_', ' ').title()}: PASSED"
+                        )
                     else:
-                        logger.error(f"❌ {method.__name__[6:].replace('_', ' ').title()}: FAILED")
+                        logger.error(
+                            f"❌ {method.__name__[6:].replace('_', ' ').title()}: FAILED"
+                        )
                 except Exception as e:  # production readiness check — broad catch isolates each test's failure  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                    logger.error(f"❌ {method.__name__[6:].replace('_', ' ').title()}: ERROR - {e}")
+                    logger.error(
+                        f"❌ {method.__name__[6:].replace('_', ' ').title()}: ERROR - {e}"
+                    )
 
         score = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
@@ -365,12 +402,18 @@ class IntegrationTestSuite:
                 "tests_passed": passed_tests,
                 "total_tests": total_tests,
                 "score_percentage": round(score, 2),
-                "status": "PASS" if score >= 90 else "FAIL" if score < 70 else "CAUTION",
+                "status": "PASS"
+                if score >= 90
+                else "FAIL"
+                if score < 70
+                else "CAUTION",
             },
             "details": self.test_results,
         }
 
-        logger.info(f"\n📊 Test Score: {score}% ({passed_tests}/{total_tests} tests passed)")
+        logger.info(
+            f"\n📊 Test Score: {score}% ({passed_tests}/{total_tests} tests passed)"
+        )
         logger.info(f"Status: {summary['summary']['status']}")  # type: ignore[invalid-index]
 
         return summary
@@ -462,12 +505,16 @@ class IntegrationTestSuite:
             repos = ["test_repo"]
 
             # Create workflow state
-            _state = await self.app.workflow_state_manager.create(workflow_id, task, repos)
+            _state = await self.app.workflow_state_manager.create(
+                workflow_id, task, repos
+            )
 
             # Verify state was created
             retrieved_state = await self.app.workflow_state_manager.get(workflow_id)
 
-            success = retrieved_state is not None and retrieved_state.get("id") == workflow_id
+            success = (
+                retrieved_state is not None and retrieved_state.get("id") == workflow_id
+            )
 
             # Cleanup
             await self.app.workflow_state_manager.delete(workflow_id)
@@ -551,12 +598,16 @@ class PerformanceBenchmark:
 
         # Calculate overall performance score
         avg_times = [
-            results["avg_time"] for results in self.benchmarks.values() if "avg_time" in results
+            results["avg_time"]
+            for results in self.benchmarks.values()
+            if "avg_time" in results
         ]
 
         if avg_times:
             avg_performance = sum(avg_times) / len(avg_times)
-            performance_score = max(0, 100 - (avg_performance * 10))  # Lower time = higher score
+            performance_score = max(
+                0, 100 - (avg_performance * 10)
+            )  # Lower time = higher score
         else:
             performance_score = 100
 
@@ -612,7 +663,9 @@ class PerformanceBenchmark:
                     execution_time = time.time() - start_time
                     execution_times.append(execution_time)
 
-            avg_time = sum(execution_times) / len(execution_times) if execution_times else 0
+            avg_time = (
+                sum(execution_times) / len(execution_times) if execution_times else 0
+            )
             min_time = min(execution_times) if execution_times else 0
             max_time = max(execution_times) if execution_times else 0
 
@@ -661,13 +714,17 @@ class PerformanceBenchmark:
             results = await asyncio.gather(*tasks, return_exceptions=True)
             total_time = time.time() - start_time
 
-            successful_executions = sum(1 for r in results if not isinstance(r, Exception))
+            successful_executions = sum(
+                1 for r in results if not isinstance(r, Exception)
+            )
 
             self.benchmarks["concurrent_workflows"] = {
                 "total_time": total_time,
                 "num_concurrent": num_concurrent,
                 "successful_executions": successful_executions,
-                "throughput": successful_executions / total_time if total_time > 0 else 0,
+                "throughput": successful_executions / total_time
+                if total_time > 0
+                else 0,
             }
 
             logger.info(
@@ -732,9 +789,13 @@ async def run_production_readiness_suite(app: MahavishnuApp) -> dict[str, Any]:
     }
 
     logger.info("\n🏆 FINAL ASSESSMENT:")
-    logger.info(f"   Production Readiness: {readiness_results['summary']['score_percentage']}%")
+    logger.info(
+        f"   Production Readiness: {readiness_results['summary']['score_percentage']}%"
+    )
     logger.info(f"   Integration Tests: {test_results['summary']['score_percentage']}%")
-    logger.info(f"   Performance Score: {benchmark_results['summary']['performance_score']}/100")
+    logger.info(
+        f"   Performance Score: {benchmark_results['summary']['performance_score']}/100"
+    )
     logger.info(f"   Overall Status: {final_report['overall_assessment']['status']}")
 
     return final_report

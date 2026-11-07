@@ -159,8 +159,12 @@ class SettleRunRecord:
                 "SettleRunRecord.from_dict requires a dict payload",
                 details={"payload_type": type(payload).__name__},
             )
-        run_ref = _require_str_field(payload, "run_ref", run_ref=None, empty_required=True)
-        worker_id = _require_str_field(payload, "worker_id", run_ref=run_ref, empty_required=True)
+        run_ref = _require_str_field(
+            payload, "run_ref", run_ref=None, empty_required=True
+        )
+        worker_id = _require_str_field(
+            payload, "worker_id", run_ref=run_ref, empty_required=True
+        )
         task_signature = _require_str_field(
             payload, "task_signature", run_ref=run_ref, empty_required=False
         )
@@ -205,7 +209,9 @@ def _require_str_field(
     if is_valid:
         return value  # type: ignore[return-value]
     details = (
-        {"run_ref": run_ref} if run_ref is not None else {"payload_keys": sorted(payload.keys())}
+        {"run_ref": run_ref}
+        if run_ref is not None
+        else {"payload_keys": sorted(payload.keys())}
     )
     if empty_required:
         raise ValidationError(
@@ -271,7 +277,9 @@ def _parse_bindings(raw_bindings: object, run_ref: str) -> list[Binding]:
                 f"SettleRunRecord.from_dict: binding #{idx} merge_strategy must be string or null",
                 details={"run_ref": run_ref},
             )
-        bindings.append(Binding(path=path_v, base=base_v, merge_strategy=merge_strategy_str))
+        bindings.append(
+            Binding(path=path_v, base=base_v, merge_strategy=merge_strategy_str)
+        )
     return bindings
 
 

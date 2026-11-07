@@ -148,7 +148,9 @@ class TestIngestOtelTracesTraceData:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            await tools["ingest_otel_traces"](trace_data=[{"span": "z"}], system_id="my-svc")
+            await tools["ingest_otel_traces"](
+                trace_data=[{"span": "z"}], system_id="my-svc"
+            )
         assert ingested[0]["system_id"] == "my-svc"
 
 
@@ -340,7 +342,9 @@ class TestOtelIngesterStats:
         mock_store = MagicMock()
         mock_store.initialize = AsyncMock(side_effect=RuntimeError("store fail"))
         mock_store.close = AsyncMock()
-        with patch("oneiric.adapters.vector.hot_store.HotStore", return_value=mock_store):
+        with patch(
+            "oneiric.adapters.vector.hot_store.HotStore", return_value=mock_store
+        ):
             result = await tools["otel_ingester_stats"]()
         assert result["status"] == "error"
         assert "store fail" in result["error"]
@@ -351,7 +355,9 @@ class TestOtelIngesterStats:
         mock_store = MagicMock()
         mock_store.initialize = AsyncMock()
         mock_store.close = AsyncMock()
-        with patch("oneiric.adapters.vector.hot_store.HotStore", return_value=mock_store):
+        with patch(
+            "oneiric.adapters.vector.hot_store.HotStore", return_value=mock_store
+        ):
             result = await tools["otel_ingester_stats"]()
         assert result["status"] == "healthy"
         assert result["storage_backend"] == "duckdb_hotstore"

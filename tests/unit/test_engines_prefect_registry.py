@@ -79,14 +79,18 @@ class TestRegisterFlow:
         id_b = registry.register_flow(flow_func, name="flow-b")
         assert id_a != id_b
 
-    def test_register_persists_function(self, registry: FlowRegistry, flow_func: MagicMock) -> None:
+    def test_register_persists_function(
+        self, registry: FlowRegistry, flow_func: MagicMock
+    ) -> None:
         flow_id = registry.register_flow(flow_func, name="my-flow")
         assert registry.get_flow(flow_id) is flow_func
 
     def test_register_stores_metadata_fields(
         self, registry: FlowRegistry, flow_func: MagicMock
     ) -> None:
-        flow_id = registry.register_flow(flow_func, name="my-flow", tags=["etl", "prod"])
+        flow_id = registry.register_flow(
+            flow_func, name="my-flow", tags=["etl", "prod"]
+        )
         meta = registry.get_flow_metadata(flow_id)
         assert meta is not None
         assert meta["id"] == flow_id
@@ -111,7 +115,9 @@ class TestRegisterFlow:
         assert meta["prefect_name"] == "plain_flow"
         assert meta["func_name"] == "plain_flow"
 
-    def test_register_non_callable_raises_value_error(self, registry: FlowRegistry) -> None:
+    def test_register_non_callable_raises_value_error(
+        self, registry: FlowRegistry
+    ) -> None:
         with pytest.raises(ValueError) as exc_info:
             registry.register_flow("not-callable", name="x")  # type: ignore[arg-type]
         assert "callable" in str(exc_info.value).lower()
@@ -122,7 +128,9 @@ class TestRegisterFlow:
         flow_func: MagicMock,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        with caplog.at_level(logging.INFO, logger="mahavishnu.engines.prefect_registry"):
+        with caplog.at_level(
+            logging.INFO, logger="mahavishnu.engines.prefect_registry"
+        ):
             registry.register_flow(flow_func, name="logged-flow")
         assert any("Registered flow" in r.message for r in caplog.records)
 
@@ -188,7 +196,9 @@ class TestListFlows:
         flows = registry.list_flows()
         assert len(flows) == 3
 
-    def test_list_filters_by_single_tag(self, registry: FlowRegistry, flow_func: MagicMock) -> None:
+    def test_list_filters_by_single_tag(
+        self, registry: FlowRegistry, flow_func: MagicMock
+    ) -> None:
         registry.register_flow(flow_func, name="a", tags=["etl"])
         registry.register_flow(flow_func, name="b", tags=["ml"])
         registry.register_flow(flow_func, name="c", tags=["etl"])
@@ -247,7 +257,9 @@ class TestUnregisterFlow:
         registry: FlowRegistry,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        with caplog.at_level(logging.WARNING, logger="mahavishnu.engines.prefect_registry"):
+        with caplog.at_level(
+            logging.WARNING, logger="mahavishnu.engines.prefect_registry"
+        ):
             registry.unregister_flow("does-not-exist")
         assert any("non-existent" in r.message for r in caplog.records)
 
@@ -278,7 +290,9 @@ class TestClearAndCount:
         registry.register_flow(flow_func, name="b")
         assert registry.count() == 2
 
-    def test_clear_empties_registry(self, registry: FlowRegistry, flow_func: MagicMock) -> None:
+    def test_clear_empties_registry(
+        self, registry: FlowRegistry, flow_func: MagicMock
+    ) -> None:
         registry.register_flow(flow_func, name="a")
         registry.register_flow(flow_func, name="b")
         removed = registry.clear()
@@ -306,7 +320,9 @@ class TestClearAndCount:
 class TestFindByName:
     """Behaviour of ``find_by_name`` and ``find_by_prefect_name``."""
 
-    def test_find_by_name_exact_match(self, registry: FlowRegistry, flow_func: MagicMock) -> None:
+    def test_find_by_name_exact_match(
+        self, registry: FlowRegistry, flow_func: MagicMock
+    ) -> None:
         registry.register_flow(flow_func, name="dup")
         registry.register_flow(flow_func, name="dup")
         registry.register_flow(flow_func, name="other")
@@ -314,7 +330,9 @@ class TestFindByName:
         assert len(matches) == 2
         assert all(m["name"] == "dup" for m in matches)
 
-    def test_find_by_name_no_match(self, registry: FlowRegistry, flow_func: MagicMock) -> None:
+    def test_find_by_name_no_match(
+        self, registry: FlowRegistry, flow_func: MagicMock
+    ) -> None:
         registry.register_flow(flow_func, name="a")
         assert registry.find_by_name("zzz") == []
 
@@ -325,7 +343,9 @@ class TestFindByName:
         registry.register_flow(flow_func, name="data-pipeline")
         assert registry.find_by_name("data") == []
 
-    def test_find_by_prefect_name(self, registry: FlowRegistry, flow_func: MagicMock) -> None:
+    def test_find_by_prefect_name(
+        self, registry: FlowRegistry, flow_func: MagicMock
+    ) -> None:
         registry.register_flow(flow_func, name="alias-1")
         registry.register_flow(flow_func, name="alias-2")
         # Both share the same prefect_name from the fixture

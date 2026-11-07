@@ -60,7 +60,7 @@ from monitoring.otel import setup_telemetry, auto_instrument
 tracer = setup_telemetry(
     service_name="mahavishnu",
     otlp_endpoint="http://localhost:4317",
-    environment="production"
+    environment="production",
 )
 
 # Auto-instrument all components
@@ -142,6 +142,7 @@ from fastapi import FastAPI, Response
 
 app = FastAPI()
 
+
 @app.get("/metrics")
 async def metrics():
     """Prometheus metrics endpoint."""
@@ -155,9 +156,7 @@ from monitoring.metrics import create_counter, create_gauge, create_histogram
 
 # Create custom counter
 my_counter = create_counter(
-    "my_operations_total",
-    "Total my operations",
-    ["operation_type"]
+    "my_operations_total", "Total my operations", ["operation_type"]
 )
 
 # Use custom metric
@@ -169,10 +168,12 @@ my_counter.labels(operation_type="read").inc()
 ```python
 from monitoring.metrics import track_time, track_calls
 
+
 # Track execution time
 @track_time(operation_latency_histogram, {"endpoint": "process"})
 async def my_function():
     return 42
+
 
 # Track call counts
 @track_calls(function_calls_counter, {"function": "my_function"})
@@ -222,36 +223,30 @@ app = FastAPI()
 
 # Setup monitoring
 tracer = setup_telemetry(
-    service_name="mahavishnu",
-    otlp_endpoint="http://otel-collector:4317"
+    service_name="mahavishnu", otlp_endpoint="http://otel-collector:4317"
 )
 auto_instrument(app, "mahavishnu")
+
 
 @app.post("/workflow/trigger")
 async def trigger_workflow(workflow_id: str):
     async with start_span("trigger_workflow", {"workflow_id": workflow_id}):
         # Increment task counter
         agent_tasks_total.labels(
-            agent_type="orchestrator",
-            adapter="prefect",
-            status="started"
+            agent_type="orchestrator", adapter="prefect", status="started"
         ).inc()
 
         try:
             result = await execute_workflow(workflow_id)
 
             agent_tasks_total.labels(
-                agent_type="orchestrator",
-                adapter="prefect",
-                status="success"
+                agent_type="orchestrator", adapter="prefect", status="success"
             ).inc()
 
             return result
         except Exception:
             agent_tasks_total.labels(
-                agent_type="orchestrator",
-                adapter="prefect",
-                status="error"
+                agent_type="orchestrator", adapter="prefect", status="error"
             ).inc()
             raise
 ```
@@ -267,6 +262,7 @@ from monitoring.metrics import (
 )
 from monitoring.otel import start_span
 
+
 async def sync_from_session_buddy(instance_url: str):
     async with start_span("sync_session_buddy", {"instance": instance_url}):
         try:
@@ -278,19 +274,13 @@ async def sync_from_session_buddy(instance_url: str):
                 # Update metrics
                 memories_stored.labels(source_instance=instance_url).inc()
 
-                embedding = await generate_embedding(memory['content'])
+                embedding = await generate_embedding(memory["content"])
                 embeddings_generated.labels(model="text-embedding-3-small").inc()
 
-            memory_syncs_total.labels(
-                source=instance_url,
-                status="success"
-            ).inc()
+            memory_syncs_total.labels(source=instance_url, status="success").inc()
 
         except Exception:
-            memory_syncs_total.labels(
-                source=instance_url,
-                status="error"
-            ).inc()
+            memory_syncs_total.labels(source=instance_url, status="error").inc()
             raise
 ```
 
@@ -305,12 +295,14 @@ from monitoring.metrics import (
 )
 from monitoring.otel import start_span
 
+
 async def create_session():
     async with start_span("create_session"):
         session = await _create_session()
         sessions_active.inc()
         session_operations_total.labels(operation="create", status="success").inc()
         return session
+
 
 async def close_session(session_id: str):
     async with start_span("close_session", {"session_id": session_id}):
@@ -460,11 +452,12 @@ app = FastAPI()
 tracer = setup_telemetry(
     service_name="my-mcp-server",
     otlp_endpoint="http://otel-collector:4317",
-    environment=os.getenv("ENV", "development")
+    environment=os.getenv("ENV", "development"),
 )
 
 # Auto-instrument
 auto_instrument(app, "my-mcp-server")
+
 
 # Add metrics endpoint
 @app.get("/metrics")

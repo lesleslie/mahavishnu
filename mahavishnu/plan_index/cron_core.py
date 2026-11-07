@@ -257,7 +257,9 @@ def _parse_frontmatter(text: str) -> dict[str, Any]:
                         if not candidate.startswith((" ", "\t")):
                             break
                         if cand_stripped.startswith("- "):
-                            items.append(cand_stripped[2:].strip().strip('"').strip("'"))
+                            items.append(
+                                cand_stripped[2:].strip().strip('"').strip("'")
+                            )
                             k += 1
                             continue
                         # Indented but not a list item — bail out.
@@ -571,7 +573,9 @@ async def run_rebuild_cycle(
     await _acquire_rebuild_lock(mcp, new_holder, now_ms_for_lock)
 
     try:
-        records: list[PlanRecord] = discover_records(repo_root) if repo_root is not None else []
+        records: list[PlanRecord] = (
+            discover_records(repo_root) if repo_root is not None else []
+        )
 
         success, error_count, errors = await rebuilder.upsert_all(records, store)
 
@@ -601,7 +605,9 @@ async def run_rebuild_cycle(
             recent_raw = await mcp.get(RECENT_ERRORS_KEY)
             recent: list[dict[str, Any]] = json.loads(recent_raw) if recent_raw else []
             for err in errors:
-                recent.append({"ts_ms": now_ms, "op": "upsert", "err": "see ctx", "ctx": err})
+                recent.append(
+                    {"ts_ms": now_ms, "op": "upsert", "err": "see ctx", "ctx": err}
+                )
             recent = recent[-RECENT_ERRORS_MAX:]
             await mcp.put(
                 RECENT_ERRORS_KEY,

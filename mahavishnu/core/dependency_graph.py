@@ -121,8 +121,12 @@ class DependencyGraph:
     def __init__(self) -> None:
         """Initialize empty dependency graph."""
         # Adjacency lists
-        self._dependents: dict[str, set[str]] = defaultdict(set)  # task -> tasks that depend on it
-        self._dependencies: dict[str, set[str]] = defaultdict(set)  # task -> tasks it depends on
+        self._dependents: dict[str, set[str]] = defaultdict(
+            set
+        )  # task -> tasks that depend on it
+        self._dependencies: dict[str, set[str]] = defaultdict(
+            set
+        )  # task -> tasks it depends on
         self._edges: dict[tuple[str, str], DependencyEdge] = {}
         self._task_metadata: dict[str, dict[str, Any]] = {}
 
@@ -306,7 +310,9 @@ class DependencyGraph:
         edge = self._edges.get((dependency_id, dependent_id))
         if edge:
             edge.status = status
-            logger.debug(f"Updated edge status: {dependency_id} -> {dependent_id} = {status.value}")
+            logger.debug(
+                f"Updated edge status: {dependency_id} -> {dependent_id} = {status.value}"
+            )
             return True
         return False
 
@@ -324,7 +330,10 @@ class DependencyGraph:
         """
         for dep_id in self._dependencies.get(task_id, set()):
             edge = self._edges.get((dep_id, task_id))
-            if edge and edge.status in (DependencyStatus.PENDING, DependencyStatus.FAILED):
+            if edge and edge.status in (
+                DependencyStatus.PENDING,
+                DependencyStatus.FAILED,
+            ):
                 return True
         return False
 
@@ -342,7 +351,10 @@ class DependencyGraph:
         blocking = []
         for dep_id in self._dependencies.get(task_id, set()):
             edge = self._edges.get((dep_id, task_id))
-            if edge and edge.status in (DependencyStatus.PENDING, DependencyStatus.FAILED):
+            if edge and edge.status in (
+                DependencyStatus.PENDING,
+                DependencyStatus.FAILED,
+            ):
                 blocking.append(dep_id)
         return blocking
 
@@ -625,7 +637,9 @@ class DependencyGraph:
     def to_dict(self) -> dict[str, Any]:
         """Serialize graph to dictionary."""
         return {
-            "tasks": [{"id": tid, **metadata} for tid, metadata in self._task_metadata.items()],
+            "tasks": [
+                {"id": tid, **metadata} for tid, metadata in self._task_metadata.items()
+            ],
             "edges": [edge.to_dict() for edge in self._edges.values()],
         }
 
@@ -644,7 +658,9 @@ class DependencyGraph:
             graph.add_dependency(
                 dependency_id=edge_data["dependency_id"],
                 dependent_id=edge_data["dependent_id"],
-                dependency_type=DependencyType(edge_data.get("dependency_type", "blocks")),
+                dependency_type=DependencyType(
+                    edge_data.get("dependency_type", "blocks")
+                ),
                 metadata=edge_data.get("metadata"),
                 validate=False,  # Skip validation for deserialization
             )

@@ -35,7 +35,9 @@ class _StubLlm:
     """Deterministic LLM stub: returns the same schema-valid payload
     for every call. Raises only when configured to."""
 
-    def __init__(self, payload: dict | None = None, *, raise_on: int | None = None) -> None:
+    def __init__(
+        self, payload: dict | None = None, *, raise_on: int | None = None
+    ) -> None:
         self.payload = payload or {
             "intent": "stub workflow",
             "steps": [
@@ -112,7 +114,9 @@ class TestCostCeilingGate:
 
 
 class TestCostCeilingMessage:
-    def test_exception_message_includes_counter(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_exception_message_includes_counter(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("MAHAVISHNU_DISTILL_LLM_WEEKLY_CAP", "2")
         synth = _LlmSynthesizer(_StubLlm())
         cand = _StubCandidate(session_id="s1", evidence_count=5)

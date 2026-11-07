@@ -12,7 +12,11 @@ from __future__ import annotations
 
 import pytest
 
-from mahavishnu.core.dependency_graph import DependencyGraph, DependencyStatus, DependencyType
+from mahavishnu.core.dependency_graph import (
+    DependencyGraph,
+    DependencyStatus,
+    DependencyType,
+)
 from mahavishnu.core.dependency_visualization import (
     ColorCode,
     DependencyVisualizer,
@@ -56,7 +60,9 @@ class TestDependencyVisualizer:
         """Create visualizer without colors."""
         return DependencyVisualizer(use_colors=False)
 
-    def test_render_tree(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_tree(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test tree rendering."""
         result = visualizer.render_tree(graph, "task-3")
 
@@ -128,7 +134,9 @@ class TestDependencyVisualizer:
         parts = result.split("→")
         assert len(parts) <= 5
 
-    def test_render_summary(self, visualizer: DependencyVisualizer, graph: DependencyGraph) -> None:
+    def test_render_summary(
+        self, visualizer: DependencyVisualizer, graph: DependencyGraph
+    ) -> None:
         """Test summary rendering."""
         result = visualizer.render_summary(graph)
 
@@ -181,7 +189,9 @@ class TestDependencyVisualizer:
         assert "task-2" in result
         assert "task-3" in result
 
-    def test_render_dependency_matrix_empty(self, visualizer: DependencyVisualizer) -> None:
+    def test_render_dependency_matrix_empty(
+        self, visualizer: DependencyVisualizer
+    ) -> None:
         """Test matrix with empty graph."""
         graph = DependencyGraph()
 
@@ -197,7 +207,9 @@ class TestDependencyVisualizer:
         assert "test" in result
         assert "\033[0m" in result
 
-    def test_colorize_without_colors(self, plain_visualizer: DependencyVisualizer) -> None:
+    def test_colorize_without_colors(
+        self, plain_visualizer: DependencyVisualizer
+    ) -> None:
         """Test colorize with colors disabled."""
         result = plain_visualizer._colorize("test", ColorCode.RED)
 
@@ -344,7 +356,9 @@ class TestStatusIndicators:
         graph.add_task("task-4")
 
         graph.add_dependency("task-1", "task-2", dependency_type=DependencyType.BLOCKS)
-        graph.add_dependency("task-1", "task-3", dependency_type=DependencyType.REQUIRES)
+        graph.add_dependency(
+            "task-1", "task-3", dependency_type=DependencyType.REQUIRES
+        )
         graph.add_dependency("task-1", "task-4", dependency_type=DependencyType.SUBTASK)
 
         viz = DependencyVisualizer(use_colors=False)

@@ -77,7 +77,9 @@ class EvidenceRetriever:
             akosha_results = await self._search_akosha(query, limit)
             results.extend(akosha_results)
         except Exception:
-            logger.warning("akosha_search_failed: falling back to Session-Buddy", exc_info=True)
+            logger.warning(
+                "akosha_search_failed: falling back to Session-Buddy", exc_info=True
+            )
             results.extend(await self._search_session_buddy(query, limit))
 
         results.sort(key=lambda r: r.similarity, reverse=True)
@@ -93,7 +95,9 @@ class EvidenceRetriever:
 
         return self._build_clusters(evidences, min_cluster_size)
 
-    async def get_retrieval_context(self, goal: str, repo_paths: list[str]) -> RetrievalContext:
+    async def get_retrieval_context(
+        self, goal: str, repo_paths: list[str]
+    ) -> RetrievalContext:
         synthetic_evidence = LearningEvidence(
             session_id="retrieval_query",
             goal=goal,
@@ -134,7 +138,12 @@ class EvidenceRetriever:
 
             items: list[dict[str, Any]] = []
             if isinstance(result, dict):
-                items = result.get("results") or result.get("content") or result.get("items") or []
+                items = (
+                    result.get("results")
+                    or result.get("content")
+                    or result.get("items")
+                    or []
+                )
                 if isinstance(items, dict):
                     items = items.get("items", [])  # type: ignore[assignment]
             elif isinstance(result, list):
@@ -148,13 +157,16 @@ class EvidenceRetriever:
                             evidence_id=item.get(
                                 "id", item.get("evidence_id", f"re_{uuid4().hex}")
                             ),
-                            similarity=float(item.get("score", item.get("similarity", 0.0))),
+                            similarity=float(
+                                item.get("score", item.get("similarity", 0.0))
+                            ),
                             goal=item.get("text", item.get("goal", "")),
                             outcome=item.get(
                                 "outcome", item.get("metadata", {}).get("outcome", "")
                             ),
                             observations=item.get(
-                                "observations", item.get("metadata", {}).get("observations", [])
+                                "observations",
+                                item.get("metadata", {}).get("observations", []),
                             ),
                             source="akosha",
                         )
@@ -163,9 +175,13 @@ class EvidenceRetriever:
         finally:
             await client.aclose()
 
-    async def _search_session_buddy(self, query: str, limit: int) -> list[RetrievedEvidence]:
+    async def _search_session_buddy(
+        self, query: str, limit: int
+    ) -> list[RetrievedEvidence]:
         try:
-            client = CommonMCPClient(base_url=self._session_buddy_url, timeout=self._timeout)
+            client = CommonMCPClient(
+                base_url=self._session_buddy_url, timeout=self._timeout
+            )
             try:
                 try:
                     result = await client.call_tool(
@@ -204,7 +220,9 @@ class EvidenceRetriever:
             finally:
                 await client.aclose()
         except Exception:
-            logger.warning("session_buddy_search_failed: returning empty", exc_info=True)
+            logger.warning(
+                "session_buddy_search_failed: returning empty", exc_info=True
+            )
             return []
 
     def _build_clusters(
@@ -215,7 +233,11 @@ class EvidenceRetriever:
         groups: dict[frozenset[str], list[LearningEvidence]] = defaultdict(list)
 
         for ev in evidences:
-            repo_key = frozenset(ev.repo_paths) if ev.repo_paths else frozenset({"_unclassified"})
+            repo_key = (
+                frozenset(ev.repo_paths)
+                if ev.repo_paths
+                else frozenset({"_unclassified"})
+            )
             groups[repo_key].append(ev)
 
         clusters: list[EvidenceCluster] = []
@@ -223,7 +245,9 @@ class EvidenceRetriever:
             if len(members) < min_cluster_size:
                 continue
 
-            keyword_groups: dict[tuple[str, ...], list[LearningEvidence]] = defaultdict(list)
+            keyword_groups: dict[tuple[str, ...], list[LearningEvidence]] = defaultdict(
+                list
+            )
             for m in members:
                 kw = tuple(sorted(_extract_keywords(m.goal)))
                 keyword_groups[kw].append(m)
@@ -232,15 +256,17 @@ class EvidenceRetriever:
                 if len(kw_members) < min_cluster_size:
                     continue
 
-                sorted_members = sorted(kw_members, key=lambda e: e.collected_at, reverse=True)
+                sorted_members = sorted(
+                    kw_members, key=lambda e: e.collected_at, reverse=True
+                )
                 representative = sorted_members[0]
 
-                success_count = sum(1 for e in kw_members if "success" in e.outcome.lower())
+                success_count = sum(
+                    1 for e in kw_members if "success" in e.outcome.lower()
+                )
                 success_rate = success_count / len(kw_members) if kw_members else 0.0
 
-                cluster_id = (
-                    f"cl_{abs(hash(repo_key)) % (10**12):012x}_{abs(hash(kw_tuple)) % (10**8):08x}"
-                )
+                cluster_id = f"cl_{abs(hash(repo_key)) % (10**12):012x}_{abs(hash(kw_tuple)) % (10**8):08x}"
                 clusters.append(
                     EvidenceCluster(
                         cluster_id=cluster_id,
@@ -332,7 +358,9 @@ _STOP_WORDS = frozenset(
 
 def _extract_keywords(text: str) -> set[str]:
     return {
-        word.lower() for word in text.split() if len(word) > 2 and word.lower() not in _STOP_WORDS
+        word.lower()
+        for word in text.split()
+        if len(word) > 2 and word.lower() not in _STOP_WORDS
     }
 
 

@@ -159,7 +159,9 @@ class RateLimiter:
 
         # Clean up violations
         for key in list(self._violations.keys()):
-            self._violations[key] = [ts for ts in self._violations[key] if ts > cutoff_time]
+            self._violations[key] = [
+                ts for ts in self._violations[key] if ts > cutoff_time
+            ]
             if not self._violations[key]:
                 del self._violations[key]
 
@@ -200,7 +202,9 @@ class RateLimiter:
 
         # Check per-minute limit
         minute_ago = now - 60
-        recent_requests = [(ts, count) for ts, count in self._requests[key] if ts > minute_ago]
+        recent_requests = [
+            (ts, count) for ts, count in self._requests[key] if ts > minute_ago
+        ]
 
         # Check token bucket for burst control
         tokens = self._tokens[key]
@@ -231,7 +235,9 @@ class RateLimiter:
 
         if total_requests >= self.per_minute:
             # Rate limited
-            retry_after = 60 - int(now - recent_requests[0][0]) if recent_requests else 60
+            retry_after = (
+                60 - int(now - recent_requests[0][0]) if recent_requests else 60
+            )
             return False, RateLimitInfo(
                 limited=True,
                 retry_after=retry_after,
@@ -268,7 +274,9 @@ class RateLimiter:
         return True, RateLimitInfo(
             request_count=total_requests + 1,
             window_start=recent_requests[0][0] if recent_requests else now,
-            reset_time=now + 60 - (now - recent_requests[0][0]) if recent_requests else now + 60,
+            reset_time=now + 60 - (now - recent_requests[0][0])
+            if recent_requests
+            else now + 60,
             limited=False,
         )
 
@@ -414,7 +422,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Rate limited, record violation
             self.limiter.record_violation(key)
 
-            logger.warning(f"Rate limit exceeded for {key} (IP: {client_ip}, User: {user_id})")
+            logger.warning(
+                f"Rate limit exceeded for {key} (IP: {client_ip}, User: {user_id})"
+            )
 
             return JSONResponse(
                 status_code=429,
@@ -514,9 +524,9 @@ def rate_limit(
                 key = key_func(request)
             elif request:
                 # Default key: IP address or user ID
-                key = request.headers.get("X-User-ID") or rate_limit_middleware._get_client_ip(
-                    request
-                )
+                key = request.headers.get(
+                    "X-User-ID"
+                ) or rate_limit_middleware._get_client_ip(request)
             else:
                 # No request context, skip rate limiting
                 return await func(*args, **kwargs)

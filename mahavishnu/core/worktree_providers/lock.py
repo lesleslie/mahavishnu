@@ -140,7 +140,9 @@ class RedisLockBackend:
             if ok:
                 break
             if time.monotonic() >= deadline:
-                raise TimeoutError(f"Could not acquire lock {key} within {self._acquire_timeout}s")
+                raise TimeoutError(
+                    f"Could not acquire lock {key} within {self._acquire_timeout}s"
+                )
             await asyncio.sleep(self._poll_interval)
 
         # Now we hold the lock. Issue a monotonic fencing token.

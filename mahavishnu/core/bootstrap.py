@@ -80,7 +80,9 @@ def configure_logging(config: MahavishnuSettings | None = None) -> None:
         import structlog
 
         level_name = str(
-            getattr(config, "log_level", None) or os.environ.get("ONEIRIC_LOG_LEVEL") or "INFO"
+            getattr(config, "log_level", None)
+            or os.environ.get("ONEIRIC_LOG_LEVEL")
+            or "INFO"
         ).upper()
         level = getattr(logging, level_name, logging.INFO)
 
@@ -185,9 +187,7 @@ def load_config() -> MahavishnuSettings:
         relevant_data = _filter_to_model(merged, MahavishnuSettings)
         _merge_env_overlay(relevant_data, _mahavishnu_env_overlay())
         return MahavishnuSettings(**relevant_data)
-    except (
-        Exception
-    ) as exc:  # bootstrap init — broad catch wraps any construction failure into ConfigurationError
+    except Exception as exc:  # bootstrap init — broad catch wraps any construction failure into ConfigurationError
         raise ConfigurationError(
             message=f"Failed to load configuration: {exc}",
             details={"error": str(exc), "error_type": type(exc).__name__},
@@ -207,11 +207,17 @@ def _validate_path(path_str: str, allowed_base_paths: list[str] | None = None) -
     ):
         raise ConfigurationError(
             message=f"Invalid path contains directory traversal: {path_str}",
-            details={"path": path_str, "suggestion": "Remove any '..' sequences from path"},
+            details={
+                "path": path_str,
+                "suggestion": "Remove any '..' sequences from path",
+            },
         )
 
     abs_path = path.expanduser().resolve()
-    allowed_paths = allowed_base_paths or [str(Path.cwd()), __import__("tempfile").gettempdir()]
+    allowed_paths = allowed_base_paths or [
+        str(Path.cwd()),
+        __import__("tempfile").gettempdir(),
+    ]
     is_allowed = False
     for allowed_base in allowed_paths:
         try:
@@ -284,9 +290,7 @@ def _parse_repos_config_file(repos_path: Path) -> dict:
         return raw_config
     except ConfigurationError:
         raise
-    except (
-        Exception
-    ) as exc:  # bootstrap init — broad catch wraps repos.yaml failure into ConfigurationError
+    except Exception as exc:  # bootstrap init — broad catch wraps repos.yaml failure into ConfigurationError
         raise ConfigurationError(
             message=f"Failed to load {repos_path.name}: {exc}",
             details={"repos_path": str(repos_path), "error": str(exc)},
@@ -302,7 +306,9 @@ def load_repos(app: Any) -> None:
     app.repos_config = {"repos": raw_config["repos"], "roles": app.roles_config}
 
     source = "repos.yaml (fallback)" if using_fallback else "ecosystem.yaml"
-    logger.info("Loaded %d repositories from %s", len(raw_config.get("repos", [])), source)
+    logger.info(
+        "Loaded %d repositories from %s", len(raw_config.get("repos", [])), source
+    )
 
 
 def _register_component_endpoint(
@@ -325,7 +331,9 @@ def _register_component_endpoint(
     key = f"component_endpoint/{component_name}"
     try:
         asyncio.get_running_loop()
-        asyncio.create_task(mcp_state.put(key, {"url": mcp_url, "registered_by": component_name}))
+        asyncio.create_task(
+            mcp_state.put(key, {"url": mcp_url, "registered_by": component_name})
+        )
         logger.info(
             "Phase 0: registered %s endpoint to MCP: %s -> %s",
             component_name,
@@ -338,7 +346,9 @@ def _register_component_endpoint(
 
         client = MCPClient(base_url=mcp_state._client._base_url, internal=True)  # ty: ignore[unresolved-attribute]
         try:
-            asyncio.run(client.put(key, {"url": mcp_url, "registered_by": component_name}))
+            asyncio.run(
+                client.put(key, {"url": mcp_url, "registered_by": component_name})
+            )
             logger.info(
                 "Phase 0: registered %s endpoint to MCP (sync): %s -> %s",
                 component_name,
@@ -400,7 +410,9 @@ def _collect_adapter_classes(app: Any, logger: Any) -> dict[str, type]:
     return adapter_classes
 
 
-def _instantiate_adapters(app: Any, adapter_classes: dict[str, type], logger: Any) -> None:
+def _instantiate_adapters(
+    app: Any, adapter_classes: dict[str, type], logger: Any
+) -> None:
     for adapter_name, adapter_class in adapter_classes.items():
         try:
             config_arg = app.config.hatchet if adapter_name == "hatchet" else app.config
@@ -411,9 +423,7 @@ def _instantiate_adapters(app: Any, adapter_classes: dict[str, type], logger: An
                 adapter_name,
                 exc,
             )
-        except (
-            Exception
-        ) as exc:  # bootstrap init — broad catch wraps adapter init failure into ConfigurationError
+        except Exception as exc:  # bootstrap init — broad catch wraps adapter init failure into ConfigurationError
             raise ConfigurationError(
                 message=f"Failed to initialize {adapter_name} adapter: {exc}",
                 details={
@@ -433,7 +443,9 @@ def initialize_adapters(app: Any) -> None:
 
     worker_adapter = app.adapters.get("worker")
     app._worker_manager = (
-        getattr(worker_adapter, "worker_manager", None) if worker_adapter is not None else None
+        getattr(worker_adapter, "worker_manager", None)
+        if worker_adapter is not None
+        else None
     )
 
 
@@ -726,7 +738,9 @@ def _init_mcp_state(app: Any) -> Any:
             ),
         )
         # Phase 0: register this component's MCP endpoint to MCP
-        _register_component_endpoint(backend, "mahavishnu", app.config.tools.mcp_server_url)
+        _register_component_endpoint(
+            backend, "mahavishnu", app.config.tools.mcp_server_url
+        )
         return backend
     return None
 
@@ -743,7 +757,9 @@ def _init_routing_metrics(app: Any) -> None:
         else:
             logger.info("Routing metrics disabled by configuration")
     except ImportError:
-        logger.warning("Routing metrics module not available, skipping metrics initialization")
+        logger.warning(
+            "Routing metrics module not available, skipping metrics initialization"
+        )
     except Exception as exc:  # bootstrap init — broad catch keeps the app running without metrics  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.error("Failed to initialize routing metrics: %s", exc)
 
@@ -829,7 +845,9 @@ def set_app_context(app: Any) -> None:
                             Model as _AgnoModel,  # pyright: ignore[reportMissingImports]
                         )
                     except ImportError as exc:
-                        raise ImportError("agno does not expose a usable Model/LLM class") from exc
+                        raise ImportError(
+                            "agno does not expose a usable Model/LLM class"
+                        ) from exc
 
                 actual_provider = provider or self._config.agno.llm.provider.value
                 actual_model = model_id or self._config.agno.llm.model_id
@@ -934,7 +952,9 @@ def _register_internal_service_user(rbac_manager: Any) -> None:
     if INTERNAL_SERVICE_USER_ID in getattr(rbac_manager, "users", {}):
         return
     try:
-        rbac_manager.create_user_sync(INTERNAL_SERVICE_USER_ID, roles=["internal_service"])
+        rbac_manager.create_user_sync(
+            INTERNAL_SERVICE_USER_ID, roles=["internal_service"]
+        )
     except Exception as exc:  # RBAC bootstrap — a missing principal must not stop the app  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("Could not register the internal service principal: %s", exc)
 
@@ -976,7 +996,9 @@ def init_pool_manager(app: Any) -> Any:
         # bugs (bad config, ACL misconfig, message bus init failure). Surface via
         # full traceback so an operator sees the real failure instead of a silent
         # None. Per Plan v3 Phase 1m.
-        logger.exception("Pool manager hard failure — see traceback; this is a real bug")
+        logger.exception(
+            "Pool manager hard failure — see traceback; this is a real bug"
+        )
         raise
 
 

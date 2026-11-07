@@ -73,14 +73,21 @@ class TestRedaction:
 
     def test_non_sensitive_fields_pass_through(self):
         result = self.logger._redact_sensitive_fields(
-            {"title": "Hello", "status": "in_progress", "priority": "high", "repository": "repo"}
+            {
+                "title": "Hello",
+                "status": "in_progress",
+                "priority": "high",
+                "repository": "repo",
+            }
         )
         assert result["title"] == "Hello"
         assert result["status"] == "in_progress"
         assert result["priority"] == "high"
 
     def test_recursive_nested_dict(self):
-        result = self.logger._redact_sensitive_fields({"config": {"nested": {"api_key": "s123"}}})
+        result = self.logger._redact_sensitive_fields(
+            {"config": {"nested": {"api_key": "s123"}}}
+        )
         assert result["config"]["nested"]["api_key"] == "[REDACTED (4 characters)]"
 
     def test_non_sensitive_nested_preserved(self):
@@ -113,7 +120,9 @@ class TestLogEventNoDb:
         mock_db = AsyncMock()
         mock_db.execute.return_value = "INSERT 42"
         logger = TaskAuditLogger(mock_db)
-        result = await logger.log_event(TaskEventType.TASK_CREATED, 45, "user-1", {"title": "Test"})
+        result = await logger.log_event(
+            TaskEventType.TASK_CREATED, 45, "user-1", {"title": "Test"}
+        )
         mock_db.execute.assert_called_once()
         assert result == 42
 
@@ -215,7 +224,9 @@ class TestLogEventNoDb:
 
     async def test_log_quality_gate_passed(self):
         logger = TaskAuditLogger()
-        result = await logger.log_quality_gate_passed(1, "u1", [{"name": "lint", "passed": True}])
+        result = await logger.log_quality_gate_passed(
+            1, "u1", [{"name": "lint", "passed": True}]
+        )
         assert result == 0
 
     async def test_log_quality_gate_failed(self):

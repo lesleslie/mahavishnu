@@ -74,7 +74,9 @@ class DependencyStatus(BaseModel):
         default=None, description="Latency of health check in milliseconds"
     )
     error: str | None = Field(default=None, description="Error message if unhealthy")
-    last_check: datetime | None = Field(default=None, description="Timestamp of last health check")
+    last_check: datetime | None = Field(
+        default=None, description="Timestamp of last health check"
+    )
 
 
 class BifrostHealth(BaseModel):
@@ -311,7 +313,9 @@ class ReadyResponse(BaseModel):
     dependencies: dict[str, DependencyStatus] = Field(
         default_factory=dict, description="Status of each dependency"
     )
-    checks: dict[str, str] = Field(default_factory=dict, description="Status of internal checks")
+    checks: dict[str, str] = Field(
+        default_factory=dict, description="Status of internal checks"
+    )
     # Phase 4 / Round-4 review M1 fix: surface the mergiraf merge
     # driver probe on the HTTP /ready endpoint, not just on the MCP
     # ``get_readiness`` tool. Load balancers and Kubernetes probes need
@@ -353,7 +357,9 @@ class HealthCheckResult(BaseModel):
 
     service_name: str = Field(description="Name of the checked service")
     status: HealthStatus = Field(description="Health status")
-    latency_ms: float | None = Field(default=None, description="Latency in milliseconds")
+    latency_ms: float | None = Field(
+        default=None, description="Latency in milliseconds"
+    )
     error: str | None = Field(default=None, description="Error message if failed")
     response_data: dict[str, Any] | None = Field(
         default=None, description="Raw response data from health endpoint"
@@ -595,7 +601,11 @@ class HealthChecker(HTTPXClientMixin):
             from urllib.parse import urlparse
 
             parsed = urlparse(url)
-            return f"{parsed.hostname}:{parsed.port}" if parsed.port else str(parsed.hostname)
+            return (
+                f"{parsed.hostname}:{parsed.port}"
+                if parsed.port
+                else str(parsed.hostname)
+            )
         except Exception:  # Utility — URL parse failures degrade to using the raw URL string for log identification  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return url
 
@@ -642,7 +652,10 @@ class DependencyWaiter:
         skipped_optional: list[str] = []
 
         # Check all dependencies concurrently
-        tasks = {name: self._wait_for_single(name, config) for name, config in dependencies.items()}
+        tasks = {
+            name: self._wait_for_single(name, config)
+            for name, config in dependencies.items()
+        }
 
         if tasks:
             gathered = await asyncio.gather(*tasks.values(), return_exceptions=True)
@@ -664,7 +677,10 @@ class DependencyWaiter:
                             failed_required.append(result.service_name)
                         else:
                             skipped_optional.append(result.service_name)
-                    elif result.status == HealthStatus.OK and not dependencies[name].required:
+                    elif (
+                        result.status == HealthStatus.OK
+                        and not dependencies[name].required
+                    ):
                         # Optional dependency that succeeded
                         pass
                 else:
@@ -834,7 +850,9 @@ class HealthEndpoint(HTTPXClientMixin):
         checks["uptime"] = "ok"
 
         # Check dependencies if configured
-        deps_to_check = dependencies or (self._config.dependencies if self._config else {})
+        deps_to_check = dependencies or (
+            self._config.dependencies if self._config else {}
+        )
 
         if deps_to_check:
             check_tasks = {
@@ -846,8 +864,12 @@ class HealthEndpoint(HTTPXClientMixin):
             }
 
             if check_tasks:
-                results = await asyncio.gather(*check_tasks.values(), return_exceptions=True)
-                for (name, _), result in zip(check_tasks.items(), results, strict=False):
+                results = await asyncio.gather(
+                    *check_tasks.values(), return_exceptions=True
+                )
+                for (name, _), result in zip(
+                    check_tasks.items(), results, strict=False
+                ):
                     if isinstance(result, Exception):
                         dep_status[name] = DependencyStatus(
                             status=HealthStatus.UNHEALTHY,
@@ -862,7 +884,8 @@ class HealthEndpoint(HTTPXClientMixin):
 
         # Determine overall readiness
         all_healthy = all(
-            ds.status in (HealthStatus.OK, HealthStatus.DEGRADED) for ds in dep_status.values()
+            ds.status in (HealthStatus.OK, HealthStatus.DEGRADED)
+            for ds in dep_status.values()
         )
 
         # Consider required dependencies specifically
@@ -930,7 +953,11 @@ async def aggregate_readiness(
         "terminal-claude",
     )
     default_report = reports.get(default_type)
-    state = default_report.state if default_report is not None else WorkerCapabilityState.REGISTERED
+    state = (
+        default_report.state
+        if default_report is not None
+        else WorkerCapabilityState.REGISTERED
+    )
 
     if state is WorkerCapabilityState.REGISTERED:
         status = HealthStatus.UNHEALTHY
@@ -1256,9 +1283,13 @@ def _probe_mergiraf_grammars(binary: str) -> GrammarProbeResult:
             timeout=10,
         )
     except subprocess.TimeoutExpired as exc:
-        return GrammarProbeResult(grammars=(), probe_ok=False, error=f"timeout: {exc!s}")
+        return GrammarProbeResult(
+            grammars=(), probe_ok=False, error=f"timeout: {exc!s}"
+        )
     except OSError as exc:
-        return GrammarProbeResult(grammars=(), probe_ok=False, error=f"subprocess error: {exc!s}")
+        return GrammarProbeResult(
+            grammars=(), probe_ok=False, error=f"subprocess error: {exc!s}"
+        )
     if result.returncode != 0:
         return GrammarProbeResult(
             grammars=(),

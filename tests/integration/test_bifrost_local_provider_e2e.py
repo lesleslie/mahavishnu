@@ -201,8 +201,12 @@ def test_local_provider_health_subshape(bifrost_reachable: bool) -> None:
     health_url = "http://127.0.0.1:8680/health"
     response = requests.get(health_url, timeout=5)
     if response.status_code == 503:
-        pytest.skip("Mahavishnu /health is currently degraded (503); Phase G sub-shape may be unpopulated")
-    assert response.status_code == 200, f"unexpected /health status {response.status_code}"
+        pytest.skip(
+            "Mahavishnu /health is currently degraded (503); Phase G sub-shape may be unpopulated"
+        )
+    assert response.status_code == 200, (
+        f"unexpected /health status {response.status_code}"
+    )
     body: dict[str, Any] = response.json()
     bifrost_block = body.get("bifrost")
     assert bifrost_block is not None, f"/health.bifrost missing: {body!r}"

@@ -103,7 +103,9 @@ def resolve_gateway_credential() -> str | None:
     if value:
         return value
     try:
-        value = load_secrets_env(keys=(VIRTUAL_KEY_ENV,)).get(VIRTUAL_KEY_ENV, "").strip()
+        value = (
+            load_secrets_env(keys=(VIRTUAL_KEY_ENV,)).get(VIRTUAL_KEY_ENV, "").strip()
+        )
     except OSError:
         logger.debug("Could not read the operator credential store", exc_info=True)
         return None
@@ -371,7 +373,9 @@ class PiPool(BasePool):
                 f"Spawn additional PiPool instances for more capacity."
             )
         self._runtime_probe = runtime_probe
-        self._subprocess_runner: SubprocessRunner = subprocess_runner or _default_subprocess_runner
+        self._subprocess_runner: SubprocessRunner = (
+            subprocess_runner or _default_subprocess_runner
+        )
         self._env_allowlist: tuple[str, ...] = env_allowlist or (
             # Minimal POSIX keys required for any subprocess.
             "PATH",
@@ -698,7 +702,10 @@ class PiPool(BasePool):
 
         Req: REQ-PI-006
         """  # req: REQ-PI-006
-        if self._status == PoolStatus.PENDING or self._status == PoolStatus.INITIALIZING:
+        if (
+            self._status == PoolStatus.PENDING
+            or self._status == PoolStatus.INITIALIZING
+        ):
             return {
                 "pool_id": self.pool_id,
                 "pool_type": "pi",
@@ -765,7 +772,9 @@ class PiPool(BasePool):
         status = self._status
         active_workers = 1 if status == PoolStatus.RUNNING else 0
         avg_duration = (
-            sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
+            sum(self._task_durations) / len(self._task_durations)
+            if self._task_durations
+            else 0.0
         )
         return PoolMetrics(
             pool_id=self.pool_id,
@@ -807,7 +816,11 @@ class PiPool(BasePool):
         """
         from mahavishnu.core.config import PiPoolSettings
 
-        cmd = self.config.extra_config.get("npx_command") if self.config.extra_config else None
+        cmd = (
+            self.config.extra_config.get("npx_command")
+            if self.config.extra_config
+            else None
+        )
         if cmd is not None:
             return tuple(cmd)
         env_value = os.environ.get("MAHAVISHNU_PI_POOL__NPX_COMMAND")

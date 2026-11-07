@@ -44,16 +44,14 @@ class TestPlanRebuildStatusE2E:
         rebuilder lease holder that violates the regex is a PII leak.
         """
         # Seed a lock-holder string that matches the documented format.
-        await store._mcp.put(
-            "plan_index/meta/rebuild_lock/holder", "deadbeef/12345"
-        )
+        await store._mcp.put("plan_index/meta/rebuild_lock/holder", "deadbeef/12345")
 
         result = await call_tool("plan_rebuild_status", {})
 
         if result.get("lock_held_by"):
-            assert re.match(
-                r"^[a-f0-9]{8}/\d+$", result["lock_held_by"]
-            ), f"lock_held_by {result['lock_held_by']!r} failed redaction regex"
+            assert re.match(r"^[a-f0-9]{8}/\d+$", result["lock_held_by"]), (
+                f"lock_held_by {result['lock_held_by']!r} failed redaction regex"
+            )
             # And our seeded value should round-trip.
             assert result["lock_held_by"] == "deadbeef/12345"
 

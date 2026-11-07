@@ -139,7 +139,10 @@ class TestVerifyWebhookSignature:
         auth = WebhookAuthenticator("db")
         with pytest.raises(WebhookAuthError, match="No webhook secret"):
             await auth.verify_webhook_signature(
-                payload=b"test", signature="sha256=abc", webhook_id="id-123", secret=None
+                payload=b"test",
+                signature="sha256=abc",
+                webhook_id="id-123",
+                secret=None,
             )
 
     @pytest.mark.asyncio

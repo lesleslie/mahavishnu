@@ -279,7 +279,9 @@ class TestActivateApplication:
 class TestGetActiveApplication:
     @pytest.mark.unit
     async def test_get_active(self, backend, mock_subprocess_run):
-        mock_subprocess_run.return_value = _ok("name:Terminal|pid:42|bundle:com.apple.Terminal")
+        mock_subprocess_run.return_value = _ok(
+            "name:Terminal|pid:42|bundle:com.apple.Terminal"
+        )
         info = await backend.get_active_application()
         assert info is not None
         assert info.name == "Terminal"
@@ -319,7 +321,9 @@ class TestGetWindows:
         assert windows[1].title == "Window Two"
 
     @pytest.mark.unit
-    async def test_get_windows_skips_unparseable_lines(self, backend, mock_subprocess_run):
+    async def test_get_windows_skips_unparseable_lines(
+        self, backend, mock_subprocess_run
+    ):
         # A line that cannot be split on ':' raises ValueError on int() and
         # is skipped by the (ValueError, IndexError) handler.
         # The garbage line contains no digits, so int(parts.get("idx", "0"))
@@ -336,7 +340,9 @@ class TestGetWindows:
         assert "OK" not in titles
 
     @pytest.mark.unit
-    async def test_get_windows_failure_returns_empty(self, backend, mock_subprocess_run):
+    async def test_get_windows_failure_returns_empty(
+        self, backend, mock_subprocess_run
+    ):
         mock_subprocess_run.return_value = _fail("nope")
         assert await backend.get_windows("com.apple.finder") == []
 
@@ -383,7 +389,9 @@ class TestCloseWindow:
 
 class TestMenuOperations:
     @pytest.mark.unit
-    async def test_click_menu_item_short_path_returns_false(self, backend, mock_subprocess_run):
+    async def test_click_menu_item_short_path_returns_false(
+        self, backend, mock_subprocess_run
+    ):
         # A path with fewer than 2 entries is rejected
         assert await backend.click_menu_item("com.apple.finder", ["File"]) is False
         # No subprocess call should have been made
@@ -392,12 +400,16 @@ class TestMenuOperations:
     @pytest.mark.unit
     async def test_click_menu_item_success(self, backend, mock_subprocess_run):
         mock_subprocess_run.return_value = _ok("")
-        assert await backend.click_menu_item("com.apple.finder", ["File", "Save"]) is True
+        assert (
+            await backend.click_menu_item("com.apple.finder", ["File", "Save"]) is True
+        )
 
     @pytest.mark.unit
     async def test_click_menu_item_failure(self, backend, mock_subprocess_run):
         mock_subprocess_run.return_value = _fail("not found")
-        assert await backend.click_menu_item("com.apple.finder", ["File", "Save"]) is False
+        assert (
+            await backend.click_menu_item("com.apple.finder", ["File", "Save"]) is False
+        )
 
     @pytest.mark.unit
     async def test_list_menus_returns_empty(self, backend, mock_subprocess_run):
@@ -418,7 +430,9 @@ class TestClipboard:
         assert result == "clipboard contents"
 
     @pytest.mark.unit
-    async def test_get_clipboard_failure_returns_empty(self, backend, mock_subprocess_run):
+    async def test_get_clipboard_failure_returns_empty(
+        self, backend, mock_subprocess_run
+    ):
         mock_subprocess_run.return_value = _fail("nope")
         assert await backend.get_clipboard() == ""
 
@@ -516,7 +530,9 @@ class TestClick:
         assert cmd == ["cliclick", "tc:10,20"]
 
     @pytest.mark.unit
-    async def test_click_more_than_three_does_nothing(self, backend, mock_subprocess_run):
+    async def test_click_more_than_three_does_nothing(
+        self, backend, mock_subprocess_run
+    ):
         # Implementation only handles 1/2/3; otherwise nothing happens
         result = await backend.click(10, 20, clicks=4)
         assert result is True
@@ -623,7 +639,9 @@ class TestScreenshot:
     async def test_screenshot_timeout(self, backend, mock_subprocess_run):
         import subprocess
 
-        mock_subprocess_run.side_effect = subprocess.TimeoutExpired(cmd="screencapture", timeout=10)
+        mock_subprocess_run.side_effect = subprocess.TimeoutExpired(
+            cmd="screencapture", timeout=10
+        )
         with pytest.raises(RuntimeError) as exc:
             await backend.screenshot()
         assert "timed out" in str(exc.value)

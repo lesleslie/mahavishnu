@@ -78,11 +78,13 @@ class DependencyEventEmitter:
 
     def __init__(self) -> None:
         """Initialize event emitter."""
-        self._handlers: dict[DependencyEvent, list[Callable[[DependencyEventData], None]]] = (
-            defaultdict(list)
-        )
+        self._handlers: dict[
+            DependencyEvent, list[Callable[[DependencyEventData], None]]
+        ] = defaultdict(list)
 
-    def on(self, event: DependencyEvent, handler: Callable[[DependencyEventData], None]) -> None:
+    def on(
+        self, event: DependencyEvent, handler: Callable[[DependencyEventData], None]
+    ) -> None:
         """Register an event handler.
 
         Args:
@@ -91,7 +93,9 @@ class DependencyEventEmitter:
         """
         self._handlers[event].append(handler)
 
-    def off(self, event: DependencyEvent, handler: Callable[[DependencyEventData], None]) -> None:
+    def off(
+        self, event: DependencyEvent, handler: Callable[[DependencyEventData], None]
+    ) -> None:
         """Unregister an event handler.
 
         Args:
@@ -271,7 +275,9 @@ class DependencyManager:
                     event_type=DependencyEvent.TASK_BLOCKED,
                     task_id=dependent_id,
                     related_task_id=dependency_id,
-                    details={"blocking_tasks": self._graph.get_blocking_tasks(dependent_id)},
+                    details={
+                        "blocking_tasks": self._graph.get_blocking_tasks(dependent_id)
+                    },
                 )
             )
 
@@ -564,7 +570,9 @@ class DependencyManager:
         """Serialize manager state to dictionary."""
         return {
             "graph": self._graph.to_dict(),
-            "task_statuses": {tid: status.value for tid, status in self._task_statuses.items()},
+            "task_statuses": {
+                tid: status.value for tid, status in self._task_statuses.items()
+            },
         }
 
     @classmethod
@@ -572,7 +580,8 @@ class DependencyManager:
         """Deserialize manager state from dictionary."""
         graph = DependencyGraph.from_dict(data.get("graph", {}))
         statuses = {
-            tid: TaskStatus(status) for tid, status in data.get("task_statuses", {}).items()
+            tid: TaskStatus(status)
+            for tid, status in data.get("task_statuses", {}).items()
         }
         return cls(graph=graph, task_statuses=statuses)
 

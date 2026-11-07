@@ -93,7 +93,9 @@ class TestInlineToolSchemas:
 
     def test_inline_tools_found(self, inline_tools):
         """At least 20 inline tools should be registered."""
-        assert len(inline_tools) >= 20, f"Expected >= 20 inline tools, found {len(inline_tools)}"
+        assert len(inline_tools) >= 20, (
+            f"Expected >= 20 inline tools, found {len(inline_tools)}"
+        )
 
     def test_all_inline_tools_have_docstrings(self, inline_tools):
         """Every inline tool must have a docstring for MCP discovery."""
@@ -113,7 +115,9 @@ class TestInlineToolSchemas:
                 continue  # No annotation is acceptable
 
             ret_str = ast.unparse(ret) if isinstance(ret, ast.AST) else str(ret)
-            assert "dict" in ret_str, f"Tool '{name}' returns '{ret_str}', expected dict[str, Any]"
+            assert "dict" in ret_str, (
+                f"Tool '{name}' returns '{ret_str}', expected dict[str, Any]"
+            )
 
     def test_all_inline_tools_have_version(self, inline_tools):
         """Every inline tool should be in the version registry."""
@@ -174,7 +178,9 @@ class TestToolModules:
 
         # Allow some unversioned tools - new tools may not yet be registered
         versioned_pct = (
-            (len(module_tools) - len(unversioned)) / len(module_tools) * 100 if module_tools else 0
+            (len(module_tools) - len(unversioned)) / len(module_tools) * 100
+            if module_tools
+            else 0
         )
         assert versioned_pct >= 80, (
             f"Only {versioned_pct:.0f}% of module tools are versioned "
@@ -201,7 +207,9 @@ class TestVersionRegistry:
 
         semver_pattern = re.compile(r"^\d+\.\d+\.\d+$")
         invalid = [
-            (name, ver) for name, ver in TOOL_VERSIONS.items() if not semver_pattern.match(ver)
+            (name, ver)
+            for name, ver in TOOL_VERSIONS.items()
+            if not semver_pattern.match(ver)
         ]
 
         assert not invalid, f"Invalid semver versions: {invalid[:5]}"
@@ -273,7 +281,9 @@ class TestParameterValidation:
                 if arg.annotation is None:
                     unannotated.append(f"{name}:{arg.arg}")
 
-        assert not unannotated, f"Parameters without type annotations: {unannotated[:10]}"
+        assert not unannotated, (
+            f"Parameters without type annotations: {unannotated[:10]}"
+        )
 
     def test_string_params_have_defaults_or_none_type(self, inline_tools):
         """String parameters should typically accept None or have defaults."""

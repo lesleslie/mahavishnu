@@ -195,7 +195,9 @@ class WorkflowMonitor:
 
     def _render_status(self) -> Panel:
         """Render workflow status panel."""
-        table = Table(title="Workflow Status", show_header=True, header_style="bold magenta")
+        table = Table(
+            title="Workflow Status", show_header=True, header_style="bold magenta"
+        )
         table.add_column("Property", style="cyan")
         table.add_column("Value", style="green")
 
@@ -290,7 +292,9 @@ class WorkflowMonitor:
             elif "stage" in event_type.lower():
                 type_color = "yellow"
 
-            table.add_row(time_str, f"[{type_color}]{event_type}[/{type_color}]", details)
+            table.add_row(
+                time_str, f"[{type_color}]{event_type}[/{type_color}]", details
+            )
 
         if not self.recent_events:
             table.add_row("[dim]--[/dim]", "[dim]No events yet[/dim]", "")

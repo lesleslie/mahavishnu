@@ -195,7 +195,9 @@ async def test_read_is_performed_as_the_verified_caller(
     fake_client: _FakeMCPClient,
 ) -> None:
     """The read runs as the principal the token names — not the internal one."""
-    fake_client.items = _store([("approval-history/apr-1/x", _payload("apr-1", action="approved"))])
+    fake_client.items = _store(
+        [("approval-history/apr-1/x", _payload("apr-1", action="approved"))]
+    )
 
     await list_approval_history(
         approval_id="apr-1",
@@ -323,7 +325,9 @@ async def test_list_approval_history_skips_a_record_for_another_approval(
     Defence in depth: the key namespace scopes the read, but the record
     inside must still belong to the approval the caller asked about.
     """
-    fake_client.items = _store([("approval-history/apr-stream/x", _payload("some-other-approval"))])
+    fake_client.items = _store(
+        [("approval-history/apr-stream/x", _payload("some-other-approval"))]
+    )
 
     with capture_logs() as logs:
         results = await list_approval_history(
@@ -334,7 +338,9 @@ async def test_list_approval_history_skips_a_record_for_another_approval(
         )
 
     assert results == []
-    skipped = [entry for entry in logs if entry["event"] == "approval_list_entry_skipped"]
+    skipped = [
+        entry for entry in logs if entry["event"] == "approval_list_entry_skipped"
+    ]
     assert len(skipped) == 1, logs
     assert skipped[0]["extra"]["reason"] == "approval_id_mismatch"
 
@@ -377,7 +383,9 @@ async def test_list_entry_skipped_log_carries_bound_exception_type(
     # Partial-failure resilience still holds.
     assert results == []
 
-    skipped = [entry for entry in logs if entry["event"] == "approval_list_entry_skipped"]
+    skipped = [
+        entry for entry in logs if entry["event"] == "approval_list_entry_skipped"
+    ]
     assert len(skipped) == 1, logs
     assert skipped[0]["extra"]["reason"] == "ValidationError"
     assert "Traceback" not in json.dumps(skipped[0]["extra"])

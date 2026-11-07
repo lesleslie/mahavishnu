@@ -83,7 +83,9 @@ def record_event_activity(app: Any, envelope: Any) -> None:
             "timestamp": payload.get("timestamp"),
             "correlation_id": payload.get("correlation_id"),
             "causation_id": payload.get("causation_id"),
-            "payload": payload.get("payload") if isinstance(payload.get("payload"), dict) else {},
+            "payload": payload.get("payload")
+            if isinstance(payload.get("payload"), dict)
+            else {},
             "metadata": payload.get("metadata")
             if isinstance(payload.get("metadata"), dict)
             else {},
@@ -127,11 +129,15 @@ def get_fix_trace(
         return []
     entries = list(app.fix_activity)
     if correlation_id is not None:
-        entries = [entry for entry in entries if entry.get("correlation_id") == correlation_id]
+        entries = [
+            entry for entry in entries if entry.get("correlation_id") == correlation_id
+        ]
     return entries[-limit:]
 
 
-def get_correlation_status(app: Any, correlation_id: str | None = None) -> dict[str, Any]:
+def get_correlation_status(
+    app: Any, correlation_id: str | None = None
+) -> dict[str, Any]:
     """Return a correlation-aware status snapshot for operator surfaces."""
     trace = get_fix_trace(app, correlation_id=correlation_id, limit=25)
     return {

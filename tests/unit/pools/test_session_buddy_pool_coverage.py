@@ -23,8 +23,11 @@ if TYPE_CHECKING:
 @pytest.fixture
 def config() -> PoolConfig:
     return PoolConfig(
-        name="test-session-buddy", pool_type="session-buddy",
-        min_workers=3, max_workers=3, worker_type="terminal-claude",
+        name="test-session-buddy",
+        pool_type="session-buddy",
+        min_workers=3,
+        max_workers=3,
+        worker_type="terminal-claude",
     )
 
 
@@ -136,13 +139,15 @@ async def test_start_pool_happy_path(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
     """start() calls create_pool and synthesizes 3 worker_ids from returned pool_id."""
-    pool = make_pool({
-        "success": True,
-        "pool_id": "sbpool-abc123",
-        "status": "running",
-        "workers_count": 3,
-        "queue_size": 0,
-    })
+    pool = make_pool(
+        {
+            "success": True,
+            "pool_id": "sbpool-abc123",
+            "status": "running",
+            "workers_count": 3,
+            "queue_size": 0,
+        }
+    )
     await pool.start()
     assert len(pool._workers) == 3
     # call_tool invoked with create_pool
@@ -184,12 +189,14 @@ async def test_start_pool_propagates_server_error(
 async def test_execute_task_happy_path(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
-    pool = make_pool({
-        "success": True,
-        "pool_id": "sbpool-abc",
-        "worker_id": "sbpool-abc-worker-1",
-        "result": {"status": "completed", "output": "ok"},
-    })
+    pool = make_pool(
+        {
+            "success": True,
+            "pool_id": "sbpool-abc",
+            "worker_id": "sbpool-abc-worker-1",
+            "result": {"status": "completed", "output": "ok"},
+        }
+    )
     pool._workers = {"sbpool-abc-worker-0": "worker_0"}
     result = await pool.execute_task({"prompt": "do thing", "timeout": 60})
     assert result["status"] == "completed"
@@ -233,20 +240,24 @@ async def test_execute_batch_branches(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
     """execute_batch() returns per-task envelopes aligned to input order."""
-    pool = make_pool({
-        "success": True,
-        "pool_id": "sbpool-abc",
-        "results_count": 2,
-        "results": [
-            {"status": "completed", "output": "r1", "error": None},
-            {"status": "failed", "output": None, "error": "boom"},
-        ],
-    })
+    pool = make_pool(
+        {
+            "success": True,
+            "pool_id": "sbpool-abc",
+            "results_count": 2,
+            "results": [
+                {"status": "completed", "output": "r1", "error": None},
+                {"status": "failed", "output": None, "error": "boom"},
+            ],
+        }
+    )
     pool._workers = {"sbpool-abc-worker-0": "worker_0"}
-    result = await pool.execute_batch([
-        {"task_id": "0", "prompt": "first"},
-        {"task_id": "1", "prompt": "second"},
-    ])
+    result = await pool.execute_batch(
+        [
+            {"task_id": "0", "prompt": "first"},
+            {"task_id": "1", "prompt": "second"},
+        ]
+    )
     assert result["0"]["status"] == "completed"
     assert result["0"]["output"] == "r1"
     assert result["1"]["status"] == "failed"
@@ -265,10 +276,12 @@ async def test_execute_batch_rejects_multiple_working_dirs(
     pool = make_pool({"success": True, "results": []})
     pool._workers = {"sbpool-abc-worker-0": "worker_0"}
     with pytest.raises(ValueError, match="at most one distinct working_dir"):
-        await pool.execute_batch([
-            {"prompt": "a", "working_dir": "/path/one"},
-            {"prompt": "b", "working_dir": "/path/two"},
-        ])
+        await pool.execute_batch(
+            [
+                {"prompt": "a", "working_dir": "/path/one"},
+                {"prompt": "b", "working_dir": "/path/two"},
+            ]
+        )
 
 
 @pytest.mark.asyncio
@@ -349,12 +362,14 @@ async def test_health_check_with_empty_workers_no_upstream_call(
 async def test_health_check_with_workers_calls_check_pool_health(
     make_pool: Callable[..., SessionBuddyPool],
 ) -> None:
-    pool = make_pool({
-        "success": True,
-        "status": "healthy",
-        "workers_healthy": 3,
-        "workers_total": 3,
-    })
+    pool = make_pool(
+        {
+            "success": True,
+            "status": "healthy",
+            "workers_healthy": 3,
+            "workers_total": 3,
+        }
+    )
     pool._workers = {
         "sbpool-abc-worker-0": "worker_0",
         "sbpool-abc-worker-1": "worker_1",

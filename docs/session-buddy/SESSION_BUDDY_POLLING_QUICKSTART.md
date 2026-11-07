@@ -20,6 +20,7 @@ export MAHAVISHNU_SESSION_BUDDY_POLLING__ENABLED=true
 
 ```python
 from mahavishnu.core import MahavishnuApp
+
 app = MahavishnuApp()
 await app.start_poller()
 ```
@@ -92,6 +93,7 @@ ______________________________________________________________________
 import asyncio
 from mahavishnu.core import MahavishnuApp
 
+
 async def main():
     app = MahavishnuApp()
     await app.start_poller()
@@ -105,6 +107,7 @@ async def main():
 
     await app.stop_poller()
 
+
 asyncio.run(main())
 ```
 
@@ -114,12 +117,12 @@ asyncio.run(main())
 status = await app.session_buddy_poller.get_status()
 
 # Status fields
-status.running              # bool
-status.poll_cycles         # int
-status.errors              # int
-status.last_poll_time      # datetime
-status.last_error          # str | None
-status.circuit_breaker_open # bool
+status.running  # bool
+status.poll_cycles  # int
+status.errors  # int
+status.last_poll_time  # datetime
+status.last_error  # str | None
+status.circuit_breaker_open  # bool
 ```
 
 ### Manual Poll
@@ -128,10 +131,10 @@ status.circuit_breaker_open # bool
 # Single poll cycle
 result = await app.session_buddy_poller.poll_once()
 
-print(result['poll_cycle'])       # int
-print(result['timestamp'])        # ISO datetime
-print(result['metrics_collected']) # list[str]
-print(result['errors'])           # list[str]
+print(result["poll_cycle"])  # int
+print(result["timestamp"])  # ISO datetime
+print(result["metrics_collected"])  # list[str]
+print(result["errors"])  # list[str]
 ```
 
 ______________________________________________________________________
@@ -257,11 +260,7 @@ ______________________________________________________________________
 ```python
 status = await app.session_buddy_poller.get_status()
 
-is_healthy = (
-    status.running and
-    not status.circuit_breaker_open and
-    status.errors == 0
-)
+is_healthy = status.running and not status.circuit_breaker_open and status.errors == 0
 
 print(f"Healthy: {is_healthy}")
 ```
@@ -281,6 +280,7 @@ health_report = {
 }
 
 import json
+
 print(json.dumps(health_report, indent=2, default=str))
 ```
 
@@ -327,7 +327,8 @@ ______________________________________________________________________
 
 ```python
 # Enable polling and start collecting metrics
-app = MahavishnuApp(); await app.start_poller()
+app = MahavishnuApp()
+await app.start_poller()
 ```
 
 ______________________________________________________________________

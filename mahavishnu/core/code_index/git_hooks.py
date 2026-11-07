@@ -101,7 +101,9 @@ def install_hooks(repo_path: str, force: bool = False) -> list[str]:
                 )
 
         hook_file.write_text(_HOOK_TEMPLATES[hook_name])
-        hook_file.chmod(hook_file.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        hook_file.chmod(
+            hook_file.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+        )
         installed.append(hook_name)
 
     return installed

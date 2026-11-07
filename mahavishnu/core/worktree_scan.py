@@ -23,7 +23,9 @@ from mahavishnu.core.paths import get_worktree_base_path
 _PID_REGEX = re.compile(r"^[0-9]+$")
 _GIT_TIMEOUT_DEFAULT = 5  # baseline; scan driver overrides per-call
 _PS_TIMEOUT_DEFAULT = 2
-_LOCK_FILE_REGEX = re.compile(r"^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$")
+_LOCK_FILE_REGEX = re.compile(
+    r"^claude agent \S+ \(pid (\d+) start (\d{4}-\d{2}-\d{2})\)$"
+)
 
 # OpenTelemetry (lazy-import + noop fallback mirrors the pattern in
 # `mahavishnu/core/observability.py`). When OTel isn't installed the
@@ -81,7 +83,9 @@ PLAN_ORPHAN_PATTERNS: tuple[str, ...] = (
 
 # Pre-computed prefix lookup for PLAN_ORPHAN_PATTERNS (used by Tier X check,
 # see F46). Strips the optional leading `^` anchor.
-_PLAN_ORPHAN_PREFIXES: tuple[str, ...] = tuple(p.lstrip("^") for p in PLAN_ORPHAN_PATTERNS)
+_PLAN_ORPHAN_PREFIXES: tuple[str, ...] = tuple(
+    p.lstrip("^") for p in PLAN_ORPHAN_PATTERNS
+)
 
 
 # ---------------------------------------------------------------------------
@@ -268,7 +272,9 @@ def classify_worktree(
     # `agent-*` basename, OR under any repo's .claude/worktrees/agent-*.
     # F12: matcher uses basename + path-segments check, not `parent.name == "agent-"`.
     base = get_worktree_base_path()
-    in_agent_root = worktree_path.parent == base and worktree_path.name.startswith("agent-")
+    in_agent_root = worktree_path.parent == base and worktree_path.name.startswith(
+        "agent-"
+    )
     in_repo_agent_claude = (
         worktree_path.name.startswith("agent-")
         and len(worktree_path.parts) >= 3
@@ -397,7 +403,9 @@ def _record_scan_metrics(
     for c in classifications:
         tier_counts[c.tier] = tier_counts.get(c.tier, 0) + 1
     # Keep the tier-counts dict ordered + stable for log parsers.
-    tier_summary = "{" + ", ".join(f"{tier}={tier_counts[tier]}" for tier in _TIER_ORDER) + "}"
+    tier_summary = (
+        "{" + ", ".join(f"{tier}={tier_counts[tier]}" for tier in _TIER_ORDER) + "}"
+    )
     _LOGGER.info(
         "mahavishnu.worktree_scan.completed repos_input=%d repos_scanned=%d "
         "failed=%d candidates=%d duration_s=%.3f format=%s tiers=%s",
@@ -475,7 +483,9 @@ def _collect_repo(
         F19: this surfaces per-repo failures so scan_worktrees can emit
         `failed_repos` for Task 2.7's CLI exit-code-1 path.
     """
-    result = _run_git_scanned(repo, "worktree", "list", "--porcelain", text=True, timeout=30)
+    result = _run_git_scanned(
+        repo, "worktree", "list", "--porcelain", text=True, timeout=30
+    )
     if result.returncode != 0:
         # stderr may be str (text=True) or bytes; handle both.
         raw_stderr = result.stderr if result.stderr is not None else ""
@@ -514,7 +524,9 @@ def _collect_repo(
     # Enrich with age, dirty, locked status
     for entry in entries:
         path = entry["path"]
-        age_result = _run_git_scanned(path, "log", "-1", "--format=%ct", text=True, timeout=10)
+        age_result = _run_git_scanned(
+            path, "log", "-1", "--format=%ct", text=True, timeout=10
+        )
         try:
             entry["age_days"] = (
                 datetime.now(UTC).timestamp() - int(age_result.stdout.strip())
@@ -524,12 +536,16 @@ def _collect_repo(
             # to Tier D (recent), not 99999.0d which forces Tier A or C.
             entry["age_days"] = 0.0
         # Unconditional: dirty classification needed for Tier A predicate
-        status_result = _run_git_scanned(path, "status", "--short", text=True, timeout=10)
+        status_result = _run_git_scanned(
+            path, "status", "--short", text=True, timeout=10
+        )
         entry["is_dirty"] = bool(status_result.stdout.strip())
         is_locked = _is_worktree_locked(repo, path)
         entry["is_locked"] = is_locked
         if is_locked:
-            lock_pid, lock_command, lock_pid_liveness = _get_lock_pid_liveness(repo, path)
+            lock_pid, lock_command, lock_pid_liveness = _get_lock_pid_liveness(
+                repo, path
+            )
         else:
             lock_pid, lock_command, lock_pid_liveness = None, None, None
         entry["lock_pid"] = lock_pid
@@ -540,7 +556,9 @@ def _collect_repo(
 
 def _is_worktree_locked(repo: Path, worktree_path: Path) -> bool:
     """Read .git/worktrees/<basename>/locked; return True if locked."""
-    git_dir = _run_git_scanned(repo, "rev-parse", "--git-dir", text=True, timeout=5).stdout.strip()
+    git_dir = _run_git_scanned(
+        repo, "rev-parse", "--git-dir", text=True, timeout=5
+    ).stdout.strip()
     if not git_dir:
         return False
     git_path = Path(git_dir)
@@ -564,7 +582,9 @@ def _get_lock_pid_liveness(
         worktree is not locked. When locked but the lock parse fails,
         pid_liveness is "unknown" and pid/command are None.
     """
-    git_dir = _run_git_scanned(repo, "rev-parse", "--git-dir", text=True, timeout=5).stdout.strip()
+    git_dir = _run_git_scanned(
+        repo, "rev-parse", "--git-dir", text=True, timeout=5
+    ).stdout.strip()
     if not git_dir:
         return (None, None, None)
     git_path = Path(git_dir)
@@ -685,7 +705,9 @@ def _format_text(
     = 15`); each section's filtering + emission lives in its own helper.
     """
     failed_repos = failed_repos or []
-    by_tier: dict[str, list[WorktreeClassification]] = {tier: [] for tier in _TIER_ORDER}
+    by_tier: dict[str, list[WorktreeClassification]] = {
+        tier: [] for tier in _TIER_ORDER
+    }
     for c in classifications:
         by_tier.setdefault(c.tier, []).append(c)
 
@@ -719,7 +741,11 @@ def _format_text_locked_sections(
     classifications: list[WorktreeClassification],
 ) -> list[str]:
     """Emit the three LOCKED buckets from F20: live / orphan / unknown."""
-    live = [c for c in classifications if c.pid_liveness == "alive" and c.lock_pid is not None]
+    live = [
+        c
+        for c in classifications
+        if c.pid_liveness == "alive" and c.lock_pid is not None
+    ]
     orphan = [c for c in classifications if c.pid_liveness == "dead"]
     unknown = [c for c in classifications if c.pid_liveness == "unknown"]
     lines: list[str] = [
@@ -878,8 +904,12 @@ def _format_json(
         "tier_c": by_tier.get("C", []),
         "tier_d": by_tier.get("D", []),
         "locked_live": locked_live,
-        "locked_orphan": [_base_entry(c) for c in classifications if c.pid_liveness == "dead"],
-        "locked_unknown": [_base_entry(c) for c in classifications if c.pid_liveness == "unknown"],
+        "locked_orphan": [
+            _base_entry(c) for c in classifications if c.pid_liveness == "dead"
+        ],
+        "locked_unknown": [
+            _base_entry(c) for c in classifications if c.pid_liveness == "unknown"
+        ],
         "dirty": [_base_entry(c) for c in classifications if c.is_dirty],
     }
     return json.dumps(output, indent=2)

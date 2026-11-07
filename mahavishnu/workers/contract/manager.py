@@ -108,7 +108,9 @@ class DurableWorkerManager:
             "worker_id": record.worker_id,
             "worker_type": record.worker_type,
             "backend": record.backend,
-            "state": record.state.value if hasattr(record.state, "value") else record.state,
+            "state": record.state.value
+            if hasattr(record.state, "value")
+            else record.state,
             "tmux_session": record.tmux.session if record.tmux else None,
             "tmux_window": record.tmux.window if record.tmux else None,
             "tmux_pane": record.tmux.pane if record.tmux else None,
@@ -229,7 +231,9 @@ class DurableWorkerManager:
         self.store.put(record)
         return True
 
-    def cancel(self, worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000) -> bool:
+    def cancel(
+        self, worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000
+    ) -> bool:
         record = self.store.get(worker_id)
         if record is None or record.tmux is None:
             return False

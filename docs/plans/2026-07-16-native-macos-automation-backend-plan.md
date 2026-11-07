@@ -105,6 +105,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 _executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=2)
 
+
 async def _run_sync(self, func: Callable[..., T], *args: Any) -> T:
     """Run blocking function in thread pool, return async result."""
     loop = get_event_loop()
@@ -121,7 +122,7 @@ osascript requires bundle IDs. Implement a helper that can resolve app names to 
 def _resolve_bundle_id(self, app_name_or_bundle_id: str) -> str:
     """Return bundle ID for an app. Pass-through if already a bundle ID."""
     # If it looks like a bundle ID (contains '.'), return as-is
-    if '.' in app_name_or_bundle_id:
+    if "." in app_name_or_bundle_id:
         return app_name_or_bundle_id
     # Otherwise resolve via osascript NSWorkspace
     script = f'''
@@ -129,7 +130,7 @@ def _resolve_bundle_id(self, app_name_or_bundle_id: str) -> str:
         get bundle identifier of every application process whose name is "{app_name_or_bundle_id}"
     end tell
     '''
-    result = self._run_sync(subprocess.run, ['osascript', '-e', script], ...)
+    result = self._run_sync(subprocess.run, ["osascript", "-e", script], ...)
     # Parse and return bundle ID
 ```
 
@@ -167,10 +168,17 @@ Key methods:
 # Before
 from mahavishnu.automation.backends.atomac import ATOMacBackend
 from mahavishnu.automation.backends.pyxa import PyXABackend
-__all__ = ["DesktopAutomationBackend", "PyXABackend", "ATOMacBackend", "PyAutoGUIBackend"]
+
+__all__ = [
+    "DesktopAutomationBackend",
+    "PyXABackend",
+    "ATOMacBackend",
+    "PyAutoGUIBackend",
+]
 
 # After
 from mahavishnu.automation.backends.native_macos import NativeMacOSBackend
+
 __all__ = ["DesktopAutomationBackend", "NativeMacOSBackend", "PyAutoGUIBackend"]
 ```
 

@@ -129,7 +129,9 @@ class DLQIntegration:
         if self._strategy == DLQIntegrationStrategy.SELECTIVE:
             if error_category is None:
                 # Classify error if not provided
-                error_category = await self.app.error_recovery_manager.classify_error(error)
+                error_category = await self.app.error_recovery_manager.classify_error(
+                    error
+                )
 
             # Enqueue transient and network errors (likely to succeed on retry)
             # Skip permanent, permission, and validation errors (won't succeed)
@@ -218,7 +220,9 @@ class DLQIntegration:
 
         if not should_enqueue:
             self._stats["skipped_permanent"] += 1
-            self._logger.info(f"Skipping DLQ enqueue for {task_id}: {error_category.value} error")
+            self._logger.info(
+                f"Skipping DLQ enqueue for {task_id}: {error_category.value} error"
+            )
             return None
 
         # Determine retry policy if not provided
@@ -263,7 +267,9 @@ class DLQIntegration:
 
         except ValueError as e:
             # DLQ is full
-            self._logger.error(f"Failed to enqueue workflow {task_id}: DLQ is full: {e}")
+            self._logger.error(
+                f"Failed to enqueue workflow {task_id}: DLQ is full: {e}"
+            )
             return None
 
     async def execute_with_dlq(
@@ -295,7 +301,9 @@ class DLQIntegration:
         self._stats["workflows_executed"] += 1
 
         # Generate workflow ID
-        workflow_id = task.get("id", f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}")
+        workflow_id = task.get(
+            "id", f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}"
+        )
 
         try:
             # Execute the workflow
@@ -359,7 +367,9 @@ class DLQIntegration:
             "skipped_permanent": self._stats["skipped_permanent"],
             "skipped_permission": self._stats["skipped_permission"],
             "enqueue_rate": round(
-                self._stats["auto_enqueued"] / max(self._stats["workflows_failed"], 1) * 100,
+                self._stats["auto_enqueued"]
+                / max(self._stats["workflows_failed"], 1)
+                * 100,
                 2,
             ),
         }

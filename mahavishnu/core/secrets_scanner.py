@@ -179,7 +179,9 @@ class SecretsScanner:
             if result.returncode == 0:
                 logger.info(f"detect-secrets installed: {result.stdout.strip()}")
         except FileNotFoundError:
-            logger.warning("detect-secrets not found. Install with: pip install detect-secrets")
+            logger.warning(
+                "detect-secrets not found. Install with: pip install detect-secrets"
+            )
             raise RuntimeError(
                 "detect-secrets is required for secrets scanning. "
                 "Install with: pip install detect-secrets"
@@ -305,10 +307,14 @@ class SecretsScanner:
                 if "[" in detection_part and "]" in detection_part:
                     matched_str_start = detection_part.index("[") + 1
                     matched_str_end = detection_part.index("]")
-                    matched_string = detection_part[matched_str_start:matched_str_end].strip("'")
+                    matched_string = detection_part[
+                        matched_str_start:matched_str_end
+                    ].strip("'")
 
                 # Determine secret type and severity
-                secret_type, severity = self._classify_secret(detection_part, matched_string)
+                secret_type, severity = self._classify_secret(
+                    detection_part, matched_string
+                )
 
                 secret = DetectedSecret(
                     secret_type=secret_type,
@@ -342,7 +348,9 @@ class SecretsScanner:
         detection_lower = detection_part.lower()
 
         # Classify type
-        if "api key" in detection_lower or matched_string.startswith(("sk_", "key_", "api_")):
+        if "api key" in detection_lower or matched_string.startswith(
+            ("sk_", "key_", "api_")
+        ):
             secret_type = SecretType.API_KEY
         elif "aws" in detection_lower:
             secret_type = SecretType.AWS_KEY
@@ -366,7 +374,9 @@ class SecretsScanner:
 
         return secret_type, severity
 
-    def _estimate_severity(self, matched_string: str, secret_type: SecretType) -> SecretSeverity:
+    def _estimate_severity(
+        self, matched_string: str, secret_type: SecretType
+    ) -> SecretSeverity:
         """Estimate severity of detected secret based on characteristics.
 
         Args:

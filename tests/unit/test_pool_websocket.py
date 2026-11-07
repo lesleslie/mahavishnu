@@ -100,7 +100,9 @@ class TestPoolLifecycleEvents:
     """Tests for pool lifecycle broadcast events."""
 
     @pytest.mark.asyncio
-    async def test_broadcast_pool_spawned_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_pool_spawned_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful pool spawned broadcast."""
         config = {"name": "test-pool", "min_workers": 2}
         result = await broadcaster.broadcast_pool_spawned("pool_123", config)
@@ -111,9 +113,13 @@ class TestPoolLifecycleEvents:
         assert "pool:pool_123" in call_args[0][0] or call_args[0][0] == "pool:pool_123"
 
     @pytest.mark.asyncio
-    async def test_broadcast_pool_spawned_no_server(self, broadcaster_no_server) -> None:
+    async def test_broadcast_pool_spawned_no_server(
+        self, broadcaster_no_server
+    ) -> None:
         """Test pool spawned broadcast when no server configured."""
-        result = await broadcaster_no_server.broadcast_pool_spawned("pool_123", {"name": "test"})
+        result = await broadcaster_no_server.broadcast_pool_spawned(
+            "pool_123", {"name": "test"}
+        )
 
         assert result is False
 
@@ -128,7 +134,9 @@ class TestPoolLifecycleEvents:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_broadcast_pool_scaled_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_pool_scaled_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful pool scaled broadcast."""
         result = await broadcaster.broadcast_pool_scaled("pool_abc", 5)
 
@@ -136,22 +144,30 @@ class TestPoolLifecycleEvents:
         mock_server.broadcast_to_room.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_broadcast_pool_status_changed_string(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_pool_status_changed_string(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test pool status changed with string status."""
         result = await broadcaster.broadcast_pool_status_changed("pool_xyz", "running")
 
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_broadcast_pool_status_changed_dict(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_pool_status_changed_dict(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test pool status changed with dict status."""
         status_dict = {"state": "running", "workers": 3}
-        result = await broadcaster.broadcast_pool_status_changed("pool_xyz", status_dict)
+        result = await broadcaster.broadcast_pool_status_changed(
+            "pool_xyz", status_dict
+        )
 
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_broadcast_pool_closed_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_pool_closed_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful pool closed broadcast."""
         result = await broadcaster.broadcast_pool_closed("pool_123")
 
@@ -167,7 +183,9 @@ class TestWorkerEvents:
     """Tests for worker-related broadcast events."""
 
     @pytest.mark.asyncio
-    async def test_broadcast_worker_added_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_worker_added_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful worker added broadcast."""
         result = await broadcaster.broadcast_worker_added("pool_1", "worker_a")
 
@@ -175,16 +193,22 @@ class TestWorkerEvents:
         mock_server.broadcast_to_room.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_broadcast_worker_removed_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_worker_removed_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful worker removed broadcast."""
         result = await broadcaster.broadcast_worker_removed("pool_1", "worker_a")
 
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_broadcast_worker_status_changed_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_worker_status_changed_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful worker status changed broadcast."""
-        result = await broadcaster.broadcast_worker_status_changed("pool_1", "worker_a", "busy")
+        result = await broadcaster.broadcast_worker_status_changed(
+            "pool_1", "worker_a", "busy"
+        )
 
         assert result is True
 
@@ -198,7 +222,9 @@ class TestTaskEvents:
     """Tests for task-related broadcast events."""
 
     @pytest.mark.asyncio
-    async def test_broadcast_task_assigned_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_task_assigned_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful task assigned broadcast."""
         task = {"prompt": "test task", "timeout": 30}
         result = await broadcaster.broadcast_task_assigned("pool_1", "worker_a", task)
@@ -206,14 +232,18 @@ class TestTaskEvents:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_broadcast_task_completed_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_task_completed_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful task completed broadcast."""
         result = {
             "status": "completed",
             "output": "test output",
             "duration": 1.5,
         }
-        broadcast_result = await broadcaster.broadcast_task_completed("pool_1", "worker_a", result)
+        broadcast_result = await broadcaster.broadcast_task_completed(
+            "pool_1", "worker_a", result
+        )
 
         assert broadcast_result is True
 
@@ -227,7 +257,9 @@ class TestSymbioticEcosystemEvents:
     """Tests for symbiotic ecosystem broadcast events."""
 
     @pytest.mark.asyncio
-    async def test_broadcast_learning_metrics_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_learning_metrics_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful learning metrics broadcast."""
         result = await broadcaster.broadcast_learning_metrics(
             patterns_strengthened=10,
@@ -239,7 +271,9 @@ class TestSymbioticEcosystemEvents:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_broadcast_learning_metrics_with_user_id(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_learning_metrics_with_user_id(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test learning metrics broadcast with user_id."""
         result = await broadcaster.broadcast_learning_metrics(
             patterns_strengthened=5,
@@ -249,7 +283,9 @@ class TestSymbioticEcosystemEvents:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_broadcast_skill_effectiveness_success(self, broadcaster, mock_server) -> None:
+    async def test_broadcast_skill_effectiveness_success(
+        self, broadcaster, mock_server
+    ) -> None:
         """Test successful skill effectiveness broadcast."""
         result = await broadcaster.broadcast_skill_effectiveness(
             skill_name="RefactoringAgent",
@@ -293,9 +329,13 @@ class TestConnectionManagement:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_broadcast_with_connection_error_triggers_reconnect(self, mock_server) -> None:
+    async def test_broadcast_with_connection_error_triggers_reconnect(
+        self, mock_server
+    ) -> None:
         """Test broadcast with connection error attempts reconnection."""
-        mock_server.broadcast_to_room.side_effect = Exception("Connection reset by peer")
+        mock_server.broadcast_to_room.side_effect = Exception(
+            "Connection reset by peer"
+        )
         broadcaster = WebSocketBroadcaster(websocket_server=mock_server)
 
         with patch.object(broadcaster, "_attempt_reconnect", new_callable=AsyncMock):
@@ -352,14 +392,18 @@ class TestBufferManagement:
         assert len(broadcaster_with_buffer._event_buffer) == 1
 
     @pytest.mark.asyncio
-    async def test_events_not_buffered_when_disabled(self, broadcaster_no_server) -> None:
+    async def test_events_not_buffered_when_disabled(
+        self, broadcaster_no_server
+    ) -> None:
         """Test events are not buffered when buffering disabled."""
         await broadcaster_no_server.broadcast_pool_spawned("pool_123", {})
 
         assert len(broadcaster_no_server._event_buffer) == 0
 
     @pytest.mark.asyncio
-    async def test_flush_buffer_success(self, broadcaster_with_buffer, mock_server) -> None:
+    async def test_flush_buffer_success(
+        self, broadcaster_with_buffer, mock_server
+    ) -> None:
         """Test successful buffer flush."""
         mock_server.is_running = False
         await broadcaster_with_buffer.broadcast_pool_spawned("pool_1", {})
@@ -440,12 +484,16 @@ class TestServerManagement:
             mock_logger.info.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_broadcast_after_set_server(self, broadcaster_no_server, mock_server) -> None:
+    async def test_broadcast_after_set_server(
+        self, broadcaster_no_server, mock_server
+    ) -> None:
         """Test broadcast works after setting server."""
         assert broadcaster_no_server.server is None
 
         broadcaster_no_server.set_server(mock_server)
-        result = await broadcaster_no_server.broadcast_pool_spawned("pool_123", {"name": "test"})
+        result = await broadcaster_no_server.broadcast_pool_spawned(
+            "pool_123", {"name": "test"}
+        )
 
         assert result is True
 

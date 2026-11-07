@@ -1,4 +1,5 @@
 """Static check: no Any in MCP tool I/O (TD-B1, CLAUDE.md hard limit)."""
+
 from __future__ import annotations
 
 import inspect
@@ -34,7 +35,9 @@ def test_tool_signature_has_no_any(tool) -> None:  # type: ignore[no-untyped-def
     if sig.return_annotation is inspect.Signature.empty:
         pytest.fail(f"{tool.name}: missing return annotation")
     if "Any" in str(sig.return_annotation):
-        pytest.fail(f"{tool.name}: return type annotated with Any: {sig.return_annotation}")
+        pytest.fail(
+            f"{tool.name}: return type annotated with Any: {sig.return_annotation}"
+        )
 
 
 def test_no_any_in_jot_tools_source() -> None:
@@ -44,4 +47,6 @@ def test_no_any_in_jot_tools_source() -> None:
     cleaned = re.sub(r"#.*", "", src)
     cleaned = re.sub(r'"""[\s\S]*?"""', "", cleaned)
     cleaned = re.sub(r"'''[\s\S]*?'''", "", cleaned)
-    assert "Any" not in cleaned, "jot_tools.py must not contain 'Any' in type annotations"
+    assert "Any" not in cleaned, (
+        "jot_tools.py must not contain 'Any' in type annotations"
+    )

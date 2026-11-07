@@ -27,7 +27,7 @@ def test_demo_subcommands_wired_in_main_cli() -> None:
     registered = {grp.name for grp in app.registered_groups if grp.name}
     assert "demo" in registered, (
         "demo sub-app silently missing from _main_cli.app.registered_groups. "
-        "Re-add `from .cli.demo_cli import demo_app; app.add_typer(demo_app, name=\"demo\")` "
+        'Re-add `from .cli.demo_cli import demo_app; app.add_typer(demo_app, name="demo")` '
         "in the `=== DEMO SUB-COMMANDS ===` block."
     )
 
@@ -45,7 +45,7 @@ def test_launchd_subcommands_wired_in_main_cli() -> None:
     registered = {grp.name for grp in app.registered_groups if grp.name}
     assert "launchd" in registered, (
         "launchd sub-app silently missing from _main_cli.app.registered_groups. "
-        "Re-add `from .cli.launchd_cli import launchd_app; app.add_typer(launchd_app, name=\"launchd\")` "
+        'Re-add `from .cli.launchd_cli import launchd_app; app.add_typer(launchd_app, name="launchd")` '
         "in the `=== LAUNCHD SUB-COMMANDS ===` block."
     )
 
@@ -90,7 +90,7 @@ def test_demo_agno_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--repos" in result.output, (
         "demo agno is showing stub-style --help (missing --repos). "
-        "The live @demo_app.command(\"agno\") callback was likely "
+        'The live @demo_app.command("agno") callback was likely '
         "replaced by the stub registration loop."
     )
 
@@ -107,8 +107,8 @@ def test_demo_stub_loop_no_longer_registers_agno() -> None:
     stub_names = set(demo_cli._STUB_COSTS.keys())
     assert "agno" not in stub_names, (
         "agno is in _STUB_COSTS — the stub registration loop will "
-        "shadow the live @demo_app.command(\"agno\") callback. "
-        "Remove the \"agno\" entry from _STUB_COSTS and from the "
+        'shadow the live @demo_app.command("agno") callback. '
+        'Remove the "agno" entry from _STUB_COSTS and from the '
         "registration loop tuple."
     )
 
@@ -133,7 +133,7 @@ def test_demo_llamaindex_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--repos" in result.output, (
         "demo llamaindex is showing stub-style --help (missing --repos). "
-        "The live @demo_app.command(\"llamaindex\") callback was likely "
+        'The live @demo_app.command("llamaindex") callback was likely '
         "replaced by the stub registration loop."
     )
 
@@ -150,8 +150,8 @@ def test_demo_stub_loop_no_longer_registers_llamaindex() -> None:
     stub_names = set(demo_cli._STUB_COSTS.keys())
     assert "llamaindex" not in stub_names, (
         "llamaindex is in _STUB_COSTS — the stub registration loop will "
-        "shadow the live @demo_app.command(\"llamaindex\") callback. "
-        "Remove the \"llamaindex\" entry from _STUB_COSTS and from the "
+        'shadow the live @demo_app.command("llamaindex") callback. '
+        'Remove the "llamaindex" entry from _STUB_COSTS and from the '
         "registration loop tuple."
     )
 
@@ -175,7 +175,7 @@ def test_demo_pydantic_ai_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--repos" in result.output, (
         "demo pydantic_ai is showing stub-style --help (missing --repos). "
-        "The live @demo_app.command(\"pydantic_ai\") callback was likely "
+        'The live @demo_app.command("pydantic_ai") callback was likely '
         "replaced by the stub registration loop."
     )
 
@@ -192,8 +192,8 @@ def test_demo_stub_loop_no_longer_registers_pydantic_ai() -> None:
     stub_names = set(demo_cli._STUB_COSTS.keys())
     assert "pydantic_ai" not in stub_names, (
         "pydantic_ai is in _STUB_COSTS — the stub registration loop will "
-        "shadow the live @demo_app.command(\"pydantic_ai\") callback. "
-        "Remove the \"pydantic_ai\" entry from _STUB_COSTS and from the "
+        'shadow the live @demo_app.command("pydantic_ai") callback. '
+        'Remove the "pydantic_ai" entry from _STUB_COSTS and from the '
         "registration loop tuple."
     )
 
@@ -217,7 +217,7 @@ def test_demo_crow_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--cmd" in result.output, (
         "demo crow is showing stub-style --help (missing --cmd). "
-        "The live @demo_app.command(\"crow\") callback was likely "
+        'The live @demo_app.command("crow") callback was likely '
         "replaced by the stub registration loop."
     )
 
@@ -234,8 +234,8 @@ def test_demo_stub_loop_no_longer_registers_crow() -> None:
     stub_names = set(demo_cli._STUB_COSTS.keys())
     assert "crow" not in stub_names, (
         "crow is in _STUB_COSTS — the stub registration loop will "
-        "shadow the live @demo_app.command(\"crow\") callback. "
-        "Remove the \"crow\" entry from _STUB_COSTS and from the "
+        'shadow the live @demo_app.command("crow") callback. '
+        'Remove the "crow" entry from _STUB_COSTS and from the '
         "registration loop tuple."
     )
 
@@ -259,7 +259,7 @@ def test_demo_hatchet_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--repos" in result.output, (
         "demo hatchet is showing stub-style --help (missing --repos). "
-        "The live @demo_app.command(\"hatchet\") callback was likely "
+        'The live @demo_app.command("hatchet") callback was likely '
         "replaced by the stub registration loop."
     )
 
@@ -276,8 +276,8 @@ def test_demo_stub_loop_no_longer_registers_hatchet() -> None:
     stub_names = set(demo_cli._STUB_COSTS.keys())
     assert "hatchet" not in stub_names, (
         "hatchet is in _STUB_COSTS — the stub registration loop will "
-        "shadow the live @demo_app.command(\"hatchet\") callback. "
-        "Remove the \"hatchet\" entry from _STUB_COSTS and from the "
+        'shadow the live @demo_app.command("hatchet") callback. '
+        'Remove the "hatchet" entry from _STUB_COSTS and from the '
         "registration loop tuple."
     )
 
@@ -312,7 +312,7 @@ def test_demo_pool_mahavishnu_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--max" in result.output, (
         "demo pool-mahavishnu is showing stub-style --help (missing --max). "
-        "The live @demo_app.command(\"pool-mahavishnu\") callback was "
+        'The live @demo_app.command("pool-mahavishnu") callback was '
         "likely replaced by the stub registration loop."
     )
 
@@ -324,7 +324,7 @@ def test_demo_stub_loop_no_longer_registers_pool_mahavishnu() -> None:
     stub_names = set(demo_cli._STUB_COSTS.keys())
     assert "pool-mahavishnu" not in stub_names, (
         "pool-mahavishnu is in _STUB_COSTS — the stub registration "
-        "loop will shadow the live @demo_app.command(\"pool-mahavishnu\") "
+        'loop will shadow the live @demo_app.command("pool-mahavishnu") '
         "callback. Remove the entry from _STUB_COSTS and from the "
         "registration loop tuple."
     )
@@ -346,7 +346,7 @@ def test_demo_pool_session_buddy_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--url" in result.output, (
         "demo pool-session-buddy is showing stub-style --help (missing --url). "
-        "The live @demo_app.command(\"pool-session-buddy\") callback was "
+        'The live @demo_app.command("pool-session-buddy") callback was '
         "likely replaced by the stub registration loop."
     )
 
@@ -358,7 +358,7 @@ def test_demo_stub_loop_no_longer_registers_pool_session_buddy() -> None:
     stub_names = set(demo_cli._STUB_COSTS.keys())
     assert "pool-session-buddy" not in stub_names, (
         "pool-session-buddy is in _STUB_COSTS — the stub registration "
-        "loop will shadow the live @demo_app.command(\"pool-session-buddy\") "
+        'loop will shadow the live @demo_app.command("pool-session-buddy") '
         "callback. Remove the entry from _STUB_COSTS and from the "
         "registration loop tuple."
     )
@@ -382,7 +382,7 @@ def test_demo_pool_runpod_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--endpoint-id" in result.output, (
         "demo pool-runpod is showing stub-style --help (missing --endpoint-id). "
-        "The live @demo_app.command(\"pool-runpod\") callback was likely "
+        'The live @demo_app.command("pool-runpod") callback was likely '
         "replaced by the stub registration loop."
     )
 
@@ -394,7 +394,7 @@ def test_demo_stub_loop_no_longer_registers_pool_runpod() -> None:
     stub_names = set(demo_cli._STUB_COSTS.keys())
     assert "pool-runpod" not in stub_names, (
         "pool-runpod is in _STUB_COSTS — the stub registration loop "
-        "will shadow the live @demo_app.command(\"pool-runpod\") callback. "
+        'will shadow the live @demo_app.command("pool-runpod") callback. '
         "Remove the entry from _STUB_COSTS and from the registration loop tuple."
     )
 
@@ -416,7 +416,7 @@ def test_demo_pool_pi_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--prompt" in result.output, (
         "demo pool-pi is showing stub-style --help (missing --prompt). "
-        "The live @demo_app.command(\"pool-pi\") callback was likely "
+        'The live @demo_app.command("pool-pi") callback was likely '
         "replaced by the stub registration loop."
     )
 
@@ -428,7 +428,7 @@ def test_demo_stub_loop_no_longer_registers_pool_pi() -> None:
     stub_names = set(demo_cli._STUB_COSTS.keys())
     assert "pool-pi" not in stub_names, (
         "pool-pi is in _STUB_COSTS — the stub registration loop will "
-        "shadow the live @demo_app.command(\"pool-pi\") callback. "
+        'shadow the live @demo_app.command("pool-pi") callback. '
         "Remove the entry from _STUB_COSTS and from the registration loop tuple."
     )
 
@@ -458,8 +458,8 @@ def test_demo_workflow_pool_worker_terminal_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--adapter" in result.output, (
         "demo workflow-pool-worker-terminal is showing stub-style --help "
-        "(missing --adapter). The live @demo_app.command(\"workflow-pool-"
-        "worker-terminal\") callback was likely replaced by the stub "
+        '(missing --adapter). The live @demo_app.command("workflow-pool-'
+        'worker-terminal") callback was likely replaced by the stub '
         "registration loop."
     )
 
@@ -493,8 +493,8 @@ def test_demo_workflow_multi_pool_handoff_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--source-pool" in result.output, (
         "demo workflow-multi-pool-handoff is showing stub-style --help "
-        "(missing --source-pool). The live @demo_app.command(\"workflow-"
-        "multi-pool-handoff\") callback was likely replaced by the stub "
+        '(missing --source-pool). The live @demo_app.command("workflow-'
+        'multi-pool-handoff") callback was likely replaced by the stub '
         "registration loop."
     )
 
@@ -528,8 +528,8 @@ def test_demo_workflow_adapter_swap_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--adapter-a" in result.output, (
         "demo workflow-adapter-swap is showing stub-style --help "
-        "(missing --adapter-a). The live @demo_app.command(\"workflow-"
-        "adapter-swap\") callback was likely replaced by the stub "
+        '(missing --adapter-a). The live @demo_app.command("workflow-'
+        'adapter-swap") callback was likely replaced by the stub '
         "registration loop."
     )
 
@@ -572,8 +572,8 @@ def test_demo_workflow_pi_cascade_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--followup" in result.output, (
         "demo workflow-pi-cascade is showing stub-style --help "
-        "(missing --followup). The live @demo_app.command(\"workflow-"
-        "pi-cascade\") callback was likely replaced by the stub "
+        '(missing --followup). The live @demo_app.command("workflow-'
+        'pi-cascade") callback was likely replaced by the stub '
         "registration loop."
     )
 
@@ -607,8 +607,8 @@ def test_demo_workflow_pi_then_local_is_live_implementation() -> None:
     assert result.exit_code == 0, result.output
     assert "--pi-prompt" in result.output, (
         "demo workflow-pi-then-local is showing stub-style --help "
-        "(missing --pi-prompt). The live @demo_app.command(\"workflow-"
-        "pi-then-local\") callback was likely replaced by the stub "
+        '(missing --pi-prompt). The live @demo_app.command("workflow-'
+        'pi-then-local") callback was likely replaced by the stub '
         "registration loop."
     )
 

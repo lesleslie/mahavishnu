@@ -59,10 +59,14 @@ class CloudWorkerConfig:
     """
 
     minimax_url: str = field(
-        default_factory=lambda: os.environ.get("MINIMAX_BASE_URL") or MINIMAX_OPENAI_BASE_URL
+        default_factory=lambda: (
+            os.environ.get("MINIMAX_BASE_URL") or MINIMAX_OPENAI_BASE_URL
+        )
     )
     llama_server_url: str = field(
-        default_factory=lambda: os.environ.get("LLAMA_SERVER_URL", "http://localhost:8081")
+        default_factory=lambda: os.environ.get(
+            "LLAMA_SERVER_URL", "http://localhost:8081"
+        )
     )
     # RunPod Public Endpoint id (``moonshot-kimi``, ``granite-4-0-h-small``,
     # ``qwen3-32b-awq`` etc.). Optional — when unset, the runpod_public
@@ -115,7 +119,9 @@ def _resolve_minimax_endpoint(config: CloudWorkerConfig) -> tuple[str, bool]:
 
 
 def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
-    minimax_routing = routing_to_task_map(config.model_routing or resolve_minimax_routing())
+    minimax_routing = routing_to_task_map(
+        config.model_routing or resolve_minimax_routing()
+    )
     minimax_base_url, via_gateway = _resolve_minimax_endpoint(config)
     # req: REQ-BIFROST-035
     #
@@ -181,7 +187,9 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
     if config.runpod_public_endpoint_id:
         providers["runpod_public"] = {
             "name": "runpod_public",
-            "base_url": (f"https://api.runpod.ai/v2/{config.runpod_public_endpoint_id}/v1"),
+            "base_url": (
+                f"https://api.runpod.ai/v2/{config.runpod_public_endpoint_id}/v1"
+            ),
             "api_key": "${RUNPOD_API_KEY}",
             "require_auth": True,
             "task_routing": routing_to_task_map(resolve_runpod_public_routing()),
@@ -366,11 +374,15 @@ class CloudWorker(BaseWorker):
         user_id: str | None = task.get("user_id")
         rate_limiter = get_rate_limiter()
         if rate_limiter is not None:
-            model_for_rate = explicit_model or self.config.get_model_for_category(task_category)
+            model_for_rate = explicit_model or self.config.get_model_for_category(
+                task_category
+            )
             allowed = await rate_limiter.check_and_record(model_for_rate, user_id)
             if not allowed:
                 logger.warning(
-                    "Rate limit exceeded: model=%s user=%s", model_for_rate, user_id or "*"
+                    "Rate limit exceeded: model=%s user=%s",
+                    model_for_rate,
+                    user_id or "*",
                 )
                 try:
                     from mahavishnu.core.routing_metrics import get_routing_metrics
@@ -421,7 +433,8 @@ class CloudWorker(BaseWorker):
                     "provider": provider,
                     "temperature": temperature,
                     "max_tokens": max_tokens,
-                    "intelligent_routing": self.config.intelligent_routing and not explicit_model,
+                    "intelligent_routing": self.config.intelligent_routing
+                    and not explicit_model,
                     "usage": usage,
                 },
             )

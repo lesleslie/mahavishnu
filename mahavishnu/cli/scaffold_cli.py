@@ -33,14 +33,18 @@ app.add_typer(patterns_app, name="patterns")
 
 @patterns_app.command("list")
 def patterns_list(
-    category: str | None = typer.Option(None, "--category", "-c", help="Filter by category"),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help="Filter by category"
+    ),
 ):
     """List all patterns in the library."""
     lib = _get_library()
     categories = lib.list_all_categories()
 
     if category and category not in categories:
-        typer.echo(f"Category '{category}' not found. Available: {', '.join(categories)}")
+        typer.echo(
+            f"Category '{category}' not found. Available: {', '.join(categories)}"
+        )
         return
 
     patterns = lib.list_category(category) if category else lib._cache.values()
@@ -62,7 +66,9 @@ def patterns_list(
 
 @patterns_app.command("show")
 def patterns_show(
-    pattern_id: str = typer.Argument(..., help="Full pattern ID (e.g., components/nav)"),
+    pattern_id: str = typer.Argument(
+        ..., help="Full pattern ID (e.g., components/nav)"
+    ),
 ):
     """Show pattern details."""
     lib = _get_library()
@@ -82,7 +88,9 @@ def patterns_show(
     if p.depends:
         typer.echo("Depends:")
         for d in p.depends:
-            typer.echo(f"  - {d.id}" + (f" (version: {d.version})" if d.version else ""))
+            typer.echo(
+                f"  - {d.id}" + (f" (version: {d.version})" if d.version else "")
+            )
 
     dirs = p.get_dirs()
     files = p.get_files()
@@ -129,7 +137,8 @@ def patterns_validate():
         typer.echo("All patterns valid.")
     else:
         typer.echo(
-            f"\n{total_issues} validation errors across {len(lib._cache)} patterns.", err=True
+            f"\n{total_issues} validation errors across {len(lib._cache)} patterns.",
+            err=True,
         )
         raise typer.Exit(code=1)
 
@@ -145,7 +154,11 @@ def patterns_search(
     lib = _get_library()
     results = lib.search(query)
     if source_repos:
-        results = [p for p in results if any(s in p.source_repos for s in source_repos.split(","))]
+        results = [
+            p
+            for p in results
+            if any(s in p.source_repos for s in source_repos.split(","))
+        ]
 
     if not results:
         typer.echo(f"No patterns matching '{query}'.")
@@ -162,12 +175,16 @@ def patterns_search(
 @app.command("scaffold")
 def scaffold(
     project_name: str = typer.Argument(..., help="Project name (kebab-case)"),
-    patterns: list[str] = typer.Option(..., "--patterns", "-p", help="Pattern IDs to compose"),
+    patterns: list[str] = typer.Option(
+        ..., "--patterns", "-p", help="Pattern IDs to compose"
+    ),
     title: str | None = typer.Option(None, "--title", "-t", help="Project title"),
     author: str | None = typer.Option(None, "--author", "-a", help="Author name"),
     version: str = typer.Option("0.1.0", "--version", "-v", help="Initial version"),
     output: Path | None = typer.Option(None, "--output", "-o", help="Output directory"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be scaffolded"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be scaffolded"
+    ),
 ):
     """Scaffold a new Fastblocks project from composed patterns."""
     lib = _get_library()
@@ -188,7 +205,9 @@ def scaffold(
             seen.add(pid)
             queue.extend(p.get_dependency_ids())
 
-        typer.echo(f"dry-run: Would scaffold '{project_name}' with {len(resolved)} patterns:")
+        typer.echo(
+            f"dry-run: Would scaffold '{project_name}' with {len(resolved)} patterns:"
+        )
         for p in resolved:
             typer.echo(f"  - {p.id} v{p.version}")
         return

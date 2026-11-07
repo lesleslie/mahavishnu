@@ -57,7 +57,9 @@ def _make_settings(**overrides: Any) -> MahavishnuSettings:
 class _Boom:
     """Callable that always raises — used to drive ``except`` arms."""
 
-    def __init__(self, message: str = "boom", exc: type[BaseException] = RuntimeError) -> None:
+    def __init__(
+        self, message: str = "boom", exc: type[BaseException] = RuntimeError
+    ) -> None:
         self.message = message
         self.exc = exc
 
@@ -259,8 +261,14 @@ class TestTriggerWorkflow:
         assert result["errors"][0]["type"] == "TimeoutError"
 
         mock_app.workflow_state_manager.create.assert_awaited_once()
-        assert mock_app.workflow_state_manager.create.await_args.kwargs["repos"] == ["/a", "/b"]
-        assert mock_app.workflow_state_manager.update.await_args.kwargs["status"] == "failed"
+        assert mock_app.workflow_state_manager.create.await_args.kwargs["repos"] == [
+            "/a",
+            "/b",
+        ]
+        assert (
+            mock_app.workflow_state_manager.update.await_args.kwargs["status"]
+            == "failed"
+        )
 
     async def test_generic_failure_records_error_workflow_state(
         self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
@@ -320,7 +328,11 @@ class TestTriggerWorkflow:
         """When ``repos`` is absent but ``tag`` is set, repos come from the tag."""
         mock_app.get_repos = MagicMock(return_value=["/repo/a", "/repo/b"])
         mock_app.execute_workflow_parallel = AsyncMock(
-            return_value={"workflow_id": "wf-tag", "status": "queued", "repos_processed": 2}
+            return_value={
+                "workflow_id": "wf-tag",
+                "status": "queued",
+                "repos_processed": 2,
+            }
         )
 
         fn = await tool("trigger_workflow")
@@ -342,7 +354,9 @@ class TestPermissionGatedTools:
         self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
     ) -> None:
         """A user without VIEW_WORKFLOW_STATUS gets status='forbidden'."""
-        mock_app.workflow_state_manager.get = AsyncMock(return_value={"status": "running"})
+        mock_app.workflow_state_manager.get = AsyncMock(
+            return_value={"status": "running"}
+        )
         mock_app.rbac_manager.check_permission = AsyncMock(return_value=False)
 
         fn = await tool("get_workflow_status")
@@ -617,7 +631,9 @@ class TestObservabilityTools:
             attributes={"k": "v"},
         )
         log.level = MagicMock(value="info")
-        mock_app.observability.get_performance_metrics = MagicMock(return_value={"cpu": 1})
+        mock_app.observability.get_performance_metrics = MagicMock(
+            return_value={"cpu": 1}
+        )
         mock_app.observability.get_logs = MagicMock(return_value=[log] * 3)
 
         fn = await tool("get_observability_metrics")
@@ -657,7 +673,9 @@ class TestObservabilityTools:
         self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
     ) -> None:
         """Results and the original filter set are both returned."""
-        mock_app.opensearch_integration.search_logs = AsyncMock(return_value=[{"m": "1"}])
+        mock_app.opensearch_integration.search_logs = AsyncMock(
+            return_value=[{"m": "1"}]
+        )
 
         fn = await tool("search_logs")
         result = await fn(query="error", level="ERROR", size=5)
@@ -799,7 +817,9 @@ class TestObservabilityTools:
         self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
     ) -> None:
         """A healing failure is reported rather than propagated."""
-        mock_app.error_recovery_manager.monitor_and_heal_workflows = _Boom("heal failed")
+        mock_app.error_recovery_manager.monitor_and_heal_workflows = _Boom(
+            "heal failed"
+        )
 
         fn = await tool("heal_workflows")
         result = await fn()
@@ -876,7 +896,9 @@ class TestBackupTools:
         """A created backup surfaces its id, location, and ISO timestamp."""
         manager = MagicMock()
         manager.create_backup = AsyncMock(return_value=_FakeBackupInfo("bk-42"))
-        monkeypatch.setattr(backup_module, "BackupManager", MagicMock(return_value=manager))
+        monkeypatch.setattr(
+            backup_module, "BackupManager", MagicMock(return_value=manager)
+        )
 
         fn = await tool("create_backup")
         result = await fn(backup_type="full")
@@ -912,7 +934,9 @@ class TestBackupTools:
     ) -> None:
         """A backup failure returns status='error'."""
         monkeypatch.setattr(
-            backup_module, "BackupManager", MagicMock(side_effect=RuntimeError("disk full"))
+            backup_module,
+            "BackupManager",
+            MagicMock(side_effect=RuntimeError("disk full")),
         )
 
         fn = await tool("create_backup")
@@ -933,7 +957,9 @@ class TestBackupTools:
         manager.list_backups = AsyncMock(
             return_value=[_FakeBackupInfo("bk-1"), _FakeBackupInfo("bk-2")]
         )
-        monkeypatch.setattr(backup_module, "BackupManager", MagicMock(return_value=manager))
+        monkeypatch.setattr(
+            backup_module, "BackupManager", MagicMock(return_value=manager)
+        )
 
         fn = await tool("list_backups")
         result = await fn()
@@ -951,7 +977,9 @@ class TestBackupTools:
         """A listing failure returns an empty backups list."""
         manager = MagicMock()
         manager.list_backups = _Boom("cannot enumerate")
-        monkeypatch.setattr(backup_module, "BackupManager", MagicMock(return_value=manager))
+        monkeypatch.setattr(
+            backup_module, "BackupManager", MagicMock(return_value=manager)
+        )
 
         fn = await tool("list_backups")
         result = await fn()
@@ -976,7 +1004,9 @@ class TestBackupTools:
         """The boolean restore result drives both status and message text."""
         manager = MagicMock()
         manager.restore_backup = AsyncMock(return_value=restore_ok)
-        monkeypatch.setattr(backup_module, "BackupManager", MagicMock(return_value=manager))
+        monkeypatch.setattr(
+            backup_module, "BackupManager", MagicMock(return_value=manager)
+        )
 
         fn = await tool("restore_backup")
         result = await fn(backup_id="bk-7")
@@ -994,7 +1024,9 @@ class TestBackupTools:
         """A restore exception is converted to an error envelope."""
         manager = MagicMock()
         manager.restore_backup = _Boom("corrupt archive")
-        monkeypatch.setattr(backup_module, "BackupManager", MagicMock(return_value=manager))
+        monkeypatch.setattr(
+            backup_module, "BackupManager", MagicMock(return_value=manager)
+        )
 
         fn = await tool("restore_backup")
         result = await fn(backup_id="bk-7")
@@ -1065,7 +1097,10 @@ class TestMonitoringTools:
     """Dashboard + alert tools including uninitialized-service guards."""
 
     async def test_monitoring_dashboard_success(
-        self, server: FastMCPServer, tool: Callable[[str], Any], monkeypatch: pytest.MonkeyPatch
+        self,
+        server: FastMCPServer,
+        tool: Callable[[str], Any],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The dashboard wraps the canonical ecosystem report as JSON."""
         from mahavishnu.core import ecosystem_status
@@ -1086,7 +1121,10 @@ class TestMonitoringTools:
         report.model_dump.assert_called_once_with(mode="json")
 
     async def test_monitoring_dashboard_wraps_failure(
-        self, server: FastMCPServer, tool: Callable[[str], Any], monkeypatch: pytest.MonkeyPatch
+        self,
+        server: FastMCPServer,
+        tool: Callable[[str], Any],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A report-generation failure returns status='error'."""
         from mahavishnu.core import ecosystem_status
@@ -1134,7 +1172,9 @@ class TestMonitoringTools:
         self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
     ) -> None:
         """An alert-manager failure returns status='error'."""
-        mock_app.monitoring_service.alert_manager.get_active_alerts = _Boom("alert svc down")
+        mock_app.monitoring_service.alert_manager.get_active_alerts = _Boom(
+            "alert svc down"
+        )
 
         fn = await tool("get_active_alerts")
         result = await fn()
@@ -1152,7 +1192,9 @@ class TestMonitoringTools:
 
         assert result["status"] == "error"
 
-    @pytest.mark.parametrize(("ack_ok", "expected_status"), [(True, "success"), (False, "error")])
+    @pytest.mark.parametrize(
+        ("ack_ok", "expected_status"), [(True, "success"), (False, "error")]
+    )
     async def test_acknowledge_alert_reports_outcome(
         self,
         server: FastMCPServer,
@@ -1219,7 +1261,9 @@ class TestMonitoringTools:
 
         assert result["status"] == "success"
         assert result["alert_id"] == "al-test"
-        kwargs = mock_app.monitoring_service.alert_manager.trigger_alert.await_args.kwargs
+        kwargs = (
+            mock_app.monitoring_service.alert_manager.trigger_alert.await_args.kwargs
+        )
         assert kwargs["severity"] is AlertSeverity.HIGH
         assert kwargs["alert_type"] is AlertType.SYSTEM_HEALTH
         assert kwargs["details"] == {"test_alert": True}
@@ -1228,7 +1272,9 @@ class TestMonitoringTools:
         self, server: FastMCPServer, tool: Callable[[str], Any], mock_app: MagicMock
     ) -> None:
         """A trigger failure is caught at the MCP boundary."""
-        mock_app.monitoring_service.alert_manager.trigger_alert = _Boom("cannot trigger")
+        mock_app.monitoring_service.alert_manager.trigger_alert = _Boom(
+            "cannot trigger"
+        )
 
         fn = await tool("trigger_test_alert")
         result = await fn(severity="low")
@@ -1435,7 +1481,9 @@ class TestIntrospectionTools:
         assert result["status"] == "success"
         assert result["loaded_count"] == len(result["loaded_tools"])
         assert result["not_loaded_count"] == len(result["not_loaded_tools"])
-        assert result["total_known"] == result["loaded_count"] + result["not_loaded_count"]
+        assert (
+            result["total_known"] == result["loaded_count"] + result["not_loaded_count"]
+        )
         # Core inline tools registered in __init__ must appear as loaded.
         assert "get_health" in result["loaded_tools"]
         assert not set(result["loaded_tools"]) & set(result["not_loaded_tools"])
@@ -1453,7 +1501,10 @@ class TestIntrospectionTools:
         assert all("workflow" in name.lower() for name in every)
 
     async def test_discover_tools_survives_list_tools_failure(
-        self, server: FastMCPServer, tool: Callable[[str], Any], monkeypatch: pytest.MonkeyPatch
+        self,
+        server: FastMCPServer,
+        tool: Callable[[str], Any],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """If FastMCP introspection fails, everything reports as not-loaded."""
 
@@ -1470,7 +1521,10 @@ class TestIntrospectionTools:
         assert result["not_loaded_count"] == result["total_known"]
 
     async def test_discover_tools_capability_ready_adds_routable_workers(
-        self, server: FastMCPServer, tool: Callable[[str], Any], monkeypatch: pytest.MonkeyPatch
+        self,
+        server: FastMCPServer,
+        tool: Callable[[str], Any],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """``capability='ready'`` attaches the router's worker snapshot."""
         from mahavishnu.core import config as config_module
@@ -1507,7 +1561,9 @@ class TestIntrospectionTools:
 class TestWrapToolHandlerBranches:
     """Cover the sync wrapper plus the cancelled/timeout status labels."""
 
-    async def test_async_wrapper_propagates_cancellation(self, server: FastMCPServer) -> None:
+    async def test_async_wrapper_propagates_cancellation(
+        self, server: FastMCPServer
+    ) -> None:
         """CancelledError must propagate (never be swallowed as an error)."""
 
         async def cancelled_tool() -> None:
@@ -1518,7 +1574,9 @@ class TestWrapToolHandlerBranches:
         with pytest.raises(asyncio.CancelledError):
             await wrapped()
 
-    async def test_async_wrapper_propagates_timeout(self, server: FastMCPServer) -> None:
+    async def test_async_wrapper_propagates_timeout(
+        self, server: FastMCPServer
+    ) -> None:
         """TimeoutError is labelled 'timeout' and re-raised."""
         from monitoring.metrics import mcp_tool_calls_total
 
@@ -1530,7 +1588,9 @@ class TestWrapToolHandlerBranches:
         with pytest.raises(TimeoutError):
             await wrapped()
 
-        counter = mcp_tool_calls_total.labels(tool_name="timing_out_tool", status="timeout")
+        counter = mcp_tool_calls_total.labels(
+            tool_name="timing_out_tool", status="timeout"
+        )
         assert counter._value.get() >= 1
 
     def test_sync_wrapper_records_success(self, server: FastMCPServer) -> None:
@@ -1556,7 +1616,9 @@ class TestWrapToolHandlerBranches:
         wrapped = server._wrap_tool_handler(sync_error_payload)
 
         assert wrapped()["status"] == "error"
-        counter = mcp_tool_calls_total.labels(tool_name="sync_error_payload", status="error")
+        counter = mcp_tool_calls_total.labels(
+            tool_name="sync_error_payload", status="error"
+        )
         assert counter._value.get() >= 1
 
     def test_sync_wrapper_propagates_timeout(self, server: FastMCPServer) -> None:
@@ -1571,7 +1633,9 @@ class TestWrapToolHandlerBranches:
         with pytest.raises(TimeoutError):
             wrapped()
 
-        counter = mcp_tool_calls_total.labels(tool_name="sync_timeout", status="timeout")
+        counter = mcp_tool_calls_total.labels(
+            tool_name="sync_timeout", status="timeout"
+        )
         assert counter._value.get() >= 1
 
     def test_sync_wrapper_propagates_generic_error(self, server: FastMCPServer) -> None:

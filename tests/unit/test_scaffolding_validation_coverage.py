@@ -76,7 +76,11 @@ class TestHappyPathBranches:
                     name="Valid Slot",
                     structure={"dirs": [{"path": "src/"}]},
                     slots={
-                        "s": {"name": "s", "path": "src/sub/file.py", "type": "file-merge"},
+                        "s": {
+                            "name": "s",
+                            "path": "src/sub/file.py",
+                            "type": "file-merge",
+                        },
                     },
                 ),
                 id="slot-inside-declared-dir-no-issues",
@@ -119,7 +123,11 @@ class TestSingleIssueBranches:
                     name="Orphan",
                     structure={"dirs": [{"path": "src/"}]},
                     slots={
-                        "s": {"name": "s", "path": "elsewhere/foo.py", "type": "file-merge"},
+                        "s": {
+                            "name": "s",
+                            "path": "elsewhere/foo.py",
+                            "type": "file-merge",
+                        },
                     },
                 ),
                 ["outside all pattern dirs"],
@@ -214,7 +222,9 @@ class TestDuplicateAndIdDirMismatchBranches:
         issues = validate_pattern(p, lib)
         assert any("doesn't match directory" in i for i in issues)
 
-    def test_no_file_path_skips_id_dir_check(self, empty_library: PatternLibrary) -> None:
+    def test_no_file_path_skips_id_dir_check(
+        self, empty_library: PatternLibrary
+    ) -> None:
         """A Pattern built directly (no _file_path attribute) skips the ID/dir check."""
         p = Pattern(
             id="any/id-format",
@@ -224,7 +234,9 @@ class TestDuplicateAndIdDirMismatchBranches:
         issues = validate_pattern(p, empty_library)
         assert not any("directory" in i.lower() for i in issues)
 
-    def test_non_path_file_path_skips_id_dir_check(self, empty_library: PatternLibrary) -> None:
+    def test_non_path_file_path_skips_id_dir_check(
+        self, empty_library: PatternLibrary
+    ) -> None:
         """A _file_path set to a non-Path value also skips the ID/dir check."""
         p = Pattern(
             id="any/other-id",
@@ -260,7 +272,9 @@ class TestMultiBranchAggregation:
         p = Pattern(
             id="good/jinja",
             name="Good Jinja",
-            templates={"x": "{% for i in items %}{{ i.name }}: {{ i.value }}\n{% endfor %}"},
+            templates={
+                "x": "{% for i in items %}{{ i.name }}: {{ i.value }}\n{% endfor %}"
+            },
         )
         issues = validate_pattern(p, empty_library)
         assert not any("Jinja2" in i for i in issues)

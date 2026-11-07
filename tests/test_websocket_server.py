@@ -112,7 +112,9 @@ class TestMahavishnuWebSocketServer:
         await websocket_server.on_message(mock_websocket, message)
 
         # Verify joined room
-        assert connection_id in websocket_server.connection_rooms.get("workflow:abc123", set())
+        assert connection_id in websocket_server.connection_rooms.get(
+            "workflow:abc123", set()
+        )
 
     @pytest.mark.asyncio
     async def test_broadcast_workflow_started(self, websocket_server):
@@ -281,7 +283,9 @@ class TestWebSocketIntegration:
             await websocket_server.start()
 
             # Connect client
-            async with websockets.connect(f"ws://127.0.0.1:{websocket_server.port}") as ws:
+            async with websockets.connect(
+                f"ws://127.0.0.1:{websocket_server.port}"
+            ) as ws:
                 # Send subscribe message
                 subscribe_msg = {
                     "type": "request",
@@ -311,7 +315,9 @@ class TestWebSocketIntegration:
             received_events = []
 
             async def client_task():
-                async with websockets.connect(f"ws://127.0.0.1:{websocket_server.port}") as ws:
+                async with websockets.connect(
+                    f"ws://127.0.0.1:{websocket_server.port}"
+                ) as ws:
                     # Subscribe
                     subscribe_msg = {
                         "type": "request",
@@ -342,7 +348,9 @@ class TestWebSocketIntegration:
 
             # Broadcast events
             await websocket_server.broadcast_workflow_started("test123", {})
-            await websocket_server.broadcast_workflow_stage_completed("test123", "stage1", {})
+            await websocket_server.broadcast_workflow_stage_completed(
+                "test123", "stage1", {}
+            )
             await websocket_server.broadcast_workflow_completed("test123", {})
 
             # Wait for client to receive

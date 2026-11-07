@@ -7,6 +7,7 @@ Pins the contract for the SessionWorktreeRegistry class:
 - Symlink-rejection on write (CWE-59 mitigation)
 - chmod 0o600 / 0o700 hardening at first write
 """
+
 from __future__ import annotations
 
 import json
@@ -32,7 +33,10 @@ def registry(tmp_path: Path) -> SessionWorktreeRegistry:
 
 
 def _sample_metadata() -> dict:
-    return {"hook_pid": 1234, "claude_session_id_full": "0190f8a4-b9c1-7def-a012-3456789abcde"}
+    return {
+        "hook_pid": 1234,
+        "claude_session_id_full": "0190f8a4-b9c1-7def-a012-3456789abcde",
+    }
 
 
 def _register_sample(registry: SessionWorktreeRegistry, key: str) -> None:
@@ -242,11 +246,15 @@ def test_older_schema_version_is_read_only(
     import json
 
     registry.path.parent.mkdir(parents=True, exist_ok=True)
-    registry.path.write_text(json.dumps({
-        "schema_version": SUPPORTED_SCHEMA_VERSION - 1,  # hypothetical v0
-        "updated_at": "2026-07-01T00:00:00.000Z",
-        "sessions": {"legacy": {"state": "active"}},
-    }))
+    registry.path.write_text(
+        json.dumps(
+            {
+                "schema_version": SUPPORTED_SCHEMA_VERSION - 1,  # hypothetical v0
+                "updated_at": "2026-07-01T00:00:00.000Z",
+                "sessions": {"legacy": {"state": "active"}},
+            }
+        )
+    )
 
     assert registry.get("legacy") is None  # read returns empty
 
@@ -268,10 +276,14 @@ def test_missing_schema_version_is_writable(
     import json
 
     registry.path.parent.mkdir(parents=True, exist_ok=True)
-    registry.path.write_text(json.dumps({
-        "updated_at": "2026-07-01T00:00:00.000Z",
-        "sessions": {},
-    }))
+    registry.path.write_text(
+        json.dumps(
+            {
+                "updated_at": "2026-07-01T00:00:00.000Z",
+                "sessions": {},
+            }
+        )
+    )
 
     # Write should normalize schema_version
     _register_sample(registry, "x")
@@ -289,11 +301,15 @@ def test_non_dict_sessions_treated_as_empty(
     import json
 
     registry.path.parent.mkdir(parents=True, exist_ok=True)
-    registry.path.write_text(json.dumps({
-        "schema_version": SUPPORTED_SCHEMA_VERSION,
-        "updated_at": "2026-07-01T00:00:00.000Z",
-        "sessions": ["not", "a", "dict"],
-    }))
+    registry.path.write_text(
+        json.dumps(
+            {
+                "schema_version": SUPPORTED_SCHEMA_VERSION,
+                "updated_at": "2026-07-01T00:00:00.000Z",
+                "sessions": ["not", "a", "dict"],
+            }
+        )
+    )
 
     assert registry.get("anything") is None  # empty
     _register_sample(registry, "x")  # writable
@@ -312,11 +328,15 @@ def test_string_schema_version_is_read_only(
     import json
 
     registry.path.parent.mkdir(parents=True, exist_ok=True)
-    registry.path.write_text(json.dumps({
-        "schema_version": "one",  # string instead of int
-        "updated_at": "2026-07-01T00:00:00.000Z",
-        "sessions": {},
-    }))
+    registry.path.write_text(
+        json.dumps(
+            {
+                "schema_version": "one",  # string instead of int
+                "updated_at": "2026-07-01T00:00:00.000Z",
+                "sessions": {},
+            }
+        )
+    )
 
     # Read returns empty (no crash)
     assert registry.get("anything") is None
@@ -340,11 +360,15 @@ def test_unsupported_schema_version_logs_stderr_diagnostic(
     import json
 
     registry.path.parent.mkdir(parents=True, exist_ok=True)
-    registry.path.write_text(json.dumps({
-        "schema_version": 999,  # way newer than supported
-        "updated_at": "2026-07-01T00:00:00.000Z",
-        "sessions": {},
-    }))
+    registry.path.write_text(
+        json.dumps(
+            {
+                "schema_version": 999,  # way newer than supported
+                "updated_at": "2026-07-01T00:00:00.000Z",
+                "sessions": {},
+            }
+        )
+    )
 
     # Read triggers the diagnostic
     registry.get("anything")
@@ -362,7 +386,6 @@ def test_age_filter_older_than_days_active(
     untested. Uses monkeypatched utcnow_iso for determinism.
     """
 
-
     _register_sample(registry, "old")
     # Backdate last_seen_at via direct manipulation
     data = json.loads(registry.path.read_text())
@@ -372,9 +395,7 @@ def test_age_filter_older_than_days_active(
     _register_sample(registry, "new")  # last_seen_at = now
 
     # older_than_days=30 days, only "old" qualifies (year 2020 vs now)
-    old_entries = registry.list_active(
-        state="active", older_than_days=30
-    )
+    old_entries = registry.list_active(state="active", older_than_days=30)
     assert {e["session_id_short"] for e in old_entries} == {"old"}
 
 
@@ -387,9 +408,7 @@ def test_age_filter_older_than_days_abandoned(
     _register_sample(registry, "x")
     registry.mark_abandoned("x", abandoned_at="2020-01-01T00:00:00.000Z")
 
-    old_entries = registry.list_active(
-        state="abandoned", older_than_days=30
-    )
+    old_entries = registry.list_active(state="abandoned", older_than_days=30)
     assert {e["session_id_short"] for e in old_entries} == {"x"}
 
 
@@ -414,9 +433,7 @@ def test_age_filter_negative_treated_as_no_filter(
     _register_sample(registry, "a")
     registry.mark_abandoned("a")
 
-    all_entries = registry.list_active(
-        state="abandoned", older_than_days=-1
-    )
+    all_entries = registry.list_active(state="abandoned", older_than_days=-1)
     assert {e["session_id_short"] for e in all_entries} == {"a"}
 
 
@@ -477,9 +494,7 @@ def test_future_schema_version_returns_empty_no_write(
         json.dumps(
             {
                 "schema_version": future_version,
-                "sessions": {
-                    "a0c5d2a0": {"worktree_path": "/etc/cron.d/foo"}
-                },
+                "sessions": {"a0c5d2a0": {"worktree_path": "/etc/cron.d/foo"}},
             }
         )
     )

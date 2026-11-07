@@ -4,6 +4,7 @@ Appended — Task 9 smoke tests for the high-level drain primitives
 (drain_plan, dispatch_jot, retry_dispatch, defer_jot, delete_jot). The
 primitives exercise the single write path with mocked workflow triggers.
 """
+
 from __future__ import annotations
 
 import json
@@ -39,11 +40,19 @@ def isolated_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.mark.asyncio
-async def test_append_event_dispatch_autofills_started_at_ms(isolated_log: Path) -> None:
-    await _append_event("dispatch", {
-        "workflow_id": "wf-1", "attempt": 1,
-        "pool_selector": "least_loaded", "dispatched_from": "mcp",
-    }, jot_id="e1")
+async def test_append_event_dispatch_autofills_started_at_ms(
+    isolated_log: Path,
+) -> None:
+    await _append_event(
+        "dispatch",
+        {
+            "workflow_id": "wf-1",
+            "attempt": 1,
+            "pool_selector": "least_loaded",
+            "dispatched_from": "mcp",
+        },
+        jot_id="e1",
+    )
     lines = isolated_log.read_text().strip().split("\n")
     assert len(lines) == 1
     parsed = json.loads(lines[0])
@@ -52,32 +61,56 @@ async def test_append_event_dispatch_autofills_started_at_ms(isolated_log: Path)
 
 
 @pytest.mark.asyncio
-async def test_append_event_does_not_overwrite_caller_started_at(isolated_log: Path) -> None:
-    await _append_event("dispatch", {
-        "workflow_id": "wf-1", "attempt": 1,
-        "pool_selector": "least_loaded", "dispatched_from": "mcp",
-        "started_at_ms": 1234567890,
-    }, jot_id="e1")
+async def test_append_event_does_not_overwrite_caller_started_at(
+    isolated_log: Path,
+) -> None:
+    await _append_event(
+        "dispatch",
+        {
+            "workflow_id": "wf-1",
+            "attempt": 1,
+            "pool_selector": "least_loaded",
+            "dispatched_from": "mcp",
+            "started_at_ms": 1234567890,
+        },
+        jot_id="e1",
+    )
     parsed = json.loads(isolated_log.read_text().strip())
     assert parsed["ctx"]["started_at_ms"] == 1234567890
 
 
 @pytest.mark.asyncio
-async def test_append_event_validates_typeddict_rejects_missing_required(isolated_log: Path) -> None:
+async def test_append_event_validates_typeddict_rejects_missing_required(
+    isolated_log: Path,
+) -> None:
     with pytest.raises(JotValidationError):
-        await _append_event("dispatch", {
-            "attempt": 1, "pool_selector": "least_loaded", "dispatched_from": "mcp",
-        }, jot_id="e1")
+        await _append_event(
+            "dispatch",
+            {
+                "attempt": 1,
+                "pool_selector": "least_loaded",
+                "dispatched_from": "mcp",
+            },
+            jot_id="e1",
+        )
     assert isolated_log.exists() is False or isolated_log.read_text() == ""
 
 
 @pytest.mark.asyncio
-async def test_append_event_validates_typeddict_rejects_wrong_type(isolated_log: Path) -> None:
+async def test_append_event_validates_typeddict_rejects_wrong_type(
+    isolated_log: Path,
+) -> None:
     with pytest.raises(JotValidationError):
-        await _append_event("dispatch", {
-            "workflow_id": "wf-1", "attempt": "1",  # str instead of int
-            "pool_selector": "least_loaded", "dispatched_from": "mcp",
-        }, jot_id="e1")
+        await _append_event(
+            "dispatch",
+            {
+                "workflow_id": "wf-1",
+                "attempt": "1",  # str instead of int
+                "pool_selector": "least_loaded",
+                "dispatched_from": "mcp",
+            },
+            jot_id="e1",
+        )
     assert isolated_log.exists() is False or isolated_log.read_text() == ""
 
 
@@ -86,22 +119,33 @@ async def test_append_event_validates_retry_budget_exhausted_must_be_bool(
     isolated_log: Path,
 ) -> None:
     with pytest.raises(JotValidationError):
-        await _append_event("dispatch_failed", {
-            "workflow_id": "wf-1", "attempt": 1,
-            "error": "x", "error_id": "E",
-            "retry_budget_exhausted": "true",  # string, not bool
-        }, jot_id="e1")
+        await _append_event(
+            "dispatch_failed",
+            {
+                "workflow_id": "wf-1",
+                "attempt": 1,
+                "error": "x",
+                "error_id": "E",
+                "retry_budget_exhausted": "true",  # string, not bool
+            },
+            jot_id="e1",
+        )
 
 
 @pytest.mark.asyncio
 async def test_append_event_accepts_all_op_types(isolated_log: Path) -> None:
     valid: list[tuple[str, dict]] = [
         ("dispatch_done", {"workflow_id": "wf-1", "summary": "ok"}),
-        ("dispatch_failed", {
-            "workflow_id": "wf-1", "attempt": 1,
-            "error": "x", "error_id": "ERROR_JOT_WORKFLOW_FAILED",
-            "retry_budget_exhausted": False,
-        }),
+        (
+            "dispatch_failed",
+            {
+                "workflow_id": "wf-1",
+                "attempt": 1,
+                "error": "x",
+                "error_id": "ERROR_JOT_WORKFLOW_FAILED",
+                "retry_budget_exhausted": False,
+            },
+        ),
         ("defer", {"until": 9999999999999}),
         ("defer_expired", {}),
         ("delete", {"reason": "user cleanup"}),
@@ -127,20 +171,34 @@ async def test_append_event_raises_log_unwritable_on_read_only(
 @pytest.mark.asyncio
 async def test_append_event_validates_literal_triggered_by(isolated_log: Path) -> None:
     with pytest.raises(JotValidationError):
-        await _append_event("dispatch", {
-            "workflow_id": "wf-1", "attempt": 1,
-            "pool_selector": "least_loaded", "dispatched_from": "mcp",
-            "triggered_by": "scheduler",  # not in {first, auto, manual}
-        }, jot_id="e1")
+        await _append_event(
+            "dispatch",
+            {
+                "workflow_id": "wf-1",
+                "attempt": 1,
+                "pool_selector": "least_loaded",
+                "dispatched_from": "mcp",
+                "triggered_by": "scheduler",  # not in {first, auto, manual}
+            },
+            jot_id="e1",
+        )
 
 
 @pytest.mark.asyncio
-async def test_append_event_validates_literal_dispatched_from(isolated_log: Path) -> None:
+async def test_append_event_validates_literal_dispatched_from(
+    isolated_log: Path,
+) -> None:
     with pytest.raises(JotValidationError):
-        await _append_event("dispatch", {
-            "workflow_id": "wf-1", "attempt": 1,
-            "pool_selector": "least_loaded", "dispatched_from": "bogus",
-        }, jot_id="e1")
+        await _append_event(
+            "dispatch",
+            {
+                "workflow_id": "wf-1",
+                "attempt": 1,
+                "pool_selector": "least_loaded",
+                "dispatched_from": "bogus",
+            },
+            jot_id="e1",
+        )
 
 
 # =============================================================================
@@ -187,33 +245,36 @@ def test_drain_plan_lexical_filter_drops_unmatched(seeded_log: Path) -> None:
 
 
 def test_dispatch_jot_appends_event_and_returns_dispatch_result(
-    seeded_log: Path, monkeypatch: pytest.MonkeyPatch,
+    seeded_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Smoke: dispatch_jot calls _mcp_trigger_workflow with the jot's text
     prompt, returns a DispatchResult, and emits a dispatch event with
     the `dispatched_from` kwarg surfaced in ctx."""
 
     async def _fake_trigger(
-        adapter: str, task_type: str, params: dict[str, object],
+        adapter: str,
+        task_type: str,
+        params: dict[str, object],
     ) -> dict[str, object]:
         if params.get("prompt") != "hello world":
             return {"workflow_id": ""}
         return {"workflow_id": "wf-77"}
 
     monkeypatch.setattr(
-        "mahavishnu.jot.drain._mcp_trigger_workflow", _fake_trigger,
+        "mahavishnu.jot.drain._mcp_trigger_workflow",
+        _fake_trigger,
     )
 
     import asyncio
+
     res = asyncio.run(dispatch_jot("aaaaaaaa", dispatched_from="mcp"))
     assert isinstance(res, DispatchResult)
     assert res.handle == "aaaaaa"  # brief returns short_id, not full id
     assert res.workflow_id == "wf-77"
     assert res.status == "in_flight"
     events = [
-        json.loads(line)
-        for line in seeded_log.read_text().splitlines()
-        if line.strip()
+        json.loads(line) for line in seeded_log.read_text().splitlines() if line.strip()
     ]
     dispatch_evts = [e for e in events if e["op"] == "dispatch"]
     assert len(dispatch_evts) == 1
@@ -223,6 +284,7 @@ def test_dispatch_jot_appends_event_and_returns_dispatch_result(
 def test_retry_dispatch_rejects_non_failed(seeded_log: Path) -> None:
     """retry_dispatch on a non-FAILED jot raises JotRetryError."""
     import asyncio
+
     with pytest.raises(JotRetryError) as exc_info:
         asyncio.run(retry_dispatch("aaaaaaaa"))
     assert "not in FAILED state" in str(exc_info.value)
@@ -231,6 +293,7 @@ def test_retry_dispatch_rejects_non_failed(seeded_log: Path) -> None:
 def test_defer_jot_rejects_past_timestamp(seeded_log: Path) -> None:
     """until_ms <= now_ms raises JotDeferError."""
     import asyncio
+
     with pytest.raises(JotDeferError):
         asyncio.run(defer_jot("aaaaaaaa", until_ms=1))
 
@@ -248,9 +311,7 @@ def test_delete_jot_writes_event(
     assert isinstance(summary, JotSummary)
     # parse_events tolerates blank lines; replicate that defensive parse
     events = [
-        json.loads(line)
-        for line in seeded_log.read_text().splitlines()
-        if line.strip()
+        json.loads(line) for line in seeded_log.read_text().splitlines() if line.strip()
     ]
     delete_evts = [e for e in events if e["op"] == "delete"]
     assert len(delete_evts) == 1
@@ -260,6 +321,7 @@ def test_delete_jot_writes_event(
 def test_validate_ctx_rejects_unknown_key_on_dispatch() -> None:
     from mahavishnu.jot.drain import _validate_ctx
     from mahavishnu.jot.errors import JotValidationError
+
     with pytest.raises(JotValidationError) as excinfo:
         _validate_ctx(
             "dispatch",
@@ -278,6 +340,7 @@ def test_validate_ctx_rejects_unknown_key_on_dispatch() -> None:
 def test_validate_ctx_rejects_unknown_key_on_dispatch_failed() -> None:
     from mahavishnu.jot.drain import _validate_ctx
     from mahavishnu.jot.errors import JotValidationError
+
     with pytest.raises(JotValidationError) as excinfo:
         _validate_ctx(
             "dispatch_failed",
@@ -296,6 +359,7 @@ def test_validate_ctx_rejects_unknown_key_on_dispatch_failed() -> None:
 def test_validate_ctx_rejects_unknown_key_on_defer() -> None:
     from mahavishnu.jot.drain import _validate_ctx
     from mahavishnu.jot.errors import JotValidationError
+
     with pytest.raises(JotValidationError) as excinfo:
         _validate_ctx("defer", {"until": 100, "extra": "x"})
     assert "extra" in str(excinfo.value)
@@ -306,6 +370,7 @@ def test_validate_ctx_accepts_started_at_ms_on_dispatch() -> None:
     it MUST be in the whitelist or dispatch breaks at runtime.
     """
     from mahavishnu.jot.drain import _validate_ctx
+
     # Should NOT raise. (started_at_ms is auto-filled before _validate_ctx.)
     _validate_ctx(
         "dispatch",

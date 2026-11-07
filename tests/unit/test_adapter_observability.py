@@ -154,7 +154,9 @@ class TestSettingsActivationPersisterProtocol:
     def test_is_runtime_checkable(self) -> None:
         # The Protocol must be @runtime_checkable so callers can
         # isinstance-check without a static type-checker.
-        assert isinstance(InMemorySettingsActivationPersister(), SettingsActivationPersister)
+        assert isinstance(
+            InMemorySettingsActivationPersister(), SettingsActivationPersister
+        )
         assert not isinstance(object(), SettingsActivationPersister)
 
 

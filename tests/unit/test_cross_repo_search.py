@@ -185,7 +185,9 @@ class TestCrossRepoSearch:
     """Tests for CrossRepoSearch class."""
 
     @pytest.mark.asyncio
-    async def test_text_search(self, mock_task_store: AsyncMock, sample_tasks: list[Task]) -> None:
+    async def test_text_search(
+        self, mock_task_store: AsyncMock, sample_tasks: list[Task]
+    ) -> None:
         """Test basic text search."""
         mock_task_store.list.return_value = sample_tasks
 
@@ -263,7 +265,9 @@ class TestCrossRepoSearch:
         assert all("search" in r.task.tags for r in results)
 
     @pytest.mark.asyncio
-    async def test_search_limit(self, mock_task_store: AsyncMock, sample_tasks: list[Task]) -> None:
+    async def test_search_limit(
+        self, mock_task_store: AsyncMock, sample_tasks: list[Task]
+    ) -> None:
         """Test search with result limit."""
         mock_task_store.list.return_value = sample_tasks
 

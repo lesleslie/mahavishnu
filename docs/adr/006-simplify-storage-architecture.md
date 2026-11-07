@@ -283,6 +283,7 @@ import asyncio
 from mahavishnu.core.storage import PostgreSQLTaskStore
 from mahavishnu.core.session_buddy_client import SessionBuddyClient
 
+
 class TaskCreationService:
     def __init__(self, db: PostgreSQLTaskStore, session_buddy: SessionBuddyClient):
         self.db = db
@@ -300,12 +301,14 @@ class TaskCreationService:
         # Task succeeds even if Session-Buddy is down
         asyncio.create_task(
             self._store_context_in_session_buddy(task.id, task_data),
-            name=f"store_context_task_{task.id}"
+            name=f"store_context_task_{task.id}",
         )
 
         return task
 
-    async def _store_context_in_session_buddy(self, task_id: int, task_data: TaskCreateRequest):
+    async def _store_context_in_session_buddy(
+        self, task_id: int, task_data: TaskCreateRequest
+    ):
         """Best-effort context storage. Failures logged but not raised."""
         try:
             await self.session_buddy.store_context(
@@ -315,11 +318,13 @@ class TaskCreationService:
                     "description": task_data.description,
                     "repository": task_data.repository,
                     "created_at": datetime.now(UTC).isoformat(),
-                }
+                },
             )
         except Exception as e:
             # Log failure but don't raise - task is already created
-            logger.warning(f"Failed to store context in Session-Buddy for task {task_id}: {e}")
+            logger.warning(
+                f"Failed to store context in Session-Buddy for task {task_id}: {e}"
+            )
             # Increment Prometheus counter for monitoring
             session_buddy_write_errors_total.inc()
 ```

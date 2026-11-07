@@ -1194,7 +1194,9 @@ class TestWebSocketBroadcasterHelper:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_workflow_stage_completed_returns_false_when_server_none(self) -> None:
+    async def test_workflow_stage_completed_returns_false_when_server_none(
+        self,
+    ) -> None:
         b = integration.WebSocketBroadcaster(None)
         result = await b.workflow_stage_completed("wf-1", "stage", {})
         assert result is False
@@ -1232,7 +1234,9 @@ class TestWebSocketBroadcasterHelper:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_pool_status_changed_returns_false_when_server_not_running(self) -> None:
+    async def test_pool_status_changed_returns_false_when_server_not_running(
+        self,
+    ) -> None:
         server = _make_fake_server()
         server.is_running = False
         b = integration.WebSocketBroadcaster(server)
@@ -1277,9 +1281,7 @@ class TestEdgeCases:
     async def test_broadcast_pool_status_changed_with_no_status_data(self) -> None:
         server = _make_fake_server()
         server.is_running = True
-        await integration.broadcast_pool_event(
-            server, "status_changed", "pool-x", {}
-        )
+        await integration.broadcast_pool_event(server, "status_changed", "pool-x", {})
         assert server.calls_pool_status == [("pool-x", {})]
 
     @pytest.mark.asyncio

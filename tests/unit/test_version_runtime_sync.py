@@ -80,9 +80,7 @@ def test_no_hardcoded_version_literals() -> None:
         text = py_file.read_text(encoding="utf-8")
         for match in literal_pattern.finditer(text):
             offenders.append((str(py_file.relative_to(ROOT)), match.group(1)))
-    assert not offenders, (
-        f"Hardcoded version literals re-introduced drift: {offenders}"
-    )
+    assert not offenders, f"Hardcoded version literals re-introduced drift: {offenders}"
 
 
 def test_readme_version_matches_pyproject() -> None:

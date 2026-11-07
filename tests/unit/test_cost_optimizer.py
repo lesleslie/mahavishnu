@@ -337,7 +337,9 @@ class TestParetoFrontier:
                 await tracker.record_execution_end(
                     execution_id=execution_id,
                     success=True,
-                    latency_ms=1000 if adapter == AdapterType.PREFECT else 3000,  # Agno slower
+                    latency_ms=1000
+                    if adapter == AdapterType.PREFECT
+                    else 3000,  # Agno slower
                 )
 
         choices = []
@@ -500,7 +502,11 @@ class TestCostAwareChoice:
         )
 
         # Test with each strategy
-        for strategy in [TaskStrategy.BATCH, TaskStrategy.CRITICAL, TaskStrategy.INTERACTIVE]:
+        for strategy in [
+            TaskStrategy.BATCH,
+            TaskStrategy.CRITICAL,
+            TaskStrategy.INTERACTIVE,
+        ]:
             score = optimizer.score_adapter_choice(choice, strategy)
 
             assert 0.0 <= score <= 1.0

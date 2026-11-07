@@ -93,7 +93,9 @@ class AuditReport:
         return {
             "ok": self.ok,
             "file_count": self.file_count,
-            "collisions": {name: list(paths) for name, paths in self.collisions.items()},
+            "collisions": {
+                name: list(paths) for name, paths in self.collisions.items()
+            },
             "shadowed": {name: list(paths) for name, paths in self.shadowed.items()},
         }
 
@@ -126,7 +128,9 @@ def audit(tests_root: Path) -> AuditReport:
 
     return AuditReport(
         collisions=collisions,
-        shadowed={name: tuple(str(path) for path in paths) for name, paths in shadowed.items()},
+        shadowed={
+            name: tuple(str(path) for path in paths) for name, paths in shadowed.items()
+        },
         file_count=len(files),
     )
 
@@ -135,7 +139,9 @@ def format_report(report: AuditReport) -> _Lines:
     """Render an :class:`AuditReport` into stdout/stderr line buffers."""
     lines = _Lines()
     for name, paths in sorted(report.collisions.items()):
-        lines.err.append(f"FAIL: {len(paths)} test files share the pytest module name {name!r}")
+        lines.err.append(
+            f"FAIL: {len(paths)} test files share the pytest module name {name!r}"
+        )
         for path in paths[:_MAX_REPORTED]:
             lines.err.append(f"  - {path}")
         lines.err.append(
@@ -151,7 +157,9 @@ def format_report(report: AuditReport) -> _Lines:
             "real package, a regular package does not"
         )
     if report.ok:
-        lines.out.append(f"OK: {report.file_count} test files, no duplicate pytest module names")
+        lines.out.append(
+            f"OK: {report.file_count} test files, no duplicate pytest module names"
+        )
     return lines
 
 

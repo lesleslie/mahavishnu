@@ -29,7 +29,9 @@ else:
         import os
 
         # __file__ is tests/unit/...; go up 3 levels to repo root
-        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        repo_root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
         ws_pkg = ModuleType("mahavishnu.websocket")
         # Set __path__ to the real directory so submodule imports work
         ws_pkg.__path__ = [os.path.join(repo_root, "mahavishnu", "websocket")]
@@ -279,7 +281,9 @@ class TestLogRateLimit:
         # to test the time-window filtering in _log_rate_limit.
         rl_mod.logger.setLevel(logging.DEBUG)
         with patch.object(rl_mod.logger, "warning") as warn:
-            limiter = TokenBucketRateLimiter(rate=0.0, burst_size=1.0, cleanup_interval=10.0)
+            limiter = TokenBucketRateLimiter(
+                rate=0.0, burst_size=1.0, cleanup_interval=10.0
+            )
             limiter.check("c")  # consume the single token
             limiter.check("c")  # 1st event - logs (1 in window)
             warn.reset_mock()
@@ -302,7 +306,9 @@ class TestLogRateLimit:
 @pytest.mark.unit
 class TestCleanup:
     def test_cleanup_skipped_within_interval(self, fake_time: _FakeTime) -> None:
-        limiter = TokenBucketRateLimiter(rate=10.0, burst_size=10.0, cleanup_interval=100.0)
+        limiter = TokenBucketRateLimiter(
+            rate=10.0, burst_size=10.0, cleanup_interval=100.0
+        )
         limiter.check("c")
         # advance less than cleanup_interval
         fake_time.advance(50.0)
@@ -311,7 +317,9 @@ class TestCleanup:
         assert "c" in limiter._tokens
 
     def test_cleanup_runs_after_interval(self, fake_time: _FakeTime) -> None:
-        limiter = TokenBucketRateLimiter(rate=10.0, burst_size=10.0, cleanup_interval=10.0)
+        limiter = TokenBucketRateLimiter(
+            rate=10.0, burst_size=10.0, cleanup_interval=10.0
+        )
         limiter.check("c1")
         limiter.check("c2")
         # advance beyond cleanup_interval
@@ -322,7 +330,9 @@ class TestCleanup:
         assert "c2" not in limiter._tokens
 
     def test_cleanup_does_not_remove_recent_buckets(self, fake_time: _FakeTime) -> None:
-        limiter = TokenBucketRateLimiter(rate=10.0, burst_size=10.0, cleanup_interval=10.0)
+        limiter = TokenBucketRateLimiter(
+            rate=10.0, burst_size=10.0, cleanup_interval=10.0
+        )
         limiter.check("c1")
         fake_time.advance(11.0)
         limiter.check("c2")  # recent
@@ -332,7 +342,9 @@ class TestCleanup:
         assert "c2" in limiter._tokens
 
     def test_cleanup_removes_rate_limit_events(self, fake_time: _FakeTime) -> None:
-        limiter = TokenBucketRateLimiter(rate=1.0, burst_size=1.0, cleanup_interval=10.0)
+        limiter = TokenBucketRateLimiter(
+            rate=1.0, burst_size=1.0, cleanup_interval=10.0
+        )
         limiter.check("c")
         limiter.check("c")  # adds event
         assert "c" in limiter._rate_limit_events
@@ -427,7 +439,9 @@ class TestGetStats:
         assert stats["rate"] == 10.0
         assert stats["rate_limit_events_last_minute"] == 0
 
-    def test_specific_connection_nonexistent_uses_defaults(self, fake_time: _FakeTime) -> None:
+    def test_specific_connection_nonexistent_uses_defaults(
+        self, fake_time: _FakeTime
+    ) -> None:
         limiter = TokenBucketRateLimiter(rate=10.0, burst_size=10.0)
         stats = limiter.get_stats("nope")
         # Defaults to burst_size tokens and current time for last_update

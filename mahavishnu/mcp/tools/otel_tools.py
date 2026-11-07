@@ -152,7 +152,9 @@ def register_otel_tools(server, app, mcp_client):
                 "system_id": system_id,
                 "storage_backend": "none",
             }
-        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception("Unexpected error during trace ingestion")
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
@@ -206,7 +208,9 @@ def register_otel_tools(server, app, mcp_client):
         except ImportError:
             logger.error("OtelIngester not available for search")
             return []
-        except Exception:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ):  # MCP tool error handler — broad catch is the documented contract
             logger.exception("Error during trace search")
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
@@ -241,7 +245,9 @@ def register_otel_tools(server, app, mcp_client):
         except ImportError:
             logger.error("OtelIngester not available for trace retrieval")
             return None
-        except Exception:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ):  # MCP tool error handler — broad catch is the documented contract
             logger.exception("Error retrieving trace %s", trace_id)
             if "ingester" in dir() and ingester is not None:
                 await ingester.close()
@@ -277,7 +283,9 @@ def register_otel_tools(server, app, mcp_client):
             or time_range_minutes <= 0
             or time_range_minutes > 10080
         ):
-            logger.error("query_local_traces: time_range_minutes must be 1-10080 (1 week max)")
+            logger.error(
+                "query_local_traces: time_range_minutes must be 1-10080 (1 week max)"
+            )
             return []
         if not isinstance(limit, int) or limit <= 0 or limit > 1000:
             logger.error("query_local_traces: limit must be 1-1000")
@@ -337,7 +345,9 @@ def register_otel_tools(server, app, mcp_client):
                         attrs = {}
                 else:
                     attrs = (
-                        metadata_raw.get("attributes", {}) if isinstance(metadata_raw, dict) else {}
+                        metadata_raw.get("attributes", {})
+                        if isinstance(metadata_raw, dict)
+                        else {}
                     )
 
                 normalized.append(
@@ -359,7 +369,9 @@ def register_otel_tools(server, app, mcp_client):
         except ImportError:
             logger.error("HotStore not available for query_local_traces")
             return []
-        except Exception:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ):  # MCP tool error handler — broad catch is the documented contract
             logger.exception("Error querying traces")
             return []
 
@@ -381,7 +393,9 @@ def register_otel_tools(server, app, mcp_client):
             store_factory: Any = HotStore
 
             # Initialize HotStore to query statistics
-            hot_store = store_factory(database_path=app.config.otel_ingester.hot_store_path)
+            hot_store = store_factory(
+                database_path=app.config.otel_ingester.hot_store_path
+            )
             await hot_store.initialize()
 
             # Query total traces (basic implementation)
@@ -412,7 +426,9 @@ def register_otel_tools(server, app, mcp_client):
                 "status": "error",
                 "error": "OtelIngester or HotStore not available",
             }
-        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception("Error getting ingester stats")
             return {
                 "storage_backend": "duckdb_hotstore",

@@ -130,7 +130,9 @@ def get_alerts(
                     else "🟢"
                 )
 
-                typer.echo(f"   {severity_icon} [{alert.severity.value.upper()}] {alert.title}")
+                typer.echo(
+                    f"   {severity_icon} [{alert.severity.value.upper()}] {alert.title}"
+                )
                 typer.echo(f"      {alert.description}")
                 typer.echo(f"      Time: {alert.timestamp}")
                 typer.echo("")
@@ -141,7 +143,9 @@ def get_alerts(
 @app.command("acknowledge-alert")
 def acknowledge_alert(
     alert_id: str = typer.Argument(..., help="ID of the alert to acknowledge"),
-    user: str = typer.Option("system", "--user", "-u", help="User acknowledging the alert"),
+    user: str = typer.Option(
+        "system", "--user", "-u", help="User acknowledging the alert"
+    ),
     config_path: Path | None = typer.Option(
         None, "--config", "-c", help="Path to configuration file"
     ),
@@ -173,7 +177,10 @@ def acknowledge_alert(
 @app.command("trigger-test-alert")
 def trigger_test_alert(
     severity: str = typer.Option(
-        "medium", "--severity", "-s", help="Severity level (low, medium, high, critical)"
+        "medium",
+        "--severity",
+        "-s",
+        help="Severity level (low, medium, high, critical)",
     ),
     title: str = typer.Option("Test Alert", "--title", "-t", help="Title of the alert"),
     description: str = typer.Option(

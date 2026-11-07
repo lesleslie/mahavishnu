@@ -79,8 +79,7 @@ def test_no_bifrost_base_url_references() -> None:
         if "BIFROST_BASE_URL" in text:
             offenders.append(path)
     assert not offenders, (
-        "BIFROST_BASE_URL still referenced in production files: "
-        + ", ".join(offenders)
+        "BIFROST_BASE_URL still referenced in production files: " + ", ".join(offenders)
     )
 
 

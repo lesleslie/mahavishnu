@@ -115,7 +115,10 @@ class TestCreateWorktree:
 
     def test_create_failure(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        coord.create_worktree.return_value = {"success": False, "error": "Branch not found"}
+        coord.create_worktree.return_value = {
+            "success": False,
+            "error": "Branch not found",
+        }
         result = runner.invoke(worktree_app, ["create", "myrepo", "bad-branch"])
         assert result.exit_code == 1
         assert "Failed" in result.output
@@ -139,7 +142,9 @@ class TestCreateWorktree:
         assert result.exit_code != 0
 
     def test_create_short_name_flag(self, mock_app):
-        result = runner.invoke(worktree_app, ["create", "myrepo", "branch", "-n", "wt-name"])
+        result = runner.invoke(
+            worktree_app, ["create", "myrepo", "branch", "-n", "wt-name"]
+        )
         assert result.exit_code == 0
         coord = mock_app.load.return_value.worktree_coordinator
         coord.create_worktree.assert_called_once()
@@ -155,7 +160,9 @@ class TestRemoveWorktree:
         assert "Removed worktree" in result.output
 
     def test_remove_with_force(self, mock_app):
-        result = runner.invoke(worktree_app, ["remove", "myrepo", "/tmp/wt1", "--force"])
+        result = runner.invoke(
+            worktree_app, ["remove", "myrepo", "/tmp/wt1", "--force"]
+        )
         assert result.exit_code == 0
         coord = mock_app.load.return_value.worktree_coordinator
         coord.remove_worktree.assert_called_once_with(
@@ -173,7 +180,9 @@ class TestRemoveWorktree:
         assert result.exit_code == 0
         coord = mock_app.load.return_value.worktree_coordinator
         coord.remove_worktree.assert_called_once()
-        assert coord.remove_worktree.call_args.kwargs["force_reason"] == "cleanup needed"
+        assert (
+            coord.remove_worktree.call_args.kwargs["force_reason"] == "cleanup needed"
+        )
 
     def test_remove_with_backup(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
@@ -188,7 +197,10 @@ class TestRemoveWorktree:
 
     def test_remove_failure(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        coord.remove_worktree.return_value = {"success": False, "error": "Worktree not found"}
+        coord.remove_worktree.return_value = {
+            "success": False,
+            "error": "Worktree not found",
+        }
         result = runner.invoke(worktree_app, ["remove", "myrepo", "/tmp/wt1"])
         assert result.exit_code == 1
         assert "Failed" in result.output
@@ -207,7 +219,9 @@ class TestRemoveWorktree:
             "path_safe": True,
             "dependencies": [],
         }
-        result = runner.invoke(worktree_app, ["remove", "myrepo", "/tmp/wt1"], input="n")
+        result = runner.invoke(
+            worktree_app, ["remove", "myrepo", "/tmp/wt1"], input="n"
+        )
         assert result.exit_code == 0
         assert "cancelled" in result.output.lower()
 
@@ -219,7 +233,9 @@ class TestRemoveWorktree:
             "path_safe": True,
             "dependencies": [],
         }
-        result = runner.invoke(worktree_app, ["remove", "myrepo", "/tmp/wt1"], input="y")
+        result = runner.invoke(
+            worktree_app, ["remove", "myrepo", "/tmp/wt1"], input="y"
+        )
         assert result.exit_code == 0
         assert "Removed worktree" in result.output
 
@@ -231,7 +247,9 @@ class TestRemoveWorktree:
             "path_safe": True,
             "dependencies": ["repo-b", "repo-c"],
         }
-        result = runner.invoke(worktree_app, ["remove", "myrepo", "/tmp/wt1"], input="n")
+        result = runner.invoke(
+            worktree_app, ["remove", "myrepo", "/tmp/wt1"], input="n"
+        )
         assert result.exit_code == 0
         assert "cancelled" in result.output.lower()
 
@@ -243,7 +261,9 @@ class TestRemoveWorktree:
             "path_safe": True,
             "dependencies": ["repo-b"],
         }
-        result = runner.invoke(worktree_app, ["remove", "myrepo", "/tmp/wt1"], input="y")
+        result = runner.invoke(
+            worktree_app, ["remove", "myrepo", "/tmp/wt1"], input="y"
+        )
         assert result.exit_code == 0
         assert "Removed worktree" in result.output
 
@@ -253,7 +273,9 @@ class TestRemoveWorktree:
             "uncommitted_changes": True,
             "dependencies": ["repo-b"],
         }
-        result = runner.invoke(worktree_app, ["remove", "myrepo", "/tmp/wt1", "--force"])
+        result = runner.invoke(
+            worktree_app, ["remove", "myrepo", "/tmp/wt1", "--force"]
+        )
         assert result.exit_code == 0
         coord.remove_worktree.assert_called_once()
 
@@ -287,7 +309,11 @@ class TestListWorktrees:
 
     def test_list_empty(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        coord.list_worktrees.return_value = {"success": True, "worktrees": [], "total_count": 0}
+        coord.list_worktrees.return_value = {
+            "success": True,
+            "worktrees": [],
+            "total_count": 0,
+        }
         result = runner.invoke(worktree_app, ["list"])
         assert result.exit_code == 0
         assert "0 total" in result.output
@@ -305,7 +331,10 @@ class TestListWorktrees:
 
     def test_list_failure(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        coord.list_worktrees.return_value = {"success": False, "error": "Repo not found"}
+        coord.list_worktrees.return_value = {
+            "success": False,
+            "error": "Repo not found",
+        }
         result = runner.invoke(worktree_app, ["list"])
         assert result.exit_code == 1
         assert "Failed" in result.output
@@ -340,7 +369,10 @@ class TestPruneWorktrees:
 
     def test_prune_failure(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        coord.prune_worktrees.return_value = {"success": False, "error": "Not a git repo"}
+        coord.prune_worktrees.return_value = {
+            "success": False,
+            "error": "Not a git repo",
+        }
         result = runner.invoke(worktree_app, ["prune", "myrepo"])
         assert result.exit_code == 1
         assert "Failed" in result.output
@@ -364,6 +396,7 @@ class TestPruneStaleMetadata:
         """Wire up a working repo_manager.list_repos / get_repo pair."""
         repo_manager = MagicMock()
         repo_manager.list_repos.return_value = repos
+
         # For the --repo flag path: get_repo("only") -> the matching repo.
         def _get_repo(name):
             for r in repos:
@@ -390,9 +423,7 @@ class TestPruneStaleMetadata:
 
     def test_prune_stale_metadata_default_repo(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        self._patch_repos(
-            mock_app, [self._make_repo("myrepo")]
-        )
+        self._patch_repos(mock_app, [self._make_repo("myrepo")])
         coord.prune_stale_metadata.return_value = {
             "success": True,
             "repo_nickname": "myrepo",
@@ -417,15 +448,11 @@ class TestPruneStaleMetadata:
         assert "removed=2" in result.output
         assert "wt-a" in result.output
         assert "wt-b" in result.output
-        coord.prune_stale_metadata.assert_awaited_once_with(
-            "myrepo", dry_run=False
-        )
+        coord.prune_stale_metadata.assert_awaited_once_with("myrepo", dry_run=False)
 
     def test_prune_stale_metadata_dry_run_prefix(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        self._patch_repos(
-            mock_app, [self._make_repo("myrepo")]
-        )
+        self._patch_repos(mock_app, [self._make_repo("myrepo")])
         coord.prune_stale_metadata.return_value = {
             "success": True,
             "repo_nickname": "myrepo",
@@ -449,9 +476,7 @@ class TestPruneStaleMetadata:
 
     def test_prune_stale_metadata_repo_filter(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        self._patch_repos(
-            mock_app, [self._make_repo("only"), self._make_repo("other")]
-        )
+        self._patch_repos(mock_app, [self._make_repo("only"), self._make_repo("other")])
         coord.prune_stale_metadata.return_value = {
             "success": True,
             "repo_nickname": "only",
@@ -460,19 +485,13 @@ class TestPruneStaleMetadata:
             "removed": [],
             "dry_run": False,
         }
-        result = runner.invoke(
-            worktree_app, ["prune-stale-metadata", "--repo", "only"]
-        )
+        result = runner.invoke(worktree_app, ["prune-stale-metadata", "--repo", "only"])
         assert result.exit_code == 0
-        coord.prune_stale_metadata.assert_awaited_once_with(
-            "only", dry_run=False
-        )
+        coord.prune_stale_metadata.assert_awaited_once_with("only", dry_run=False)
 
     def test_prune_stale_metadata_locked_in_output(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        self._patch_repos(
-            mock_app, [self._make_repo("myrepo")]
-        )
+        self._patch_repos(mock_app, [self._make_repo("myrepo")])
         coord.prune_stale_metadata.return_value = {
             "success": True,
             "repo_nickname": "myrepo",
@@ -488,9 +507,7 @@ class TestPruneStaleMetadata:
 
     def test_prune_stale_metadata_json_output(self, mock_app):
         coord = mock_app.load.return_value.worktree_coordinator
-        self._patch_repos(
-            mock_app, [self._make_repo("myrepo")]
-        )
+        self._patch_repos(mock_app, [self._make_repo("myrepo")])
         coord.prune_stale_metadata.return_value = {
             "success": True,
             "repo_nickname": "myrepo",
@@ -505,9 +522,7 @@ class TestPruneStaleMetadata:
             ],
             "dry_run": False,
         }
-        result = runner.invoke(
-            worktree_app, ["prune-stale-metadata", "--json"]
-        )
+        result = runner.invoke(worktree_app, ["prune-stale-metadata", "--json"])
         assert result.exit_code == 0
         import json
 
@@ -689,13 +704,17 @@ class TestInitializeCoordinatorRaises:
     def test_create_init_raises(self):
         with patch("mahavishnu.worktree_cli.MahavishnuApp") as MockApp:
             app = MockApp.load.return_value
-            app.initialize_worktree_coordinator = AsyncMock(side_effect=RuntimeError("init failed"))
+            app.initialize_worktree_coordinator = AsyncMock(
+                side_effect=RuntimeError("init failed")
+            )
             result = runner.invoke(worktree_app, ["create", "repo", "branch"])
             assert result.exit_code != 0
 
     def test_list_init_raises(self):
         with patch("mahavishnu.worktree_cli.MahavishnuApp") as MockApp:
             app = MockApp.load.return_value
-            app.initialize_worktree_coordinator = AsyncMock(side_effect=RuntimeError("init failed"))
+            app.initialize_worktree_coordinator = AsyncMock(
+                side_effect=RuntimeError("init failed")
+            )
             result = runner.invoke(worktree_app, ["list"])
             assert result.exit_code != 0

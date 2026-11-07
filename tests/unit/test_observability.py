@@ -129,7 +129,9 @@ def _force_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _config(metrics_enabled: bool = True) -> SimpleNamespace:
     return SimpleNamespace(
-        observability=SimpleNamespace(metrics_enabled=metrics_enabled, otlp_endpoint="http://otel"),
+        observability=SimpleNamespace(
+            metrics_enabled=metrics_enabled, otlp_endpoint="http://otel"
+        ),
         log_level="INFO",
     )
 
@@ -189,13 +191,21 @@ def test_fallback_mock_classes_methods_are_executable() -> None:
     assert obs.MockMeterProvider().get_meter("x") is not None
 
 
-def test_module_import_success_branch_sets_otel_available(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_module_import_success_branch_sets_otel_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     opentelemetry_mod = types.ModuleType("opentelemetry")
     metrics_mod = types.ModuleType("opentelemetry.metrics")
     trace_mod = types.ModuleType("opentelemetry.trace")
-    metric_exporter_mod = types.ModuleType("opentelemetry.exporter.otlp.proto.grpc.metric_exporter")
-    trace_exporter_mod = types.ModuleType("opentelemetry.exporter.otlp.proto.grpc.trace_exporter")
-    system_metrics_mod = types.ModuleType("opentelemetry.instrumentation.system_metrics")
+    metric_exporter_mod = types.ModuleType(
+        "opentelemetry.exporter.otlp.proto.grpc.metric_exporter"
+    )
+    trace_exporter_mod = types.ModuleType(
+        "opentelemetry.exporter.otlp.proto.grpc.trace_exporter"
+    )
+    system_metrics_mod = types.ModuleType(
+        "opentelemetry.instrumentation.system_metrics"
+    )
     sdk_metrics_mod = types.ModuleType("opentelemetry.sdk.metrics")
     sdk_metrics_export_mod = types.ModuleType("opentelemetry.sdk.metrics.export")
     sdk_resources_mod = types.ModuleType("opentelemetry.sdk.resources")
@@ -229,10 +239,14 @@ def test_module_import_success_branch_sets_otel_available(monkeypatch: pytest.Mo
         sys.modules, "opentelemetry.instrumentation.system_metrics", system_metrics_mod
     )
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.metrics", sdk_metrics_mod)
-    monkeypatch.setitem(sys.modules, "opentelemetry.sdk.metrics.export", sdk_metrics_export_mod)
+    monkeypatch.setitem(
+        sys.modules, "opentelemetry.sdk.metrics.export", sdk_metrics_export_mod
+    )
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.resources", sdk_resources_mod)
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.trace", sdk_trace_mod)
-    monkeypatch.setitem(sys.modules, "opentelemetry.sdk.trace.export", sdk_trace_export_mod)
+    monkeypatch.setitem(
+        sys.modules, "opentelemetry.sdk.trace.export", sdk_trace_export_mod
+    )
 
     try:
         reloaded = importlib.reload(obs)
@@ -281,7 +295,9 @@ def test_logging_helpers_and_get_logs_filters() -> None:
     assert manager.get_logs(since=future) == []
 
 
-def test_start_and_end_workflow_trace_records_duration(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_start_and_end_workflow_trace_records_duration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     manager = obs.ObservabilityManager(_config())
     histogram = _Histogram()
     manager.workflow_duration_histogram = histogram
@@ -314,10 +330,14 @@ def test_repo_trace_and_processing_metric_record() -> None:
     assert span is not None
 
     manager.record_repo_processing_time("/tmp/myrepo", "wf-2", 4.5)
-    assert histogram.calls == [(4.5, {"repo.path": "/tmp/myrepo", "workflow.id": "wf-2"})]
+    assert histogram.calls == [
+        (4.5, {"repo.path": "/tmp/myrepo", "workflow.id": "wf-2"})
+    ]
 
 
-def test_get_performance_metrics_counts_recent_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_performance_metrics_counts_recent_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     manager = obs.ObservabilityManager(_config())
     manager.workflow_performance["wf-a"] = {
         "start_time": 90.0,
@@ -379,7 +399,9 @@ def test_init_otel_components_success_path(monkeypatch: pytest.MonkeyPatch) -> N
     assert manager.create_workflow_counter() is not None
 
 
-def test_init_otel_components_failure_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_otel_components_failure_falls_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(obs, "OTEL_AVAILABLE", True)
 
     class _BadResource:
@@ -432,7 +454,9 @@ async def test_flush_and_shutdown_otel_paths(monkeypatch: pytest.MonkeyPatch) ->
 
 
 @pytest.mark.asyncio
-async def test_flush_and_shutdown_otel_exception_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_flush_and_shutdown_otel_exception_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _stub_otel_globals(monkeypatch)
     manager = obs.ObservabilityManager(_config(metrics_enabled=False))
 
@@ -455,7 +479,9 @@ async def test_flush_and_shutdown_otel_exception_paths(monkeypatch: pytest.Monke
     manager.shutdown()
 
 
-def test_import_error_branch_defines_fallback_classes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_import_error_branch_defines_fallback_classes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     original_import = builtins.__import__
 
     def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
@@ -465,7 +491,9 @@ def test_import_error_branch_defines_fallback_classes(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
     for module_name in [
-        name for name in sys.modules if name == "opentelemetry" or name.startswith("opentelemetry.")
+        name
+        for name in sys.modules
+        if name == "opentelemetry" or name.startswith("opentelemetry.")
     ]:
         monkeypatch.delitem(sys.modules, module_name, raising=False)
     # Reload via importlib so the module is registered in ``sys.modules``

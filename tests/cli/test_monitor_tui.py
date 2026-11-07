@@ -62,7 +62,9 @@ def test_monitor_tui_invokes_monitor_app(fake_monitor_run: Any) -> None:
 
     # Either the test mode records the call, or (if the textual fallback
     # fired) we at least got a clean exit without an exception.
-    assert result.exit_code in {0, 1}, f"unexpected exit {result.exit_code}: {result.output!r}"
+    assert result.exit_code in {0, 1}, (
+        f"unexpected exit {result.exit_code}: {result.output!r}"
+    )
     assert fake_monitor_run["calls"] >= 1, (
         "MonitorApp.run was never invoked by `mahavishnu monitor watch`"
     )

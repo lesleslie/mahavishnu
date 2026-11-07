@@ -3,6 +3,7 @@
 Verifies ID newtype patterns, model frozen/forbid semantics, and required
 field constraints.
 """
+
 from __future__ import annotations
 
 from pydantic import TypeAdapter, ValidationError
@@ -52,14 +53,16 @@ def test_capability_model_is_frozen_and_forbids_extras() -> None:
     with pytest.raises(ValidationError):
         cap.description = "new"  # frozen
     with pytest.raises(ValidationError):
-        Capability.model_validate({
-            "id": "worker:bash",
-            "kind": "worker",
-            "description": "",
-            "io_in": {},
-            "io_out": {},
-            "unknown_field": "x",
-        })
+        Capability.model_validate(
+            {
+                "id": "worker:bash",
+                "kind": "worker",
+                "description": "",
+                "io_in": {},
+                "io_out": {},
+                "unknown_field": "x",
+            }
+        )
 
 
 def test_capability_spec_requires_nonempty_prompt() -> None:

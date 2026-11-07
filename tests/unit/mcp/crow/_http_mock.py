@@ -25,7 +25,9 @@ if TYPE_CHECKING:
 
 
 def _url_router(
-    url_to_response: dict[str, httpx.Response | Callable[[httpx.Request], httpx.Response]],
+    url_to_response: dict[
+        str, httpx.Response | Callable[[httpx.Request], httpx.Response]
+    ],
 ) -> Callable[[httpx.Request], httpx.Response]:
     """Build a MockTransport handler that maps request URLs to responses.
 
@@ -65,7 +67,9 @@ def _nullctx() -> Iterator[None]:
 
 @contextmanager
 def _mock_http_client(
-    url_to_response: dict[str, httpx.Response | Callable[[httpx.Request], httpx.Response]],
+    url_to_response: dict[
+        str, httpx.Response | Callable[[httpx.Request], httpx.Response]
+    ],
     target_module: str = "mahavishnu.mcp.crow.tools.web_tools",
     dns_ip: str = "93.184.216.34",
     stub_dns: bool = True,
@@ -80,9 +84,7 @@ def _mock_http_client(
     fake = httpx.AsyncClient(follow_redirects=False, transport=transport)
 
     dns_ctx = _stub_dns(dns_ip) if stub_dns else _nullctx()
-    with dns_ctx, patch(
-        f"{target_module}.get_http_client", return_value=fake
-    ):
+    with dns_ctx, patch(f"{target_module}.get_http_client", return_value=fake):
         try:
             yield
         finally:

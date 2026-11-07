@@ -131,7 +131,9 @@ def tier2_paths(blocks: list[dict], plan_text: str) -> list[dict]:
         cds = BASH_CD.findall(body)
         roots = [Path(c) for c in cds if c.startswith("/Users/les/Projects/")]
         targets = (
-            set(PY_FILE.findall(body)) | set(YAML_FILE.findall(body)) | set(TOML_FILE.findall(body))
+            set(PY_FILE.findall(body))
+            | set(YAML_FILE.findall(body))
+            | set(TOML_FILE.findall(body))
         )
         for t in sorted(targets):
             t = t.strip("'\"")

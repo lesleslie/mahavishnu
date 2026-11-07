@@ -302,7 +302,9 @@ class TestRepositoryNicknameIntegration:
 # ============================================================================
 
 
-def _make_repo(name: str, package: str | None = None, path: str | None = None) -> Repository:
+def _make_repo(
+    name: str, package: str | None = None, path: str | None = None
+) -> Repository:
     """Helper to create a minimal Repository."""
     return Repository(
         name=name,

@@ -163,7 +163,9 @@ def _capture_orphan_events(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, An
     captured: list[dict[str, Any]] = []
 
     def _spy(task_id: str, reason: str, workflow_id: str = "") -> None:
-        captured.append({"task_id": task_id, "reason": reason, "workflow_id": workflow_id})
+        captured.append(
+            {"task_id": task_id, "reason": reason, "workflow_id": workflow_id}
+        )
 
     monkeypatch.setattr(th, "_publish_task_handoff_orphan", _spy)
     return captured
@@ -226,11 +228,15 @@ class TestSessionBuddyDown:
 
         # tasks_get raises — the production tool should translate this to TaskNotFoundError.
         sb = MagicMock()
-        sb.tasks_get = AsyncMock(side_effect=ConnectionError("session-buddy unreachable"))
+        sb.tasks_get = AsyncMock(
+            side_effect=ConnectionError("session-buddy unreachable")
+        )
         sb.tasks_link_workflow = AsyncMock()
 
         register_tasks_handoff_tools(
-            stub_mcp, session_buddy_client=sb, workflow_dispatch_fn=fake_workflow_dispatch
+            stub_mcp,
+            session_buddy_client=sb,
+            workflow_dispatch_fn=fake_workflow_dispatch,
         )
         tool = stub_mcp.tools["tasks_handoff_to_workflow"]
 
@@ -306,7 +312,9 @@ class TestStep3Failure:
         orphan = orphan_calls[0]
         assert orphan["task_id"] == _VALID_TASK_ID
         assert orphan["reason"] == "step_3_update_failed"
-        assert orphan["workflow_id"] == "wf-1"  # workflow IS running, task is the orphan
+        assert (
+            orphan["workflow_id"] == "wf-1"
+        )  # workflow IS running, task is the orphan
 
 
 class TestCancellation:
@@ -366,7 +374,9 @@ class TestEmptyWorkflowId:
         orphan_calls = _capture_orphan_events(monkeypatch)
 
         # pool_route_execute succeeds but the envelope is missing workflow_id.
-        pool_dispatch = AsyncMock(return_value={"pool_id": "pool-a", "status": "active"})
+        pool_dispatch = AsyncMock(
+            return_value={"pool_id": "pool-a", "status": "active"}
+        )
 
         register_tasks_handoff_tools(
             stub_mcp,
@@ -741,7 +751,9 @@ class TestUnknownWorkflowId:
         _reset_rate_limiter()
         _capture_orphan_events(monkeypatch)
         monkeypatch.setattr(th, "tasks_handoff_to_workflow_available", lambda: True)
-        dispatch = AsyncMock(return_value={"workflow_id": "unknown", "status": "running"})
+        dispatch = AsyncMock(
+            return_value={"workflow_id": "unknown", "status": "running"}
+        )
         register_tasks_handoff_tools(
             stub_mcp,
             session_buddy_client=fake_sb_client,

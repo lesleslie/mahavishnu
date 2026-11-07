@@ -262,7 +262,12 @@ def fetch_phase_d_production_state(
     state is "above" when both conditions are met; "below" otherwise;
     "unknown" when the feature-tracking doc has no frontmatter.
     """
-    ft_path = plan_root / "docs" / "feature-tracking" / "2026-09-10-observability-changepoint.md"
+    ft_path = (
+        plan_root
+        / "docs"
+        / "feature-tracking"
+        / "2026-09-10-observability-changepoint.md"
+    )
     fm = parse_frontmatter(ft_path)
     if not fm:
         return None, None, "unknown"
@@ -335,8 +340,8 @@ def build_report(
     # Trigger 1: optimal_transport
     akosha_count, akosha_state = fetch_akosha_snapshot_count(mcp_config)
     akosha_fired = akosha_state == "above"
-    akosha_followup_exists, akosha_followup_status, akosha_followup_path = check_followup_status(
-        plan_root, "optimal_transport"
+    akosha_followup_exists, akosha_followup_status, akosha_followup_path = (
+        check_followup_status(plan_root, "optimal_transport")
     )
     report.triggers.append(
         TriggerResult(
@@ -381,7 +386,9 @@ def build_report(
     )
 
     # Trigger 3: phase_d_cross_repo
-    pd_adopted, pd_days, pd_state = fetch_phase_d_production_state(mcp_config, plan_root)
+    pd_adopted, pd_days, pd_state = fetch_phase_d_production_state(
+        mcp_config, plan_root
+    )
     pd_fired = pd_state == "above"
     pd_followup_exists, pd_followup_status, pd_followup_path = check_followup_status(
         plan_root, "phase_d_cross_repo"
@@ -510,7 +517,10 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 2
         except (OSError, json.JSONDecodeError) as exc:
-            print(f"feature_eligibility.py: failed to read --mcp-config: {exc}", file=sys.stderr)
+            print(
+                f"feature_eligibility.py: failed to read --mcp-config: {exc}",
+                file=sys.stderr,
+            )
             return 2
 
     requests_log = Path(args.requests_log).resolve()

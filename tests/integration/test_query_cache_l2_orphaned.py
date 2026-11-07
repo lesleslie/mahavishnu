@@ -37,9 +37,14 @@ def test_no_path_reads_or_writes_query_cache_l2() -> None:
     document history, not the production state.
     """
     result = subprocess.run(
-        ["grep", "-rn", "query_cache_l2",
-         "/Users/les/Projects/session-buddy/session_buddy",
-         "/Users/les/Projects/akosha/akosha"],
-        capture_output=True, text=True,
+        [
+            "grep",
+            "-rn",
+            "query_cache_l2",
+            "/Users/les/Projects/session-buddy/session_buddy",
+            "/Users/les/Projects/akosha/akosha",
+        ],
+        capture_output=True,
+        text=True,
     )
     assert result.stdout == "", f"query_cache_l2 still referenced:\n{result.stdout}"

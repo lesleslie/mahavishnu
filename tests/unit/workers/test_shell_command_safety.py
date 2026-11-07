@@ -84,14 +84,17 @@ def test_prompt_reaches_the_session_as_environment_data(worker_type: str) -> Non
     captured: dict[str, Any] = {}
 
     class _Manager:
-        async def launch_sessions(self, command, count, worker_type, env_overrides=None):
+        async def launch_sessions(
+            self, command, count, worker_type, env_overrides=None
+        ):
             captured["command"] = command
             captured["env"] = dict(env_overrides or {})
             return ["sess-1"]
 
     config = WORKER_REGISTRY[worker_type]
     worker = shell_backend.ShellWorker(
-        config=config, terminal_manager=_Manager()  # type: ignore[arg-type]
+        config=config,
+        terminal_manager=_Manager(),  # type: ignore[arg-type]
     )
     asyncio.run(worker.start(prompt=HOSTILE_PROMPT))
 
@@ -117,7 +120,9 @@ def test_prompt_reaches_the_session_as_environment_data(worker_type: str) -> Non
     # The only shell separators the registry's own commands use are the
     # completion-marker printf and the blocking read that keeps the pane
     # alive. Anything else would be an injection seam.
-    without_known_separators = command.replace("; printf", "").replace("; read -r _", "")
+    without_known_separators = command.replace("; printf", "").replace(
+        "; read -r _", ""
+    )
     assert ";" not in without_known_separators
 
 
@@ -128,7 +133,9 @@ def test_no_prompt_means_no_env_var() -> None:
     captured: dict[str, Any] = {}
 
     class _Manager:
-        async def launch_sessions(self, command, count, worker_type, env_overrides=None):
+        async def launch_sessions(
+            self, command, count, worker_type, env_overrides=None
+        ):
             captured["env"] = dict(env_overrides or {})
             return ["sess-1"]
 
@@ -221,7 +228,9 @@ def test_unrestricted_modes_are_not_reachable() -> None:
         ("terminal-codex", "danger-full-access"),
     ],
 )
-def test_requesting_an_unrestricted_mode_fails_closed(worker_type: str, mode: str) -> None:
+def test_requesting_an_unrestricted_mode_fails_closed(
+    worker_type: str, mode: str
+) -> None:
     """Asking for one must raise, not fall back to something else."""
     config = WORKER_REGISTRY[worker_type]
 
@@ -237,13 +246,15 @@ def test_settings_override_wins_over_the_registry_default() -> None:
     settings.workers.permission_modes = {"terminal-claude": "plan"}
 
     mode = shell_backend.resolve_permission_mode(
-        WORKER_REGISTRY["terminal-claude"], settings.workers.permission_modes["terminal-claude"]
+        WORKER_REGISTRY["terminal-claude"],
+        settings.workers.permission_modes["terminal-claude"],
     )
     assert mode == "plan"
     # Not listed -> registry default.
     assert (
         shell_backend.resolve_permission_mode(
-            WORKER_REGISTRY["terminal-qwen"], settings.workers.permission_modes.get("terminal-qwen")
+            WORKER_REGISTRY["terminal-qwen"],
+            settings.workers.permission_modes.get("terminal-qwen"),
         )
         == "yolo"
     )
@@ -265,7 +276,12 @@ def test_settings_default_is_empty() -> None:
 # CLI exits. Nothing is typed into the session.
 
 
-ONE_SHOT_AGENTS = ("terminal-qwen", "terminal-claude", "terminal-codex", "terminal-deepagents")
+ONE_SHOT_AGENTS = (
+    "terminal-qwen",
+    "terminal-claude",
+    "terminal-codex",
+    "terminal-deepagents",
+)
 
 
 @pytest.mark.parametrize("worker_type", ONE_SHOT_AGENTS)
@@ -295,7 +311,9 @@ def test_the_one_shot_command_keeps_the_pane_alive_after_the_cli_exits(
     """
     command = WORKER_REGISTRY[worker_type].command
 
-    assert "read -r _" in command, f"{worker_type} must keep its pane alive after the CLI exits"
+    assert "read -r _" in command, (
+        f"{worker_type} must keep its pane alive after the CLI exits"
+    )
     assert "__MAHAVISHNU_DONE__" in command
     assert WORKER_REGISTRY[worker_type].completion_markers == ["__MAHAVISHNU_DONE__"]
 

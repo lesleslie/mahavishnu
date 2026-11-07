@@ -85,9 +85,15 @@ def create_crow_mcp_client(
         - ``mahavishnu/mcp/crow_server.py`` — server-side counterpart.
         - ``docs/followups/2026-06-29-crow-mcp-client-wiring.md``.
     """
-    resolved_host = host or os.getenv("MAHAVISHNU_CROW_HTTP_HOST") or _DEFAULT_CROW_HTTP_HOST
-    resolved_port_str = str(port) if port is not None else os.getenv("MAHAVISHNU_CROW_HTTP_PORT")
-    resolved_port = int(resolved_port_str) if resolved_port_str else _DEFAULT_CROW_HTTP_PORT
+    resolved_host = (
+        host or os.getenv("MAHAVISHNU_CROW_HTTP_HOST") or _DEFAULT_CROW_HTTP_HOST
+    )
+    resolved_port_str = (
+        str(port) if port is not None else os.getenv("MAHAVISHNU_CROW_HTTP_PORT")
+    )
+    resolved_port = (
+        int(resolved_port_str) if resolved_port_str else _DEFAULT_CROW_HTTP_PORT
+    )
     base_url = f"http://{resolved_host}:{resolved_port}/mcp"
     return BodaiComponentMCPClient(
         base_url=base_url,

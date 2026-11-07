@@ -61,7 +61,10 @@ class TestScaffoldCommand:
             ],
         )
         assert result.exit_code == 0
-        assert "dry-run" in result.output.lower() or "would include" in result.output.lower()
+        assert (
+            "dry-run" in result.output.lower()
+            or "would include" in result.output.lower()
+        )
 
     def test_scaffold_missing_pattern(self):
         result = runner.invoke(
@@ -91,5 +94,7 @@ class TestScaffoldCommand:
 
 class TestScaffoldValidate:
     def test_validate_project(self):
-        result = runner.invoke(app, ["scaffold-validate", "--project", "/tmp/nonexistent"])
+        result = runner.invoke(
+            app, ["scaffold-validate", "--project", "/tmp/nonexistent"]
+        )
         assert result.exit_code == 1

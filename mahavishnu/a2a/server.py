@@ -55,7 +55,9 @@ class _A2ABearerMiddleware:
             # implementations converge via ``build_execute_fn``.)
             if not secrets.compare_digest(auth.encode(), expected.encode()):
                 response = Response(
-                    '{"error":"Unauthorized"}', status_code=401, media_type="application/json"
+                    '{"error":"Unauthorized"}',
+                    status_code=401,
+                    media_type="application/json",
                 )
                 await response(scope, receive, send)
                 return
@@ -117,7 +119,9 @@ def _sse_event(
         "final": final,
     }
     if result is not None:
-        payload["artifacts"] = [{"parts": [{"type": "text", "text": result.output or ""}]}]
+        payload["artifacts"] = [
+            {"parts": [{"type": "text", "text": result.output or ""}]}
+        ]
     if error:
         payload["status"]["message"] = error
     return f"data: {json.dumps(payload)}\n\n"
@@ -173,17 +177,27 @@ def _tasks_send_subscribe_handler(execute_fn: Any, timeout: float = 600.0):  # t
         async def run_and_emit() -> None:
             await queue.put(_sse_event(task_id, "working", final=False))
             try:
-                result = await asyncio.wait_for(execute_fn({"prompt": prompt}), timeout=timeout)
-                await queue.put(_sse_event(task_id, "completed", final=True, result=result))
-            except TimeoutError:
-                logger.warning("A2A task timed out (%.0fs) for task_id=%s", timeout, task_id)
+                result = await asyncio.wait_for(
+                    execute_fn({"prompt": prompt}), timeout=timeout
+                )
                 await queue.put(
-                    _sse_event(task_id, "failed", final=True, error="Task execution timed out")
+                    _sse_event(task_id, "completed", final=True, result=result)
+                )
+            except TimeoutError:
+                logger.warning(
+                    "A2A task timed out (%.0fs) for task_id=%s", timeout, task_id
+                )
+                await queue.put(
+                    _sse_event(
+                        task_id, "failed", final=True, error="Task execution timed out"
+                    )
                 )
             except Exception:  # HTTP handler — every task failure surfaces as a structured A2A failed SSE event, never breaks the event stream
                 logger.exception("A2A /tasks/sendSubscribe handler error")
                 await queue.put(
-                    _sse_event(task_id, "failed", final=True, error="Task execution failed")
+                    _sse_event(
+                        task_id, "failed", final=True, error="Task execution failed"
+                    )
                 )
             finally:
                 await queue.put(None)
@@ -231,7 +245,9 @@ def build_a2a_router(
         ),
         Route(
             "/tasks/sendSubscribe",
-            endpoint=_tasks_send_subscribe_handler(execute_fn, settings.task_timeout_seconds),
+            endpoint=_tasks_send_subscribe_handler(
+                execute_fn, settings.task_timeout_seconds
+            ),
             methods=["POST"],
         ),
     ]

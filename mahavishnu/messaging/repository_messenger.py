@@ -208,7 +208,10 @@ class RepositoryMessenger:
                 for msg in self.messages
                 if msg.receiver_repo == repo_name
                 and (message_type is None or msg.message_type == message_type)
-                and (since is None or (msg.timestamp is not None and msg.timestamp >= since))
+                and (
+                    since is None
+                    or (msg.timestamp is not None and msg.timestamp >= since)
+                )
             ]
 
             # Sort by timestamp (newest first); entries without a timestamp sort last
@@ -268,7 +271,9 @@ class RepositoryMessenger:
             self.logger.error(f"Error acknowledging message {message_id}: {e}")
             return False
 
-    async def get_unacknowledged_messages(self, repo_name: str) -> list[RepositoryMessage]:
+    async def get_unacknowledged_messages(
+        self, repo_name: str
+    ) -> list[RepositoryMessage]:
         """Get messages that haven't been acknowledged by a repository."""
         # In a real implementation, this would check a database of acknowledgments
         # For now, return all messages for the repository
@@ -288,7 +293,11 @@ class RepositoryMessenger:
             ]
 
             expired_count = len(
-                [msg for msg in self.messages if msg.expires_at and msg.expires_at <= current_time]
+                [
+                    msg
+                    for msg in self.messages
+                    if msg.expires_at and msg.expires_at <= current_time
+                ]
             )
 
             if expired_count > 0:
@@ -359,7 +368,11 @@ class RepositoryMessengerManager:
             return {"status": "error", "error": str(e)}
 
     async def notify_workflow_status(
-        self, workflow_id: str, status: str, repo_path: str, target_repos: list[str] | None = None
+        self,
+        workflow_id: str,
+        status: str,
+        repo_path: str,
+        target_repos: list[str] | None = None,
     ) -> dict[str, Any]:
         """Notify other repositories about workflow status changes."""
         try:
@@ -401,7 +414,11 @@ class RepositoryMessengerManager:
             return {"status": "error", "error": str(e)}
 
     async def send_quality_alert(
-        self, repo_path: str, alert_type: str, description: str, severity: str = "medium"
+        self,
+        repo_path: str,
+        alert_type: str,
+        description: str,
+        severity: str = "medium",
     ) -> dict[str, Any]:
         """Send a quality alert to other repositories."""
         try:

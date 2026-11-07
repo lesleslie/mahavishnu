@@ -41,19 +41,25 @@ def test_worker_config_has_capability_fields() -> None:
 
 def test_registry_entries_have_default_capability_metadata() -> None:
     for worker_type, cfg in WORKER_REGISTRY.items():
-        assert isinstance(cfg.required_env, list), f"{worker_type} required_env not list"
+        assert isinstance(cfg.required_env, list), (
+            f"{worker_type} required_env not list"
+        )
         assert isinstance(cfg.required_settings, list), (
             f"{worker_type} required_settings not list"
         )
         assert cfg.auth_kind in set(AuthKind), f"{worker_type} auth_kind invalid"
-        assert cfg.runtime_kind in set(RuntimeKind), f"{worker_type} runtime_kind invalid"
+        assert cfg.runtime_kind in set(RuntimeKind), (
+            f"{worker_type} runtime_kind invalid"
+        )
         assert isinstance(cfg.one_shot, bool), f"{worker_type} one_shot not bool"
 
 
 def test_resolve_worker_type_does_not_infer_gateway_from_env(monkeypatch) -> None:
     monkeypatch.delenv("OPENCLAW_GATEWAY_URL", raising=False)
     monkeypatch.delenv("OPENCLAW_GATEWAY_TOKEN", raising=False)
-    result = resolve_worker_type("terminal-claude", task_type="communication", prompt="reply")
+    result = resolve_worker_type(
+        "terminal-claude", task_type="communication", prompt="reply"
+    )
     assert result == "terminal-claude"
 
 

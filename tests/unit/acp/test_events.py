@@ -34,6 +34,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.acp]
 # Mapping table row-by-row
 # ---------------------------------------------------------------------------
 
+
 class TestSynthesizerMapping:
     """Each row of the mapping table is exercised in isolation."""
 
@@ -41,9 +42,7 @@ class TestSynthesizerMapping:
         self.synth = EventSynthesizer()
 
     def test_workflow_started_maps_to_working(self) -> None:
-        update = self.synth.synthesize(
-            {"type": "workflow.started", "session_id": "s1"}
-        )
+        update = self.synth.synthesize({"type": "workflow.started", "session_id": "s1"})
         assert isinstance(update, StatusUpdate)
         assert update.status == "working"
         assert update.sessionId == "s1"
@@ -57,9 +56,7 @@ class TestSynthesizerMapping:
         assert update.sessionId == "s1"
 
     def test_workflow_failed_maps_to_failed(self) -> None:
-        update = self.synth.synthesize(
-            {"type": "workflow.failed", "session_id": "s1"}
-        )
+        update = self.synth.synthesize({"type": "workflow.failed", "session_id": "s1"})
         assert isinstance(update, StatusUpdate)
         assert update.status == "failed"
         assert update.sessionId == "s1"
@@ -209,6 +206,7 @@ class TestSynthesizerMapping:
 # Invariants
 # ---------------------------------------------------------------------------
 
+
 class TestSynthesizerInvariants:
     """Cross-cutting invariants the synthesizer must always satisfy."""
 
@@ -222,7 +220,9 @@ class TestSynthesizerInvariants:
             "session_id": "s1",
         }
         update = self.synth.synthesize(envelope)
-        assert update is not None, "no silent drops: unknown topic still produces a SessionUpdate"
+        assert update is not None, (
+            "no silent drops: unknown topic still produces a SessionUpdate"
+        )
 
     def test_returns_none_when_session_id_missing(self) -> None:
         """The one place None is returned: dispatcher drops unroutable envelopes."""
@@ -262,9 +262,10 @@ class TestSynthesizerInvariants:
 
     def test_session_id_empty_string_treated_as_missing(self) -> None:
         """An empty string session_id is not a valid routing key."""
-        assert self.synth.synthesize(
-            {"type": "workflow.started", "session_id": ""}
-        ) is None
+        assert (
+            self.synth.synthesize({"type": "workflow.started", "session_id": ""})
+            is None
+        )
 
     def test_non_string_session_id_ignored(self) -> None:
         """A non-string session_id (e.g., int) is ignored; falls through to headers/payload."""
@@ -279,9 +280,7 @@ class TestSynthesizerInvariants:
 
     def test_returned_update_serializes_to_camel_case(self) -> None:
         """Wire format: SessionUpdate model_dump uses sessionId (camelCase), not session_id."""
-        update = self.synth.synthesize(
-            {"type": "workflow.started", "session_id": "s1"}
-        )
+        update = self.synth.synthesize({"type": "workflow.started", "session_id": "s1"})
         wire = update.model_dump()
         assert "sessionId" in wire
         assert "session_id" not in wire

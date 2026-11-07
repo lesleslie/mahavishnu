@@ -150,10 +150,7 @@ Launch terminal sessions running a command.
 **Example:**
 
 ```python
-session_ids = await mcp.call_tool("terminal_launch", {
-    "command": "qwen",
-    "count": 3
-})
+session_ids = await mcp.call_tool("terminal_launch", {"command": "qwen", "count": 3})
 ```
 
 ### `terminal_send`
@@ -168,10 +165,9 @@ Send command to a terminal session.
 **Example:**
 
 ```python
-await mcp.call_tool("terminal_send", {
-    "session_id": "term_123",
-    "command": "hello world"
-})
+await mcp.call_tool(
+    "terminal_send", {"session_id": "term_123", "command": "hello world"}
+)
 ```
 
 ### `terminal_capture`
@@ -188,10 +184,9 @@ Capture output from a terminal session.
 **Example:**
 
 ```python
-output = await mcp.call_tool("terminal_capture", {
-    "session_id": "term_123",
-    "lines": 50
-})
+output = await mcp.call_tool(
+    "terminal_capture", {"session_id": "term_123", "lines": 50}
+)
 ```
 
 ### `terminal_capture_all`
@@ -208,10 +203,9 @@ Capture output from multiple terminal sessions concurrently.
 **Example:**
 
 ```python
-outputs = await mcp.call_tool("terminal_capture_all", {
-    "session_ids": ["term_1", "term_2", "term_3"],
-    "lines": 50
-})
+outputs = await mcp.call_tool(
+    "terminal_capture_all", {"session_ids": ["term_1", "term_2", "term_3"], "lines": 50}
+)
 ```
 
 ### `terminal_list`
@@ -237,9 +231,7 @@ Close a terminal session.
 **Example:**
 
 ```python
-await mcp.call_tool("terminal_close", {
-    "session_id": "term_123"
-})
+await mcp.call_tool("terminal_close", {"session_id": "term_123"})
 ```
 
 ### `terminal_close_all`
@@ -271,10 +263,9 @@ Hot-swap to a different terminal adapter without restart.
 
 ```python
 # Switch to tmux adapter
-result = await mcp.call_tool("terminal_switch_adapter", {
-    "adapter_name": "tmux",
-    "migrate_sessions": False
-})
+result = await mcp.call_tool(
+    "terminal_switch_adapter", {"adapter_name": "tmux", "migrate_sessions": False}
+)
 
 # Check result
 if result["status"] == "success":
@@ -305,7 +296,7 @@ List all available terminal adapters and their status.
 
 ```python
 adapters = await mcp.call_tool("terminal_list_adapters", {})
-for name, info in adapters['adapters'].items():
+for name, info in adapters["adapters"].items():
     print(f"{name}: {info['status']} - {info['description']}")
 ```
 
@@ -341,11 +332,10 @@ Launch terminal sessions with a specific tmux template.
 
 ```python
 # Launch with custom template
-session_ids = await mcp.call_tool("terminal_launch_with_template", {
-    "command": "qwen",
-    "template_name": "my-custom-template",
-    "count": 3
-})
+session_ids = await mcp.call_tool(
+    "terminal_launch_with_template",
+    {"command": "qwen", "template_name": "my-custom-template", "count": 3},
+)
 ```
 
 ## Python API Usage
@@ -356,24 +346,18 @@ session_ids = await mcp.call_tool("terminal_launch_with_template", {
 from mahavishnu.core import MahavishnuApp
 import asyncio
 
+
 async def main():
     app = MahavishnuApp()
 
     if app.terminal_manager:
-# Launch 3 Qwen sessions
+        # Launch 3 Qwen sessions
         session_ids = await app.terminal_manager.launch_sessions(
-            "qwen",
-            count=3,
-            columns=120,
-            rows=40
+            "qwen", count=3, columns=120, rows=40
         )
 
         # Send different prompts to each
-        prompts = [
-            "Explain recursion",
-            "What is async/await?",
-            "Describe decorators"
-        ]
+        prompts = ["Explain recursion", "What is async/await?", "Describe decorators"]
 
         for session_id, prompt in zip(session_ids, prompts):
             await app.terminal_manager.send_command(session_id, prompt)
@@ -382,10 +366,7 @@ async def main():
         await asyncio.sleep(5)
 
         # Capture all outputs concurrently
-        outputs = await app.terminal_manager.capture_all_outputs(
-            session_ids,
-            lines=50
-        )
+        outputs = await app.terminal_manager.capture_all_outputs(session_ids, lines=50)
 
         # Process results
         for session_id, output in outputs.items():
@@ -395,6 +376,7 @@ async def main():
         # Cleanup
         await app.terminal_manager.close_all(session_ids)
 
+
 asyncio.run(main())
 ```
 
@@ -402,6 +384,7 @@ asyncio.run(main())
 
 ```python
 from mahavishnu.terminal import TerminalSession
+
 
 async def interactive_session(session_id: str, adapter):
     """Interactive terminal session."""

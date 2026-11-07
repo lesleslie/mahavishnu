@@ -408,7 +408,9 @@ class TestCompatibilityPolicy:
         assert result == CompatibilityLevel.MAJOR
 
     def test_is_breaking_change(self):
-        assert CompatibilityPolicy.is_breaking_change(EventVersion("1.0.0"), EventVersion("2.0.0"))
+        assert CompatibilityPolicy.is_breaking_change(
+            EventVersion("1.0.0"), EventVersion("2.0.0")
+        )
         assert not CompatibilityPolicy.is_breaking_change(
             EventVersion("1.0.0"), EventVersion("1.0.1")
         )

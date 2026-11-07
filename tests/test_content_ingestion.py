@@ -89,7 +89,9 @@ async def test_ingest_url_mocked():
     """Test URL ingestion with mocked MCP servers."""
     ingester = ContentIngester()
     mock_embeddings = MagicMock()
-    mock_embeddings.embed = AsyncMock(return_value=MagicMock(embeddings=[[0.1, 0.2, 0.3]]))
+    mock_embeddings.embed = AsyncMock(
+        return_value=MagicMock(embeddings=[[0.1, 0.2, 0.3]])
+    )
     ingester._embedding_service = mock_embeddings
 
     # Mock HTTP clients
@@ -157,7 +159,9 @@ def test_chunking_property(text):
         assert all(chunk.strip() for chunk in chunks)
 
         # Chunks shouldn't exceed max size (except possibly last one)
-        assert all(len(chunk) <= 500 for chunk in chunks[:-1]) if len(chunks) > 1 else True
+        assert (
+            all(len(chunk) <= 500 for chunk in chunks[:-1]) if len(chunks) > 1 else True
+        )
 
         # Total content should be preserved (minus overlap)
         total = "".join(chunks)

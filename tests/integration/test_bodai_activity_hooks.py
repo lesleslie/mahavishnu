@@ -14,6 +14,7 @@ per-test) and mock the bus read so no live Redis instance is needed.
 
 Marker: ``integration`` per ``CLAUDE.md`` Test conventions.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -55,9 +56,7 @@ def ptu_state_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.delenv("MAHAVISHNU_HOME", raising=False)
     monkeypatch.delenv("MAHAVISHNU_BODAI_QUEUE_PATH", raising=False)
     state = tmp_path / "bodai-post-tool-use-state.json"
-    monkeypatch.setenv(
-        "MAHAVISHNU_BODAI_POST_TOOL_USE_STATE_PATH", str(state)
-    )
+    monkeypatch.setenv("MAHAVISHNU_BODAI_POST_TOOL_USE_STATE_PATH", str(state))
     return state
 
 
@@ -86,7 +85,9 @@ def bus_mock(monkeypatch: pytest.MonkeyPatch) -> list[list[tuple[str, dict[str, 
     """
     batches: list[list[tuple[str, dict[str, Any]]]] = []
 
-    async def fake_read(*_args: Any, **_kwargs: Any) -> list[tuple[str, dict[str, Any]]]:
+    async def fake_read(
+        *_args: Any, **_kwargs: Any
+    ) -> list[tuple[str, dict[str, Any]]]:
         if not batches:
             return []
         return batches.pop(0)
@@ -165,7 +166,9 @@ def test_post_tool_use_emits_recent_events(
 
     captured = capsys.readouterr().out
     # Payload keys are alphabetically sorted in the summary format.
-    assert "[mahavishnu] workflow.completed status=success workflow_id=wid_abc" in captured
+    assert (
+        "[mahavishnu] workflow.completed status=success workflow_id=wid_abc" in captured
+    )
     assert "[akosha] aggregation_completed suite=quality" in captured
     assert "[crackerjack] test_run_completed failed=0 passed=42" in captured
     assert "[future-component]" not in captured
@@ -259,9 +262,7 @@ def test_post_tool_use_hook_cli_exits_zero(
     but the hook contract is fire-and-forget — exit 0 with stderr log.
     """
     ptu_state = tmp_path / "bodai-post-tool-use-state.json"
-    monkeypatch.setenv(
-        "MAHAVISHNU_BODAI_POST_TOOL_USE_STATE_PATH", str(ptu_state)
-    )
+    monkeypatch.setenv("MAHAVISHNU_BODAI_POST_TOOL_USE_STATE_PATH", str(ptu_state))
     result = subprocess.run(
         [sys.executable, str(POST_TOOL_USE_HOOK)],
         capture_output=True,
@@ -269,6 +270,5 @@ def test_post_tool_use_hook_cli_exits_zero(
         timeout=10,
     )
     assert result.returncode == 0, (
-        f"hook should exit 0; got {result.returncode}\n"
-        f"stderr={result.stderr}"
+        f"hook should exit 0; got {result.returncode}\nstderr={result.stderr}"
     )

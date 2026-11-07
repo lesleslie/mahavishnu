@@ -199,6 +199,7 @@ ______________________________________________________________________
    from cryptography.hazmat.primitives import hashes
    from cryptography.hazmat.primitives.asymmetric import padding
 
+
    class CrossProjectAuth:
        """Shared authentication for Session Buddy ↔ Mahavishnu"""
 
@@ -224,28 +225,31 @@ ______________________________________________________________________
    from enum import Enum
    from pydantic import BaseModel
 
+
    class Permission(str, Enum):
        READ_REPO = "read_repo"
        WRITE_REPO = "write_repo"
        EXECUTE_WORKFLOW = "execute_workflow"
        MANAGE_WORKFLOWS = "manage_workflows"
 
+
    class Role(BaseModel):
        name: str
        permissions: list[Permission]
        allowed_repos: list[str] | None  # None = all repos
 
+
    # Example roles
    DEVELOPER = Role(
        name="developer",
        permissions=[Permission.READ_REPO, Permission.EXECUTE_WORKFLOW],
-       allowed_repos=["myapp-frontend"]
+       allowed_repos=["myapp-frontend"],
    )
 
    CI_CD = Role(
        name="ci_cd",
        permissions=[Permission.READ_REPO, Permission.WRITE_REPO],
-       allowed_repos=None  # All repos
+       allowed_repos=None,  # All repos
    )
    ```
 
@@ -284,7 +288,7 @@ ______________________________________________________________________
        ip_address=ip,
        repo=repo_path,
        action="list_repos",
-       status="denied"
+       status="denied",
    ).info("Authorization failed")
    ```
 
@@ -576,6 +580,7 @@ ______________________________________________________________________
 
    # GOOD: Use query builder with sanitization
    from opensearchpy import Q
+
    query = Q("match", content=escape_opensearch_query(user_input))
    ```
 
@@ -620,7 +625,7 @@ ______________________________________________________________________
            hmac_obj = hmac.new(
                self.shared_secret.encode(),
                json.dumps(msg, sort_keys=True).encode(),
-               hashlib.sha256
+               hashlib.sha256,
            )
            return hmac_obj.hexdigest()
 

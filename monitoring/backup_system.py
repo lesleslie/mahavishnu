@@ -478,7 +478,9 @@ class EcosystemBackupManager:
         metadata.checksum = await self._calculate_checksum(archive_path)
 
         # Calculate compression ratio
-        original_size = sum(f.stat().st_size for f in backup_dir.rglob("*") if f.is_file())
+        original_size = sum(
+            f.stat().st_size for f in backup_dir.rglob("*") if f.is_file()
+        )
         metadata.compression_ratio = (
             original_size / metadata.size_bytes if metadata.size_bytes > 0 else 0
         )
@@ -535,14 +537,18 @@ class EcosystemBackupManager:
             with tempfile.TemporaryDirectory() as temp_dir:
                 with tarfile.open(archive_path, "r:gz") as tar:
                     # Extract just metadata
-                    members = [m for m in tar.getmembers() if m.name.endswith("metadata.json")]
+                    members = [
+                        m for m in tar.getmembers() if m.name.endswith("metadata.json")
+                    ]
                     if members:
                         tar.extract(members[0], path=temp_dir)
                         metadata_path = Path(temp_dir) / members[0].name
 
                         with open(metadata_path) as f:
                             metadata = json.load(f)
-                            logger.info(f"Verified backup metadata: {metadata.get('backup_id')}")
+                            logger.info(
+                                f"Verified backup metadata: {metadata.get('backup_id')}"
+                            )
 
             self.stats["last_verification_time"] = datetime.now(UTC).isoformat()
             return True
@@ -583,22 +589,34 @@ class EcosystemBackupManager:
                 try:
                     # Extract date from filename
                     date_str = (
-                        backup_file.stem.split("_", 1)[1] + "_" + backup_file.stem.split("_", 2)[2]
+                        backup_file.stem.split("_", 1)[1]
+                        + "_"
+                        + backup_file.stem.split("_", 2)[2]
                     )
-                    backup_date = datetime.strptime(date_str, "%Y%m%d_%H%M%S").replace(tzinfo=UTC)
+                    backup_date = datetime.strptime(date_str, "%Y%m%d_%H%M%S").replace(
+                        tzinfo=UTC
+                    )
 
                     days_old = (now - backup_date).days
 
                     # Categorize by age
                     if days_old < 7:
-                        tiered_backups[RetentionTier.DAILY].append((backup_file, backup_date))
+                        tiered_backups[RetentionTier.DAILY].append(
+                            (backup_file, backup_date)
+                        )
                     elif days_old < 30:
-                        tiered_backups[RetentionTier.WEEKLY].append((backup_file, backup_date))
+                        tiered_backups[RetentionTier.WEEKLY].append(
+                            (backup_file, backup_date)
+                        )
                     else:
-                        tiered_backups[RetentionTier.MONTHLY].append((backup_file, backup_date))
+                        tiered_backups[RetentionTier.MONTHLY].append(
+                            (backup_file, backup_date)
+                        )
 
                 except (ValueError, IndexError) as e:
-                    logger.warning(f"Skipping malformed backup filename: {backup_file.name} - {e}")
+                    logger.warning(
+                        f"Skipping malformed backup filename: {backup_file.name} - {e}"
+                    )
                     continue
 
             # Determine which backups to keep
@@ -621,7 +639,9 @@ class EcosystemBackupManager:
                         deleted_count += 1
                         logger.info(f"Deleted old backup: {backup_file.name}")
                     except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
-                        logger.warning(f"Failed to delete backup {backup_file.name}: {e}")
+                        logger.warning(
+                            f"Failed to delete backup {backup_file.name}: {e}"
+                        )
 
             if deleted_count > 0:
                 logger.info(f"Cleaned up {deleted_count} old backups")
@@ -738,7 +758,9 @@ class EcosystemBackupManager:
                 try:
                     # Determine destination path
                     # This would need project-specific logic
-                    logger.info(f"Config restore would be performed: {config_file.name}")
+                    logger.info(
+                        f"Config restore would be performed: {config_file.name}"
+                    )
                     restored.append(str(config_file))
                 except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                     logger.error(f"Failed to restore config {config_file.name}: {e}")
@@ -758,7 +780,11 @@ class EcosystemBackupManager:
                 # Extract metadata from archive
                 with tempfile.TemporaryDirectory() as temp_dir:
                     with tarfile.open(archive_path, "r:gz") as tar:
-                        members = [m for m in tar.getmembers() if m.name.endswith("metadata.json")]
+                        members = [
+                            m
+                            for m in tar.getmembers()
+                            if m.name.endswith("metadata.json")
+                        ]
                         if members:
                             tar.extract(members[0], path=temp_dir)
                             metadata_path = Path(temp_dir) / members[0].name
@@ -769,20 +795,28 @@ class EcosystemBackupManager:
                             # Convert to BackupMetadata
                             metadata = BackupMetadata(
                                 backup_id=metadata_dict["backup_id"],
-                                timestamp=datetime.fromisoformat(metadata_dict["timestamp"]),
+                                timestamp=datetime.fromisoformat(
+                                    metadata_dict["timestamp"]
+                                ),
                                 backup_type=BackupType(metadata_dict["backup_type"]),
                                 size_bytes=archive_path.stat().st_size,
                                 checksum=metadata_dict["checksum"],
                                 files_included=metadata_dict.get("files_included", []),
-                                databases_backed_up=metadata_dict.get("databases_backed_up", []),
-                                retention_tier=RetentionTier(metadata_dict["retention_tier"]),
+                                databases_backed_up=metadata_dict.get(
+                                    "databases_backed_up", []
+                                ),
+                                retention_tier=RetentionTier(
+                                    metadata_dict["retention_tier"]
+                                ),
                                 status=BackupStatus(metadata_dict["status"]),
                                 location=str(archive_path),
                             )
                             backups.append(metadata)
 
             except Exception as e:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.warning(f"Failed to read backup metadata for {archive_path.name}: {e}")
+                logger.warning(
+                    f"Failed to read backup metadata for {archive_path.name}: {e}"
+                )
 
         # Sort by timestamp (newest first)
         backups.sort(key=lambda x: x.timestamp, reverse=True)

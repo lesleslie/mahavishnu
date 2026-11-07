@@ -74,9 +74,9 @@ def test_pool_spawn_mcp_tool_default_worker_type_is_shepherd() -> None:
     import inspect
     from pathlib import Path
 
-    pool_tools_src = Path(
-        "mahavishnu/mcp/tools/pool_tools.py"
-    ).read_text(encoding="utf-8")
+    pool_tools_src = Path("mahavishnu/mcp/tools/pool_tools.py").read_text(
+        encoding="utf-8"
+    )
     # The pool_spawn tool defines its own default. We assert that:
     #   1) it is the string "shepherd" (not a terminal-* alias), and
     #   2) the parameter annotation default on the inner function is

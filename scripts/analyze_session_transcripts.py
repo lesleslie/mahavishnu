@@ -36,7 +36,9 @@ for filename in transcripts:
                 entry = json.loads(line.strip())
                 usage = entry.get("message", {}).get("usage", {})
                 if usage:
-                    total_tokens += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+                    total_tokens += usage.get("input_tokens", 0) + usage.get(
+                        "output_tokens", 0
+                    )
 
             print(f"  Tokens: {total_tokens:,}")
             print()

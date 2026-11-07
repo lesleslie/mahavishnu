@@ -14,8 +14,7 @@ def test_pool_config():
 Property-based testing checks if **invariants** (properties that must ALWAYS be true) hold for THOUSANDS of randomly generated inputs:
 
 ```python
-@given(st.integers(min_value=1, max_value=10),
-       st.integers(min_value=10, max_value=100))
+@given(st.integers(min_value=1, max_value=10), st.integers(min_value=10, max_value=100))
 def test_min_workers_le_max_workers(min_workers, max_workers):
     """Property: min_workers should always be <= max_workers"""
     assume(min_workers <= max_workers)
@@ -51,7 +50,7 @@ st.dictionaries(st.text(), st.integers())
 
 # Complex strategies
 st_pydantic.from_type(PoolConfig)  # Auto-generate Pydantic models
-st.from_regex(r'^[a-z]+$')  # Regex-based
+st.from_regex(r"^[a-z]+$")  # Regex-based
 st.builds(MyClass)  # Build objects
 st.composite(...)  # Custom composite strategies
 
@@ -64,10 +63,12 @@ st.integers().filter(lambda x: x > 0)  # or use assume()
 ```python
 from hypothesis import given, settings, assume
 
+
 @given(st.integers(), st.integers())
 def test_addition_commutative(a, b):
     """Test that a + b == b + a for all integers"""
     assert a + b == b + a
+
 
 @given(st.text())
 @settings(max_examples=100)  # Custom settings
@@ -121,8 +122,9 @@ def test_path_traversal_prevention(path):
 ### Pattern 4: Mathematical Properties
 
 ```python
-@given(st.floats(min_value=0.0, max_value=100.0),
-       st.floats(min_value=0.0, max_value=100.0))
+@given(
+    st.floats(min_value=0.0, max_value=100.0), st.floats(min_value=0.0, max_value=100.0)
+)
 def test_cost_error_non_negative(estimate, actual):
     """Property: cost error should always be non-negative"""
     error = abs(actual - estimate)
@@ -180,6 +182,7 @@ def test_specific_failure(text):
 ```python
 from hypothesis.extra import pydantic as st_pydantic
 
+
 @given(st_pydantic.from_type(PoolConfig))
 def test_pool_config_properties(config):
     """Hypothesis auto-generates valid PoolConfig instances"""
@@ -193,6 +196,7 @@ def test_pool_config_properties(config):
 
 ```python
 from hypothesis.strategies import builds
+
 
 @given(builds(PoolConfig, enabled=st.just(True)))
 def test_partial_pool_config(config):
@@ -223,7 +227,7 @@ test_addition(
 
 ```python
 # Hypothesis provides a decorator for exact reproduction
-@reproduce_failure('6.148.13', b'AA...')
+@reproduce_failure("6.148.13", b"AA...")
 @given(st.text())
 def test_reproduce(text):
     assert len(text) <= 2
@@ -233,6 +237,7 @@ def test_reproduce(text):
 
 ```python
 from hypothesis import Verbosity
+
 
 @settings(verbosity=Verbosity.verbose)  # Print all examples
 @given(st.integers())
@@ -252,6 +257,7 @@ def test_positive_only(x):
         return
     assert x >= 0
 
+
 # GOOD: Filter early
 @given(st.integers())
 def test_positive_only(x):
@@ -268,6 +274,7 @@ def test_sort_implementation(arr):
     result = sort(arr)
     assert result == sorted(arr)  # Just duplicates sorted()
 
+
 # GOOD: Tests sorting invariants
 @given(st.lists(st.integers()))
 def test_sort_invariants(arr):
@@ -281,10 +288,12 @@ def test_sort_invariants(arr):
 ```python
 from hypothesis.strategies import composite
 
+
 @composite
 def valid_timeout(draw):
     """Generate valid timeout between 1.0 and 300.0"""
     return draw(st.floats(min_value=1.0, max_value=300.0, allow_nan=False))
+
 
 @given(valid_timeout())
 def test_timeout_bounds(timeout):
@@ -371,6 +380,7 @@ def test_bad(x):
     assume(x % 2 == 0)
     assert x in [2, 4, 6, 8]
 
+
 # GOOD: Use more specific strategy
 @given(st.integers(min_value=1, max_value=9).filter(lambda x: x % 2 == 0))
 def test_good(x):
@@ -385,6 +395,7 @@ def test_good(x):
 def test_internal_state(x):
     obj = MyClass(x)
     assert obj._internal_value == x
+
 
 # GOOD: Tests observable behavior
 @given(st.integers())
@@ -403,6 +414,7 @@ def test_flaky(x):
         assert expensive_computation(x) > 0
     except:
         pass  # Ignore failures
+
 
 # GOOD: Fix the test or the code
 @given(st.integers())

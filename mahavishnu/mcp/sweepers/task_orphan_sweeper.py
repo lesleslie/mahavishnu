@@ -172,7 +172,9 @@ class TaskOrphanSweeper:
           * ``status`` ∈ {``done``, ``cancelled``} — the task is terminal,
             re-linking the workflow_id is no longer meaningful.
         """
-        return bool(task.get("workflow_id") or task.get("status") in {"done", "cancelled"})
+        return bool(
+            task.get("workflow_id") or task.get("status") in {"done", "cancelled"}
+        )
 
     async def _recover_orphan(self, entry: dict[str, Any]) -> str:
         """Process one orphan entry: idempotency check → link →
@@ -274,9 +276,15 @@ class TaskOrphanSweeper:
                 await self._adapter.ack([entry["message_id"]])
                 continue
             try:
-                with _tracer.start_as_current_span("task_orphan_sweeper.recover") as span:
-                    span.set_attribute("task_id", str(payload.get("task_id", "unknown")))
-                    span.set_attribute("workflow_id", str(payload.get("workflow_id", "unknown")))
+                with _tracer.start_as_current_span(
+                    "task_orphan_sweeper.recover"
+                ) as span:
+                    span.set_attribute(
+                        "task_id", str(payload.get("task_id", "unknown"))
+                    )
+                    span.set_attribute(
+                        "workflow_id", str(payload.get("workflow_id", "unknown"))
+                    )
                     outcome = await self._recover_orphan(entry)
                     span.set_attribute("outcome", outcome)
                     results.append((entry, outcome))
@@ -284,9 +292,15 @@ class TaskOrphanSweeper:
                 self.errors_total += 1
                 # Emit a failed-outcome span so the failure is observable
                 # in the same trace tree as a successful sibling would be.
-                with _tracer.start_as_current_span("task_orphan_sweeper.recover") as span:
-                    span.set_attribute("task_id", str(payload.get("task_id", "unknown")))
-                    span.set_attribute("workflow_id", str(payload.get("workflow_id", "unknown")))
+                with _tracer.start_as_current_span(
+                    "task_orphan_sweeper.recover"
+                ) as span:
+                    span.set_attribute(
+                        "task_id", str(payload.get("task_id", "unknown"))
+                    )
+                    span.set_attribute(
+                        "workflow_id", str(payload.get("workflow_id", "unknown"))
+                    )
                     span.set_attribute("outcome", "failed")
                 logger.warning(
                     "task_orphan_sweeper: recover failed for %s: %s",

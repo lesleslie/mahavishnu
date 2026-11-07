@@ -11,7 +11,9 @@ if TYPE_CHECKING:
 
 # Regex patterns
 FRONTMATTER_PATTERN = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)
-RELATED_SKILLS_SECTION = re.compile(r"##\s*Related\s+Skills", re.MULTILINE | re.IGNORECASE)
+RELATED_SKILLS_SECTION = re.compile(
+    r"##\s*Related\s+Skills", re.MULTILINE | re.IGNORECASE
+)
 REQUIRED_PATTERN = re.compile(r"\*\*REQUIRED:\*\*\s*`([\w-]+)`")
 RELATED_PATTERN = re.compile(r"\*\*RELATED:\*\*\s*`([\w-]+)`")
 
@@ -20,15 +22,12 @@ class SkillParserError(Exception):
     """Base exception for parser errors."""
 
 
-
 class MalformedFrontmatterError(SkillParserError):
     """Raised when YAML frontmatter is malformed."""
 
 
-
 class MissingRequiredFieldError(SkillParserError):
     """Raised when required field is missing."""
-
 
 
 @dataclass
@@ -50,7 +49,9 @@ class SkillMetadata:
     directory: Path
 
     # Classification
-    system: str  # mahavishnu, oneiric, crackerjack, session-buddy, akosha, cross-ecosystem
+    system: (
+        str  # mahavishnu, oneiric, crackerjack, session-buddy, akosha, cross-ecosystem
+    )
     skill_number: int | None = None
 
     # Searchable content
@@ -222,9 +223,22 @@ def _determine_system(skill_path: Path, name: str, description: str) -> str:
     SYSTEM_KEYWORDS = {
         "session-buddy": ["session", "capture", "retention"],
         "crackerjack": ["coverage", "ratchet", "qc", "quality gate"],
-        "mahavishnu": ["orchestrate", "adapter", "pool", "sweep", "workflow", "repository"],
+        "mahavishnu": [
+            "orchestrate",
+            "adapter",
+            "pool",
+            "sweep",
+            "workflow",
+            "repository",
+        ],
         "oneiric": ["component", "resolve", "layered", "lifecycle"],
-        "akosha": ["anomaly", "semantic", "correlation", "time-series", "knowledge graph"],
+        "akosha": [
+            "anomaly",
+            "semantic",
+            "correlation",
+            "time-series",
+            "knowledge graph",
+        ],
     }
 
     # Count matches for each system
@@ -242,7 +256,9 @@ def _determine_system(skill_path: Path, name: str, description: str) -> str:
     return "cross-ecosystem"
 
 
-def _extract_description_info(description: str) -> tuple[list[str], list[str], list[str]]:
+def _extract_description_info(
+    description: str,
+) -> tuple[list[str], list[str], list[str]]:
     """
     Extract keywords, symptoms, and use cases from description.
 
@@ -359,14 +375,18 @@ def _extract_related_skills(markdown_body: str) -> list[RelatedSkill]:
     # Extract REQUIRED skills
     for match in REQUIRED_PATTERN.finditer(section_content):
         skill_name = match.group(1)
-        related_skills.append(RelatedSkill(name=skill_name, relationship_type="REQUIRED"))
+        related_skills.append(
+            RelatedSkill(name=skill_name, relationship_type="REQUIRED")
+        )
 
     # Extract RELATED skills
     for match in RELATED_PATTERN.finditer(section_content):
         skill_name = match.group(1)
         # Avoid duplicates
         if not any(rs.name == skill_name for rs in related_skills):
-            related_skills.append(RelatedSkill(name=skill_name, relationship_type="RELATED"))
+            related_skills.append(
+                RelatedSkill(name=skill_name, relationship_type="RELATED")
+            )
 
     return related_skills
 

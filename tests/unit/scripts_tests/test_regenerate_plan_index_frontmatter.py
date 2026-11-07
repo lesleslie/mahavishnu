@@ -10,6 +10,7 @@ Per plan ``docs/plans/2026-10-12-plan-index-sync-script-hardening.md``.
 Phase 1 (REQ-IDX-001, REQ-IDX-004) ships the data fix; Phases 2 and 3
 (REQ-IDX-002/005, REQ-IDX-003/006) ship the script hardening.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -123,13 +124,7 @@ def test_has_frontmatter_reads_full_file_for_large_frontmatter(tmp_path: Path) -
     # above 4096.
     long_value = "x" * 6000
     text = (
-        "---\n"
-        f"description: {long_value}\n"
-        "status: active\n"
-        "title: Big\n"
-        "---\n"
-        "\n"
-        "# Body\n"
+        f"---\ndescription: {long_value}\nstatus: active\ntitle: Big\n---\n\n# Body\n"
     )
     plan = tmp_path / "big-plan.md"
     plan.write_text(text, encoding="utf-8")

@@ -60,10 +60,14 @@ def sample_workflow():
 class TestPs:
     """Tests for the `ps` shell command."""
 
-    async def test_ps_lists_workflows_via_state_manager(self, make_app, sample_workflow):
+    async def test_ps_lists_workflows_via_state_manager(
+        self, make_app, sample_workflow
+    ):
         """ps() calls list_workflows and uses a WorkflowFormatter."""
         app = make_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[sample_workflow])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[sample_workflow]
+        )
 
         with patch.object(shell_commands, "WorkflowFormatter") as fmt_cls:
             fmt = MagicMock()
@@ -101,7 +105,9 @@ class TestTop:
     async def test_top_filters_by_running_status(self, make_app, sample_workflow):
         """top() filters workflows by RUNNING status with limit=20."""
         app = make_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[sample_workflow])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[sample_workflow]
+        )
 
         with patch.object(shell_commands, "WorkflowFormatter") as fmt_cls:
             fmt = MagicMock()
@@ -115,14 +121,18 @@ class TestTop:
     async def test_top_uses_details(self, make_app, sample_workflow):
         """top() uses show_details=True when there are workflows."""
         app = make_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(return_value=[sample_workflow])
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            return_value=[sample_workflow]
+        )
 
         with patch.object(shell_commands, "WorkflowFormatter") as fmt_cls:
             fmt = MagicMock()
             fmt_cls.return_value = fmt
             await top(app)
 
-        fmt.format_workflows.assert_called_once_with([sample_workflow], show_details=True)
+        fmt.format_workflows.assert_called_once_with(
+            [sample_workflow], show_details=True
+        )
 
     async def test_top_empty_prints_message(self, make_app, capsys):
         """top() prints 'No active workflows' and skips the formatter when empty."""
@@ -207,7 +217,9 @@ class TestErrors:
         workflows = [
             {
                 "id": f"wf-{i}",
-                "errors": [{"timestamp": f"2026-01-0{i + 1}T00:00:00", "message": f"err{i}"}],
+                "errors": [
+                    {"timestamp": f"2026-01-0{i + 1}T00:00:00", "message": f"err{i}"}
+                ],
             }
             for i in range(5)
         ]
@@ -259,7 +271,9 @@ class TestSync:
     async def test_sync_calls_health_check_and_stats(self, make_app, capsys):
         """sync() runs health_check + get_workflow_stats and prints summary."""
         app = make_app()
-        app.opensearch_integration.health_check = AsyncMock(return_value={"status": "green"})
+        app.opensearch_integration.health_check = AsyncMock(
+            return_value={"status": "green"}
+        )
         app.opensearch_integration.get_workflow_stats = AsyncMock(
             return_value={"total_workflows": 42}
         )
@@ -291,7 +305,9 @@ class TestSync:
     async def test_sync_raises_when_health_check_fails(self, make_app):
         """If health_check raises, sync propagates the exception."""
         app = make_app()
-        app.opensearch_integration.health_check = AsyncMock(side_effect=RuntimeError("boom"))
+        app.opensearch_integration.health_check = AsyncMock(
+            side_effect=RuntimeError("boom")
+        )
         app.opensearch_integration.get_workflow_stats = AsyncMock(
             return_value={"total_workflows": 0}
         )

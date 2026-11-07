@@ -252,7 +252,9 @@ class IntegrationFixtures:
         app.opensearch_integration.log_workflow_start = AsyncMock()
         app.opensearch_integration.log_workflow_completion = AsyncMock()
         app.opensearch_integration.log_error = AsyncMock()
-        app.opensearch_integration.health_check = AsyncMock(return_value={"status": "healthy"})
+        app.opensearch_integration.health_check = AsyncMock(
+            return_value={"status": "healthy"}
+        )
         app.opensearch_integration.get_workflow_stats = AsyncMock(
             return_value={"total_workflows": 0}
         )
@@ -268,7 +270,9 @@ class IntegrationFixtures:
 
         # Common methods
         app.get_repos = MagicMock(return_value=["/tmp/repo1", "/tmp/repo2"])
-        app.get_all_repos = MagicMock(return_value=IntegrationFixtures.mock_repos_config())
+        app.get_all_repos = MagicMock(
+            return_value=IntegrationFixtures.mock_repos_config()
+        )
         app.get_roles = MagicMock(return_value=IntegrationFixtures.mock_roles())
         app.is_healthy = AsyncMock(return_value=True)
         app.execute_workflow = AsyncMock(

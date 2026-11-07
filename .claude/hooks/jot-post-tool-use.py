@@ -10,6 +10,7 @@ channel so the model can fold a relevant pending jot into the next response.
 Exits 0 on all paths. The PostToolUse hook must not block tool execution,
 so any unhandled exception is logged to stderr and swallowed.
 """
+
 from __future__ import annotations
 
 import json
@@ -57,7 +58,7 @@ def _safe_parse_payload(raw: str | None = None) -> dict[str, object]:
         return {}
     try:
         data = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return {}
     return data if isinstance(data, dict) else {}
 
@@ -76,7 +77,9 @@ def _run_hook(payload: dict[str, object]) -> int:
     try:
         result = surface_relevant("tool_result", context_text, limit=3)
     except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        sys.stderr.write(f"Hook output: jot-post-tool-use surface_relevant failed: {exc}\n")
+        sys.stderr.write(
+            f"Hook output: jot-post-tool-use surface_relevant failed: {exc}\n"
+        )
         sys.stderr.flush()
         return 0
 
@@ -113,7 +116,9 @@ def main() -> int:
     try:
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
     except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        sys.stderr.write(f"Hook output: jot-post-tool-use bridge dispatch failed: {exc}\n")
+        sys.stderr.write(
+            f"Hook output: jot-post-tool-use bridge dispatch failed: {exc}\n"
+        )
         sys.stderr.flush()
 
     return exit_code
@@ -122,7 +127,9 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100  # hook handler — broad catch is the documented contract
+    ):
         sys.stderr.write("Hook output: jot-post-tool-use unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

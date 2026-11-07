@@ -131,29 +131,27 @@ class _StubMCP:
                         gt = getattr(meta, "gt", None)
                         lt = getattr(meta, "lt", None)
                         if ge is not None and value < ge:
-                            raise ValueError(
-                                f"{pname} must be >= {ge} (got {value})"
-                            )
+                            raise ValueError(f"{pname} must be >= {ge} (got {value})")
                         if le is not None and value > le:
-                            raise ValueError(
-                                f"{pname} must be <= {le} (got {value})"
-                            )
+                            raise ValueError(f"{pname} must be <= {le} (got {value})")
                         if gt is not None and value <= gt:
-                            raise ValueError(
-                                f"{pname} must be > {gt} (got {value})"
-                            )
+                            raise ValueError(f"{pname} must be > {gt} (got {value})")
                         if lt is not None and value >= lt:
-                            raise ValueError(
-                                f"{pname} must be < {lt} (got {value})"
-                            )
+                            raise ValueError(f"{pname} must be < {lt} (got {value})")
                 # Enforce ``Annotated[str, StringConstraints(...)]`` aliases.
                 constraints = annotated_constraints.get(pname) or {}
                 if isinstance(value, str):
-                    if "min_length" in constraints and len(value) < constraints["min_length"]:
+                    if (
+                        "min_length" in constraints
+                        and len(value) < constraints["min_length"]
+                    ):
                         raise ValueError(
                             f"{pname} must be >= {constraints['min_length']} chars"
                         )
-                    if "max_length" in constraints and len(value) > constraints["max_length"]:
+                    if (
+                        "max_length" in constraints
+                        and len(value) > constraints["max_length"]
+                    ):
                         raise ValueError(
                             f"{pname} must be <= {constraints['max_length']} chars"
                         )
@@ -162,9 +160,7 @@ class _StubMCP:
                         if isinstance(pattern, str) and not re.fullmatch(
                             pattern, value
                         ):
-                            raise ValueError(
-                                f"{pname} must match pattern {pattern}"
-                            )
+                            raise ValueError(f"{pname} must match pattern {pattern}")
             return await fn(*bound.args, **bound.kwargs)
 
         wrapper.__name__ = getattr(fn, "__name__", "wrapped")
@@ -275,13 +271,13 @@ class TestValidateCommandSafety:
             "find . -name '*.py'",
             "cat README.md",
             # Shape B: legit production-management commands (formerly FPs).
-            "make clean && rm -f *.o",                # build cleanup
-            "python build.py; rm /tmp/scratch.txt",   # scratch cleanup
-            "echo done | rm /tmp/log.txt",            # pipe cleanup
-            "pkill -f worker.py",                     # kill stuck workers
-            "kill -9 $STUCK_PID",                     # recover from hang
-            "dd if=boot.img of=/dev/sdb",             # image SD card
-            "mkfs.ext4 /dev/sdb1",                     # format non-system drive
+            "make clean && rm -f *.o",  # build cleanup
+            "python build.py; rm /tmp/scratch.txt",  # scratch cleanup
+            "echo done | rm /tmp/log.txt",  # pipe cleanup
+            "pkill -f worker.py",  # kill stuck workers
+            "kill -9 $STUCK_PID",  # recover from hang
+            "dd if=boot.img of=/dev/sdb",  # image SD card
+            "mkfs.ext4 /dev/sdb1",  # format non-system drive
         ],
     )
     def test_safe_commands_pass_through(self, command: str) -> None:
@@ -329,7 +325,10 @@ class TestValidateCommandSafety:
         # cases above; this invariant guards against accidental clearing
         # of the regex constant.
         assert _SHELL_CHAIN_DESTRUCTIVE_RE is not None
-        assert _SHELL_CHAIN_DESTRUCTIVE_RE.pattern == r"(?:&&|;|\|)[ \t]+rm(?=$|[;|&]|[ \t]+[;|&])"
+        assert (
+            _SHELL_CHAIN_DESTRUCTIVE_RE.pattern
+            == r"(?:&&|;|\|)[ \t]+rm(?=$|[;|&]|[ \t]+[;|&])"
+        )
 
 
 # =============================================================================
@@ -367,9 +366,7 @@ class TestTerminalLaunch:
         fn = registered_mcp.tools["terminal_launch"]
         result = await fn(command="echo hi")
         assert result == ["sess-1", "sess-2"]
-        mock_manager.launch_sessions.assert_awaited_once_with(
-            "echo hi", 1, 120, 40
-        )
+        mock_manager.launch_sessions.assert_awaited_once_with("echo hi", 1, 120, 40)
 
     async def test_custom_count_columns_rows(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
@@ -377,9 +374,7 @@ class TestTerminalLaunch:
         fn = registered_mcp.tools["terminal_launch"]
         result = await fn(command="qwen", count=3, columns=200, rows=50)
         assert result == ["sess-1", "sess-2"]
-        mock_manager.launch_sessions.assert_awaited_once_with(
-            "qwen", 3, 200, 50
-        )
+        mock_manager.launch_sessions.assert_awaited_once_with("qwen", 3, 200, 50)
 
     async def test_dangerous_command_rejected_before_launch(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
@@ -557,9 +552,7 @@ class TestTerminalCaptureAll:
         fn = registered_mcp.tools["terminal_capture_all"]
         result = await fn(session_ids=["sess-1"], lines=10)
         assert result == {"sess-1": "out-1", "sess-2": "out-2"}
-        mock_manager.capture_all_outputs.assert_awaited_once_with(
-            ["sess-1"], 10
-        )
+        mock_manager.capture_all_outputs.assert_awaited_once_with(["sess-1"], 10)
 
 
 # =============================================================================
@@ -814,9 +807,7 @@ class TestTerminalSwitchAdapter:
         assert result["previous_adapter"] == "mock"
         assert result["new_adapter"] == "tmux"
         assert result["migrate_sessions"] is True
-        mock_manager.switch_adapter.assert_awaited_once_with(
-            fake_manager, True
-        )
+        mock_manager.switch_adapter.assert_awaited_once_with(fake_manager, True)
 
     async def test_crow_enabled_success(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
@@ -850,7 +841,9 @@ class TestTerminalSwitchAdapter:
         # Wire a fake tmux adapter that lets the switch path succeed at
         # construction, then make the underlying ``switch_adapter`` raise.
         fake_adapter = MagicMock()
-        with patch.object(pathlib.Path, "home", staticmethod(lambda: pathlib.Path("/tmp"))):
+        with patch.object(
+            pathlib.Path, "home", staticmethod(lambda: pathlib.Path("/tmp"))
+        ):
             with patch(
                 "mahavishnu.mcp.tools.terminal_tools.TmuxTerminalAdapter",
                 MagicMock(return_value=fake_adapter),

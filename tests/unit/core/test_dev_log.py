@@ -1,6 +1,7 @@
 """Tests for mahavishnu.core.dev_log.write_entry() — per-merge audit-log
 writer for the trunk-based agent-review workflow (REQ-003).
 """
+
 from __future__ import annotations
 
 import sys
@@ -39,7 +40,9 @@ def test_write_entry_creates_file_with_yaml_frontmatter(tmp_dev_log_dir: Path) -
     assert path.name == "2026-10-03-fix-ty.md"
 
 
-def test_write_entry_with_nested_reviewers_serializes_to_yaml(tmp_dev_log_dir: Path) -> None:
+def test_write_entry_with_nested_reviewers_serializes_to_yaml(
+    tmp_dev_log_dir: Path,
+) -> None:
     """Nested reviewer list renders as YAML block list."""
     metadata = {
         "date": "2026-10-03",
@@ -82,9 +85,7 @@ def test_write_entry_annotates_null_on_mirror_failure(
 
     metadata = {"date": "2026-10-03", "branch": "fix-ty"}
     body = "# fix-ty\n\nBody survives mirror failure.\n"
-    path = write_entry(
-        metadata=metadata, body=body, mirror_to_session_buddy=True
-    )
+    path = write_entry(metadata=metadata, body=body, mirror_to_session_buddy=True)
 
     text = path.read_text()
     # Body must still be written (canonical-local-file contract).

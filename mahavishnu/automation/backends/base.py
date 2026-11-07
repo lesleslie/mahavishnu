@@ -255,7 +255,9 @@ class DesktopAutomationBackend(ABC):
         Raises:
             NotImplementedError: If not supported by this backend.
         """
-        raise NotImplementedError(f"Clipboard access not supported by {self.backend_name}")
+        raise NotImplementedError(
+            f"Clipboard access not supported by {self.backend_name}"
+        )
 
     async def set_clipboard(self, text: str) -> bool:
         """Set clipboard content.
@@ -269,7 +271,9 @@ class DesktopAutomationBackend(ABC):
         Raises:
             NotImplementedError: If not supported by this backend.
         """
-        raise NotImplementedError(f"Clipboard access not supported by {self.backend_name}")
+        raise NotImplementedError(
+            f"Clipboard access not supported by {self.backend_name}"
+        )
 
     # =========================================================================
     # Input Operations
@@ -300,7 +304,9 @@ class DesktopAutomationBackend(ABC):
         """
 
     @abstractmethod
-    async def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> bool:
+    async def click(
+        self, x: int, y: int, button: str = "left", clicks: int = 1
+    ) -> bool:
         """Click at coordinates.
 
         Args:
@@ -356,7 +362,9 @@ class DesktopAutomationBackend(ABC):
     # =========================================================================
 
     @abstractmethod
-    async def screenshot(self, region: tuple[int, int, int, int] | None = None) -> bytes:
+    async def screenshot(
+        self, region: tuple[int, int, int, int] | None = None
+    ) -> bytes:
         """Capture a screenshot.
 
         Args:
@@ -405,7 +413,9 @@ class DesktopAutomationBackend(ABC):
         Raises:
             NotImplementedError: If not supported by this backend.
         """
-        raise NotImplementedError(f"UI element access not supported by {self.backend_name}")
+        raise NotImplementedError(
+            f"UI element access not supported by {self.backend_name}"
+        )
 
     async def click_ui_element(
         self,
@@ -426,7 +436,9 @@ class DesktopAutomationBackend(ABC):
         Raises:
             NotImplementedError: If not supported by this backend.
         """
-        raise NotImplementedError(f"UI element clicking not supported by {self.backend_name}")
+        raise NotImplementedError(
+            f"UI element clicking not supported by {self.backend_name}"
+        )
 
     # =========================================================================
     # Utility Methods

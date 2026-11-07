@@ -31,7 +31,9 @@ _logger = logging.getLogger(__name__)
 # Defined at module scope before helpers so both ``verify_sha256`` and
 # ``verify_sha256_streaming`` can validate backend labels against the
 # same frozenset (per round-2 BLOCKER R2-19).
-ALLOWED_BACKEND_KINDS: Final[frozenset[str]] = frozenset({"local", "s3", "gcs", "azure", "bundle"})
+ALLOWED_BACKEND_KINDS: Final[frozenset[str]] = frozenset(
+    {"local", "s3", "gcs", "azure", "bundle"}
+)
 
 
 def compute_sha256(blob: bytes) -> str:
@@ -66,12 +68,16 @@ def verify_sha256_streaming(
         WorktreeIntegrityError: If the digests do not match.
     """
     if backend not in ALLOWED_BACKEND_KINDS:
-        raise ValueError(f"backend must be one of {sorted(ALLOWED_BACKEND_KINDS)}, got {backend!r}")
+        raise ValueError(
+            f"backend must be one of {sorted(ALLOWED_BACKEND_KINDS)}, got {backend!r}"
+        )
     if actual_sha == expected_sha:
         return
 
     # B-DI-03 fix: pre-computed principal_short; NO re-hash.
-    record_bundle_integrity_failure_short(backend=backend, principal_short=principal_short)
+    record_bundle_integrity_failure_short(
+        backend=backend, principal_short=principal_short
+    )
     _logger.warning(
         "bundle-integrity-mismatch",
         extra={
@@ -95,7 +101,9 @@ def verify_sha256_streaming(
     )
 
 
-def record_bundle_integrity_failure_short(*, backend: str, principal_short: str) -> None:
+def record_bundle_integrity_failure_short(
+    *, backend: str, principal_short: str
+) -> None:
     """Emit ``bundle_integrity_failure_total{backend, principal_short}`` WITHOUT re-hashing.
 
     Used by ``verify_sha256_streaming``. The pre-computed ``principal_short``
@@ -177,7 +185,9 @@ def verify_sha256(
     # an explicit ``None`` default so the type-checker does not
     # have to narrow ``object`` based on ``hasattr``.
     principal_name = (
-        getattr(principal, "name", None) or str(principal) if principal is not None else ""
+        getattr(principal, "name", None) or str(principal)
+        if principal is not None
+        else ""
     )
     principal_short = _short_principal(principal_name)
     verify_sha256_streaming(

@@ -68,9 +68,19 @@ SKIP_DIRS in `parser.py` provides an additional guard:
 
 ```python
 SKIP_DIRS = {
-    ".git", "__pycache__", ".venv", "venv", "node_modules",
-    ".mypy_cache", ".pytest_cache", ".ruff_cache", "htmlcov",
-    "dist", "build", ".eggs", ".tox",
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "node_modules",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "htmlcov",
+    "dist",
+    "build",
+    ".eggs",
+    ".tox",
 }
 ```
 

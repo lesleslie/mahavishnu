@@ -52,7 +52,9 @@ class _Tracer:
 
 
 @pytest.mark.asyncio
-async def test_otel_middleware_wraps_mcp_request(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_otel_middleware_wraps_mcp_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     tracer = _Tracer()
     monkeypatch.setattr(
         "mcp_common.server.telemetry.trace.get_tracer",
@@ -102,8 +104,12 @@ async def test_otel_middleware_records_error(monkeypatch: pytest.MonkeyPatch) ->
     assert tracer.span.exceptions
 
 
-def test_fastmcp_server_registers_otel_middleware(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("mahavishnu.mcp.server_core.get_auth_from_config", lambda config: None)
+def test_fastmcp_server_registers_otel_middleware(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "mahavishnu.mcp.server_core.get_auth_from_config", lambda config: None
+    )
 
     config = SimpleNamespace(
         server_name="Test Server",
@@ -136,7 +142,9 @@ def test_fastmcp_server_registers_otel_middleware(monkeypatch: pytest.MonkeyPatc
 def test_fastmcp_server_skips_otel_middleware_when_disabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("mahavishnu.mcp.server_core.get_auth_from_config", lambda config: None)
+    monkeypatch.setattr(
+        "mahavishnu.mcp.server_core.get_auth_from_config", lambda config: None
+    )
 
     config = SimpleNamespace(
         server_name="Test Server",

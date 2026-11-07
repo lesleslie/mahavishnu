@@ -206,7 +206,9 @@ class TestLaunchApp:
     def test_success_with_empty_data(self) -> None:
         """Successful launch with None data falls back to bundle_id."""
         mgr = _make_mock_manager()
-        mgr.launch_application = AsyncMock(return_value=_make_result(status="success", data=None))
+        mgr.launch_application = AsyncMock(
+            return_value=_make_result(status="success", data=None)
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["launch-app", "com.apple.finder"])
         assert result.exit_code == 0
@@ -222,7 +224,10 @@ class TestLaunchApp:
                 data={"name": "Finder"},
             )
         )
-        with _patch_get_manager(mgr), patch("mahavishnu.automation.cli.format_result") as mock_fmt:
+        with (
+            _patch_get_manager(mgr),
+            patch("mahavishnu.automation.cli.format_result") as mock_fmt,
+        ):
             result = runner.invoke(app, ["launch-app", "com.apple.finder", "--json"])
         assert result.exit_code == 0
         mock_fmt.assert_called_once()
@@ -241,7 +246,9 @@ class TestLaunchApp:
     def test_automation_error(self) -> None:
         """AutomationError during launch prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.launch_application = AsyncMock(side_effect=AutomationError("Permission denied"))
+        mgr.launch_application = AsyncMock(
+            side_effect=AutomationError("Permission denied")
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["launch-app", "com.apple.finder"])
         assert result.exit_code == 1
@@ -271,15 +278,27 @@ class TestListApps:
     """Tests for the ``list-apps`` command."""
 
     _SAMPLE_APPS = [
-        {"bundle_id": "com.apple.finder", "name": "Finder", "pid": 123, "frontmost": True},
-        {"bundle_id": "com.apple.Safari", "name": "Safari", "pid": 456, "frontmost": False},
+        {
+            "bundle_id": "com.apple.finder",
+            "name": "Finder",
+            "pid": 123,
+            "frontmost": True,
+        },
+        {
+            "bundle_id": "com.apple.Safari",
+            "name": "Safari",
+            "pid": 456,
+            "frontmost": False,
+        },
     ]
 
     def test_success(self) -> None:
         """Successful list renders a table."""
         mgr = _make_mock_manager()
         mgr.list_applications = AsyncMock(
-            return_value=_make_result(status="success", data={"result": self._SAMPLE_APPS})
+            return_value=_make_result(
+                status="success", data={"result": self._SAMPLE_APPS}
+            )
         )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-apps"])
@@ -290,7 +309,9 @@ class TestListApps:
     def test_success_data_without_result_key(self) -> None:
         """When data is None, renders empty table."""
         mgr = _make_mock_manager()
-        mgr.list_applications = AsyncMock(return_value=_make_result(status="success", data=None))
+        mgr.list_applications = AsyncMock(
+            return_value=_make_result(status="success", data=None)
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-apps"])
         assert result.exit_code == 0
@@ -311,9 +332,14 @@ class TestListApps:
         """--json flag calls format_result."""
         mgr = _make_mock_manager()
         mgr.list_applications = AsyncMock(
-            return_value=_make_result(status="success", data={"result": self._SAMPLE_APPS})
+            return_value=_make_result(
+                status="success", data={"result": self._SAMPLE_APPS}
+            )
         )
-        with _patch_get_manager(mgr), patch("mahavishnu.automation.cli.format_result") as mock_fmt:
+        with (
+            _patch_get_manager(mgr),
+            patch("mahavishnu.automation.cli.format_result") as mock_fmt,
+        ):
             result = runner.invoke(app, ["list-apps", "--json"])
         assert result.exit_code == 0
         mock_fmt.assert_called_once()
@@ -398,7 +424,9 @@ class TestQuitApp:
     def test_automation_error(self) -> None:
         """AutomationError during quit prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.quit_application = AsyncMock(side_effect=AutomationError("Permission denied"))
+        mgr.quit_application = AsyncMock(
+            side_effect=AutomationError("Permission denied")
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["quit-app", "com.apple.finder"])
         assert result.exit_code == 1
@@ -428,7 +456,9 @@ class TestActivateApp:
     def test_success(self) -> None:
         """Successful activation prints confirmation."""
         mgr = _make_mock_manager()
-        mgr.activate_application = AsyncMock(return_value=_make_result(status="success"))
+        mgr.activate_application = AsyncMock(
+            return_value=_make_result(status="success")
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["activate-app", "com.apple.finder"])
         assert result.exit_code == 0
@@ -485,7 +515,9 @@ class TestListWindows:
         """Successful list renders a table."""
         mgr = _make_mock_manager()
         mgr.get_windows = AsyncMock(
-            return_value=_make_result(status="success", data={"result": self._SAMPLE_WINDOWS})
+            return_value=_make_result(
+                status="success", data={"result": self._SAMPLE_WINDOWS}
+            )
         )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-windows", "com.apple.finder"])
@@ -496,9 +528,14 @@ class TestListWindows:
         """--json flag calls format_result."""
         mgr = _make_mock_manager()
         mgr.get_windows = AsyncMock(
-            return_value=_make_result(status="success", data={"result": self._SAMPLE_WINDOWS})
+            return_value=_make_result(
+                status="success", data={"result": self._SAMPLE_WINDOWS}
+            )
         )
-        with _patch_get_manager(mgr), patch("mahavishnu.automation.cli.format_result") as mock_fmt:
+        with (
+            _patch_get_manager(mgr),
+            patch("mahavishnu.automation.cli.format_result") as mock_fmt,
+        ):
             result = runner.invoke(app, ["list-windows", "com.apple.finder", "--json"])
         assert result.exit_code == 0
         mock_fmt.assert_called_once()
@@ -508,7 +545,9 @@ class TestListWindows:
     def test_error_result(self) -> None:
         """Non-success status prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.get_windows = AsyncMock(return_value=_make_result(status="failed", error="Not running"))
+        mgr.get_windows = AsyncMock(
+            return_value=_make_result(status="failed", error="Not running")
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-windows", "com.apple.finder"])
         assert result.exit_code == 1
@@ -526,7 +565,9 @@ class TestListWindows:
     def test_data_without_result_key(self) -> None:
         """When data is None, renders empty table."""
         mgr = _make_mock_manager()
-        mgr.get_windows = AsyncMock(return_value=_make_result(status="success", data=None))
+        mgr.get_windows = AsyncMock(
+            return_value=_make_result(status="success", data=None)
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-windows", "com.apple.finder"])
         assert result.exit_code == 0
@@ -608,7 +649,9 @@ class TestTypeText:
     def test_error_result(self) -> None:
         """Non-success status prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.type_text = AsyncMock(return_value=_make_result(status="failed", error="Blocked text"))
+        mgr.type_text = AsyncMock(
+            return_value=_make_result(status="failed", error="Blocked text")
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["type", "secret"])
         assert result.exit_code == 1
@@ -682,7 +725,9 @@ class TestPressKey:
         mgr = _make_mock_manager()
         mgr.press_key = AsyncMock(return_value=_make_result(status="success"))
         with _patch_get_manager(mgr):
-            result = runner.invoke(app, ["press-key", "a", "--modifiers", "cmd , shift"])
+            result = runner.invoke(
+                app, ["press-key", "a", "--modifiers", "cmd , shift"]
+            )
         assert result.exit_code == 0
         call_kwargs = mgr.press_key.call_args
         assert call_kwargs.kwargs.get("modifiers") == ["cmd", "shift"]
@@ -690,7 +735,9 @@ class TestPressKey:
     def test_error_result(self) -> None:
         """Non-success status prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.press_key = AsyncMock(return_value=_make_result(status="failed", error="Invalid key"))
+        mgr.press_key = AsyncMock(
+            return_value=_make_result(status="failed", error="Invalid key")
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["press-key", "nonexistent"])
         assert result.exit_code == 1
@@ -816,7 +863,9 @@ class TestClickMenu:
         mgr = _make_mock_manager()
         mgr.click_menu_item = AsyncMock(return_value=_make_result(status="success"))
         with _patch_get_manager(mgr):
-            result = runner.invoke(app, ["click-menu", "com.apple.finder", "File , Edit , View"])
+            result = runner.invoke(
+                app, ["click-menu", "com.apple.finder", "File , Edit , View"]
+            )
         assert result.exit_code == 0
         mgr.click_menu_item.assert_called_once()
         call_args = mgr.click_menu_item.call_args
@@ -840,7 +889,9 @@ class TestClickMenu:
             return_value=_make_result(status="failed", error="Menu not found")
         )
         with _patch_get_manager(mgr):
-            result = runner.invoke(app, ["click-menu", "com.apple.finder", "Nonexistent"])
+            result = runner.invoke(
+                app, ["click-menu", "com.apple.finder", "Nonexistent"]
+            )
         assert result.exit_code == 1
         assert "Menu not found" in result.output
 
@@ -866,7 +917,9 @@ class TestScreenshot:
         """Without --output, writes binary to stdout."""
         mgr = _make_mock_manager()
         fake_bytes = b"\x89PNG\r\n\x1a\nfake"
-        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
+        mgr.screenshot = AsyncMock(
+            return_value=_make_result(status="success", data=fake_bytes)
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["screenshot"])
         assert result.exit_code == 0
@@ -875,7 +928,9 @@ class TestScreenshot:
         """With --output, writes to file and prints confirmation."""
         mgr = _make_mock_manager()
         fake_bytes = b"\x89PNG\r\n\x1a\nfake"
-        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
+        mgr.screenshot = AsyncMock(
+            return_value=_make_result(status="success", data=fake_bytes)
+        )
         out_file = tmp_path / "test.png"
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["screenshot", "--output", str(out_file)])
@@ -887,7 +942,9 @@ class TestScreenshot:
         """--region parses x,y,width,height and passes tuple to manager."""
         mgr = _make_mock_manager()
         fake_bytes = b"pngdata"
-        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
+        mgr.screenshot = AsyncMock(
+            return_value=_make_result(status="success", data=fake_bytes)
+        )
         with _patch_get_manager(mgr), patch("sys.stdout.buffer.write"):
             result = runner.invoke(app, ["screenshot", "--region", "100,200,800,600"])
         assert result.exit_code == 0
@@ -899,10 +956,14 @@ class TestScreenshot:
         """Both --region and --output work together."""
         mgr = _make_mock_manager()
         fake_bytes = b"pngdata"
-        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
+        mgr.screenshot = AsyncMock(
+            return_value=_make_result(status="success", data=fake_bytes)
+        )
         out_file = tmp_path / "out.png"
         with _patch_get_manager(mgr):
-            result = runner.invoke(app, ["screenshot", "-r", "0,0,1920,1080", "-o", str(out_file)])
+            result = runner.invoke(
+                app, ["screenshot", "-r", "0,0,1920,1080", "-o", str(out_file)]
+            )
         assert result.exit_code == 0
         assert out_file.read_bytes() == fake_bytes
 
@@ -1040,7 +1101,10 @@ class TestCheckPermissions:
         mgr.check_permissions = AsyncMock(
             return_value=_make_result(status="success", data=self._ALL_GRANTED)
         )
-        with _patch_get_manager(mgr), patch("mahavishnu.automation.cli.format_result") as mock_fmt:
+        with (
+            _patch_get_manager(mgr),
+            patch("mahavishnu.automation.cli.format_result") as mock_fmt,
+        ):
             result = runner.invoke(app, ["check-permissions", "--json"])
         assert result.exit_code == 0
         mock_fmt.assert_called_once_with(self._ALL_GRANTED, "json")
@@ -1059,7 +1123,9 @@ class TestCheckPermissions:
     def test_automation_error(self) -> None:
         """AutomationError during check prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.check_permissions = AsyncMock(side_effect=AutomationError("Backend not available"))
+        mgr.check_permissions = AsyncMock(
+            side_effect=AutomationError("Backend not available")
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["check-permissions"])
         assert result.exit_code == 1
@@ -1081,7 +1147,9 @@ class TestCheckPermissions:
     def test_none_data(self) -> None:
         """None data falls back to empty dict."""
         mgr = _make_mock_manager()
-        mgr.check_permissions = AsyncMock(return_value=_make_result(status="success", data=None))
+        mgr.check_permissions = AsyncMock(
+            return_value=_make_result(status="success", data=None)
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["check-permissions"])
         assert result.exit_code == 0
@@ -1187,7 +1255,9 @@ class TestListScreens:
         """Successful list renders a table."""
         mgr = _make_mock_manager()
         mgr.list_screens = AsyncMock(
-            return_value=_make_result(status="success", data={"result": self._SAMPLE_SCREENS})
+            return_value=_make_result(
+                status="success", data={"result": self._SAMPLE_SCREENS}
+            )
         )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-screens"])
@@ -1198,9 +1268,14 @@ class TestListScreens:
         """--json flag calls format_result."""
         mgr = _make_mock_manager()
         mgr.list_screens = AsyncMock(
-            return_value=_make_result(status="success", data={"result": self._SAMPLE_SCREENS})
+            return_value=_make_result(
+                status="success", data={"result": self._SAMPLE_SCREENS}
+            )
         )
-        with _patch_get_manager(mgr), patch("mahavishnu.automation.cli.format_result") as mock_fmt:
+        with (
+            _patch_get_manager(mgr),
+            patch("mahavishnu.automation.cli.format_result") as mock_fmt,
+        ):
             result = runner.invoke(app, ["list-screens", "--json"])
         assert result.exit_code == 0
         mock_fmt.assert_called_once()
@@ -1210,7 +1285,9 @@ class TestListScreens:
     def test_error_result(self) -> None:
         """Non-success status prints error and exits 1."""
         mgr = _make_mock_manager()
-        mgr.list_screens = AsyncMock(return_value=_make_result(status="failed", error="Failed"))
+        mgr.list_screens = AsyncMock(
+            return_value=_make_result(status="failed", error="Failed")
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-screens"])
         assert result.exit_code == 1
@@ -1228,7 +1305,9 @@ class TestListScreens:
     def test_data_without_result_key(self) -> None:
         """When data is None, renders empty table."""
         mgr = _make_mock_manager()
-        mgr.list_screens = AsyncMock(return_value=_make_result(status="success", data=None))
+        mgr.list_screens = AsyncMock(
+            return_value=_make_result(status="success", data=None)
+        )
         with _patch_get_manager(mgr):
             result = runner.invoke(app, ["list-screens"])
         assert result.exit_code == 0
@@ -1271,7 +1350,9 @@ class TestAppConfiguration:
         assert result.exit_code == 0
         assert "Desktop automation commands" in result.output
 
-    @pytest.mark.skip(reason="Path | None annotation causes Typer parsing issue in CliRunner")
+    @pytest.mark.skip(
+        reason="Path | None annotation causes Typer parsing issue in CliRunner"
+    )
     def test_no_args_is_help(self) -> None:
         """Invoking with no arguments shows help (no_args_is_help=True)."""
         result = runner.invoke(app, [])
@@ -1309,7 +1390,9 @@ class TestAppConfiguration:
             "list-screens",
         ]
         for cmd in expected_commands:
-            assert cmd in help_result.output, f"Command '{cmd}' not found in help output"
+            assert cmd in help_result.output, (
+                f"Command '{cmd}' not found in help output"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -1368,7 +1451,9 @@ class TestEdgeCases:
     def test_screenshot_region_with_negative_values(self) -> None:
         """Region with negative values is accepted (parsing allows it)."""
         mgr = _make_mock_manager()
-        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=b"png"))
+        mgr.screenshot = AsyncMock(
+            return_value=_make_result(status="success", data=b"png")
+        )
         with _patch_get_manager(mgr), patch("sys.stdout.buffer.write"):
             result = runner.invoke(app, ["screenshot", "--region", "-10,-20,100,100"])
         assert result.exit_code == 0
@@ -1411,9 +1496,13 @@ class TestEdgeCases:
         """-o and -r short options work for screenshot."""
         mgr = _make_mock_manager()
         fake_bytes = b"pngdata"
-        mgr.screenshot = AsyncMock(return_value=_make_result(status="success", data=fake_bytes))
+        mgr.screenshot = AsyncMock(
+            return_value=_make_result(status="success", data=fake_bytes)
+        )
         out_file = tmp_path / "s.png"
         with _patch_get_manager(mgr):
-            result = runner.invoke(app, ["screenshot", "-r", "0,0,800,600", "-o", str(out_file)])
+            result = runner.invoke(
+                app, ["screenshot", "-r", "0,0,800,600", "-o", str(out_file)]
+            )
         assert result.exit_code == 0
         assert out_file.read_bytes() == fake_bytes

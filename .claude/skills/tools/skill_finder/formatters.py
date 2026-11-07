@@ -25,7 +25,11 @@ def format_results(results: list[SearchResult], query: str) -> Table:
     Returns:
         Rich Table object
     """
-    table = Table(title=f"Search Results: '{query}'", show_header=True, header_style="bold magenta")
+    table = Table(
+        title=f"Search Results: '{query}'",
+        show_header=True,
+        header_style="bold magenta",
+    )
     table.add_column("Score", style="cyan", width=8)
     table.add_column("Skill", style="green", no_wrap=False)
     table.add_column("Match Type", style="yellow")
@@ -121,7 +125,9 @@ def print_skills(skills: list[SkillMetadata], title: str = "Skills") -> None:
         console.print("[yellow]No skills found[/yellow]")
         return
 
-    table = Table(title=f"{title} ({len(skills)})", show_header=True, header_style="bold magenta")
+    table = Table(
+        title=f"{title} ({len(skills)})", show_header=True, header_style="bold magenta"
+    )
     table.add_column("Name", style="green", no_wrap=False)
     table.add_column("System", style="cyan")
     table.add_column("Related", style="yellow")
@@ -166,13 +172,17 @@ def format_system_summary(skills: list[SkillMetadata]) -> Table:
     for skill in skills:
         system_counts[skill.system] = system_counts.get(skill.system, 0) + 1
 
-    table = Table(title="System Distribution", show_header=True, header_style="bold magenta")
+    table = Table(
+        title="System Distribution", show_header=True, header_style="bold magenta"
+    )
     table.add_column("System", style="cyan")
     table.add_column("Count", style="green")
     table.add_column("Percentage", style="yellow")
 
     total = len(skills)
-    for system, count in sorted(system_counts.items(), key=lambda x: x[1], reverse=True):
+    for system, count in sorted(
+        system_counts.items(), key=lambda x: x[1], reverse=True
+    ):
         percentage = (count / total) * 100
         table.add_row(system, str(count), f"{percentage:.1f}%")
 

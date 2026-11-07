@@ -164,7 +164,9 @@ def _make_mergiraf_proc(
     branch deterministically on (exit_code, has_markers).
     """
     proc = AsyncMock(spec=asyncio.subprocess.Process)
-    proc.communicate = AsyncMock(return_value=(stdout.encode("utf-8"), stderr.encode("utf-8")))
+    proc.communicate = AsyncMock(
+        return_value=(stdout.encode("utf-8"), stderr.encode("utf-8"))
+    )
     proc.returncode = returncode
     return proc
 
@@ -331,7 +333,9 @@ async def test_mergiraf_truncates_driver_warnings_at_4kb() -> None:
     assert len(msg) < 10_000  # far less than the 10KB input
 
 
-async def test_merge_three_way_semantic_raises_driver_unavailable_when_binary_missing() -> None:
+async def test_merge_three_way_semantic_raises_driver_unavailable_when_binary_missing() -> (
+    None
+):
     """Validation gate: ``MergeStrategy.SEMANTIC`` with no binary on PATH.
 
     The validation gate fires BEFORE the subprocess spawn (R3 #1). No
@@ -456,7 +460,9 @@ async def test_missing_binary_with_required_flag_raises_at_startup() -> None:
         with pytest.raises(MergeDriverUnavailableError) as excinfo:
             _install_merge_driver_runtime_config(_StubApp())
     assert "mergiraf" in str(excinfo.value).lower()
-    assert "boot" in str(excinfo.value).lower() or "process" in str(excinfo.value).lower()
+    assert (
+        "boot" in str(excinfo.value).lower() or "process" in str(excinfo.value).lower()
+    )
 
 
 async def test_startup_guard_does_not_fire_when_binary_present() -> None:
@@ -578,7 +584,9 @@ async def test_runtime_fallback_sets_driver_warning_field() -> None:
     assert result.merged == "merged\n"
 
 
-async def test_runtime_fallback_does_not_set_driver_warning_for_explicit_strategy() -> None:
+async def test_runtime_fallback_does_not_set_driver_warning_for_explicit_strategy() -> (
+    None
+):
     """Explicit ``strategy=LINE`` skips the fallback detection.
 
     The runtime fallback detection in ``merge_three_way`` only fires when
@@ -821,8 +829,7 @@ def test_runtime_fallback_increments_counter_even_when_default_line() -> None:
     # mergiraf-default fallback.
     kwargs_or_args = counter.add.call_args
     attrs = (
-        kwargs_or_args.kwargs.get("attributes")
-        or kwargs_or_args.args[1]
+        kwargs_or_args.kwargs.get("attributes") or kwargs_or_args.args[1]
         if len(kwargs_or_args.args) > 1
         else kwargs_or_args.kwargs.get("attributes", {})
     )
@@ -851,15 +858,16 @@ def test_runtime_fallback_increments_counter_default_mergiraf() -> None:
     counter.add.assert_called_once()
     kwargs_or_args = counter.add.call_args
     attrs = (
-        kwargs_or_args.kwargs.get("attributes")
-        or kwargs_or_args.args[1]
+        kwargs_or_args.kwargs.get("attributes") or kwargs_or_args.args[1]
         if len(kwargs_or_args.args) > 1
         else kwargs_or_args.kwargs.get("attributes", {})
     )
     assert attrs.get("reason") == "mergiraf_missing_default_mergiraf"
 
 
-def test_env_var_driven_config_without_bootstrap(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_env_var_driven_config_without_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """m2: env vars update the singleton when no bootstrap ran.
 
     Phase 4 deferred review (m2). CLI tools that import

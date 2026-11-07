@@ -39,7 +39,10 @@ class TestIntentClassification:
             ("what are the tasks", Intent.LIST),
             ("update task 123", Intent.UPDATE),
             ("change status of task 5", Intent.UPDATE),
-            ("mark task 10 as complete", Intent.COMPLETE),  # "mark as complete" is COMPLETE
+            (
+                "mark task 10 as complete",
+                Intent.COMPLETE,
+            ),  # "mark as complete" is COMPLETE
             ("delete task 456", Intent.DELETE),
             ("remove task 789", Intent.DELETE),
             ("cancel task 100", Intent.DELETE),
@@ -142,7 +145,9 @@ class TestTitleExtraction:
     @pytest.mark.asyncio
     async def test_extract_title_with_repository(self, parser):
         """Test title extraction with repository present."""
-        result = await parser.parse("create task to implement auth for session-buddy repo")
+        result = await parser.parse(
+            "create task to implement auth for session-buddy repo"
+        )
         assert "title" in result.entities
         assert "session-buddy" not in result.entities["title"].value.lower()
         assert "implement auth" in result.entities["title"].value.lower()
@@ -182,7 +187,9 @@ class TestConfidenceScoring:
     @pytest.mark.asyncio
     async def test_high_confidence_clear_intent(self, parser):
         """Test high confidence for clear intent."""
-        result = await parser.parse("create task to fix bug for session-buddy repo #urgent")
+        result = await parser.parse(
+            "create task to fix bug for session-buddy repo #urgent"
+        )
         assert result.confidence >= 0.7
 
     @pytest.mark.asyncio
@@ -194,7 +201,9 @@ class TestConfidenceScoring:
     @pytest.mark.asyncio
     async def test_confidence_threshold_met(self, parser):
         """Test that clear inputs meet confidence threshold."""
-        result = await parser.parse("create bug fix task for mahavishnu repo high priority")
+        result = await parser.parse(
+            "create bug fix task for mahavishnu repo high priority"
+        )
         assert result.is_confident()
 
 
@@ -214,7 +223,8 @@ class TestClarification:
         result = await parser.parse("update the task status")
         if not result.is_confident():
             assert any(
-                "task ID" in c or "which task" in c.lower() for c in result.clarification_needed
+                "task ID" in c or "which task" in c.lower()
+                for c in result.clarification_needed
             )
 
     @pytest.mark.asyncio

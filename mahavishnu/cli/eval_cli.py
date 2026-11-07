@@ -257,17 +257,13 @@ def run_suite(
     from mahavishnu.core.eval.report import default_report_path, write_run_markdown
 
     scorer_names = _scorer_names(scorers)
-    result, details = asyncio.run(
-        _run_suite_async(suite, model, budget, scorer_names)
-    )
+    result, details = asyncio.run(_run_suite_async(suite, model, budget, scorer_names))
     summary = result.summary
 
     if report_dir is not None:
         report_path = report_dir / f"{result.run_id}.md"
     else:
-        report_path = default_report_path(
-            _settings().db_path, result.run_id
-        )
+        report_path = default_report_path(_settings().db_path, result.run_id)
     write_run_markdown(
         details.run,
         details.case_results,

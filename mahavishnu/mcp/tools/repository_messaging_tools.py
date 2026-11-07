@@ -75,7 +75,10 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "priority": message.priority.value,
             }
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return {"status": "error", "error": f"Failed to send repository message: {e}"}
+            return {
+                "status": "error",
+                "error": f"Failed to send repository message: {e}",
+            }
 
     @server.tool()
     async def broadcast_repository_message(
@@ -121,7 +124,10 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "target_repos": target_repos or app.get_repos(),
             }
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return {"status": "error", "error": f"Failed to broadcast repository message: {e}"}
+            return {
+                "status": "error",
+                "error": f"Failed to broadcast repository message: {e}",
+            }
 
     @server.tool()
     async def get_repository_messages(
@@ -156,7 +162,10 @@ def register_repository_messaging_tools(server, app, mcp_client):
 
             # Get messages
             messages = await messenger_manager.messenger.get_messages_for_repo(
-                repo_name=receiver_repo, message_type=msg_type, limit=limit, since=since_dt
+                repo_name=receiver_repo,
+                message_type=msg_type,
+                limit=limit,
+                since=since_dt,
             )
 
             return {
@@ -177,10 +186,15 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "count": len(messages),
             }
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return {"status": "error", "error": f"Failed to get repository messages: {e}"}
+            return {
+                "status": "error",
+                "error": f"Failed to get repository messages: {e}",
+            }
 
     @server.tool()
-    async def acknowledge_repository_message(message_id: str, receiver_repo: str) -> dict[str, Any]:
+    async def acknowledge_repository_message(
+        message_id: str, receiver_repo: str
+    ) -> dict[str, Any]:
         """Acknowledge receipt of a message."""
         try:
             success = await messenger_manager.messenger.acknowledge_message(
@@ -205,7 +219,9 @@ def register_repository_messaging_tools(server, app, mcp_client):
     ) -> dict[str, Any]:
         """Notify other repositories about changes in a repository."""
         try:
-            result = await messenger_manager.process_repository_changes(repo_path, changes)
+            result = await messenger_manager.process_repository_changes(
+                repo_path, changes
+            )
 
             return {
                 "status": result["status"],
@@ -213,11 +229,17 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "changes_notified": result.get("changes_notified", 0),
             }
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return {"status": "error", "error": f"Failed to notify repository changes: {e}"}
+            return {
+                "status": "error",
+                "error": f"Failed to notify repository changes: {e}",
+            }
 
     @server.tool()
     async def notify_workflow_status(
-        workflow_id: str, status: str, repo_path: str, target_repos: list[str] | None = None
+        workflow_id: str,
+        status: str,
+        repo_path: str,
+        target_repos: list[str] | None = None,
     ) -> dict[str, Any]:
         """Notify other repositories about workflow status changes."""
         try:
@@ -231,7 +253,10 @@ def register_repository_messaging_tools(server, app, mcp_client):
                 "workflow_id": workflow_id,
             }
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return {"status": "error", "error": f"Failed to notify workflow status: {e}"}
+            return {
+                "status": "error",
+                "error": f"Failed to notify workflow status: {e}",
+            }
 
     @server.tool()
     async def send_quality_alert(

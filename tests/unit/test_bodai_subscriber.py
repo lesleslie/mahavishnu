@@ -9,6 +9,7 @@ These tests mock the ``redis.asyncio`` client (no real Redis required)
 and use ``InMemoryEventTransport`` only for round-trip envelope
 construction in the formatting tests.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -54,7 +55,10 @@ def test_format_bodai_summary_mahavishnu() -> None:
         payload={"workflow_id": "wid_abc"},
         headers={"source": "mahavishnu"},
     )
-    assert format_bodai_summary(envelope) == "[mahavishnu] workflow_completed workflow_id=wid_abc"
+    assert (
+        format_bodai_summary(envelope)
+        == "[mahavishnu] workflow_completed workflow_id=wid_abc"
+    )
 
 
 def test_format_bodai_summary_akosha() -> None:
@@ -63,7 +67,9 @@ def test_format_bodai_summary_akosha() -> None:
         payload={"suite": "quality"},
         headers={"source": "akosha"},
     )
-    assert format_bodai_summary(envelope) == "[akosha] aggregation_completed suite=quality"
+    assert (
+        format_bodai_summary(envelope) == "[akosha] aggregation_completed suite=quality"
+    )
 
 
 def test_format_bodai_summary_missing_keys() -> None:
@@ -230,7 +236,9 @@ def _legacy_pydantic_json(topic: str, payload: dict[str, Any], source: str) -> s
 def test_decode_envelope_canonical_json() -> None:
     """Canonical ``envelope=<JSON>`` field: decoded via canonical decoder."""
     raw = _canonical_envelope_json(
-        "workflow_completed", {"workflow_id": "wid_abc"}, "mahavishnu",
+        "workflow_completed",
+        {"workflow_id": "wid_abc"},
+        "mahavishnu",
     )
     envelope = _decode_envelope({"envelope": raw})
     assert isinstance(envelope, EventEnvelope)
@@ -242,7 +250,9 @@ def test_decode_envelope_canonical_json() -> None:
 def test_decode_envelope_canonical_precedence_over_direct_triplet() -> None:
     """When both ``envelope`` and direct triplet are present, canonical wins."""
     canonical_raw = _canonical_envelope_json(
-        "canonical_topic", {"from": "canonical"}, "mahavishnu",
+        "canonical_topic",
+        {"from": "canonical"},
+        "mahavishnu",
     )
     direct_payload = {"from": "direct"}
     direct_headers = {"source": "akosha"}
@@ -293,7 +303,9 @@ def test_decode_envelope_legacy_allowed_falls_back_to_pydantic(
     """Legacy wire path: canonical fails, legacy Pydantic envelope decoded."""
     monkeypatch.setenv("MAHAVISHNU_BODAI_ACCEPT_LEGACY_WIRE", "true")
     legacy_raw = _legacy_pydantic_json(
-        "legacy_topic", {"k": "v"}, "mahavishnu",
+        "legacy_topic",
+        {"k": "v"},
+        "mahavishnu",
     )
     envelope = _decode_envelope({"envelope": legacy_raw})
     assert isinstance(envelope, MahavishnuEventEnvelope)
@@ -370,7 +382,9 @@ def test_decode_envelope_handles_flat_shape() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _make_envelope_dict(source: str, topic: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _make_envelope_dict(
+    source: str, topic: str, payload: dict[str, Any]
+) -> dict[str, Any]:
     """Return a Redis-stream message dict with a canonical envelope JSON."""
     return {"envelope": _canonical_envelope_json(topic, payload, source)}
 
@@ -383,9 +397,13 @@ def _make_redis_mock(
 ) -> MagicMock:
     """Construct an AsyncMock-shaped redis client."""
     client = MagicMock()
-    client.xreadgroup = AsyncMock(return_value=read_response, side_effect=read_side_effect)
+    client.xreadgroup = AsyncMock(
+        return_value=read_response, side_effect=read_side_effect
+    )
     client.xack = AsyncMock(return_value=1)
-    client.xgroup_create = AsyncMock(return_value=0, side_effect=xgroup_create_side_effect)
+    client.xgroup_create = AsyncMock(
+        return_value=0, side_effect=xgroup_create_side_effect
+    )
     client.aclose = AsyncMock(return_value=None)
     client.close = AsyncMock(return_value=None)
     return client
@@ -396,7 +414,9 @@ def _redis_factory_for(client: MagicMock) -> Any:
     return lambda _url: client
 
 
-async def _drain_for(predicate: Any, *, iterations: int = 200, sleep: float = 0.01) -> None:
+async def _drain_for(
+    predicate: Any, *, iterations: int = 200, sleep: float = 0.01
+) -> None:
     """Yield to the loop until ``predicate()`` is true or the iteration cap is reached."""
     for _ in range(iterations):
         if predicate():
@@ -404,7 +424,9 @@ async def _drain_for(predicate: Any, *, iterations: int = 200, sleep: float = 0.
         await asyncio.sleep(sleep)
 
 
-async def _run_until(predicate: Any, *, cancel: asyncio.Event, task: asyncio.Task[Any]) -> None:
+async def _run_until(
+    predicate: Any, *, cancel: asyncio.Event, task: asyncio.Task[Any]
+) -> None:
     """Drain until ``predicate()`` is true, then cancel and await task."""
     await _drain_for(predicate)
     cancel.set()
@@ -426,7 +448,9 @@ async def test_subscriber_decode_failure_does_not_append_or_ack(
     """Malformed envelope: log + skip (no append, no ack) + continue."""
     malformed = {"envelope": b"this is not json {{{"}
     good = _make_envelope_dict(
-        "mahavishnu", "workflow_completed", {"workflow_id": "wid_xyz"},
+        "mahavishnu",
+        "workflow_completed",
+        {"workflow_id": "wid_xyz"},
     )
 
     state = {"emitted_first": False}
@@ -435,7 +459,9 @@ async def test_subscriber_decode_failure_does_not_append_or_ack(
         await asyncio.sleep(0.01)
         if not state["emitted_first"]:
             state["emitted_first"] = True
-            return [(STREAM_NAME.encode("utf-8"), [(b"1-0", malformed), (b"1-1", good)])]
+            return [
+                (STREAM_NAME.encode("utf-8"), [(b"1-0", malformed), (b"1-1", good)])
+            ]
         return []
 
     client = _make_redis_mock()
@@ -479,7 +505,9 @@ async def test_subscriber_callback_timeout_does_not_append_or_ack(
 ) -> None:
     """Per-event timeout: do not append, do not ack (allow retry)."""
     slow_envelope = _make_envelope_dict(
-        "mahavishnu", "workflow_completed", {"workflow_id": "wid_slow"},
+        "mahavishnu",
+        "workflow_completed",
+        {"workflow_id": "wid_slow"},
     )
 
     state = {"emitted_first": False}
@@ -538,7 +566,9 @@ async def test_subscriber_callback_cancelled_error_propagates(
 ) -> None:
     """``asyncio.CancelledError`` inside the callback propagates and stops the loop."""
     cancel_event = {"fired": False}
-    good = _make_envelope_dict("mahavishnu", "workflow_completed", {"workflow_id": "wid"})
+    good = _make_envelope_dict(
+        "mahavishnu", "workflow_completed", {"workflow_id": "wid"}
+    )
 
     async def fake_xreadgroup(**_kwargs: Any) -> list[Any]:
         await asyncio.sleep(0.01)
@@ -580,7 +610,9 @@ async def test_subscriber_callback_exception_appends_and_acks(
 ) -> None:
     """Callback raises Exception: log + proceed to append + ack."""
     envelope = _make_envelope_dict(
-        "mahavishnu", "workflow_completed", {"workflow_id": "wid_err"},
+        "mahavishnu",
+        "workflow_completed",
+        {"workflow_id": "wid_err"},
     )
 
     state = {"emitted_first": False}
@@ -634,7 +666,9 @@ async def test_subscriber_queue_append_failure_still_acks(
 ) -> None:
     """When ``append_to_queue`` raises, the message is still acked."""
     envelope = _make_envelope_dict(
-        "mahavishnu", "workflow_completed", {"workflow_id": "wid_qfail"},
+        "mahavishnu",
+        "workflow_completed",
+        {"workflow_id": "wid_qfail"},
     )
 
     state = {"emitted_first": False}
@@ -660,7 +694,8 @@ async def test_subscriber_queue_append_failure_still_acks(
         raise RuntimeError("intentional queue append failure")
 
     monkeypatch.setattr(
-        "mahavishnu.core.events.bodai_subscriber.append_to_queue", _explode,
+        "mahavishnu.core.events.bodai_subscriber.append_to_queue",
+        _explode,
     )
 
     task = asyncio.create_task(
@@ -691,7 +726,9 @@ async def test_subscriber_redis_read_failure_backs_off_and_retries(
 ) -> None:
     """xreadgroup raises → loop backs off, retries, processes the next batch."""
     good = _make_envelope_dict(
-        "mahavishnu", "workflow_completed", {"workflow_id": "wid_recovery"},
+        "mahavishnu",
+        "workflow_completed",
+        {"workflow_id": "wid_recovery"},
     )
 
     state = {"calls": 0}
@@ -770,7 +807,9 @@ async def test_subscriber_all_exit_paths_close_client(
 ) -> None:
     """Every exit path (normal, cancel, exception) closes the redis client."""
     envelope = _make_envelope_dict(
-        "mahavishnu", "workflow_completed", {"workflow_id": "wid"},
+        "mahavishnu",
+        "workflow_completed",
+        {"workflow_id": "wid"},
     )
 
     state = {"emitted_first": False}
@@ -844,9 +883,7 @@ async def test_subscribe_creates_consumer_group_idempotently() -> None:
 
     # Exactly one xgroup_create attempt; the BUSYGROUP debug branch was logged
     assert client.xgroup_create.await_count == 1
-    debug_calls = [
-        call.args[0] for call in debug_mock.call_args_list if call.args
-    ]
+    debug_calls = [call.args[0] for call in debug_mock.call_args_list if call.args]
     assert any("consumer group already exists" in str(arg) for arg in debug_calls)
     # No callbacks fired
     assert received == []
@@ -857,20 +894,31 @@ async def test_subscribe_creates_consumer_group_idempotently() -> None:
 async def test_subscribe_consumes_and_appends(tmp_path: Path) -> None:
     """Three envelopes arrive via xreadgroup; verify all 3 appended + acked."""
     envelope1 = _make_envelope_dict(
-        "mahavishnu", "workflow_completed", {"workflow_id": "wid_abc"},
+        "mahavishnu",
+        "workflow_completed",
+        {"workflow_id": "wid_abc"},
     )
     envelope2 = _make_envelope_dict(
-        "akosha", "aggregation_completed", {"suite": "quality"},
+        "akosha",
+        "aggregation_completed",
+        {"suite": "quality"},
     )
     envelope3 = _make_envelope_dict(
-        "crackerjack", "test_run_completed", {"passed": 42, "failed": 0},
+        "crackerjack",
+        "test_run_completed",
+        {"passed": 42, "failed": 0},
     )
 
-    first_batch = [(STREAM_NAME.encode("utf-8"), [
-        (b"1-0", envelope1),
-        (b"1-1", envelope2),
-        (b"1-2", envelope3),
-    ])]
+    first_batch = [
+        (
+            STREAM_NAME.encode("utf-8"),
+            [
+                (b"1-0", envelope1),
+                (b"1-1", envelope2),
+                (b"1-2", envelope3),
+            ],
+        )
+    ]
 
     remaining = {"emitted_first": False}
 
@@ -970,9 +1018,7 @@ def _make_xread_mock_client(
     has no consumer-group semantics).
     """
     client = MagicMock()
-    client.xread = AsyncMock(
-        return_value=xread_response, side_effect=xread_side_effect
-    )
+    client.xread = AsyncMock(return_value=xread_response, side_effect=xread_side_effect)
     client.aclose = AsyncMock(return_value=None)
     client.close = AsyncMock(return_value=None)
     return client
@@ -1011,8 +1057,14 @@ def test_read_bodai_events_since_returns_envelope_dicts_with_message_ids() -> No
         [
             b"bodai:events",
             [
-                (b"1737120000000-0", {b"envelope": json.dumps(canonical_envelope).encode("utf-8")}),
-                (b"1737120000001-0", {b"envelope": json.dumps(canonical_envelope).encode("utf-8")}),
+                (
+                    b"1737120000000-0",
+                    {b"envelope": json.dumps(canonical_envelope).encode("utf-8")},
+                ),
+                (
+                    b"1737120000001-0",
+                    {b"envelope": json.dumps(canonical_envelope).encode("utf-8")},
+                ),
             ],
         ],
     ]
@@ -1109,7 +1161,12 @@ def test_read_bodai_events_since_decodes_envelopes_via_canonical_path() -> None:
     raw_response = [
         [
             b"bodai:events",
-            [(b"1737120000000-0", {b"envelope": json.dumps(envelope_blob).encode("utf-8")})],
+            [
+                (
+                    b"1737120000000-0",
+                    {b"envelope": json.dumps(envelope_blob).encode("utf-8")},
+                )
+            ],
         ],
     ]
     client = _make_xread_mock_client(xread_response=raw_response)
@@ -1169,23 +1226,17 @@ def test_read_bodai_events_since_skips_malformed_entries() -> None:
                 # Good entry first — must surface.
                 (
                     b"1737120000000-0",
-                    {
-                        b"envelope": json.dumps(good_envelope).encode("utf-8")
-                    },
+                    {b"envelope": json.dumps(good_envelope).encode("utf-8")},
                 ),
                 # Bad entry second — must be skipped (logged WARNING).
                 (
                     b"1737120000001-0",
-                    {
-                        b"envelope": json.dumps(bad_envelope).encode("utf-8")
-                    },
+                    {b"envelope": json.dumps(bad_envelope).encode("utf-8")},
                 ),
                 # Good entry third — must surface.
                 (
                     b"1737120000002-0",
-                    {
-                        b"envelope": json.dumps(good_envelope).encode("utf-8")
-                    },
+                    {b"envelope": json.dumps(good_envelope).encode("utf-8")},
                 ),
             ],
         ],

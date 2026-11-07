@@ -183,7 +183,9 @@ def _locate_jsdom() -> Path | None:
         path = Path(env_override).resolve()
         if path.is_file():
             return path
-        raise RuntimeError(f"MAHAVISHNU_JSDOM={env_override} does not exist or is not a file")
+        raise RuntimeError(
+            f"MAHAVISHNU_JSDOM={env_override} does not exist or is not a file"
+        )
 
     # Walk up from this file to find the mahavishnu repo root.
     repo_root = Path(__file__).resolve()
@@ -255,7 +257,9 @@ def validate_mermaid_blocks(
 
 def _build_payload(blocks: list[MermaidBlock]) -> str:
     """Serialize the blocks into the JSON shape the Node runner expects."""
-    return json.dumps([{"file": str(b.file), "line": b.line, "code": b.code} for b in blocks])
+    return json.dumps(
+        [{"file": str(b.file), "line": b.line, "code": b.code} for b in blocks]
+    )
 
 
 def _run_mermaid_subprocess(

@@ -186,7 +186,9 @@ def default_model_for(provider: LLMProvider) -> str:
         The provider's default model id. Falls back to the MiniMax default
         for a provider with no explicit entry.
     """
-    return PROVIDER_DEFAULT_MODEL.get(provider, PROVIDER_DEFAULT_MODEL[LLMProvider.MINIMAX])
+    return PROVIDER_DEFAULT_MODEL.get(
+        provider, PROVIDER_DEFAULT_MODEL[LLMProvider.MINIMAX]
+    )
 
 
 class MemoryBackend(StrEnum):
@@ -1133,7 +1135,9 @@ class OTelStorageConfig(_OneiricOTelStorageSettings):
                 "Expected format: postgresql://user:password@host:port/database"
             )
 
-        if v.count("/") < 3:  # postgresql:// is 2 slashes, need at least one more for database
+        if (
+            v.count("/") < 3
+        ):  # postgresql:// is 2 slashes, need at least one more for database
             raise ValueError(
                 "connection_string missing database name. "
                 "Expected format: postgresql://user:password@host:port/database"
@@ -1650,7 +1654,9 @@ class A2AAgentEntry(BaseModel):
 
         scheme = urlparse(v).scheme
         if scheme not in ("http", "https"):
-            raise ValueError(f"A2A agent URL must use http or https, got scheme {scheme!r}")
+            raise ValueError(
+                f"A2A agent URL must use http or https, got scheme {scheme!r}"
+            )
         return v
 
 
@@ -3513,7 +3519,9 @@ def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
         from oneiric.core.config import load_settings as _oneiric_load
 
         anchor = (
-            Path(project_root).resolve() if project_root else Path(__file__).resolve().parents[2]
+            Path(project_root).resolve()
+            if project_root
+            else Path(__file__).resolve().parents[2]
         )
         merged: dict = {}
         try:
@@ -3557,7 +3565,11 @@ def get_settings(project_root: str | Path | None = None) -> MahavishnuSettings:
             # model_dump path above.
             extras = getattr(oneiric_obj, "__pydantic_extra__", None) or {}
             for k, v in extras.items():
-                if k in MahavishnuSettings.model_fields and v is not None and k not in merged:
+                if (
+                    k in MahavishnuSettings.model_fields
+                    and v is not None
+                    and k not in merged
+                ):
                     merged[k] = v
 
             # Per-subconfig key filter: drop keys not declared on the

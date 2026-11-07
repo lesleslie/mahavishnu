@@ -91,7 +91,9 @@ if not REFLECTION_AVAILABLE:
 akosha_cloud_bucket: str = Field(default="", description="S3/R2 bucket name")
 akosha_cloud_endpoint: str = Field(default="", description="S3/R2 endpoint URL")
 akosha_upload_on_session_end: bool = Field(default=True)
-akosha_enable_fallback: bool = Field(default=True, description="Allow cloud -> HTTP fallback")
+akosha_enable_fallback: bool = Field(
+    default=True, description="Allow cloud -> HTTP fallback"
+)
 akosha_force_method: t.Literal["auto", "cloud", "http"] = Field(default="auto")
 ```
 

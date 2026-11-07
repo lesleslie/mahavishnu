@@ -132,7 +132,9 @@ except ImportError:  # pragma: no cover - optional dependency path
 
 
 @task
-async def process_repository(repo_path: str, task_spec: dict[str, Any]) -> dict[str, Any]:
+async def process_repository(
+    repo_path: str, task_spec: dict[str, Any]
+) -> dict[str, Any]:
     """Process a single repository as a Prefect task - REAL IMPLEMENTATION.
 
     This task is executed by Prefect workers and performs the actual
@@ -258,7 +260,9 @@ async def process_repositories_flow(
         List of results from each repository processing task
     """
     # Process all repositories in parallel using Prefect's task scheduling
-    results = await asyncio.gather(*[process_repository.fn(repo, task_spec) for repo in repos])
+    results = await asyncio.gather(
+        *[process_repository.fn(repo, task_spec) for repo in repos]
+    )
 
     return results
 
@@ -358,7 +362,8 @@ def _deployment_to_response(deployment: Any) -> DeploymentResponse:
         tags=getattr(deployment, "tags", []) or [],
         description=getattr(deployment, "description", None),
         version=getattr(deployment, "version", None),
-        created_at=getattr(deployment, "created", datetime.now(UTC)) or datetime.now(UTC),
+        created_at=getattr(deployment, "created", datetime.now(UTC))
+        or datetime.now(UTC),
         updated_at=getattr(deployment, "updated", None),
     )
 
@@ -412,8 +417,12 @@ def _flow_run_to_response(flow_run: Any) -> FlowRunResponse:
         updated_at=getattr(flow_run, "updated", None),
         start_time=getattr(flow_run, "start_time", None),
         end_time=getattr(flow_run, "end_time", None),
-        total_run_time_seconds=_coerce_seconds(getattr(flow_run, "total_run_time", None)),
-        estimated_run_time_seconds=_coerce_seconds(getattr(flow_run, "estimated_run_time", None)),
+        total_run_time_seconds=_coerce_seconds(
+            getattr(flow_run, "total_run_time", None)
+        ),
+        estimated_run_time_seconds=_coerce_seconds(
+            getattr(flow_run, "estimated_run_time", None)
+        ),
         work_queue_name=getattr(flow_run, "work_queue_name", None),
     )
 
@@ -433,7 +442,8 @@ def _work_pool_to_response(work_pool: Any) -> WorkPoolResponse:
         description=getattr(work_pool, "description", None),
         is_paused=getattr(work_pool, "is_paused", False) or False,
         concurrency_limit=getattr(work_pool, "concurrency_limit", None),
-        created_at=getattr(work_pool, "created", datetime.now(UTC)) or datetime.now(UTC),
+        created_at=getattr(work_pool, "created", datetime.now(UTC))
+        or datetime.now(UTC),
         updated_at=getattr(work_pool, "updated", None),
     )
 
@@ -558,7 +568,9 @@ class PrefectAdapter(OrchestratorAdapter):
         default_config = PrefectConfig()
         for field_name in PrefectConfig.model_fields:
             if not hasattr(self.config, field_name):
-                object.__setattr__(self.config, field_name, getattr(default_config, field_name))
+                object.__setattr__(
+                    self.config, field_name, getattr(default_config, field_name)
+                )
         self._client: Any = None
         self._initialized = False
         self._client_context: Any = None
@@ -689,7 +701,12 @@ class PrefectAdapter(OrchestratorAdapter):
             async with self._get_client_context() as client:
                 # Verify connection with whichever health probe the installed SDK exposes.
                 health_probe = None
-                for probe_name in ("read_health", "api_healthcheck", "healthcheck", "health_check"):
+                for probe_name in (
+                    "read_health",
+                    "api_healthcheck",
+                    "healthcheck",
+                    "health_check",
+                ):
                     health_probe = getattr(client, probe_name, None)
                     if callable(health_probe):
                         break
@@ -711,9 +728,7 @@ class PrefectAdapter(OrchestratorAdapter):
                 extra={"api_url": api_url},
             )
 
-        except (
-            Exception
-        ) as exc:  # adapter init — broad catch to map any error to typed PrefectError then re-raise
+        except Exception as exc:  # adapter init — broad catch to map any error to typed PrefectError then re-raise
             error = _map_prefect_exception(exc, "initialize", api_url)
             logger.error(
                 "Failed to initialize PrefectAdapter",
@@ -918,8 +933,12 @@ class PrefectAdapter(OrchestratorAdapter):
                     "task": task,
                     "repos_processed": len(repos),
                     "results": results,
-                    "success_count": len([r for r in results if r.get("status") == "completed"]),
-                    "failure_count": len([r for r in results if r.get("status") == "failed"]),
+                    "success_count": len(
+                        [r for r in results if r.get("status") == "completed"]
+                    ),
+                    "failure_count": len(
+                        [r for r in results if r.get("status") == "failed"]
+                    ),
                     "flow_run_id": str(flow_run_id),
                     "flow_run_url": f"{client.api_url}/flows/flow-run/{flow_run_id}",
                 }
@@ -1157,7 +1176,9 @@ class PrefectAdapter(OrchestratorAdapter):
             raise
         except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
             error = _map_prefect_exception(
-                exc, f"create_deployment({flow_name}/{deployment_name})", self.config.api_url
+                exc,
+                f"create_deployment({flow_name}/{deployment_name})",
+                self.config.api_url,
             )
             logger.error(
                 "Failed to create deployment",
@@ -1730,7 +1751,9 @@ class PrefectAdapter(OrchestratorAdapter):
         except PrefectError:
             raise
         except Exception as exc:  # deployment CRUD — broad catch to map any error to typed PrefectError (PrefectError already re-raised above)
-            error = _map_prefect_exception(exc, f"get_flow_run({flow_run_id})", self.config.api_url)
+            error = _map_prefect_exception(
+                exc, f"get_flow_run({flow_run_id})", self.config.api_url
+            )
             logger.error(
                 "Failed to get flow run",
                 extra={"error": str(error), "flow_run_id": flow_run_id},

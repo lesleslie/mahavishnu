@@ -486,9 +486,15 @@ Each new harness adds a ≤20-line bridge file at the harness-specific hook loca
 #!/usr/bin/env python3
 # /Users/les/hooks/qwen/PostToolUse (10-15 lines)
 import sys, json, os
+
 sys.path.insert(0, os.environ["QWEN_PROJECT_DIR"])
 from bodai_hook_bridge import handle
-handle(event_name=os.environ["QWEN_HOOK_EVENT_NAME"], harness="qwen", payload=json.load(sys.stdin))
+
+handle(
+    event_name=os.environ["QWEN_HOOK_EVENT_NAME"],
+    harness="qwen",
+    payload=json.load(sys.stdin),
+)
 ```
 
 Adding Codex hooks (or any future harness) is ~15 lines per event. The canonical handler is one Python module.
@@ -1065,8 +1071,10 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
    ```python
    #!/usr/bin/env python3
    import sys, json, os
+
    sys.path.insert(0, os.environ["CLAUDE_PROJECT_DIR"])
    from bodai_hook_bridge import handle
+
    payload = json.load(sys.stdin) or {}
    event = payload.get("hook_event_name", "?")
    handle(event_name=event, harness="claude", payload=payload)

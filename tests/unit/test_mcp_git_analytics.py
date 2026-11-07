@@ -175,7 +175,9 @@ class TestRepositoryHealth:
 
         def _make_sb_integration(metrics=None):
             instance = MagicMock()
-            instance.get_workflow_metrics = AsyncMock(return_value=metrics or {"success_rate": 100})
+            instance.get_workflow_metrics = AsyncMock(
+                return_value=metrics or {"success_rate": 100}
+            )
             instance.detect_patterns = AsyncMock(return_value=[])
             instance.get_quality_patterns = AsyncMock(return_value=[])
             return instance
@@ -328,7 +330,9 @@ class TestCrossProjectPatterns:
         """Failing workflows should be flagged as a correlation."""
         fake_mcp.aggregate_patterns = AsyncMock(return_value=[])
         sb = MagicMock()
-        sb.detect_patterns = AsyncMock(return_value=[{"name": "wf1", "success_rate": 50}])
+        sb.detect_patterns = AsyncMock(
+            return_value=[{"name": "wf1", "success_rate": 50}]
+        )
         sb.get_quality_patterns = AsyncMock(return_value=[])
         with (
             patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp),
@@ -377,7 +381,9 @@ class TestHealthScoreEdgeCases:
                 return_value=sb,
             ),
         ):
-            result = await registered.tools["get_repository_health"](repo_path="/x/r", user_id="u1")
+            result = await registered.tools["get_repository_health"](
+                repo_path="/x/r", user_id="u1"
+            )
         # Score floors at 0, status='critical'
         assert result["result"]["health_score"] == 0
         assert result["result"]["health_status"] == "critical"
@@ -397,7 +403,9 @@ class TestHealthScoreEdgeCases:
                 return_value=sb,
             ),
         ):
-            result = await registered.tools["get_repository_health"](repo_path="/x/r", user_id="u1")
+            result = await registered.tools["get_repository_health"](
+                repo_path="/x/r", user_id="u1"
+            )
         # 100 - min(40, 30) = 70, status='fair'
         assert result["result"]["health_score"] == 70
         assert result["result"]["health_status"] == "fair"

@@ -329,7 +329,9 @@ class TestInsertBatchToSessionBuddy:
 
     @pytest.mark.asyncio
     async def test_http_error_buffers(self, aggregator: MemoryAggregator):
-        aggregator._mcp_client.call_tool = AsyncMock(side_effect=MCPServerError("connection refused"))
+        aggregator._mcp_client.call_tool = AsyncMock(
+            side_effect=MCPServerError("connection refused")
+        )
 
         items = [{"text": "a"}]
         result = await aggregator._insert_batch_to_session_buddy(items)
@@ -395,7 +397,9 @@ class TestSinkToSessionBuddy:
         mock.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_unknown_kind_logs_and_returns(self, aggregator: MemoryAggregator) -> None:
+    async def test_unknown_kind_logs_and_returns(
+        self, aggregator: MemoryAggregator
+    ) -> None:
         with patch.object(
             aggregator,
             "_insert_batch_to_session_buddy",
@@ -407,7 +411,9 @@ class TestSinkToSessionBuddy:
         mock.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_insert_failure_propagates(self, aggregator: MemoryAggregator) -> None:
+    async def test_insert_failure_propagates(
+        self, aggregator: MemoryAggregator
+    ) -> None:
         with patch.object(
             aggregator,
             "_insert_batch_to_session_buddy",
@@ -519,7 +525,10 @@ class TestCollectAndSync:
         mock_pm.list_pools = AsyncMock(return_value=[])
         with (
             patch.object(
-                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
+                aggregator,
+                "_batch_insert_to_session_buddy",
+                new_callable=AsyncMock,
+                return_value=0,
             ),
             patch.object(
                 aggregator,
@@ -544,7 +553,10 @@ class TestCollectAndSync:
 
         with (
             patch.object(
-                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=2
+                aggregator,
+                "_batch_insert_to_session_buddy",
+                new_callable=AsyncMock,
+                return_value=2,
             ),
             patch.object(
                 aggregator,
@@ -565,7 +577,10 @@ class TestCollectAndSync:
 
         with (
             patch.object(
-                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
+                aggregator,
+                "_batch_insert_to_session_buddy",
+                new_callable=AsyncMock,
+                return_value=0,
             ),
         ):
             result = await aggregator.collect_and_sync(mock_pm)
@@ -583,7 +598,10 @@ class TestCollectAndSync:
 
         with (
             patch.object(
-                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
+                aggregator,
+                "_batch_insert_to_session_buddy",
+                new_callable=AsyncMock,
+                return_value=0,
             ),
         ):
             result = await aggregator.collect_and_sync(mock_pm)
@@ -602,7 +620,10 @@ class TestCollectAndSync:
 
         with (
             patch.object(
-                aggregator, "_batch_insert_to_session_buddy", new_callable=AsyncMock, return_value=0
+                aggregator,
+                "_batch_insert_to_session_buddy",
+                new_callable=AsyncMock,
+                return_value=0,
             ),
             patch.object(
                 aggregator,
@@ -639,7 +660,9 @@ class TestCrossPoolSearch:
             "results": [{"text": "old"}],
             "cached_at": datetime.now(UTC) - timedelta(minutes=10),
         }
-        aggregator._mcp_client.call_tool = AsyncMock(return_value={"conversations": [{"text": "fresh"}]})
+        aggregator._mcp_client.call_tool = AsyncMock(
+            return_value={"conversations": [{"text": "fresh"}]}
+        )
 
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("old_query", mock_pm)
@@ -647,7 +670,9 @@ class TestCrossPoolSearch:
 
     @pytest.mark.asyncio
     async def test_cache_miss_fetches_from_sb(self, aggregator: MemoryAggregator):
-        aggregator._mcp_client.call_tool = AsyncMock(return_value={"conversations": [{"text": "new"}]})
+        aggregator._mcp_client.call_tool = AsyncMock(
+            return_value={"conversations": [{"text": "new"}]}
+        )
 
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("new query", mock_pm)
@@ -667,16 +692,22 @@ class TestCrossPoolSearch:
 
     @pytest.mark.asyncio
     async def test_search_failure_returns_empty(self, aggregator: MemoryAggregator):
-        aggregator._mcp_client.call_tool = AsyncMock(side_effect=MCPServerError("error"))
+        aggregator._mcp_client.call_tool = AsyncMock(
+            side_effect=MCPServerError("error")
+        )
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("test", mock_pm)
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_search_server_error_returns_empty(self, aggregator: MemoryAggregator):
+    async def test_search_server_error_returns_empty(
+        self, aggregator: MemoryAggregator
+    ):
         """A server error from the underlying transport yields empty results."""
         aggregator._mcp_client = MagicMock()
-        aggregator._mcp_client.call_tool = AsyncMock(side_effect=MCPServerError("upstream 500"))
+        aggregator._mcp_client.call_tool = AsyncMock(
+            side_effect=MCPServerError("upstream 500")
+        )
         mock_pm = MagicMock()
         result = await aggregator.cross_pool_search("test", mock_pm)
         assert result == []

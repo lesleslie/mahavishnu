@@ -90,7 +90,11 @@ class TestValidateCommand:
                     "runtime_settings_source": "settings",
                     "static": {"errors": [], "warnings": []},
                     "runtime_checks": [],
-                    "summary": {"error_count": 0, "warning_count": 0, "runtime_check_count": 0},
+                    "summary": {
+                        "error_count": 0,
+                        "warning_count": 0,
+                        "runtime_check_count": 0,
+                    },
                 }
             ),
         )
@@ -169,4 +173,6 @@ pools:
 
         assert report["valid"] is False
         assert report["summary"]["error_count"] >= 1
-        assert any("min_workers" in item["path"] for item in report["runtime_validations"])
+        assert any(
+            "min_workers" in item["path"] for item in report["runtime_validations"]
+        )

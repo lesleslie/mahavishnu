@@ -36,6 +36,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.acp, pytest.mark.acp_stdio]
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def valid_bearer() -> str:
     return "a" * 40  # 40-byte bearer (passes min-length)
@@ -44,6 +45,7 @@ def valid_bearer() -> str:
 @pytest.fixture
 def server(valid_bearer: str) -> ACPServer:
     """An ACPServer with an explicit bearer, ready for synchronous dispatch."""
+
     async def execute_fn(payload: dict[str, Any]) -> dict[str, Any]:
         return {"ok": True, "prompt": payload.get("prompt")}
 
@@ -53,7 +55,9 @@ def server(valid_bearer: str) -> ACPServer:
     )
 
 
-def _request(method: str, params: dict[str, Any] | None = None, req_id: Any = 1) -> dict[str, Any]:
+def _request(
+    method: str, params: dict[str, Any] | None = None, req_id: Any = 1
+) -> dict[str, Any]:
     return {"jsonrpc": "2.0", "id": req_id, "method": method, "params": params or {}}
 
 
@@ -76,6 +80,7 @@ def _result(response: dict[str, Any]) -> Any:
 # JSON-RPC envelope validation
 # ---------------------------------------------------------------------------
 
+
 class TestEnvelopeValidation:
     """Malformed JSON-RPC envelopes are rejected before method dispatch."""
 
@@ -86,7 +91,9 @@ class TestEnvelopeValidation:
         # initialize does not require auth, so test a non-existent method
         # with auth bypass: this is hard to express via the current
         # envelope validation. Instead, authenticate first.
-        server.handle_request(_request("authenticate", {"methodId": "bearer", "token": "a" * 40}))
+        server.handle_request(
+            _request("authenticate", {"methodId": "bearer", "token": "a" * 40})
+        )
         response = server.handle_request(_request("totally/made/up"))
         assert _error_code(response) == METHOD_NOT_FOUND
 
@@ -112,10 +119,17 @@ class TestEnvelopeValidation:
 # initialize handler
 # ---------------------------------------------------------------------------
 
+
 class TestInitialize:
     def test_initialize_returns_protocol_version_echo(self, server: ACPServer) -> None:
         response = server.handle_request(
-            _request("initialize", {"protocolVersion": "0.0.1", "clientInfo": {"name": "smoke", "version": "0.0.1"}})
+            _request(
+                "initialize",
+                {
+                    "protocolVersion": "0.0.1",
+                    "clientInfo": {"name": "smoke", "version": "0.0.1"},
+                },
+            )
         )
         result = _result(response)
         assert result["protocolVersion"] == "0.0.1"
@@ -126,11 +140,19 @@ class TestInitialize:
     def test_initialize_does_not_require_auth(self, server: ACPServer) -> None:
         # initialize is the only method that runs unauthenticated.
         response = server.handle_request(
-            _request("initialize", {"protocolVersion": "0.0.1", "clientInfo": {"name": "smoke", "version": "0.0.1"}})
+            _request(
+                "initialize",
+                {
+                    "protocolVersion": "0.0.1",
+                    "clientInfo": {"name": "smoke", "version": "0.0.1"},
+                },
+            )
         )
         assert _error_code(response) is None
 
-    def test_initialize_oversized_protocol_version_rejected(self, server: ACPServer) -> None:
+    def test_initialize_oversized_protocol_version_rejected(
+        self, server: ACPServer
+    ) -> None:
         response = server.handle_request(
             _request(
                 "initialize",
@@ -147,8 +169,11 @@ class TestInitialize:
 # authenticate handler
 # ---------------------------------------------------------------------------
 
+
 class TestAuthenticate:
-    def test_correct_bearer_succeeds(self, server: ACPServer, valid_bearer: str) -> None:
+    def test_correct_bearer_succeeds(
+        self, server: ACPServer, valid_bearer: str
+    ) -> None:
         response = server.handle_request(
             _request("authenticate", {"methodId": "bearer", "token": valid_bearer})
         )
@@ -156,7 +181,10 @@ class TestAuthenticate:
 
     def test_wrong_bearer_returns_auth_invalid(self, server: ACPServer) -> None:
         response = server.handle_request(
-            _request("authenticate", {"methodId": "bearer", "token": "wrong-token-here-padding-padding"})
+            _request(
+                "authenticate",
+                {"methodId": "bearer", "token": "wrong-token-here-padding-padding"},
+            )
         )
         assert _error_code(response) == AUTH_INVALID
 
@@ -177,31 +205,47 @@ class TestAuthenticate:
 # Auth gate
 # ---------------------------------------------------------------------------
 
+
 class TestAuthGate:
     """Per-process auth gate: every method except ``initialize`` requires prior ``authenticate``."""
 
-    def test_session_new_without_auth_returns_auth_required(self, server: ACPServer) -> None:
+    def test_session_new_without_auth_returns_auth_required(
+        self, server: ACPServer
+    ) -> None:
         response = server.handle_request(_request("session/new"))
         assert _error_code(response) == AUTH_REQUIRED
 
-    def test_session_load_without_auth_returns_auth_required(self, server: ACPServer) -> None:
+    def test_session_load_without_auth_returns_auth_required(
+        self, server: ACPServer
+    ) -> None:
         response = server.handle_request(_request("session/load"))
         assert _error_code(response) == AUTH_REQUIRED
 
-    def test_session_prompt_without_auth_returns_auth_required(self, server: ACPServer) -> None:
+    def test_session_prompt_without_auth_returns_auth_required(
+        self, server: ACPServer
+    ) -> None:
         response = server.handle_request(
-            _request("session/prompt", {"sessionId": "x" * 36, "content": [{"type": "text", "text": "hi"}]})
+            _request(
+                "session/prompt",
+                {"sessionId": "x" * 36, "content": [{"type": "text", "text": "hi"}]},
+            )
         )
         assert _error_code(response) == AUTH_REQUIRED
 
-    def test_session_cancel_without_auth_returns_auth_required(self, server: ACPServer) -> None:
-        response = server.handle_request(_request("session/cancel", {"sessionId": "x" * 36}))
+    def test_session_cancel_without_auth_returns_auth_required(
+        self, server: ACPServer
+    ) -> None:
+        response = server.handle_request(
+            _request("session/cancel", {"sessionId": "x" * 36})
+        )
         assert _error_code(response) == AUTH_REQUIRED
 
     def test_session_load_returns_session_persistence_not_implemented_after_auth(
         self, server: ACPServer, valid_bearer: str
     ) -> None:
-        server.handle_request(_request("authenticate", {"methodId": "bearer", "token": valid_bearer}))
+        server.handle_request(
+            _request("authenticate", {"methodId": "bearer", "token": valid_bearer})
+        )
         response = server.handle_request(_request("session/load"))
         assert _error_code(response) == SESSION_PERSISTENCE_NOT_IMPLEMENTED
 
@@ -209,6 +253,7 @@ class TestAuthGate:
 # ---------------------------------------------------------------------------
 # session/new — rate limiting
 # ---------------------------------------------------------------------------
+
 
 class TestSessionNew:
     def _authenticate(self, server: ACPServer, valid_bearer: str) -> None:
@@ -262,11 +307,14 @@ class TestSessionNew:
 # session/cancel — idempotency
 # ---------------------------------------------------------------------------
 
+
 class TestSessionCancel:
     def _authenticate_and_create_session(
         self, server: ACPServer, valid_bearer: str
     ) -> str:
-        server.handle_request(_request("authenticate", {"methodId": "bearer", "token": valid_bearer}))
+        server.handle_request(
+            _request("authenticate", {"methodId": "bearer", "token": valid_bearer})
+        )
         response = server.handle_request(_request("session/new"))
         return _result(response)["sessionId"]
 
@@ -295,6 +343,7 @@ class TestSessionCancel:
 # ACPSession dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestACPSession:
     def test_new_session_has_uuid_id(self) -> None:
         sid = new_session_id()
@@ -314,6 +363,7 @@ class TestACPSession:
 # _SafeLineReader
 # ---------------------------------------------------------------------------
 
+
 class TestSafeLineReader:
     @pytest.mark.asyncio
     async def test_reads_normal_line(self) -> None:
@@ -327,7 +377,7 @@ class TestSafeLineReader:
     @pytest.mark.asyncio
     async def test_reads_multiple_lines_sequentially(self) -> None:
         stream = asyncio.StreamReader()
-        stream.feed_data(b'line1\nline2\nline3\n')
+        stream.feed_data(b"line1\nline2\nline3\n")
         stream.feed_eof()
         reader = _SafeLineReader(stream, max_bytes=1024)
         assert await reader.read_line() == "line1"
@@ -380,6 +430,7 @@ class TestSafeLineReader:
 # Plan §Phase 2 Task 1 specific assertions
 # ---------------------------------------------------------------------------
 
+
 class TestPlanInvariants:
     """Specific assertions enumerated in plan §Phase 2 Task 1."""
 
@@ -409,10 +460,18 @@ class TestPlanInvariants:
     def test_default_max_concurrent_sessions_matches_plan(self) -> None:
         assert MAX_CONCURRENT_SESSIONS == 16
 
-    def test_handle_request_returns_none_for_valid_request(self, server: ACPServer) -> None:
+    def test_handle_request_returns_none_for_valid_request(
+        self, server: ACPServer
+    ) -> None:
         """``handle_request`` returns a response dict for requests with an id."""
         response = server.handle_request(
-            _request("initialize", {"protocolVersion": "0.0.1", "clientInfo": {"name": "smoke", "version": "0.0.1"}})
+            _request(
+                "initialize",
+                {
+                    "protocolVersion": "0.0.1",
+                    "clientInfo": {"name": "smoke", "version": "0.0.1"},
+                },
+            )
         )
         assert response is not None
         assert "result" in response
@@ -421,6 +480,7 @@ class TestPlanInvariants:
 # ---------------------------------------------------------------------------
 # Constructor (fail-closed without bearer)
 # ---------------------------------------------------------------------------
+
 
 class TestConstructorFailClosed:
     """End-to-end of the serve() main loop with injected streams."""
@@ -470,9 +530,7 @@ class TestConstructorFailClosed:
         reset_cached_bearer_for_tests()
 
     @pytest.mark.asyncio
-    async def test_serve_succeeds_with_explicit_bearer(
-        self, valid_bearer: str
-    ) -> None:
+    async def test_serve_succeeds_with_explicit_bearer(self, valid_bearer: str) -> None:
         """Smoke test: explicit bearer → server consumes one ``initialize`` line and writes a response."""
 
         async def execute_fn(payload: dict[str, Any]) -> dict[str, Any]:
@@ -497,12 +555,12 @@ class TestConstructorFailClosed:
         assert '"jsonrpc"' in text and '"2.0"' in text
         assert '"id": 1' in text or '"id":1' in text
         assert '"loadSession": false' in text or '"loadSession":false' in text
-        assert '"protocolVersion": "0.0.1"' in text or '"protocolVersion":"0.0.1"' in text
+        assert (
+            '"protocolVersion": "0.0.1"' in text or '"protocolVersion":"0.0.1"' in text
+        )
 
     @pytest.mark.asyncio
-    async def test_serve_with_multiple_requests(
-        self, valid_bearer: str
-    ) -> None:
+    async def test_serve_with_multiple_requests(self, valid_bearer: str) -> None:
         """End-to-end: initialize, authenticate, session/new — three responses over one stream."""
 
         async def execute_fn(payload: dict[str, Any]) -> dict[str, Any]:
@@ -512,7 +570,9 @@ class TestConstructorFailClosed:
         stdin = asyncio.StreamReader()
         lines = [
             b'{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"0.0.1","clientInfo":{"name":"smoke","version":"0.0.1"}}}\n',
-            b'{"jsonrpc":"2.0","id":2,"method":"authenticate","params":{"methodId":"bearer","token":"' + valid_bearer.encode() + b'"}}\n',
+            b'{"jsonrpc":"2.0","id":2,"method":"authenticate","params":{"methodId":"bearer","token":"'
+            + valid_bearer.encode()
+            + b'"}}\n',
             b'{"jsonrpc":"2.0","id":3,"method":"session/new","params":{}}\n',
         ]
         stdin.feed_data(b"".join(lines))
@@ -531,6 +591,7 @@ class TestConstructorFailClosed:
         self, valid_bearer: str
     ) -> None:
         """A malformed JSON line → response with ``-32700 Parse error``."""
+
         async def execute_fn(payload: dict[str, Any]) -> dict[str, Any]:
             return {}
 
@@ -594,7 +655,10 @@ class TestSyncStdinFeeder:
             feeder.start()
 
             os.write(w_fd, b"data\n")
-            assert await asyncio.wait_for(stream.readuntil(b"\n"), timeout=2.0) == b"data\n"
+            assert (
+                await asyncio.wait_for(stream.readuntil(b"\n"), timeout=2.0)
+                == b"data\n"
+            )
 
             os.close(w_fd)  # trigger EOF
             # After EOF, readline() returns b"" (per asyncio StreamReader semantics).
@@ -752,6 +816,8 @@ class TestServeModuleLevelStdin:
 
         with pytest.raises(RuntimeError, match="/dev/null|refuses to start"):
             await asyncio.wait_for(
-                serve_module(execute_fn, bearer_token=valid_bearer, stdout=_NopStdout()),
+                serve_module(
+                    execute_fn, bearer_token=valid_bearer, stdout=_NopStdout()
+                ),
                 timeout=3.0,
             )

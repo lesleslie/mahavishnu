@@ -144,7 +144,7 @@ When a trigger condition is met:
 Run `mcp__session-buddy__store_reflection` once after creating this file:
 
 ```python
-mcp__session-buddy__store_reflection(
+mcp__session - buddy__store_reflection(
     content=(
         "Feature ultracode-tier2-parking-lot: state=parked, "
         "built=no, wired=no, "

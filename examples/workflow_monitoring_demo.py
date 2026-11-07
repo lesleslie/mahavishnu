@@ -132,7 +132,10 @@ class WorkflowMonitorClient:
             return False
         except Exception as e:
             logger.error(f"❌ Failed to connect: {e}")
-            if self.auto_reconnect and self._reconnect_attempts < self.max_reconnect_attempts:
+            if (
+                self.auto_reconnect
+                and self._reconnect_attempts < self.max_reconnect_attempts
+            ):
                 self._reconnect_attempts += 1
                 wait_time = min(2**self._reconnect_attempts, 30)
                 logger.info(
@@ -476,7 +479,9 @@ class WorkflowMonitorClient:
         elif event == "workflow.completed":
             wf_id = data.get("workflow_id", "unknown")
             duration = data.get("duration_seconds", 0)
-            logger.info(f"🎉 [{timestamp}] Workflow completed: {wf_id} in {duration:.1f}s")
+            logger.info(
+                f"🎉 [{timestamp}] Workflow completed: {wf_id} in {duration:.1f}s"
+            )
 
         elif event == "workflow.failed":
             wf_id = data.get("workflow_id", "unknown")

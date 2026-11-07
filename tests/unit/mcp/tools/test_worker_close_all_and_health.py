@@ -35,7 +35,9 @@ def _make_record(worker_id: str, state: WorkerLifecycleState) -> DurableWorkerRe
     )
 
 
-def test_worker_close_all_cancels_each_in_flight_record(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_worker_close_all_cancels_each_in_flight_record(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """``worker_close_all`` cancels every in-flight record and returns their ids."""
     from mahavishnu.mcp.tools import worker_tools
 

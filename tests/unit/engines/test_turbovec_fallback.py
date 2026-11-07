@@ -49,7 +49,9 @@ def test_vector_backend_is_opensearch_when_opensearch_available() -> None:
 
 
 @pytest.mark.unit
-def test_vector_backend_is_turbovec_when_opensearch_unavailable_and_turbovec_installed() -> None:
+def test_vector_backend_is_turbovec_when_opensearch_unavailable_and_turbovec_installed() -> (
+    None
+):
     """When OpenSearch fails and turbovec is installed, _vector_backend = 'turbovec'."""
     adapter = _make_adapter()
     mock_turbo = MagicMock()
@@ -64,7 +66,9 @@ def test_vector_backend_is_turbovec_when_opensearch_unavailable_and_turbovec_ins
             {
                 "turbovec": MagicMock(),
                 "turbovec.integrations": MagicMock(),
-                "turbovec.integrations.llamaindex": MagicMock(TurboVec=lambda: mock_turbo),
+                "turbovec.integrations.llamaindex": MagicMock(
+                    TurboVec=lambda: mock_turbo
+                ),
             },
         ),
     ):

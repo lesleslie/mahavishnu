@@ -17,6 +17,7 @@ tests/unit/test_pool_manager.py::test_route_task_auto_spawn_reads_settings —
 this test exercises the pool_spawn tool's own param path, not the
 route_task auto-spawn path.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -74,7 +75,9 @@ async def test_pool_spawn_e2e_full_flow() -> None:
 
     # 1. Spawn a new pool with explicit sizing
     spawn_result = await pool_spawn(
-        name="e2e-test-pool", pool_type="mahavishnu", max_workers=2,
+        name="e2e-test-pool",
+        pool_type="mahavishnu",
+        max_workers=2,
     )
     assert spawn_result["status"] == "spawned", spawn_result
     assert spawn_result["name"] == "e2e-test-pool"

@@ -394,7 +394,9 @@ def scan_with_grep(
     return consumers
 
 
-def find_dynamic_consumers(fields: list[Field], consumer_roots: list[Path]) -> dict[str, bool]:
+def find_dynamic_consumers(
+    fields: list[Field], consumer_roots: list[Path]
+) -> dict[str, bool]:
     """Find fields consumed via ``getattr(settings.X, "...")`` with a runtime name.
 
     Conservative heuristic: a field is WIRED-DYNAMIC if its leaf appears as
@@ -510,7 +512,12 @@ def print_report(
     consumer_roots: list[Path],
     title: str = "config-schema wiring audit",
 ) -> None:
-    by_status: dict[str, list[Field]] = {WIRED: [], WIRED_DYNAMIC: [], INDIRECT: [], DEAD: []}
+    by_status: dict[str, list[Field]] = {
+        WIRED: [],
+        WIRED_DYNAMIC: [],
+        INDIRECT: [],
+        DEAD: [],
+    }
     for f, status, _ in results:
         by_status[status].append(f)
     total = len(results)
@@ -563,7 +570,9 @@ def main() -> int:
     print()
     print(f"Scanning {len(CONSUMER_ROOTS)} repos for consumers ...")
     consumers = scan_with_ripgrep(fields, CONSUMER_ROOTS)
-    print(f"  -> {sum(1 for hits in consumers.values() if hits)} fields have static consumers")
+    print(
+        f"  -> {sum(1 for hits in consumers.values() if hits)} fields have static consumers"
+    )
     dynamic = find_dynamic_consumers(fields, CONSUMER_ROOTS)
     print(f"  -> {sum(1 for v in dynamic.values() if v)} fields have dynamic consumers")
     results = classify(fields, consumers, dynamic)

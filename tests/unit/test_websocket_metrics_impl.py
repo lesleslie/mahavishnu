@@ -549,7 +549,9 @@ class TestStartMetricsServer:
         # Explicit patcher.start()/stop() instead of parenthesized ``with`` —
         # see test_initialize_metrics_uses_unique_metric_names for the
         # rationale (pytest xdist + parenthesized-with leaks bindings).
-        patcher = patch.object(metrics_module, "start_http_server", return_value="thread-1")
+        patcher = patch.object(
+            metrics_module, "start_http_server", return_value="thread-1"
+        )
         start = patcher.start()
         try:
             result = start_metrics_server(port=9999)
@@ -564,7 +566,9 @@ class TestStartMetricsServer:
         if not PROMETHEUS_AVAILABLE:
             pytest.skip("prometheus_client not installed in this environment")
 
-        patcher = patch.object(metrics_module, "start_http_server", side_effect=OSError("port in use"))
+        patcher = patch.object(
+            metrics_module, "start_http_server", side_effect=OSError("port in use")
+        )
         patcher.start()
         try:
             result = start_metrics_server(port=9999)
@@ -573,7 +577,9 @@ class TestStartMetricsServer:
 
         assert result is None
 
-    def test_start_metrics_server_returns_none_when_prometheus_missing(self, monkeypatch):
+    def test_start_metrics_server_returns_none_when_prometheus_missing(
+        self, monkeypatch
+    ):
         """Without prometheus_client, start_metrics_server returns None and warns."""
         monkeypatch.setattr(metrics_module, "PROMETHEUS_AVAILABLE", False)
 
@@ -681,7 +687,9 @@ class TestInitializeMetrics:
         # can leave the patched attribute unbound, so subsequent
         # ``Counter(...)``/``Gauge(...)`` calls inside the test bypass
         # the patch. See test_initialize_metrics_uses_unique_metric_names.
-        counter_patcher = patch.object(metrics_module, "Counter", return_value=fake_msg_counter)
+        counter_patcher = patch.object(
+            metrics_module, "Counter", return_value=fake_msg_counter
+        )
         gauge_patcher = patch.object(
             metrics_module, "Gauge", side_effect=[fake_conn_gauge, fake_sub_gauge]
         )
@@ -707,7 +715,9 @@ class TestInitializeMetrics:
         # Explicit patcher.start()/stop() instead of parenthesized
         # ``with`` — see test_initialize_metrics_uses_unique_metric_names
         # for the rationale.
-        counter_patcher = patch.object(metrics_module, "Counter", return_value=MagicMock())
+        counter_patcher = patch.object(
+            metrics_module, "Counter", return_value=MagicMock()
+        )
         gauge_patcher = patch.object(metrics_module, "Gauge", return_value=MagicMock())
         counter_patcher.start()
         gauge_patcher.start()

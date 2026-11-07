@@ -28,7 +28,10 @@ def _load_catalog() -> dict[str, str]:
     with catalog_file.open() as fh:
         data = yaml.safe_load(fh) or {}
     repos = data.get("repos", []) or []
-    return {str(r.get("path", "")): str(r.get("nickname") or r.get("name") or "") for r in repos}
+    return {
+        str(r.get("path", "")): str(r.get("nickname") or r.get("name") or "")
+        for r in repos
+    }
 
 
 _CATALOG: dict[str, str] = _load_catalog()

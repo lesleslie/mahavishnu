@@ -139,7 +139,9 @@ class TestSessionBuddyCreateWorktree:
         mock_client.call_tool = AsyncMock(return_value={"status": "ok"})
 
         repo = Path("/repo")
-        result = await provider.create_worktree(repo, "main", Path("/wt/main"), create_branch=True)
+        result = await provider.create_worktree(
+            repo, "main", Path("/wt/main"), create_branch=True
+        )
 
         assert result["success"] is True
         assert result["worktree_path"] == "/wt/main"
@@ -168,7 +170,9 @@ class TestSessionBuddyCreateWorktree:
         provider = SessionBuddyWorktreeProvider()
         mock_client = AsyncMock()
         provider._mcp_client = mock_client
-        mock_client.call_tool = AsyncMock(side_effect=WorktreeCreationError("already exists"))
+        mock_client.call_tool = AsyncMock(
+            side_effect=WorktreeCreationError("already exists")
+        )
 
         with pytest.raises(WorktreeCreationError):
             await provider.create_worktree(Path("/repo"), "main", Path("/wt"))
@@ -181,7 +185,9 @@ class TestSessionBuddyRemoveWorktree:
         provider._mcp_client = mock_client
         mock_client.call_tool = AsyncMock(return_value={"status": "ok"})
 
-        result = await provider.remove_worktree(Path("/repo"), Path("/wt/main"), force=True)
+        result = await provider.remove_worktree(
+            Path("/repo"), Path("/wt/main"), force=True
+        )
 
         assert result["success"] is True
         assert result["removed_path"] == "/wt/main"
@@ -285,7 +291,9 @@ class TestSessionBuddyListWorktrees:
         provider = SessionBuddyWorktreeProvider()
         mock_client = AsyncMock()
         provider._mcp_client = mock_client
-        mock_client.call_tool = AsyncMock(side_effect=WorktreeValidationError("invalid"))
+        mock_client.call_tool = AsyncMock(
+            side_effect=WorktreeValidationError("invalid")
+        )
 
         with pytest.raises(WorktreeValidationError):
             await provider.list_worktrees(Path("/repo"))
@@ -324,7 +332,9 @@ class TestSessionBuddyHealthCheck:
             assert provider.health_check() is False
 
     def test_custom_port(self):
-        provider = SessionBuddyWorktreeProvider(session_buddy_url="http://example.com:9999/mcp")
+        provider = SessionBuddyWorktreeProvider(
+            session_buddy_url="http://example.com:9999/mcp"
+        )
         mock_socket = MagicMock()
         mock_socket.connect_ex.return_value = 0
 
@@ -394,7 +404,9 @@ class TestDirectGitCreateWorktree:
         process = _make_process()
 
         with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)):
-            result = await provider.create_worktree(repo, "feature", wt, create_branch=True)
+            result = await provider.create_worktree(
+                repo, "feature", wt, create_branch=True
+            )
 
         assert result["success"] is True
         assert result["branch"] == "feature"
@@ -407,8 +419,12 @@ class TestDirectGitCreateWorktree:
         wt = Path("/wt/main")
         process = _make_process()
 
-        with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)) as mock_exec:
-            result = await provider.create_worktree(repo, "main", wt, create_branch=False)
+        with patch(
+            "asyncio.create_subprocess_exec", AsyncMock(return_value=process)
+        ) as mock_exec:
+            result = await provider.create_worktree(
+                repo, "main", wt, create_branch=False
+            )
 
         assert result["success"] is True
         cmd = mock_exec.call_args[0]
@@ -444,7 +460,9 @@ class TestDirectGitRemoveWorktree:
         provider = DirectGitWorktreeProvider()
         process = _make_process()
 
-        with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)) as mock_exec:
+        with patch(
+            "asyncio.create_subprocess_exec", AsyncMock(return_value=process)
+        ) as mock_exec:
             await provider.remove_worktree(Path("/repo"), Path("/wt"), force=True)
 
         cmd = mock_exec.call_args[0]
@@ -551,7 +569,9 @@ class TestMockWorktreeProvider:
             Path("/wt/feature"),
             create_branch=True,
         )
-        removed = await provider.remove_worktree(Path("/repo"), Path("/wt/feature"), force=True)
+        removed = await provider.remove_worktree(
+            Path("/repo"), Path("/wt/feature"), force=True
+        )
         listed = await provider.list_worktrees(Path("/repo"))
 
         assert created == {
@@ -594,7 +614,9 @@ class TestMockWorktreeProvider:
         provider.should_fail = True
 
         with pytest.raises(WorktreeCreationError, match="Mock provider failure"):
-            await provider.create_worktree(Path("/repo"), "feature", Path("/wt/feature"))
+            await provider.create_worktree(
+                Path("/repo"), "feature", Path("/wt/feature")
+            )
 
         with pytest.raises(WorktreeRemovalError, match="Mock provider failure"):
             await provider.remove_worktree(Path("/repo"), Path("/wt/feature"))

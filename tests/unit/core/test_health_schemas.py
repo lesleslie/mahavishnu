@@ -107,7 +107,9 @@ class TestReadyResponse:
         response = ReadyResponse(
             ready=True,
             service="mahavishnu",
-            dependencies={"session_buddy": DependencyStatus(status=HealthStatus.OK, latency_ms=5)},
+            dependencies={
+                "session_buddy": DependencyStatus(status=HealthStatus.OK, latency_ms=5)
+            },
             checks={"database": "ok"},
         )
         assert response.ready is True

@@ -9,7 +9,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 from mcp_common.websocket import WebSocketProtocol
 
-from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.adapters.base import (
+    AdapterCapabilities,
+    AdapterType,
+    OrchestratorAdapter,
+)
 from mahavishnu.core.status import PoolStatus
 from mahavishnu.core.task_router import AdapterManager, StateManager, TaskRouter
 from mahavishnu.pools.base import PoolConfig
@@ -51,7 +55,9 @@ class ChaosAdapter(OrchestratorAdapter):
     def capabilities(self) -> AdapterCapabilities:
         return self._capabilities
 
-    async def execute(self, task: dict[str, Any], repos: list[str] | None = None) -> dict[str, Any]:
+    async def execute(
+        self, task: dict[str, Any], repos: list[str] | None = None
+    ) -> dict[str, Any]:
         self.attempt_count += 1
         if self.attempt_count <= self.fail_attempts:
             raise RuntimeError(self.failure_message)
@@ -66,7 +72,9 @@ class ChaosAdapter(OrchestratorAdapter):
 
     async def get_health(self) -> dict[str, Any]:
         return {
-            "status": "healthy" if self.attempt_count > self.fail_attempts else "degraded",
+            "status": "healthy"
+            if self.attempt_count > self.fail_attempts
+            else "degraded",
             "attempts": self.attempt_count,
         }
 
@@ -128,7 +136,9 @@ def create_mock_websocket(
     return mock_ws
 
 
-def partition_connections(server: MahavishnuWebSocketServer, partitioned_ids: list[str]) -> None:
+def partition_connections(
+    server: MahavishnuWebSocketServer, partitioned_ids: list[str]
+) -> None:
     """Remove the provided connection IDs from the websocket server."""
     for connection_id in partitioned_ids:
         server.connections.pop(connection_id, None)

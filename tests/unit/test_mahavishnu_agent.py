@@ -136,7 +136,9 @@ def mock_router() -> MagicMock:
     router = MagicMock(name="TaskRouter")
     router.classify_intent = MagicMock(return_value=TaskType.AI_TASK)
     router.select_adapter = AsyncMock(return_value=AdapterType.AGNO)
-    router.generate_fallback_chain = MagicMock(return_value=[AdapterType.AGNO, AdapterType.PREFECT])
+    router.generate_fallback_chain = MagicMock(
+        return_value=[AdapterType.AGNO, AdapterType.PREFECT]
+    )
     router.get_adapter_scores = AsyncMock(
         return_value={AdapterType.AGNO: 0.9, AdapterType.PREFECT: 0.7}
     )
@@ -152,7 +154,9 @@ def mock_router() -> MagicMock:
 @pytest.fixture
 def agent(mock_app: MagicMock, mock_router: MagicMock) -> MahavishnuAgent:
     """Construct a MahavishnuAgent with both dependencies replaced."""
-    with patch("mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router):
+    with patch(
+        "mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router
+    ):
         return MahavishnuAgent(app=mock_app)
 
 
@@ -185,7 +189,9 @@ class TestSweepRepos:
         mock_app.execute_workflow_with_routing.assert_awaited_once()
         mock_app.execute_workflow_parallel.assert_not_awaited()
 
-    async def test_no_repos_returns_error(self, agent: MahavishnuAgent, mock_app: MagicMock):
+    async def test_no_repos_returns_error(
+        self, agent: MahavishnuAgent, mock_app: MagicMock
+    ):
         mock_app.get_repos.return_value = []
         result = await agent.sweep_repos(SweepReposRequest(tag="missing"))
         assert result.success is False
@@ -264,7 +270,9 @@ class TestGetPoolStatus:
         assert result.error is None
         assert {p["pool_id"] for p in result.pools} == {"pool_a", "pool_b"}
 
-    async def test_pool_manager_error_returns_graceful_result(self, agent: MahavishnuAgent):
+    async def test_pool_manager_error_returns_graceful_result(
+        self, agent: MahavishnuAgent
+    ):
         with patch(
             "mahavishnu.factories.get_pool_manager",
             side_effect=RuntimeError("manager offline"),
@@ -291,7 +299,9 @@ class TestGetRoutingInfo:
             TaskType.AI_TASK, RoutingStrategy.BALANCED
         )
 
-    async def test_invalid_strategy_falls_through_to_error(self, agent: MahavishnuAgent):
+    async def test_invalid_strategy_falls_through_to_error(
+        self, agent: MahavishnuAgent
+    ):
         # RoutingStrategy is an enum, so an unknown value raises ValueError.
         # The agent catches the exception and returns a RoutingInfoResult
         # with the bad strategy echoed back (Pydantic silently ignores the
@@ -311,17 +321,25 @@ class TestGetRoutingInfo:
 
 
 class TestSingleton:
-    def test_get_returns_same_instance(self, mock_app: MagicMock, mock_router: MagicMock):
+    def test_get_returns_same_instance(
+        self, mock_app: MagicMock, mock_router: MagicMock
+    ):
         reset_agent()
-        with patch("mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router):
+        with patch(
+            "mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router
+        ):
             first = get_mahavishnu_agent(app=mock_app)
             second = get_mahavishnu_agent()
         assert first is second
         reset_agent()
 
-    def test_reset_creates_new_instance(self, mock_app: MagicMock, mock_router: MagicMock):
+    def test_reset_creates_new_instance(
+        self, mock_app: MagicMock, mock_router: MagicMock
+    ):
         reset_agent()
-        with patch("mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router):
+        with patch(
+            "mahavishnu.agents.mahavishnu_agent.TaskRouter", return_value=mock_router
+        ):
             first = get_mahavishnu_agent(app=mock_app)
             reset_agent()
             second = get_mahavishnu_agent(app=mock_app)

@@ -68,7 +68,9 @@ class CapturedOutput:
     pane_alive: bool
 
 
-def _run(socket: str, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+def _run(
+    socket: str, *args: str, check: bool = True
+) -> subprocess.CompletedProcess[str]:
     _validate_socket_path(socket)
     cmd = ["tmux", "-S", socket, *args]
     proc = subprocess.run(cmd, check=False, capture_output=True, text=True)

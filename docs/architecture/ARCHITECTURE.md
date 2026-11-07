@@ -148,7 +148,9 @@ ______________________________________________________________________
 **Key Imports**:
 
 ```python
-from llama_index.embeddings.openai import OpenAIEmbedding  # OpenAI-compatible (works with llama-server)
+from llama_index.embeddings.openai import (
+    OpenAIEmbedding,
+)  # OpenAI-compatible (works with llama-server)
 ```
 
 ### 2. Prefect Adapter

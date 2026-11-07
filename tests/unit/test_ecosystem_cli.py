@@ -256,7 +256,9 @@ class TestValidateCommand:
         assert "missing required field" in result.output.lower()
 
     @patch("mahavishnu.ecosystem_cli.get_ecosystem_loader")
-    def test_invalid_config_with_errors_and_warnings(self, mock_get_loader: MagicMock) -> None:
+    def test_invalid_config_with_errors_and_warnings(
+        self, mock_get_loader: MagicMock
+    ) -> None:
         loader = _build_mock_loader()
         loader.validate_mcp_servers.return_value = {
             "errors": ["Bad config"],
@@ -492,7 +494,10 @@ class TestAuditCommand:
 class TestUrlsCommand:
     @patch("mahavishnu.ecosystem_cli.get_ecosystem_loader")
     def test_urls_server_with_all_fields(self, mock_get_loader: MagicMock) -> None:
-        extra_urls = {"issues": "https://github.com/foo/issues", "wiki": "https://wiki.foo"}
+        extra_urls = {
+            "issues": "https://github.com/foo/issues",
+            "wiki": "https://wiki.foo",
+        }
         servers = [
             _make_mock_mcp_server(
                 name="my-server",
@@ -627,7 +632,9 @@ class TestListLspCommand:
     def test_list_all_lsp_servers(self, mock_get_loader: MagicMock) -> None:
         lsp_servers = [
             _make_mock_lsp_server(name="pylsp", language="python"),
-            _make_mock_lsp_server(name="typescript-language-server", language="typescript"),
+            _make_mock_lsp_server(
+                name="typescript-language-server", language="typescript"
+            ),
         ]
         mock_get_loader.return_value = _build_mock_loader(lsp_servers=lsp_servers)
 
@@ -1030,7 +1037,9 @@ class TestUpdateAuditCommand:
         )
 
     @patch("mahavishnu.ecosystem_cli.get_ecosystem_loader")
-    def test_successful_update_short_notes_flag(self, mock_get_loader: MagicMock) -> None:
+    def test_successful_update_short_notes_flag(
+        self, mock_get_loader: MagicMock
+    ) -> None:
         loader = _build_mock_loader()
         mock_get_loader.return_value = loader
 
@@ -1118,7 +1127,9 @@ class TestGenerateClaudeConfigCommand:
         output_file = tmp_path / "claude_test.json"
 
         app = _make_app()
-        result = runner.invoke(app, ["generate-claude-config", "--output", str(output_file)])
+        result = runner.invoke(
+            app, ["generate-claude-config", "--output", str(output_file)]
+        )
         assert result.exit_code == 0
         assert "generated mcp configuration" in result.output.lower()
         assert str(output_file) in result.output
@@ -1131,7 +1142,9 @@ class TestGenerateClaudeConfigCommand:
         assert "test-server" in written["mcpServers"]
 
     @patch("mahavishnu.ecosystem_cli.get_ecosystem_loader")
-    def test_creates_new_file_if_missing(self, mock_get_loader: MagicMock, tmp_path) -> None:
+    def test_creates_new_file_if_missing(
+        self, mock_get_loader: MagicMock, tmp_path
+    ) -> None:
         loader = _build_mock_loader()
         loader.generate_claude_mcp_config.return_value = {
             "new-server": {"command": "new"},
@@ -1141,6 +1154,8 @@ class TestGenerateClaudeConfigCommand:
         output_file = tmp_path / "claude.json"
 
         app = _make_app()
-        result = runner.invoke(app, ["generate-claude-config", "--output", str(output_file)])
+        result = runner.invoke(
+            app, ["generate-claude-config", "--output", str(output_file)]
+        )
         assert result.exit_code == 0
         assert "creating new config file" in result.output.lower()

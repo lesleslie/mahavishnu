@@ -101,12 +101,19 @@ def _server_kv_surface(monkeypatch: pytest.MonkeyPatch) -> None:
             if name == "mahavishnu_kv_list":
                 items = [
                     {"key": key, "value": value}
-                    for key, value in kv_store.list_prefix(str(arguments.get("prefix", "")))
+                    for key, value in kv_store.list_prefix(
+                        str(arguments.get("prefix", ""))
+                    )
                 ]
                 return {"ok": True, "items": items, "count": len(items)}
             if name == "mahavishnu_kv_get":
-                return {"ok": True, "value": kv_store.get(str(arguments.get("key", "")))}
-            raise AssertionError(f"unexpected tool call in the approval round trip: {name}")
+                return {
+                    "ok": True,
+                    "value": kv_store.get(str(arguments.get("key", ""))),
+                }
+            raise AssertionError(
+                f"unexpected tool call in the approval round trip: {name}"
+            )
 
         async def aclose(self) -> None:
             return None
@@ -151,7 +158,9 @@ async def test_approval_log_round_trips_with_struct_equality() -> None:
     assert results[0].actor == "alice"
     assert results[0].metadata["selected_option"] == 1
     assert results[0].metadata["ticket"] == "OPS-99"
-    assert results[0].metadata["rationale"] == ("All checks pass — round-trip integration test")
+    assert results[0].metadata["rationale"] == (
+        "All checks pass — round-trip integration test"
+    )
 
 
 async def test_approval_log_round_trip_with_status_filter() -> None:
@@ -259,8 +268,12 @@ async def test_approval_log_round_trip_isolates_per_approval_id() -> None:
     # Cross-check the substrate-level invariant: each approval has its own
     # namespace, and neither leaks into the other.
     assert {key for key, _ in kv_store.list_prefix("approval-history/")} != set()
-    assert {key for key, _ in kv_store.list_prefix("approval-history/apr-100/")} != set()
-    assert {key for key, _ in kv_store.list_prefix("approval-history/apr-200/")} != set()
+    assert {
+        key for key, _ in kv_store.list_prefix("approval-history/apr-100/")
+    } != set()
+    assert {
+        key for key, _ in kv_store.list_prefix("approval-history/apr-200/")
+    } != set()
     assert not kv_store.list_prefix("approval-history/apr-300/")
 
 

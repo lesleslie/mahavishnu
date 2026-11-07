@@ -105,14 +105,22 @@ class TestWorkerConfig:
         assert cfg.complete_on_valid_json is True
 
     def test_default_error_markers_is_independent_per_instance(self):
-        cfg1 = WorkerConfig(name="A", worker_type="a", command="", category=WorkerCategory.SHELL)
-        cfg2 = WorkerConfig(name="B", worker_type="b", command="", category=WorkerCategory.SHELL)
+        cfg1 = WorkerConfig(
+            name="A", worker_type="a", command="", category=WorkerCategory.SHELL
+        )
+        cfg2 = WorkerConfig(
+            name="B", worker_type="b", command="", category=WorkerCategory.SHELL
+        )
         cfg1.error_markers.append("extra")
         assert "extra" not in cfg2.error_markers
 
     def test_completion_markers_is_independent_per_instance(self):
-        cfg1 = WorkerConfig(name="A", worker_type="a", command="", category=WorkerCategory.SHELL)
-        cfg2 = WorkerConfig(name="B", worker_type="b", command="", category=WorkerCategory.SHELL)
+        cfg1 = WorkerConfig(
+            name="A", worker_type="a", command="", category=WorkerCategory.SHELL
+        )
+        cfg2 = WorkerConfig(
+            name="B", worker_type="b", command="", category=WorkerCategory.SHELL
+        )
         cfg1.completion_markers.append("marker")
         assert "marker" not in cfg2.completion_markers
 
@@ -138,7 +146,9 @@ class TestWorkerRegistry:
     def test_all_categories_are_valid(self):
         valid_categories = set(WorkerCategory)
         for key, cfg in WORKER_REGISTRY.items():
-            assert cfg.category in valid_categories, f"{key} has invalid category {cfg.category}"
+            assert cfg.category in valid_categories, (
+                f"{key} has invalid category {cfg.category}"
+            )
 
     def test_known_worker_types_exist(self):
         known = [
@@ -162,7 +172,9 @@ class TestWorkerRegistry:
             if cfg.category == WorkerCategory.AI_ASSISTANT and key not in (
                 "gateway-openclaw",
             ):
-                assert cfg.requires_tool is not None, f"{key} AI assistant missing requires_tool"
+                assert cfg.requires_tool is not None, (
+                    f"{key} AI assistant missing requires_tool"
+                )
 
 
 class TestGetWorkerConfig:
@@ -207,11 +219,15 @@ class TestListWorkerTypes:
 
     def test_filter_by_ai_assistant_category(self):
         result = list_worker_types(WorkerCategory.AI_ASSISTANT)
-        assert all(WORKER_REGISTRY[wt].category == WorkerCategory.AI_ASSISTANT for wt in result)
+        assert all(
+            WORKER_REGISTRY[wt].category == WorkerCategory.AI_ASSISTANT for wt in result
+        )
 
     def test_filter_by_shell_category(self):
         result = list_worker_types(WorkerCategory.SHELL)
-        assert all(WORKER_REGISTRY[wt].category == WorkerCategory.SHELL for wt in result)
+        assert all(
+            WORKER_REGISTRY[wt].category == WorkerCategory.SHELL for wt in result
+        )
 
     def test_filter_by_container_category(self):
         result = list_worker_types(WorkerCategory.CONTAINER)
@@ -225,7 +241,9 @@ class TestListWorkerTypes:
     def test_filter_by_application_category(self):
         result = list_worker_types(WorkerCategory.APPLICATION)
         assert len(result) > 0
-        assert all(WORKER_REGISTRY[wt].category == WorkerCategory.APPLICATION for wt in result)
+        assert all(
+            WORKER_REGISTRY[wt].category == WorkerCategory.APPLICATION for wt in result
+        )
 
     def test_filter_by_remote_category(self):
         result = list_worker_types(WorkerCategory.REMOTE)
@@ -280,7 +298,9 @@ class TestValidateWorkerDependencies:
         results = validate_worker_dependencies()
         for key, cfg in WORKER_REGISTRY.items():
             if cfg.requires_tool is None:
-                assert results[key] is True, f"{key} should be available without requires_tool"
+                assert results[key] is True, (
+                    f"{key} should be available without requires_tool"
+                )
 
     @patch("shutil.which", return_value="/usr/bin/python3")
     def test_worker_with_installed_tool_is_available(self, mock_which):
@@ -311,7 +331,10 @@ class TestResolveWorkerType:
     """Tests for the resolve_worker_type function."""
 
     def test_non_communication_task_returns_same_type(self):
-        assert resolve_worker_type("terminal-qwen", "coding", "write a function") == "terminal-qwen"
+        assert (
+            resolve_worker_type("terminal-qwen", "coding", "write a function")
+            == "terminal-qwen"
+        )
 
     def test_non_communication_worker_returns_same_type(self):
         assert (
@@ -325,7 +348,9 @@ class TestResolveWorkerType:
     def test_communication_task_with_qwen_passes_through(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
-            result = resolve_worker_type("terminal-qwen", "messaging", "notify the team")
+            result = resolve_worker_type(
+                "terminal-qwen", "messaging", "notify the team"
+            )
             assert result == "terminal-qwen"
 
     def test_communication_prompt_with_qwen_passes_through(self):
@@ -337,7 +362,9 @@ class TestResolveWorkerType:
     def test_communication_task_with_claude_passes_through(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
-            result = resolve_worker_type("terminal-claude", "notification", "alert user")
+            result = resolve_worker_type(
+                "terminal-claude", "notification", "alert user"
+            )
             assert result == "terminal-claude"
 
     def test_communication_task_with_codex_passes_through(self):
@@ -385,7 +412,9 @@ class TestResolveWorkerType:
     def test_coding_task_does_not_resolve_to_openclaw(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("OPENCLAW_GATEWAY_URL", None)
-            result = resolve_worker_type("terminal-qwen", "coding", "refactor the module")
+            result = resolve_worker_type(
+                "terminal-qwen", "coding", "refactor the module"
+            )
             assert result == "terminal-qwen"
 
     def test_shell_worker_unaffected_by_communication_markers(self):

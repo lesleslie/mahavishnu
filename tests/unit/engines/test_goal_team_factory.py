@@ -88,7 +88,9 @@ class TestGoalParsing:
     @pytest.mark.asyncio
     async def test_parse_security_goal(self, factory: GoalDrivenTeamFactory) -> None:
         """Test parsing a security-related goal."""
-        parsed = await factory.parse_goal("Review this code for security vulnerabilities")
+        parsed = await factory.parse_goal(
+            "Review this code for security vulnerabilities"
+        )
 
         assert parsed.intent == "review"
         assert parsed.domain == "security"
@@ -99,7 +101,9 @@ class TestGoalParsing:
     @pytest.mark.asyncio
     async def test_parse_testing_goal(self, factory: GoalDrivenTeamFactory) -> None:
         """Test parsing a testing-related goal."""
-        parsed = await factory.parse_goal("Write unit tests for the authentication module")
+        parsed = await factory.parse_goal(
+            "Write unit tests for the authentication module"
+        )
 
         assert parsed.intent == "build"  # "write" maps to build
         assert "testing" in parsed.skills
@@ -159,7 +163,9 @@ class TestGoalParsing:
         assert high_confidence.confidence > low_confidence.confidence
 
     @pytest.mark.asyncio
-    async def test_parse_goal_normalization(self, factory: GoalDrivenTeamFactory) -> None:
+    async def test_parse_goal_normalization(
+        self, factory: GoalDrivenTeamFactory
+    ) -> None:
         """Test that goals are normalized (lowercase, trimmed)."""
         parsed = await factory.parse_goal("  REVIEW CODE FOR SECURITY  ")
 
@@ -199,13 +205,17 @@ class TestGoalParsingWithLLMFallback:
     ) -> None:
         """Test that LLM fallback is not used for high-confidence patterns."""
         # Clear goal should use pattern matching
-        parsed = await factory_with_llm.parse_goal("Review code for security vulnerabilities")
+        parsed = await factory_with_llm.parse_goal(
+            "Review code for security vulnerabilities"
+        )
 
         # Should use pattern matching, not LLM
         assert parsed.metadata.get("method") == "pattern"
 
     @pytest.mark.asyncio
-    async def test_llm_response_parsing(self, factory_with_llm: GoalDrivenTeamFactory) -> None:
+    async def test_llm_response_parsing(
+        self, factory_with_llm: GoalDrivenTeamFactory
+    ) -> None:
         """Test parsing of LLM response."""
         response = """INTENT: build
 DOMAIN: testing
@@ -233,7 +243,9 @@ class TestTeamCreation:
     @pytest.mark.asyncio
     async def test_create_team_from_goal(self, factory: GoalDrivenTeamFactory) -> None:
         """Test creating a team from a goal."""
-        team_config = await factory.create_team_from_goal("Review code for security issues")
+        team_config = await factory.create_team_from_goal(
+            "Review code for security issues"
+        )
 
         assert isinstance(team_config, TeamConfig)
         assert team_config.name != ""
@@ -246,7 +258,9 @@ class TestTeamCreation:
         ]
 
     @pytest.mark.asyncio
-    async def test_create_team_with_custom_name(self, factory: GoalDrivenTeamFactory) -> None:
+    async def test_create_team_with_custom_name(
+        self, factory: GoalDrivenTeamFactory
+    ) -> None:
         """Test creating a team with a custom name."""
         team_config = await factory.create_team_from_goal(
             "Review security code", name="custom_team_name"
@@ -255,7 +269,9 @@ class TestTeamCreation:
         assert team_config.name == "custom_team_name"
 
     @pytest.mark.asyncio
-    async def test_create_team_with_custom_mode(self, factory: GoalDrivenTeamFactory) -> None:
+    async def test_create_team_with_custom_mode(
+        self, factory: GoalDrivenTeamFactory
+    ) -> None:
         """Test creating a team with a custom mode."""
         team_config = await factory.create_team_from_goal(
             "Review security code", mode=TeamMode.BROADCAST
@@ -264,7 +280,9 @@ class TestTeamCreation:
         assert team_config.mode == TeamMode.BROADCAST
 
     @pytest.mark.asyncio
-    async def test_team_has_correct_members(self, factory: GoalDrivenTeamFactory) -> None:
+    async def test_team_has_correct_members(
+        self, factory: GoalDrivenTeamFactory
+    ) -> None:
         """Test that team has correct member configurations."""
         team_config = await factory.create_team_from_goal(
             "Review code for security and performance"
@@ -281,10 +299,14 @@ class TestTeamCreation:
             assert member.instructions != ""
 
     @pytest.mark.asyncio
-    async def test_coordinate_mode_has_leader(self, factory: GoalDrivenTeamFactory) -> None:
+    async def test_coordinate_mode_has_leader(
+        self, factory: GoalDrivenTeamFactory
+    ) -> None:
         """Test that coordinate mode teams have a leader."""
         # Review intent uses coordinate mode
-        team_config = await factory.create_team_from_goal("Review the codebase for issues")
+        team_config = await factory.create_team_from_goal(
+            "Review the codebase for issues"
+        )
 
         # If mode is coordinate, leader should be present
         if team_config.mode == TeamMode.COORDINATE:
@@ -450,21 +472,29 @@ class TestModeSelection:
     """Tests for team mode selection."""
 
     @pytest.mark.asyncio
-    async def test_review_uses_coordinate_mode(self, factory: GoalDrivenTeamFactory) -> None:
+    async def test_review_uses_coordinate_mode(
+        self, factory: GoalDrivenTeamFactory
+    ) -> None:
         """Test that review goals use coordinate mode."""
-        team_config = await factory.create_team_from_goal("Review the code for security issues")
+        team_config = await factory.create_team_from_goal(
+            "Review the code for security issues"
+        )
 
         assert team_config.mode == TeamMode.COORDINATE
 
     @pytest.mark.asyncio
     async def test_fix_uses_route_mode(self, factory: GoalDrivenTeamFactory) -> None:
         """Test that fix goals use route mode."""
-        team_config = await factory.create_team_from_goal("Fix the bug in authentication")
+        team_config = await factory.create_team_from_goal(
+            "Fix the bug in authentication"
+        )
 
         assert team_config.mode == TeamMode.ROUTE
 
     @pytest.mark.asyncio
-    async def test_analyze_uses_broadcast_mode(self, factory: GoalDrivenTeamFactory) -> None:
+    async def test_analyze_uses_broadcast_mode(
+        self, factory: GoalDrivenTeamFactory
+    ) -> None:
         """Test that analyze goals use broadcast mode."""
         # Use a goal that doesn't match any intent patterns to trigger analyze default
         team_config = await factory.create_team_from_goal(
@@ -684,7 +714,9 @@ class TestEdgeCases:
         assert "security" in parsed.skills
 
     @pytest.mark.asyncio
-    async def test_case_insensitive_matching(self, factory: GoalDrivenTeamFactory) -> None:
+    async def test_case_insensitive_matching(
+        self, factory: GoalDrivenTeamFactory
+    ) -> None:
         """Test that matching is case insensitive."""
         goals = [
             "REVIEW THE CODE",

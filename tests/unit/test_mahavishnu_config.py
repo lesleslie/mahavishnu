@@ -67,7 +67,9 @@ def clean_env():
 @pytest.fixture
 def yaml_config_file():
     """Create a temporary YAML config file."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False, dir="settings") as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False, dir="settings"
+    ) as f:
         f.write("")
         yield f.name
     os.unlink(f.name)
@@ -288,7 +290,10 @@ class TestOTelStorageConfig:
             enabled=True,
             connection_string="postgresql://testuser:testpass@db.example.com:5432/mydb",
         )
-        assert config.connection_string == "postgresql://testuser:testpass@db.example.com:5432/mydb"
+        assert (
+            config.connection_string
+            == "postgresql://testuser:testpass@db.example.com:5432/mydb"
+        )
 
     def test_embedding_dimension_bounds(self):
         """Test embedding_dimension validation."""
@@ -1231,7 +1236,10 @@ class TestAdapterRegistryConfig:
         """Test AdapterRegistryConfig defaults."""
         config = AdapterRegistryConfig()
         assert config.enabled is True
-        assert config.allowlist_patterns == ["mahavishnu.adapters.*", "mahavishnu.engines.*"]
+        assert config.allowlist_patterns == [
+            "mahavishnu.adapters.*",
+            "mahavishnu.engines.*",
+        ]
         assert config.verify_signatures is False
         assert config.reject_unsigned is False
         assert config.cache_ttl_seconds == 300

@@ -108,7 +108,9 @@ tracer_provider = TracerProvider(resource=resource)
 if otlp_endpoint:
     tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
 ...
-tracer_provider = TracerProvider(resource=resource, sampler=sampler)  # <- orphans the processor
+tracer_provider = TracerProvider(
+    resource=resource, sampler=sampler
+)  # <- orphans the processor
 trace.set_tracer_provider(tracer_provider)
 ```
 

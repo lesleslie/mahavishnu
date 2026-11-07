@@ -112,6 +112,7 @@ def set_app_context(llm_factory: Any, agno_adapter: Any) -> None:
 # In mahavishnu/core/app.py
 from .context import set_app_context
 
+
 class MahavishnuApp:
     async def _initialize_adapters(self) -> None:
         # ... existing initialization ...
@@ -401,12 +402,14 @@ async def list_team_skills() -> dict[str, Any]:
 
     skills = []
     for name, config in SKILL_MAPPING.items():
-        skills.append({
-            "name": name,
-            "role": config.role,
-            "model": config.model,
-            "tools": config.tools,
-        })
+        skills.append(
+            {
+                "name": name,
+                "role": config.role,
+                "model": config.model,
+                "tools": config.tools,
+            }
+        )
 
     return {
         "skills": skills,
@@ -447,6 +450,7 @@ def _run_async(coro):
     """
     try:
         import nest_asyncio
+
         nest_asyncio.apply()
     except ImportError:
         pass
@@ -459,6 +463,7 @@ def _run_async(coro):
     if loop and loop.is_running():
         # Already in async context, create task
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             future = pool.submit(asyncio.run, coro)
             return future.result()
@@ -470,18 +475,21 @@ def _run_async(coro):
 def create_team(
     goal: str = typer.Option(
         ...,
-        "--goal", "-g",
+        "--goal",
+        "-g",
         help="Natural language goal describing what the team should do",
         prompt="Enter your goal",
     ),
     name: Optional[str] = typer.Option(
         None,
-        "--name", "-n",
+        "--name",
+        "-n",
         help="Team name (auto-generated if not provided)",
     ),
     mode: Optional[str] = typer.Option(
         None,
-        "--mode", "-m",
+        "--mode",
+        "-m",
         help="Collaboration mode: coordinate, route, broadcast, collaborate",
     ),
     dry_run: bool = typer.Option(
@@ -496,12 +504,14 @@ def create_team(
     ),
     task: Optional[str] = typer.Option(
         None,
-        "--task", "-t",
+        "--task",
+        "-t",
         help="Task to run (required if --run is specified)",
     ),
     verbose: bool = typer.Option(
         False,
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         help="Show detailed output",
     ),
 ) -> None:
@@ -513,6 +523,7 @@ def create_team(
         mahavishnu team create --goal "Test auth module" --run --task "Test login"
         mahavishnu team create --goal "..." --dry-run
     """
+
     async def _create():
         from mahavishnu.core.context import get_llm_factory
         from mahavishnu.core.errors import MahavishnuError
@@ -610,7 +621,9 @@ def create_team(
 
         if run:
             if not task:
-                console.print("[red]Error: --task is required when --run is specified[/red]")
+                console.print(
+                    "[red]Error: --task is required when --run is specified[/red]"
+                )
                 raise typer.Exit(1)
 
             console.print(f"\n[bold]Running team with task:[/bold] {task[:100]}...")
@@ -624,6 +637,7 @@ def list_teams(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed info"),
 ) -> None:
     """List all active teams."""
+
     async def _list():
         from mahavishnu.core.context import get_agno_adapter
 
@@ -665,6 +679,7 @@ def parse_goal_cmd(
     goal: str = typer.Argument(..., help="Goal to parse"),
 ) -> None:
     """Parse a goal without creating a team (for debugging)."""
+
     async def _parse():
         from mahavishnu.core.context import get_llm_factory
         from mahavishnu.engines.goal_team_factory import GoalDrivenTeamFactory
@@ -739,9 +754,12 @@ class TestTeamFromGoal:
     @pytest.fixture
     def mock_context(self):
         """Set up mock DI context."""
-        with patch("mahavishnu.mcp.tools.goal_team_tools.get_llm_factory") as mock_llm, \
-             patch("mahavishnu.mcp.tools.goal_team_tools.get_agno_adapter") as mock_adapter:
-
+        with (
+            patch("mahavishnu.mcp.tools.goal_team_tools.get_llm_factory") as mock_llm,
+            patch(
+                "mahavishnu.mcp.tools.goal_team_tools.get_agno_adapter"
+            ) as mock_adapter,
+        ):
             mock_llm.return_value = MagicMock()
             mock_adapter.return_value = MagicMock()
             mock_adapter.return_value.create_team = AsyncMock(return_value="team_123")
@@ -990,7 +1008,6 @@ Output format for each finding:
 - Remediation: <suggested fix>
 
 Be thorough but prioritize by severity.""",
-
             "quality_engineer": """You are a code quality engineer reviewing ${language} code.
 
 Standards enforced:
@@ -1003,7 +1020,6 @@ Evaluate:
 - Style guide adherence
 
 Provide actionable improvement suggestions.""",
-
             "test_engineer": """You are a test engineer designing tests for ${language} code.
 
 Target: ${target:-the provided code}
@@ -1015,7 +1031,6 @@ Create tests covering:
 - Integration points
 
 Use appropriate testing framework for ${language}.""",
-
             "performance_specialist": """You are a performance optimization specialist analyzing ${language} code.
 
 Focus on:
@@ -1026,7 +1041,6 @@ Focus on:
 - Resource bottlenecks
 
 Provide specific optimization recommendations with expected impact.""",
-
             "debugging_specialist": """You are a debugging specialist investigating issues in ${language} code.
 
 Error context:
@@ -1079,6 +1093,7 @@ def get_template_manager() -> PromptTemplateManager:
     global _template_manager
     if _template_manager is None:
         from mahavishnu.core.config import get_settings
+
         settings = get_settings()
         config_path = settings.settings_dir / "prompts.yaml"
         _template_manager = PromptTemplateManager(config_path)
@@ -1091,6 +1106,7 @@ def get_template_manager() -> PromptTemplateManager:
 
 ```python
 # Add to MahavishnuWebSocketServer class:
+
 
 async def broadcast_team_created(
     self,
@@ -1156,7 +1172,6 @@ async def broadcast_team_completed(
 
 SKILL_MAPPING: dict[str, SkillConfig] = {
     # ... existing skills ...
-
     "devops": SkillConfig(
         role="DevOps and CI/CD specialist",
         instructions="""Analyze and improve CI/CD pipelines and infrastructure:
@@ -1175,7 +1190,6 @@ Provide actionable recommendations for:
         model="sonnet",
         temperature=0.4,
     ),
-
     "api_design": SkillConfig(
         role="API design specialist",
         instructions="""Design and review REST/GraphQL APIs:
@@ -1201,8 +1215,23 @@ Ensure APIs follow:
 # Update DOMAIN_PATTERNS:
 DOMAIN_PATTERNS = {
     # ... existing patterns ...
-    "devops": [r"\bdevops\b", r"\bci/cd\b", r"\bpipeline\b", r"\bdeploy\b", r"\bdocker\b", r"\bkubernetes\b", r"\bk8s\b"],
-    "api": [r"\bapi\b", r"\brest\b", r"\bgraphql\b", r"\bendpoint\b", r"\bopenapi\b", r"\bswagger\b"],
+    "devops": [
+        r"\bdevops\b",
+        r"\bci/cd\b",
+        r"\bpipeline\b",
+        r"\bdeploy\b",
+        r"\bdocker\b",
+        r"\bkubernetes\b",
+        r"\bk8s\b",
+    ],
+    "api": [
+        r"\bapi\b",
+        r"\brest\b",
+        r"\bgraphql\b",
+        r"\bendpoint\b",
+        r"\bopenapi\b",
+        r"\bswagger\b",
+    ],
 }
 ```
 

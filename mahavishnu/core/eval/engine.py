@@ -67,9 +67,7 @@ def _redacted_traceback(exc: BaseException) -> str:
     """
     from mahavishnu.core.secure_logging import CredentialRedactor
 
-    text = "".join(
-        traceback.format_exception(type(exc), exc, exc.__traceback__)
-    )
+    text = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
     return CredentialRedactor().redact_string(text)
 
 

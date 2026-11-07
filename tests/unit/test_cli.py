@@ -1,6 +1,5 @@
 """Unit tests for CLI commands."""
 
-
 import pytest
 from typer.testing import CliRunner
 

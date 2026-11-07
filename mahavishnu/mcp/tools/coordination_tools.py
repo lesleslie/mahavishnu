@@ -46,7 +46,9 @@ async def coord_list_issues(
                 f"Invalid status: {status}. Valid values: {[s.value for s in IssueStatus]}"
             )
 
-    issues = mgr.list_issues(status=status_enum, priority=priority, repo=repo, assignee=assignee)
+    issues = mgr.list_issues(
+        status=status_enum, priority=priority, repo=repo, assignee=assignee
+    )
     return [issue.model_dump(mode="json") for issue in issues]
 
 

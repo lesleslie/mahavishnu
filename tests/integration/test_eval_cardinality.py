@@ -88,7 +88,9 @@ async def test_run_suite_span_carries_exactly_the_closed_keyspace(
 
     spans = exporter.get_finished_spans()
     eval_spans = [span for span in spans if span.name == "eval.run_suite"]
-    assert len(eval_spans) == 1, f"expected one eval.run_suite span, got {len(eval_spans)}"
+    assert len(eval_spans) == 1, (
+        f"expected one eval.run_suite span, got {len(eval_spans)}"
+    )
 
     attributes = eval_spans[0].attributes or {}
     eval_keys = {key for key in attributes if key.startswith("eval.")}

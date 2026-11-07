@@ -52,7 +52,9 @@ class WorkerRecordStore:
     def put(self, record: DurableWorkerRecord) -> None:
         path = self._path_for(record.worker_id)
         payload = json.dumps(record.to_dict(), indent=2, sort_keys=True)
-        fd, tmp_name = tempfile.mkstemp(prefix=f".worker-{record.worker_id}-", dir=str(self._root))
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=f".worker-{record.worker_id}-", dir=str(self._root)
+        )
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 fh.write(payload)
@@ -80,7 +82,9 @@ class WorkerRecordStore:
             WorkerLifecycleState.FAILED,
             WorkerLifecycleState.REAPED,
         }
-        yield from (record for record in self.list_all() if record.state not in terminal_states)
+        yield from (
+            record for record in self.list_all() if record.state not in terminal_states
+        )
 
     def list_all(self) -> Iterator[DurableWorkerRecord]:
         for path in sorted(self._root.glob("*.json")):

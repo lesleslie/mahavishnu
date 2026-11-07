@@ -422,7 +422,9 @@ class _Placeholder:
 # =============================================================================
 
 
-TERMINAL_STATUSES: frozenset[str] = frozenset({"COMPLETED", "FAILED", "CANCELLED", "TIMEOUT"})
+TERMINAL_STATUSES: frozenset[str] = frozenset(
+    {"COMPLETED", "FAILED", "CANCELLED", "TIMEOUT"}
+)
 STATUS_CALL_TIMEOUT_SECONDS: int = 30
 RECONCILER_TIMEOUT_MS: int = 10 * 60 * 1000  # 10 min
 RECONCILER_INTERVAL_SECONDS: int = 30
@@ -438,7 +440,9 @@ async def _mcp_trigger_workflow(
     """
     try:
         # Imported lazily to avoid module-load cost when drain is unused.
-        from mahavishnu.mcp.server_core import trigger_workflow  # ty: ignore[import-not-found]
+        from mahavishnu.mcp.server_core import (
+            trigger_workflow,  # ty: ignore[import-not-found]
+        )
 
         result: dict[str, object] = await trigger_workflow(
             adapter=adapter,
@@ -456,7 +460,9 @@ async def _mcp_trigger_workflow(
 async def _mcp_get_workflow_status(workflow_id: str) -> dict[str, object]:
     """Thin wrapper over mahavishnu.mcp.server_core.get_workflow_status."""
     try:
-        from mahavishnu.mcp.server_core import get_workflow_status  # ty: ignore[import-not-found]
+        from mahavishnu.mcp.server_core import (
+            get_workflow_status,  # ty: ignore[import-not-found]
+        )
 
         result: dict[str, object] = await get_workflow_status(workflow_id=workflow_id)
         return result
@@ -654,7 +660,9 @@ async def _reconcile_if_in_flight(jot: JotSummary) -> None:
                 "dispatch_done",
                 {
                     "workflow_id": workflow_id,
-                    "summary": ("ok" if status_dict.get("results_count") else "completed"),
+                    "summary": (
+                        "ok" if status_dict.get("results_count") else "completed"
+                    ),
                     **(
                         {"commit_sha": status_dict["commit_sha"]}
                         if status_dict.get("commit_sha")
@@ -826,10 +834,14 @@ def drain_plan(
     now_ms_ = _now_ms()
     eligible = [s for s in states if _is_drain_eligible(s, now_ms=now_ms_)]
     if not include_in_flight:
-        eligible = [c for c in eligible if c.dispatch_state is not DispatchState.IN_FLIGHT]
+        eligible = [
+            c for c in eligible if c.dispatch_state is not DispatchState.IN_FLIGHT
+        ]
     if query:
         q_tokens = _tokenize(query)
-        eligible = [c for c in eligible if _lexical_score(_tokenize(c.text), q_tokens) >= 0.20]
+        eligible = [
+            c for c in eligible if _lexical_score(_tokenize(c.text), q_tokens) >= 0.20
+        ]
     # Newest first, then truncate.
     eligible_sorted = sorted(
         eligible,
@@ -934,7 +946,9 @@ async def dispatch_jot(
             "attempt": next_attempt,
             "pool_selector": "least_loaded",
             "dispatched_from": dispatched_from,
-            "triggered_by": ("manual" if jot.dispatch_state is DispatchState.FAILED else "first"),
+            "triggered_by": (
+                "manual" if jot.dispatch_state is DispatchState.FAILED else "first"
+            ),
         },
         jot_id=jot.id,
     )
@@ -963,7 +977,9 @@ async def retry_dispatch(
     jot = resolve_handle(states, handle)
     if jot.dispatch_state is not DispatchState.FAILED:
         current_state: Any = jot.dispatch_state.value if jot.dispatch_state else "none"
-        raise JotRetryError(f"jot {jot.short_id} is not in FAILED state (current: {current_state})")
+        raise JotRetryError(
+            f"jot {jot.short_id} is not in FAILED state (current: {current_state})"
+        )
     return await dispatch_jot(handle, dispatched_from=dispatched_from)
 
 
@@ -1085,7 +1101,13 @@ def _semantic_score(jot_text: str, ctx_text: str, embeddings: Any) -> float:
     # receives a coroutine here. Treat that (and any non-list result) as
     # a degraded embeddings path rather than crashing the fold.
     try:
-        if not emb or len(emb) < 2 or not emb[0] or not emb[1] or len(emb[0]) != len(emb[1]):
+        if (
+            not emb
+            or len(emb) < 2
+            or not emb[0]
+            or not emb[1]
+            or len(emb[0]) != len(emb[1])
+        ):
             _last_surface_degraded = True
             return 0.0
     except TypeError:
@@ -1101,7 +1123,9 @@ class SurfacingResult:
     matches: list[JotSummary]
     score_threshold_used: float
     surface_degraded: bool
-    surface_reason: str  # "matches" | "no_context" | "no_match" | "throttled" | "embeddings_down"
+    surface_reason: (
+        str  # "matches" | "no_context" | "no_match" | "throttled" | "embeddings_down"
+    )
 
 
 @dataclass

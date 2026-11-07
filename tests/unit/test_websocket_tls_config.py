@@ -161,7 +161,9 @@ class TestGetWebsocketTlsConfig:
         """Verify the function delegates with the correct prefix."""
         _del_env(*TLS_ENV_KEYS)
 
-        with patch("mahavishnu.websocket.tls_config.get_tls_config_from_env") as mock_from_env:
+        with patch(
+            "mahavishnu.websocket.tls_config.get_tls_config_from_env"
+        ) as mock_from_env:
             mock_from_env.return_value = {"tls_enabled": False}
             get_websocket_tls_config()
 
@@ -548,7 +550,9 @@ class TestGetTlsCliOptions:
         """Should delegate to get_websocket_tls_config."""
         _del_env(*TLS_ENV_KEYS)
 
-        with patch("mahavishnu.websocket.tls_config.get_websocket_tls_config") as mock_config:
+        with patch(
+            "mahavishnu.websocket.tls_config.get_websocket_tls_config"
+        ) as mock_config:
             mock_config.return_value = {
                 "tls_enabled": True,
                 "cert_file": "/c.pem",

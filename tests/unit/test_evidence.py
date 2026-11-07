@@ -304,7 +304,12 @@ class TestEvidenceCollectorCollectRecentOutcomes:
         # Return 100 items, but max_per_cycle is 20
         mock_source.get_recent_outcomes = AsyncMock(
             return_value=[
-                {"evidence_id": f"le_{i}", "session_id": "s", "goal": "g", "outcome": "o"}
+                {
+                    "evidence_id": f"le_{i}",
+                    "session_id": "s",
+                    "goal": "g",
+                    "outcome": "o",
+                }
                 for i in range(100)
             ]
         )
@@ -727,7 +732,9 @@ class TestSessionBuddyEvidenceSource:
         mock_client_instance.call_tool = mock_call_tool
         mock_client_instance.aclose = AsyncMock()
 
-        with patch("mahavishnu.core.evidence_collector.CommonMCPClient") as mock_client_cls:
+        with patch(
+            "mahavishnu.core.evidence_collector.CommonMCPClient"
+        ) as mock_client_cls:
             mock_client_cls.return_value = mock_client_instance
 
             with pytest.raises(MCPServerError):

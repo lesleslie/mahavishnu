@@ -323,6 +323,7 @@ Provides a temporary repos.yaml file.
 ```python
 def test_repos_file(temp_repos_file):
     import yaml
+
     with temp_repos_file.open() as f:
         data = yaml.safe_load(f)
         assert "repos" in data
@@ -335,6 +336,7 @@ Provides environment without Mahavishnu variables.
 ```python
 def test_clean_env(clean_env):
     import os
+
     assert "MAHAVISHNU_SERVER_NAME" not in os.environ
 ```
 
@@ -345,6 +347,7 @@ Provides test environment variables.
 ```python
 def test_env_vars(test_env_vars):
     import os
+
     assert os.environ["MAHAVISHNU_DEBUG"] == "true"
 ```
 
@@ -355,6 +358,7 @@ def test_env_vars(test_env_vars):
 ```python
 import pytest
 from tests.fixtures.workflow_fixtures import WorkflowFixtures
+
 
 class TestWorkflowExecution:
     """Test workflow execution functionality."""
@@ -390,6 +394,7 @@ class TestWorkflowExecution:
 import pytest
 from tests.fixtures.shell_fixtures import ShellFixtures
 
+
 class TestShellCommands:
     """Test admin shell commands."""
 
@@ -415,6 +420,7 @@ class TestShellCommands:
 ```python
 import pytest
 from tests.fixtures.conftest import IntegrationFixtures
+
 
 class TestIntegration:
     """Integration tests with full app context."""
@@ -453,14 +459,13 @@ class TestIntegration:
 import pytest
 from tests.fixtures import WorkflowFixtures, ShellFixtures
 
+
 class TestFactories:
     """Test using fixture factory classes."""
 
     def test_create_custom_workflow(self):
         """Create a workflow with custom ID."""
-        workflow = WorkflowFixtures.sample_workflow(
-            workflow_id="wf_custom_123"
-        )
+        workflow = WorkflowFixtures.sample_workflow(workflow_id="wf_custom_123")
         assert workflow["id"] == "wf_custom_123"
 
     def test_create_bulk_workflows(self):
@@ -470,9 +475,7 @@ class TestFactories:
 
     def test_custom_shell_output(self):
         """Create custom shell output."""
-        output = ShellFixtures.mock_shell_output(
-            command="custom command"
-        )
+        output = ShellFixtures.mock_shell_output(command="custom command")
         assert output["command"] == "custom command"
 ```
 
@@ -486,6 +489,7 @@ Prefer specific fixtures over factory classes when possible:
 # Good: Use specific fixture
 def test_workflow(sample_workflow):
     assert sample_workflow["status"] == "running"
+
 
 # Avoid: Unless you need customization
 def test_workflow(workflow_fixtures):
@@ -521,11 +525,7 @@ async def test_async_workflow(mock_app):
 You can combine multiple fixtures in a single test:
 
 ```python
-def test_complex_scenario(
-    sample_workflow,
-    mock_repos_list,
-    mock_app
-):
+def test_complex_scenario(sample_workflow, mock_repos_list, mock_app):
     """Test combining multiple fixtures."""
     repos = [repo["path"] for repo in mock_repos_list]
     workflow = sample_workflow
@@ -549,9 +549,7 @@ def test_modified_workflow(sample_workflow):
 Combine fixtures with parametrize for data-driven tests:
 
 ```python
-@pytest.mark.parametrize("status", [
-    "running", "completed", "failed", "pending"
-])
+@pytest.mark.parametrize("status", ["running", "completed", "failed", "pending"])
 def test_all_statuses(status):
     """Test all workflow statuses."""
     workflow = WorkflowFixtures.sample_workflow()

@@ -61,7 +61,7 @@ def test_unparseable_frontmatter_is_distinguished_from_missing(tmp_path: Path) -
     """A value starting with a backtick is not a valid YAML plain scalar.
 
     This is the exact shape that made a live decision vanish from the
-    index: the renderer skips unparseable frontmatter silently, so it
+    index: the renderer skips unparsable frontmatter silently, so it
     looked identical to having no frontmatter at all.
     """
     body = (
@@ -76,7 +76,9 @@ def test_unparseable_frontmatter_is_distinguished_from_missing(tmp_path: Path) -
     assert _codes(problems) == ["frontmatter_malformed"]
 
 
-@pytest.mark.parametrize("missing_key", ["status", "role", "date", "last_reviewed", "topic"])
+@pytest.mark.parametrize(
+    "missing_key", ["status", "role", "date", "last_reviewed", "topic"]
+)
 def test_each_required_key_is_required(tmp_path: Path, missing_key: str) -> None:
     lines = CLEAN_FRONTMATTER.splitlines()
     kept = [line for line in lines if not line.startswith(f"{missing_key}:")]

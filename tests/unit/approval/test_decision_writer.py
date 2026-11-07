@@ -100,11 +100,19 @@ def test_record_approval_decision_counts_write_as_succeeded() -> None:
         )
 
     assert _stored("approval-history/apr-counters/") != []
-    assert COUNTERS.attempted.labels(producer=_PRODUCER)._value.get() == attempted_before + 1
-    assert COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get() == succeeded_before + 1
+    assert (
+        COUNTERS.attempted.labels(producer=_PRODUCER)._value.get()
+        == attempted_before + 1
+    )
+    assert (
+        COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get()
+        == succeeded_before + 1
+    )
     assert COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before
     # The "substrate unbound" branch is gone — no skip event is emitted.
-    assert [entry for entry in logs if entry["event"] == "approval_log_persistence_skipped"] == []
+    assert [
+        entry for entry in logs if entry["event"] == "approval_log_persistence_skipped"
+    ] == []
 
 
 def test_record_approval_decision_reports_a_failed_write_as_skipped(
@@ -120,7 +128,9 @@ def test_record_approval_decision_reports_a_failed_write_as_skipped(
     """
     import mahavishnu.core.approval.decision_writer as dw_mod
 
-    monkeypatch.setattr(dw_mod, "substrate", SimpleNamespace(put=lambda *_a, **_k: False))
+    monkeypatch.setattr(
+        dw_mod, "substrate", SimpleNamespace(put=lambda *_a, **_k: False)
+    )
 
     attempted_before = COUNTERS.attempted.labels(producer=_PRODUCER)._value.get()
     succeeded_before = COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get()
@@ -134,10 +144,19 @@ def test_record_approval_decision_reports_a_failed_write_as_skipped(
             decided_by="alice",
         )
 
-    assert COUNTERS.attempted.labels(producer=_PRODUCER)._value.get() == attempted_before + 1
-    assert COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get() == succeeded_before
-    assert COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before + 1
-    skipped = [entry for entry in logs if entry["event"] == "approval_log_persistence_skipped"]
+    assert (
+        COUNTERS.attempted.labels(producer=_PRODUCER)._value.get()
+        == attempted_before + 1
+    )
+    assert (
+        COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get() == succeeded_before
+    )
+    assert (
+        COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before + 1
+    )
+    skipped = [
+        entry for entry in logs if entry["event"] == "approval_log_persistence_skipped"
+    ]
     assert len(skipped) == 1, logs
     assert skipped[0]["extra"]["reason"] == "substrate_write_failed"
     assert _stored("approval-history/apr-write-fail/") == []
@@ -170,7 +189,9 @@ def test_record_approval_decision_emits_log_event(
     )
 
     matching = [event for event, _ in captured if event == "approval_log_recorded"]
-    assert matching, f"expected an approval_log_recorded structlog event; got: {captured}"
+    assert matching, (
+        f"expected an approval_log_recorded structlog event; got: {captured}"
+    )
     payload = captured[-1][1]
     extra = payload.get("extra", payload)
     assert extra.get("approval_id") == "apr-004"

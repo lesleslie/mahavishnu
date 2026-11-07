@@ -183,7 +183,9 @@ class OTLPObservabilitySettings(BaseModel):
     insecure: bool = True
     service_name: str = "oneiric-app"
     service_namespace: str = "bodai"  # was: implicit blank
-    telemetry_source_type: Literal["mcp_server", "bodai_component", "llm_gateway"] = "mcp_server"
+    telemetry_source_type: Literal["mcp_server", "bodai_component", "llm_gateway"] = (
+        "mcp_server"
+    )
     environment: str = "development"
     enable_traces: bool = True
     enable_metrics: bool = True
@@ -196,11 +198,13 @@ class OTLPObservabilitySettings(BaseModel):
 from enum import Enum
 from pydantic import BaseModel, Field
 
+
 class CircuitState(str, Enum):
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
     DEGRADED = "degraded"
+
 
 class FSMInput(BaseModel):
     selector: str
@@ -212,6 +216,7 @@ class FSMInput(BaseModel):
     gen_ai_tokens_used: int | None = None
     observed_at: str
 
+
 class CircuitObservation(BaseModel):
     state: CircuitState
     entered_at: str
@@ -220,15 +225,17 @@ class CircuitObservation(BaseModel):
     threshold: float
     consecutive_failures: int = 0
 
+
 class FSMRecommendation(BaseModel):
     selector: str
     task_class: str
     state: CircuitState
     confidence: float = Field(ge=0.0, le=1.0)
     reason: str
-    evidence_hash: str          # sha256(canonical_json(FSMInput.dict())) — pin-to-input
+    evidence_hash: str  # sha256(canonical_json(FSMInput.dict())) — pin-to-input
     emitted_at: str
     ttl_seconds: int = 30
+
 
 class FSMContract(BaseModel):
     name: str

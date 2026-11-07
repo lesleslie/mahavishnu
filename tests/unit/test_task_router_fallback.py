@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.adapters.base import (
+    AdapterCapabilities,
+    AdapterType,
+    OrchestratorAdapter,
+)
 from mahavishnu.core.task_router import AdapterManager, StateManager, TaskRouter
 
 

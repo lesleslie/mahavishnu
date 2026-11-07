@@ -143,7 +143,9 @@ def main():
     """Main entry point."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Update WebSocket servers with TLS support")
+    parser = argparse.ArgumentParser(
+        description="Update WebSocket servers with TLS support"
+    )
     parser.add_argument(
         "--services",
         nargs="*",

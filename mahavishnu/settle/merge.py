@@ -287,9 +287,15 @@ def _read_runtime_config_from_env() -> MergeDriverRuntimeConfig:
     layer in :mod:`mahavishnu.core.config` — the duplication is
     intentional for non-bootstrap importers.
     """
-    raw_default = os.environ.get("MAHAVISHNU_MERGE_DRIVER_DEFAULT", "line").strip().lower()
-    strategy = MergeStrategy.SEMANTIC if raw_default == "mergiraf" else MergeStrategy.LINE
-    raw_required = os.environ.get("MAHAVISHNU_MERGE_DRIVER_REQUIRED", "false").strip().lower()
+    raw_default = (
+        os.environ.get("MAHAVISHNU_MERGE_DRIVER_DEFAULT", "line").strip().lower()
+    )
+    strategy = (
+        MergeStrategy.SEMANTIC if raw_default == "mergiraf" else MergeStrategy.LINE
+    )
+    raw_required = (
+        os.environ.get("MAHAVISHNU_MERGE_DRIVER_REQUIRED", "false").strip().lower()
+    )
     required = raw_required in {"1", "true", "yes", "on"}
     return MergeDriverRuntimeConfig(default=strategy, required=required)
 
@@ -359,7 +365,9 @@ def set_merge_driver_runtime_config(
     global _RUNTIME_CONFIG
     if isinstance(default, str):
         normalized = default.strip().lower()
-        strategy = MergeStrategy.SEMANTIC if normalized == "mergiraf" else MergeStrategy.LINE
+        strategy = (
+            MergeStrategy.SEMANTIC if normalized == "mergiraf" else MergeStrategy.LINE
+        )
     else:
         strategy = default
     _RUNTIME_CONFIG = MergeDriverRuntimeConfig(default=strategy, required=required)
@@ -396,7 +404,9 @@ def _resolve_mergiraf_binary() -> str | None:
     return _MERGIRAF_BIN
 
 
-def _record_semantic_duration(start: float, strategy: MergeStrategy, outcome: str) -> None:
+def _record_semantic_duration(
+    start: float, strategy: MergeStrategy, outcome: str
+) -> None:
     """Record one sample to the ``merge.semantic.duration_ms`` histogram.
 
     Called from ``merge_three_way`` and ``_merge_three_way_sync_internal``
@@ -645,7 +655,11 @@ async def _merge_via_mergiraf(
                 exit_code = proc.returncode
                 has_conflict_markers = "<<<<<<< " in merged_text
                 conflict_count = (
-                    sum(1 for line in merged_text.splitlines() if line.startswith("<<<<<<< "))
+                    sum(
+                        1
+                        for line in merged_text.splitlines()
+                        if line.startswith("<<<<<<< ")
+                    )
                     if has_conflict_markers
                     else 0
                 )
@@ -654,7 +668,9 @@ async def _merge_via_mergiraf(
                 span.set_attribute("merge.exit_code", exit_code or 0)
                 span.set_attribute("merge.conflict_count", conflict_count)
                 span.set_attribute("merge.duration_ms", duration_ms)
-                span.set_attribute("merge.has_driver_warnings", driver_warnings is not None)
+                span.set_attribute(
+                    "merge.has_driver_warnings", driver_warnings is not None
+                )
 
                 # Marker-first classification (R4 reviewer-blind-spot fix).
                 # Real semantic conflicts emit ``<<<<<<<`` markers in stdout

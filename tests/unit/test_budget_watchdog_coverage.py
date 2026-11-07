@@ -67,7 +67,9 @@ class TestInMemoryBudgetStoreBasic:
         await store.put("k", "value")
         assert await store.get("k") == {"value": "value"}
 
-    async def test_put_with_ttl_attaches_expiry(self, store: InMemoryBudgetStore) -> None:
+    async def test_put_with_ttl_attaches_expiry(
+        self, store: InMemoryBudgetStore
+    ) -> None:
         await store.put("k", {"v": 1}, ttl_seconds=60)
         stored = await store.get("k")
         assert stored is not None
@@ -175,15 +177,12 @@ class TestAntiAiFlavorCheck:
         with TemporaryDirectory() as root:
             file_path = Path(root) / "mr.md"
             file_path.write_text("Co-Authored-By: Claude\n")
-            result = run_anti_ai_flavor_check(
-                "Co-Authored-By: Claude\n", file_path
-            )
+            result = run_anti_ai_flavor_check("Co-Authored-By: Claude\n", file_path)
             assert "violations" in result
             assert "sop_source" in result
             # The packaged default SOP bans "Co-Authored-By:\s*Claude"
             assert any(
-                "Co-Authored-By" in v.get("pattern", "")
-                for v in result["violations"]
+                "Co-Authored-By" in v.get("pattern", "") for v in result["violations"]
             )
 
     def test_clean_content_has_no_violations(self) -> None:
@@ -208,9 +207,7 @@ class TestSOPCliCommands:
 
     def test_sop_list_json_output(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(
-            sop_app, ["list", "--project", "json-proj", "--json"]
-        )
+        result = runner.invoke(sop_app, ["list", "--project", "json-proj", "--json"])
         assert result.exit_code == 0
         # JSON should mention the project id and contain "sops" key.
         assert "json-proj" in result.stdout
@@ -230,7 +227,9 @@ class TestSOPCliCommands:
             sop_app, ["propose", "--project", "any", "--threshold", "3"]
         )
         assert result.exit_code == 0
-        assert "No new suggestions" in result.stdout or "0 failure-mode" in result.stdout
+        assert (
+            "No new suggestions" in result.stdout or "0 failure-mode" in result.stdout
+        )
 
 
 class TestBackupCLICommands:
@@ -251,9 +250,7 @@ class TestBackupCLICommands:
             patch.dict(
                 "sys.modules",
                 {
-                    "mahavishnu.core.app": MagicMock(
-                        MahavishnuApp=fake_app_cls
-                    ),
+                    "mahavishnu.core.app": MagicMock(MahavishnuApp=fake_app_cls),
                     "mahavishnu.core.backup_recovery": MagicMock(
                         BackupManager=fake_manager_cls
                     ),
@@ -347,9 +344,7 @@ class TestSettlePersistence:
         fake_mcp.put = AsyncMock(return_value=None)
         loop = asyncio.new_event_loop()
         try:
-            returned = loop.run_until_complete(
-                persist_transition(record, mcp=fake_mcp)
-            )
+            returned = loop.run_until_complete(persist_transition(record, mcp=fake_mcp))
             assert returned is record
             fake_mcp.put.assert_awaited_once()
         finally:

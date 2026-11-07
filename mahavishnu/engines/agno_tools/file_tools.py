@@ -135,7 +135,9 @@ def _get_allowed_base_dirs() -> list[Path]:
 
         settings = MahavishnuSettings()
         if settings.allowed_repo_paths:
-            allowed = [Path(p).expanduser().resolve() for p in settings.allowed_repo_paths]
+            allowed = [
+                Path(p).expanduser().resolve() for p in settings.allowed_repo_paths
+            ]
             allowed.extend(
                 [
                     Path(tempfile.gettempdir()).resolve(),
@@ -144,12 +146,16 @@ def _get_allowed_base_dirs() -> list[Path]:
             )
             return list(dict.fromkeys(allowed))
     except Exception:  # settings/config load can fail at import time; fall back to defaults  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.debug("Could not load allowed_repo_paths from configuration, using defaults")
+        logger.debug(
+            "Could not load allowed_repo_paths from configuration, using defaults"
+        )
 
     return [p.resolve() for p in DEFAULT_ALLOWED_BASE_DIRS]
 
 
-def _validate_path_within_allowed(resolved_path: Path, allowed_dirs: list[Path]) -> None:
+def _validate_path_within_allowed(
+    resolved_path: Path, allowed_dirs: list[Path]
+) -> None:
     """Validate that a resolved path is within one of the allowed base directories.
 
     SECURITY: This is the core path traversal prevention check.
@@ -296,9 +302,7 @@ def _validate_path(path: str) -> Path:
     except AgnoError:
         # Re-raise our security errors
         raise
-    except (
-        Exception
-    ) as e:  # path validation can raise any OS/Path error; wrap into domain-specific AgnoError
+    except Exception as e:  # path validation can raise any OS/Path error; wrap into domain-specific AgnoError
         # Wrap other exceptions
         raise AgnoError(
             "Invalid path provided",
@@ -346,7 +350,11 @@ def _check_file_size(path: Path) -> None:
         raise AgnoError(
             f"File too large: {size / (1024 * 1024):.2f}MB (max {MAX_FILE_SIZE_MB}MB)",
             error_code=ErrorCode.AGNO_TOOL_EXECUTION_ERROR,
-            details={"path": str(path), "size_bytes": size, "max_bytes": MAX_FILE_SIZE_BYTES},
+            details={
+                "path": str(path),
+                "size_bytes": size,
+                "max_bytes": MAX_FILE_SIZE_BYTES,
+            },
         )
 
 

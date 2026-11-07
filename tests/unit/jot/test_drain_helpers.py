@@ -1,4 +1,5 @@
 """Task 5: _should_exhaust_retry_budget + MAX_AUTO_ATTEMPTS."""
+
 from __future__ import annotations
 
 from mahavishnu.jot.drain import MAX_AUTO_ATTEMPTS, _should_exhaust_retry_budget
@@ -7,12 +8,17 @@ from mahavishnu.jot.fold import JotSummary
 
 def _summary(current_attempt: int) -> JotSummary:
     return JotSummary(  # type: ignore[arg-type]
-        id="e1", short_id="e1", text="x",
-        status="open", last_modified_ms=0,
-        dispatch_state=None, dispatch_workflow_id=None,
+        id="e1",
+        short_id="e1",
+        text="x",
+        status="open",
+        last_modified_ms=0,
+        dispatch_state=None,
+        dispatch_workflow_id=None,
         current_attempt=current_attempt,
         dispatch_started_at_ms=None,
-        deferred_until=None, deleted=False,
+        deferred_until=None,
+        deleted=False,
     )
 
 

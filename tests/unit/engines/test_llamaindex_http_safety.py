@@ -60,7 +60,9 @@ def test_non_http_urls_are_refused(url: str) -> None:
         impl._require_http_url(url)
 
 
-def test_a_non_http_url_never_reaches_the_http_client(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_non_http_url_never_reaches_the_http_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The refusal happens before a client exists, so nothing is attempted."""
 
     def _explode(**kwargs: Any) -> Any:

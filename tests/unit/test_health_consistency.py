@@ -200,7 +200,9 @@ async def test_mcp_get_health_body_matches_http_route(server: FastMCPServer) -> 
             f"MCP/HTTP drift on {field!r}: MCP={mcp_body[field]!r} HTTP={http_body[field]!r}"
         )
 
-    assert _stable(mcp_body["canonical_checks"]) == _stable(http_body["canonical_checks"])
+    assert _stable(mcp_body["canonical_checks"]) == _stable(
+        http_body["canonical_checks"]
+    )
     assert set(mcp_body["checks"]) == set(http_body["checks"])
 
     assert mcp_body["http_status"] == http_response.status_code

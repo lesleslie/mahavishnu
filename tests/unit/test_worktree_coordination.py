@@ -177,7 +177,10 @@ class TestWorktreeCoordinator:
 
         mock_provider = MockWorktreeProvider()
         mock_provider.create_worktree = AsyncMock(
-            return_value={"success": True, "worktree_path": "/worktrees/test-repo/feature"}
+            return_value={
+                "success": True,
+                "worktree_path": "/worktrees/test-repo/feature",
+            }
         )
 
         coordinator = WorktreeCoordinator(
@@ -224,7 +227,10 @@ class TestWorktreeCoordinator:
 
         mock_provider = MockWorktreeProvider()
         mock_provider.create_worktree = AsyncMock(
-            return_value={"success": True, "worktree_path": "/worktrees/test-repo/custom"}
+            return_value={
+                "success": True,
+                "worktree_path": "/worktrees/test-repo/custom",
+            }
         )
 
         coordinator = WorktreeCoordinator(
@@ -450,7 +456,9 @@ class TestWorktreeCoordinator:
         assert result["success"] is True
 
     @pytest.mark.asyncio
-    async def test_remove_worktree_provider_failure_does_not_log_success(self, tmp_path):
+    async def test_remove_worktree_provider_failure_does_not_log_success(
+        self, tmp_path
+    ):
         """Regression for bug session-buddy-mcp-remove-worktree-bugs.md.
 
         Before the fix, ``coordinator.remove_worktree`` logged
@@ -645,9 +653,7 @@ class TestWorktreeCoordinator:
             p.remove_worktree.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_remove_worktree_does_not_fall_back_on_success_false(
-        self, tmp_path
-    ):
+    async def test_remove_worktree_does_not_fall_back_on_success_false(self, tmp_path):
         """A provider returning success=False is a real failure, not a
         config gap — the coordinator must NOT fall through to the next
         provider.
@@ -1036,8 +1042,14 @@ class TestWorktreeCoordinator:
             return_value={
                 "success": True,
                 "worktrees": [
-                    {"path": "/worktrees/test-repo/deleted-branch", "branch": "deleted-branch"},
-                    {"path": "/worktrees/test-repo/active-branch", "branch": "active-branch"},
+                    {
+                        "path": "/worktrees/test-repo/deleted-branch",
+                        "branch": "deleted-branch",
+                    },
+                    {
+                        "path": "/worktrees/test-repo/active-branch",
+                        "branch": "active-branch",
+                    },
                 ],
             }
         )
@@ -1159,12 +1171,16 @@ class TestWorktreeCoordinator:
         assert has_changes is True
 
         # Commit changes
-        await coordinator._execute_git_command(str(worktree_path), ["config", "user.name", "Test"])
+        await coordinator._execute_git_command(
+            str(worktree_path), ["config", "user.name", "Test"]
+        )
         await coordinator._execute_git_command(
             str(worktree_path), ["config", "user.email", "test@example.com"]
         )
         await coordinator._execute_git_command(str(worktree_path), ["add", "."])
-        await coordinator._execute_git_command(str(worktree_path), ["commit", "-m", "test"])
+        await coordinator._execute_git_command(
+            str(worktree_path), ["commit", "-m", "test"]
+        )
 
         # No uncommitted changes
         has_changes = await coordinator._check_uncommitted_changes(str(worktree_path))
@@ -1257,7 +1273,9 @@ class TestWorktreeCoordinator:
         repo_path.mkdir()
 
         await coordinator._execute_git_command(str(repo_path), ["init"])
-        await coordinator._execute_git_command(str(repo_path), ["config", "user.name", "Test"])
+        await coordinator._execute_git_command(
+            str(repo_path), ["config", "user.name", "Test"]
+        )
         await coordinator._execute_git_command(
             str(repo_path), ["config", "user.email", "test@example.com"]
         )
@@ -1289,13 +1307,17 @@ class TestWorktreeCoordinator:
         worktree_path.mkdir()
 
         await coordinator._execute_git_command(str(worktree_path), ["init"])
-        await coordinator._execute_git_command(str(worktree_path), ["config", "user.name", "Test"])
+        await coordinator._execute_git_command(
+            str(worktree_path), ["config", "user.name", "Test"]
+        )
         await coordinator._execute_git_command(
             str(worktree_path), ["config", "user.email", "test@example.com"]
         )
         (worktree_path / "test.txt").write_text("test")
         await coordinator._execute_git_command(str(worktree_path), ["add", "."])
-        await coordinator._execute_git_command(str(worktree_path), ["commit", "-m", "test"])
+        await coordinator._execute_git_command(
+            str(worktree_path), ["commit", "-m", "test"]
+        )
 
         # Get current branch
         branch = await coordinator._get_worktree_branch(str(worktree_path))
@@ -1326,7 +1348,9 @@ class TestWorktreeCoordinator:
         from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
 
         mock_provider = MockWorktreeProvider()
-        mock_provider.create_worktree = AsyncMock(side_effect=RuntimeError("Provider failed"))
+        mock_provider.create_worktree = AsyncMock(
+            side_effect=RuntimeError("Provider failed")
+        )
 
         coordinator = WorktreeCoordinator(
             repo_manager=mock_repo_manager,

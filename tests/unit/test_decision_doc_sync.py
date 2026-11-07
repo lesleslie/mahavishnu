@@ -5,6 +5,7 @@ exposition of the worktree cleanup policy. If the Tier literal, the
 PLAN_ORPHAN_PATTERNS tuple, or the negative-rule count drifts in code, the
 doc must be updated to match.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -90,6 +91,6 @@ def test_doc_has_negative_rules() -> None:
         if line.lstrip().startswith(("- **Don't", "- **DON'T"))
     )
     assert count >= 8, (
-        f"Decision doc has only { count } 'Don't' rules (≥ 8 expected). "
+        f"Decision doc has only {count} 'Don't' rules (≥ 8 expected). "
         f"Update {DECISION_DOC.name}."
     )

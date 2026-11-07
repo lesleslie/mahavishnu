@@ -372,7 +372,9 @@ class TestResolutionCache:
         )
 
         times = iter([100.0, 104.0, 106.0])
-        monkeypatch.setattr("mahavishnu.core.task_requirements.time.time", lambda: next(times))
+        monkeypatch.setattr(
+            "mahavishnu.core.task_requirements.time.time", lambda: next(times)
+        )
 
         cache.set("key1", decision)
         assert cache.get("key1") is None

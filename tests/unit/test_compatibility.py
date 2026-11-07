@@ -322,7 +322,13 @@ class TestRenderContractReport:
             "generated_at": "2026-01-01T00:00:00Z",
             "summary": {"total": 1, "passed": 1, "failed": 0, "pass_rate": 100.0},
             "checks": [
-                {"name": "ok", "component": "c", "passed": True, "required": True, "details": {}},
+                {
+                    "name": "ok",
+                    "component": "c",
+                    "passed": True,
+                    "required": True,
+                    "details": {},
+                },
             ],
         }
         md = render_contract_report(report)
@@ -341,7 +347,13 @@ class TestWriteContractReport:
             "generated_at": "2026-01-01",
             "summary": {"total": 1, "passed": 1, "failed": 0, "pass_rate": 100.0},
             "checks": [
-                {"name": "ok", "component": "c", "passed": True, "required": True, "details": {}},
+                {
+                    "name": "ok",
+                    "component": "c",
+                    "passed": True,
+                    "required": True,
+                    "details": {},
+                },
             ],
         }
         output = tmp_path / "reports" / "contract.json"

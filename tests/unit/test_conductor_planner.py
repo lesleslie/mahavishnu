@@ -17,7 +17,9 @@ from mahavishnu.core.capabilities import (
 from mahavishnu.core.conductor import plan, resolve, select_candidates
 
 
-def _cap(cap_id: str, io_in: TypeSchema | None = None, io_out: TypeSchema | None = None) -> Capability:
+def _cap(
+    cap_id: str, io_in: TypeSchema | None = None, io_out: TypeSchema | None = None
+) -> Capability:
     return Capability(
         id=CapabilityId(cap_id),
         kind=CapabilityKind.ENGINE,
@@ -56,7 +58,10 @@ def test_plan_emits_edges_when_io_matches() -> None:
         EngineRegistration(engine_id=EngineId("prefect"), provides=[b_cap]),
     ]
     spec = CapabilitySpec(
-        requires=[CapabilityId("engine:rag-retrieve"), CapabilityId("engine:summarize")],
+        requires=[
+            CapabilityId("engine:rag-retrieve"),
+            CapabilityId("engine:summarize"),
+        ],
         prompt="x",
     )
     candidates = resolve(spec, regs)

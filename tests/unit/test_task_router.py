@@ -75,7 +75,9 @@ class TestClassifyTask:
             "generate a class for users",
         ]
         for prompt in prompts:
-            assert classify_task(prompt) == TaskCategory.CODE_GENERATION, f"Failed: {prompt}"
+            assert classify_task(prompt) == TaskCategory.CODE_GENERATION, (
+                f"Failed: {prompt}"
+            )
 
     def test_debugging_keywords(self):
         """Prompts with debugging keywords are classified correctly."""
@@ -94,7 +96,9 @@ class TestClassifyTask:
             "audit the implementation for security issues",
         ]
         for prompt in prompts:
-            assert classify_task(prompt) == TaskCategory.CODE_REVIEW, f"Failed: {prompt}"
+            assert classify_task(prompt) == TaskCategory.CODE_REVIEW, (
+                f"Failed: {prompt}"
+            )
 
     def test_refactoring_keywords(self):
         """Prompts with refactoring keywords are classified correctly."""
@@ -104,7 +108,9 @@ class TestClassifyTask:
             "reorganize the data layer separation",
         ]
         for prompt in prompts:
-            assert classify_task(prompt) == TaskCategory.REFACTORING, f"Failed: {prompt}"
+            assert classify_task(prompt) == TaskCategory.REFACTORING, (
+                f"Failed: {prompt}"
+            )
 
     def test_documentation_keywords(self):
         """Prompts with documentation keywords are classified correctly."""
@@ -112,7 +118,9 @@ class TestClassifyTask:
             "describe the architecture in a user guide",
         ]
         for prompt in prompts:
-            assert classify_task(prompt) == TaskCategory.DOCUMENTATION, f"Failed: {prompt}"
+            assert classify_task(prompt) == TaskCategory.DOCUMENTATION, (
+                f"Failed: {prompt}"
+            )
 
     def test_testing_keywords(self):
         """Prompts with testing keywords are classified correctly."""
@@ -169,11 +177,16 @@ class TestClassifyTask:
             "deploy the ML model for real-time inference on requests",
         ]
         for prompt in prompts:
-            assert classify_task(prompt) == TaskCategory.ML_INFERENCE, f"Failed: {prompt}"
+            assert classify_task(prompt) == TaskCategory.ML_INFERENCE, (
+                f"Failed: {prompt}"
+            )
 
     def test_vision_context_overrides_text(self):
         """Vision context flag overrides text-based classification."""
-        assert classify_task("analyze the code", context={"has_image": True}) == TaskCategory.VISION
+        assert (
+            classify_task("analyze the code", context={"has_image": True})
+            == TaskCategory.VISION
+        )
         assert (
             classify_task("check the metrics", context={"file_type": "image/png"})
             == TaskCategory.VISION
@@ -181,8 +194,14 @@ class TestClassifyTask:
 
     def test_embedding_context_overrides_text(self):
         """Embedding context flag overrides text-based classification."""
-        assert classify_task("run the task", context={"embedding": True}) == TaskCategory.EMBEDDING
-        assert classify_task("process the data", context={"vector": True}) == TaskCategory.EMBEDDING
+        assert (
+            classify_task("run the task", context={"embedding": True})
+            == TaskCategory.EMBEDDING
+        )
+        assert (
+            classify_task("process the data", context={"vector": True})
+            == TaskCategory.EMBEDDING
+        )
 
     def test_unknown_prompt_returns_general(self):
         """Prompts with no matching patterns return GENERAL."""
@@ -245,7 +264,9 @@ class TestGetModelForTask:
             TaskCategory.GENERAL,
         )
         for cat in latency_cats:
-            model, _ = get_model_for_task("do it fast", DEFAULT_MINIMAX_ROUTING, "default")
+            model, _ = get_model_for_task(
+                "do it fast", DEFAULT_MINIMAX_ROUTING, "default"
+            )
             assert model == "MiniMax-M3.1-Flash", (
                 f"{cat} should route to MiniMax-M3.1-Flash (the speed-tier "
                 f"M-series variant the MiniMax API exposes). Got {model!r}. "
@@ -261,7 +282,9 @@ class TestGetModelForTask:
     def test_llama_server_single_model_all_categories(self):
         """Llama-server uses single model for all categories."""
         for cat in TaskCategory:
-            model, _ = get_model_for_task("do something", DEFAULT_LLAMA_SERVER_ROUTING, "x")
+            model, _ = get_model_for_task(
+                "do something", DEFAULT_LLAMA_SERVER_ROUTING, "x"
+            )
             assert model == "qwen3.5", f"Expected qwen3.5 for {cat}, got {model}"
 
 
@@ -336,7 +359,11 @@ class TestRoutingCoverage:
 
     @pytest.mark.parametrize(
         "table",
-        [DEFAULT_MINIMAX_ROUTING, DEFAULT_LLAMA_SERVER_ROUTING, DEFAULT_RUNPOD_PUBLIC_ROUTING],
+        [
+            DEFAULT_MINIMAX_ROUTING,
+            DEFAULT_LLAMA_SERVER_ROUTING,
+            DEFAULT_RUNPOD_PUBLIC_ROUTING,
+        ],
     )
     def test_builtin_tables_cover_every_category(self, table) -> None:
         """The built-in fallback must route every category.
@@ -350,7 +377,11 @@ class TestRoutingCoverage:
 
     @pytest.mark.parametrize(
         "resolver",
-        [resolve_minimax_routing, resolve_llama_server_routing, resolve_runpod_public_routing],
+        [
+            resolve_minimax_routing,
+            resolve_llama_server_routing,
+            resolve_runpod_public_routing,
+        ],
     )
     def test_effective_tables_cover_every_category(self, resolver) -> None:
         """The effective table must route every category."""
@@ -406,7 +437,9 @@ class TestRoutingCoverage:
             "GENERAL",
         }
         missing = required - set(yaml_routing.keys())
-        assert not missing, f"YAML must cover high-traffic categories: {sorted(missing)}"
+        assert not missing, (
+            f"YAML must cover high-traffic categories: {sorted(missing)}"
+        )
 
     @pytest.mark.req(["REQ-YAML-007"])
     def test_no_dead_models_path_key(self) -> None:

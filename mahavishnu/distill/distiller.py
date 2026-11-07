@@ -23,7 +23,9 @@ DEFAULT_EVIDENCE_THRESHOLD: int = 3
 HEURISTIC_MODEL: str = "heuristic"
 
 
-def _importance_from_evidence_workflows(evidence_count: int, project_count: int) -> float:
+def _importance_from_evidence_workflows(
+    evidence_count: int, project_count: int
+) -> float:
     import math
 
     score = math.log2(1 + max(0, int(evidence_count))) / 4.0
@@ -195,7 +197,9 @@ def distill_workflows(
         decision = reviewer.enforce()
         reviewer.emit_audit_log(decision)
 
-    candidates = _find_candidate_sessions(conn, evidence_threshold=int(evidence_threshold))
+    candidates = _find_candidate_sessions(
+        conn, evidence_threshold=int(evidence_threshold)
+    )
     if not candidates:
         return []
 

@@ -83,9 +83,7 @@ async def test_list_agents_advertises_three_named_specialists(_server) -> None:
     names = {a["name"] for a in agents}
 
     expected = {"mahavishnu-specialist", "pool-router-agent", "workflow-monitor"}
-    assert expected.issubset(names), (
-        f"missing expected agents: {expected - names}"
-    )
+    assert expected.issubset(names), f"missing expected agents: {expected - names}"
 
 
 @pytest.mark.asyncio

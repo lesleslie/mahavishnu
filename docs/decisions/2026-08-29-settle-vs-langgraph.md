@@ -55,18 +55,22 @@ operator action. The shape would be:
 from langgraph.graph import StateGraph, interrupt
 from langgraph.checkpoint.memory import MemorySaver
 
+
 class SettleState(TypedDict):
     run_ref: str
     bindings: list[dict]
     state: str
 
+
 def propose(state: SettleState) -> SettleState:
     # Pre-merge audit trail
     return {"state": "proposed"}
 
+
 def select(state: SettleState) -> SettleState:
     decision = interrupt({"question": "Select this run?"})
     return {"state": "selected" if decision else "discarded"}
+
 
 def apply(state: SettleState) -> SettleState:
     decision = interrupt({"question": "Apply with merge?"})
@@ -74,6 +78,7 @@ def apply(state: SettleState) -> SettleState:
         # run git merge-file
         return {"state": "applied"}
     return {"state": "released"}
+
 
 builder = StateGraph(SettleState)
 builder.add_node("propose", propose)
@@ -118,6 +123,7 @@ the UI / CLI, this gives us a "pause and wait for human" pattern:
 
 ```python
 from prefect import flow, pause_flow_run
+
 
 @flow
 def settle_run(run_ref: str):

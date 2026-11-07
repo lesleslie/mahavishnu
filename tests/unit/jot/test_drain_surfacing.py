@@ -1,4 +1,5 @@
 """Task 8: surfacing scorers + _Throttle + surface_relevant."""
+
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
@@ -409,7 +410,8 @@ def isolated_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_surface_relevant_lexical_hit_above_threshold(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Token overlap ≥ threshold → lexical match wins, surface_reason='matches'."""
     # Build a jot whose text shares ≥ 50% of ctx tokens.
@@ -444,7 +446,8 @@ def test_surface_relevant_lexical_hit_above_threshold(
 
 
 def test_surface_relevant_no_context_returns_short_context(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Empty context text → short_context skip → empty matches."""
     _write_log(
@@ -460,7 +463,8 @@ def test_surface_relevant_no_context_returns_short_context(
 
 
 def test_surface_relevant_short_context_below_threshold(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """<50 words → short_context skip (throttle gate)."""
     _write_log(
@@ -477,7 +481,8 @@ def test_surface_relevant_short_context_below_threshold(
 
 
 def test_surface_relevant_skips_done_jots(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Done jots are not eligible → no_match when only done jots exist."""
     _write_log(
@@ -504,7 +509,8 @@ def test_surface_relevant_skips_done_jots(
 
 
 def test_surface_relevant_skips_deleted_jots(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Deleted jots are not eligible."""
     _write_log(
@@ -530,7 +536,8 @@ def test_surface_relevant_skips_deleted_jots(
 
 
 def test_surface_relevant_falls_back_to_semantic_on_zero_lexical(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """No lexical hits → semantic path runs; mock returns good scores."""
     # Jot and ctx share no tokens → lexical = 0.
@@ -568,16 +575,19 @@ def test_surface_relevant_falls_back_to_semantic_on_zero_lexical(
 
 
 def test_surface_relevant_semantic_not_invoked_when_lexical_hits(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Lexical hit above threshold → semantic path is NOT called."""
     _write_log(
         isolated_log,
-        [_capture_event(
-            "jot_a",
-            "python linter regression api module documentation matters depend",
-            wall_ms=1000,
-        )],
+        [
+            _capture_event(
+                "jot_a",
+                "python linter regression api module documentation matters depend",
+                wall_ms=1000,
+            )
+        ],
     )
     import mahavishnu.jot.drain as drain_module
 
@@ -603,7 +613,8 @@ def test_surface_relevant_semantic_not_invoked_when_lexical_hits(
 
 
 def test_surface_relevant_semantic_degraded_when_embeddings_raise(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Embeddings raise → surface_degraded=True, reason='embeddings_down'."""
     _write_log(
@@ -641,7 +652,8 @@ def test_surface_relevant_semantic_degraded_when_embeddings_raise(
 
 
 def test_surface_relevant_returns_top_n_by_lexical_score(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Top N jots sorted by lexical score."""
     _write_log(
@@ -685,16 +697,19 @@ def test_surface_relevant_returns_top_n_by_lexical_score(
 
 
 def test_surface_relevant_throttled_when_called_repeatedly(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Two rapid surface_relevant calls within min_interval → second is throttled."""
     _write_log(
         isolated_log,
-        [_capture_event(
-            "jot_a",
-            "python linter regression api module documentation matters depend",
-            wall_ms=1000,
-        )],
+        [
+            _capture_event(
+                "jot_a",
+                "python linter regression api module documentation matters depend",
+                wall_ms=1000,
+            )
+        ],
     )
     # Default throttle: min_interval_ms=5000.
     # Patch _now_ms to return a fixed value.
@@ -726,16 +741,19 @@ def test_surface_relevant_throttled_when_called_repeatedly(
 
 
 def test_surface_relevant_resets_degraded_flag_at_entry(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The module-level _last_surface_degraded is reset to False on entry."""
     _write_log(
         isolated_log,
-        [_capture_event(
-            "jot_a",
-            "python linter regression api module documentation matters depend",
-            wall_ms=1000,
-        )],
+        [
+            _capture_event(
+                "jot_a",
+                "python linter regression api module documentation matters depend",
+                wall_ms=1000,
+            )
+        ],
     )
     import mahavishnu.jot.drain as drain_module
 
@@ -746,7 +764,8 @@ def test_surface_relevant_resets_degraded_flag_at_entry(
 
     # Patch _semantic_score to do nothing — no flag flip.
     monkeypatch.setattr(
-        drain_module, "_semantic_score",
+        drain_module,
+        "_semantic_score",
         lambda j, c, e: 0.0,
     )
 
@@ -765,7 +784,8 @@ def test_surface_relevant_resets_degraded_flag_at_entry(
 
 
 def test_surface_relevant_no_eligible_jots_returns_no_match(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Empty log → no eligible jots → 'no_match'."""
     _write_log(isolated_log, [])
@@ -786,7 +806,8 @@ def test_surface_relevant_no_eligible_jots_returns_no_match(
 
 
 def test_surface_relevant_score_threshold_field_present(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """SurfacingResult.score_threshold_used is a float."""
     _write_log(isolated_log, [])

@@ -547,7 +547,11 @@ class TestSetDeploymentSchedule:
         self, adapter, mock_prefect_client, mock_deployment
     ):
         """Test setting a cron schedule on a deployment."""
-        mock_deployment.schedule = {"cron": "30 14 * * *", "timezone": "UTC", "day_or": True}
+        mock_deployment.schedule = {
+            "cron": "30 14 * * *",
+            "timezone": "UTC",
+            "day_or": True,
+        }
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
 
         context_manager = AsyncMock()
@@ -603,7 +607,9 @@ class TestClearDeploymentSchedule:
     """Tests for clear_deployment_schedule method."""
 
     @pytest.mark.asyncio
-    async def test_clear_deployment_schedule(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_clear_deployment_schedule(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test clearing a deployment's schedule."""
         mock_deployment.schedule = None
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
@@ -649,7 +655,11 @@ class TestGetDeploymentSchedule:
         self, adapter, mock_prefect_client, mock_deployment
     ):
         """Test getting a cron schedule from a deployment."""
-        mock_deployment.schedule = {"cron": "0 9 * * *", "timezone": "UTC", "day_or": True}
+        mock_deployment.schedule = {
+            "cron": "0 9 * * *",
+            "timezone": "UTC",
+            "day_or": True,
+        }
         mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment)
 
         context_manager = AsyncMock()
@@ -711,7 +721,10 @@ class TestGetDeploymentSchedule:
         self, adapter, mock_prefect_client, mock_deployment
     ):
         """Test getting an RRULE schedule from a deployment."""
-        mock_deployment.schedule = {"rrule": "FREQ=DAILY;BYDAY=MO,WE,FR", "timezone": "UTC"}
+        mock_deployment.schedule = {
+            "rrule": "FREQ=DAILY;BYDAY=MO,WE,FR",
+            "timezone": "UTC",
+        }
         mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment)
 
         context_manager = AsyncMock()

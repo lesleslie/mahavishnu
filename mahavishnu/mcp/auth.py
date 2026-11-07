@@ -67,11 +67,15 @@ async def resolved_user_id(fallback: str | None = None) -> str | None:
         from fastmcp.server.dependencies import get_context
 
         ctx = get_context()
-    except Exception:  # MCP tool error handler — no active context  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100  # MCP tool error handler — no active context
+    ):
         return fallback
     try:
         state_user_id = await ctx.get_state(USER_ID_STATE_KEY)
-    except Exception:  # MCP tool error handler — state read failed  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100  # MCP tool error handler — state read failed
+    ):
         return fallback
     return state_user_id or fallback
 
@@ -200,7 +204,9 @@ def require_mcp_auth(
                 verified = False
                 if ctx is not None:
                     try:
-                        verified = bool(await ctx.get_state(INTERNAL_PRINCIPAL_STATE_KEY))
+                        verified = bool(
+                            await ctx.get_state(INTERNAL_PRINCIPAL_STATE_KEY)
+                        )
                     except Exception:
                         logger.debug(
                             "require_mcp_auth: internal credential state unavailable",
@@ -275,7 +281,9 @@ def require_mcp_auth(
                     extra={
                         "user_id": user_id,
                         "repo": repo,
-                        "permission": perm.value if hasattr(perm, "value") else str(perm),
+                        "permission": perm.value
+                        if hasattr(perm, "value")
+                        else str(perm),
                         "function": cast("Any", func).__name__,
                     },
                 )
@@ -411,5 +419,7 @@ class CredentialManager:
     @staticmethod
     def validate_secret_str(value: str, min_length: int = 32) -> SecretStr:
         if len(value) < min_length:
-            raise ValueError(f"Secret too short: {len(value)} characters (minimum {min_length})")
+            raise ValueError(
+                f"Secret too short: {len(value)} characters (minimum {min_length})"
+            )
         return SecretStr(value)

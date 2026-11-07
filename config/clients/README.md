@@ -226,14 +226,17 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 
 # Setup
 provider = TracerProvider()
-provider.add_span_processor(BatchSpanProcessor(
-    OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
-))
+provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
+    )
+)
 trace.set_tracer_provider(provider)
 
 app = Flask(__name__)
 
-@app.route('/')
+
+@app.route("/")
 def hello():
     tracer = trace.get_tracer(__name__)
     with tracer.start_as_current_span("hello-request"):
@@ -251,12 +254,15 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 
 # Setup
 provider = TracerProvider()
-provider.add_span_processor(BatchSpanProcessor(
-    OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
-))
+provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
+    )
+)
 trace.set_tracer_provider(provider)
 
 app = FastAPI()
+
 
 @app.get("/")
 def hello():

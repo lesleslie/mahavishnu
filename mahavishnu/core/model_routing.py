@@ -219,7 +219,9 @@ TASK_PATTERNS: dict[TaskCategory, list[str]] = {
 
 
 # Default model routing for llama-server (qwen3.5 — single model, all categories)
-DEFAULT_LLAMA_SERVER_ROUTING: dict[TaskCategory, str] = dict.fromkeys(TaskCategory, "qwen3.5")
+DEFAULT_LLAMA_SERVER_ROUTING: dict[TaskCategory, str] = dict.fromkeys(
+    TaskCategory, "qwen3.5"
+)
 
 # Default model routing for MiniMax cloud provider
 # Kept in sync with settings/models.yaml `minimax.task_routing`.
@@ -487,7 +489,9 @@ def classify_task(prompt: str, context: dict[str, Any] | None = None) -> TaskCat
 
     # Check for vision tasks first (usually have image context)
     if context:
-        if context.get("has_image") or context.get("file_type", "").startswith("image/"):
+        if context.get("has_image") or context.get("file_type", "").startswith(
+            "image/"
+        ):
             return TaskCategory.VISION
         if context.get("embedding") or context.get("vector"):
             return TaskCategory.EMBEDDING
@@ -568,7 +572,9 @@ def _configured_model_ids(config_path: Path) -> set[str] | None:
         routing = cast("dict[str, Any]", provider).get("task_routing")
         if not isinstance(routing, dict):
             continue
-        model_ids.update(str(model) for model in cast("dict[str, str]", routing).values())
+        model_ids.update(
+            str(model) for model in cast("dict[str, str]", routing).values()
+        )
     return model_ids
 
 

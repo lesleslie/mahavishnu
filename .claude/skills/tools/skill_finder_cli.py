@@ -40,7 +40,9 @@ def get_index(skills_dir: Path = None) -> SearchIndex:
 def search(
     query: str = typer.Argument(..., help="Search query"),
     limit: int = typer.Option(5, "--limit", "-l", help="Maximum number of results"),
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Fuzzy search for skills by keyword, symptom, or description.
@@ -59,7 +61,9 @@ def search(
 def list(
     system: str = typer.Option(None, "--system", "-s", help="Filter by system"),
     keyword: str = typer.Option(None, "--keyword", "-k", help="Filter by keyword"),
-    skills_dir: Path = typer.Option(None, "--skills-dir", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", help="Path to skills directory"
+    ),
 ):
     """
     List all skills or filter by system/keyword.
@@ -90,7 +94,9 @@ def list(
 @app.command()
 def show(
     skill_name: str = typer.Argument(..., help="Exact skill name"),
-    skills_dir: Path = typer.Option(None, "--skills-dir", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", help="Path to skills directory"
+    ),
 ):
     """
     Show detailed information about a specific skill.
@@ -118,7 +124,10 @@ def show(
 @app.command()
 def rebuild(
     skills_dir: Path = typer.Option(
-        Path("/Users/les/.claude/skills"), "--skills-dir", "-s", help="Path to skills directory"
+        Path("/Users/les/.claude/skills"),
+        "--skills-dir",
+        "-s",
+        help="Path to skills directory",
     ),
     output: Path = typer.Option(None, "--output", "-o", help="Output index file path"),
 ):
@@ -157,7 +166,9 @@ def rebuild(
 
 @app.command()
 def systems(
-    skills_dir: Path = typer.Option(None, "--skills-dir", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", help="Path to skills directory"
+    ),
 ):
     """
     Show system distribution summary.

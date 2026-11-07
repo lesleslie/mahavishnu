@@ -78,6 +78,7 @@ Implement a **persistent Saga Coordinator** with the following features:
 from mahavishnu.core.saga import SagaCoordinator, SagaStep, SagaResult
 from mahavishnu.core.storage import PostgreSQLDB
 
+
 class SagaCoordinator:
     """
     Persistent saga coordinator with crash recovery.
@@ -170,6 +171,7 @@ class SagaCoordinator:
 from pydantic import BaseModel
 from typing import Callable, Awaitable
 
+
 class SagaStep(BaseModel):
     """
     Single step in a saga transaction.
@@ -256,6 +258,7 @@ CREATE INDEX idx_saga_idempotency_lookup ON saga_idempotency(saga_id, step_name,
 import asyncio
 from datetime import timedelta
 
+
 async def _execute_step_with_retry(
     self,
     step: SagaStep,
@@ -303,7 +306,7 @@ async def _execute_step_with_retry(
             )
 
             # Exponential backoff
-            backoff = self.base_backoff * (2 ** attempt)
+            backoff = self.base_backoff * (2**attempt)
             await asyncio.sleep(backoff)
 
     # All retries failed
@@ -412,7 +415,7 @@ async def _compensate(
                     if attempt == self.max_retries - 1:
                         raise  # All retries failed
 
-                    backoff = self.base_backoff * (2 ** attempt)
+                    backoff = self.base_backoff * (2**attempt)
                     await asyncio.sleep(backoff)
 
         except Exception as e:
@@ -555,36 +558,24 @@ ______________________________________________________________________
 from prometheus_client import Counter, Histogram, Gauge
 
 # Saga metrics
-saga_total = Counter(
-    'saga_total',
-    'Total sagas executed',
-    ['saga_type', 'status']
-)
+saga_total = Counter("saga_total", "Total sagas executed", ["saga_type", "status"])
 
 saga_duration_seconds = Histogram(
-    'saga_duration_seconds',
-    'Saga execution duration',
-    ['saga_type'],
-    buckets=[0.1, 0.5, 1.0, 5.0, 10.0, 30.0]
+    "saga_duration_seconds",
+    "Saga execution duration",
+    ["saga_type"],
+    buckets=[0.1, 0.5, 1.0, 5.0, 10.0, 30.0],
 )
 
 saga_step_retries_total = Counter(
-    'saga_step_retries_total',
-    'Total saga step retries',
-    ['saga_type', 'step_name']
+    "saga_step_retries_total", "Total saga step retries", ["saga_type", "step_name"]
 )
 
 saga_compensations_total = Counter(
-    'saga_compensations_total',
-    'Total saga compensations',
-    ['saga_type']
+    "saga_compensations_total", "Total saga compensations", ["saga_type"]
 )
 
-active_sagas = Gauge(
-    'active_sagas',
-    'Number of active sagas',
-    ['saga_type', 'status']
-)
+active_sagas = Gauge("active_sagas", "Number of active sagas", ["saga_type", "status"])
 ```
 
 ### Grafana Dashboard

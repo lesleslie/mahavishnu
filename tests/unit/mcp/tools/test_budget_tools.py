@@ -159,7 +159,10 @@ async def test_budget_enforce_tool_persists_through_store_round_trip() -> None:
     assert result["status"] == "active"
     assert result["spec"]["budget_tokens"] == 200
     # The persisted record reflects the new cap (re-basing semantics).
-    assert store.records["mahavishni://budgets/wf_abc.json"]["spec"]["budget_tokens"] == 200
+    assert (
+        store.records["mahavishni://budgets/wf_abc.json"]["spec"]["budget_tokens"]
+        == 200
+    )
 
 
 async def test_budget_enforce_tool_returns_failed_when_get_raises() -> None:

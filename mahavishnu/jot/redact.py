@@ -24,7 +24,10 @@ _PATTERNS_RAW: list[tuple[str, str]] = [
     (r"ghu_[a-zA-Z0-9]{36}", "secret"),  # GitHub user-to-server
     (r"ghs_[a-zA-Z0-9]{36}", "secret"),  # GitHub server-to-server
     (r"ghr_[a-zA-Z0-9]{36}", "secret"),  # GitHub refresh
-    (r"sk-ant-[a-zA-Z0-9-]{20,}", "secret"),  # Anthropic key (must come before generic sk-)
+    (
+        r"sk-ant-[a-zA-Z0-9-]{20,}",
+        "secret",
+    ),  # Anthropic key (must come before generic sk-)
     (r"sk-[a-zA-Z0-9]{20,}", "secret"),  # OpenAI key
     (r"xox[baprs]-[a-zA-Z0-9-]{10,}", "secret"),  # Slack tokens
     (r"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+", "secret"),  # JWT

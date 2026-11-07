@@ -90,14 +90,19 @@ class JWTAuth:
             raise ValueError("JWT claims must include 'sub' or 'user_id'")
 
         merged_claims = {
-            key: value for key, value in claims.items() if key not in {"sub", "user_id", "scopes"}
+            key: value
+            for key, value in claims.items()
+            if key not in {"sub", "user_id", "scopes"}
         }
         merged_claims.update(extra_claims)
         token_scopes = scopes if scopes is not None else claims.get("scopes")
         return self.create_token(user_id=user_id, scopes=token_scopes, **merged_claims)
 
     _JWT_ERROR_MAP: ClassVar[dict[type, tuple[str, str]]] = {
-        jwt.exceptions.InvalidSignatureError: ("Invalid token signature", "Invalid signature"),
+        jwt.exceptions.InvalidSignatureError: (
+            "Invalid token signature",
+            "Invalid signature",
+        ),
         jwt.exceptions.ExpiredSignatureError: ("Token has expired", "Expired token"),
         jwt.exceptions.DecodeError: ("Could not decode token", "Decode error"),
     }

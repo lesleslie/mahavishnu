@@ -54,9 +54,7 @@ class TestPlanListE2E:
         # Only active records appear
         assert {p["status"] for p in result["plans"]} == {"active"}
 
-    async def test_list_with_topic_filter(
-        self, call_tool: Any, store: Any
-    ) -> None:
+    async def test_list_with_topic_filter(self, call_tool: Any, store: Any) -> None:
         """Topic filter routes to ``list_by_topic`` and isolates the topic."""
         await store.upsert(_record(plan_id="c" * 32, topic="routing"))
         await store.upsert(_record(plan_id="d" * 32, topic="observability"))
@@ -82,9 +80,7 @@ class TestPlanListE2E:
         assert result["total"] == 3
         assert {p["title"] for p in result["plans"]} == {"A", "B", "C"}
 
-    async def test_list_empty_store_returns_zero_total(
-        self, call_tool: Any
-    ) -> None:
+    async def test_list_empty_store_returns_zero_total(self, call_tool: Any) -> None:
         """An empty store returns ``total=0`` and ``plans=[]``."""
         result = await call_tool("plan_list", {})
 

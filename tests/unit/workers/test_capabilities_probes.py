@@ -117,7 +117,9 @@ def test_openclaw_gateway_allows_https_with_token(
     assert not any(c.safe_reason == "insecure_endpoint" for c in r.checks)
 
 
-def test_provider_request_rejects_insecure_http(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_provider_request_rejects_insecure_http(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """_probe_provider_request refuses http:// URLs when an API key is set."""
     monkeypatch.setenv("MINIMAX_API_KEY", "sk-test12345678abcdef")
 

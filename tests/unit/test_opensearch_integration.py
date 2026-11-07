@@ -76,7 +76,9 @@ async def test_mock_clients_exercise_fallback_methods() -> None:
     client = osi.MockAsyncOpenSearch()
     assert await client.ping() is True
     assert await client.index(index="x", body={"k": "v"}) == {"result": "created"}
-    assert await client.search(index="x", body={}) == {"hits": {"hits": [], "total": {"value": 0}}}
+    assert await client.search(index="x", body={}) == {
+        "hits": {"hits": [], "total": {"value": 0}}
+    }
     indices = await client.indices()
     assert await indices.exists(index="x") is False
     assert await indices.create(index="x", body={}) == {"acknowledged": True}
@@ -95,7 +97,9 @@ async def test_init_uses_mock_client_and_initializes_indices() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_indices_handles_exceptions(caplog: pytest.LogCaptureFixture) -> None:
+async def test_create_indices_handles_exceptions(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     analytics = osi.OpenSearchLogAnalytics(_config())
 
     class _BadIndices(_FakeIndices):
@@ -154,7 +158,9 @@ def test_import_success_branch_uses_real_async_client_symbol(
     # from the stubbed opensearchpy rather than falling back to MockAsyncOpenSearch.
     monkeypatch.setattr(osc, "OPENSEARCH_AVAILABLE", True)
 
-    spec = importlib.util.spec_from_file_location("opensearch_integration_success", osi.__file__)
+    spec = importlib.util.spec_from_file_location(
+        "opensearch_integration_success", osi.__file__
+    )
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -196,11 +202,15 @@ async def test_log_event_returns_when_client_none() -> None:
     analytics = osi.OpenSearchLogAnalytics(_config())
     analytics.client = None
     await analytics.log_event(level="INFO", message="x")
-    await analytics.log_workflow_event(workflow_id="w", adapter="a", task_type="t", status="s")
+    await analytics.log_workflow_event(
+        workflow_id="w", adapter="a", task_type="t", status="s"
+    )
 
 
 @pytest.mark.asyncio
-async def test_create_index_and_log_event_error_branches(caplog: pytest.LogCaptureFixture) -> None:
+async def test_create_index_and_log_event_error_branches(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     analytics = osi.OpenSearchLogAnalytics(_config())
     analytics.client = None
     await analytics._create_log_index()
@@ -212,7 +222,9 @@ async def test_create_index_and_log_event_error_branches(caplog: pytest.LogCaptu
 
     analytics.client = _BoomClient()
     await analytics.log_event(level="INFO", message="hello")
-    await analytics.log_workflow_event(workflow_id="w", adapter="a", task_type="t", status="s")
+    await analytics.log_workflow_event(
+        workflow_id="w", adapter="a", task_type="t", status="s"
+    )
     assert "Failed to log event to OpenSearch" in caplog.text
     assert "Failed to log workflow event to OpenSearch" in caplog.text
 
@@ -310,10 +322,22 @@ async def test_workflow_and_log_stats_happy_and_error_paths() -> None:
     fake = _FakeClient()
     fake.search_responses = [
         {"hits": {"total": {"value": 5}}},
-        {"aggregations": {"status_breakdown": {"buckets": [{"key": "completed", "doc_count": 3}]}}},
-        {"aggregations": {"adapter_breakdown": {"buckets": [{"key": "agno", "doc_count": 2}]}}},
+        {
+            "aggregations": {
+                "status_breakdown": {"buckets": [{"key": "completed", "doc_count": 3}]}
+            }
+        },
+        {
+            "aggregations": {
+                "adapter_breakdown": {"buckets": [{"key": "agno", "doc_count": 2}]}
+            }
+        },
         {"hits": {"total": {"value": 12}}},
-        {"aggregations": {"level_breakdown": {"buckets": [{"key": "ERROR", "doc_count": 4}]}}},
+        {
+            "aggregations": {
+                "level_breakdown": {"buckets": [{"key": "ERROR", "doc_count": 4}]}
+            }
+        },
     ]
     analytics.client = fake
 
@@ -372,7 +396,9 @@ async def test_health_check_and_close_paths() -> None:
 
 
 @pytest.mark.asyncio
-async def test_open_search_integration_wrapper_methods(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_open_search_integration_wrapper_methods(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class _Analytics:
         def __init__(self, _cfg) -> None:
             self.calls: list[tuple[str, tuple, dict]] = []
@@ -404,7 +430,12 @@ async def test_open_search_integration_wrapper_methods(monkeypatch: pytest.Monke
     await integration.log_workflow_start("w1", "agno", "workflow", ["r1"])
     await integration.log_workflow_update("w1", "running", progress=20, adapter="agno")
     await integration.log_workflow_completion(
-        "w1", "completed", execution_time=1.2, results_count=2, errors_count=0, adapter="agno"
+        "w1",
+        "completed",
+        execution_time=1.2,
+        results_count=2,
+        errors_count=0,
+        adapter="agno",
     )
     await integration.log_error("w1", "boom", repo_path="/repo", adapter="agno")
 
@@ -419,5 +450,7 @@ async def test_open_search_integration_wrapper_methods(monkeypatch: pytest.Monke
     assert wf_stats == {"wf": 1}
     assert log_stats == {"logs": 1}
     assert health["status"] == "healthy"
-    assert any(name == "log_workflow_event" for name, _, _ in integration.analytics.calls)
+    assert any(
+        name == "log_workflow_event" for name, _, _ in integration.analytics.calls
+    )
     assert any(name == "log_event" for name, _, _ in integration.analytics.calls)

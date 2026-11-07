@@ -44,7 +44,11 @@ NOSEMGREP_RE = re.compile(
 
 
 def _iter_python_files() -> list[Path]:
-    return [p for p in PROD_DIR.rglob("*.py") if not any(part in EXCLUDE_DIRS for part in p.parts)]
+    return [
+        p
+        for p in PROD_DIR.rglob("*.py")
+        if not any(part in EXCLUDE_DIRS for part in p.parts)
+    ]
 
 
 def _find_fstring_executes(path: Path) -> list[tuple[int, str]]:

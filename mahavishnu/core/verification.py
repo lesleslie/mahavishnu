@@ -94,7 +94,9 @@ def build_default_store(app: Any) -> VerificationStore | None:
     ``verification`` field is still populated from the in-memory result.
     """
     try:
-        mcp_url = getattr(getattr(app, "settings", None), "mcp_url", DEFAULT_SUBSTRATE_MCP_URL)
+        mcp_url = getattr(
+            getattr(app, "settings", None), "mcp_url", DEFAULT_SUBSTRATE_MCP_URL
+        )
         from mahavishnu.core.state_backends.mcp import MCPStateBackend
 
         backend = MCPStateBackend(base_url=mcp_url)
@@ -670,9 +672,7 @@ class VerificationStore:
             return None
         try:
             data = await self.mcp.get(self._result_key(proposal_id))
-        except (
-            Exception
-        ):  # MCP get may fail any library error; return None to signal no result available
+        except Exception:  # MCP get may fail any library error; return None to signal no result available
             logger.exception("verification.get_failed proposal_id=%s", proposal_id)
             return None
         if not data:

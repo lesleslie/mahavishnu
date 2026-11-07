@@ -148,13 +148,16 @@ class MockWorktreeProvider(WorktreeProvider):
         """
         # Filter worktrees by repository
         repo_worktrees = [
-            wt for wt in self.created_worktrees if wt["repository_path"] == str(repository_path)
+            wt
+            for wt in self.created_worktrees
+            if wt["repository_path"] == str(repository_path)
         ]
 
         return {
             "success": True,
             "worktrees": [
-                {"path": wt["worktree_path"], "branch": wt["branch"]} for wt in repo_worktrees
+                {"path": wt["worktree_path"], "branch": wt["branch"]}
+                for wt in repo_worktrees
             ],
             "repository_path": str(repository_path),
         }

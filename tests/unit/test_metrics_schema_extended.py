@@ -197,15 +197,27 @@ class TestCalculateConfidenceIntervalBranches:
 
     def test_perfect_success_rate_returns_one_one(self) -> None:
         # Exercises `if success_rate >= 1.0: return (1.0, 1.0)`.
-        assert calculate_confidence_interval(sample_size=100, success_rate=1.0) == (1.0, 1.0)
+        assert calculate_confidence_interval(sample_size=100, success_rate=1.0) == (
+            1.0,
+            1.0,
+        )
         # Boundary: rates > 1.0 still collapse to 1.0.
-        assert calculate_confidence_interval(sample_size=100, success_rate=2.0) == (1.0, 1.0)
+        assert calculate_confidence_interval(sample_size=100, success_rate=2.0) == (
+            1.0,
+            1.0,
+        )
 
     def test_zero_success_rate_returns_zero_zero(self) -> None:
         # Exercises `if success_rate <= 0.0: return (0.0, 0.0)`.
-        assert calculate_confidence_interval(sample_size=100, success_rate=0.0) == (0.0, 0.0)
+        assert calculate_confidence_interval(sample_size=100, success_rate=0.0) == (
+            0.0,
+            0.0,
+        )
         # Negative rates — defensive branch.
-        assert calculate_confidence_interval(sample_size=100, success_rate=-0.5) == (0.0, 0.0)
+        assert calculate_confidence_interval(sample_size=100, success_rate=-0.5) == (
+            0.0,
+            0.0,
+        )
 
     def test_wilson_formula_with_typical_input(self) -> None:
         # Exercises the z, denominator, center, margin, lower, upper arithmetic.

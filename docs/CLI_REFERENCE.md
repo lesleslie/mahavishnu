@@ -233,8 +233,7 @@ serves, so concurrent Claude Code traffic can never satisfy it.
 
 ### Complexity router
 
-- `mahavishnu bifrost complexity-report [--hours N] [--json] [--fail-on-hazard]
-  [--db PATH]` — price the complexity router over a window
+- `mahavishnu bifrost complexity-report [--hours N] [--json] [--fail-on-hazard] [--db PATH]` — price the complexity router over a window
 
 Reports how many requests were classified, how many reused a stored session
 tier rather than paying for a decision-model call, what that cost in tokens,

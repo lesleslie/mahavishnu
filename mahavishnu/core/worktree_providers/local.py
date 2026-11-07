@@ -62,7 +62,9 @@ MAX_CONCURRENT_WORKTREE_STREAMS: int = 8
 # Module-level asyncio semaphore used by ``LocalWorktreeProvider.fetch``
 # to enforce the concurrency cap. The semaphore is process-global so
 # sibling fetch coroutines cooperate across awaits.
-_fetch_stream_semaphore: asyncio.Semaphore = asyncio.Semaphore(MAX_CONCURRENT_WORKTREE_STREAMS)
+_fetch_stream_semaphore: asyncio.Semaphore = asyncio.Semaphore(
+    MAX_CONCURRENT_WORKTREE_STREAMS
+)
 
 
 def _validate_path_component_shape(value: str, kind: str) -> None:
@@ -717,7 +719,9 @@ class LocalWorktreeProvider(WorktreeProvider):
             self._ensure_codec_available()
             self._ensure_storage_supports_load_stream()
 
-            storage_key = f"worktrees/{handle.repo}/{handle.branch}/{handle.handle_id}.tar.zst"
+            storage_key = (
+                f"worktrees/{handle.repo}/{handle.branch}/{handle.handle_id}.tar.zst"
+            )
 
             # Bounded semaphore — cap concurrent streaming fetches
             # to MAX_CONCURRENT_WORKTREE_STREAMS so a single client
@@ -756,7 +760,9 @@ class LocalWorktreeProvider(WorktreeProvider):
                 f"{type(handle.storage_ref).__name__}"
             )
 
-    async def _try_cache_hit(self, cache_key: str, handle: WorktreeHandle, start: float):
+    async def _try_cache_hit(
+        self, cache_key: str, handle: WorktreeHandle, start: float
+    ):
         """Return cached ``LocalWorktreeRef`` if present and on-disk."""
         from mahavishnu.observability.metrics import record_worktree_op
 
@@ -780,7 +786,9 @@ class LocalWorktreeProvider(WorktreeProvider):
         return LocalWorktreeRef(path=path, worktree_id=handle.handle_id)
 
     @staticmethod
-    def _fallback_to_existing_path(handle: WorktreeHandle, start: float) -> LocalWorktreeRef:
+    def _fallback_to_existing_path(
+        handle: WorktreeHandle, start: float
+    ) -> LocalWorktreeRef:
         """Return the on-disk path when no storage adapter is configured."""
         from mahavishnu.core.errors import ErrorCode, WorktreeError
         from mahavishnu.observability.metrics import record_worktree_op
@@ -944,7 +952,9 @@ class LocalWorktreeProvider(WorktreeProvider):
         await self._cache.set(cache_key, str(target))
 
     @staticmethod
-    def _record_fetch_outcome(start: float, *, success: bool, handle: WorktreeHandle) -> None:
+    def _record_fetch_outcome(
+        start: float, *, success: bool, handle: WorktreeHandle
+    ) -> None:
         """Emit the ``fetch`` histogram with success flag."""
         from mahavishnu.observability.metrics import record_worktree_op
 
@@ -1002,7 +1012,9 @@ class LocalWorktreeProvider(WorktreeProvider):
         # 2. Cache invalidate (per-handle prefix)
         if self._cache is not None:
             count = await self._cache.invalidate_handle(handle.handle_id)
-            record_cache_invalidation(backend="local", reason="remove_handle", count=count)
+            record_cache_invalidation(
+                backend="local", reason="remove_handle", count=count
+            )
 
         # 3. MCP registry remove (best-effort; auth errors propagate)
         if self._mcp_client is not None:
@@ -1091,7 +1103,9 @@ class LocalWorktreeProvider(WorktreeProvider):
 
             import redis.asyncio as redis_async
 
-            redis_url = os.environ.get("MAHAVISHNU_REDIS_URL", "redis://localhost:6379/0")
+            redis_url = os.environ.get(
+                "MAHAVISHNU_REDIS_URL", "redis://localhost:6379/0"
+            )
             redis_client = redis_async.from_url(redis_url, decode_responses=True)
 
         # ``redis_client`` is now guaranteed non-None. The parameter

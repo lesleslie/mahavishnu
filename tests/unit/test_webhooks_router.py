@@ -226,7 +226,9 @@ class TestSweepEndpointBehavior:
             dry_run=False,
         )
         auth_payload = {"user": "alice", "authenticated": True}
-        task_router = _mock_task_router(TaskType.WORKFLOW, [AdapterType.AGNO, AdapterType.PREFECT])
+        task_router = _mock_task_router(
+            TaskType.WORKFLOW, [AdapterType.AGNO, AdapterType.PREFECT]
+        )
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager") as mock_pool,
@@ -319,7 +321,9 @@ class TestWorkflowEndpointBehavior:
             task_description="run code sweep",
         )
         auth_payload = {"user": "bob"}
-        task_router = _mock_task_router(TaskType.WORKFLOW, [AdapterType.PREFECT, AdapterType.AGNO])
+        task_router = _mock_task_router(
+            TaskType.WORKFLOW, [AdapterType.PREFECT, AdapterType.AGNO]
+        )
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager") as mock_pool,
             patch(

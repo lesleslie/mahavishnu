@@ -148,7 +148,9 @@ class RBACManager:
         """
         return self._build_user(user_id, roles, allowed_repos)
 
-    def _build_user(self, user_id: str, roles: list[str], allowed_repos: list[str] | None) -> User:
+    def _build_user(
+        self, user_id: str, roles: list[str], allowed_repos: list[str] | None
+    ) -> User:
         """Build and record a user from its role names."""
         role_objects = []
         for role_name in roles:
@@ -162,7 +164,9 @@ class RBACManager:
         self.users[user_id] = user
         return user
 
-    async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
+    async def check_permission(
+        self, user_id: str, repo: str, permission: Permission
+    ) -> bool:
         """Check if user has permission for repo.
 
         Normalizes the requested permission to a canonical string value
@@ -219,11 +223,15 @@ class RBACManager:
                 # role.permissions is list[Permission | str] (the str entries
                 # are bridge values from mcp_common's widened permission model;
                 # this method's return type is the canonical Permission enum).
-                permissions.update(p for p in role.permissions if isinstance(p, Permission))
+                permissions.update(
+                    p for p in role.permissions if isinstance(p, Permission)
+                )
 
         return list(permissions)
 
-    async def filter_repos_by_permission(self, user_id: str, permission: Permission) -> list[str]:
+    async def filter_repos_by_permission(
+        self, user_id: str, permission: Permission
+    ) -> list[str]:
         """Get all repos a user has a specific permission for."""
         if user_id not in self.users:
             return []
@@ -322,7 +330,9 @@ class CrossProjectAuth:
         import json
 
         message_str = json.dumps(message, sort_keys=True)
-        hmac_obj = hmac.new(self.shared_secret.encode(), message_str.encode(), hashlib.sha256)
+        hmac_obj = hmac.new(
+            self.shared_secret.encode(), message_str.encode(), hashlib.sha256
+        )
         return hmac_obj.hexdigest()
 
     def verify_message(self, message: dict, signature: str) -> bool:

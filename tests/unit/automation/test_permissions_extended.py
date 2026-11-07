@@ -398,9 +398,7 @@ class TestGetAccessibilityStatus:
         checker = _force_macos(perms.PermissionChecker())
         _inject_module("ApplicationServices", AXIsProcessTrusted=lambda: True)
         try:
-            assert (
-                checker.get_accessibility_status() is perms.PermissionStatus.GRANTED
-            )
+            assert checker.get_accessibility_status() is perms.PermissionStatus.GRANTED
         finally:
             _pop_module("ApplicationServices")
 
@@ -409,9 +407,7 @@ class TestGetAccessibilityStatus:
         checker = _force_macos(perms.PermissionChecker())
         _inject_module("ApplicationServices", AXIsProcessTrusted=lambda: False)
         try:
-            assert (
-                checker.get_accessibility_status() is perms.PermissionStatus.DENIED
-            )
+            assert checker.get_accessibility_status() is perms.PermissionStatus.DENIED
         finally:
             _pop_module("ApplicationServices")
 
@@ -423,9 +419,7 @@ class TestGetScreenRecordingStatus:
         """Non-macOS short-circuits to ``GRANTED``."""
         checker = perms.PermissionChecker()
         checker._is_macos = False
-        assert (
-            checker.get_screen_recording_status() is perms.PermissionStatus.GRANTED
-        )
+        assert checker.get_screen_recording_status() is perms.PermissionStatus.GRANTED
 
     def test_macos_granted_when_check_returns_true(self) -> None:
         """``check_screen_recording`` True → ``GRANTED``."""
@@ -440,8 +434,7 @@ class TestGetScreenRecordingStatus:
         )
         try:
             assert (
-                checker.get_screen_recording_status()
-                is perms.PermissionStatus.GRANTED
+                checker.get_screen_recording_status() is perms.PermissionStatus.GRANTED
             )
         finally:
             _pop_module("Quartz")
@@ -459,8 +452,7 @@ class TestGetScreenRecordingStatus:
         )
         try:
             assert (
-                checker.get_screen_recording_status()
-                is perms.PermissionStatus.DENIED
+                checker.get_screen_recording_status() is perms.PermissionStatus.DENIED
             )
         finally:
             _pop_module("Quartz")

@@ -38,7 +38,9 @@ def fake_session_buddy_client() -> Callable[[Any, Any], MagicMock]:
     payload keyed by tool name.
     """
 
-    def _factory(payloads: dict[str, Any], *, fail_tools: set[str] | None = None) -> MagicMock:
+    def _factory(
+        payloads: dict[str, Any], *, fail_tools: set[str] | None = None
+    ) -> MagicMock:
         fail_tools = fail_tools or set()
         client = MagicMock()
 
@@ -55,7 +57,9 @@ def fake_session_buddy_client() -> Callable[[Any, Any], MagicMock]:
 
 
 @pytest.mark.asyncio
-async def test_consumer_producer_observer_smoke(fake_session_buddy_client: Callable[..., MagicMock]) -> None:
+async def test_consumer_producer_observer_smoke(
+    fake_session_buddy_client: Callable[..., MagicMock],
+) -> None:
     """Smoke: Mahavishnu-side consumer → Session-Buddy-side producer.
 
     Mirrors the call sequence used by
@@ -96,14 +100,14 @@ async def test_consumer_producer_observer_smoke(fake_session_buddy_client: Calla
 
 
 @pytest.mark.asyncio
-async def test_observer_sees_akosha_failure(fake_session_buddy_client: Callable[..., MagicMock]) -> None:
+async def test_observer_sees_akosha_failure(
+    fake_session_buddy_client: Callable[..., MagicMock],
+) -> None:
     """Smoke: Akosha offline → Mahavishnu degrades gracefully.
 
     Mirrors ``mahavishnu/core/coordination/memory.py::_push_to_akosha``.
     """
-    akosha = fake_session_buddy_client(
-        {}, fail_tools={"search_all_systems"}
-    )
+    akosha = fake_session_buddy_client({}, fail_tools={"search_all_systems"})
 
     with pytest.raises(MCPServerError, match="simulated offline"):
         await akosha.call_tool(

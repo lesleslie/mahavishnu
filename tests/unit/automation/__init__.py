@@ -67,7 +67,9 @@ class TestAutomationSecurity:
         # Valid text should pass (not raise)
         automation_security.validate_text("Hello World")
 
-    def test_text_validation_blocked_patterns(self, automation_security: AutomationSecurity):
+    def test_text_validation_blocked_patterns(
+        self, automation_security: AutomationSecurity
+    ):
         """Test that blocked text patterns raise error."""
         with pytest.raises(BlockedTextError):
             automation_security.validate_text("This is my password")
@@ -75,7 +77,9 @@ class TestAutomationSecurity:
         with pytest.raises(BlockedTextError):
             automation_security.validate_text("my password is secret123")
 
-    def test_rate_limiting_allows_initial(self, automation_security: AutomationSecurity):
+    def test_rate_limiting_allows_initial(
+        self, automation_security: AutomationSecurity
+    ):
         """Test that rate limiting allows initial operations."""
         # Should allow initially
         for _ in range(5):

@@ -36,11 +36,19 @@ class _FakeStateManager:
         }
         return self.states[workflow_id]
 
-    async def update_adapter_state(self, workflow_id: str, adapter_type: str, state: dict) -> dict:
+    async def update_adapter_state(
+        self, workflow_id: str, adapter_type: str, state: dict
+    ) -> dict:
         self.update_calls.append(
-            {"workflow_id": workflow_id, "adapter_type": adapter_type, "state": dict(state)}
+            {
+                "workflow_id": workflow_id,
+                "adapter_type": adapter_type,
+                "state": dict(state),
+            }
         )
-        wf = self.states.setdefault(workflow_id, {"workflow_id": workflow_id, "adapter_states": {}})
+        wf = self.states.setdefault(
+            workflow_id, {"workflow_id": workflow_id, "adapter_states": {}}
+        )
         wf["adapter_states"][str(adapter_type)] = dict(state)
         return wf
 
@@ -50,7 +58,10 @@ class _FakeStateManager:
 
 class _Adapter:
     def __init__(
-        self, *, cancel_error: Exception | None = None, health_error: Exception | None = None
+        self,
+        *,
+        cancel_error: Exception | None = None,
+        health_error: Exception | None = None,
     ):
         self.cancel_calls: list[str] = []
         self.cancel_error = cancel_error
@@ -77,7 +88,9 @@ class _AdapterManager:
 
 
 class _FakeTaskRouter:
-    def __init__(self, execution_results: list[dict] | None = None, adapters: dict | None = None):
+    def __init__(
+        self, execution_results: list[dict] | None = None, adapters: dict | None = None
+    ):
         self.state_manager = _FakeStateManager()
         self.adapter_manager = _AdapterManager(adapters or {})
         self._execution_results = execution_results or []
@@ -100,7 +113,9 @@ class _FakeTaskRouter:
 
 
 @pytest.mark.asyncio
-async def test_init_uses_default_or_custom_task_router(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_init_uses_default_or_custom_task_router(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     sentinel = _FakeTaskRouter()
     orchestrator = uo.UnifiedOrchestrator(task_router=sentinel)
     assert orchestrator.task_router is sentinel
@@ -203,7 +218,11 @@ async def test_cancel_workflow_success_with_partial_adapter_failures() -> None:
     router = _FakeTaskRouter(adapters=adapters)
     router.state_manager.states["wf-2"] = {
         "workflow_id": "wf-2",
-        "adapter_states": {"task_router": {"status": "running"}, "prefect": {}, "agno": {}},
+        "adapter_states": {
+            "task_router": {"status": "running"},
+            "prefect": {},
+            "agno": {},
+        },
     }
     orchestrator = uo.UnifiedOrchestrator(task_router=router)
 

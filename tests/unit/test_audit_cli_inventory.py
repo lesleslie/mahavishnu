@@ -104,7 +104,9 @@ class TestResolveRepoPath:
 
         assert resolve_repo_path("oneiric", str(override)) == override
 
-    def test_the_env_var_reaches_the_resolution(self, tmp_path: Path, monkeypatch) -> None:
+    def test_the_env_var_reaches_the_resolution(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
         """``$BODAI_PROJECTS_ROOT`` steers the default location."""
         monkeypatch.setenv(PROJECTS_ROOT_ENV_VAR, str(tmp_path))
 

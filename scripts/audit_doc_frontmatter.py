@@ -128,7 +128,9 @@ def check_frontmatter(path: Path, rel: str) -> list[Problem]:
     front = extract_frontmatter(text, yaml) if has_block else None
 
     if not has_block:
-        return [Problem(rel, "frontmatter_missing", "file has no YAML frontmatter block")]
+        return [
+            Problem(rel, "frontmatter_missing", "file has no YAML frontmatter block")
+        ]
 
     if front is None:
         return [
@@ -141,7 +143,9 @@ def check_frontmatter(path: Path, rel: str) -> list[Problem]:
 
     for key in REQUIRED_KEYS:
         if key not in front:
-            problems.append(Problem(rel, "key_missing", f"required key '{key}' is absent"))
+            problems.append(
+                Problem(rel, "key_missing", f"required key '{key}' is absent")
+            )
 
     status = front.get("status")
     if "status" in front and status not in LIFECYCLE_VALUES:
@@ -156,23 +160,35 @@ def check_frontmatter(path: Path, rel: str) -> list[Problem]:
     role = front.get("role")
     if "role" in front and role not in ROLE_VALUES:
         problems.append(
-            Problem(rel, "role_invalid", f"role {role!r} is not one of {list(ROLE_VALUES)}")
+            Problem(
+                rel, "role_invalid", f"role {role!r} is not one of {list(ROLE_VALUES)}"
+            )
         )
 
     kind = front.get("kind")
     if kind is not None and kind not in KIND_VALUES:
         problems.append(
-            Problem(rel, "kind_invalid", f"kind {kind!r} is not one of {list(KIND_VALUES)}")
+            Problem(
+                rel, "kind_invalid", f"kind {kind!r} is not one of {list(KIND_VALUES)}"
+            )
         )
 
     topic = front.get("topic")
-    if "topic" in front and (not isinstance(topic, str) or not TOPIC_SLUG_RE.match(topic)):
-        problems.append(Problem(rel, "topic_invalid", f"topic {topic!r} is not a kebab-case slug"))
+    if "topic" in front and (
+        not isinstance(topic, str) or not TOPIC_SLUG_RE.match(topic)
+    ):
+        problems.append(
+            Problem(rel, "topic_invalid", f"topic {topic!r} is not a kebab-case slug")
+        )
 
     for key in ("date", "last_reviewed"):
         if key in front and not _is_iso_date(front.get(key)):
             problems.append(
-                Problem(rel, f"{key}_invalid", f"{key} {front.get(key)!r} is not an ISO date")
+                Problem(
+                    rel,
+                    f"{key}_invalid",
+                    f"{key} {front.get(key)!r} is not an ISO date",
+                )
             )
 
     # A document is superseded if and only if it says so. `role: superseded`

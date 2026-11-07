@@ -96,7 +96,11 @@ def test_each_qwen_bridge_invokes_canonical_handler(event_name: str) -> None:
                 # Subprocess inherits env by default but we add
                 # QWEN_PROJECT_DIR explicitly so the bridge import
                 # of ``bodai_hook_bridge`` resolves.
-                **{k: v for k, v in __import__("os").environ.items() if k != "QT_QPA_PLATFORM"},
+                **{
+                    k: v
+                    for k, v in __import__("os").environ.items()
+                    if k != "QT_QPA_PLATFORM"
+                },
                 "QWEN_PROJECT_DIR": str(REPO_ROOT),
             },
         )
@@ -120,7 +124,9 @@ def test_qwen_bridge_module_documents_runbook_reference() -> None:
     existence so it doesn't get silently deleted in a docs cleanup.
     """
     runbook = REPO_ROOT / "docs" / "runbooks" / "QWEN_HOOK_SETUP.md"
-    assert runbook.is_file(), f"Qwen bridge runbook missing: {runbook}. See Phase 12b task 2."
+    assert runbook.is_file(), (
+        f"Qwen bridge runbook missing: {runbook}. See Phase 12b task 2."
+    )
     contents = runbook.read_text(encoding="utf-8")
     # Pin the operator-script reference so the runbook stays useful.
     assert "~/.qwen/hooks/" in contents

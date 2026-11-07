@@ -204,7 +204,9 @@ class LearningPipelineService:
 
         # Stage 4: Synthesize
         try:
-            drafts = await self._synthesizer.synthesize_batch(ctx.clusters, ctx.similar_evidence)
+            drafts = await self._synthesizer.synthesize_batch(
+                ctx.clusters, ctx.similar_evidence
+            )
         except Exception:
             logger.warning("learning_pipeline_synthesize_failed", exc_info=True)
             result.cycle_completed_at = datetime.now(UTC)

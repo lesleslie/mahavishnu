@@ -68,7 +68,9 @@ class TaskRequirements:
         preferred = ",".join(sorted(self.preferred_capabilities))
         budget = ""
         if self.budget_constraints:
-            budget = ",".join(f"{k}={v}" for k, v in sorted(self.budget_constraints.items()))
+            budget = ",".join(
+                f"{k}={v}" for k, v in sorted(self.budget_constraints.items())
+            )
 
         return f"{self.task_type}|{required}|{preferred}|{budget}|{self.latency_sla_ms}|{self.fallback_enabled}"
 

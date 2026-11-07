@@ -161,11 +161,15 @@ async def test_emit_node_returns_handle_for_each_engine(
     )
     # Envelope persisted
     assert isinstance(eid, str)
-    matching_keys = [k for k in fake_mcp.store if k.startswith(f"envelopes/{'0' * 32}/")]
+    matching_keys = [
+        k for k in fake_mcp.store if k.startswith(f"envelopes/{'0' * 32}/")
+    ]
     assert len(matching_keys) == 1
     persisted = json.loads(fake_mcp.store[matching_keys[0]].decode())
     assert persisted["engine_id"] == engine_id
-    assert persisted["status" if "status" in persisted else "io_out"]  # envelope persisted
+    assert persisted[
+        "status" if "status" in persisted else "io_out"
+    ]  # envelope persisted
 
     # Mock was awaited once with the engine-specific task shape
     adapters[engine_id].execute.assert_awaited_once()
@@ -226,7 +230,9 @@ async def test_emit_pydantic_ai_node_handles_missing_dep_group(
 ) -> None:
     """When the ``ai`` PEP 735 group is not installed the dispatcher returns a ``failed`` handle and persists a ``status='failed'`` envelope."""
     # Force the lazy import to fail by hiding the module.
-    monkeypatch.setitem(__import__("sys").modules, "mahavishnu.adapters.ai.pydantic_ai_adapter", None)  # type: ignore[arg-type]
+    monkeypatch.setitem(
+        __import__("sys").modules, "mahavishnu.adapters.ai.pydantic_ai_adapter", None
+    )  # type: ignore[arg-type]
     adapters.pop("pydantic_ai", None)
     _register(adapters)
     spec = NodeSpec(
@@ -273,7 +279,9 @@ async def test_emit_node_unsupported_engine_raises(
 ) -> None:
     """An unknown engine_id raises ``NotImplementedError`` with a grep-friendly message."""
     _register(adapters)
-    with pytest.raises(NotImplementedError, match="per-engine emit_node dispatch not registered"):
+    with pytest.raises(
+        NotImplementedError, match="per-engine emit_node dispatch not registered"
+    ):
         await emit_node(
             node=_make_node("unknown-engine"),
             trace_id=TraceId("0" * 32),
@@ -343,7 +351,9 @@ async def test_dispatch_dag_waves_level_by_level(
             from_node="A", to_node="C", via_field="y"
         ),
     )
-    dag = __import__("mahavishnu.core.capabilities", fromlist=["ExecutionDAG"]).ExecutionDAG(
+    dag = __import__(
+        "mahavishnu.core.capabilities", fromlist=["ExecutionDAG"]
+    ).ExecutionDAG(
         nodes=(a, b, c),
         edges=edges,
         trace_id=TraceId("0" * 32),

@@ -24,7 +24,9 @@ def socket_path(tmp_path_factory: pytest.TempPathFactory) -> str:
     return str(base / "test.sock")
 
 
-def _new_session_proc(name: str = "test", window: str = "@0", pane: str = "%1") -> MagicMock:
+def _new_session_proc(
+    name: str = "test", window: str = "@0", pane: str = "%1"
+) -> MagicMock:
     """Return a MagicMock that mimics `tmux new-session -P -F` output:
     ``<session_name>:<window_id>:<pane_id>``.
     """
@@ -65,10 +67,22 @@ def test_create_session_invokes_new_session_with_quoted_command_argv(
     assert info.socket == socket
     assert info.pane.startswith("%")
     mock_subprocess_run.assert_called_with(
-        ["tmux", "-S", socket, "new-session", "-d",
-         "-s", session, "-n", window_name,
-         "-P", "-F", "#{session_name}:#{window_id}:#{pane_id}",
-         "--"] + list(command),
+        [
+            "tmux",
+            "-S",
+            socket,
+            "new-session",
+            "-d",
+            "-s",
+            session,
+            "-n",
+            window_name,
+            "-P",
+            "-F",
+            "#{session_name}:#{window_id}:#{pane_id}",
+            "--",
+        ]
+        + list(command),
         check=False,
         capture_output=True,
         text=True,
@@ -97,10 +111,22 @@ def test_create_session_invokes_new_session_with_long_running_command(
     assert isinstance(info, TmuxSessionInfo)
     assert info.session == session
     mock_subprocess_run.assert_called_with(
-        ["tmux", "-S", socket, "new-session", "-d",
-         "-s", session, "-n", window_name,
-         "-P", "-F", "#{session_name}:#{window_id}:#{pane_id}",
-         "--"] + list(command),
+        [
+            "tmux",
+            "-S",
+            socket,
+            "new-session",
+            "-d",
+            "-s",
+            session,
+            "-n",
+            window_name,
+            "-P",
+            "-F",
+            "#{session_name}:#{window_id}:#{pane_id}",
+            "--",
+        ]
+        + list(command),
         check=False,
         capture_output=True,
         text=True,
@@ -129,10 +155,22 @@ def test_create_session_invokes_new_session_for_list_sessions_path(
     assert isinstance(info, TmuxSessionInfo)
     assert info.session == session
     mock_subprocess_run.assert_called_with(
-        ["tmux", "-S", socket, "new-session", "-d",
-         "-s", session, "-n", window_name,
-         "-P", "-F", "#{session_name}:#{window_id}:#{pane_id}",
-         "--"] + list(command),
+        [
+            "tmux",
+            "-S",
+            socket,
+            "new-session",
+            "-d",
+            "-s",
+            session,
+            "-n",
+            window_name,
+            "-P",
+            "-F",
+            "#{session_name}:#{window_id}:#{pane_id}",
+            "--",
+        ]
+        + list(command),
         check=False,
         capture_output=True,
         text=True,

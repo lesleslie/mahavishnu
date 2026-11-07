@@ -6,7 +6,12 @@ import pytest
 
 from mahavishnu.core.config import MahavishnuSettings
 from mahavishnu.core.errors import ConfigurationError
-from mahavishnu.core.permissions import CrossProjectAuth, JWTManager, Permission, RBACManager
+from mahavishnu.core.permissions import (
+    CrossProjectAuth,
+    JWTManager,
+    Permission,
+    RBACManager,
+)
 
 
 class TestJWTManagerSecurity:
@@ -26,7 +31,9 @@ class TestJWTManagerSecurity:
             JWTManager(config)
 
         error_message = str(exc_info.value)
-        assert "MAHAVISHNU_AUTH_SECRET environment variable must be set" in error_message
+        assert (
+            "MAHAVISHNU_AUTH_SECRET environment variable must be set" in error_message
+        )
         assert "secrets.token_urlsafe(32)" in error_message
         # Ensure no fallback secret mentioned
         assert "fallback" not in error_message.lower()
@@ -220,18 +227,26 @@ class TestRBACManager:
         assert has_perm is True
 
         # Create viewer user with limited access
-        asyncio.run(rbac.create_user("viewer_user", ["viewer"], allowed_repos=["repo1"]))
+        asyncio.run(
+            rbac.create_user("viewer_user", ["viewer"], allowed_repos=["repo1"])
+        )
 
         # Viewer should not have write permission
-        has_perm = asyncio.run(rbac.check_permission("viewer_user", "repo1", Permission.WRITE_REPO))
+        has_perm = asyncio.run(
+            rbac.check_permission("viewer_user", "repo1", Permission.WRITE_REPO)
+        )
         assert has_perm is False
 
         # Viewer should have read permission on allowed repo
-        has_perm = asyncio.run(rbac.check_permission("viewer_user", "repo1", Permission.READ_REPO))
+        has_perm = asyncio.run(
+            rbac.check_permission("viewer_user", "repo1", Permission.READ_REPO)
+        )
         assert has_perm is True
 
         # Viewer should not have read permission on non-allowed repo
-        has_perm = asyncio.run(rbac.check_permission("viewer_user", "repo2", Permission.READ_REPO))
+        has_perm = asyncio.run(
+            rbac.check_permission("viewer_user", "repo2", Permission.READ_REPO)
+        )
         assert has_perm is False
 
     def test_rbac_handles_missing_and_unknown_inputs(self):
@@ -244,15 +259,23 @@ class TestRBACManager:
         assert user.roles == []
 
         assert (
-            asyncio.run(rbac.check_permission("missing_user", "repo1", Permission.READ_REPO))
+            asyncio.run(
+                rbac.check_permission("missing_user", "repo1", Permission.READ_REPO)
+            )
             is False
         )
         assert (
-            asyncio.run(rbac.check_permission("viewer_user", "repo1", "not-a-permission")) is False
+            asyncio.run(
+                rbac.check_permission("viewer_user", "repo1", "not-a-permission")
+            )
+            is False
         )
         assert asyncio.run(rbac.get_user_permissions("missing_user", "repo1")) == []
         assert (
-            asyncio.run(rbac.filter_repos_by_permission("missing_user", Permission.READ_REPO)) == []
+            asyncio.run(
+                rbac.filter_repos_by_permission("missing_user", Permission.READ_REPO)
+            )
+            == []
         )
 
     def test_get_user_permissions_and_filter_repos(self):
@@ -274,7 +297,9 @@ class TestRBACManager:
         assert Permission.VIEW_WORKFLOW_STATUS in permissions
         assert Permission.WRITE_REPO in permissions
 
-        repos = asyncio.run(rbac.filter_repos_by_permission("mixed_user", Permission.READ_REPO))
+        repos = asyncio.run(
+            rbac.filter_repos_by_permission("mixed_user", Permission.READ_REPO)
+        )
         assert set(repos) == {"repo1", "repo2"}
 
     def test_check_permission_accepts_string_permissions(self):
@@ -283,9 +308,14 @@ class TestRBACManager:
 
         import asyncio
 
-        asyncio.run(rbac.create_user("viewer_user", ["viewer"], allowed_repos=["repo1"]))
+        asyncio.run(
+            rbac.create_user("viewer_user", ["viewer"], allowed_repos=["repo1"])
+        )
 
-        assert asyncio.run(rbac.check_permission("viewer_user", "repo1", "read_repo")) is True
+        assert (
+            asyncio.run(rbac.check_permission("viewer_user", "repo1", "read_repo"))
+            is True
+        )
 
     def test_filter_repos_skips_global_access_role(self):
         config = MahavishnuSettings()
@@ -295,7 +325,10 @@ class TestRBACManager:
 
         asyncio.run(rbac.create_user("admin_user", ["admin"]))
         assert (
-            asyncio.run(rbac.filter_repos_by_permission("admin_user", Permission.READ_REPO)) == []
+            asyncio.run(
+                rbac.filter_repos_by_permission("admin_user", Permission.READ_REPO)
+            )
+            == []
         )
 
 

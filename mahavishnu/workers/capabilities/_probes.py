@@ -84,7 +84,10 @@ async def _probe_openclaw_cli(binary: str) -> WorkerCheck:
         return WorkerCheck("openclaw_cli", "fail", f"missing:{binary}")
     try:
         p = await asyncio.create_subprocess_exec(
-            binary, "--version", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            binary,
+            "--version",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
         out, _ = await asyncio.wait_for(p.communicate(), 5)
     except (TimeoutError, OSError) as exc:
@@ -92,7 +95,9 @@ async def _probe_openclaw_cli(binary: str) -> WorkerCheck:
     return WorkerCheck(
         "openclaw_cli",
         "pass" if p.returncode == 0 else "fail",
-        safe_error_for_user(out.decode().strip() or "ok") if p.returncode == 0 else "non_zero_exit",
+        safe_error_for_user(out.decode().strip() or "ok")
+        if p.returncode == 0
+        else "non_zero_exit",
     )
 
 
@@ -161,7 +166,9 @@ def _probe_auth_headers(
     return {"Authorization": f"Bearer {token}"}, ""
 
 
-async def _probe_provider_request(provider: str, env_var: str, endpoint: str) -> WorkerCheck:
+async def _probe_provider_request(
+    provider: str, env_var: str, endpoint: str
+) -> WorkerCheck:
     headers, reason = _probe_auth_headers(provider, env_var, endpoint)
     if headers is None:
         return WorkerCheck(f"{provider}_auth", "fail", reason)
@@ -173,7 +180,9 @@ async def _probe_provider_request(provider: str, env_var: str, endpoint: str) ->
             r = await client.get(endpoint, headers=headers)
             r.raise_for_status()
     except httpx.HTTPError as exc:
-        return WorkerCheck(f"{provider}_auth", "fail", safe_error_for_user(type(exc).__name__))
+        return WorkerCheck(
+            f"{provider}_auth", "fail", safe_error_for_user(type(exc).__name__)
+        )
     return WorkerCheck(f"{provider}_auth", "pass", "ok")
 
 

@@ -108,7 +108,9 @@ class Lock:
 
         now = datetime.now(UTC)
         token = owner_token or uuid.uuid4().hex
-        expires_at = None if ttl_seconds is None else now + timedelta(seconds=ttl_seconds)
+        expires_at = (
+            None if ttl_seconds is None else now + timedelta(seconds=ttl_seconds)
+        )
         handle = LockHandle(
             lock_key=lock_key,
             owner_token=token,

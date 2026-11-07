@@ -40,7 +40,9 @@ async def test_require_mcp_auth_passes_with_user_id():
     """
 
     class _AlwaysAllow:
-        async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
+        async def check_permission(
+            self, user_id: str, repo: str, permission: Permission
+        ) -> bool:
             return True
 
     decorator = require_mcp_auth(
@@ -65,7 +67,9 @@ async def test_require_mcp_auth_no_user_id():
     """
 
     class _AlwaysAllow:
-        async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
+        async def check_permission(
+            self, user_id: str, repo: str, permission: Permission
+        ) -> bool:
             return True
 
     decorator = require_mcp_auth(
@@ -94,7 +98,9 @@ async def test_require_mcp_auth_no_rbac_manager_fails_closed():
     (any caller passing a non-empty ``user_id`` reached the wrapped
     function); it is intentionally removed.
     """
-    decorator = require_mcp_auth(rbac_manager=None, required_permission=Permission.READ_REPO)
+    decorator = require_mcp_auth(
+        rbac_manager=None, required_permission=Permission.READ_REPO
+    )
 
     @decorator
     async def test_function(param1: str, user_id: str | None = None) -> dict:
@@ -139,7 +145,9 @@ def test_credential_manager_custom_sensitive_keys():
         "public_field": "public_value",
     }
 
-    redacted = CredentialManager.redact_from_dict(data, sensitive_keys=["custom_secret"])
+    redacted = CredentialManager.redact_from_dict(
+        data, sensitive_keys=["custom_secret"]
+    )
 
     assert redacted["custom_secret"] == "value***"
     assert redacted["public_field"] == "public_value"

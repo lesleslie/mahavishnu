@@ -188,7 +188,10 @@ def slow_init_server(monkeypatch):
     monkeypatch.setattr(server_core, "FastMCP", _capturing_fastmcp)
     monkeypatch.setattr(server_core, "MahavishnuApp", _SlowInitApp)
 
-    yield captured, lambda: asyncio.create_task(asyncio.to_thread(server_core.FastMCPServer))
+    yield (
+        captured,
+        lambda: asyncio.create_task(asyncio.to_thread(server_core.FastMCPServer)),
+    )
 
 
 async def test_health_responds_while_runtime_init_blocks(slow_init_server):

@@ -51,7 +51,9 @@ def pipeline_service() -> MagicMock:
     service.cycle_count = 7
     service.total_drafts = 3
     service.last_result = _model(cycle=7, drafts_added=2, status="ok")
-    service.run_once = AsyncMock(return_value=_model(cycle=8, drafts_added=1, status="ok"))
+    service.run_once = AsyncMock(
+        return_value=_model(cycle=8, drafts_added=1, status="ok")
+    )
     return service
 
 
@@ -72,14 +74,22 @@ def skill_registry() -> MagicMock:
     reg = MagicMock()
     reg.list_active = MagicMock(
         return_value=[
-            SimpleNamespace(skill_id="skill-1", version="1.0.0", state="draft", body="body one"),
-            SimpleNamespace(skill_id="skill-2", version="0.9.0", state="review", body=None),
+            SimpleNamespace(
+                skill_id="skill-1", version="1.0.0", state="draft", body="body one"
+            ),
+            SimpleNamespace(
+                skill_id="skill-2", version="0.9.0", state="review", body=None
+            ),
         ]
     )
     reg.list_history = MagicMock(
         return_value=[
-            SimpleNamespace(version="1.0.0", state="active", body="new body", rollback=None),
-            SimpleNamespace(version="0.9.0", state="draft", body="older", rollback="old-snapshot"),
+            SimpleNamespace(
+                version="1.0.0", state="active", body="new body", rollback=None
+            ),
+            SimpleNamespace(
+                version="0.9.0", state="draft", body="older", rollback="old-snapshot"
+            ),
         ]
     )
     return reg
@@ -109,7 +119,9 @@ def test_get_pipeline_status_without_service(stub_mcp: _StubMCP) -> None:
     }
 
 
-def test_get_pipeline_status_with_service(stub_mcp: _StubMCP, pipeline_service: MagicMock) -> None:
+def test_get_pipeline_status_with_service(
+    stub_mcp: _StubMCP, pipeline_service: MagicMock
+) -> None:
     register_learning_tools(stub_mcp, pipeline_service=pipeline_service)
     fn = stub_mcp.tools["get_pipeline_status"]
     import asyncio
@@ -171,7 +183,9 @@ def test_list_evidence_passes_query_and_limit(
     ]
 
 
-def test_list_evidence_handles_query_error(stub_mcp: _StubMCP, evidence_store: MagicMock) -> None:
+def test_list_evidence_handles_query_error(
+    stub_mcp: _StubMCP, evidence_store: MagicMock
+) -> None:
     evidence_store.query_evidence = AsyncMock(side_effect=RuntimeError("index down"))
     register_learning_tools(stub_mcp, evidence_store=evidence_store)
     fn = stub_mcp.tools["list_evidence"]
@@ -213,7 +227,9 @@ def test_trigger_synthesis_returns_cycle_result(
     }
 
 
-def test_trigger_synthesis_handles_error(stub_mcp: _StubMCP, pipeline_service: MagicMock) -> None:
+def test_trigger_synthesis_handles_error(
+    stub_mcp: _StubMCP, pipeline_service: MagicMock
+) -> None:
     pipeline_service.run_once = AsyncMock(side_effect=RuntimeError("boom"))
     register_learning_tools(stub_mcp, pipeline_service=pipeline_service)
     fn = stub_mcp.tools["trigger_synthesis"]
@@ -242,7 +258,9 @@ def test_list_pending_drafts_truncates_long_bodies(
     long_body = "x" * 1000
     skill_registry.list_active = MagicMock(
         return_value=[
-            SimpleNamespace(skill_id="s-long", version="1.0", state="draft", body=long_body),
+            SimpleNamespace(
+                skill_id="s-long", version="1.0", state="draft", body=long_body
+            ),
         ]
     )
     register_learning_tools(stub_mcp, skill_registry=skill_registry)
@@ -267,7 +285,9 @@ def test_list_pending_drafts_handles_none_body(
     assert result["drafts"][1]["body"] is None
 
 
-def test_list_pending_drafts_handles_error(stub_mcp: _StubMCP, skill_registry: MagicMock) -> None:
+def test_list_pending_drafts_handles_error(
+    stub_mcp: _StubMCP, skill_registry: MagicMock
+) -> None:
     skill_registry.list_active = MagicMock(side_effect=RuntimeError("registry down"))
     register_learning_tools(stub_mcp, skill_registry=skill_registry)
     fn = stub_mcp.tools["list_pending_drafts"]
@@ -308,7 +328,9 @@ def test_get_promotion_history_returns_versions(
     assert result["history"][1]["has_rollback"] is True
 
 
-def test_get_promotion_history_handles_error(stub_mcp: _StubMCP, skill_registry: MagicMock) -> None:
+def test_get_promotion_history_handles_error(
+    stub_mcp: _StubMCP, skill_registry: MagicMock
+) -> None:
     skill_registry.list_history = MagicMock(side_effect=RuntimeError("db error"))
     register_learning_tools(stub_mcp, skill_registry=skill_registry)
     fn = stub_mcp.tools["get_promotion_history"]

@@ -77,7 +77,9 @@ def test_post_webhook_falls_back_to_in_memory_when_v1_disabled(
     assert response.json() == {"status": "accepted_in_memory_only"}
     assert not kv_store.list_prefix("")
 
-    skipped = [entry for entry in logs if entry["event"] == "webhook_persistence_skipped"]
+    skipped = [
+        entry for entry in logs if entry["event"] == "webhook_persistence_skipped"
+    ]
     assert skipped, logs
     assert skipped[-1]["extra"]["reason"] == "v1_disabled"
     assert skipped[-1]["extra"]["webhook_id"] == "evt-disabled"

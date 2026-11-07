@@ -363,7 +363,9 @@ class Verdict(NamedTuple):
     """Human-readable explanation when status is not PASS."""
 
 
-def _find_section_for(sections: list[tuple[str, list[str]]], pattern: str) -> str | None:
+def _find_section_for(
+    sections: list[tuple[str, list[str]]], pattern: str
+) -> str | None:
     """Return the section name containing ``pattern``, or None."""
     for name, patterns in sections:
         if pattern in patterns:
@@ -443,7 +445,9 @@ def evaluate_repo(name: str, repo: Path) -> Verdict:
             if claude_state.runtime_entries:
                 claude_dir = repo / ".claude"
                 runtime_dirs = [
-                    entry for entry in claude_state.runtime_entries if (claude_dir / entry).is_dir()
+                    entry
+                    for entry in claude_state.runtime_entries
+                    if (claude_dir / entry).is_dir()
                 ]
                 if not runtime_dirs:
                     return Verdict(

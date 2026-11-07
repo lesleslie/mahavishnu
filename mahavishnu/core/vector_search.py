@@ -61,11 +61,15 @@ class HNSWConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    m: int = Field(default=24, ge=4, le=100, description="Number of bi-directional links")
+    m: int = Field(
+        default=24, ge=4, le=100, description="Number of bi-directional links"
+    )
     ef_construction: int = Field(
         default=64, ge=8, le=512, description="Build-time dynamic candidate list size"
     )
-    ef_search: int = Field(default=64, ge=1, le=1000, description="Query-time search depth")
+    ef_search: int = Field(
+        default=64, ge=1, le=1000, description="Query-time search depth"
+    )
 
 
 @dataclass
@@ -89,15 +93,21 @@ class SearchQuery(BaseModel):
     query: str = Field(..., min_length=1, description="Search query text")
     repository: str | None = Field(default=None, description="Filter by repository")
     limit: int = Field(default=10, ge=1, le=100, description="Maximum results")
-    threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum similarity")
-    search_type: SearchType = Field(default=SearchType.HYBRID, description="Search type")
+    threshold: float = Field(
+        default=0.7, ge=0.0, le=1.0, description="Minimum similarity"
+    )
+    search_type: SearchType = Field(
+        default=SearchType.HYBRID, description="Search type"
+    )
     include_content: bool = Field(default=False, description="Include full content")
 
 
 class VectorSearchError(MahavishnuError):
     """Error during vector search."""
 
-    def __init__(self, message: str, query: str | None = None, details: dict | None = None):
+    def __init__(
+        self, message: str, query: str | None = None, details: dict | None = None
+    ):
         super().__init__(message, ErrorCode.EMBEDDING_SERVICE_ERROR, details=details)
         self.query = query
 
@@ -128,7 +138,11 @@ class VectorIndex:
 
         # Use config defaults if not specified
         m_val = m if m is not None else self.config.m
-        ef_val = ef_construction if ef_construction is not None else self.config.ef_construction
+        ef_val = (
+            ef_construction
+            if ef_construction is not None
+            else self.config.ef_construction
+        )
 
         # Validate identifiers before f-string interpolation. asyncpg
         # cannot bind parameters for DDL statements.
@@ -171,7 +185,9 @@ class VectorIndex:
 
         logger.info(f"Created IVFFlat index {index_name} on {table}.{column}")
 
-    async def drop_index(self, table: str, column: str, index_type: str = "hnsw") -> None:
+    async def drop_index(
+        self, table: str, column: str, index_type: str = "hnsw"
+    ) -> None:
         """Drop an existing vector index."""
         index_name = f"{table}_{column}_{index_type}_idx"
         _validate_sql_identifier(table)
@@ -186,7 +202,9 @@ class VectorIndex:
 class VectorStore:
     """Vector storage for task embeddings."""
 
-    def __init__(self, db: Database, embedding_service: EmbeddingService | None = None) -> None:
+    def __init__(
+        self, db: Database, embedding_service: EmbeddingService | None = None
+    ) -> None:
         self.db = db
         self.embedding_service = embedding_service
         self.index = VectorIndex(db)
@@ -765,4 +783,6 @@ class TaskSimilarity:
 
         rows = await self.db.fetch(sql, *params)
 
-        return [(row["task_id1"], row["task_id2"], float(row["similarity"])) for row in rows]
+        return [
+            (row["task_id1"], row["task_id2"], float(row["similarity"])) for row in rows
+        ]

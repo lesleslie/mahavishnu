@@ -401,7 +401,10 @@ def extract_symbols(path: Path) -> list[Symbol]:
                 )
                 for child in node.body:
                     if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        if not child.name.startswith("_") and len(child.name) > SHORT_NAME_MAX:
+                        if (
+                            not child.name.startswith("_")
+                            and len(child.name) > SHORT_NAME_MAX
+                        ):
                             symbols.append(
                                 Symbol(
                                     name=child.name,
@@ -439,9 +442,9 @@ def find_registrations(path: Path) -> set[str]:
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
         # Textual lifecycle methods are name-based (no decorator required).
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_textual_lifecycle(
-            node.name
-        ):
+        if isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef)
+        ) and _is_textual_lifecycle(node.name):
             registered.add(node.name)
             continue
         for decorator in node.decorator_list:
@@ -521,7 +524,9 @@ def _collect_discriminated_union_members(
         for class_name, class_node in file_classes.items():
             enum_attrs: set[str] = set()
             for child in class_node.body:
-                if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
+                if isinstance(child, ast.AnnAssign) and isinstance(
+                    child.target, ast.Name
+                ):
                     ann = child.annotation
                     if isinstance(ann, ast.Name) and ann.id.endswith(
                         ("Type", "Enum", "Status", "Kind", "Mode")
@@ -533,9 +538,9 @@ def _collect_discriminated_union_members(
             # Pattern: Literal[Foo, Bar, Baz]
             if isinstance(node, ast.Subscript):
                 value = node.value
-                is_literal = (isinstance(value, ast.Name) and value.id == "Literal") or (
-                    isinstance(value, ast.Attribute) and value.attr == "Literal"
-                )
+                is_literal = (
+                    isinstance(value, ast.Name) and value.id == "Literal"
+                ) or (isinstance(value, ast.Attribute) and value.attr == "Literal")
                 if is_literal:
                     members.update(_class_names_from_literal(node))
                 continue
@@ -599,7 +604,10 @@ def _iter_top_level_public_names(path: Path):
                 yield node.name
             for child in node.body:
                 if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    if not child.name.startswith("_") and len(child.name) > SHORT_NAME_MAX:
+                    if (
+                        not child.name.startswith("_")
+                        and len(child.name) > SHORT_NAME_MAX
+                    ):
                         yield f"{node.name}.{child.name}"
 
 
@@ -839,7 +847,9 @@ def _has_intra_file_call_site(path: Path, symbol_name: str) -> bool:
     # and the class version ``class foo(``. Methods inside classes can
     # be defined as ``def foo(self, ...)`` — the def header line still
     # matches the regex against the symbol name and must be skipped.
-    def_header_pat = re.compile(rf"^\s*(?:async\s+)?(?:def|class)\s+{re.escape(symbol_name)}\s*\(")
+    def_header_pat = re.compile(
+        rf"^\s*(?:async\s+)?(?:def|class)\s+{re.escape(symbol_name)}\s*\("
+    )
     call_pat = re.compile(rf"\b{re.escape(symbol_name)}\s*\(")
     for line in source.splitlines():
         if def_header_pat.match(line):
@@ -912,7 +922,9 @@ def classify_orphans(
     references = collect_references(root, excludes, include_tests)
     stub_members: set[str] = set()
     if include_stub_check:
-        stub_members = _collect_discriminated_union_members(root, excludes, include_tests)
+        stub_members = _collect_discriminated_union_members(
+            root, excludes, include_tests
+        )
 
     results: list[FileResult] = []
     for path in sorted(recent_files):
@@ -925,7 +937,9 @@ def classify_orphans(
 
         symbols = extract_symbols(path)
         if not symbols:
-            results.append(FileResult(path=path, orphans=[], has_no_public_surface=True))
+            results.append(
+                FileResult(path=path, orphans=[], has_no_public_surface=True)
+            )
             continue
 
         registered = find_registrations(path)
@@ -971,7 +985,9 @@ def classify_orphans(
                     )
                 )
 
-        results.append(FileResult(path=path, orphans=orphans, has_no_public_surface=False))
+        results.append(
+            FileResult(path=path, orphans=orphans, has_no_public_surface=False)
+        )
     return results
 
 
@@ -998,7 +1014,9 @@ def render_markdown(results: list[FileResult], root: Path) -> str:
         if result.has_no_public_surface:
             lines.append(f"## `{rel}`")
             lines.append("")
-            lines.append("_No public surface (no top-level public functions or classes)._")
+            lines.append(
+                "_No public surface (no top-level public functions or classes)._"
+            )
             lines.append("")
             continue
         if not result.orphans:
@@ -1014,7 +1032,11 @@ def render_markdown(results: list[FileResult], root: Path) -> str:
         lines.append("| --- | --- | --- | --- | --- |")
         for cand in result.orphans:
             sym = cand.symbol
-            last = cand.last_modified.date().isoformat() if cand.last_modified else "unknown"
+            last = (
+                cand.last_modified.date().isoformat()
+                if cand.last_modified
+                else "unknown"
+            )
             lines.append(
                 f"| `{sym.name}` | {sym.kind} | {last} | none in scan | "
                 f"Add public entry-point in `__main__`/CLI/MCP server, or remove. |"

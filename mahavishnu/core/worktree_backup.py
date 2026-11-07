@@ -95,7 +95,9 @@ class WorktreeBackupManager:
         backup_name = f"{repo_nickname}_{branch}_{timestamp}"
         backup_path = self.backup_dir / backup_name
 
-        logger.info(f"Creating backup before force removal: {worktree_path} -> {backup_path}")
+        logger.info(
+            f"Creating backup before force removal: {worktree_path} -> {backup_path}"
+        )
 
         try:
             # Create backup directory
@@ -376,7 +378,9 @@ class WorktreeBackupManager:
 
             # Filter by repository if specified
             if repo_nickname:
-                backups = [b for b in backups if b.get("repo_nickname") == repo_nickname]
+                backups = [
+                    b for b in backups if b.get("repo_nickname") == repo_nickname
+                ]
 
             # Sort by creation time (newest first)
             backups.sort(key=lambda b: b["created_at"], reverse=True)

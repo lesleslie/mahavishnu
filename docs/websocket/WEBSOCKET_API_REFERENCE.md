@@ -399,6 +399,7 @@ import asyncio
 import json
 import websockets
 
+
 async def monitor_workflow():
     uri = "ws://127.0.0.1:8690"
 
@@ -408,7 +409,7 @@ async def monitor_workflow():
             "type": "request",
             "event": "subscribe",
             "data": {"channel": "workflow:abc123"},
-            "id": "sub_001"
+            "id": "sub_001",
         }
         await ws.send(json.dumps(subscribe))
 
@@ -422,6 +423,7 @@ async def monitor_workflow():
             elif data["event"] == "workflow.completed":
                 print(f"Workflow completed!")
                 break
+
 
 asyncio.run(monitor_workflow())
 ```
@@ -484,6 +486,7 @@ Implement automatic reconnection with exponential backoff.
 import asyncio
 import websockets
 
+
 async def connect_with_retry():
     retry_delay = 1
 
@@ -504,8 +507,9 @@ Always validate incoming message structure.
 
 ```python
 def is_valid_message(data):
-    required = ['type', 'event', 'data']
+    required = ["type", "event", "data"]
     return all(key in data for key in required)
+
 
 # Usage
 message = await ws.recv()
@@ -528,7 +532,7 @@ request = {
     "event": "get_workflow_status",
     "data": {"workflow_id": "wf_123"},
     "id": str(uuid.uuid4()),  # Unique correlation ID
-    "correlation_id": "my_request_123"
+    "correlation_id": "my_request_123",
 }
 ```
 

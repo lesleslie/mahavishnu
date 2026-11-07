@@ -1474,7 +1474,7 @@ class MessageHistory:
 
         # Trim old messages
         if len(self.history[room_id]) > self.max_size:
-            self.history[room_id] = self.history[room_id][-self.max_size:]
+            self.history[room_id] = self.history[room_id][-self.max_size :]
 
     async def get_recent(self, room_id, count=100):
         if room_id not in self.history:
@@ -1579,6 +1579,7 @@ server {
 import aioredis
 import json
 
+
 class RedisRoomManager:
     """Manage room subscriptions across multiple instances."""
 
@@ -1590,18 +1591,18 @@ class RedisRoomManager:
     async def join_room(self, room_id, connection_id):
         """Add connection to room (Redis-backed)."""
         await self.redis.sadd(f"room:{room_id}", f"{self.instance_id}:{connection_id}")
-        await self.redis.publish(f"room:{room_id}:joined", json.dumps({
-            "instance": self.instance_id,
-            "connection": connection_id
-        }))
+        await self.redis.publish(
+            f"room:{room_id}:joined",
+            json.dumps({"instance": self.instance_id, "connection": connection_id}),
+        )
 
     async def leave_room(self, room_id, connection_id):
         """Remove connection from room."""
         await self.redis.srem(f"room:{room_id}", f"{self.instance_id}:{connection_id}")
-        await self.redis.publish(f"room:{room_id}:left", json.dumps({
-            "instance": self.instance_id,
-            "connection": connection_id
-        }))
+        await self.redis.publish(
+            f"room:{room_id}:left",
+            json.dumps({"instance": self.instance_id, "connection": connection_id}),
+        )
 
     async def broadcast_to_room(self, room_id, message):
         """Broadcast message to all connections in room (across instances)."""
@@ -1611,8 +1612,8 @@ class RedisRoomManager:
         """Listen for broadcast messages from other instances."""
         await self.pubsub.psubscribe(f"room:*:broadcast")
         async for message in self.pubsub.listen():
-            if message['type'] == 'pmessage':
-                data = json.loads(message['data'])
+            if message["type"] == "pmessage":
+                data = json.loads(message["data"])
                 await callback(data)
 ```
 
@@ -1633,8 +1634,7 @@ class HealthChecker:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    f"{instance_url}/health",
-                    timeout=aiohttp.ClientTimeout(total=5)
+                    f"{instance_url}/health", timeout=aiohttp.ClientTimeout(total=5)
                 ) as response:
                     if response.status == 200:
                         self.healthy_instances.add(instance_url)
@@ -1669,49 +1669,49 @@ from prometheus_client import Counter, Gauge, Histogram
 
 # Connection metrics
 websocket_connections = Gauge(
-    'websocket_connections_current',
-    'Current number of WebSocket connections',
-    ['service', 'server']
+    "websocket_connections_current",
+    "Current number of WebSocket connections",
+    ["service", "server"],
 )
 
 websocket_connections_total = Counter(
-    'websocket_connections_total',
-    'Total WebSocket connections established',
-    ['service', 'server']
+    "websocket_connections_total",
+    "Total WebSocket connections established",
+    ["service", "server"],
 )
 
 # Message metrics
 websocket_messages_sent = Counter(
-    'websocket_messages_sent_total',
-    'Total messages sent',
-    ['service', 'server', 'message_type']
+    "websocket_messages_sent_total",
+    "Total messages sent",
+    ["service", "server", "message_type"],
 )
 
 websocket_messages_received = Counter(
-    'websocket_messages_received_total',
-    'Total messages received',
-    ['service', 'server', 'message_type']
+    "websocket_messages_received_total",
+    "Total messages received",
+    ["service", "server", "message_type"],
 )
 
 # Performance metrics
 websocket_message_duration = Histogram(
-    'websocket_message_duration_seconds',
-    'Message processing duration',
-    ['service', 'server'],
-    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+    "websocket_message_duration_seconds",
+    "Message processing duration",
+    ["service", "server"],
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
 )
 
 websocket_broadcast_duration = Histogram(
-    'websocket_broadcast_duration_seconds',
-    'Broadcast duration',
-    ['service', 'server', 'channel']
+    "websocket_broadcast_duration_seconds",
+    "Broadcast duration",
+    ["service", "server", "channel"],
 )
 
 # Error metrics
 websocket_errors = Counter(
-    'websocket_errors_total',
-    'Total WebSocket errors',
-    ['service', 'server', 'error_type']
+    "websocket_errors_total",
+    "Total WebSocket errors",
+    ["service", "server", "error_type"],
 )
 ```
 
@@ -2014,7 +2014,7 @@ profiler.enable()
 
 profiler.disable()
 stats = pstats.Stats(profiler)
-stats.sort_stats('cumulative')
+stats.sort_stats("cumulative")
 stats.print_stats(20)  # Top 20 functions
 ```
 

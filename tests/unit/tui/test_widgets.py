@@ -281,7 +281,9 @@ def test_worker_status_widget_all_fields_missing(
 
 
 @pytest.mark.unit
-def test_fallback_pool_status_widget_stores_data(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fallback_pool_status_widget_stores_data(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Fallback PoolStatusWidget stores the input dict on ``_data``."""
     import mahavishnu.tui as tui_module
 

@@ -105,7 +105,9 @@ async def example_context_manager():
         )
 
         # Search with system filter
-        results = await ingester.search_traces("API calls", system_id="claude", limit=10)
+        results = await ingester.search_traces(
+            "API calls", system_id="claude", limit=10
+        )
         print(f"\n✓ System-filtered search: {len(results)} results")
 
 
@@ -235,7 +237,9 @@ async def example_advanced_search():
 
         # Search 1: High precision (fewer results, more relevant)
         print("\n1. High precision search (threshold=0.9):")
-        results = await ingester.search_traces("authentication", threshold=0.9, limit=10)
+        results = await ingester.search_traces(
+            "authentication", threshold=0.9, limit=10
+        )
         print(f"   Found {len(results)} results")
 
         # Search 2: High recall (more results, less strict)
@@ -245,7 +249,9 @@ async def example_advanced_search():
 
         # Search 3: System-specific search
         print("\n3. System-specific search (system_id=qwen):")
-        results = await ingester.search_traces("query execution", system_id="qwen", limit=10)
+        results = await ingester.search_traces(
+            "query execution", system_id="qwen", limit=10
+        )
         print(f"   Found {len(results)} results")
         for result in results:
             print(f"   - {result['system_id']}: {result['content'][:50]}...")

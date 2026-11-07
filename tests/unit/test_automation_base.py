@@ -394,7 +394,9 @@ class TestBackendCapabilities:
         )
         assert caps.supports_all({Capability.LAUNCH_APP, Capability.QUIT_APP}) is True
         assert caps.supports_all({Capability.LAUNCH_APP, Capability.CLICK}) is True
-        assert caps.supports_all({Capability.LAUNCH_APP, Capability.SCREENSHOT}) is False
+        assert (
+            caps.supports_all({Capability.LAUNCH_APP, Capability.SCREENSHOT}) is False
+        )
 
     def test_supports_any(self):
         """supports_any() checks any capability present."""

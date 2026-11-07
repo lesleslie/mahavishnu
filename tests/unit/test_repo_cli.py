@@ -49,7 +49,9 @@ def test_diff_repo_defaults_main_vs_head() -> None:
 def test_create_pr_invokes_gh() -> None:
     """create_pr should invoke `gh pr create` inside the repo."""
     with patch("mahavishnu.repo_cli.subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(stdout="https://github.com/x/y/pull/1\n", returncode=0)
+        mock_run.return_value = MagicMock(
+            stdout="https://github.com/x/y/pull/1\n", returncode=0
+        )
         url = create_pr(KNOWN_REPO_PATH)
         mock_run.assert_called_once()
         cmd = mock_run.call_args.args[0]

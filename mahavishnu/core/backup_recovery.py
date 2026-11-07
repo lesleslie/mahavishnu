@@ -124,7 +124,9 @@ class BackupManager:
 
                 return backup_info
 
-        except Exception as e:  # CLI/MCP entry point — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # CLI/MCP entry point — broad catch is the documented contract
             self.logger.error(f"Failed to create backup: {e}")
             raise
 
@@ -151,7 +153,9 @@ class BackupManager:
         """Backup workflow states."""
         try:
             # Get all workflows
-            all_workflows = await self.app.workflow_state_manager.list_workflows(limit=10000)
+            all_workflows = await self.app.workflow_state_manager.list_workflows(
+                limit=10000
+            )
 
             # Save workflows to JSON
             workflows_file = backup_dir / "workflows.json"
@@ -189,7 +193,9 @@ class BackupManager:
                         backup_file.name.split(".")[0].split("_")[1]
                         + backup_file.name.split(".")[0].split("_")[2]
                     )
-                    backup_date = datetime.strptime(date_str, "%Y%m%d%H%M%S").replace(tzinfo=UTC)
+                    backup_date = datetime.strptime(date_str, "%Y%m%d%H%M%S").replace(
+                        tzinfo=UTC
+                    )
 
                     days_diff = (now - backup_date).days
 
@@ -220,7 +226,8 @@ class BackupManager:
 
             # Delete old backups
             all_backups_set = {
-                (bf[0], bf[1]) for bf in daily_backups + weekly_backups + monthly_backups
+                (bf[0], bf[1])
+                for bf in daily_backups + weekly_backups + monthly_backups
             }
             keep_set = set(backups_to_keep)
             delete_set = all_backups_set - keep_set
@@ -230,7 +237,9 @@ class BackupManager:
                     backup_file.unlink()
                     self.logger.info(f"Deleted old backup: {backup_file.name}")
                 except Exception as e:  # Path.unlink may raise file/permission errors  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                    self.logger.warning(f"Failed to delete backup {backup_file.name}: {e}")
+                    self.logger.warning(
+                        f"Failed to delete backup {backup_file.name}: {e}"
+                    )
 
         except Exception as e:  # cleanup iteration may raise any storage/IO error  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self.logger.warning(f"Failed to cleanup old backups: {e}")
@@ -286,7 +295,9 @@ class BackupManager:
                 self.logger.info(f"Restored backup: {backup_id}")
                 return True
 
-        except Exception as e:  # CLI/MCP entry point — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # CLI/MCP entry point — broad catch is the documented contract
             self.logger.error(f"Failed to restore backup: {e}")
             raise
 
@@ -342,7 +353,9 @@ class BackupManager:
                 backups.append(backup_info)
 
             except Exception as e:  # stat/parse of individual backup file may fail in many ways  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                self.logger.warning(f"Failed to read backup info for {backup_file}: {e}")
+                self.logger.warning(
+                    f"Failed to read backup info for {backup_file}: {e}"
+                )
 
         # Sort by timestamp (newest first)
         backups.sort(key=lambda x: x.timestamp, reverse=True)
@@ -399,7 +412,11 @@ class DisasterRecoveryManager:
 
     async def run_disaster_recovery_check(self) -> dict[str, Any]:
         """Run a comprehensive disaster recovery check."""
-        results = {"timestamp": datetime.now(UTC).isoformat(), "checks": {}, "status": "healthy"}
+        results = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "checks": {},
+            "status": "healthy",
+        }
 
         # Check backup availability
         backups = await self.backup_manager.list_backups()
@@ -460,7 +477,10 @@ class DisasterRecoveryManager:
             if not backup_id:
                 backups = await self.backup_manager.list_backups()
                 if not backups:
-                    return {"status": "fail", "error": "No backups available for recovery"}
+                    return {
+                        "status": "fail",
+                        "error": "No backups available for recovery",
+                    }
                 backup_id = backups[0].backup_id
 
             # Perform restoration
@@ -477,7 +497,10 @@ class DisasterRecoveryManager:
                     "backup_used": backup_id,
                 }
             else:
-                return {"status": "fail", "error": f"Failed to restore from backup {backup_id}"}
+                return {
+                    "status": "fail",
+                    "error": f"Failed to restore from backup {backup_id}",
+                }
 
         except (
             Exception  # noqa: BLE001  # background task — broad catch is the documented contract

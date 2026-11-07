@@ -100,7 +100,9 @@ def test_aggregate_mahavishnu_health_returns_verdict() -> None:
         aggregate_mahavishnu_health,
     )
 
-    verdict: MahavishnuHealthVerdict = aggregate_mahavishnu_health(repo="mahavishnu-test")
+    verdict: MahavishnuHealthVerdict = aggregate_mahavishnu_health(
+        repo="mahavishnu-test"
+    )
 
     # Verdict shape
     assert isinstance(verdict, MahavishnuHealthVerdict)
@@ -332,7 +334,9 @@ def test_health_endpoint_body_carries_four_plan_fields_per_feed(
     from mcp_common.health.feed import HealthFeedState
 
     # Probe the aggregator to detect the new shape (skip if absent).
-    snap = aggregate_feed_states({"storage": HealthFeedState(entities_count=1, cycles_total=1)})
+    snap = aggregate_feed_states(
+        {"storage": HealthFeedState(entities_count=1, cycles_total=1)}
+    )
     if "entities_count" not in snap["checks"]["storage"]:
         pytest.skip(
             "mcp_common aggregator does not yet expose the 4 plan-§6.5 "
@@ -360,7 +364,9 @@ def test_health_endpoint_body_carries_four_plan_fields_per_feed(
     assert set(feed_states.keys()) == expected_feeds
 
     for feed_name, feed_dict in feed_states.items():
-        assert isinstance(feed_dict, dict), f"feed {feed_name} is not a dict: {type(feed_dict)}"
+        assert isinstance(feed_dict, dict), (
+            f"feed {feed_name} is not a dict: {type(feed_dict)}"
+        )
         for field in PLAN_EXPECTED_FIELDS:
             assert field in feed_dict, (
                 f"/health body dropped {field} from {feed_name} "

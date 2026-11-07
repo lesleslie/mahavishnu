@@ -80,7 +80,9 @@ def test_adapter_entry_from_pb2_compatibility() -> None:
 async def test_client_mcp_tool_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     import mahavishnu.core.oneiric_client as module
 
-    monkeypatch.setattr(module, "get_mcp_client", lambda _base_url=None, _token=None: _Client())
+    monkeypatch.setattr(
+        module, "get_mcp_client", lambda _base_url=None, _token=None: _Client()
+    )
     client = OneiricMCPClient(OneiricMCPConfig(enabled=True))
 
     adapters = await client.list_adapters(category="storage")
@@ -193,7 +195,9 @@ class TestMCPClientHelpers:
             c1 = mod.get_mcp_client("http://example.com/mcp")
             c2 = mod.get_mcp_client("http://example.com/mcp")
             assert c1 is c2
-            mock_mcp.assert_called_once_with(base_url="http://example.com/mcp", token=None)
+            mock_mcp.assert_called_once_with(
+                base_url="http://example.com/mcp", token=None
+            )
 
     def test_get_mcp_client_default_url(self) -> None:
         from types import ModuleType, SimpleNamespace
@@ -230,7 +234,9 @@ class TestMCPClientHelpers:
             patch.dict("sys.modules", {"mahavishnu.core.mcp_adapter": mock_module}),
         ):
             mod.get_mcp_client("http://example.com/mcp", token="secret")
-            mock_mcp.assert_called_once_with(base_url="http://example.com/mcp", token="secret")
+            mock_mcp.assert_called_once_with(
+                base_url="http://example.com/mcp", token="secret"
+            )
 
     def test_set_mcp_client_base_url(self) -> None:
         import mahavishnu.core.oneiric_client as mod
@@ -492,39 +498,55 @@ def _mock_get_mcp(client_cls):
 
 
 class TestClientErrorPaths:
-    async def test_call_tool_connection_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_call_tool_connection_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_FailingClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         with pytest.raises(ConnectionError, match="unavailable"):
             await client._call_tool("oneiric_list_adapters", {})
         assert client._connected is False
 
-    async def test_list_adapters_error_payload(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_list_adapters_error_payload(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_ErrorPayloadClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         with pytest.raises(ConnectionError, match="registry error"):
             await client.list_adapters()
 
-    async def test_get_adapter_connection_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_get_adapter_connection_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_FailingClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         with pytest.raises(ConnectionError):
             await client.get_adapter("adapter:storage:local")
 
-    async def test_get_adapter_success_false(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_get_adapter_success_false(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_EmptyClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         result = await client.get_adapter("adapter:storage:local")
         assert result is None
@@ -535,7 +557,9 @@ class TestClientErrorPaths:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_ErrorPayloadClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         result = await client.get_adapter("adapter:storage:local")
         assert result is None
@@ -547,7 +571,9 @@ class TestClientErrorPaths:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_FallbackLookupClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         result = await client.get_adapter("invalid-id")
         assert result is not None
@@ -559,24 +585,34 @@ class TestClientErrorPaths:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_EmptyClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         assert await client.get_adapter("invalid-id") is None
 
-    async def test_check_health_unhealthy(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_check_health_unhealthy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_ErrorPayloadClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         result = await client.check_adapter_health("adapter:storage:local")
         assert result is False
 
-    async def test_check_health_connection_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_check_health_connection_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_FailingClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         result = await client.check_adapter_health("adapter:storage:local")
         assert result is False
@@ -587,7 +623,9 @@ class TestClientErrorPaths:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
         client._circuit_breaker.blocked_until["adapter:storage:local"] = datetime.now(
             UTC
         ) + timedelta(minutes=5)
@@ -600,7 +638,9 @@ class TestClientErrorPaths:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
         client._circuit_breaker.blocked_until["adapter:storage:local"] = datetime.now(
             UTC
         ) + timedelta(minutes=5)
@@ -613,15 +653,21 @@ class TestClientErrorPaths:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         assert await client.send_heartbeat("adapter:storage:local") is True
 
-    async def test_send_heartbeat_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_send_heartbeat_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_EmptyClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         assert await client.send_heartbeat("adapter:storage:local") is False
 
@@ -629,18 +675,24 @@ class TestClientErrorPaths:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         await client.list_adapters()
         assert len(client._cache) > 0
         await client.invalidate_cache()
         assert len(client._cache) == 0
 
-    async def test_health_check_exception(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_health_check_exception(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_FailingClient))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         result = await client.health_check()
         assert result["status"] == "unhealthy"
@@ -651,14 +703,18 @@ class TestClientErrorPaths:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         await client.list_adapters()
         assert client._connected is True
         await client.close()
         assert client._connected is False
 
-    async def test_list_adapters_with_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_list_adapters_with_cache(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
@@ -676,7 +732,9 @@ class TestClientErrorPaths:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         first = await client.list_adapters(use_cache=True)
         cache_key = client._make_cache_key(None, None, None, False)
@@ -689,29 +747,41 @@ class TestClientErrorPaths:
         second = await client.list_adapters(use_cache=True)
         assert len(first) == len(second) == 1
 
-    async def test_list_adapters_project_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_list_adapters_project_filter(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         results = await client.list_adapters(project="nonexistent")
         assert results == []
 
-    async def test_list_adapters_healthy_only(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_list_adapters_healthy_only(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         results = await client.list_adapters(healthy_only=True)
         assert len(results) == 1
 
-    async def test_resolve_adapter_not_found(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_resolve_adapter_not_found(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         import mahavishnu.core.oneiric_client as mod
 
         monkeypatch.setattr(mod, "get_mcp_client", _mock_get_mcp(_Client))
-        client = mod.MCPAdapterRegistryClient(mod.MCPAdapterRegistryConfig(enabled=True))
+        client = mod.MCPAdapterRegistryClient(
+            mod.MCPAdapterRegistryConfig(enabled=True)
+        )
 
         result = await client.resolve_adapter("adapter", "storage", "nonexistent")
         assert result is None
@@ -756,7 +826,11 @@ class TestPhase1EntryPointMigration:
 
         priorities = {
             md.provider: md.priority
-            for fn in (prefect_adapter_entries, agno_adapter_entries, worker_adapter_entries)
+            for fn in (
+                prefect_adapter_entries,
+                agno_adapter_entries,
+                worker_adapter_entries,
+            )
             for md in fn()
         }
         assert priorities == {"prefect": 90, "agno": 85, "worker": 75}

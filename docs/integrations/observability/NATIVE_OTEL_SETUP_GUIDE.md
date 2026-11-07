@@ -51,12 +51,10 @@ mahavishnu mcp start
 
 ```python
 # Via MCP client
-await mcp.call_tool("ingest_otel_traces", {
-    "log_files": [
-        "/path/to/claude/session_1.json",
-        "/path/to/qwen/session_1.json"
-    ]
-})
+await mcp.call_tool(
+    "ingest_otel_traces",
+    {"log_files": ["/path/to/claude/session_1.json", "/path/to/qwen/session_1.json"]},
+)
 
 # Response:
 # {
@@ -71,10 +69,10 @@ await mcp.call_tool("ingest_otel_traces", {
 
 ```python
 # Semantic search over your session logs
-results = await mcp.call_tool("search_otel_traces", {
-    "query": "Claude refused to answer about security",
-    "limit": 5
-})
+results = await mcp.call_tool(
+    "search_otel_traces",
+    {"query": "Claude refused to answer about security", "limit": 5},
+)
 
 # Returns most similar sessions with relevance scores
 ```
@@ -343,6 +341,7 @@ ______________________________________________________________________
 import asyncio
 from pathlib import Path
 
+
 async def ingest_claude_sessions():
     """Ingest Claude session logs into HotStore."""
     from mahavishnu.otel import OtelIngester
@@ -365,6 +364,7 @@ async def ingest_claude_sessions():
     # Get statistics
     stats = await ingester.get_statistics()
     print(f"Total traces in database: {stats['total_traces']}")
+
 
 asyncio.run(ingest_claude_sessions())
 ```
@@ -400,10 +400,11 @@ async def ingest_qwen_sessions():
     total_traces = 0
     for log_file in log_files:
         result = await ingester.ingest_log_file(log_file)
-        total_traces += result['traces_count']
+        total_traces += result["traces_count"]
         print(f"Ingested {log_file}: {result['traces_count']} traces")
 
     print(f"Total: {total_traces} Qwen traces ingested")
+
 
 asyncio.run(ingest_qwen_sessions())
 ```
@@ -446,6 +447,7 @@ async def search_traces():
         else:
             print("No results found")
 
+
 asyncio.run(search_traces())
 ```
 
@@ -487,11 +489,12 @@ async def retrieve_trace():
         print(f"Status: {trace['status']}")
         print(f"Duration: {trace['duration_ms']}ms")
         print(f"\nAttributes:")
-        for key, value in trace['attributes'].items():
+        for key, value in trace["attributes"].items():
             print(f"  {key}: {value}")
         print(f"\nSummary: {trace['summary']}")
     else:
         print(f"Trace not found: {trace_id}")
+
 
 asyncio.run(retrieve_trace())
 ```
@@ -519,12 +522,13 @@ async def batch_ingestion():
     total_traces = 0
     for log_file in log_files:
         result = await ingester.ingest_log_file(str(log_file))
-        total_traces += result['traces_count']
+        total_traces += result["traces_count"]
 
     # Force flush any remaining traces
     await ingester.flush()
 
     print(f"Batch ingestion complete: {total_traces} traces")
+
 
 asyncio.run(batch_ingestion())
 ```
@@ -535,6 +539,7 @@ asyncio.run(batch_ingestion())
 # Via MCP client
 from mcp import ClientSession
 
+
 async def mcp_example():
     """Use OTel tools via MCP."""
     async with ClientSession("localhost:3035") as session:
@@ -542,19 +547,25 @@ async def mcp_example():
         await session.initialize()
 
         # Ingest traces
-        result = await session.call_tool("ingest_otel_traces", {
-            "log_files": [
-                "/path/to/claude/session_1.json",
-                "/path/to/qwen/session_1.json",
-            ]
-        })
+        result = await session.call_tool(
+            "ingest_otel_traces",
+            {
+                "log_files": [
+                    "/path/to/claude/session_1.json",
+                    "/path/to/qwen/session_1.json",
+                ]
+            },
+        )
         print(f"Ingested {result['traces_ingested']} traces")
 
         # Search traces
-        results = await session.call_tool("search_otel_traces", {
-            "query": "authentication error",
-            "limit": 5,
-        })
+        results = await session.call_tool(
+            "search_otel_traces",
+            {
+                "query": "authentication error",
+                "limit": 5,
+            },
+        )
 
         for result in results:
             print(f"{result['trace_id']}: {result['summary'][:80]}...")
@@ -562,6 +573,7 @@ async def mcp_example():
         # Get statistics
         stats = await session.call_tool("get_otel_statistics", {})
         print(f"Total traces: {stats['total_traces']}")
+
 
 asyncio.run(mcp_example())
 ```
@@ -594,10 +606,13 @@ Ingest OTel trace log files into HotStore.
 **Example:**
 
 ```python
-await mcp.call_tool("ingest_otel_traces", {
-    "log_files": ["/path/to/session.json"],
-    "batch_size": 200,
-})
+await mcp.call_tool(
+    "ingest_otel_traces",
+    {
+        "log_files": ["/path/to/session.json"],
+        "batch_size": 200,
+    },
+)
 ```
 
 ### `search_otel_traces`
@@ -628,11 +643,14 @@ Semantic search over ingested traces.
 **Example:**
 
 ```python
-results = await mcp.call_tool("search_otel_traces", {
-    "query": "authentication failure",
-    "limit": 5,
-    "threshold": 0.80,
-})
+results = await mcp.call_tool(
+    "search_otel_traces",
+    {
+        "query": "authentication failure",
+        "limit": 5,
+        "threshold": 0.80,
+    },
+)
 ```
 
 ### `get_trace_by_id`
@@ -663,9 +681,12 @@ Retrieve a specific trace by ID.
 **Example:**
 
 ```python
-trace = await mcp.call_tool("get_trace_by_id", {
-    "trace_id": "trace-abc123",
-})
+trace = await mcp.call_tool(
+    "get_trace_by_id",
+    {
+        "trace_id": "trace-abc123",
+    },
+)
 ```
 
 ### `get_otel_statistics`

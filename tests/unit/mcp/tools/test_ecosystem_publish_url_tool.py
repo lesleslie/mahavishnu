@@ -6,6 +6,7 @@ tests pin the contract: path-match against ``settings/ecosystem.yaml``,
 return the registered ``publish.url`` or ``None``, soft-fail on every
 error mode.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -132,7 +133,9 @@ class TestLoadPublishUrl:
         # the local cwd says; if mdinject doesn't exist locally the
         # test isn't valid. So compare against the yaml's stored path
         # instead.
-        assert actual == "https://gitlab.com/api/v4/projects/77841268/packages/pypi/upload"
+        assert (
+            actual == "https://gitlab.com/api/v4/projects/77841268/packages/pypi/upload"
+        )
 
     def test_returns_none_for_unmatched_repo(
         self,
@@ -244,9 +247,9 @@ class TestRegister:
         # must be registered (matches the existing ``mahavishnu_<verb>_<noun>``
         # convention used by sibling tools like
         # ``mahavishnu_upsert_service``).
-        assert any(
-            t.name == "mahavishnu_get_publish_url" for t in tool_names
-        ), f"Expected mahavishnu_get_publish_url; got {[t.name for t in tool_names]}"
+        assert any(t.name == "mahavishnu_get_publish_url" for t in tool_names), (
+            f"Expected mahavishnu_get_publish_url; got {[t.name for t in tool_names]}"
+        )
 
     def test_register_is_idempotent(self, ecosystem_env: None) -> None:
         """Re-registering doesn't crash. FastMCP's decorator contract

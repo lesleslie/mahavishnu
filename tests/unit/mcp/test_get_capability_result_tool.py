@@ -12,7 +12,9 @@ from fastmcp import FastMCP
 import pytest
 
 from mahavishnu.core.capabilities import EnvelopeId, TraceId
-from mahavishnu.mcp.tools.get_capability_result_tool import register_get_capability_result
+from mahavishnu.mcp.tools.get_capability_result_tool import (
+    register_get_capability_result,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -60,7 +62,9 @@ async def test_get_capability_result_returns_dict_with_envelopes() -> None:
     assert result["status"] == "completed"
     assert result["error"] is None
     assert result["envelopes"] == [_envelope_key(envelope_id)]
-    mcp.call_tool.assert_awaited_once_with("list_keys", {"prefix": f"envelopes/{trace_id}/"})
+    mcp.call_tool.assert_awaited_once_with(
+        "list_keys", {"prefix": f"envelopes/{trace_id}/"}
+    )
 
 
 async def test_get_capability_result_returns_pending_when_no_envelopes() -> None:

@@ -70,16 +70,24 @@ class MahavishnuCLI(OneiricCLIBase):
             # bare environments.
             reports = evaluate_all_capabilities(settings=None)
             total = len(reports)
-            ready = sum(1 for r in reports.values() if r.state is WorkerCapabilityState.READY)
+            ready = sum(
+                1 for r in reports.values() if r.state is WorkerCapabilityState.READY
+            )
             available = sum(
-                1 for r in reports.values() if r.state is WorkerCapabilityState.AVAILABLE
+                1
+                for r in reports.values()
+                if r.state is WorkerCapabilityState.AVAILABLE
             )
             unknown = sum(
-                1 for r in reports.values() if r.state is WorkerCapabilityState.REGISTERED
+                1
+                for r in reports.values()
+                if r.state is WorkerCapabilityState.REGISTERED
             )
             checks["workers"] = {
                 "status": "healthy" if (ready + available) > 0 else "degraded",
-                "detail": (f"total={total} ready={ready} available={available} unknown={unknown}"),
+                "detail": (
+                    f"total={total} ready={ready} available={available} unknown={unknown}"
+                ),
                 "total": total,
                 "ready": ready,
                 "available": available,

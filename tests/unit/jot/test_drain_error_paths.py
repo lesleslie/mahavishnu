@@ -23,6 +23,7 @@ the re-review header of `docs/plans/2026-09-10-jot-drain.md`:
 - _semantic_score degraded paths (1000-1012)
 - surface_relevant log-unreadable path (1080-1090)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -132,10 +133,14 @@ def test_validate_ctx_unknown_op_raises_jot_validation_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mcp_trigger_workflow_wraps_substrate_exception_as_jot_dispatch_error() -> None:
+async def test_mcp_trigger_workflow_wraps_substrate_exception_as_jot_dispatch_error() -> (
+    None
+):
     """Lines 392-406: trigger_workflow raising → JotDispatchError with cause."""
     fake_trigger = AsyncMock(side_effect=RuntimeError("substrate blew up"))
-    with patch("mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True):
+    with patch(
+        "mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True
+    ):
         with pytest.raises(JotDispatchError) as exc_info:
             await _mcp_trigger_workflow("prefect", "jot_dispatch", {"prompt": "x"})
     assert "RuntimeError" in str(exc_info.value)
@@ -149,10 +154,14 @@ async def test_mcp_trigger_workflow_wraps_substrate_exception_as_jot_dispatch_er
 
 
 @pytest.mark.asyncio
-async def test_mcp_get_workflow_status_wraps_substrate_exception_as_jot_dispatch_error() -> None:
+async def test_mcp_get_workflow_status_wraps_substrate_exception_as_jot_dispatch_error() -> (
+    None
+):
     """Lines 411-420: get_workflow_status raising → JotDispatchError with cause."""
     fake_status = AsyncMock(side_effect=RuntimeError("status blew up"))
-    with patch("mahavishnu.mcp.server_core.get_workflow_status", fake_status, create=True):
+    with patch(
+        "mahavishnu.mcp.server_core.get_workflow_status", fake_status, create=True
+    ):
         with pytest.raises(JotDispatchError) as exc_info:
             await _mcp_get_workflow_status("wf-123")
     assert "RuntimeError" in str(exc_info.value)
@@ -192,7 +201,10 @@ async def test_auto_retry_after_state_no_longer_failed_returns(
         _ev(op="capture", text="x", ms=0),
         # dispatch event but current_attempt high; on refold state != FAILED
         _ev(
-            op="dispatch", text="x", ms=10, workflow_id="wf-1",
+            op="dispatch",
+            text="x",
+            ms=10,
+            workflow_id="wf-1",
             current_attempt=1,
         ),
     )
@@ -213,7 +225,10 @@ async def test_auto_retry_after_budget_exhausted_returns(
         isolated_log,
         _ev(op="capture", text="x", ms=0),
         _ev(
-            op="dispatch_failed", text="x", ms=10, workflow_id="wf-1",
+            op="dispatch_failed",
+            text="x",
+            ms=10,
+            workflow_id="wf-1",
             current_attempt=MAX_AUTO_ATTEMPTS,  # already at budget cap
         ),
     )
@@ -246,12 +261,20 @@ async def test_auto_retry_after_log_write_failed_on_budget_exhausted(
         current_attempt=1,
     )
     fake_states = type("R", (), {"states": [synthetic]})()
-    monkeypatch.setattr("mahavishnu.jot.handle.resolve_handle", lambda *a, **kw: synthetic)
-    monkeypatch.setattr("mahavishnu.jot.fold.build_states", lambda *a, **kw: fake_states)
-    fake_trigger = AsyncMock(side_effect=JotDispatchError("substrate down", error_id="E1"))
+    monkeypatch.setattr(
+        "mahavishnu.jot.handle.resolve_handle", lambda *a, **kw: synthetic
+    )
+    monkeypatch.setattr(
+        "mahavishnu.jot.fold.build_states", lambda *a, **kw: fake_states
+    )
+    fake_trigger = AsyncMock(
+        side_effect=JotDispatchError("substrate down", error_id="E1")
+    )
     failing_append = AsyncMock(side_effect=JotLogUnwritableError("disk full"))
     monkeypatch.setattr("mahavishnu.jot.drain._append_event", failing_append)
-    with patch("mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True):
+    with patch(
+        "mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True
+    ):
         # Should not raise.
         await _auto_retry_after("e1", backoff_s=0)
     failing_append.assert_called()
@@ -277,12 +300,22 @@ async def test_auto_retry_after_event_append_failed_logs_and_returns(
         current_attempt=1,
     )
     fake_states = type("R", (), {"states": [synthetic]})()
-    monkeypatch.setattr("mahavishnu.jot.handle.resolve_handle", lambda *a, **kw: synthetic)
-    monkeypatch.setattr("mahavishnu.jot.fold.build_states", lambda *a, **kw: fake_states)
-    fake_trigger = AsyncMock(return_value={"workflow_id": "wf-new", "status": "PENDING"})
-    failing_append = AsyncMock(side_effect=JotLogUnwritableError("append failed mid-flow"))
+    monkeypatch.setattr(
+        "mahavishnu.jot.handle.resolve_handle", lambda *a, **kw: synthetic
+    )
+    monkeypatch.setattr(
+        "mahavishnu.jot.fold.build_states", lambda *a, **kw: fake_states
+    )
+    fake_trigger = AsyncMock(
+        return_value={"workflow_id": "wf-new", "status": "PENDING"}
+    )
+    failing_append = AsyncMock(
+        side_effect=JotLogUnwritableError("append failed mid-flow")
+    )
     monkeypatch.setattr("mahavishnu.jot.drain._append_event", failing_append)
-    with patch("mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True):
+    with patch(
+        "mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True
+    ):
         # Must not raise.
         await _auto_retry_after("e1", backoff_s=0)
     fake_trigger.assert_called()
@@ -308,7 +341,9 @@ def _seed_in_flight(
         isolated_log,
         _ev(op="capture", text="hello world", ms=0),
         _ev(
-            op="dispatch", text="hello world", ms=10,
+            op="dispatch",
+            text="hello world",
+            ms=10,
             workflow_id=workflow_id,
             current_attempt=current_attempt,
         ),
@@ -363,9 +398,13 @@ async def test_reconcile_status_fetch_raises_logs_and_returns(
     import time as _time
 
     now_ms = int(_time.time() * 1000)
-    jot = _make_summary(dispatch_started_at_ms=now_ms - 1000)  # 1s ago, well under timeout
+    jot = _make_summary(
+        dispatch_started_at_ms=now_ms - 1000
+    )  # 1s ago, well under timeout
     fake_status = AsyncMock(side_effect=RuntimeError("substrate error"))
-    with patch("mahavishnu.mcp.server_core.get_workflow_status", fake_status, create=True):
+    with patch(
+        "mahavishnu.mcp.server_core.get_workflow_status", fake_status, create=True
+    ):
         # Must not raise.
         await _reconcile_if_in_flight(jot)
     fake_status.assert_called()
@@ -504,7 +543,10 @@ async def test_dispatch_jot_already_in_flight_raises(isolated_log: Path) -> None
         isolated_log,
         _ev(op="capture", text="x", ms=0),
         _ev(
-            op="dispatch", text="x", ms=10, workflow_id="wf-1",
+            op="dispatch",
+            text="x",
+            ms=10,
+            workflow_id="wf-1",
             current_attempt=1,
         ),
     )
@@ -519,11 +561,17 @@ async def test_dispatch_jot_already_succeeded_raises(isolated_log: Path) -> None
         isolated_log,
         _ev(op="capture", text="x", ms=0),
         _ev(
-            op="dispatch", text="x", ms=10, workflow_id="wf-1",
+            op="dispatch",
+            text="x",
+            ms=10,
+            workflow_id="wf-1",
             current_attempt=1,
         ),
         _ev(
-            op="dispatch_done", text="x", ms=20, workflow_id="wf-1",
+            op="dispatch_done",
+            text="x",
+            ms=20,
+            workflow_id="wf-1",
         ),
     )
     with pytest.raises(JotDispatchError, match="already SUCCEEDED"):
@@ -556,7 +604,10 @@ async def test_retry_dispatch_non_failed_state_raises_jot_retry_error(
         isolated_log,
         _ev(op="capture", text="x", ms=0),
         _ev(
-            op="dispatch", text="x", ms=10, workflow_id="wf-1",
+            op="dispatch",
+            text="x",
+            ms=10,
+            workflow_id="wf-1",
             current_attempt=1,
         ),
     )
@@ -575,9 +626,7 @@ async def test_defer_jot_records_reason_in_context(
 ) -> None:
     """Lines 915-917: defer with reason → ctx['reason'] populated."""
     # Make until_ms far enough in the future to satisfy the gate.
-    monkeypatch.setattr(
-        "mahavishnu.jot.drain._now_ms", lambda: 0
-    )
+    monkeypatch.setattr("mahavishnu.jot.drain._now_ms", lambda: 0)
     _write(
         isolated_log,
         _ev(op="capture", text="x", ms=0),

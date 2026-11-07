@@ -14,6 +14,7 @@ crow_enabled + Bodai-component HTTP MCP server) — see ``adapters/crow.py`` and
 routing paths and the operator guidance surfaced when neither is
 available.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

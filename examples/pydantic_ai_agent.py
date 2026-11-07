@@ -367,7 +367,9 @@ async def main() -> None:
     await _run_with_timeout(basic_sweep(agent), name="basic_sweep", timeout_s=10.0)
     await _run_with_timeout(task_routing(agent), name="task_routing", timeout_s=10.0)
     await _run_with_timeout(pool_status(agent), name="pool_status", timeout_s=10.0)
-    await _run_with_timeout(pydantic_ai_example(agent), name="pydantic_ai_example", timeout_s=15.0)
+    await _run_with_timeout(
+        pydantic_ai_example(agent), name="pydantic_ai_example", timeout_s=15.0
+    )
 
     logger.info("-" * 55)
     logger.info("All examples complete.")

@@ -219,11 +219,19 @@ async def _fetch_traces_from_akosha(limit: int) -> list[dict[str, Any]]:
         try:
             text_payload = result.content[0].text
             traces = _json.loads(text_payload)
-        except (AttributeError, IndexError, KeyError, TypeError, _json.JSONDecodeError) as exc:
+        except (
+            AttributeError,
+            IndexError,
+            KeyError,
+            TypeError,
+            _json.JSONDecodeError,
+        ) as exc:
             raise MCPFetchError(f"Akosha MCP payload malformed: {exc}") from exc
 
     if not isinstance(traces, list):
-        raise MCPFetchError(f"Akosha MCP returned non-list payload (type={type(traces).__name__})")
+        raise MCPFetchError(
+            f"Akosha MCP returned non-list payload (type={type(traces).__name__})"
+        )
     return traces
 
 

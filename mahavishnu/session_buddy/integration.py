@@ -164,7 +164,9 @@ class SessionBuddyIntegration:
             self.logger.error(f"Error getting related code: {e}")
             return {"status": "error", "error": str(e)}
 
-    async def get_function_context(self, repo_path: str, function_name: str) -> dict[str, Any]:
+    async def get_function_context(
+        self, repo_path: str, function_name: str
+    ) -> dict[str, Any]:
         """Get context for a specific function using code graph."""
         try:
             # Analyze the repository if not already analyzed
@@ -174,7 +176,11 @@ class SessionBuddyIntegration:
             # Get function context using the code graph analyzer
             context = await analyzer.get_function_context(function_name)
 
-            return {"status": "success", "function_name": function_name, "context": context}
+            return {
+                "status": "success",
+                "function_name": function_name,
+                "context": context,
+            }
         except Exception as e:  # Integration helper — wraps the function-context lookup and surfaces failures as a status payload  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             self.logger.error(f"Error getting function context: {e}")
             return {"status": "error", "error": str(e)}
@@ -191,13 +197,17 @@ class SessionBuddyIntegration:
 
             for node_id, node in analyzer.nodes.items():
                 if hasattr(node, "name") and hasattr(node, "file_id"):
-                    docstring = self._extract_docstring_from_file(node.file_id, node.name)
+                    docstring = self._extract_docstring_from_file(
+                        node.file_id, node.name
+                    )
                     if docstring:
                         documentation.append(
                             {
                                 "name": node.name,
                                 "file": node.file_id,
-                                "type": "function" if hasattr(node, "calls") else "class",
+                                "type": "function"
+                                if hasattr(node, "calls")
+                                else "class",
                                 "docstring": docstring,
                                 "node_id": node_id,
                             }
@@ -213,7 +223,9 @@ class SessionBuddyIntegration:
             self.logger.error(f"Error indexing documentation: {e}")
             return {"status": "error", "error": str(e)}
 
-    def _extract_docstring_from_file(self, file_path: str, function_name: str) -> str | None:
+    def _extract_docstring_from_file(
+        self, file_path: str, function_name: str
+    ) -> str | None:
         """Extract docstring from a specific function in a file."""
         try:
             with open(file_path, encoding="utf-8") as f:
@@ -280,7 +292,9 @@ class SessionBuddyIntegration:
 
             # In a real implementation, this would send the message via MCP
             # For now, we'll just log that the message would be sent
-            self.logger.info(f"Project message from {from_project} to {to_project}: {subject}")
+            self.logger.info(
+                f"Project message from {from_project} to {to_project}: {subject}"
+            )
 
             return {
                 "status": "success",
@@ -311,7 +325,9 @@ class SessionBuddyManager:
         self.app = app
         self.integration = SessionBuddyIntegration(app)
 
-    async def process_repository_for_session_buddy(self, repo_path: str) -> dict[str, Any]:
+    async def process_repository_for_session_buddy(
+        self, repo_path: str
+    ) -> dict[str, Any]:
         """Process a repository for Session Buddy integration."""
         # Integrate code graph
         code_graph_result = await self.integration.integrate_code_graph(repo_path)
@@ -351,9 +367,15 @@ class SessionBuddyManager:
 
             # Search documentation if query is provided
             if "query" in query_elements:
-                doc_search = await self.integration.search_documentation(query_elements["query"])
+                doc_search = await self.integration.search_documentation(
+                    query_elements["query"]
+                )
                 results["documentation_search"] = doc_search
 
-            return {"status": "success", "enhanced_context": results, "repo_path": repo_path}
+            return {
+                "status": "success",
+                "enhanced_context": results,
+                "repo_path": repo_path,
+            }
         except Exception as e:  # Integration helper — wraps the enhanced-context aggregator and surfaces failures as a status payload  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             return {"status": "error", "error": str(e)}

@@ -48,6 +48,7 @@ def _hermetic_routing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     yield
     _reset_routing_cache()
 
+
 #: A models.yaml whose only configured model is the flash model — the
 #: stable "MiniMax-M3" is deliberately absent so the drift check fires.
 _CONFIG_WITHOUT_STABLE_MODEL = """
@@ -114,7 +115,9 @@ class TestResolveModelId:
     def test_shipped_config_does_not_warn(self, caplog):
         """The repository's own models.yaml configures the resolved ids."""
         with caplog.at_level(logging.WARNING):
-            resolve_model_id(TaskCategory.CODE_GENERATION, config_path=MODELS_CONFIG_PATH)
+            resolve_model_id(
+                TaskCategory.CODE_GENERATION, config_path=MODELS_CONFIG_PATH
+            )
         assert caplog.records == []
 
     def test_configured_ids_come_from_every_provider(self, tmp_path, caplog):
@@ -184,7 +187,10 @@ class TestResolveModelId:
 
         assert model == "MiniMax-M3"
         assert len(caplog.records) == 1
-        assert "is not present in the routing configured in" in caplog.records[0].getMessage()
+        assert (
+            "is not present in the routing configured in"
+            in caplog.records[0].getMessage()
+        )
 
 
 class TestRoutingTableCoverage:

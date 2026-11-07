@@ -348,7 +348,11 @@ class TaskRouter:
 
         scores = default_scores.get(
             task_type,
-            {AdapterType.PREFECT: 0.7, AdapterType.AGNO: 0.6, AdapterType.LLAMAINDEX: 0.5},
+            {
+                AdapterType.PREFECT: 0.7,
+                AdapterType.AGNO: 0.6,
+                AdapterType.LLAMAINDEX: 0.5,
+            },
         )
 
         # Apply context-based adjustments

@@ -99,8 +99,12 @@ def test_plist_agrees_with_the_pinned_constant() -> None:
 
 def test_launcher_capability_is_detected(tmp_path: Path) -> None:
     """A launcher that understands the flag is recognised."""
-    assert gateway.launcher_supports_transport_version(_launcher(tmp_path, supports_flag=True))
-    assert not gateway.launcher_supports_transport_version(_launcher(tmp_path, supports_flag=False))
+    assert gateway.launcher_supports_transport_version(
+        _launcher(tmp_path, supports_flag=True)
+    )
+    assert not gateway.launcher_supports_transport_version(
+        _launcher(tmp_path, supports_flag=False)
+    )
 
 
 def test_launcher_that_merely_mentions_the_flag_is_not_trusted(tmp_path: Path) -> None:
@@ -125,7 +129,9 @@ def test_missing_launcher_reports_no_support(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _captured_command(monkeypatch: pytest.MonkeyPatch, launcher: Path | None) -> list[str]:
+def _captured_command(
+    monkeypatch: pytest.MonkeyPatch, launcher: Path | None
+) -> list[str]:
     """Run ``launch_bifrost`` with ``Popen`` stubbed out and return the argv."""
     captured: list[str] = []
 

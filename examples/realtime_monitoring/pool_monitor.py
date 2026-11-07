@@ -136,7 +136,9 @@ class PoolMonitor:
 
     def _render_status(self) -> Panel:
         """Render pool status panel."""
-        table = Table(title="Pool Status", show_header=True, header_style="bold magenta")
+        table = Table(
+            title="Pool Status", show_header=True, header_style="bold magenta"
+        )
         table.add_column("Metric", style="cyan")
         table.add_column("Value", style="green")
 
@@ -171,7 +173,9 @@ class PoolMonitor:
             elif status == "offline":
                 status_color = "grey"
 
-            table.add_row(worker_id, f"[{status_color}]{status}[/{status_color}]", pool_id)
+            table.add_row(
+                worker_id, f"[{status_color}]{status}[/{status_color}]", pool_id
+            )
 
         if not self.workers:
             table.add_row("[dim]No workers[/dim]", "", "")
@@ -215,7 +219,9 @@ class PoolMonitor:
             elif "status" in event_type.lower():
                 type_color = "yellow"
 
-            table.add_row(time_str, f"[{type_color}]{event_type}[/{type_color}]", details)
+            table.add_row(
+                time_str, f"[{type_color}]{event_type}[/{type_color}]", details
+            )
 
         if not self.recent_events:
             table.add_row("[dim]--[/dim]", "[dim]No events yet[/dim]", "")

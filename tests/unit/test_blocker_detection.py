@@ -120,7 +120,9 @@ class TestBlockerDetector:
 
             # Some tasks have resolution times
             if i < 3:
-                task["blocked_resolved_at"] = (blocked_at + timedelta(hours=4 + i)).isoformat()
+                task["blocked_resolved_at"] = (
+                    blocked_at + timedelta(hours=4 + i)
+                ).isoformat()
 
             tasks.append(task)
 
@@ -171,7 +173,9 @@ class TestBlockerDetector:
         assert detector._categorize_keyword("stuck") == "technical"
         assert detector._categorize_keyword("unknown_keyword") == "unknown"
 
-    def test_calculate_metrics(self, detector: BlockerDetector, sample_tasks: list[dict]) -> None:
+    def test_calculate_metrics(
+        self, detector: BlockerDetector, sample_tasks: list[dict]
+    ) -> None:
         """Test metrics calculation."""
         blocked_tasks = [t for t in sample_tasks if t.get("status") == "blocked"]
         patterns, _ = detector.analyze_blockers(sample_tasks)
@@ -189,7 +193,9 @@ class TestBlockerDetector:
         suggestions = detector._get_suggestions("stuck")
         assert len(suggestions) > 0
 
-    def test_generate_alerts(self, detector: BlockerDetector, sample_tasks: list[dict]) -> None:
+    def test_generate_alerts(
+        self, detector: BlockerDetector, sample_tasks: list[dict]
+    ) -> None:
         """Test alert generation."""
         detector.analyze_blockers(sample_tasks)
         alerts = detector.get_alerts()
@@ -273,7 +279,9 @@ class TestBlockerPatterns:
         assert detector._determine_severity("blocked", 3, 72.0) == PatternSeverity.HIGH
 
         # Medium severity
-        assert detector._determine_severity("blocked", 7, None) == PatternSeverity.MEDIUM
+        assert (
+            detector._determine_severity("blocked", 7, None) == PatternSeverity.MEDIUM
+        )
 
         # Low severity
         assert detector._determine_severity("blocked", 2, None) == PatternSeverity.LOW

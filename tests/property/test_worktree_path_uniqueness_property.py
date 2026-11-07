@@ -27,7 +27,9 @@ async def test_for_distinct_task_ids_paths_are_distinct(task_ids: list) -> None:
         for task_id in task_ids:
             # Stub out the actual git subprocess call — we only care that the
             # worktree_id is unique per task_id.
-            with patch.object(mgr, "_get_worktree_path", return_value=Path("/tmp/dummy")):
+            with patch.object(
+                mgr, "_get_worktree_path", return_value=Path("/tmp/dummy")
+            ):
                 with patch(
                     "mahavishnu.core.worktree_manager.subprocess.run",
                 ):

@@ -46,7 +46,9 @@ def test_no_top_level_from_fastmcp_imports_in_production() -> None:
             # for the bare ``from fastmcp import`` / ``from fastmcp.server``
             # forms. Lazy function-local imports are tested separately
             # via the import-time smoke test below.
-            if line.startswith("from fastmcp import") or line.startswith("from fastmcp.server"):
+            if line.startswith("from fastmcp import") or line.startswith(
+                "from fastmcp.server"
+            ):
                 offenders.append(f"{path.relative_to(PROD_ROOT.parent)}:{line}")
     assert not offenders, (
         "Found production imports of upstream fastmcp; "

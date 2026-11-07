@@ -412,7 +412,9 @@ async def test_update_task_status_explicit_timestamps_preserved() -> None:
     conn = AsyncMock()
     explicit_start = datetime(2025, 6, 1, tzinfo=UTC)
     explicit_end = datetime(2025, 6, 2, tzinfo=UTC)
-    conn.fetchrow.return_value = _make_row(status="in_progress", started_at=explicit_start)
+    conn.fetchrow.return_value = _make_row(
+        status="in_progress", started_at=explicit_start
+    )
     _patch_repo(repo, conn)
 
     await repo.update_task_status(

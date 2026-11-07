@@ -39,7 +39,9 @@ def test_metric_to_prometheus_with_and_without_labels() -> None:
 
 def test_health_check_result_to_dict_and_healthy_property() -> None:
     ok = HealthCheckResult(component="db", status=HealthStatus.HEALTHY, message="ok")
-    bad = HealthCheckResult(component="db", status=HealthStatus.UNHEALTHY, message="bad")
+    bad = HealthCheckResult(
+        component="db", status=HealthStatus.UNHEALTHY, message="bad"
+    )
     assert ok.healthy is True
     assert bad.healthy is False
     payload = ok.to_dict()
@@ -55,7 +57,9 @@ def test_metrics_exporter_end_to_end() -> None:
     exporter.set_gauge("queue_depth", 4.0)
     exporter.observe_histogram("latency_ms", 10.0)
     exporter.observe_histogram("latency_ms", 20.0)
-    exporter.register(Metric(name="custom_metric", value=1.0, metric_type=MetricType.GAUGE))
+    exporter.register(
+        Metric(name="custom_metric", value=1.0, metric_type=MetricType.GAUGE)
+    )
 
     assert exporter.get_value("runs_total") == 3.0
     assert exporter.get_value("queue_depth") == 4.0

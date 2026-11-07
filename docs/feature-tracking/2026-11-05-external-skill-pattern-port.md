@@ -102,7 +102,7 @@ for cross-session retrieval by calling the Session-Buddy MCP tool
 from the fields above):
 
 ```python
-mcp__session-buddy__store_reflection(
+mcp__session - buddy__store_reflection(
     content=(
         "Feature external-skill-pattern-port: state=wired, "
         "built=yes, wired=yes, "

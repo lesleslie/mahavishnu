@@ -38,7 +38,9 @@ class CrossProjectAuth:
             Hexadecimal HMAC-SHA256 signature
         """
         message_str = json.dumps(message, sort_keys=True)
-        hmac_obj = hmac.new(self.shared_secret.encode(), message_str.encode(), hashlib.sha256)
+        hmac_obj = hmac.new(
+            self.shared_secret.encode(), message_str.encode(), hashlib.sha256
+        )
         return hmac_obj.hexdigest()
 
     def verify_message(self, message: dict[str, Any], signature: str) -> bool:
@@ -118,7 +120,11 @@ class MessageAuthenticator:
         signature = self.authenticator.sign_message(message_payload)
 
         # Return the authenticated message
-        return {"message": message_payload, "signature": signature, "algorithm": "HMAC-SHA256"}
+        return {
+            "message": message_payload,
+            "signature": signature,
+            "algorithm": "HMAC-SHA256",
+        }
 
     def verify_authenticated_message(
         self, authenticated_message: dict[str, Any]
@@ -147,7 +153,9 @@ class MessageAuthenticator:
 
             if is_valid:
                 # Check if message is too old (replay attack prevention)
-                timestamp_str = message_payload.get("timestamp") if message_payload else None
+                timestamp_str = (
+                    message_payload.get("timestamp") if message_payload else None
+                )
                 if timestamp_str:
                     try:
                         timestamp = datetime.fromisoformat(timestamp_str)
@@ -214,7 +222,9 @@ class AuthenticatedSessionBuddyClient:
 
             # In a real implementation, this would send the message via HTTP API or MCP
             # For now, we'll simulate the sending process
-            self.logger.info(f"Sending authenticated message from {from_project} to {to_project}")
+            self.logger.info(
+                f"Sending authenticated message from {from_project} to {to_project}"
+            )
 
             # Simulate sending the message
             # In a real implementation, this would be an actual API call
@@ -261,7 +271,10 @@ class AuthenticatedSessionBuddyClient:
             else:
                 self.logger.warning("Received invalid authenticated message")
 
-                return {"status": "invalid", "error": "Message signature verification failed"}
+                return {
+                    "status": "invalid",
+                    "error": "Message signature verification failed",
+                }
         except (AttributeError, TypeError, ValueError, KeyError, RuntimeError) as e:
             self.logger.error(f"Error receiving authenticated message: {e}")
             return {"status": "error", "error": str(e)}
@@ -301,7 +314,9 @@ async def test_cross_project_authentication() -> None:
 
     # Create a mock config with auth secret
     config = MahavishnuSettings()
-    config.cross_project_auth_secret = "very_secure_shared_secret_that_is_at_least_32_chars_long"
+    config.cross_project_auth_secret = (
+        "very_secure_shared_secret_that_is_at_least_32_chars_long"
+    )
 
     # Initialize authenticator
     authenticator = MessageAuthenticator(config)

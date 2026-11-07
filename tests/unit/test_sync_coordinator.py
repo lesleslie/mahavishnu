@@ -379,7 +379,9 @@ class TestSyncCoordinator:
         """Get all pending sync items."""
         coordinator = SyncCoordinator(mock_task_store, mock_external_importer)
 
-        for i, status in enumerate([SyncStatus.PENDING, SyncStatus.APPROVED, SyncStatus.PENDING]):
+        for i, status in enumerate(
+            [SyncStatus.PENDING, SyncStatus.APPROVED, SyncStatus.PENDING]
+        ):
             item = SyncItem(
                 external_id=str(i),
                 title=f"Item {i}",
@@ -441,8 +443,12 @@ class TestSyncCoordinator:
         coordinator = SyncCoordinator(mock_task_store, mock_external_importer)
 
         items = [
-            SyncItem("1", "Bug fix", "github", "repo", SyncStatus.PENDING, labels=["bug"]),
-            SyncItem("2", "Feature", "github", "repo", SyncStatus.PENDING, labels=["feature"]),
+            SyncItem(
+                "1", "Bug fix", "github", "repo", SyncStatus.PENDING, labels=["bug"]
+            ),
+            SyncItem(
+                "2", "Feature", "github", "repo", SyncStatus.PENDING, labels=["feature"]
+            ),
             SyncItem(
                 "3",
                 "Critical bug",
@@ -471,7 +477,9 @@ class TestSyncCoordinator:
         mock_external_importer: MagicMock,
     ) -> None:
         """Sync handles errors gracefully."""
-        mock_external_importer.import_issue = AsyncMock(side_effect=Exception("Import failed"))
+        mock_external_importer.import_issue = AsyncMock(
+            side_effect=Exception("Import failed")
+        )
 
         coordinator = SyncCoordinator(mock_task_store, mock_external_importer)
 

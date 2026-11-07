@@ -5,11 +5,14 @@ not behavioral tests against the slash-command runner. The runner
 surface for both /jot vitals and /jot drain is the file's automatic
 `Run` block, which is shared with the existing /jot vitals command.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
-COMMANDS_FILE = Path(__file__).resolve().parents[3] / "mahavishnu" / "commands" / "jot.md"
+COMMANDS_FILE = (
+    Path(__file__).resolve().parents[3] / "mahavishnu" / "commands" / "jot.md"
+)
 
 
 def test_jot_md_exists() -> None:
@@ -35,7 +38,7 @@ def test_jot_drain_frontmatter_shape() -> None:
     block_start = content.rfind("---", 0, start)
     block_end = content.find("---", block_start + 3)
     assert block_start != -1 and block_end != -1
-    frontmatter = content[block_start:block_end + 3]
+    frontmatter = content[block_start : block_end + 3]
     assert "description:" in frontmatter
     assert "allowed-tools:" in frontmatter
     # Must reference the drain flags the parent spec mandates.

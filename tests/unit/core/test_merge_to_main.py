@@ -1,6 +1,7 @@
 """Tests for mahavishnu.core.merge_to_main — orchestration of the trunk-based
 agent-review workflow (REQ-004, REQ-013, REQ-014).
 """
+
 from __future__ import annotations
 
 
@@ -44,7 +45,11 @@ def test_review_state_round_trip(tmp_path: Path) -> None:
         "current_stage": "stage_3_gate",
         "stage_failed": None,
         "reviewers_invoked": [
-            {"agent": "python-pro", "verdict": "pass", "timestamp": "2026-10-03T15:32:11Z"}
+            {
+                "agent": "python-pro",
+                "verdict": "pass",
+                "timestamp": "2026-10-03T15:32:11Z",
+            }
         ],
         "audit_log_path": None,
         "session_buddy_reflection_id": None,
@@ -102,12 +107,7 @@ def test_parse_verdict_missing_block_returns_block() -> None:
 
 def test_parse_verdict_invalid_decision_returns_block() -> None:
     """<verdict> block with unknown decision value returns block (fail-loud)."""
-    response = (
-        "<verdict>\n"
-        "  decision: maybe\n"
-        "  note: not sure\n"
-        "</verdict>\n"
-    )
+    response = "<verdict>\n  decision: maybe\n  note: not sure\n</verdict>\n"
     result = parse_verdict(response)
     assert result["decision"] == "block"
     assert "malformed" in result["note"].lower()
@@ -126,7 +126,9 @@ def test_parse_verdict_needs_adjustment() -> None:
     }
 
 
-def test_run_review_three_agents_in_dispatch_order(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_review_three_agents_in_dispatch_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """run_review dispatches to domain + code-quality + random generalist in order.
 
     Each agent's response is parsed via parse_verdict. The generalist is
@@ -135,7 +137,9 @@ def test_run_review_three_agents_in_dispatch_order(monkeypatch: pytest.MonkeyPat
     """
     domain = "python-pro"
     pool = ["performance-review-specialist", "test-coverage-review-specialist"]
-    monkeypatch.setattr("mahavishnu.core.merge_to_main.random.choice", lambda _: pool[1])
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.random.choice", lambda _: pool[1]
+    )
 
     canned = {
         domain: "<verdict>decision: pass note: looks good</verdict>",
@@ -239,9 +243,7 @@ def test_run_crackerjack_gate_invokes_run_v_with_fast_flag(
         captured["kwargs"] = kwargs
         return _Result()
 
-    monkeypatch.setattr(
-        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
-    )
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.subprocess.run", fake_run)
 
     rc, stderr = run_crackerjack_gate(tmp_path)
 
@@ -261,6 +263,7 @@ def test_run_crackerjack_gate_propagates_returncode_and_stderr(
     re-interpret them. The merge-gate decision is made at the call site
     (which maps any non-zero exit to ``EXIT_CRACKERJACK_FAILURE = 2``).
     """
+
     class _Result:
         returncode = 7
         stderr = "ruff: 3 errors found\n"
@@ -268,9 +271,7 @@ def test_run_crackerjack_gate_propagates_returncode_and_stderr(
     def fake_run(cmd: list[str], **kwargs: object) -> _Result:
         return _Result()
 
-    monkeypatch.setattr(
-        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
-    )
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.subprocess.run", fake_run)
 
     rc, stderr = run_crackerjack_gate(tmp_path)
     assert rc == 7
@@ -360,14 +361,25 @@ def test_run_pipeline_iterates_when_no_progress(
     """
     verdicts = [
         {"agent": "python-pro", "decision": "pass", "note": "ok"},
-        {"agent": "critical-audit-specialist", "decision": "needs_adjustment", "note": "lint"},
-        {"agent": "performance-review-specialist", "decision": "needs_adjustment", "note": "x"},
+        {
+            "agent": "critical-audit-specialist",
+            "decision": "needs_adjustment",
+            "note": "lint",
+        },
+        {
+            "agent": "performance-review-specialist",
+            "decision": "needs_adjustment",
+            "note": "x",
+        },
     ]
     _stub_helpers_for_pipeline(monkeypatch, verdicts=verdicts)
 
     # Track whether stage 3 was reached.
     crackerjack_called: list[bool] = []
-    real_crackerjack_called = lambda *a, **kw: (crackerjack_called.append(True) or 0, "")
+    real_crackerjack_called = lambda *a, **kw: (
+        crackerjack_called.append(True) or 0,
+        "",
+    )
     monkeypatch.setattr(
         "mahavishnu.core.merge_to_main.run_crackerjack_gate",
         real_crackerjack_called,
@@ -419,12 +431,10 @@ def test_run_pipeline_review_none_skips_stage_two(
     review_called: list[bool] = []
     monkeypatch.setattr(
         "mahavishnu.core.merge_to_main.run_review",
-        lambda *a, **kw: (review_called.append(True) or []),
+        lambda *a, **kw: review_called.append(True) or [],
     )
 
-    rc = run_pipeline(
-        tmp_path, branch="feat-test", base="main", review_mode="none"
-    )
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main", review_mode="none")
     assert rc == EXIT_OK
     assert review_called == [], "stage 2 must not run when review_mode='none'"
 
@@ -442,7 +452,11 @@ def test_run_pipeline_crackerjack_failure_blocks_merge(
         verdicts=[
             {"agent": "python-pro", "decision": "pass", "note": "ok"},
             {"agent": "critical-audit-specialist", "decision": "pass", "note": "ok"},
-            {"agent": "performance-review-specialist", "decision": "pass", "note": "ok"},
+            {
+                "agent": "performance-review-specialist",
+                "decision": "pass",
+                "note": "ok",
+            },
         ],
     )
     monkeypatch.setattr(
@@ -504,7 +518,9 @@ def test_run_pipeline_holds_back_when_consolidation_gate_fails(
             {"agent": "performance-review-specialist", "decision": "pass", "note": ""},
         ],
     )
-    held_back_siblings = ["sibling .worktrees/repo/b: branch 'feat-wip' has unmerged commits"]
+    held_back_siblings = [
+        "sibling .worktrees/repo/b: branch 'feat-wip' has unmerged commits"
+    ]
     ineligible_commits = ["deadbeef0000"]
     monkeypatch.setattr(
         "mahavishnu.core.merge_to_main._run_consolidation_gate",
@@ -564,7 +580,10 @@ def test_run_pipeline_consolidation_gate_bypassed_via_no_consolidation_gate_flag
     )
 
     rc = run_pipeline(
-        tmp_path, branch="feat-test", base="main", no_consolidation_gate=True,
+        tmp_path,
+        branch="feat-test",
+        base="main",
+        no_consolidation_gate=True,
     )
     assert rc == EXIT_OK
     assert gate_called == [], "gate must not run when no_consolidation_gate=True"
@@ -617,7 +636,9 @@ def test_consolidation_gate_sibling_worktree_check_passes_on_merged_branch(
     """
     sibling = tmp_path / "sibling-a"
     sibling.mkdir()
-    worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-merged\n"
+    worktree_list_output = (
+        f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-merged\n"
+    )
 
     def fake_run(args, **kwargs):
         if "merge-base" in args:
@@ -629,7 +650,9 @@ def test_consolidation_gate_sibling_worktree_check_passes_on_merged_branch(
         return _FakeProc(returncode=0, stdout="")
 
     monkeypatch.setattr("subprocess.run", fake_run)
-    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    result = _check_sibling_worktree_state(
+        tmp_path, sibling, "main", worktree_list_output
+    )
     assert result is None, "merged sibling (state a1) must pass the gate"
 
 
@@ -646,7 +669,9 @@ def test_consolidation_gate_sibling_worktree_check_passes_on_squash_merge(
     """
     sibling = tmp_path / "sibling-sq"
     sibling.mkdir()
-    worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-squash\n"
+    worktree_list_output = (
+        f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-squash\n"
+    )
 
     def fake_run(args, **kwargs):
         if "merge-base" in args:
@@ -662,7 +687,9 @@ def test_consolidation_gate_sibling_worktree_check_passes_on_squash_merge(
         return _FakeProc(returncode=0, stdout="")
 
     monkeypatch.setattr("subprocess.run", fake_run)
-    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    result = _check_sibling_worktree_state(
+        tmp_path, sibling, "main", worktree_list_output
+    )
     assert result is None, (
         "squash-merged sibling (state a2 via commit subject match) must pass the gate"
     )
@@ -681,7 +708,9 @@ def test_consolidation_gate_sibling_worktree_check_holds_back_on_unrelated_branc
     """
     sibling = tmp_path / "sibling-x"
     sibling.mkdir()
-    worktree_list_output = f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-unrelated\n"
+    worktree_list_output = (
+        f"worktree {sibling.resolve()}\nHEAD refs/heads/feat-unrelated\n"
+    )
 
     def fake_run(args, **kwargs):
         if "merge-base" in args:
@@ -697,7 +726,9 @@ def test_consolidation_gate_sibling_worktree_check_holds_back_on_unrelated_branc
         return _FakeProc(returncode=0, stdout="")
 
     monkeypatch.setattr("subprocess.run", fake_run)
-    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    result = _check_sibling_worktree_state(
+        tmp_path, sibling, "main", worktree_list_output
+    )
     assert result is not None
     assert "feat-unrelated" in result
 
@@ -723,7 +754,9 @@ def test_consolidation_gate_sibling_worktree_check_fails_on_wip_branch(
         return _FakeProc(returncode=0, stdout="")
 
     monkeypatch.setattr("subprocess.run", fake_run)
-    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    result = _check_sibling_worktree_state(
+        tmp_path, sibling, "main", worktree_list_output
+    )
     assert result is not None
     assert "feat-wip" in result
 
@@ -744,7 +777,9 @@ def test_consolidation_gate_sibling_worktree_check_passes_on_sticky_failure(
 
     # rev-parse / merge-base would fail (WIP), but state (d) short-circuits
     # before they run. So no subprocess mocking needed.
-    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    result = _check_sibling_worktree_state(
+        tmp_path, sibling, "main", worktree_list_output
+    )
     assert result is None
 
 
@@ -759,7 +794,9 @@ def test_consolidation_gate_sibling_worktree_check_passes_on_no_worktree_entry(
     # Worktree list is empty (sibling was pruned from git but the
     # directory still exists on disk — the gate tolerates this).
     worktree_list_output = ""
-    result = _check_sibling_worktree_state(tmp_path, sibling, "main", worktree_list_output)
+    result = _check_sibling_worktree_state(
+        tmp_path, sibling, "main", worktree_list_output
+    )
     assert result is None
 
 
@@ -889,9 +926,7 @@ def test_run_squash_merge_lands_commit_on_main_checkout(
         calls.append((cmd, kwargs))
         return _FakeProc(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr(
-        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
-    )
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.subprocess.run", fake_run)
 
     # Tell the production code where the real main checkout is.
     monkeypatch.setattr(
@@ -929,7 +964,8 @@ def test_run_squash_merge_lands_commit_on_main_checkout(
 
     # Commit argv is ``["git", "commit", "-m", "merge: feature-x -> origin/main"]``
     commit_calls = [
-        (cmd, kw) for cmd, kw in calls
+        (cmd, kw)
+        for cmd, kw in calls
         if len(cmd) >= 2 and cmd[0] == "git" and cmd[1] == "commit"
     ]
     assert len(commit_calls) == 1, (
@@ -978,20 +1014,22 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
         if cmd[:3] == ["git", "status", "--porcelain"]:
             proc = _FakeProc(
                 returncode=0,
-                stdout="M  mahavishnu/core/config.py\n"
-                "?? untracked_file.txt\n",
+                stdout="M  mahavishnu/core/config.py\n?? untracked_file.txt\n",
             )
         # ``git stash push --include-untracked -m …`` — succeed.
-        elif cmd[:3] == ["git", "stash", "push"] or cmd[:2] == ["git", "stash"] and len(cmd) == 3 and cmd[2] == "pop":
+        elif (
+            cmd[:3] == ["git", "stash", "push"]
+            or cmd[:2] == ["git", "stash"]
+            and len(cmd) == 3
+            and cmd[2] == "pop"
+        ):
             proc = _FakeProc(returncode=0, stdout="", stderr="")
         else:
             proc = _FakeProc(returncode=0, stdout="", stderr="")
         calls.append((cmd, kwargs))
         return proc
 
-    monkeypatch.setattr(
-        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
-    )
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.subprocess.run", fake_run)
 
     rc, _stderr = run_squash_merge(worktree, "origin/main", "feature-x")
     assert rc == 0
@@ -1016,8 +1054,7 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
         f"got argv first-3: {[c[:3] for c, _ in calls]}"
     )
     assert stash_push_kwargs["cwd"] == main_checkout, (
-        f"stash push cwd must be main_checkout, got "
-        f"{stash_push_kwargs['cwd']!r}"
+        f"stash push cwd must be main_checkout, got {stash_push_kwargs['cwd']!r}"
     )
     assert "--include-untracked" in (
         # cmd is the full argv; check it
@@ -1029,8 +1066,7 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
         "expected `git stash pop` after successful commit; not found"
     )
     assert stash_pop_kwargs["cwd"] == main_checkout, (
-        f"stash pop cwd must be main_checkout, got "
-        f"{stash_pop_kwargs['cwd']!r}"
+        f"stash pop cwd must be main_checkout, got {stash_pop_kwargs['cwd']!r}"
     )
 
     # The commit must still happen exactly once, in main_checkout.
@@ -1043,15 +1079,9 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
     # → stash pop. The push must come BEFORE the squash-merge; the
     # pop must come AFTER the commit.
     argvs = [c for c, _ in calls]
-    push_idx = next(
-        i for i, c in enumerate(argvs) if c[:3] == ["git", "stash", "push"]
-    )
-    squash_idx = next(
-        i for i, c in enumerate(argvs) if c[:2] == ["git", "merge"]
-    )
-    commit_idx = next(
-        i for i, c in enumerate(argvs) if c[:2] == ["git", "commit"]
-    )
+    push_idx = next(i for i, c in enumerate(argvs) if c[:3] == ["git", "stash", "push"])
+    squash_idx = next(i for i, c in enumerate(argvs) if c[:2] == ["git", "merge"])
+    commit_idx = next(i for i, c in enumerate(argvs) if c[:2] == ["git", "commit"])
     pop_idx = next(
         i
         for i, c in enumerate(argvs)
@@ -1066,8 +1096,7 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
         f"squash_idx={squash_idx}, commit_idx={commit_idx}"
     )
     assert commit_idx < pop_idx, (
-        f"commit must precede stash pop; "
-        f"commit_idx={commit_idx}, pop_idx={pop_idx}"
+        f"commit must precede stash pop; commit_idx={commit_idx}, pop_idx={pop_idx}"
     )
 
 
@@ -1103,9 +1132,7 @@ def test_run_squash_merge_skips_stash_when_main_clean(
             return _FakeProc(returncode=0, stdout="", stderr="")
         return _FakeProc(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr(
-        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
-    )
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.subprocess.run", fake_run)
 
     rc, _stderr = run_squash_merge(worktree, "origin/main", "feature-x")
     assert rc == 0
@@ -1120,9 +1147,7 @@ def test_run_squash_merge_skips_stash_when_main_clean(
     assert stash_pushes == [], (
         f"expected no stash push on clean tree; got {stash_pushes}"
     )
-    assert stash_pops == [], (
-        f"expected no stash pop on clean tree; got {stash_pops}"
-    )
+    assert stash_pops == [], f"expected no stash pop on clean tree; got {stash_pops}"
 
 
 def test_run_squash_merge_preserves_stash_on_commit_failure(
@@ -1153,9 +1178,7 @@ def test_run_squash_merge_preserves_stash_on_commit_failure(
 
     def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
         if cmd[:3] == ["git", "status", "--porcelain"]:
-            proc = _FakeProc(
-                returncode=0, stdout="M  polluted_file.py\n", stderr=""
-            )
+            proc = _FakeProc(returncode=0, stdout="M  polluted_file.py\n", stderr="")
         elif cmd[:3] == ["git", "stash", "push"]:
             proc = _FakeProc(returncode=0, stdout="", stderr="")
         elif cmd[:2] == ["git", "commit"]:
@@ -1170,9 +1193,7 @@ def test_run_squash_merge_preserves_stash_on_commit_failure(
         call_sequence.append((cmd, proc))
         return proc
 
-    monkeypatch.setattr(
-        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
-    )
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.subprocess.run", fake_run)
 
     rc, stderr = run_squash_merge(worktree, "origin/main", "feature-x")
     assert rc == 1, f"expected commit-failure rc=1, got {rc}"
@@ -1218,9 +1239,7 @@ def test_find_main_checkout_path_returns_none_when_no_main_branch(
     def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
         return _FakeProc(returncode=0, stdout=porcelain, stderr="")
 
-    monkeypatch.setattr(
-        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
-    )
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.subprocess.run", fake_run)
 
     result = _find_main_checkout_path(worktree)
     assert result is None
@@ -1249,9 +1268,7 @@ def test_find_main_checkout_path_returns_main_checkout_path(
     def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
         return _FakeProc(returncode=0, stdout=porcelain, stderr="")
 
-    monkeypatch.setattr(
-        "mahavishnu.core.merge_to_main.subprocess.run", fake_run
-    )
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.subprocess.run", fake_run)
 
     result = _find_main_checkout_path(worktree)
     assert result == main_path

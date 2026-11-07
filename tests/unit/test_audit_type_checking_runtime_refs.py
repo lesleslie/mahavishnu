@@ -18,6 +18,7 @@ it through the audit. The fixtures cover:
 
 Exit-code contract: 0 clean, 1 violations, 2 scan errors.
 """
+
 from __future__ import annotations
 
 import ast
@@ -592,12 +593,42 @@ def test_cluster_by_import_site_groups_same_root_cause():
     from scripts.audit_type_checking_runtime_refs import (
         _cluster_by_import_site,
     )
-    v1 = Violation(file=Path("a.py"), lineno=10, col_offset=0, name="X", import_lineno=5, context="X")
-    v2 = Violation(file=Path("a.py"), lineno=20, col_offset=0, name="X", import_lineno=5, context="X")
-    v3 = Violation(file=Path("b.py"), lineno=15, col_offset=0, name="X", import_lineno=7, context="X")
-    v4 = Violation(file=Path("a.py"), lineno=30, col_offset=0, name="Y", import_lineno=5, context="Y")
+
+    v1 = Violation(
+        file=Path("a.py"),
+        lineno=10,
+        col_offset=0,
+        name="X",
+        import_lineno=5,
+        context="X",
+    )
+    v2 = Violation(
+        file=Path("a.py"),
+        lineno=20,
+        col_offset=0,
+        name="X",
+        import_lineno=5,
+        context="X",
+    )
+    v3 = Violation(
+        file=Path("b.py"),
+        lineno=15,
+        col_offset=0,
+        name="X",
+        import_lineno=7,
+        context="X",
+    )
+    v4 = Violation(
+        file=Path("a.py"),
+        lineno=30,
+        col_offset=0,
+        name="Y",
+        import_lineno=5,
+        context="Y",
+    )
     # Make a FileResult containing these
     from scripts.audit_type_checking_runtime_refs import FileResult
+
     results = [
         FileResult(path=Path("a.py"), violations=[v1, v2, v4]),
         FileResult(path=Path("b.py"), violations=[v3]),

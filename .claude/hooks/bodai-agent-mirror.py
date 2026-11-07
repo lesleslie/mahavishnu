@@ -38,6 +38,7 @@ Scope: per-repo (registered in this project's .claude/settings.json).
 For user-global coverage, mirror the script to ~/.claude/hooks/ and add
 the same entry to ~/.claude/settings.json — file is portable as-is.
 """
+
 from __future__ import annotations
 
 import json
@@ -141,13 +142,15 @@ def _safe_parse_payload() -> dict[str, object]:
     """Parse stdin JSON; return empty dict on any parse failure."""
     try:
         raw = sys.stdin.read()
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except (
+        Exception  # noqa: BLE001  # hook handler — broad catch is the documented contract
+    ):
         return {}
     if not raw.strip():
         return {}
     try:
         data = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return {}
     return data if isinstance(data, dict) else {}
 
@@ -259,7 +262,9 @@ def _extract_agents(result: object) -> list[object] | None:
     return None
 
 
-def _fetch_server_agents(client: httpx.Client, url: str, tool_name: str) -> tuple[list[object] | None, str | None]:
+def _fetch_server_agents(
+    client: httpx.Client, url: str, tool_name: str
+) -> tuple[list[object] | None, str | None]:
     """Per-server full lifecycle: initialize → tools/call → return agents.
 
     Returns (agents, error). On success: (list, None). On failure:
@@ -316,12 +321,18 @@ def main() -> int:
 
     if failures:
         sys.stderr.write(
-            "Hook output: bodai-agent-mirror partial failures: " + "; ".join(failures) + "\n"
+            "Hook output: bodai-agent-mirror partial failures: "
+            + "; ".join(failures)
+            + "\n"
         )
         sys.stderr.flush()
 
     if total_written:
-        ctx = f"Bodai agent mirror: wrote {total_written} new stub(s) — " + "; ".join(summary_parts) + "."
+        ctx = (
+            f"Bodai agent mirror: wrote {total_written} new stub(s) — "
+            + "; ".join(summary_parts)
+            + "."
+        )
     elif failures and total_seen == 0:
         ctx = "Bodai agent mirror: all Bodai servers unreachable; session proceeds in degraded mode."
     else:
@@ -335,7 +346,9 @@ def main() -> int:
     }
     try:
         print(json.dumps(output))
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except (
+        Exception  # noqa: BLE001  # hook handler — broad catch is the documented contract
+    ) as exc:
         sys.stderr.write(f"Hook output: json.dumps failed: {exc!r}\n")
         sys.stderr.flush()
 
@@ -350,7 +363,9 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except (
+        Exception  # noqa: BLE001  # hook handler — broad catch is the documented contract
+    ):
         sys.stderr.write("Hook output: bodai-agent-mirror unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

@@ -109,7 +109,8 @@ class TestScreenReaderCompatibility:
 
             has_code = bool(re.search(r"MHV-\d+", error))
             has_category = any(
-                word in error.lower() for word in ["error", "warning", "not found", "missing"]
+                word in error.lower()
+                for word in ["error", "warning", "not found", "missing"]
             )
 
             if not has_code:

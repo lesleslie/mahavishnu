@@ -77,7 +77,9 @@ class RunPodPublicEndpointPool(BasePool):
     def __init__(self, config: PoolConfig, pool_id: str | None = None) -> None:
         super().__init__(config, pool_id)
         self._client: Any = None
-        self._task_results: collections.deque[dict[str, Any]] = collections.deque(maxlen=1000)
+        self._task_results: collections.deque[dict[str, Any]] = collections.deque(
+            maxlen=1000
+        )
         self._tasks_completed = 0
         self._tasks_failed = 0
         self._task_durations: list[float] = []
@@ -261,7 +263,9 @@ class RunPodPublicEndpointPool(BasePool):
                 "duration": duration,
             }
 
-    async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    async def execute_batch(
+        self, tasks: list[dict[str, Any]]
+    ) -> dict[str, dict[str, Any]]:
         results = await asyncio.gather(*(self.execute_task(t) for t in tasks))
         return {str(i): r for i, r in enumerate(results)}
 
@@ -291,7 +295,9 @@ class RunPodPublicEndpointPool(BasePool):
 
     async def get_metrics(self) -> PoolMetrics:
         avg_duration = (
-            sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
+            sum(self._task_durations) / len(self._task_durations)
+            if self._task_durations
+            else 0.0
         )
         return PoolMetrics(
             pool_id=self.pool_id,

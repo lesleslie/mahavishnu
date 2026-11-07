@@ -23,7 +23,11 @@ CHANGES: list[tuple[str, str, str]] = [
     # docs/plans/ — 9 → complete
     ("docs/plans/2026-04-04-ecosystem-execution-board.md", "active", "complete"),
     ("docs/plans/2026-07-29-pyscn-ty-quality-repair.md", "active", "complete"),
-    ("docs/plans/2026-08-20-bodai-mcp-surface-standardization.md", "active", "complete"),
+    (
+        "docs/plans/2026-08-20-bodai-mcp-surface-standardization.md",
+        "active",
+        "complete",
+    ),
     ("docs/plans/2026-08-25-bodai-cli-audit.md", "active", "complete"),
     ("docs/plans/2026-08-25-bodai-cli-audit-implementation.md", "active", "complete"),
     ("docs/plans/2026-09-07-goose-terminal-adapter.md", "active", "complete"),

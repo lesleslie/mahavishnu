@@ -409,7 +409,9 @@ class TestUpdateIssue:
         )
         assert result.exit_code == 0
         assert "Updated issue ISSUE-001" in result.output
-        mock_mgr.update_issue.assert_called_once_with("ISSUE-001", {"status": "in_progress"})
+        mock_mgr.update_issue.assert_called_once_with(
+            "ISSUE-001", {"status": "in_progress"}
+        )
         mock_mgr.save.assert_called_once()
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
@@ -422,7 +424,9 @@ class TestUpdateIssue:
         )
         assert result.exit_code == 0
         assert "Updated issue ISSUE-001" in result.output
-        mock_mgr.update_issue.assert_called_once_with("ISSUE-001", {"priority": "critical"})
+        mock_mgr.update_issue.assert_called_once_with(
+            "ISSUE-001", {"priority": "critical"}
+        )
         mock_mgr.save.assert_called_once()
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
@@ -482,7 +486,9 @@ class TestListTodos:
         assert result.exit_code == 0
         assert "TODO-001" in result.output
         assert "First task" in result.output
-        mock_mgr.list_todos.assert_called_once_with(status=None, repo=None, assignee=None)
+        mock_mgr.list_todos.assert_called_once_with(
+            status=None, repo=None, assignee=None
+        )
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_todos_with_status_filter(self, MockMgr):
@@ -505,7 +511,9 @@ class TestListTodos:
         app = _make_app()
         result = runner.invoke(app, ["coord", "list-todos", "--repo", "mahavishnu"])
         assert result.exit_code == 0
-        mock_mgr.list_todos.assert_called_once_with(status=None, repo="mahavishnu", assignee=None)
+        mock_mgr.list_todos.assert_called_once_with(
+            status=None, repo="mahavishnu", assignee=None
+        )
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_todos_with_assignee_filter(self, MockMgr):
@@ -516,7 +524,9 @@ class TestListTodos:
         app = _make_app()
         result = runner.invoke(app, ["coord", "list-todos", "--assignee", "carol"])
         assert result.exit_code == 0
-        mock_mgr.list_todos.assert_called_once_with(status=None, repo=None, assignee="carol")
+        mock_mgr.list_todos.assert_called_once_with(
+            status=None, repo=None, assignee="carol"
+        )
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_todos_empty_results(self, MockMgr):
@@ -641,7 +651,11 @@ class TestCompleteTodo:
         mock_mgr = MockMgr.return_value
         mock_mgr._coordination = {
             "todos": [
-                {"id": "TODO-001", "status": "pending", "updated": "2026-01-01T00:00:00"},
+                {
+                    "id": "TODO-001",
+                    "status": "pending",
+                    "updated": "2026-01-01T00:00:00",
+                },
             ],
         }
         app = _make_app()
@@ -770,7 +784,9 @@ class TestListDeps:
         app = _make_app()
         result = runner.invoke(app, ["coord", "list-deps", "--consumer", "mahavishnu"])
         assert result.exit_code == 0
-        mock_mgr.list_dependencies.assert_called_once_with(consumer="mahavishnu", provider=None)
+        mock_mgr.list_dependencies.assert_called_once_with(
+            consumer="mahavishnu", provider=None
+        )
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_deps_with_provider_filter(self, MockMgr):
@@ -781,7 +797,9 @@ class TestListDeps:
         app = _make_app()
         result = runner.invoke(app, ["coord", "list-deps", "--provider", "oneiric"])
         assert result.exit_code == 0
-        mock_mgr.list_dependencies.assert_called_once_with(consumer=None, provider="oneiric")
+        mock_mgr.list_dependencies.assert_called_once_with(
+            consumer=None, provider="oneiric"
+        )
 
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_list_deps_empty_results(self, MockMgr):

@@ -259,7 +259,9 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
 
         return key_lower
 
-    async def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> bool:
+    async def click(
+        self, x: int, y: int, button: str = "left", clicks: int = 1
+    ) -> bool:
         """Click at coordinates."""
         pyautogui = self._get_pyautogui()
 
@@ -321,7 +323,9 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
     # Screenshot Operations (Supported)
     # =========================================================================
 
-    async def screenshot(self, region: tuple[int, int, int, int] | None = None) -> bytes:
+    async def screenshot(
+        self, region: tuple[int, int, int, int] | None = None
+    ) -> bytes:
         """Capture a screenshot."""
         pyautogui = self._get_pyautogui()
 
@@ -334,7 +338,12 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                     with mss.mss() as sct:
                         if region:
                             x, y, width, height = region
-                            monitor = {"left": x, "top": y, "width": width, "height": height}
+                            monitor = {
+                                "left": x,
+                                "top": y,
+                                "width": width,
+                                "height": height,
+                            }
                         else:
                             monitor = sct.monitors[1]  # Primary monitor
 
@@ -399,7 +408,9 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
                     import mss  # ty: ignore[import-not-found]
 
                     with mss.mss() as sct:
-                        for i, monitor in enumerate(sct.monitors[1:]):  # Skip all-in-one
+                        for i, monitor in enumerate(
+                            sct.monitors[1:]
+                        ):  # Skip all-in-one
                             if i == 0:
                                 # Update primary screen info
                                 screens[0] = ScreenInfo(
@@ -492,7 +503,12 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
             try:
                 location = pyautogui.locateOnScreen(image_path, confidence=confidence)
                 if location:
-                    return (location.left, location.top, location.width, location.height)
+                    return (
+                        location.left,
+                        location.top,
+                        location.width,
+                        location.height,
+                    )
                 return None
             except Exception as e:  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.error(f"Failed to locate image: {e}")
@@ -518,7 +534,9 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
 
         def _locate() -> tuple[int, int] | None:
             try:
-                location = pyautogui.locateCenterOnScreen(image_path, confidence=confidence)
+                location = pyautogui.locateCenterOnScreen(
+                    image_path, confidence=confidence
+                )
                 if location:
                     return (location.x, location.y)
                 return None

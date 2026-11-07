@@ -51,7 +51,9 @@ def format_time(dt: datetime) -> str:
 
     # Round up to next hour if not already on the hour
     if local_dt.minute > 0 or local_dt.second > 0 or local_dt.microsecond > 0:
-        rounded_dt = local_dt.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        rounded_dt = local_dt.replace(minute=0, second=0, microsecond=0) + timedelta(
+            hours=1
+        )
     else:
         rounded_dt = local_dt
 
@@ -205,7 +207,9 @@ def main():
 
         # Calculate percentage based on billable tokens only
         # Simple formula that closely matches Claude's /usage percentage
-        percentage = min((billable_tokens / BLOCK_BUDGET) * 100, 100) if BLOCK_BUDGET > 0 else 0
+        percentage = (
+            min((billable_tokens / BLOCK_BUDGET) * 100, 100) if BLOCK_BUDGET > 0 else 0
+        )
 
         # Status indicator based on percentage
         if percentage >= 100:
@@ -228,9 +232,7 @@ def main():
         reset_ansi = "\033[0m"
 
         # Output: STATUS │ [BAR] PERCENT% │ Resets TIME
-        output = (
-            f"{bold_white}{status} │ {bar} {percentage:.0f}% │ Resets {reset_display}{reset_ansi}"
-        )
+        output = f"{bold_white}{status} │ {bar} {percentage:.0f}% │ Resets {reset_display}{reset_ansi}"
         print(output)
 
     except Exception as e:

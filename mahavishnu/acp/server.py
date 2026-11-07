@@ -133,7 +133,9 @@ class _SafeLineReader:
     asserts after EOF and is awkward to chain across reads).
     """
 
-    def __init__(self, stream: asyncio.StreamReader, max_bytes: int = STDIN_LINE_MAX_BYTES) -> None:
+    def __init__(
+        self, stream: asyncio.StreamReader, max_bytes: int = STDIN_LINE_MAX_BYTES
+    ) -> None:
         self._stream = stream
         self._max = max_bytes
         self._buffer = bytearray()
@@ -369,7 +371,11 @@ class ACPServer:
                 stdout, None, ACPError(INVALID_REQUEST, "expected JSON object")
             )
             return
-        logger.info("acp.request_received method=%s id=%s", parsed.get("method"), parsed.get("id"))
+        logger.info(
+            "acp.request_received method=%s id=%s",
+            parsed.get("method"),
+            parsed.get("id"),
+        )
         try:
             response = await self._dispatch(parsed)
         except ACPError as exc:
@@ -457,7 +463,9 @@ class ACPServer:
         # Use the explicit bearer if set (test seam path that bypasses
         # serve()'s bearer-acquisition step); otherwise the bearer that
         # serve() populated.
-        expected = self._explicit_bearer if self._explicit_bearer is not None else self._bearer
+        expected = (
+            self._explicit_bearer if self._explicit_bearer is not None else self._bearer
+        )
         if expected is None or not verify_token(token, expected):
             # Per plan Decision 5: wrong token returns -32002.
             logger.warning("acp.auth_invalid")
@@ -478,7 +486,9 @@ class ACPServer:
         try:
             SessionNewRequest.model_validate(params)
         except Exception as exc:
-            raise ACPError(INVALID_PARAMS, f"invalid session/new params: {exc}") from exc
+            raise ACPError(
+                INVALID_PARAMS, f"invalid session/new params: {exc}"
+            ) from exc
         if len(self._sessions) >= self._max_sessions:
             raise ACPError(
                 TOO_MANY_CONCURRENT_SESSIONS,
@@ -524,11 +534,15 @@ class ACPServer:
         try:
             prompt_req = SessionPromptRequest.model_validate(params)
         except Exception as exc:
-            raise ACPError(INVALID_PARAMS, f"invalid session/prompt params: {exc}") from exc
+            raise ACPError(
+                INVALID_PARAMS, f"invalid session/prompt params: {exc}"
+            ) from exc
 
         session = self._sessions.get(prompt_req.sessionId)
         if session is None:
-            raise ACPError(INVALID_PARAMS, f"unknown session_id: {prompt_req.sessionId!r}")
+            raise ACPError(
+                INVALID_PARAMS, f"unknown session_id: {prompt_req.sessionId!r}"
+            )
         if session.task is not None and not session.task.done():
             raise ACPError(
                 INVALID_REQUEST,
@@ -593,7 +607,9 @@ class ACPServer:
         try:
             cancel_req = SessionCancelRequest.model_validate(params)
         except Exception as exc:
-            raise ACPError(INVALID_PARAMS, f"invalid session/cancel params: {exc}") from exc
+            raise ACPError(
+                INVALID_PARAMS, f"invalid session/cancel params: {exc}"
+            ) from exc
 
         session = self._sessions.get(cancel_req.sessionId)
         if session is None:
@@ -695,7 +711,11 @@ def _validate_stdin(fd: int) -> None:
         devnull_st = Path("/dev/null").stat()
     except OSError:
         devnull_st = None
-    if devnull_st is not None and st.st_dev == devnull_st.st_dev and st.st_ino == devnull_st.st_ino:
+    if (
+        devnull_st is not None
+        and st.st_dev == devnull_st.st_dev
+        and st.st_ino == devnull_st.st_ino
+    ):
         raise RuntimeError(
             "stdin is /dev/null — ACP needs an upstream JSON-RPC stream. "
             "If you meant to test, run with a real pipe: "
@@ -750,7 +770,9 @@ class _SyncStdinFeeder:
             # ``getattr`` keeps the debug log useful when ``fn`` is a real
             # function/method while staying safe under duck typing.
             fn_name = getattr(fn, "__name__", repr(fn))
-            logger.debug("acp.stdin_feeder_post_after_close fn=%s error=%s", fn_name, exc)
+            logger.debug(
+                "acp.stdin_feeder_post_after_close fn=%s error=%s", fn_name, exc
+            )
 
     def _run(self) -> None:
         try:

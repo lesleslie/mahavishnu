@@ -193,7 +193,9 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             # Create factory and parse goal with metrics
             # Check if LLM fallback is enabled for goal parsing
             use_llm_fallback = is_feature_enabled("llm_fallback_enabled")
-            factory = GoalDrivenTeamFactory(llm_factory=llm_factory if use_llm_fallback else None)
+            factory = GoalDrivenTeamFactory(
+                llm_factory=llm_factory if use_llm_fallback else None
+            )
             parsed = await factory.parse_goal(goal)
 
             # Record goal parsing metrics
@@ -502,7 +504,9 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             # Create factory and parse
             # Check if LLM fallback is enabled for goal parsing
             use_llm_fallback = is_feature_enabled("llm_fallback_enabled")
-            factory = GoalDrivenTeamFactory(llm_factory=llm_factory if use_llm_fallback else None)
+            factory = GoalDrivenTeamFactory(
+                llm_factory=llm_factory if use_llm_fallback else None
+            )
             parsed = await factory.parse_goal(goal)
 
             # Record goal parsing metrics (if Prometheus metrics enabled)
@@ -532,7 +536,9 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             if is_feature_enabled("learning_system_enabled"):
                 try:
                     learning_engine = team_learning.get_learning_engine()
-                    recommendation = learning_engine.get_mode_recommendation(parsed.intent)
+                    recommendation = learning_engine.get_mode_recommendation(
+                        parsed.intent
+                    )
                     if recommendation is not None:
                         recommended_mode = (
                             recommendation.model_dump()

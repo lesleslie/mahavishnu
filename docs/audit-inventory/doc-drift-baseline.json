@@ -1,273 +1,273 @@
 {
   "findings": [
     {
-      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "reference": "mahavishnu/jot/drain_async.py"
     },
     {
-      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "reference": "mahavishnu/jot/drain_core.py"
     },
     {
-      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "reference": "mahavishnu/jot/drain_sync.py"
     },
     {
-      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "reference": "mahavishnu/jot/offsets.py"
     },
     {
-      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-09-jot-read-design.md",
       "reference": "tests/unit/test_jot/test_no_any.py"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "docs/ZODB_COMPARISON.md"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "docs/ops/persistence-modes.md"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "docs/runbooks/bodai-mcp-incident.md"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "docs/runbooks/hook-migration.md"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "mahavishnu/bus_subscribers/"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "mahavishnu/core/adapter_registry.py:495"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "mahavishnu/core/ecosystem_state_store.py"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "mahavishnu/events"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "mahavishnu/mcp/tools/ecosystem_state.py"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "monitoring/grafana/alertmanager-rules.yaml"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "tests/integration/test_hook_bridge_e2e.py"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "tests/integration/test_query_local_traces_fitness_e2e.py"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "tests/integration/test_qwen_hook_bridge_e2e.py"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "tests/unit/adapters/test_tracked_settings.py"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "tests/unit/test_mcp_adapter_registry_tools.py:85-289"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "tests/unit/test_profiles.py"
     },
     {
-      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "category": "missing_symbol",
+      "document": "docs/specs/2026-09-14-mcp-decomposition-design.md",
       "reference": "mahavishnu/mcp/tool_versions.py:TOOL_VERSIONS"
     },
     {
-      "document": "docs/specs/2026-09-25-clone-refactor-wireup-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-25-clone-refactor-wireup-design.md",
       "reference": "tests/unit/state_backends/test_mcp_state_backend.py"
     },
     {
-      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "reference": "scripts/audit_session_buddy_settings_wiring.py"
     },
     {
-      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "reference": "scripts/migrate_sb_reflection_duckdb_to_pgvector.py"
     },
     {
-      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "reference": "tests/e2e/test_cold_acl_enforced.py"
     },
     {
-      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "reference": "tests/e2e/test_cold_tier_round_trip.py"
     },
     {
-      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "reference": "tests/integration/test_cross_component_embedding_alignment.py"
     },
     {
-      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "reference": "tests/integration/test_health_feed_state_aggregated.py"
     },
     {
-      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "reference": "tests/integration/test_sb_migrated_from_duckdb.py"
     },
     {
-      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "reference": "tests/performance/test_sb_pgvector_p99.py"
     },
     {
-      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-09-27-shared-bodai-substrate-design.md",
       "reference": "tests/test_plan_citations.py"
     },
     {
-      "document": "docs/specs/2026-10-02-bodai-task-system-v1.1.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-02-bodai-task-system-v1.1.md",
       "reference": "tests/integration/test_bodai_events_publisher_e2e.py"
     },
     {
-      "document": "docs/specs/2026-10-02-bodai-task-system-v1.1.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-02-bodai-task-system-v1.1.md",
       "reference": "tests/unit/test_tasks_tools.py:2022-2029"
     },
     {
-      "document": "docs/specs/2026-10-02-bodai-task-system-v1.1.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-02-bodai-task-system-v1.1.md",
       "reference": "tests/unit/test_tasks_tools.py::test_tasks_search_enforces_visibility_public"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "mahavishnu/llm_gateway.build_gateway_envelope()"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "mahavishnu/llm_gateway/build_gateway_envelope()"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "mahavishnu/llm_gateway/client.py:74-96"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "mahavishnu/llm_gateway/contract.py"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "mahavishnu/llm_gateway/contract.py:20-30"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "mahavishnu/llm_gateway/contract.py:202-217"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "mahavishnu/llm_gateway/contract.py:route_headers"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "scripts/bifrost-gateway.py"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "scripts/bifrost-gateway.py:120-126"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "tests/unit/test_agno_adapter.py::TestAgnoAdapterBifrost"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "tests/unit/test_config.py::TestBifrostConfigSchema::test_local_provider_enabled_default"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "tests/unit/test_llm_gateway_client.py"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "tests/unit/test_llm_gateway_contract.py"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "tests/unit/test_llm_gateway_contract.py::test_classify_routes_via_classify_route_class"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "tests/unit/test_provider_probes.py::TestProviderProbesBifrost"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_path",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "tests/unit/test_worker_contract.py"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_symbol",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "tests/unit/test_config.py::TestBifrostConfigSchema"
     },
     {
-      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "category": "missing_symbol",
+      "document": "docs/specs/2026-10-15-bifrost-gateway-wiring-design.md",
       "reference": "tests/unit/test_terminal_worker_settings.py::TestTerminalWorkerSettingsBifrost"
     },
     {
-      "document": "docs/specs/2026-10-30-task-workflow-backlink-design.md",
       "category": "missing_symbol",
+      "document": "docs/specs/2026-10-30-task-workflow-backlink-design.md",
       "reference": "mahavishnu/mcp/bodai_component_client.py::BodaiComponentClient"
     }
   ]

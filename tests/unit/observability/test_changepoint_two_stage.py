@@ -15,6 +15,7 @@ fires. The §1 latency gate is checked on warnings; the §7 FP gate
 on confirmed alerts. See docs/audits/2026-09-10-changepoint-validation.md
 for empirical numbers.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -53,9 +54,12 @@ class TestTwoStageStateMachine:
     def test_idle_to_warning_pending_when_warn_fires(self) -> None:
         """Sustained 0.5σ shift fires the warn detector (h=8.0) within ~30 samples."""
         import random
+
         rng = random.Random(42)
         warn = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True)
-        confirm = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=14.0, two_sided=True)
+        confirm = CUSUMDetector(
+            target_mean=0.0, slack=0.25, threshold=14.0, two_sided=True
+        )
         ts = TwoStageDetector(warn, confirm, confirm_window_samples=100)
         # Burn-in
         for _ in range(200):
@@ -73,9 +77,12 @@ class TestTwoStageStateMachine:
     def test_warning_pending_to_confirmed_when_confirm_fires(self) -> None:
         """A larger shift fires both warn and confirm; alert is emitted once."""
         import random
+
         rng = random.Random(43)
         warn = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True)
-        confirm = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=14.0, two_sided=True)
+        confirm = CUSUMDetector(
+            target_mean=0.0, slack=0.25, threshold=14.0, two_sided=True
+        )
         ts = TwoStageDetector(warn, confirm, confirm_window_samples=100)
         for _ in range(200):
             ts.update(rng.gauss(0.0, 1.0))
@@ -94,9 +101,12 @@ class TestTwoStageStateMachine:
     def test_warning_pending_to_idle_when_window_expires(self) -> None:
         """If confirm doesn't fire within the window, the state resets to idle."""
         import random
+
         rng = random.Random(44)
         warn = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True)
-        confirm = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=50.0, two_sided=True)  # never fires
+        confirm = CUSUMDetector(
+            target_mean=0.0, slack=0.25, threshold=50.0, two_sided=True
+        )  # never fires
         # Window=2: with the brief's 0.5σ-shift parameters and seed 44 the
         # warn detector fires at ~sample 13 of the 15-sample loop, leaving
         # only samples 14-15 in warning_pending. Window must be <=2 for the
@@ -115,9 +125,12 @@ class TestTwoStageStateMachine:
     def test_confirmed_to_idle_after_alert(self) -> None:
         """After a confirmation, the next update returns to idle (alert was emitted)."""
         import random
+
         rng = random.Random(45)
         warn = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True)
-        confirm = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=14.0, two_sided=True)
+        confirm = CUSUMDetector(
+            target_mean=0.0, slack=0.25, threshold=14.0, two_sided=True
+        )
         ts = TwoStageDetector(warn, confirm, confirm_window_samples=100)
         for _ in range(200):
             ts.update(rng.gauss(0.0, 1.0))
@@ -158,7 +171,9 @@ class TestTwoStageStateMachine:
 
         rng = random.Random(47)
         warn = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True)
-        confirm = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=14.0, two_sided=True)
+        confirm = CUSUMDetector(
+            target_mean=0.0, slack=0.25, threshold=14.0, two_sided=True
+        )
         # Tighter window pins the boundary deterministically.
         ts = TwoStageDetector(warn, confirm, confirm_window_samples=5)
 
@@ -194,7 +209,9 @@ class TestTwoStageStateMachine:
                 )
                 break
 
-        assert warn_fired_at is not None, "warn should have fired within 20 shift samples"
+        assert warn_fired_at is not None, (
+            "warn should have fired within 20 shift samples"
+        )
         assert confirmed_seen, (
             f"confirm should have fired at the boundary; "
             f"warn@{warn_fired_at}, confirm@{confirm_fired_at}, "
@@ -216,6 +233,7 @@ class TestTwoStageWithPageHinkley:
 
     def test_cusum_warn_with_ph_confirm(self) -> None:
         import random
+
         rng = random.Random(46)
         warn = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True)
         confirm = PageHinkleyDetector(

@@ -13,7 +13,10 @@ import yaml
 
 from mahavishnu.core.coordination.executor import CoordinationExecutor
 from mahavishnu.core.coordination.manager import CoordinationManager
-from mahavishnu.core.coordination.memory import CoordinationManagerWithMemory, CoordinationMemory
+from mahavishnu.core.coordination.memory import (
+    CoordinationManagerWithMemory,
+    CoordinationMemory,
+)
 from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
     CrossRepoPlan,
@@ -193,7 +196,9 @@ class TestPhase5_MemoryIntegration:
         assert call_args[1]["metadata"]["entity_type"] == "todo"
 
     @pytest.mark.asyncio
-    async def test_create_issue_with_memory(self, temp_ecosystem_file, mock_session_buddy):
+    async def test_create_issue_with_memory(
+        self, temp_ecosystem_file, mock_session_buddy
+    ):
         """Test CoordinationManagerWithMemory."""
         mgr = CoordinationManagerWithMemory(temp_ecosystem_file, mock_session_buddy)
 

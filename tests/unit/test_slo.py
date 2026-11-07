@@ -114,7 +114,10 @@ class TestAvailabilitySLO:
         assert result["meets_slo"] is True
 
     def test_all_up(self):
-        checks = [{"timestamp": _now() - timedelta(minutes=i * 5), "up": True} for i in range(10)]
+        checks = [
+            {"timestamp": _now() - timedelta(minutes=i * 5), "up": True}
+            for i in range(10)
+        ]
         result = SLOCalculator.availability_slo(checks)
         assert result["availability_pct"] == 100.0
         assert result["meets_slo"] is True

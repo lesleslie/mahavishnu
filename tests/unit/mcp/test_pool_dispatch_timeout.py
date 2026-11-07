@@ -50,7 +50,9 @@ class _RecordingPoolManager:
     def __init__(self) -> None:
         self.task: dict[str, Any] | None = None
 
-    async def route_task(self, *, task: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+    async def route_task(
+        self, *, task: dict[str, Any], **kwargs: Any
+    ) -> dict[str, Any]:
         self.task = task
         return {"status": "success"}
 
@@ -123,7 +125,9 @@ class TestRouteExecuteForwardsTimeout:
     """``pool_route_execute`` must hand its timeout to the dispatch helper."""
 
     @pytest.mark.asyncio
-    async def test_route_execute_forwards_timeout(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_route_execute_forwards_timeout(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """The public tool forwards ``timeout`` to ``_dispatch_internal``."""
         from mahavishnu.mcp.tools import pool_tools
 

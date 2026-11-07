@@ -210,7 +210,9 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # Phase 2 of mcp /health enrichment (plan §5 Phase 2). Sibling of
     # _register_health_tools; always-on so the monthly operator
     # cadence can audit from any profile.
-    "_register_audit_health_tools": lambda s: _register_audit_health_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_audit_health_tools": lambda s: _register_audit_health_tools(
+        s._mhv_server
+    ),  # type: ignore[attr-defined]
     "_register_ecosystem_tools": lambda s: _register_ecosystem_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_workflow_tools": lambda s: _register_workflow_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_webhook_tools": lambda s: _register_webhook_tools(s._mhv_server),  # type: ignore[attr-defined]
@@ -219,7 +221,9 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # ``bootstrap.py``. Always-on alongside workflow + webhook because
     # sibling Bodai components resolve services and read events via this
     # surface at any tool profile.
-    "_register_ecosystem_state_tools": lambda s: _register_ecosystem_state_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_ecosystem_state_tools": lambda s: _register_ecosystem_state_tools(
+        s._mhv_server
+    ),  # type: ignore[attr-defined]
     # C1 follow-up (2026-10-04) — self-hosted KV for the plan_index
     # periodic-rebuild lock store. See ``_register_kv_tools`` in
     # ``bootstrap.py`` and ``mahavishnu.mcp.tools.kv_tools``. Always-on
@@ -227,7 +231,9 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_kv_tools": lambda s: _register_kv_tools(s._mhv_server),  # type: ignore[attr-defined]
     # Phase 1.5 — skills_signer (per plan §10.3.1). The actual signer
     # init runs in start() because mahavishnu has no async lifespan.
-    "_register_skills_signer_tools": lambda s: _register_skills_signer_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_skills_signer_tools": lambda s: _register_skills_signer_tools(
+        s._mhv_server
+    ),  # type: ignore[attr-defined]
     # Phase 3 — agents share the same signer feed state as Phase 1
     # skills_signer (per plan §11 B-6). Always-on for parity with the
     # skills_signer mandatory group.
@@ -237,22 +243,28 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # specialists (mcp-specialist, crackerjack-specialist, etc.);
     # without it the specialists are unreachable from a workflow.
     # Always-on for parity with the discovery surface.
-    "_register_dispatch_specialist_tools": lambda s: _register_dispatch_specialist_tools(
-        s._mhv_server
+    "_register_dispatch_specialist_tools": lambda s: (
+        _register_dispatch_specialist_tools(s._mhv_server)
     ),  # type: ignore[attr-defined]
     # STANDARD-tier groups.
     "_register_terminal_tools": lambda s: _register_terminal_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_pool_tools": lambda s: _register_pool_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_worker_tools": lambda s: _register_worker_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_worker_contract_tools": lambda s: _register_worker_contract_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_repository_messaging_tools": lambda s: _register_repository_messaging_tools(
+    "_register_worker_contract_tools": lambda s: _register_worker_contract_tools(
         s._mhv_server
     ),  # type: ignore[attr-defined]
-    "_register_git_analytics_tools": lambda s: _register_git_analytics_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_session_buddy_tools": lambda s: _register_session_buddy_tools(s._mhv_server),  # type: ignore[attr-defined]
-    # Ecosystem publish-URL tool — see STANDARD_REGISTRATIONS rationale.
-    "_register_ecosystem_publish_url_tool": lambda s: _register_ecosystem_publish_url_tool(
+    "_register_repository_messaging_tools": lambda s: (
+        _register_repository_messaging_tools(s._mhv_server)
+    ),  # type: ignore[attr-defined]
+    "_register_git_analytics_tools": lambda s: _register_git_analytics_tools(
         s._mhv_server
+    ),  # type: ignore[attr-defined]
+    "_register_session_buddy_tools": lambda s: _register_session_buddy_tools(
+        s._mhv_server
+    ),  # type: ignore[attr-defined]
+    # Ecosystem publish-URL tool — see STANDARD_REGISTRATIONS rationale.
+    "_register_ecosystem_publish_url_tool": lambda s: (
+        _register_ecosystem_publish_url_tool(s._mhv_server)
     ),  # type: ignore[attr-defined]
     "_register_openhands_tools": lambda s: _register_openhands_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_primitive_tools": lambda s: _register_primitive_tools(s._mhv_server),  # type: ignore[attr-defined]
@@ -268,7 +280,9 @@ REGISTRATION_MAP: dict[str, Callable] = {
     "_register_eval_tools": lambda s: _register_eval_tools(s._mhv_server),  # type: ignore[attr-defined]
     # FULL-tier groups.
     "_register_otel_tools": lambda s: _register_otel_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_self_improvement_tools": lambda s: _register_self_improvement_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_self_improvement_tools": lambda s: _register_self_improvement_tools(
+        s._mhv_server
+    ),  # type: ignore[attr-defined]
     "_register_clone_tools": lambda s: _register_clone_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_goal_team_tools": lambda s: _register_goal_team_tools(s._mhv_server),  # type: ignore[attr-defined]
     "_register_treesitter_tools": lambda s: _register_treesitter_tools(s._mhv_server),  # type: ignore[attr-defined]

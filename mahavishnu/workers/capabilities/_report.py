@@ -10,7 +10,12 @@ from typing import TYPE_CHECKING, Any
 from ..registry import WORKER_REGISTRY, get_worker_config
 from ._cache import invalidate as cache_invalidate
 from ._cache import put as cache_put
-from ._observability import emit_transition, record_cache, record_probe, record_probe_failure
+from ._observability import (
+    emit_transition,
+    record_cache,
+    record_probe,
+    record_probe_failure,
+)
 from ._probes import (
     _probe_openclaw_cli,
     _probe_openclaw_gateway,
@@ -36,12 +41,16 @@ def _run_live(report, config, settings):
     else:
         return report
     start = time.perf_counter()
-    record_probe(config.worker_type, check.kind, time.perf_counter() - start, check.status)
+    record_probe(
+        config.worker_type, check.kind, time.perf_counter() - start, check.status
+    )
     if check.status == "fail":
         record_probe_failure(report, check.kind, check.safe_reason or "unknown")
     return WorkerCapabilityReport(
         report.worker_type,
-        WorkerCapabilityState.AVAILABLE if check.status == "pass" else WorkerCapabilityState.READY,
+        WorkerCapabilityState.AVAILABLE
+        if check.status == "pass"
+        else WorkerCapabilityState.READY,
         report.checks + [check],
         report.missing_requirements,
         safe_reason=report.safe_reason,
@@ -67,7 +76,9 @@ def evaluate_worker_capabilities(
         )
     else:
         report = evaluate_static(
-            worker_type, config=config, ctx=StaticContext(settings, dict(os.environ.items()))
+            worker_type,
+            config=config,
+            ctx=StaticContext(settings, dict(os.environ.items())),
         )
         report = _run_live(report, config, settings) if force_live else report
     cache_put(key, report)
@@ -85,7 +96,10 @@ def evaluate_all_capabilities(
 
 
 def select_routable_workers(
-    candidates: Iterable[str] | None = None, *, settings: Any, require_available: bool = False
+    candidates: Iterable[str] | None = None,
+    *,
+    settings: Any,
+    require_available: bool = False,
 ) -> list[str]:
     result = []
     for w in list(candidates) if candidates is not None else list(WORKER_REGISTRY):

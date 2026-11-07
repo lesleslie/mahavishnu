@@ -178,7 +178,11 @@ class TestIngestionResult:
 
     def test_to_dict_turboquant_compression_present(self):
         tq_info = TurboQuantCompressionInfo(
-            uncompressed_kb=1500.0, compressed_kb=187.5, savings_kb=1312.5, ratio=8.0, bits=4
+            uncompressed_kb=1500.0,
+            compressed_kb=187.5,
+            savings_kb=1312.5,
+            ratio=8.0,
+            bits=4,
         )
         result = IngestionResult(
             success=True,
@@ -366,7 +370,9 @@ class TestContentIngesterInitialize:
                 "mahavishnu.ingesters.content_ingester.get_embedding_service",
                 return_value=MagicMock(),
             ),
-            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True
+            ),
         ):
             ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)
             await ingester.initialize()
@@ -378,7 +384,8 @@ class TestContentIngesterInitialize:
     async def test_initialize_no_compressor_when_bits_none(self, tmp_path: Path):
         """initialize() should not create a compressor when turboquant_bits is None."""
         with patch(
-            "mahavishnu.ingesters.content_ingester.get_embedding_service", return_value=MagicMock()
+            "mahavishnu.ingesters.content_ingester.get_embedding_service",
+            return_value=MagicMock(),
         ):
             ingester = ContentIngester(output_dir=str(tmp_path))
             await ingester.initialize()
@@ -386,14 +393,18 @@ class TestContentIngesterInitialize:
             await ingester.close()
 
     @pytest.mark.asyncio
-    async def test_initialize_compressor_unavailable_does_not_raise(self, tmp_path: Path):
+    async def test_initialize_compressor_unavailable_does_not_raise(
+        self, tmp_path: Path
+    ):
         """initialize() should succeed even when turboquant-pro is not installed."""
         with (
             patch(
                 "mahavishnu.ingesters.content_ingester.get_embedding_service",
                 return_value=MagicMock(),
             ),
-            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False
+            ),
         ):
             ingester = ContentIngester(output_dir=str(tmp_path), turboquant_bits=4)
             await ingester.initialize()  # must not raise
@@ -419,32 +430,55 @@ class TestDetectContentType:
 
     def test_webpage_with_query(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("https://example.com?page=1&q=test") == ContentType.WEBPAGE
+        assert (
+            ing._detect_content_type("https://example.com?page=1&q=test")
+            == ContentType.WEBPAGE
+        )
 
     def test_blog_path_blog(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("https://example.com/blog/my-post") == ContentType.BLOG
+        assert (
+            ing._detect_content_type("https://example.com/blog/my-post")
+            == ContentType.BLOG
+        )
 
     def test_blog_path_post(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("https://example.com/post/123") == ContentType.BLOG
+        assert (
+            ing._detect_content_type("https://example.com/post/123") == ContentType.BLOG
+        )
 
     def test_blog_path_article(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("https://example.com/article/hello") == ContentType.BLOG
+        assert (
+            ing._detect_content_type("https://example.com/article/hello")
+            == ContentType.BLOG
+        )
 
     def test_blog_path_news(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("https://example.com/news/2024/foo") == ContentType.BLOG
+        assert (
+            ing._detect_content_type("https://example.com/news/2024/foo")
+            == ContentType.BLOG
+        )
 
     def test_blog_path_posts(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("https://example.com/posts/hello") == ContentType.BLOG
+        assert (
+            ing._detect_content_type("https://example.com/posts/hello")
+            == ContentType.BLOG
+        )
 
     def test_blog_pattern_case_insensitive(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("https://example.com/BLOG/my-post") == ContentType.BLOG
-        assert ing._detect_content_type("https://example.com/Blog/My-Post") == ContentType.BLOG
+        assert (
+            ing._detect_content_type("https://example.com/BLOG/my-post")
+            == ContentType.BLOG
+        )
+        assert (
+            ing._detect_content_type("https://example.com/Blog/My-Post")
+            == ContentType.BLOG
+        )
 
     def test_pdf_file(self):
         ing = self._make_ingester()
@@ -475,7 +509,9 @@ class TestDetectContentType:
 
     def test_http_scheme(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("http://example.com/page") == ContentType.WEBPAGE
+        assert (
+            ing._detect_content_type("http://example.com/page") == ContentType.WEBPAGE
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +522,9 @@ class TestDetectContentType:
 class TestChunkText:
     """Tests for _chunk_text."""
 
-    def _make_ingester(self, chunk_size: int = 1000, chunk_overlap: int = 200) -> ContentIngester:
+    def _make_ingester(
+        self, chunk_size: int = 1000, chunk_overlap: int = 200
+    ) -> ContentIngester:
         ing = ContentIngester.__new__(ContentIngester)
         ing._chunk_size = chunk_size
         ing._chunk_overlap = chunk_overlap
@@ -562,7 +600,9 @@ class TestValidateUrl:
     def test_valid_https_url(self):
         ing = self._make_ingester()
         # This will attempt DNS resolution; we mock socket.getaddrinfo
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
             mock_dns.return_value = [
                 (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))
             ]
@@ -570,7 +610,9 @@ class TestValidateUrl:
 
     def test_valid_http_url(self):
         ing = self._make_ingester()
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
             mock_dns.return_value = [
                 (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 80))
             ]
@@ -619,7 +661,9 @@ class TestValidateUrl:
 
     def test_blocked_ip_loopback(self):
         ing = self._make_ingester()
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
             mock_dns.return_value = [
                 (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))
             ]
@@ -628,14 +672,20 @@ class TestValidateUrl:
 
     def test_blocked_ip_private_class_a(self):
         ing = self._make_ingester()
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
-            mock_dns.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443))]
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
+            mock_dns.return_value = [
+                (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443))
+            ]
             with pytest.raises(ValueError, match="Blocked IP range"):
                 ing._validate_url("https://evil.com")
 
     def test_blocked_ip_private_class_b(self):
         ing = self._make_ingester()
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
             mock_dns.return_value = [
                 (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("172.16.0.1", 443))
             ]
@@ -644,7 +694,9 @@ class TestValidateUrl:
 
     def test_blocked_ip_private_class_c(self):
         ing = self._make_ingester()
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
             mock_dns.return_value = [
                 (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.1.1", 443))
             ]
@@ -653,7 +705,9 @@ class TestValidateUrl:
 
     def test_blocked_ip_link_local(self):
         ing = self._make_ingester()
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
             mock_dns.return_value = [
                 (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("169.254.169.254", 80))
             ]
@@ -662,14 +716,20 @@ class TestValidateUrl:
 
     def test_blocked_ip_multicast(self):
         ing = self._make_ingester()
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
-            mock_dns.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("224.0.0.1", 80))]
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
+            mock_dns.return_value = [
+                (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("224.0.0.1", 80))
+            ]
             with pytest.raises(ValueError, match="Blocked IP range"):
                 ing._validate_url("http://evil.com")
 
     def test_blocked_ipv6_loopback(self):
         ing = self._make_ingester()
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
             mock_dns.return_value = [
                 (socket.AF_INET6, socket.SOCK_STREAM, 6, "", ("::1", 443, 0, 0))
             ]
@@ -690,7 +750,9 @@ class TestValidateUrl:
     def test_multiple_dns_results_blocked_ip(self):
         """DNS returns multiple IPs, one blocked."""
         ing = self._make_ingester()
-        with patch("mahavishnu.ingesters.content_ingester.socket.getaddrinfo") as mock_dns:
+        with patch(
+            "mahavishnu.ingesters.content_ingester.socket.getaddrinfo"
+        ) as mock_dns:
             mock_dns.return_value = [
                 (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443)),
                 (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443)),
@@ -717,7 +779,9 @@ class TestFetchUrl:
             text="Hello world content",
             title="Test",
         )
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
 
         with patch.object(ingester, "_validate_url"):
             result = await ingester._fetch_url("https://example.com")
@@ -738,7 +802,9 @@ class TestFetchUrl:
             text="content",
             metadata={"og:title": "OG Title"},
         )
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
 
         with patch.object(ingester, "_validate_url"):
             result = await ingester._fetch_url("https://example.com")
@@ -754,7 +820,9 @@ class TestFetchUrl:
             text="content",
             metadata={"twitter:title": "Twitter Title"},
         )
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
 
         with patch.object(ingester, "_validate_url"):
             result = await ingester._fetch_url("https://example.com")
@@ -768,7 +836,9 @@ class TestFetchUrl:
 
         # Pass metadata={} explicitly -- the helper will NOT add a default title
         response_data = _make_web_reader_response(text="content", metadata={})
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
 
         with patch.object(ingester, "_validate_url"):
             result = await ingester._fetch_url("https://example.com")
@@ -794,8 +864,12 @@ class TestFetchUrl:
         ingester._initialized = True
         ingester._web_reader_client = AsyncMock(spec=httpx.AsyncClient)
 
-        response_data = _make_web_reader_response(error={"code": -1, "message": "tool not found"})
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        response_data = _make_web_reader_response(
+            error={"code": -1, "message": "tool not found"}
+        )
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
 
         with (
             patch.object(ingester, "_validate_url"),
@@ -841,7 +915,9 @@ class TestFetchUrl:
         ingester = ContentIngester(output_dir=str(tmp_path))
         ingester._initialized = True
         ingester._web_reader_client = AsyncMock(spec=httpx.AsyncClient)
-        ingester._web_reader_client.post.side_effect = httpx.ConnectError("connection refused")
+        ingester._web_reader_client.post.side_effect = httpx.ConnectError(
+            "connection refused"
+        )
 
         with (
             patch.object(ingester, "_validate_url"),
@@ -858,7 +934,9 @@ class TestFetchUrl:
 
         single_result = {"text": "content", "metadata": {"title": "Single"}}
         response_data = {"jsonrpc": "2.0", "id": 1, "result": single_result}
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
 
         with patch.object(ingester, "_validate_url"):
             result = await ingester._fetch_url("https://example.com")
@@ -878,7 +956,9 @@ class TestGenerateEmbeddings:
     async def test_generate_success(self, tmp_path: Path):
         ingester = ContentIngester(output_dir=str(tmp_path))
         mock_service = AsyncMock()
-        mock_service.embed.return_value = MagicMock(embeddings=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+        mock_service.embed.return_value = MagicMock(
+            embeddings=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+        )
         ingester._embedding_service = mock_service
 
         result = await ingester._generate_embeddings(["hello", "world"])
@@ -1053,7 +1133,10 @@ class TestTrackInSessionBuddy:
         assert result is True
         call_args = mock_client.post.call_args
         payload = call_args[1]["json"] if "json" in call_args[1] else call_args[0][1]
-        assert "Ingested pdf: https://example.com" in payload["params"]["arguments"]["content"]
+        assert (
+            "Ingested pdf: https://example.com"
+            in payload["params"]["arguments"]["content"]
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1077,7 +1160,9 @@ class TestIngestUrl:
             text="This is a test article with enough content to be meaningful.",
             title="Test Article",
         )
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
         ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
@@ -1113,7 +1198,9 @@ class TestIngestUrl:
             text="Blog post content here.",
             title="My Blog Post",
         )
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
         ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
@@ -1136,7 +1223,9 @@ class TestIngestUrl:
         ingester._web_reader_client = AsyncMock(spec=httpx.AsyncClient)
 
         response_data = _make_web_reader_response(text="", title="Empty")
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
 
         with patch.object(ingester, "_validate_url"):
             result = await ingester.ingest_url("https://example.com")
@@ -1156,7 +1245,9 @@ class TestIngestUrl:
         ingester._session_buddy_client = AsyncMock(spec=httpx.AsyncClient)
 
         response_data = _make_web_reader_response(text="Auto init content.")
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
         ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
@@ -1202,7 +1293,9 @@ class TestIngestUrl:
             text="File write test content.",
             title="File Test",
         )
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
         ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
@@ -1233,7 +1326,9 @@ class TestIngestUrl:
             text="Sanitize test.",
             title="Test<script>alert(1)</script>",
         )
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
         ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
@@ -1428,7 +1523,8 @@ class TestReadPdf:
         mock_reader.pages = [mock_page1, mock_page2]
 
         with patch.dict(
-            "sys.modules", {"pypdf": MagicMock(PdfReader=MagicMock(return_value=mock_reader))}
+            "sys.modules",
+            {"pypdf": MagicMock(PdfReader=MagicMock(return_value=mock_reader))},
         ):
             text = await ingester._read_pdf(tmp_path / "test.pdf")
         assert "Page one content" in text
@@ -1592,7 +1688,8 @@ class TestIngestFileBookFormats:
         mock_reader.pages = [mock_page]
 
         with patch.dict(
-            "sys.modules", {"pypdf": MagicMock(PdfReader=MagicMock(return_value=mock_reader))}
+            "sys.modules",
+            {"pypdf": MagicMock(PdfReader=MagicMock(return_value=mock_reader))},
         ):
             result = await ingester.ingest_file(pdf_file)
 
@@ -1645,7 +1742,9 @@ class TestIngestFileBookFormats:
 
         # Mock _read_epub directly to return parsed content
         epub_text = "EPUB content here"
-        with patch.object(ingester, "_read_epub", new_callable=AsyncMock, return_value=epub_text):
+        with patch.object(
+            ingester, "_read_epub", new_callable=AsyncMock, return_value=epub_text
+        ):
             result = await ingester.ingest_file(epub_file)
 
         assert result.success is True
@@ -1672,7 +1771,9 @@ class TestBatchIngestUrls:
 
         for url in ["https://a.com", "https://b.com"]:
             response_data = _make_web_reader_response(text=f"Content for {url}")
-            ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+            ingester._web_reader_client.post.return_value = _make_mcp_response(
+                200, response_data
+            )
 
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
@@ -1683,7 +1784,9 @@ class TestBatchIngestUrls:
         ingester._embedding_service = mock_service
 
         with patch.object(ingester, "_validate_url"):
-            results = await ingester.batch_ingest_urls(["https://a.com", "https://b.com"])
+            results = await ingester.batch_ingest_urls(
+                ["https://a.com", "https://b.com"]
+            )
 
         assert len(results) == 2
         assert all(r.success for r in results)
@@ -1705,7 +1808,9 @@ class TestBatchIngestUrls:
         ingester._embedding_service = mock_service
 
         with patch.object(ingester, "_validate_url"):
-            results = await ingester.batch_ingest_urls(["https://a.com", "https://b.com"])
+            results = await ingester.batch_ingest_urls(
+                ["https://a.com", "https://b.com"]
+            )
 
         assert len(results) == 2
         # First should succeed, second should fail
@@ -1827,8 +1932,12 @@ class TestContentIngesterTurboQuant:
         }
         ingester._compressor = mock_tq
 
-        web_response = _make_web_reader_response(text="Hello world. " * 50, title="Test")
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, web_response)
+        web_response = _make_web_reader_response(
+            text="Hello world. " * 50, title="Test"
+        )
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, web_response
+        )
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
         ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
@@ -1854,8 +1963,12 @@ class TestContentIngesterTurboQuant:
         mock_service.embed.return_value = MagicMock(embeddings=[[0.1] * 384] * 2)
         ingester._embedding_service = mock_service
 
-        web_response = _make_web_reader_response(text="Hello world. " * 20, title="Test")
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, web_response)
+        web_response = _make_web_reader_response(
+            text="Hello world. " * 20, title="Test"
+        )
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, web_response
+        )
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
         ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
@@ -1882,8 +1995,12 @@ class TestContentIngesterTurboQuant:
         mock_tq.available = False  # package not installed
         ingester._compressor = mock_tq
 
-        web_response = _make_web_reader_response(text="Hello world. " * 20, title="Test")
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, web_response)
+        web_response = _make_web_reader_response(
+            text="Hello world. " * 20, title="Test"
+        )
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, web_response
+        )
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
         ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
@@ -1952,7 +2069,9 @@ class TestEdgeCases:
         ingester._web_reader_client = AsyncMock(spec=httpx.AsyncClient)
 
         response_data = _make_web_reader_response(text="path test")
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
 
         mock_service = AsyncMock()
         mock_service.embed.return_value = MagicMock(embeddings=[[0.1] * 10])
@@ -2038,7 +2157,9 @@ class TestEdgeCases:
         ingester._session_buddy_client = AsyncMock(spec=httpx.AsyncClient)
 
         response_data = _make_web_reader_response(text="content")
-        ingester._web_reader_client.post.return_value = _make_mcp_response(200, response_data)
+        ingester._web_reader_client.post.return_value = _make_mcp_response(
+            200, response_data
+        )
         ingester._akosha_client.post.return_value = _make_mcp_response(200)
         ingester._crackerjack_client.post.return_value = _make_mcp_response(200)
         ingester._session_buddy_client.post.return_value = _make_mcp_response(200)
@@ -2067,7 +2188,10 @@ class TestDetectContentTypeEdgeCases:
 
     def test_https_with_port(self):
         ing = self._make_ingester()
-        assert ing._detect_content_type("https://example.com:8443/page") == ContentType.WEBPAGE
+        assert (
+            ing._detect_content_type("https://example.com:8443/page")
+            == ContentType.WEBPAGE
+        )
 
     def test_blog_with_query_params(self):
         ing = self._make_ingester()
@@ -2090,7 +2214,10 @@ class TestDetectContentTypeEdgeCases:
         """Only one pattern match needed for blog detection."""
         ing = self._make_ingester()
         # Path contains /blog/ and /article/ - first match wins
-        assert ing._detect_content_type("https://example.com/blog/article/test") == ContentType.BLOG
+        assert (
+            ing._detect_content_type("https://example.com/blog/article/test")
+            == ContentType.BLOG
+        )
 
 
 # ---------------------------------------------------------------------------

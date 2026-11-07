@@ -31,7 +31,14 @@ class TestTaskStatus:
 
     def test_all_statuses(self) -> None:
         """Test all status values exist."""
-        expected = ["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]
+        expected = [
+            "pending",
+            "in_progress",
+            "completed",
+            "failed",
+            "cancelled",
+            "blocked",
+        ]
         for status in expected:
             assert TaskStatus(status).value == status
 
@@ -435,7 +442,9 @@ class TestTaskStore:
         assert deps[0].depends_on_task_id == "task-2"
 
     @pytest.mark.asyncio
-    async def test_get_task_not_found(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_get_task_not_found(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test get raises DatabaseError when task not found."""
         from mahavishnu.core.errors import DatabaseError
 
@@ -445,7 +454,9 @@ class TestTaskStore:
             await store.get("nonexistent-id")
 
     @pytest.mark.asyncio
-    async def test_get_by_external_id_found(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_get_by_external_id_found(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test get_by_external_id returns Task when found."""
         mock_db.fetchrow = AsyncMock(
             return_value={
@@ -472,7 +483,9 @@ class TestTaskStore:
         assert task.id == "task-ext"
 
     @pytest.mark.asyncio
-    async def test_get_by_external_id_not_found(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_get_by_external_id_not_found(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test get_by_external_id returns None when not found."""
         mock_db.fetchrow = AsyncMock(return_value=None)
 
@@ -480,7 +493,9 @@ class TestTaskStore:
         assert task is None
 
     @pytest.mark.asyncio
-    async def test_update_task_all_fields(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_update_task_all_fields(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test update with every optional field set covers all update branches."""
         update_data = TaskUpdate(
             title="Updated Title",
@@ -548,7 +563,9 @@ class TestTaskStore:
         assert task.id == "task-done"
 
     @pytest.mark.asyncio
-    async def test_list_tasks_full_filters(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_list_tasks_full_filters(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test list() with all filter fields set covers every filter branch."""
         now = datetime.now(UTC)
         filters = TaskListFilter(
@@ -570,7 +587,9 @@ class TestTaskStore:
         mock_db.fetch.assert_called()
 
     @pytest.mark.asyncio
-    async def test_count_tasks_full_filters(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_count_tasks_full_filters(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test count() with all filter fields set covers every filter branch."""
         now = datetime.now(UTC)
         filters = TaskListFilter(
@@ -625,7 +644,9 @@ class TestTaskStore:
         assert result == 1
 
     @pytest.mark.asyncio
-    async def test_remove_dependency(self, store: TaskStore, mock_db: MagicMock) -> None:
+    async def test_remove_dependency(
+        self, store: TaskStore, mock_db: MagicMock
+    ) -> None:
         """Test removing a dependency between tasks."""
         await store.remove_dependency("task-1", "task-2")
 

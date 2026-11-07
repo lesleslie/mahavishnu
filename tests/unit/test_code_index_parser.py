@@ -63,9 +63,13 @@ def test_filter_changed_files_full_index(tmp_path):
     # Initialize a git repo in tmp_path so git ls-files works
     subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
     subprocess.run(
-        ["git", "config", "user.email", "test@test.com"], cwd=tmp_path, capture_output=True
+        ["git", "config", "user.email", "test@test.com"],
+        cwd=tmp_path,
+        capture_output=True,
     )
-    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.name", "Test"], cwd=tmp_path, capture_output=True
+    )
 
     (tmp_path / "a.py").write_text("a")
     (tmp_path / "b.py").write_text("b")
@@ -75,7 +79,9 @@ def test_filter_changed_files_full_index(tmp_path):
     (cache_dir / "d.py").write_text("d")
 
     # Add files to git index
-    subprocess.run(["git", "add", "a.py", "b.py", "c.md"], cwd=tmp_path, capture_output=True)
+    subprocess.run(
+        ["git", "add", "a.py", "b.py", "c.md"], cwd=tmp_path, capture_output=True
+    )
 
     result = filter_changed_files(str(tmp_path), None)
     assert str(tmp_path / "a.py") in result

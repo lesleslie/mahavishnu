@@ -60,7 +60,9 @@ class TestClusterStateClaim:
         # No new put — claim already held by same job
         mock_backend.put.assert_not_called()
 
-    async def test_existing_different_job_id_raises(self, mock_backend: AsyncMock) -> None:
+    async def test_existing_different_job_id_raises(
+        self, mock_backend: AsyncMock
+    ) -> None:
         async def fake_get(key: str):
             return {"refactor_job_id": "job-bbb"}
 
@@ -113,7 +115,9 @@ class TestReleaseClusterClaim:
         await release_cluster_claim(mock_backend, "cluster-1")
         mock_backend.delete.assert_called_once_with("cluster/v1/cluster-1/in_flight")
 
-    async def test_release_does_not_raise_on_missing_key(self, mock_backend: AsyncMock) -> None:
+    async def test_release_does_not_raise_on_missing_key(
+        self, mock_backend: AsyncMock
+    ) -> None:
         async def fake_delete(key: str):
             return None  # no-op even if key didn't exist
 

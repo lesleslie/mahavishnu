@@ -161,7 +161,9 @@ class TestRoutingMetrics:
 
         metrics._adapter_latency_histogram = None
         monkeypatch.setattr(metrics, "_initialize_metrics", lambda: None, raising=True)
-        with pytest.raises(RuntimeError, match="Adapter latency histogram not initialized"):
+        with pytest.raises(
+            RuntimeError, match="Adapter latency histogram not initialized"
+        ):
             metrics._get_adapter_latency_histogram()
 
     def test_initialize_metrics_value_error_branches(
@@ -192,7 +194,9 @@ class TestRoutingMetrics:
         )
         assert repo_module.start_routing_metrics_server(9191) is None
 
-    def test_prometheus_fallback_import_and_dummy_classes(self, monkeypatch: pytest.MonkeyPatch):
+    def test_prometheus_fallback_import_and_dummy_classes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         real_import = builtins.__import__
 
         def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
@@ -229,7 +233,9 @@ class TestRoutingMetrics:
 
         assert namespace["start_http_server"](9099) is None
         assert namespace["start_routing_metrics_server"](9099) is None
-        with pytest.raises(RuntimeError, match="Adapter latency histogram not initialized"):
+        with pytest.raises(
+            RuntimeError, match="Adapter latency histogram not initialized"
+        ):
             metrics._get_adapter_latency_histogram()
         metrics.record_fallback_chain_length(2)
 

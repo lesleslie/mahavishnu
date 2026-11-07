@@ -58,7 +58,9 @@ def _isolate_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     _config.reset_settings()
 
 
-def test_pool_workers_per_instance_via_substrate(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pool_workers_per_instance_via_substrate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """``ONEIRIC__SUBSTRATE__POOL__WORKERS_PER_INSTANCE`` flows through to the mirror field."""
     monkeypatch.setenv("ONEIRIC__SUBSTRATE__POOL__WORKERS_PER_INSTANCE", "10")
     s = load_settings()

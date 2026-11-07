@@ -148,7 +148,9 @@ def test_setdefault_leaves_an_already_resolved_value_alone(
     assert os.environ["OPENAI_API_KEY"] == "upstream-openai"
 
 
-def test_missing_store_is_not_an_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_missing_store_is_not_an_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A missing credential store yields nothing rather than raising."""
     monkeypatch.setattr(gateway, "SECRETS_ENV", tmp_path / "absent.env")
 

@@ -79,6 +79,7 @@ sensitive material from leaving the local host:
   the literal string ``<redacted>``. Envelopes that fail redaction
   are dropped rather than written in cleartext.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -138,6 +139,7 @@ def _redis_url() -> str | None:
 
     # TCP URL: must resolve to a loopback host
     from urllib.parse import urlparse
+
     try:
         parsed = urlparse(candidate)
     except ValueError:
@@ -193,7 +195,7 @@ def _read_state() -> dict[str, Any] | None:
     try:
         with path.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
     if not isinstance(data, dict):
         return None

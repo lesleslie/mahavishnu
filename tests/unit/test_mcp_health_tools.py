@@ -125,7 +125,9 @@ class TestHealthCheckService:
         assert result["service_name"] == "svc"
         assert "response" in result
 
-    async def test_unhealthy_response_includes_error(self, registered_mcp, mock_unhealthy_result):
+    async def test_unhealthy_response_includes_error(
+        self, registered_mcp, mock_unhealthy_result
+    ):
         """An unhealthy result should include the error message."""
         with (
             patch(
@@ -135,7 +137,9 @@ class TestHealthCheckService:
             warnings.catch_warnings(),
         ):
             warnings.simplefilter("ignore")
-            result = await registered_mcp._tools["health_check_service"](service_name="svc")
+            result = await registered_mcp._tools["health_check_service"](
+                service_name="svc"
+            )
         assert result["status"] == "unhealthy"
         assert result["error"] == "connection refused"
 
@@ -224,7 +228,9 @@ class TestMcpTestConnection:
             "mahavishnu.core.health.HealthChecker.check",
             new=AsyncMock(return_value=mock_health_check_result),
         ):
-            result = await registered_mcp._tools["mcp_test_connection"](service_name="svc")
+            result = await registered_mcp._tools["mcp_test_connection"](
+                service_name="svc"
+            )
         assert result["status"] == "ok"
         assert result["connected"] is True
         assert result["service_name"] == "svc"
@@ -235,7 +241,9 @@ class TestMcpTestConnection:
             "mahavishnu.core.health.HealthChecker.check",
             new=AsyncMock(return_value=mock_unhealthy_result),
         ):
-            result = await registered_mcp._tools["mcp_test_connection"](service_name="svc")
+            result = await registered_mcp._tools["mcp_test_connection"](
+                service_name="svc"
+            )
         assert result["status"] == "unhealthy"
         assert result["connected"] is False
         assert result["error"] == "connection refused"
@@ -324,7 +332,9 @@ class TestHealthCheckAll:
             ),
         ):
             settings = MagicMock()
-            settings.health.dependencies = {"svc1": MagicMock(host="h1", port=1, use_tls=False)}
+            settings.health.dependencies = {
+                "svc1": MagicMock(host="h1", port=1, use_tls=False)
+            }
             settings.health.check_timeout_seconds = 5
             mock_settings_cls.return_value = settings
             result = await registered_mcp._tools["health_check_all"]()
@@ -341,7 +351,9 @@ class TestHealthCheckAll:
             ),
         ):
             settings = MagicMock()
-            settings.health.dependencies = {"svc1": MagicMock(host="h1", port=1, use_tls=False)}
+            settings.health.dependencies = {
+                "svc1": MagicMock(host="h1", port=1, use_tls=False)
+            }
             settings.health.check_timeout_seconds = 5
             mock_settings_cls.return_value = settings
             result = await registered_mcp._tools["health_check_all"]()
@@ -371,7 +383,9 @@ class TestWaitForDependency:
                 )
             ),
         ):
-            result = await registered_mcp._tools["wait_for_dependency"](service_name="svc1")
+            result = await registered_mcp._tools["wait_for_dependency"](
+                service_name="svc1"
+            )
         assert result["service_name"] == "svc1"
         assert result["success"] is True
         assert result["status"] == "ok"

@@ -400,7 +400,9 @@ def _http_json_request(
         response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, dict):
-        raise TypeError(f"expected a JSON object from {url}, got {type(payload).__name__}")
+        raise TypeError(
+            f"expected a JSON object from {url}, got {type(payload).__name__}"
+        )
     return payload
 
 
@@ -519,7 +521,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             config.llama_server_url = api_url
 
         self.config = config
-        self.api_url = getattr(self.config, "llama_server_url", api_url or "http://localhost:8081")
+        self.api_url = getattr(
+            self.config, "llama_server_url", api_url or "http://localhost:8081"
+        )
         self._client = None
         self.indices: dict[str, _VectorStoreIndexT] = {}
         self.documents: dict[str, list[_DocumentT]] = {}
@@ -684,9 +688,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 timeout=5,
             )
             for body in mapping.values():
-                field = ((body.get("mappings", {}) or {}).get("properties", {}) or {}).get(
-                    "embedding", {}
-                )
+                field = (
+                    (body.get("mappings", {}) or {}).get("properties", {}) or {}
+                ).get("embedding", {})
                 dimension = field.get("dimension")
                 if isinstance(dimension, int) and dimension > 0:
                     logger.info(
@@ -754,7 +758,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             from llama_index.core import StorageContext, VectorStoreIndex
 
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
-            return VectorStoreIndex.from_vector_store(vector_store, storage_context=storage_context)
+            return VectorStoreIndex.from_vector_store(
+                vector_store, storage_context=storage_context
+            )
         except Exception as exc:  # noqa: BLE001, RUF100
             # A store that cannot be reopened is not fatal on its own --
             # the caller falls back to the "no index" error path.
@@ -772,8 +778,12 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         try:
             from llama_index.vector_stores.opensearch import OpensearchVectorClient
 
-            endpoint = getattr(self.config, "opensearch_endpoint", "http://localhost:9200")
-            index_name = getattr(self.config, "opensearch_index_name", "mahavishnu_code")
+            endpoint = getattr(
+                self.config, "opensearch_endpoint", "http://localhost:9200"
+            )
+            index_name = getattr(
+                self.config, "opensearch_index_name", "mahavishnu_code"
+            )
             dim = self._resolve_embedding_dim(endpoint, index_name)
 
             # Create the client first (new API requirement)
@@ -839,7 +849,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 tracer_provider = trace.get_tracer_provider()
                 meter_provider = metrics.get_meter_provider()
 
-                self.tracer = tracer_provider.get_tracer("mahavishnu.llamaindex", "1.0.0")
+                self.tracer = tracer_provider.get_tracer(
+                    "mahavishnu.llamaindex", "1.0.0"
+                )
                 self.meter = meter_provider.get_meter("mahavishnu.llamaindex", "1.0.0")
 
                 # Create metric instruments
@@ -892,8 +904,12 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         self.meter = MockMeter()
 
         # Create fallback metric instruments
-        self.ingest_duration_histogram = self.meter.create_histogram("llamaindex.ingest.duration")
-        self.query_duration_histogram = self.meter.create_histogram("llamaindex.query.duration")
+        self.ingest_duration_histogram = self.meter.create_histogram(
+            "llamaindex.ingest.duration"
+        )
+        self.query_duration_histogram = self.meter.create_histogram(
+            "llamaindex.query.duration"
+        )
         self.documents_counter = self.meter.create_counter("llamaindex.documents.count")
         self.nodes_counter = self.meter.create_counter("llamaindex.nodes.count")
         self.query_counter = self.meter.create_counter("llamaindex.queries.count")
@@ -967,7 +983,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             details={"operation": operation, "error_type": error_type, **context},
         )
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    @retry(
+        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
     async def _ingest_repository(
         self, repo_path: str, task_params: dict[str, Any]
     ) -> dict[str, Any]:
@@ -1032,14 +1050,30 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 graph_stats = await graph_analyzer.analyze_repository(repo_path)
 
                 # Add graph stats to span
-                span.set_attribute("code_graph.nodes", graph_stats.get("total_nodes", 0))
-                span.set_attribute("code_graph.functions", graph_stats.get("total_functions", 0))
-                span.set_attribute("code_graph.classes", graph_stats.get("total_classes", 0))
+                span.set_attribute(
+                    "code_graph.nodes", graph_stats.get("total_nodes", 0)
+                )
+                span.set_attribute(
+                    "code_graph.functions", graph_stats.get("total_functions", 0)
+                )
+                span.set_attribute(
+                    "code_graph.classes", graph_stats.get("total_classes", 0)
+                )
 
                 # Get file types to include (default: common code/doc files)
                 file_types = task_params.get(
                     "file_types",
-                    [".py", ".js", ".ts", ".md", ".txt", ".rst", ".yaml", ".yml", ".json"],
+                    [
+                        ".py",
+                        ".js",
+                        ".ts",
+                        ".md",
+                        ".txt",
+                        ".rst",
+                        ".yaml",
+                        ".yml",
+                        ".json",
+                    ],
                 )
                 span.set_attribute("ingest.file_types", ",".join(file_types))
 
@@ -1048,7 +1082,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     "exclude_patterns",
                     ["__pycache__", ".git", ".venv", "node_modules", "dist", "build"],
                 )
-                span.set_attribute("ingest.exclude_patterns", ",".join(exclude_patterns))
+                span.set_attribute(
+                    "ingest.exclude_patterns", ",".join(exclude_patterns)
+                )
 
                 # Load documents from repository
                 reader = SimpleDirectoryReader(
@@ -1090,11 +1126,14 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             file_functions = [
                                 node
                                 for node_id, node in graph_analyzer.nodes.items()
-                                if hasattr(node, "file_id") and Path(node.file_id) == file_path
+                                if hasattr(node, "file_id")
+                                and Path(node.file_id) == file_path
                             ]
 
                             # Get context for the document
-                            context = await self._get_document_context(graph_analyzer, file_path)
+                            context = await self._get_document_context(
+                                graph_analyzer, file_path
+                            )
 
                             doc.metadata.update(
                                 {
@@ -1102,7 +1141,11 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                                     "functions": context.get("functions", []),
                                     "classes": context.get("classes", []),
                                     "functions_count": len(
-                                        [n for n in file_functions if hasattr(n, "name")]
+                                        [
+                                            n
+                                            for n in file_functions
+                                            if hasattr(n, "name")
+                                        ]
                                     ),
                                     "related_files": await graph_analyzer.find_related_files(
                                         str(file_path)
@@ -1111,13 +1154,16 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             )
 
                 # Parse documents into nodes
-                with self.tracer.start_as_current_span("llamaindex.parse_nodes") as parse_span:
+                with self.tracer.start_as_current_span(
+                    "llamaindex.parse_nodes"
+                ) as parse_span:
                     nodes = self.node_parser.get_nodes_from_documents(documents)
                     parse_span.set_attribute("nodes.count", len(nodes))
 
                 # Create storage context with OpenSearch vector store if available
                 with self.tracer.start_as_current_span(
-                    "llamaindex.create_index", attributes={"vector.backend": self._vector_backend}
+                    "llamaindex.create_index",
+                    attributes={"vector.backend": self._vector_backend},
                 ) as create_span:
                     if self.vector_store:
                         storage_context = StorageContext.from_defaults(
@@ -1147,10 +1193,12 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     },
                 )
                 self.documents_counter.add(
-                    len(documents), attributes={"repo.path": repo_path, "repo.name": repo.name}
+                    len(documents),
+                    attributes={"repo.path": repo_path, "repo.name": repo.name},
                 )
                 self.nodes_counter.add(
-                    len(nodes), attributes={"repo.path": repo_path, "repo.name": repo.name}
+                    len(nodes),
+                    attributes={"repo.path": repo_path, "repo.name": repo.name},
                 )
                 self.index_counter.add(
                     1,
@@ -1175,7 +1223,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                         "documents_ingested": len(documents),
                         "nodes_created": len(nodes),
                         "index_id": index_id,
-                        "embedding_model": getattr(self.config, "llm_model", "nomic-embed-text"),
+                        "embedding_model": getattr(
+                            self.config, "llm_model", "nomic-embed-text"
+                        ),
                         "graph_stats": graph_stats,
                         "vector_backend": self._vector_backend,
                     },
@@ -1205,7 +1255,10 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 structured_error = self._wrap_exception(
                     e,
                     "ingest",
-                    {"repo_path": repo_path, "task_id": task_params.get("id", "unknown")},
+                    {
+                        "repo_path": repo_path,
+                        "task_id": task_params.get("id", "unknown"),
+                    },
                 )
 
                 return {
@@ -1276,8 +1329,12 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             "total_nodes": len(file_nodes),
         }
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    async def _query_index(self, repo_path: str, task_params: dict[str, Any]) -> dict[str, Any]:
+    @retry(
+        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
+    async def _query_index(
+        self, repo_path: str, task_params: dict[str, Any]
+    ) -> dict[str, Any]:
         """Query a LlamaIndex vector store with code graph context.
 
         This method is instrumented with OpenTelemetry tracing and metrics:
@@ -1337,7 +1394,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                     }
 
                 # Find index
-                with self.tracer.start_as_current_span("llamaindex.find_index") as find_span:
+                with self.tracer.start_as_current_span(
+                    "llamaindex.find_index"
+                ) as find_span:
                     if index_id and index_id in self.indices:
                         index = self.indices[index_id]
                         find_span.set_attribute("index.found", True)
@@ -1358,7 +1417,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                             # standalone query works.
                             persisted = self._open_persisted_index()
                             if persisted is None:
-                                error_msg = f"No index found for repository: {repo_path}"
+                                error_msg = (
+                                    f"No index found for repository: {repo_path}"
+                                )
                                 find_span.set_attribute("index.found", False)
                                 find_span.set_attribute("error.message", error_msg)
                                 span.set_status(cast("_StatusCodeT", "ERROR"))
@@ -1428,9 +1489,13 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 )
 
                 # Execute query
-                with self.tracer.start_as_current_span("llamaindex.execute_query") as exec_span:
+                with self.tracer.start_as_current_span(
+                    "llamaindex.execute_query"
+                ) as exec_span:
                     response = query_engine.query(query_text)
-                    exec_span.set_attribute("response.sources_count", len(response.source_nodes))
+                    exec_span.set_attribute(
+                        "response.sources_count", len(response.source_nodes)
+                    )
 
                 # Belt-and-braces: the postprocessor already removed
                 # out-of-repo nodes, so this is normally a no-op. It
@@ -1438,9 +1503,13 @@ class LlamaIndexAdapter(OrchestratorAdapter):
                 # postprocessors still cannot leak another repo's code
                 # into the reported sources.
                 scoped_nodes = [
-                    node for node in response.source_nodes if _node_belongs_to_repo(node, repo_root)
+                    node
+                    for node in response.source_nodes
+                    if _node_belongs_to_repo(node, repo_root)
                 ]
-                exec_span.set_attribute("response.scoped_sources_count", len(scoped_nodes))
+                exec_span.set_attribute(
+                    "response.scoped_sources_count", len(scoped_nodes)
+                )
                 exec_span.set_attribute(
                     "response.dropped_out_of_repo_count",
                     len(response.source_nodes) - len(scoped_nodes),
@@ -1653,7 +1722,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         """
         try:
             # Check llama-server availability
-            llama_server_url = getattr(self.config, "llama_server_url", "http://localhost:8081")
+            llama_server_url = getattr(
+                self.config, "llama_server_url", "http://localhost:8081"
+            )
             embedding_model = getattr(self.config, "llm_model", "qwen3.5")
 
             health_details = {
@@ -1675,7 +1746,10 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             return {"status": "healthy", "details": health_details}
 
         except Exception as e:  # health check soft-fails to unhealthy with the raw error message  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return {"status": "unhealthy", "details": {"error": str(e), "configured": True}}
+            return {
+                "status": "unhealthy",
+                "details": {"error": str(e), "configured": True},
+            }
 
 
 __all__ = [

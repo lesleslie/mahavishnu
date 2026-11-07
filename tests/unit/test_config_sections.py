@@ -2,6 +2,7 @@
 
 REQ-001: Oneiric nested settings models for 5 new sections.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -20,7 +21,9 @@ class TestIdempotencySettings:
     def test_loads_with_defaults(self):
         s = IdempotencySettings()
         assert s.enabled is True
-        assert s.fail_mode == "closed"  # round-4 correction: default is closed, not open
+        assert (
+            s.fail_mode == "closed"
+        )  # round-4 correction: default is closed, not open
         assert s.storage_backend == "event_store"
 
 

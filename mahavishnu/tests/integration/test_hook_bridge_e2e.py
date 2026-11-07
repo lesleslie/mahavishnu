@@ -187,7 +187,9 @@ def bus_mock(
 # ---------------------------------------------------------------------------
 
 
-def test_handle_post_tool_use_publishes_to_bus(captured_publish: list[dict[str, Any]]) -> None:
+def test_handle_post_tool_use_publishes_to_bus(
+    captured_publish: list[dict[str, Any]],
+) -> None:
     """Spec §4.13: post-decision fire-and-forget publish to bus.
 
     The bridge publishes exactly one envelope per ``handle()`` call,
@@ -376,7 +378,9 @@ def test_every_documented_event_maps_to_expected_channel() -> None:
         "GitPostRewrite": "bodai.hooks.git-post-rewrite",
     }
     for event, want in expected.items():
-        assert _channel_for(event) == want, f"_channel_for({event!r}) drifted from spec §4.13.4"
+        assert _channel_for(event) == want, (
+            f"_channel_for({event!r}) drifted from spec §4.13.4"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -483,7 +487,9 @@ def test_full_round_trip_bridge_publishes_then_hook_consumes(
     rc2 = post_tool_use_module._post_tool_use()
     assert rc2 == 0
     second_out = capsys.readouterr().out
-    assert second_out == "", f"hook re-emitted after cursor advance.\ncaptured={second_out!r}"
+    assert second_out == "", (
+        f"hook re-emitted after cursor advance.\ncaptured={second_out!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -596,7 +602,9 @@ def test_publish_honors_mahavishnu_bodai_redis_url(
     """
     from mahavishnu.bodai_hook_bridge import CanonicalEnvelope, _publish
 
-    recorder = _install_recording_adapter(monkeypatch, env_url="redis://broker.example.com:6379/5")
+    recorder = _install_recording_adapter(
+        monkeypatch, env_url="redis://broker.example.com:6379/5"
+    )
 
     env = CanonicalEnvelope(
         event="PostToolUse",

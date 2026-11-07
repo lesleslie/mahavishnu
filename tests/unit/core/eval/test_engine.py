@@ -257,9 +257,7 @@ async def test_a_failure_does_not_leak_the_cause_into_the_error(
             case: CaseRecord,
             scores: Sequence[ScoreRecord] = (),
         ) -> None:
-            raise EvalStorageError(
-                "connection failed: password=hunter2 db=eval-runs"
-            )
+            raise EvalStorageError("connection failed: password=hunter2 db=eval-runs")
 
     storage = _LeakyStorage(tmp_path / "runs.sqlite")
     engine = EvalEngine(storage=storage, model_backend=mock_model_backend)

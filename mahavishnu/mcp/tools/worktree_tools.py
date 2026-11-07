@@ -64,7 +64,9 @@ _ACTION_REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
 }
 
 
-def _check_required_fields(action: str, fields: dict[str, Any]) -> dict[str, Any] | None:
+def _check_required_fields(
+    action: str, fields: dict[str, Any]
+) -> dict[str, Any] | None:
     required = _ACTION_REQUIRED_FIELDS.get(action, ())
     missing = [f for f in required if not fields.get(f)]
     return _missing_fields_payload(action, missing) if missing else None
@@ -92,7 +94,9 @@ async def _dispatch_worktree_action(
             user_id=fields["user_id"],
         )
     if action == "list":
-        return await coordinator.list_worktrees(repo_nickname=fields.get("repo_nickname"))  # type: ignore[no-any-return]
+        return await coordinator.list_worktrees(
+            repo_nickname=fields.get("repo_nickname")
+        )  # type: ignore[no-any-return]
     if action == "prune":
         return await coordinator.prune_worktrees(fields["repo_nickname"])  # type: ignore[no-any-return]
     if action == "safety_status":

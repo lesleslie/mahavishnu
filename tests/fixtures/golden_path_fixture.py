@@ -76,7 +76,10 @@ def golden_path_incident_fixture() -> GoldenPathIncidentFixture:
             MockServiceContract(
                 repo="session-buddy",
                 owner_role="manager",
-                entrypoints=("SessionBuddy.create_checkpoint", "SessionBuddy.update_checkpoint"),
+                entrypoints=(
+                    "SessionBuddy.create_checkpoint",
+                    "SessionBuddy.update_checkpoint",
+                ),
                 preserved_surfaces=("get_checkpoint", "restore_from_checkpoint"),
                 mock_strategy="Persist a stable workflow checkpoint and replay it on restart.",
             ),

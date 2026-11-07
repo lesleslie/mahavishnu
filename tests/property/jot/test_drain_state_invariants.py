@@ -11,6 +11,7 @@ event log:
     ``{"cli", "mcp", "slash"}`` (enforced by ``_validate_ctx`` and
     preserved by fold derivation).
 """
+
 from __future__ import annotations
 
 import json
@@ -32,7 +33,10 @@ from mahavishnu.jot.fold import DispatchState, build_states, parse_events
 
 
 def _capture_event(
-    jot_id: str, text: str, *, wall_ms: int = 1_700_000_000_000,
+    jot_id: str,
+    text: str,
+    *,
+    wall_ms: int = 1_700_000_000_000,
 ) -> JotEvent:
     return JotEvent(
         id=jot_id,
@@ -71,7 +75,10 @@ def _dispatch_event(
 
 
 def _dispatch_done_event(
-    jot_id: str, *, workflow_id: str, wall_ms: int = 1_700_000_002_000,
+    jot_id: str,
+    *,
+    workflow_id: str,
+    wall_ms: int = 1_700_000_002_000,
 ) -> JotEvent:
     return JotEvent(
         id=jot_id,
@@ -136,7 +143,9 @@ _JOT_TEXT = st.text(
 
 @st.composite
 def _non_decreasing_attempts(
-    draw, min_attempts: int = 1, max_attempts: int = 5,
+    draw,
+    min_attempts: int = 1,
+    max_attempts: int = 5,
 ) -> list[int]:
     """Generate a non-decreasing sequence of attempt counters."""
     n = draw(st.integers(min_value=min_attempts, max_value=max_attempts))
@@ -168,7 +177,9 @@ class TestAttemptMonotonicity:
         text=_JOT_TEXT,
         attempts=_non_decreasing_attempts(min_attempts=1, max_attempts=5),
     )
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_attempts_walk_yields_monotonic_current_attempt(
         self,
         isolated_log: Path,
@@ -177,7 +188,7 @@ class TestAttemptMonotonicity:
     ) -> None:
         """Each ``dispatch`` event increments ``current_attempt`` strictly or
         monotonically — never decreases."""
-        jid = f"{abs(hash(text)) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text)) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         events: list[JotEvent] = [_capture_event(jid, text, wall_ms=1_700_000_000_000)]
         for i, attempt in enumerate(attempts, start=1):
             events.append(
@@ -200,7 +211,9 @@ class TestAttemptMonotonicity:
         assert summary.current_attempt >= attempts[0]
 
     @given(text=_JOT_TEXT, n_dispatches=st.integers(min_value=2, max_value=6))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_attempts_strictly_increase_with_unique_dispatch_events(
         self,
         isolated_log: Path,
@@ -210,7 +223,7 @@ class TestAttemptMonotonicity:
         """Distinct dispatch events for the same jot carry strictly
         increasing attempt counters (the dispatch primitive refuses
         to re-attempt with a stale number)."""
-        jid = f"{abs(hash(text + 'Z')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text + 'Z')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         events: list[JotEvent] = [_capture_event(jid, text)]
         for i in range(1, n_dispatches + 1):
             events.append(
@@ -236,7 +249,9 @@ class TestWorkflowIdCorrectness:
     recent ``dispatch`` event."""
 
     @given(text=_JOT_TEXT, n=st.integers(min_value=1, max_value=5))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_workflow_id_is_most_recent_dispatch(
         self,
         isolated_log: Path,
@@ -245,7 +260,7 @@ class TestWorkflowIdCorrectness:
     ) -> None:
         """``dispatch_workflow_id`` equals the workflow_id of the last
         ``dispatch`` event for the jot."""
-        jid = f"{abs(hash(text + 'A')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text + 'A')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         events: list[JotEvent] = [_capture_event(jid, text)]
         for i in range(1, n + 1):
             events.append(
@@ -261,7 +276,9 @@ class TestWorkflowIdCorrectness:
         assert summary.dispatch_workflow_id == f"wf-{n}"
 
     @given(text=_JOT_TEXT)
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_workflow_id_unchanged_when_done_event_follows(
         self,
         isolated_log: Path,
@@ -269,13 +286,13 @@ class TestWorkflowIdCorrectness:
     ) -> None:
         """A ``dispatch_done`` matching the same workflow_id preserves the
         workflow_id field — completion does not null it out."""
-        jid = f"{abs(hash(text + 'B')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text + 'B')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         events: list[JotEvent] = [
             _capture_event(jid, text),
-            _dispatch_event(jid, workflow_id="wf-1", attempt=1,
-                            wall_ms=1_700_000_001_000),
-            _dispatch_done_event(jid, workflow_id="wf-1",
-                                 wall_ms=1_700_000_002_000),
+            _dispatch_event(
+                jid, workflow_id="wf-1", attempt=1, wall_ms=1_700_000_001_000
+            ),
+            _dispatch_done_event(jid, workflow_id="wf-1", wall_ms=1_700_000_002_000),
         ]
         _write_log(isolated_log, events)
         summary = build_states(parse_events(isolated_log), enrich=False).states[0]
@@ -283,7 +300,9 @@ class TestWorkflowIdCorrectness:
         assert summary.dispatch_state == DispatchState.SUCCEEDED
 
     @given(text=_JOT_TEXT)
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_workflow_id_preserved_after_failed_event_with_budget_remaining(
         self,
         isolated_log: Path,
@@ -291,13 +310,16 @@ class TestWorkflowIdCorrectness:
     ) -> None:
         """A ``dispatch_failed`` with ``retry_budget_exhausted=False`` keeps
         the jot IN_FLIGHT and the workflow_id intact."""
-        jid = f"{abs(hash(text + 'C')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text + 'C')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         events: list[JotEvent] = [
             _capture_event(jid, text),
-            _dispatch_event(jid, workflow_id="wf-1", attempt=1,
-                            wall_ms=1_700_000_001_000),
+            _dispatch_event(
+                jid, workflow_id="wf-1", attempt=1, wall_ms=1_700_000_001_000
+            ),
             _dispatch_failed_event(
-                jid, workflow_id="wf-1", attempt=1,
+                jid,
+                workflow_id="wf-1",
+                attempt=1,
                 retry_budget_exhausted=False,
                 wall_ms=1_700_000_002_000,
             ),
@@ -308,7 +330,9 @@ class TestWorkflowIdCorrectness:
         assert summary.dispatch_state == DispatchState.IN_FLIGHT
 
     @given(text=_JOT_TEXT)
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_workflow_id_preserved_after_failed_event_with_budget_exhausted(
         self,
         isolated_log: Path,
@@ -316,13 +340,16 @@ class TestWorkflowIdCorrectness:
     ) -> None:
         """A ``dispatch_failed`` with ``retry_budget_exhausted=True`` flips
         state to FAILED but preserves the workflow_id."""
-        jid = f"{abs(hash(text + 'D')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text + 'D')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         events: list[JotEvent] = [
             _capture_event(jid, text),
-            _dispatch_event(jid, workflow_id="wf-9", attempt=2,
-                            wall_ms=1_700_000_001_000),
+            _dispatch_event(
+                jid, workflow_id="wf-9", attempt=2, wall_ms=1_700_000_001_000
+            ),
             _dispatch_failed_event(
-                jid, workflow_id="wf-9", attempt=2,
+                jid,
+                workflow_id="wf-9",
+                attempt=2,
                 retry_budget_exhausted=True,
                 wall_ms=1_700_000_002_000,
             ),
@@ -345,7 +372,9 @@ class TestDispatchedFromLiteral:
         text=_JOT_TEXT,
         origin=st.sampled_from(["cli", "mcp", "slash"]),
     )
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_dispatched_from_persists_through_fold(
         self,
         isolated_log: Path,
@@ -353,11 +382,13 @@ class TestDispatchedFromLiteral:
         origin: str,
     ) -> None:
         """A dispatch event with any of the three origins survives the fold."""
-        jid = f"{abs(hash(text + origin)) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text + origin)) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         events: list[JotEvent] = [
             _capture_event(jid, text),
             _dispatch_event(
-                jid, workflow_id="wf-1", attempt=1,
+                jid,
+                workflow_id="wf-1",
+                attempt=1,
                 dispatched_from=origin,
                 wall_ms=1_700_000_001_000,
             ),
@@ -368,14 +399,17 @@ class TestDispatchedFromLiteral:
         # the literal value verbatim.
         raw = isolated_log.read_text().splitlines()
         dispatch_line = next(
-            (line for line in raw if '"op":"dispatch"' in line), None,
+            (line for line in raw if '"op":"dispatch"' in line),
+            None,
         )
         assert dispatch_line is not None
         ctx = json.loads(dispatch_line)["ctx"]
         assert ctx["dispatched_from"] == origin
 
     @given(text=_JOT_TEXT)
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_dispatch_jot_uses_passed_dispatched_from(
         self,
         isolated_log: Path,
@@ -389,12 +423,17 @@ class TestDispatchedFromLiteral:
         (re-dispatching an IN_FLIGHT jot fails closed).
         """
         import asyncio
+
         for i, origin in enumerate(["cli", "mcp", "slash"]):
             # Three distinct jids — one per origin.
-            jid = f"{abs(hash(text + 'E' + origin)) & 0xffffffffffffffff:016x}" * 2
-            events = list(
-                parse_events(isolated_log),
-            ) if isolated_log.exists() else []
+            jid = f"{abs(hash(text + 'E' + origin)) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
+            events = (
+                list(
+                    parse_events(isolated_log),
+                )
+                if isolated_log.exists()
+                else []
+            )
             events.append(_capture_event(jid, f"{text} {origin}"))
             _write_log(isolated_log, events)
 
@@ -418,24 +457,33 @@ class TestDerivedFieldSanity:
     """A few sanity properties on the derived fields for any captured jot."""
 
     @given(text=_JOT_TEXT)
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_capture_only_jot_has_zero_current_attempt(
         self,
         isolated_log: Path,
         text: str,
     ) -> None:
         """A capture-only jot has ``current_attempt=0`` and no dispatch state."""
-        jid = f"{abs(hash(text + 'F')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text + 'F')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         _write_log(isolated_log, [_capture_event(jid, text)])
         summary = build_states(parse_events(isolated_log), enrich=False).states[0]
         assert summary.current_attempt == 0
         assert summary.dispatch_state is None
         assert summary.dispatch_workflow_id is None
 
-    @given(text=_JOT_TEXT, attempts=st.lists(
-        st.integers(min_value=1, max_value=10), min_size=1, max_size=5,
-    ).map(sorted))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @given(
+        text=_JOT_TEXT,
+        attempts=st.lists(
+            st.integers(min_value=1, max_value=10),
+            min_size=1,
+            max_size=5,
+        ).map(sorted),
+    )
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_current_attempt_equals_max_attempt_in_chain(
         self,
         isolated_log: Path,
@@ -443,12 +491,14 @@ class TestDerivedFieldSanity:
         attempts: list[int],
     ) -> None:
         """current_attempt = max(attempt) across the dispatch chain."""
-        jid = f"{abs(hash(text + 'G')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text + 'G')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         events: list[JotEvent] = [_capture_event(jid, text)]
         for i, attempt in enumerate(attempts, start=1):
             events.append(
                 _dispatch_event(
-                    jid, workflow_id=f"wf-{i}", attempt=attempt,
+                    jid,
+                    workflow_id=f"wf-{i}",
+                    attempt=attempt,
                     wall_ms=1_700_000_000_000 + i * 1000,
                 ),
             )
@@ -466,7 +516,9 @@ class TestAppendEventValidation:
     """Direct ``_append_event`` calls reject unknown ``dispatched_from``."""
 
     @given(text=_JOT_TEXT)
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     async def test_append_event_rejects_unknown_dispatched_from(
         self,
         isolated_log: Path,
@@ -476,7 +528,7 @@ class TestAppendEventValidation:
         from mahavishnu.jot.errors import JotValidationError
 
         # valid jid (not used by _append_event but kept in scope)
-        jid = f"{abs(hash(text + 'H')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(text + 'H')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         bogus = "scheduler"  # not in the Literal
         with pytest.raises(JotValidationError) as excinfo:
             await _append_event(
@@ -493,6 +545,6 @@ class TestAppendEventValidation:
         # And nothing was written — file may not exist yet (the append lock
         # acquires before mkdir in `_append_event`'s ordering — actually
         # validation happens BEFORE mkdir, so the file may never exist).
-        assert (
-            not isolated_log.exists() or isolated_log.read_text() == ""
-        ), "validation failure must NOT persist anything to the log"
+        assert not isolated_log.exists() or isolated_log.read_text() == "", (
+            "validation failure must NOT persist anything to the log"
+        )

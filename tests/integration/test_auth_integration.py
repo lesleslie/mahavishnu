@@ -33,7 +33,9 @@ def test_claude_subscription_auth():
     auth_handler = MultiAuthHandler(config)
 
     # Test that Claude Code subscription is recognized as available
-    assert auth_handler.is_claude_subscribed(), "Claude Code subscription should be available"
+    assert auth_handler.is_claude_subscribed(), (
+        "Claude Code subscription should be available"
+    )
     print("✅ Claude Code subscription is properly configured")
 
     # Test token creation
@@ -54,7 +56,9 @@ def test_claude_subscription_auth():
     )
     assert "read" in result["scopes"], "Read scope should be present"
 
-    print("✅ Claude Code subscription token creation and authentication works correctly")
+    print(
+        "✅ Claude Code subscription token creation and authentication works correctly"
+    )
 
 
 def test_jwt_fallback():
@@ -62,7 +66,9 @@ def test_jwt_fallback():
     print("\nTesting JWT authentication fallback...")
 
     # Set up environment for JWT auth
-    os.environ["MAHAVISHNU_AUTH_SECRET"] = "another_very_long_secret_key_that_is_at_least_32_chars"
+    os.environ["MAHAVISHNU_AUTH_SECRET"] = (
+        "another_very_long_secret_key_that_is_at_least_32_chars"
+    )
 
     config = MahavishnuSettings(
         auth={"enabled": True, "secret": os.environ.get("MAHAVISHNU_AUTH_SECRET")}
@@ -78,7 +84,9 @@ def test_jwt_fallback():
     auth_header = f"Bearer {jwt_token}"
     result = auth_handler.authenticate_request(auth_header)
 
-    assert result["user"] == "test_user", f"Expected user test_user, got {result['user']}"
+    assert result["user"] == "test_user", (
+        f"Expected user test_user, got {result['user']}"
+    )
     assert result["method"] == AuthMethod.JWT, (
         f"Expected method {AuthMethod.JWT}, got {result['method']}"
     )
@@ -91,7 +99,9 @@ def test_multi_auth_priority():
     print("\nTesting multi-authentication priority...")
 
     # Set up both auth methods
-    os.environ["MAHAVISHNU_AUTH_SECRET"] = "jwt_test_secret_that_is_at_least_32_characters_long"
+    os.environ["MAHAVISHNU_AUTH_SECRET"] = (
+        "jwt_test_secret_that_is_at_least_32_characters_long"
+    )
     os.environ["MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"] = (
         "subscription_test_secret_that_is_at_least_32_chars"
     )
@@ -108,7 +118,9 @@ def test_multi_auth_priority():
     # Create both types of tokens
     jwt_token = auth_handler.jwt_auth.create_access_token({"sub": "jwt_user"})
     claude_token = auth_handler.subscription_auth.create_subscription_token(
-        user_id="claude_user", subscription_type="claude_code", scopes=["read", "execute"]
+        user_id="claude_user",
+        subscription_type="claude_code",
+        scopes=["read", "execute"],
     )
     codex_token = auth_handler.subscription_auth.create_subscription_token(
         user_id="codex_user", subscription_type="codex", scopes=["read", "execute"]
@@ -179,7 +191,9 @@ def test_codex_subscription_auth():
 
 def run_all_tests():
     """Run all authentication tests."""
-    print("Running authentication tests for Claude Code, Codex, and Qwen integration...\n")
+    print(
+        "Running authentication tests for Claude Code, Codex, and Qwen integration...\n"
+    )
 
     try:
         test_claude_subscription_auth()

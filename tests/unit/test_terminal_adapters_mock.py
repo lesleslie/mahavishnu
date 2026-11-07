@@ -143,7 +143,9 @@ class TestSendCommand:
         assert "[Mock]" in output
         assert "hello" in output
 
-    async def test_silent_adapter_skips_response(self, silent_adapter: MockTerminalAdapter):
+    async def test_silent_adapter_skips_response(
+        self, silent_adapter: MockTerminalAdapter
+    ):
         sid = await silent_adapter.launch_session("qwen")
         await silent_adapter.send_command(sid, "echo hello")
         output = await silent_adapter.capture_output(sid)

@@ -92,13 +92,17 @@ async def test_hatchet_adapter_name(hatchet_adapter):
 @pytest.mark.asyncio
 async def test_hatchet_execute_returns_output(hatchet_adapter, mock_hatchet_client):
     hatchet_adapter._client = mock_hatchet_client
-    result = await hatchet_adapter.execute({"prompt": "run agent loop autonomously"}, repos=[])
+    result = await hatchet_adapter.execute(
+        {"prompt": "run agent loop autonomously"}, repos=[]
+    )
     assert result["status"] == "completed"
     assert "output" in result
 
 
 @pytest.mark.asyncio
-async def test_hatchet_execute_no_prompt_returns_error(hatchet_adapter, mock_hatchet_client):
+async def test_hatchet_execute_no_prompt_returns_error(
+    hatchet_adapter, mock_hatchet_client
+):
     hatchet_adapter._client = mock_hatchet_client
     result = await hatchet_adapter.execute({}, repos=[])
     assert result["status"] == "error"
@@ -143,7 +147,9 @@ async def test_hatchet_execute_timeout(hatchet_adapter, mock_hatchet_client):
 
     mock_hatchet_client.run = slow_run
     hatchet_adapter._client = mock_hatchet_client
-    result = await hatchet_adapter.execute({"prompt": "run agent loop", "timeout": 0.01}, repos=[])
+    result = await hatchet_adapter.execute(
+        {"prompt": "run agent loop", "timeout": 0.01}, repos=[]
+    )
     assert result["status"] == "timeout"
 
 
@@ -231,7 +237,9 @@ def test_initialize_uses_the_embedded_engine_when_configured(monkeypatch):
         calls["from_embedded"] = True
         return MagicMock()
 
-    monkeypatch.setattr(hatchet_sdk.Hatchet, "from_embedded", staticmethod(fake_from_embedded))
+    monkeypatch.setattr(
+        hatchet_sdk.Hatchet, "from_embedded", staticmethod(fake_from_embedded)
+    )
     monkeypatch.delenv("HATCHET_CLIENT_TOKEN", raising=False)
 
     cfg = HatchetConfig(use_embedded=True)

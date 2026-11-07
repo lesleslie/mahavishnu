@@ -31,8 +31,12 @@ pytestmark = pytest.mark.unit
 def mock_coordinator():
     """Build a coordinator with AsyncMock methods for every supported action."""
     coord = MagicMock()
-    coord.create_worktree = AsyncMock(return_value={"success": True, "action": "create"})
-    coord.remove_worktree = AsyncMock(return_value={"success": True, "action": "remove"})
+    coord.create_worktree = AsyncMock(
+        return_value={"success": True, "action": "create"}
+    )
+    coord.remove_worktree = AsyncMock(
+        return_value={"success": True, "action": "remove"}
+    )
     coord.list_worktrees = AsyncMock(return_value={"success": True, "worktrees": []})
     coord.prune_worktrees = AsyncMock(return_value={"success": True, "pruned": 0})
     coord.get_worktree_safety_status = AsyncMock(return_value={"safe": True})
@@ -214,7 +218,9 @@ class TestWorktreeManage:
 
     async def test_missing_coordinator(self):
         """When _get_coordinator returns None, return missing-coordinator payload."""
-        with patch("mahavishnu.mcp.tools.worktree_tools._get_coordinator", return_value=None):
+        with patch(
+            "mahavishnu.mcp.tools.worktree_tools._get_coordinator", return_value=None
+        ):
             result = await worktree_manage(
                 action="create",
                 user_id="u1",
@@ -227,7 +233,9 @@ class TestWorktreeManage:
     async def test_missing_required_fields(self):
         """If required fields are missing, return missing-fields payload."""
         coord = MagicMock()
-        with patch("mahavishnu.mcp.tools.worktree_tools._get_coordinator", return_value=coord):
+        with patch(
+            "mahavishnu.mcp.tools.worktree_tools._get_coordinator", return_value=coord
+        ):
             result = await worktree_manage(
                 action="create",
                 user_id="u1",
@@ -272,7 +280,9 @@ class TestWorktreeManage:
         """If the coordinator raises, return success=False with error message."""
         coord = MagicMock()
         coord.create_worktree = AsyncMock(side_effect=RuntimeError("boom"))
-        with patch("mahavishnu.mcp.tools.worktree_tools._get_coordinator", return_value=coord):
+        with patch(
+            "mahavishnu.mcp.tools.worktree_tools._get_coordinator", return_value=coord
+        ):
             result = await worktree_manage(
                 action="create",
                 user_id="u1",

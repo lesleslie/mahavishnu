@@ -155,9 +155,7 @@ class Singleflight:
             result = await fn()
             future.set_result(result)
             return result
-        except (
-            Exception
-        ) as e:  # in-flight coalescing wraps any compute error onto the shared future and re-raises
+        except Exception as e:  # in-flight coalescing wraps any compute error onto the shared future and re-raises
             future.set_exception(e)
             raise
         finally:
@@ -329,7 +327,9 @@ class EmbeddingCache:
             failure_threshold=self._config.circuit_breaker_threshold,
             recovery_timeout=self._config.circuit_breaker_recovery,
         )
-        self._singleflight = Singleflight() if self._config.singleflight_enabled else None
+        self._singleflight = (
+            Singleflight() if self._config.singleflight_enabled else None
+        )
 
     def _hash_text(self, text: str) -> str:
         """Create versioned cache key hash from text.

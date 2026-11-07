@@ -145,9 +145,19 @@ Create `/Users/les/Projects/oneiric/tests/unit/adapters/decision/__init__.py` (e
 ```python
 from __future__ import annotations
 from oneiric.adapters.decision.types import (
-    Answer, BgeTeiSettings, ChoiceQuestion, Decision3Settings, DecisionBaseSettings,
-    JevSettings, NoulQuestion, PointwiseRequest, PointwiseResponse, RankRequest,
-    RankResponse, RankedDocument, ScoreQuestion,
+    Answer,
+    BgeTeiSettings,
+    ChoiceQuestion,
+    Decision3Settings,
+    DecisionBaseSettings,
+    JevSettings,
+    NoulQuestion,
+    PointwiseRequest,
+    PointwiseResponse,
+    RankRequest,
+    RankResponse,
+    RankedDocument,
+    ScoreQuestion,
 )
 
 
@@ -163,10 +173,14 @@ def test_pointwise_request_discriminator_accepts_mixed_questions():
         state="the deploy failed",
         questions=[
             NoulQuestion(name="urgent", instructions="attention?"),
-            ChoiceQuestion(name="category", instructions="classify",
-                          options={"prod": "production", "staging": "staging"}),
-            ScoreQuestion(name="severity", instructions="rate",
-                          levels=["low", "medium", "high"]),
+            ChoiceQuestion(
+                name="category",
+                instructions="classify",
+                options={"prod": "production", "staging": "staging"},
+            ),
+            ScoreQuestion(
+                name="severity", instructions="rate", levels=["low", "medium", "high"]
+            ),
         ],
     )
     types = [q.type for q in req.questions]
@@ -197,14 +211,17 @@ def test_pointwise_request_default_multimodal_fields_are_empty():
 def test_pointwise_request_rejects_empty_questions():
     import pytest
     from pydantic import ValidationError
+
     with pytest.raises(ValidationError):
         PointwiseRequest(state="x", questions=[])
 
 
 def test_rank_response_parses_results():
     resp = RankResponse(
-        results=[RankedDocument(index=0, relevance_score=0.937, document="text"),
-                 RankedDocument(index=1, relevance_score=0.123)],
+        results=[
+            RankedDocument(index=0, relevance_score=0.937, document="text"),
+            RankedDocument(index=1, relevance_score=0.123),
+        ],
         model="bge-reranker-v2-m3",
     )
     assert resp.results[0].index == 0
@@ -354,9 +371,7 @@ async def test_decision_3_decide_includes_multimodal_fields(monkeypatch):
     from oneiric.adapters.decision.types import NoulQuestion, PointwiseRequest
 
     fake_resp = MagicMock()
-    fake_resp.json.return_value = {
-        "answers": {"valid": {"yes": 0.95, "no": 0.05}}
-    }
+    fake_resp.json.return_value = {"answers": {"valid": {"yes": 0.95, "no": 0.05}}}
     fake_resp.raise_for_status = MagicMock()
     fake_client = MagicMock()
     fake_client.post = AsyncMock(return_value=fake_resp)
@@ -369,7 +384,9 @@ async def test_decision_3_decide_includes_multimodal_fields(monkeypatch):
         await adapter.init()
         req = PointwiseRequest(
             state="see the attached receipt",
-            questions=[NoulQuestion(name="valid", instructions="is this a valid receipt?")],
+            questions=[
+                NoulQuestion(name="valid", instructions="is this a valid receipt?")
+            ],
             images=["data:image/png;base64,iVBOR..."],
         )
         resp = await adapter.decide(req)
@@ -400,11 +417,17 @@ class Decision3Adapter(DecisionBase[Decision3Settings]):
         provider="vllm_sr_d3",
         factory="oneiric.adapters.decision.decision_3: Decision3Adapter",
         capabilities=[
-            "noul", "choice", "score",
-            "calibrated_probability", "typed_decision",
-            "multimodal", "self_hostable", "open_source",
+            "noul",
+            "choice",
+            "score",
+            "calibrated_probability",
+            "typed_decision",
+            "multimodal",
+            "self_hostable",
+            "open_source",
         ],
-        stack_level=30, priority=380,
+        stack_level=30,
+        priority=380,
         source=CandidateSource.LOCAL_PKG,
         owner="Decision Substrate",
         requires_secrets=False,
@@ -459,10 +482,15 @@ class Decision3Adapter(DecisionBase[Decision3Settings]):
                 if prob > top_prob:
                     top_prob = prob
                     top_value = option
-            answers.append(Answer(
-                name=name, type="noul", value=top_value,
-                probability=top_prob, confidence=None,
-            ))
+            answers.append(
+                Answer(
+                    name=name,
+                    type="noul",
+                    value=top_value,
+                    probability=top_prob,
+                    confidence=None,
+                )
+            )
         return PointwiseResponse(answers=answers, model=self._settings.model)
 
     async def rank(self, request: RankRequest) -> RankResponse:
@@ -475,6 +503,7 @@ Update `oneiric/adapters/decision/__init__.py`:
 
 ```python
 """Decision adapter category — typed decision classifiers (System One + rankers)."""
+
 from .bge_tei_rerank import BgeTeiRerankAdapter, BgeTeiSettings
 from .decision_3 import Decision3Adapter, Decision3Settings
 from .jev import JevAdapter, JevSettings
@@ -573,9 +602,9 @@ from .decision import BgeTeiRerankAdapter, Decision3Adapter, JevAdapter
 2. Add three entries to the `builtin_adapter_metadata()` return list. Find an alphabetical insertion point (after `.cache` entries, before `.database`):
 
 ```python
-        BgeTeiRerankAdapter.metadata,
-        Decision3Adapter.metadata,
-        JevAdapter.metadata,
+(BgeTeiRerankAdapter.metadata,)
+(Decision3Adapter.metadata,)
+(JevAdapter.metadata,)
 ```
 
 - [ ] **Step 29: Run test to verify it passes**
@@ -681,7 +710,11 @@ def test_no_live_hybrid_adapter_registry_references_in_core():
         for lineno, line in enumerate(py_file.read_text().splitlines(), 1):
             if pattern.search(line):
                 stripped = line.strip()
-                if stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''"):
+                if (
+                    stripped.startswith("#")
+                    or stripped.startswith('"""')
+                    or stripped.startswith("'''")
+                ):
                     continue
                 offenders.append((str(py_file), lineno, line))
     assert not offenders, (
@@ -822,6 +855,7 @@ Add `test_decision_subcommands_wired_in_main_cli` to `/Users/les/Projects/mahavi
 ```python
 def test_decision_subcommands_wired_in_main_cli():
     from mahavishnu._main_cli import app
+
     registered = {grp.name for grp in app.registered_groups}
     assert "decision" in registered
 ```
@@ -894,18 +928,26 @@ Create `/Users/les/Projects/mahavishnu/tests/unit/test_task_router_selectors.py`
 ```python
 async def test_selector_jev_classify_routes_through_decision_router():
     from mahavishnu.core.task_router import TaskRouter
+
     fake_jev = MagicMock()
-    fake_jev.decide = AsyncMock(return_value=PointwiseResponse(answers=[], model="jev-latest"))
+    fake_jev.decide = AsyncMock(
+        return_value=PointwiseResponse(answers=[], model="jev-latest")
+    )
     router = TaskRouter(adapter_bridge=_FakeBridge(fake_jev))
-    req = PointwiseRequest(state="x", questions=[NoulQuestion(name="q", instructions="i")])
+    req = PointwiseRequest(
+        state="x", questions=[NoulQuestion(name="q", instructions="i")]
+    )
     resp = await router.decide(req, selector="jev_classify")
     fake_jev.decide.assert_awaited_once_with(req)
 
 
 async def test_selector_d3_classify_routes_to_decision_3_with_multimodal():
     from mahavishnu.core.task_router import TaskRouter
+
     fake_d3 = MagicMock()
-    fake_d3.decide = AsyncMock(return_value=PointwiseResponse(answers=[], model="vllm-sr/d3-mini"))
+    fake_d3.decide = AsyncMock(
+        return_value=PointwiseResponse(answers=[], model="vllm-sr/d3-mini")
+    )
     router = TaskRouter(adapter_bridge=_FakeBridge(fake_d3))
     req = PointwiseRequest(
         state="see attached",
@@ -919,8 +961,11 @@ async def test_selector_d3_classify_routes_to_decision_3_with_multimodal():
 
 async def test_selector_bge_rank_routes_through_decision_router():
     from mahavishnu.core.task_router import TaskRouter
+
     fake_bge = MagicMock()
-    fake_bge.rank = AsyncMock(return_value=RankResponse(results=[], model="BAAI/bge-reranker-v2-m3"))
+    fake_bge.rank = AsyncMock(
+        return_value=RankResponse(results=[], model="BAAI/bge-reranker-v2-m3")
+    )
     router = TaskRouter(adapter_bridge=_FakeBridge(fake_bge))
     req = RankRequest(query="x", documents=["y"])
     resp = await router.rank(req, selector="bge_rank")
@@ -939,12 +984,16 @@ Add three new methods to the `TaskRouter` class in `/Users/les/Projects/mahavish
 ```python
 _DECISION_SELECTORS = {
     "jev_classify": ["noul", "choice", "score"],
-    "d3_classify":  ["noul", "choice", "score", "multimodal"],
+    "d3_classify": ["noul", "choice", "score", "multimodal"],
 }
 
-async def decide(self, request: PointwiseRequest, *, selector: str) -> PointwiseResponse:
+
+async def decide(
+    self, request: PointwiseRequest, *, selector: str
+) -> PointwiseResponse:
     """Dispatch pointwise decision via the configured selector."""
     from mahavishnu.decision.router import DecisionRouter
+
     if selector not in _DECISION_SELECTORS:
         raise ValueError(f"unknown decision selector: {selector!r}")
     router = DecisionRouter(bridge=self._adapter_bridge)
@@ -955,9 +1004,11 @@ _RANK_SELECTORS = {
     "bge_rank": ["rank", "relevance_score", "self_hostable", "open_source"],
 }
 
+
 async def rank(self, request: RankRequest, *, selector: str) -> RankResponse:
     """Dispatch rank via the configured selector."""
     from mahavishnu.decision.router import DecisionRouter
+
     if selector not in _RANK_SELECTORS:
         raise ValueError(f"unknown decision selector: {selector!r}")
     router = DecisionRouter(bridge=self._adapter_bridge)

@@ -51,7 +51,7 @@ EOF
 Task(
     subagent_type="fastblocks-architect",
     prompt="Design user authentication block",
-    description="Design FastBlocks auth block"
+    description="Design FastBlocks auth block",
 )
 ```
 
@@ -203,7 +203,7 @@ adapters/{name}           # Get specific adapter
 # Deploy blocks to Cloud Run
 await orchestrator.deploy_block(
     block=FastBlock,
-    target="cloudrun"  # or "k8s" or "terminal"
+    target="cloudrun",  # or "k8s" or "terminal"
 )
 
 # Result: Independent Cloud Run service
@@ -216,20 +216,14 @@ await orchestrator.deploy_block(
 # Deploy connected blocks as pipeline
 await orchestrator.deploy_pipeline(
     blocks=[auth_block, api_block, db_block],
-    connections=[
-        (auth_block, api_block),
-        (api_block, db_block)
-    ]
+    connections=[(auth_block, api_block), (api_block, db_block)],
 )
 ```
 
 **Task Processing** (with Oneiric queues):
 ```python
 # Submit block for async processing
-task_id = await queue.submit_task(
-    task_name="process_fastblock",
-    args=[block.to_dict()]
-)
+task_id = await queue.submit_task(task_name="process_fastblock", args=[block.to_dict()])
 
 # Check status
 status = await queue.get_task_status(task_id)
@@ -241,8 +235,7 @@ status = await queue.get_task_status(task_id)
 ```python
 # Deploy entire sandcastle
 await splash_orchestrator.deploy_sandcastle(
-    sandcastle=production_sandcastle,
-    region="us-central1"
+    sandcastle=production_sandcastle, region="us-central1"
 )
 
 # Result:
@@ -259,23 +252,19 @@ await messaging.publish(
     message={
         "event": "deployment_complete",
         "service": "api-service",
-        "revision": "v2.0.0"
-    }
+        "revision": "v2.0.0",
+    },
 )
 
 # Subscribe to events
-await messaging.consume(
-    queue="sandcastle:production:events",
-    callback=handle_event
-)
+await messaging.consume(queue="sandcastle:production:events", callback=handle_event)
 ```
 
 **Multi-Region Deployment**:
 ```python
 # Deploy to multiple regions
 await splash_orchestrator.deploy_multi_region(
-    sandcastle=global_sandcastle,
-    regions=["us-central1", "europe-west1", "asia-east1"]
+    sandcastle=global_sandcastle, regions=["us-central1", "europe-west1", "asia-east1"]
 )
 
 # Result:

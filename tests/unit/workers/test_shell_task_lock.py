@@ -150,4 +150,6 @@ async def test_staging_survives_a_failed_run(tmp_path: Path) -> None:
         sb.ShepherdWorkspace.run = original_run  # type: ignore[method-assign]
 
     assert result.status.value == "failed"
-    assert not sb._SHELL_COMMAND_LOCK.locked(), "lock must be released on the failure path"
+    assert not sb._SHELL_COMMAND_LOCK.locked(), (
+        "lock must be released on the failure path"
+    )

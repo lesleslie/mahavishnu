@@ -162,6 +162,7 @@ The `minimax-coding-plan-mcp` server is the *host* Claude Code Anthropic transpo
 ```python
 class PiPoolSettings(BaseModel):
     """Pi pool-specific settings (Bifrost is a similar shape)."""
+
     # Mounted as the top-level ``pi_pool`` sibling on :class:`MahavishnuSettings`.
 ```
 
@@ -193,6 +194,7 @@ New class `BifrostConfig` in `mahavishnu/core/config.py`, mounted as `bifrost: B
 ```python
 from typing import Literal
 
+
 class BifrostConfig(BaseModel):
     """First-class Bifrost gateway settings.
 
@@ -219,24 +221,53 @@ class BifrostConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")  # crackerjack hard-limit
 
-    enabled: bool = Field(default=False, description="Enable Bifrost gateway routing for mahavishnu LLM callers")
-    base_url: str = Field(default="http://127.0.0.1:8471", description="Bifrost gateway base URL")
-    anthropic_base_url: str = Field(default="http://127.0.0.1:8471/anthropic", description="Bifrost Anthropic-compatible base URL")
-    caller_id: str = Field(default="mahavishnu", description="Caller identity sent in the BifrostGatewayRequest envelope")
-    cache_mode: Literal["off", "direct", "semantic"] = Field(default="off", description="Bifrost cache mode; see BifrostGatewayRequest")  # mirrors ChangepointConfig.detector (config.py:622) Field(default=..., description=...) precedent
-    cache_ttl_seconds: int = Field(default=300, description="Bifrost cache TTL in seconds")
-    request_timeout_seconds: int = Field(default=30, description="Per-request HTTP timeout for Bifrost dispatch")
+    enabled: bool = Field(
+        default=False,
+        description="Enable Bifrost gateway routing for mahavishnu LLM callers",
+    )
+    base_url: str = Field(
+        default="http://127.0.0.1:8471", description="Bifrost gateway base URL"
+    )
+    anthropic_base_url: str = Field(
+        default="http://127.0.0.1:8471/anthropic",
+        description="Bifrost Anthropic-compatible base URL",
+    )
+    caller_id: str = Field(
+        default="mahavishnu",
+        description="Caller identity sent in the BifrostGatewayRequest envelope",
+    )
+    cache_mode: Literal["off", "direct", "semantic"] = Field(
+        default="off", description="Bifrost cache mode; see BifrostGatewayRequest"
+    )  # mirrors ChangepointConfig.detector (config.py:622) Field(default=..., description=...) precedent
+    cache_ttl_seconds: int = Field(
+        default=300, description="Bifrost cache TTL in seconds"
+    )
+    request_timeout_seconds: int = Field(
+        default=30, description="Per-request HTTP timeout for Bifrost dispatch"
+    )
     # AI-CLI worker opt-in flags (default false; each independent).
-    route_claude_code: bool = Field(default=False, description="Inject ANTHROPIC_BASE_URL into terminal-claude workers when bifrost.enabled")
-    route_qwen_code: bool = Field(default=False, description="Inject qwen_env_var into terminal-qwen workers when bifrost.enabled")
+    route_claude_code: bool = Field(
+        default=False,
+        description="Inject ANTHROPIC_BASE_URL into terminal-claude workers when bifrost.enabled",
+    )
+    route_qwen_code: bool = Field(
+        default=False,
+        description="Inject qwen_env_var into terminal-qwen workers when bifrost.enabled",
+    )
     # Env var name that the Qwen CLI reads for a custom OpenAI-compatible
     # base URL. Verified in Phase D; default is the OpenAI-compatible
     # convention. Override here when the actual vendor CLI uses a
     # different name (e.g. ``QWEN_BASE_URL`` or ``DASHSCOPE_API_BASE``).
-    qwen_env_var: str = Field(default="OPENAI_BASE_URL", description="Env var name that the Qwen CLI reads for a custom OpenAI-compatible base URL")
+    qwen_env_var: str = Field(
+        default="OPENAI_BASE_URL",
+        description="Env var name that the Qwen CLI reads for a custom OpenAI-compatible base URL",
+    )
     # Optional bearer token for the gateway. Empty = no auth header.
     # Sourced from BIFROST_API_KEY env var if set; not stored in settings.
-    auth_env: str = Field(default="BIFROST_API_KEY", description="Env var name carrying the optional Bifrost bearer token (omitted from /health.bifrost.config to avoid leaking the env-var name)")
+    auth_env: str = Field(
+        default="BIFROST_API_KEY",
+        description="Env var name carrying the optional Bifrost bearer token (omitted from /health.bifrost.config to avoid leaking the env-var name)",
+    )
     # Local llama-server provider (Phase G). When ``local_provider_enabled``
     # is True, the Bifrost config registers llama-server as a provider
     # and the ``route-background`` and ``route-classify`` routing rules
@@ -250,9 +281,18 @@ class BifrostConfig(BaseModel):
     # which model in the provider-keys list this deployment is
     # configured for. Operators who change the model must update the
     # routing rules in lockstep.
-    local_provider_enabled: bool = Field(default=True, description="Enable local llama-server as a Bifrost target for cheap/background/classify tasks")
-    local_provider_url: str = Field(default="http://127.0.0.1:8081", description="llama-server base URL (Bifrost-side)")
-    local_provider_model: str = Field(default="qwen3-8b-q4_k_m", description="Documentation: identifies which model in the Bifrost keys.models list this deployment is configured for (does not drive routing rules)")
+    local_provider_enabled: bool = Field(
+        default=True,
+        description="Enable local llama-server as a Bifrost target for cheap/background/classify tasks",
+    )
+    local_provider_url: str = Field(
+        default="http://127.0.0.1:8081",
+        description="llama-server base URL (Bifrost-side)",
+    )
+    local_provider_model: str = Field(
+        default="qwen3-8b-q4_k_m",
+        description="Documentation: identifies which model in the Bifrost keys.models list this deployment is configured for (does not drive routing rules)",
+    )
 ```
 
 Mount on `MahavishnuSettings` (`mahavishnu/core/config.py:2961+` area, per the `pi_pool:` precedent):
@@ -299,7 +339,9 @@ envelope = build_gateway_envelope(
 
 ```python
 def _create_openai_model(self, model_id: str) -> Any:
-    kwargs = dict(id=model_id, api_key=self.config.api_key, temperature=..., max_tokens=...)
+    kwargs = dict(
+        id=model_id, api_key=self.config.api_key, temperature=..., max_tokens=...
+    )
     if self._settings is not None and self._settings.bifrost.enabled:
         envelope = build_gateway_envelope(
             caller_id=self._settings.bifrost.caller_id,
@@ -414,9 +456,14 @@ async def launch_sessions(
 ) -> list[SessionInfo]:
     env = _resolve_worker_env(worker_type, self.settings.bifrost)  # NEW: build env
     return await self.adapter.launch_sessions(
-        command=command, count=count, columns=columns, rows=rows,
-        worker_type=worker_type, env=env,  # NEW: pass through
+        command=command,
+        count=count,
+        columns=columns,
+        rows=rows,
+        worker_type=worker_type,
+        env=env,  # NEW: pass through
     )
+
 
 def _resolve_worker_env(worker_type: str, bifrost: BifrostConfig) -> dict[str, str]:
     env: dict[str, str] = {}
@@ -425,17 +472,24 @@ def _resolve_worker_env(worker_type: str, bifrost: BifrostConfig) -> dict[str, s
     if worker_type == "terminal-claude" and bifrost.route_claude_code:
         env["ANTHROPIC_BASE_URL"] = bifrost.anthropic_base_url
     elif worker_type == "terminal-qwen" and bifrost.route_qwen_code:
-        env[bifrost.qwen_env_var] = gateway_api_base(ProtocolFamily.OPENAI, base_url=bifrost.base_url)
+        env[bifrost.qwen_env_var] = gateway_api_base(
+            ProtocolFamily.OPENAI, base_url=bifrost.base_url
+        )
     return env
 ```
 
 ```python
 # contract/tmux_adapter.py — create_session extends with env, emits set-environment
-def create_session(*, socket, session, window_name, command, env: dict[str, str] | None = None) -> None:
+def create_session(
+    *, socket, session, window_name, command, env: dict[str, str] | None = None
+) -> None:
     # ... existing tmux new-session -d call ...
     if env:
         for key, val in env.items():
-            subprocess.run(["tmux", "-S", socket, "set-environment", "-t", session, key, val], check=True)
+            subprocess.run(
+                ["tmux", "-S", socket, "set-environment", "-t", session, key, val],
+                check=True,
+            )
 ```
 
 Defaults — both flags `false` — mean today's behavior is unchanged:
@@ -497,9 +551,12 @@ class BifrostHealth(BaseModel):
     required shape for ``health.bifrost.{config,reachable}`` in the
     JSON response.
     """
+
     model_config = ConfigDict(extra="forbid")
-    config: dict[str, Any] | None = None  # BifrostConfig.to_public_dict() projection (omits auth_env)
-    reachable: bool = False               # from _probe_bifrost_state()
+    config: dict[str, Any] | None = (
+        None  # BifrostConfig.to_public_dict() projection (omits auth_env)
+    )
+    reachable: bool = False  # from _probe_bifrost_state()
 ```
 
 Mounted on `HealthResponse` (`mahavishnu/core/health.py:78`) as:

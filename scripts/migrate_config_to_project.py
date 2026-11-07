@@ -34,7 +34,10 @@ class MigrationRunner:
         self.dry_run = dry_run
         self.backup = backup
         self.backup_dir = (
-            dest_project / ".claude" / "backups" / datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+            dest_project
+            / ".claude"
+            / "backups"
+            / datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
         )
 
     def _log(self, msg: str) -> None:
@@ -127,9 +130,13 @@ class MigrationRunner:
             clean_servers[name] = clean
 
         mcp_json_path = self.dest_project / ".mcp.json"
-        self._log(f"  Writing {mcp_json_path} ({len(clean_servers)} servers, env blocks stripped)")
+        self._log(
+            f"  Writing {mcp_json_path} ({len(clean_servers)} servers, env blocks stripped)"
+        )
         if not self.dry_run:
-            mcp_json_path.write_text(json.dumps({"mcpServers": clean_servers}, indent=2))
+            mcp_json_path.write_text(
+                json.dumps({"mcpServers": clean_servers}, indent=2)
+            )
             self.source_claude_json.write_text(json.dumps(claude_data, indent=2))
 
     def _phase3_update_project_config(self) -> None:
@@ -140,7 +147,9 @@ class MigrationRunner:
             settings = json.loads(settings_path.read_text())
             dirs = settings.get("additionalDirectories", [])
             dirs = [
-                d for d in dirs if str(self.source_claude) not in d and d != str(self.source_claude)
+                d
+                for d in dirs
+                if str(self.source_claude) not in d and d != str(self.source_claude)
             ]
             settings["additionalDirectories"] = dirs
             self._log(f"  Updated additionalDirectories: {dirs}")
@@ -215,7 +224,9 @@ def rollback(dest_project: Path, backup_timestamp: str) -> None:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Migrate Claude Code config to Mahavishnu project")
+    parser = argparse.ArgumentParser(
+        description="Migrate Claude Code config to Mahavishnu project"
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--backup", action="store_true", default=True)
     parser.add_argument(

@@ -70,7 +70,9 @@ def _build_mcp_backend(app: Any | None = None) -> MCPStateBackend:
         else DEFAULT_SUBSTRATE_MCP_URL
     )
     settings = getattr(app, "settings", None) if app is not None else None
-    mcp_state_cfg = getattr(settings, "mcp_state", None) if settings is not None else None
+    mcp_state_cfg = (
+        getattr(settings, "mcp_state", None) if settings is not None else None
+    )
     return MCPStateBackend(
         base_url=url,
         config=MCPStateConfig(
@@ -185,7 +187,10 @@ class CloneTools:
             verification_result = await store.persist(verification_result)
         verification_payload = verification_result.model_dump(mode="json")
         decision = "propose_approve"
-        if is_verification_enabled(app) and verification_result.consensus == Consensus.REJECT:
+        if (
+            is_verification_enabled(app)
+            and verification_result.consensus == Consensus.REJECT
+        ):
             decision = "blocked_by_verification"
         return verification_result, verification_payload, decision
 
@@ -401,9 +406,11 @@ class CloneTools:
                     "refactor_job_id": refactor_job_id,
                 },
             )
-            verification_result, verification_payload, decision = await self._run_verification_gate(
-                proposal, self.app, self._store
-            )
+            (
+                verification_result,
+                verification_payload,
+                decision,
+            ) = await self._run_verification_gate(proposal, self.app, self._store)
             if decision == "blocked_by_verification":
                 # REQ-CLONE-001: REJECT blocks DAG. Log the rejection first so
                 # operators can grep for the consensus that drove the block
@@ -536,7 +543,9 @@ class CloneTools:
             # Sort by UUID7 lexicographically (newest first).
             return sorted(records, key=lambda kv: kv[0], reverse=True)[:limit]
         except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning("clone_refactor_status: list_prefix failed (%s); returning []", exc)
+            logger.warning(
+                "clone_refactor_status: list_prefix failed (%s); returning []", exc
+            )
             return []
 
 

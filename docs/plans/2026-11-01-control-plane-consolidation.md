@@ -945,27 +945,34 @@ the trust boundary it is now (§4.11).
    #: `core/adapters/worker.py:209` (`task.get("timeout", 300)`).
    LEG_TIMEOUT_SECONDS: float = 300.0
 
+
    class TaskControlParams(BaseModel):
        """Server-side control fields. NEVER sourced from the caller's bag."""
+
        model_config = ConfigDict(extra="forbid")
        count: int | None = Field(default=None, ge=1, le=50)  # omitted when None
        deadline_seconds: float | None = Field(default=None, gt=0, le=MAX_TIMEOUT)
-       leg_timeout_seconds: float = Field(default=LEG_TIMEOUT_SECONDS, gt=0, le=MAX_TIMEOUT)
-       worker_type: str | None = None       # allowlist-checked in TaskEnvelope
-       preference_order: list[str] | None = None   # router control
-       permission_mode: str | None = None   # validated against the per-CLI allowlist
+       leg_timeout_seconds: float = Field(
+           default=LEG_TIMEOUT_SECONDS, gt=0, le=MAX_TIMEOUT
+       )
+       worker_type: str | None = None  # allowlist-checked in TaskEnvelope
+       preference_order: list[str] | None = None  # router control
+       permission_mode: str | None = None  # validated against the per-CLI allowlist
+
 
    class TaskParams(BaseModel):
        """Caller-supplied parameters. Control fields are NOT members.
        Unknown keys are PRESERVED: adapters read them by name."""
+
        model_config = ConfigDict(extra="allow")
        prompt: str = ""
-       operation: str = "general"           # free-form; adapters' behaviour selector
+       operation: str = "general"  # free-form; adapters' behaviour selector
        repos: list[str] = Field(default_factory=list)
 
+
    class TaskEnvelope(BaseModel):
-       routing_type: TaskType                # the ROUTING field, constrained
-       id: str = Field(pattern=r"^[A-Za-z0-9._-]{1,128}$")   # server-derived
+       routing_type: TaskType  # the ROUTING field, constrained
+       id: str = Field(pattern=r"^[A-Za-z0-9._-]{1,128}$")  # server-derived
        params: TaskParams = Field(default_factory=TaskParams)
        control: TaskControlParams = Field(default_factory=TaskControlParams)
    ```

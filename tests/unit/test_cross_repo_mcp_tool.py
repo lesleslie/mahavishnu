@@ -77,7 +77,9 @@ class TestRegisterSearchTools:
 class _FakeCommonMCPClient:
     """In-process CommonMCPClient that returns canned payloads keyed by tool name."""
 
-    def __init__(self, payloads: dict[str, Any], *, fail_tools: set[str] | None = None) -> None:
+    def __init__(
+        self, payloads: dict[str, Any], *, fail_tools: set[str] | None = None
+    ) -> None:
         self._payloads = payloads
         self._fail_tools = fail_tools or set()
 
@@ -93,10 +95,30 @@ class _FakeCommonMCPClient:
 def _akosha_capability_payload() -> dict[str, Any]:
     return {
         "results": [
-            {"repo": "mahavishnu", "kind": "tool", "name": "pool_route_execute", "score": 0.92},
-            {"repo": "akosha", "kind": "tool", "name": "search_all_systems", "score": 0.81},
-            {"repo": "session-buddy", "kind": "tool", "name": "quick_search", "score": 0.77},
-            {"repo": "crackerjack", "kind": "tool", "name": "crackerjack_run", "score": 0.65},
+            {
+                "repo": "mahavishnu",
+                "kind": "tool",
+                "name": "pool_route_execute",
+                "score": 0.92,
+            },
+            {
+                "repo": "akosha",
+                "kind": "tool",
+                "name": "search_all_systems",
+                "score": 0.81,
+            },
+            {
+                "repo": "session-buddy",
+                "kind": "tool",
+                "name": "quick_search",
+                "score": 0.77,
+            },
+            {
+                "repo": "crackerjack",
+                "kind": "tool",
+                "name": "crackerjack_run",
+                "score": 0.65,
+            },
         ]
     }
 
@@ -232,7 +254,16 @@ class TestCrossRepoSearchInvocation:
         register_search_tools(app)  # type: ignore[arg-type]
         fn = app.registered["cross_repo_search"]
 
-        akosha_payload = {"results": [{"repo": "mahavishnu", "kind": "tool", "name": "pool_route_execute", "score": 0.5}]}
+        akosha_payload = {
+            "results": [
+                {
+                    "repo": "mahavishnu",
+                    "kind": "tool",
+                    "name": "pool_route_execute",
+                    "score": 0.5,
+                }
+            ]
+        }
         sb_payload = {
             "result": {
                 "workflow_id": "wf-3",
@@ -270,8 +301,7 @@ class TestCrossRepoSearchInvocation:
         # collapse them. The key uniqueness is source|repo|name, so the tool
         # entry + run entry are different keys.
         keys = {
-            (e.get("source"), e.get("repo"), e.get("name"))
-            for e in result["combined"]
+            (e.get("source"), e.get("repo"), e.get("name")) for e in result["combined"]
         }
         assert len(keys) == len(result["combined"])
 
@@ -352,7 +382,14 @@ class TestStreamChannelBroadcast:
         fn = app.registered["cross_repo_search"]
 
         akosha_payload = {
-            "results": [{"repo": "mahavishnu", "kind": "tool", "name": "pool_route_execute", "score": 0.9}]
+            "results": [
+                {
+                    "repo": "mahavishnu",
+                    "kind": "tool",
+                    "name": "pool_route_execute",
+                    "score": 0.9,
+                }
+            ]
         }
         sb_payload = {
             "result": {

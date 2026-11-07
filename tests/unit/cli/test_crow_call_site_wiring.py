@@ -47,7 +47,9 @@ def test_resolve_crow_mcp_client_returns_none_when_disabled(reload_main_cli) -> 
     config = _make_config(crow_enabled=False)
 
     with patch.object(
-        reload_main_cli, "_resolve_crow_mcp_client", wraps=reload_main_cli._resolve_crow_mcp_client
+        reload_main_cli,
+        "_resolve_crow_mcp_client",
+        wraps=reload_main_cli._resolve_crow_mcp_client,
     ) as spy:
         result = spy(config)
 
@@ -55,7 +57,9 @@ def test_resolve_crow_mcp_client_returns_none_when_disabled(reload_main_cli) -> 
 
 
 @pytest.mark.unit
-def test_resolve_crow_mcp_client_constructs_client_when_enabled(reload_main_cli) -> None:
+def test_resolve_crow_mcp_client_constructs_client_when_enabled(
+    reload_main_cli,
+) -> None:
     """crow_enabled=true must build a BodaiComponentMCPClient targeting the configured host/port."""
     config = _make_config(crow_enabled=True, host="10.0.0.5", port=9999)
 
@@ -71,7 +75,9 @@ def test_resolve_crow_mcp_client_constructs_client_when_enabled(reload_main_cli)
 
 
 @pytest.mark.unit
-def test_resolve_crow_mcp_client_reads_env_overrides(reload_main_cli, monkeypatch) -> None:
+def test_resolve_crow_mcp_client_reads_env_overrides(
+    reload_main_cli, monkeypatch
+) -> None:
     """Env-var overrides must take precedence when explicit host/port are unset."""
     monkeypatch.setenv("MAHAVISHNU_CROW_HTTP_HOST", "env-host")
     monkeypatch.setenv("MAHAVISHNU_CROW_HTTP_PORT", "7777")
@@ -139,7 +145,9 @@ def test_call_sites_route_through_helper(reload_main_cli, call_site_kind) -> Non
     if call_site_kind == "workers_spawn":
         # The local-variable form: the call is on its own statement.
         candidates = [
-            (number, line) for number, line in matches if line.strip().startswith("crow_client = ")
+            (number, line)
+            for number, line in matches
+            if line.strip().startswith("crow_client = ")
         ]
     else:
         # The inline keyword-argument form.
@@ -149,7 +157,9 @@ def test_call_sites_route_through_helper(reload_main_cli, call_site_kind) -> Non
             if "mcp_client=_resolve_crow_mcp_client" in line.replace(" ", "")
         ]
 
-    assert candidates, f"no {call_site_kind} call site routes through the helper; found {matches}"
+    assert candidates, (
+        f"no {call_site_kind} call site routes through the helper; found {matches}"
+    )
     for number, line in candidates:
         assert "mcp_client=None" not in line, (
             f"call site at line {number} still hardcodes mcp_client=None: {line!r}"

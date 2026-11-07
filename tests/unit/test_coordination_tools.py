@@ -394,7 +394,9 @@ class TestCoordCreateIssue:
         mgr.list_issues.return_value = []
 
         with patch(_PATCH_TARGET, return_value=mgr):
-            result = await coord_create_issue(title="First", description="desc", repos=["repo1"])
+            result = await coord_create_issue(
+                title="First", description="desc", repos=["repo1"]
+            )
 
         assert result["id"] == "ISSUE-001"
 
@@ -405,7 +407,9 @@ class TestCoordCreateIssue:
         mgr.list_issues.return_value = [_make_issue(), _make_issue("ISSUE-002")]
 
         with patch(_PATCH_TARGET, return_value=mgr):
-            result = await coord_create_issue(title="Third", description="desc", repos=["repo1"])
+            result = await coord_create_issue(
+                title="Third", description="desc", repos=["repo1"]
+            )
 
         assert result["id"] == "ISSUE-003"
 
@@ -418,7 +422,10 @@ class TestCoordCreateIssue:
         with patch(_PATCH_TARGET, return_value=mgr):
             with pytest.raises(ValueError, match="Invalid priority: nonexistent"):
                 await coord_create_issue(
-                    title="Bad", description="desc", repos=["repo1"], priority="nonexistent"
+                    title="Bad",
+                    description="desc",
+                    repos=["repo1"],
+                    priority="nonexistent",
                 )
 
     @pytest.mark.asyncio
@@ -809,7 +816,9 @@ class TestCoordCreateTodo:
         mgr.list_todos.return_value = []
 
         with patch(_PATCH_TARGET, return_value=mgr):
-            await coord_create_todo(task="Task", description="desc", repo="r", estimate_hours=1.0)
+            await coord_create_todo(
+                task="Task", description="desc", repo="r", estimate_hours=1.0
+            )
 
         assert len(mgr._coordination["todos"]) == 1
         assert mgr._coordination["todos"][0]["task"] == "Task"
@@ -821,7 +830,9 @@ class TestCoordCreateTodo:
         mgr.list_todos.return_value = []
 
         with patch(_PATCH_TARGET, return_value=mgr):
-            await coord_create_todo(task="T", description="D", repo="r", estimate_hours=1.0)
+            await coord_create_todo(
+                task="T", description="D", repo="r", estimate_hours=1.0
+            )
 
         mgr.save.assert_called_once()
 
@@ -893,7 +904,11 @@ class TestCoordCompleteTodo:
         mgr = _mock_manager()
         mgr._coordination["todos"] = [
             {"id": "TODO-001", "status": "pending", "updated": "2026-01-01T00:00:00"},
-            {"id": "TODO-002", "status": "in_progress", "updated": "2026-01-01T00:00:00"},
+            {
+                "id": "TODO-002",
+                "status": "in_progress",
+                "updated": "2026-01-01T00:00:00",
+            },
             {"id": "TODO-003", "status": "pending", "updated": "2026-01-01T00:00:00"},
         ]
 
@@ -1155,7 +1170,9 @@ class TestCoordGetRepoStatus:
     @pytest.mark.asyncio
     async def test_dependencies_serialized_correctly(self) -> None:
         """Dependency models are serialized with model_dump(mode='json')."""
-        dep = _make_dependency(dep_type=DependencyType.MCP, status=DependencyStatus.UNSATISFIED)
+        dep = _make_dependency(
+            dep_type=DependencyType.MCP, status=DependencyStatus.UNSATISFIED
+        )
         mgr = _mock_manager()
         mgr.get_repo_status.return_value = {
             "issues": [],

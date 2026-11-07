@@ -127,9 +127,7 @@ Tests use simplified strategies for faster execution:
 ```python
 # Simple alphanumeric strings
 simple_name_strategy = st.text(
-    alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_",
-    min_size=1,
-    max_size=20
+    alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_", min_size=1, max_size=20
 )
 ```
 

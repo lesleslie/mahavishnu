@@ -118,7 +118,9 @@ class TestDeploymentResponse:
         assert dep.version is None
         assert dep.updated_at is None
 
-    def test_full_construction_preserves_all_fields(self, minimal_deployment: dict) -> None:
+    def test_full_construction_preserves_all_fields(
+        self, minimal_deployment: dict
+    ) -> None:
         dep = DeploymentResponse(
             **minimal_deployment,
             schedule={"cron": "*/5 * * * *"},
@@ -189,7 +191,9 @@ class TestDeploymentResponse:
         restored = DeploymentResponse(**dumped)
         assert restored == dep
 
-    def test_parameters_default_is_independent_dict(self, minimal_deployment: dict) -> None:
+    def test_parameters_default_is_independent_dict(
+        self, minimal_deployment: dict
+    ) -> None:
         dep = DeploymentResponse(**minimal_deployment)
         dep.parameters["mutated"] = True
         other = DeploymentResponse(**minimal_deployment)
@@ -222,7 +226,9 @@ class TestFlowRunResponse:
         assert run.estimated_run_time_seconds is None
         assert run.work_queue_name is None
 
-    def test_full_construction_preserves_all_fields(self, minimal_flow_run: dict) -> None:
+    def test_full_construction_preserves_all_fields(
+        self, minimal_flow_run: dict
+    ) -> None:
         started = datetime(2026, 1, 1, 12, 1, 0, tzinfo=UTC)
         ended = datetime(2026, 1, 1, 12, 5, 0, tzinfo=UTC)
         run = FlowRunResponse(
@@ -292,7 +298,11 @@ class TestScheduleResponse:
         sched = ScheduleResponse(
             **{
                 **minimal_schedule,
-                "schedule": {"interval": 3600, "timezone": "UTC", "anchor_date": "2026-01-01"},
+                "schedule": {
+                    "interval": 3600,
+                    "timezone": "UTC",
+                    "anchor_date": "2026-01-01",
+                },
             }
         )
         assert sched.schedule["interval"] == 3600

@@ -79,11 +79,7 @@ def test_phase3_error_code_registered(name: str, value: str) -> None:
 
 def test_phase3_error_codes_count() -> None:
     """Regression guard — exactly 9 Phase 3 codes were added."""
-    found = [
-        name
-        for name, _ in PHASE_3_ERROR_CODES
-        if hasattr(ErrorCode, name)
-    ]
+    found = [name for name, _ in PHASE_3_ERROR_CODES if hasattr(ErrorCode, name)]
     assert len(found) == 9, f"Expected 9 Phase 3 codes, found {len(found)}"
 
 
@@ -219,9 +215,7 @@ def test_record_bundle_integrity_failure_short_rejects_unknown_label() -> None:
 
 def test_allowed_backend_kinds_includes_canonical_set() -> None:
     """Sanity guard — local/s3/gcs/azure/bundle are all allowed."""
-    assert frozenset(
-        {"local", "s3", "gcs", "azure", "bundle"}
-    ) == ALLOWED_BACKEND_KINDS
+    assert frozenset({"local", "s3", "gcs", "azure", "bundle"}) == ALLOWED_BACKEND_KINDS
 
 
 def test_write_mcp_audit_row_emits_info_log(

@@ -46,7 +46,9 @@ def _load_coverage_floor() -> int:
     joined = " ".join(addopts) if isinstance(addopts, list) else addopts
     match = re.search(r"--cov-fail-under=(\d+)", joined)
     if not match:
-        raise AssertionError("pyproject.toml [tool.pytest].addopts must include --cov-fail-under=N")
+        raise AssertionError(
+            "pyproject.toml [tool.pytest].addopts must include --cov-fail-under=N"
+        )
     return int(match.group(1))
 
 
@@ -103,7 +105,9 @@ def _lookup(config: dict, dotted_key: tuple[str, ...]) -> int:
             )
         cursor = cursor[part]
     if not isinstance(cursor, int):
-        raise TypeError(f"pyproject.toml '{'.'.join(dotted_key)}' = {cursor!r} is not an integer")
+        raise TypeError(
+            f"pyproject.toml '{'.'.join(dotted_key)}' = {cursor!r} is not an integer"
+        )
     return cursor
 
 

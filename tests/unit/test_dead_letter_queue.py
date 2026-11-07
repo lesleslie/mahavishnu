@@ -672,7 +672,9 @@ class TestPersistence:
         )
 
         try:
-            await dlq.enqueue(task_id="wf_123a", task={"type": "test"}, repos=["/path"], error="x")
+            await dlq.enqueue(
+                task_id="wf_123a", task={"type": "test"}, repos=["/path"], error="x"
+            )
             await dlq._update_task_persistence(task)
             await dlq._remove_from_persistence("wf_123")
             cleared = await dlq.clear_all()

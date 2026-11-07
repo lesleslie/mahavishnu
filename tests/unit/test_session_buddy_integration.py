@@ -122,7 +122,9 @@ def patched_code_graph_analyzer():
     Yields the patched class. Tests can configure ``return_value`` to
     control what the constructor returns, or ``side_effect`` to raise.
     """
-    with patch("mahavishnu.session_buddy.integration.CodeGraphAnalyzer") as analyzer_cls:
+    with patch(
+        "mahavishnu.session_buddy.integration.CodeGraphAnalyzer"
+    ) as analyzer_cls:
         analyzer_cls.return_value = _make_analyzer()
         yield analyzer_cls
 
@@ -181,7 +183,9 @@ async def test_integrate_code_graph_success_extracts_nodes(
         start_line=1,
         end_line=5,
     )
-    class_node = _make_node("class", "Gamma", "src/m.py", methods=["g"], inherits_from=["Base"])
+    class_node = _make_node(
+        "class", "Gamma", "src/m.py", methods=["g"], inherits_from=["Base"]
+    )
     import_node = _make_node("import", "os", "src/m.py", imported_from="os", alias=None)
 
     analyzer = _make_analyzer(
@@ -221,7 +225,9 @@ async def test_integrate_code_graph_skips_nodes_without_required_attrs(
     # Build a node that looks like a function but lacks the
     # function-specific attributes — the integration's branching should
     # simply skip it.
-    bare = Mock(spec=["name", "file_id"])  # no `calls`, no `methods`, no `imported_from`
+    bare = Mock(
+        spec=["name", "file_id"]
+    )  # no `calls`, no `methods`, no `imported_from`
     bare.name = "naked"
     bare.file_id = "src/x.py"
 
@@ -373,7 +379,10 @@ def test_extract_docstring_from_file_finds_symbol_or_returns_none(
 ) -> None:
     file_path = _write_python_module(tmp_path)
     integration = SessionBuddyIntegration(app=Mock())
-    assert integration._extract_docstring_from_file(str(file_path), symbol_name) == expected
+    assert (
+        integration._extract_docstring_from_file(str(file_path), symbol_name)
+        == expected
+    )
 
 
 def test_extract_docstring_from_file_returns_none_on_invalid_path() -> None:
@@ -556,7 +565,9 @@ async def test_manager_process_repository_for_session_buddy_partial(
     # First call (integrate_code_graph) raises; second call (index_documentation)
     # would succeed. Both calls go through the same analyzer mock, so configure
     # side_effect with two values to mimic that.
-    analyzer.analyze_repository = AsyncMock(side_effect=[RuntimeError("graph fail"), None])
+    analyzer.analyze_repository = AsyncMock(
+        side_effect=[RuntimeError("graph fail"), None]
+    )
     analyzer.nodes = {}
     patched_code_graph_analyzer.return_value = analyzer
 

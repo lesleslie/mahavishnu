@@ -80,7 +80,9 @@ class UnifiedConfig:
         report = cls.validate(settings_dir)
         errors = report.get_errors()
         if errors:
-            messages = [f"{e.path}: {e.message}" if e.path else e.message for e in errors]
+            messages = [
+                f"{e.path}: {e.message}" if e.path else e.message for e in errors
+            ]
             first_path = errors[0].path or None
             raise ConfigValidationError(messages, file_path=first_path)
 

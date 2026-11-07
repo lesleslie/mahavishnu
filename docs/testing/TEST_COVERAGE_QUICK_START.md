@@ -123,6 +123,7 @@ def test_create_user(self, rbac_manager):
     user = rbac_manager.create_user("user1", ["viewer"], ["repo1"])
     assert user.user_id == "user1"
 
+
 # After (correct)
 async def test_create_user(self, rbac_manager):
     user = await rbac_manager.create_user("user1", ["viewer"], ["repo1"])
@@ -146,13 +147,13 @@ def mock_request():
     request.state = MagicMock()
     return request
 
+
 # Use in tests
 async def test_require_auth_with_valid_token(self, mock_request):
     auth_handler = MagicMock()
-    auth_handler.authenticate_request = MagicMock(return_value={
-        "user": "testuser",
-        "method": "jwt"
-    })
+    auth_handler.authenticate_request = MagicMock(
+        return_value={"user": "testuser", "method": "jwt"}
+    )
 
     @require_auth(auth_handler)
     async def protected_function(request: Request):
@@ -171,6 +172,7 @@ async def test_require_auth_with_valid_token(self, mock_request):
 # The test expects the path NOT to be resolved
 # but on macOS, paths are automatically resolved
 # Adjust the test to check for existence instead
+
 
 async def test_validate_path_with_symlinks_not_resolved(self):
     # ... setup code ...

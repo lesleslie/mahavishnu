@@ -592,6 +592,7 @@ wrapper relies on 200).
        DEGRADED = "degraded"
        FAILED = "failed"
 
+
    class ReasonCode(str, Enum):
        WARMING_UP_EMPTY_FEED = "warming_up_empty_feed"
        WARMING_UP_NEVER_CYCLED = "warming_up_never_cycled"
@@ -913,13 +914,13 @@ across all feeds. Operators read it with `jq .status` for
 
 ```python
 ReasonCode = (
-    "warming_up_empty_feed"             # feed not yet populated, no errors
-    "warming_up_never_cycled"           # producer never started
-    "ingester_not_running"               # producer task absent
-    "feed_never_populated"               # first cycle raised; flagged degraded
-    "recent_error_in_window"             # error within halflife
-    "no_producer_ever_cycled"            # no producer task has cycled yet
-    "producer_not_alive"                 # task is done/cancelled
+    "warming_up_empty_feed"  # feed not yet populated, no errors
+    "warming_up_never_cycled"  # producer never started
+    "ingester_not_running"  # producer task absent
+    "feed_never_populated"  # first cycle raised; flagged degraded
+    "recent_error_in_window"  # error within halflife
+    "no_producer_ever_cycled"  # no producer task has cycled yet
+    "producer_not_alive"  # task is done/cancelled
 )
 ```
 

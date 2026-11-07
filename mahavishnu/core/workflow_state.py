@@ -54,7 +54,9 @@ class WorkflowState:
 
         if self.opensearch and OPENSEARCH_AVAILABLE:
             # Store in OpenSearch
-            await self.opensearch.index(index="mahavishnu_workflows", id=workflow_id, body=state)
+            await self.opensearch.index(
+                index="mahavishnu_workflows", id=workflow_id, body=state
+            )
         else:
             # Store in local memory as fallback
             self.local_states[workflow_id] = state
@@ -79,7 +81,9 @@ class WorkflowState:
         """Get workflow state"""
         if self.opensearch and OPENSEARCH_AVAILABLE:
             try:
-                response = await self.opensearch.get(index="mahavishnu_workflows", id=workflow_id)
+                response = await self.opensearch.get(
+                    index="mahavishnu_workflows", id=workflow_id
+                )
                 source = response.get("_source")
                 return source if isinstance(source, dict) else None
             except Exception:  # OpenSearch failures must fall through to the in-memory cache rather than raise to the caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -108,7 +112,9 @@ class WorkflowState:
                 # Fall back to local storage
                 workflows = list(self.local_states.values())
                 if status:
-                    workflows = [w for w in workflows if w.get("status") == status.value]
+                    workflows = [
+                        w for w in workflows if w.get("status") == status.value
+                    ]
                 return workflows[:limit]
         else:
             # Use local memory storage
@@ -121,7 +127,9 @@ class WorkflowState:
         """Delete workflow state"""
         if self.opensearch and OPENSEARCH_AVAILABLE:
             try:
-                await self.opensearch.delete(index="mahavishnu_workflows", id=workflow_id)
+                await self.opensearch.delete(
+                    index="mahavishnu_workflows", id=workflow_id
+                )
             except Exception:  # OpenSearch delete failures must fall through to in-memory cleanup rather than raise to the caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 # If OpenSearch fails, remove from local storage
                 self.local_states.pop(workflow_id, None)
@@ -129,7 +137,9 @@ class WorkflowState:
             # Remove from local memory
             self.local_states.pop(workflow_id, None)
 
-    async def update_progress(self, workflow_id: str, completed: int, total: int) -> None:
+    async def update_progress(
+        self, workflow_id: str, completed: int, total: int
+    ) -> None:
         """Update workflow progress percentage"""
         progress = int((completed / total) * 100) if total > 0 else 0
         await self.update(workflow_id, progress=progress)

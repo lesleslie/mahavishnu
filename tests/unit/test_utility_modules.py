@@ -39,7 +39,10 @@ class TestToolVersions:
             assert len(parts) == 3, f"{tool}: expected semver, got {version!r}"
 
     def test_deprecated_code_intel_tools_have_replacements(self):
-        from mahavishnu.mcp.tool_versions import get_tool_deprecation, is_tool_deprecated
+        from mahavishnu.mcp.tool_versions import (
+            get_tool_deprecation,
+            is_tool_deprecated,
+        )
 
         assert is_tool_deprecated("index_code_graph") is True
         assert is_tool_deprecated("find_related_code") is True
@@ -49,7 +52,9 @@ class TestToolVersions:
         assert get_tool_deprecation("index_code_graph") == "code_index.index_repo"
         assert get_tool_deprecation("find_related_code") == "treesitter_tools"
         assert get_tool_deprecation("index_documentation") == "code_index.index_repo"
-        assert get_tool_deprecation("search_documentation") == "search_tools.hybrid_search"
+        assert (
+            get_tool_deprecation("search_documentation") == "search_tools.hybrid_search"
+        )
         assert get_tool_deprecation("get_monitoring_dashboard") == "ecosystem_status"
 
 
@@ -250,7 +255,10 @@ class TestAdapterPackageSurface:
         assert "PgvectorSettings" not in adapters.__all__
 
     def test_pgvector_imports_remain_available_from_canonical_module(self):
-        from mahavishnu.adapters.pgvector_adapter import PgvectorAdapter, PgvectorSettings
+        from mahavishnu.adapters.pgvector_adapter import (
+            PgvectorAdapter,
+            PgvectorSettings,
+        )
 
         assert PgvectorAdapter is not None
         assert PgvectorSettings is not None

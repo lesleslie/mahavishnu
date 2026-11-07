@@ -102,7 +102,10 @@ async def test_workflow_execution_with_multiple_adapters():
         test_repo = Path(temp_dir)
         test_repo_path = str(test_repo)
         resolved_repo_path = str(test_repo.resolve())
-        app.config.allowed_repo_paths = [resolved_repo_path, *app.config.allowed_repo_paths]
+        app.config.allowed_repo_paths = [
+            resolved_repo_path,
+            *app.config.allowed_repo_paths,
+        ]
 
         # Create a simple test file to make it a valid repo
         (test_repo / "test.py").write_text("# Test repository")
@@ -143,7 +146,10 @@ async def test_workflow_execution_parallel():
             repo_paths.append(str(repo_dir))
 
         resolved_repo_paths = [str(Path(repo).resolve()) for repo in repo_paths]
-        app.config.allowed_repo_paths = [*resolved_repo_paths, *app.config.allowed_repo_paths]
+        app.config.allowed_repo_paths = [
+            *resolved_repo_paths,
+            *app.config.allowed_repo_paths,
+        ]
 
         # Test parallel execution with LlamaIndex adapter
         assert "llamaindex" in app.adapters
@@ -168,7 +174,10 @@ async def test_rbac_integration():
         test_repo_path = str(test_repo)
         resolved_repo_path = str(test_repo.resolve())
         (test_repo / "test.py").write_text("# Test repository")
-        app.config.allowed_repo_paths = [resolved_repo_path, *app.config.allowed_repo_paths]
+        app.config.allowed_repo_paths = [
+            resolved_repo_path,
+            *app.config.allowed_repo_paths,
+        ]
 
         # Test that RBAC manager is available and functional
         assert app.rbac_manager is not None
@@ -342,7 +351,10 @@ async def test_end_to_end_workflow():
         test_repo_path = str(test_repo)
         resolved_repo_path = str(test_repo.resolve())
         (test_repo / "test.py").write_text("# Test repository")
-        app.config.allowed_repo_paths = [resolved_repo_path, *app.config.allowed_repo_paths]
+        app.config.allowed_repo_paths = [
+            resolved_repo_path,
+            *app.config.allowed_repo_paths,
+        ]
 
         # Use LlamaIndex adapter for a simple task
         if "llamaindex" in app.adapters:
@@ -353,11 +365,16 @@ async def test_end_to_end_workflow():
             }
 
             # Execute the workflow
-            result = await app.execute_workflow_parallel(task, "llamaindex", [test_repo_path])
+            result = await app.execute_workflow_parallel(
+                task, "llamaindex", [test_repo_path]
+            )
 
             # Verify the workflow completed successfully
             assert "status" in result
-            assert result["status"] in ["completed", "partial"]  # Allow partial for this test
+            assert result["status"] in [
+                "completed",
+                "partial",
+            ]  # Allow partial for this test
             assert "results" in result
             assert "repos_processed" in result
             assert result["repos_processed"] >= 0

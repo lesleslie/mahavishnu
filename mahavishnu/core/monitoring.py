@@ -202,7 +202,9 @@ class Alert:
             "details": self.details,
             "acknowledged": self.acknowledged,
             "acknowledged_by": self.acknowledged_by,
-            "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
+            "acknowledged_at": self.acknowledged_at.isoformat()
+            if self.acknowledged_at
+            else None,
             "fired_at": self.fired_at.isoformat() if self.fired_at else None,
             "firing": self.firing,
         }
@@ -241,7 +243,9 @@ class AlertManager:
         # Register default handlers for different alert types
         self.register_handler(AlertType.WORKFLOW_FAILURE, self._handle_workflow_failure)
         self.register_handler(AlertType.SYSTEM_HEALTH, self._handle_system_health)
-        self.register_handler(AlertType.RESOURCE_EXHAUSTION, self._handle_resource_exhaustion)
+        self.register_handler(
+            AlertType.RESOURCE_EXHAUSTION, self._handle_resource_exhaustion
+        )
         self.register_handler(
             AlertType.PERFORMANCE_DEGRADATION, self._handle_performance_degradation
         )
@@ -381,7 +385,9 @@ class AlertManager:
 
     def get_active_alerts_sync(self) -> list[Alert]:
         """Synchronous version of get_active_alerts."""
-        return [alert for alert in self.alerts if not alert.acknowledged and alert.firing]
+        return [
+            alert for alert in self.alerts if not alert.acknowledged and alert.firing
+        ]
 
     async def _send_notifications(self, alert: Alert):
         """Send notifications through all registered channels."""
@@ -389,7 +395,9 @@ class AlertManager:
             try:
                 await channel.send_notification(alert)
             except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                self.logger.error(f"Failed to send notification via {channel.name}: {e}")
+                self.logger.error(
+                    f"Failed to send notification via {channel.name}: {e}"
+                )
 
     async def _handle_workflow_failure(self, alert: Alert):
         """Handle workflow failure alerts."""
@@ -531,7 +539,8 @@ class AlertManager:
                                 details={
                                     "workflow_id": workflow.get("id", "unknown"),
                                     "updated_at": updated_at_str,
-                                    "timeout_minutes": timeout_threshold.total_seconds() / 60,
+                                    "timeout_minutes": timeout_threshold.total_seconds()
+                                    / 60,
                                 },
                             )
                     except ValueError:
@@ -557,7 +566,9 @@ class AlertManager:
                     description=f"Memory usage is at {memory_percent}%",
                     details={
                         "memory_percent": memory_percent,
-                        "available_gb": round(psutil.virtual_memory().available / (1024**3), 2),
+                        "available_gb": round(
+                            psutil.virtual_memory().available / (1024**3), 2
+                        ),
                     },
                 )
 
@@ -634,7 +645,12 @@ class EmailNotificationChannel(NotificationChannel):
     """Email notification channel."""
 
     def __init__(
-        self, smtp_server: str, smtp_port: int, username: str, password: str, recipients: list[str]
+        self,
+        smtp_server: str,
+        smtp_port: int,
+        username: str,
+        password: str,
+        recipients: list[str],
     ):
         super().__init__("email")
         self.smtp_server = smtp_server
@@ -697,13 +713,26 @@ class SlackNotificationChannel(NotificationChannel):
                     {
                         "color": "danger"
                         if alert.severity
-                        in (AlertSeverity.HIGH, AlertSeverity.CRITICAL, AlertSeverity.EMERGENCY)
+                        in (
+                            AlertSeverity.HIGH,
+                            AlertSeverity.CRITICAL,
+                            AlertSeverity.EMERGENCY,
+                        )
                         else "warning"
-                        if alert.severity in (AlertSeverity.MEDIUM, AlertSeverity.WARNING)
+                        if alert.severity
+                        in (AlertSeverity.MEDIUM, AlertSeverity.WARNING)
                         else "good",
                         "fields": [
-                            {"title": "Description", "value": alert.description, "short": False},
-                            {"title": "Time", "value": alert.timestamp.isoformat(), "short": True},
+                            {
+                                "title": "Description",
+                                "value": alert.description,
+                                "short": False,
+                            },
+                            {
+                                "title": "Time",
+                                "value": alert.timestamp.isoformat(),
+                                "short": True,
+                            },
                             {
                                 "title": "Type",
                                 "value": alert.type.value if alert.type else "rule",
@@ -714,9 +743,13 @@ class SlackNotificationChannel(NotificationChannel):
                 ],
             }
 
-            response = await asyncio.to_thread(requests.post, self.webhook_url, json=message)
+            response = await asyncio.to_thread(
+                requests.post, self.webhook_url, json=message
+            )
             if response.status_code != 200:
-                self.logger.warning(f"Failed to send Slack notification: {response.text}")
+                self.logger.warning(
+                    f"Failed to send Slack notification: {response.text}"
+                )
             else:
                 self.logger.info(f"Slack notification sent for alert {alert.id}")
         except (
@@ -771,7 +804,9 @@ class PagerDutyNotificationChannel(NotificationChannel):
             )
 
             if response.status_code != 202:
-                self.logger.warning(f"Failed to send PagerDuty notification: {response.text}")
+                self.logger.warning(
+                    f"Failed to send PagerDuty notification: {response.text}"
+                )
             else:
                 self.logger.info(f"PagerDuty notification sent for alert {alert.id}")
         except (
@@ -908,7 +943,10 @@ class ComponentHealthChecker:
 
     def __init__(self) -> None:
         self.checks: dict[
-            str, Callable[[], ComponentHealthResult | Coroutine[Any, Any, ComponentHealthResult]]
+            str,
+            Callable[
+                [], ComponentHealthResult | Coroutine[Any, Any, ComponentHealthResult]
+            ],
         ] = {}
 
     def register_check(
@@ -1001,7 +1039,8 @@ class MonitoringDashboard:
                 "memory_available_gb": round(memory_info.available / (1024**3), 2),
                 "disk_percent": (disk_usage.used / disk_usage.total) * 100,
                 "disk_available_gb": round(disk_usage.free / (1024**3), 2),
-                "uptime_seconds": time.time() - getattr(self.app, "_start_time", time.time()),
+                "uptime_seconds": time.time()
+                - getattr(self.app, "_start_time", time.time()),
             },
             "workflows": workflow_counts,
             "adapters": adapter_health,
@@ -1041,10 +1080,24 @@ class MonitoringDashboard:
     async def _get_alert_counts(self) -> dict[str, int]:
         """Get alert counts by severity."""
         if not self.alert_manager:
-            return {"critical": 0, "high": 0, "medium": 0, "low": 0, "warning": 0, "info": 0}
+            return {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "warning": 0,
+                "info": 0,
+            }
 
         alerts = await self.alert_manager.get_active_alerts()
-        counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "warning": 0, "info": 0}
+        counts = {
+            "critical": 0,
+            "high": 0,
+            "medium": 0,
+            "low": 0,
+            "warning": 0,
+            "info": 0,
+        }
 
         for alert in alerts:
             counts.setdefault(alert.severity.value, 0)
@@ -1058,7 +1111,9 @@ class MonitoringDashboard:
             return []
 
         # Get all alerts and sort by timestamp
-        alerts = sorted(self.alert_manager.alerts, key=lambda x: x.timestamp, reverse=True)
+        alerts = sorted(
+            self.alert_manager.alerts, key=lambda x: x.timestamp, reverse=True
+        )
         recent_alerts = alerts[:limit]
 
         return [

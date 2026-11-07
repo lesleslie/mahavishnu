@@ -18,6 +18,7 @@ from mahavishnu.core.config import MahavishnuSettings, get_settings, reset_setti
 
 if TYPE_CHECKING:
     from pathlib import Path
+
     pass
 
 
@@ -54,7 +55,9 @@ class TestXDGOverlay:
         _clear_mahavishnu_env(monkeypatch)
         xdg_dir = tmp_path / "mahavishnu"
         xdg_dir.mkdir(parents=True)
-        (xdg_dir / "config.yaml").write_text("opensearch:\n  endpoint: xdg-config:9200\n")
+        (xdg_dir / "config.yaml").write_text(
+            "opensearch:\n  endpoint: xdg-config:9200\n"
+        )
         (xdg_dir / "local.yaml").write_text("opensearch:\n  endpoint: xdg-local:9200\n")
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 
@@ -87,7 +90,9 @@ class TestXDGOverlay:
         _clear_mahavishnu_env(monkeypatch)
         xdg_dir = tmp_path / "mahavishnu"
         xdg_dir.mkdir(parents=True)
-        (xdg_dir / "config.yaml").write_text("opensearch:\n  endpoint: xdg-only-config\n")
+        (xdg_dir / "config.yaml").write_text(
+            "opensearch:\n  endpoint: xdg-only-config\n"
+        )
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
 
         reset_settings()

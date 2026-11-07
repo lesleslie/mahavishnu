@@ -38,9 +38,13 @@ class _StubMCP:
         return decorator
 
 
-def _search_result(doc_id: str = "11111111-1111-1111-1111-111111111111", title: str = "T"):
+def _search_result(
+    doc_id: str = "11111111-1111-1111-1111-111111111111", title: str = "T"
+):
     result = MagicMock()
-    result.model_dump = MagicMock(return_value={"id": doc_id, "title": title, "score": 0.91})
+    result.model_dump = MagicMock(
+        return_value={"id": doc_id, "title": title, "score": 0.91}
+    )
     return result
 
 
@@ -112,9 +116,14 @@ class TestHybridSearchTool:
     """hybrid_search delegates to HybridSearchEngine.search."""
 
     async def test_returns_serialized_results(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        fake_engine.search = AsyncMock(return_value=[_search_result("a"), _search_result("b")])
+        fake_engine.search = AsyncMock(
+            return_value=[_search_result("a"), _search_result("b")]
+        )
         monkeypatch.setattr(
             "mahavishnu.mcp.tools.search_tools.HybridSearchEngine",
             lambda database, config: fake_engine,
@@ -134,11 +143,16 @@ class TestHybridSearchTool:
         assert result[1]["id"] == "b"
 
     async def test_uses_custom_weights(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.search = AsyncMock(return_value=[])
         ctor = MagicMock(return_value=fake_engine)
-        monkeypatch.setattr("mahavishnu.mcp.tools.search_tools.HybridSearchEngine", ctor)
+        monkeypatch.setattr(
+            "mahavishnu.mcp.tools.search_tools.HybridSearchEngine", ctor
+        )
         monkeypatch.setattr(
             "mahavishnu.mcp.tools.search_tools.get_database",
             AsyncMock(return_value=MagicMock()),
@@ -163,7 +177,10 @@ class TestHybridSearchTool:
         assert fake_engine.config.min_score == 0.42
 
     async def test_propagates_engine_exception(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.search = AsyncMock(side_effect=RuntimeError("db down"))
         monkeypatch.setattr(
@@ -190,7 +207,10 @@ class TestIndexDocumentTool:
     """index_document calls engine.index_document and returns a success envelope."""
 
     async def test_indexes_valid_uuid(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.index_document = AsyncMock(return_value=None)
         monkeypatch.setattr(
@@ -223,7 +243,10 @@ class TestIndexDocumentTool:
         assert kwargs["metadata"] == {"k": "v"}
 
     async def test_rejects_invalid_uuid(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             "mahavishnu.mcp.tools.search_tools.HybridSearchEngine",
@@ -240,7 +263,10 @@ class TestIndexDocumentTool:
             await fn(doc_id="not-a-uuid", title="T", content="c")
 
     async def test_propagates_engine_exception(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.index_document = AsyncMock(side_effect=RuntimeError("write fail"))
         monkeypatch.setattr(
@@ -271,7 +297,10 @@ class TestDeleteDocumentTool:
     """delete_document returns success envelope with deleted flag."""
 
     async def test_delete_existing(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.delete_document = AsyncMock(return_value=True)
         monkeypatch.setattr(
@@ -292,7 +321,10 @@ class TestDeleteDocumentTool:
         assert "successfully" in result["message"].lower()
 
     async def test_delete_missing_reports_not_found(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.delete_document = AsyncMock(return_value=False)
         monkeypatch.setattr(
@@ -313,7 +345,10 @@ class TestDeleteDocumentTool:
         assert "not found" in result["message"].lower()
 
     async def test_invalid_uuid_raises_value_error(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
             "mahavishnu.mcp.tools.search_tools.HybridSearchEngine",
@@ -330,7 +365,10 @@ class TestDeleteDocumentTool:
             await fn(doc_id="nope")
 
     async def test_propagates_engine_exception(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.delete_document = AsyncMock(side_effect=RuntimeError("delete fail"))
         monkeypatch.setattr(
@@ -357,7 +395,10 @@ class TestSearchByRepositoryTool:
     """search_by_repository calls engine.search and returns serialized results."""
 
     async def test_returns_results(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.search = AsyncMock(return_value=[_search_result("a")])
         monkeypatch.setattr(
@@ -382,7 +423,10 @@ class TestSearchByRepositoryTool:
         assert kwargs["limit"] == 3
 
     async def test_empty_query_uses_minimal_placeholder(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.search = AsyncMock(return_value=[])
         monkeypatch.setattr(
@@ -405,7 +449,10 @@ class TestSearchByRepositoryTool:
         assert kwargs["repository"] == "mahavishnu"
 
     async def test_propagates_engine_exception(
-        self, stub_mcp: _StubMCP, fake_engine: MagicMock, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_mcp: _StubMCP,
+        fake_engine: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         fake_engine.search = AsyncMock(side_effect=RuntimeError("search down"))
         monkeypatch.setattr(

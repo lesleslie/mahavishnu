@@ -142,10 +142,30 @@ class NlpParser:
 
     # Priority keywords (order matters - check multi-word phrases first in extraction)
     PRIORITY_KEYWORDS: ClassVar[dict[Priority, list[str]]] = {
-        Priority.CRITICAL: ["critical", "urgent", "asap", "emergency", "blocker", "hotfix"],
+        Priority.CRITICAL: [
+            "critical",
+            "urgent",
+            "asap",
+            "emergency",
+            "blocker",
+            "hotfix",
+        ],
         Priority.HIGH: ["high priority", "high", "important", "soon"],
-        Priority.MEDIUM: ["medium priority", "normal priority", "medium", "normal", "regular"],
-        Priority.LOW: ["low priority", "nice to have", "low", "minor", "eventually", "someday"],
+        Priority.MEDIUM: [
+            "medium priority",
+            "normal priority",
+            "medium",
+            "normal",
+            "regular",
+        ],
+        Priority.LOW: [
+            "low priority",
+            "nice to have",
+            "low",
+            "minor",
+            "eventually",
+            "someday",
+        ],
     }
 
     # Repository name patterns (includes hyphens and underscores)
@@ -220,10 +240,14 @@ class NlpParser:
         entities = await self._extract_entities(text, intent)
 
         # Calculate overall confidence
-        confidence = self._calculate_confidence(intent, intent_confidence, entities, text)
+        confidence = self._calculate_confidence(
+            intent, intent_confidence, entities, text
+        )
 
         # Determine if clarification needed
-        clarification_needed = self._get_clarification_needs(intent, entities, confidence)
+        clarification_needed = self._get_clarification_needs(
+            intent, entities, confidence
+        )
 
         return ParseResult(
             intent=intent,
@@ -250,7 +274,9 @@ class NlpParser:
         best_intent = max(scores, key=lambda k: scores[k])
         return best_intent, scores[best_intent]
 
-    async def _extract_entities(self, text: str, intent: Intent) -> dict[str, ParsedEntity]:
+    async def _extract_entities(
+        self, text: str, intent: Intent
+    ) -> dict[str, ParsedEntity]:
         """Extract entities from text based on intent."""
         entities: dict[str, ParsedEntity | None] = {}
 
@@ -405,7 +431,9 @@ class NlpParser:
                 if pattern_type == "relative_day":
                     day_name = match.group(1)
                     if day_name in days_map:
-                        due_date = datetime.now(UTC) + timedelta(days=days_map[day_name])
+                        due_date = datetime.now(UTC) + timedelta(
+                            days=days_map[day_name]
+                        )
                         return ParsedEntity(
                             name="due_date",
                             value=due_date.strftime("%Y-%m-%d"),

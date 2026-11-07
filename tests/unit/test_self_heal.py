@@ -246,16 +246,37 @@ class TestExtractRule:
     def test_extract_rule_scrubs_various_credential_patterns(self) -> None:
         """All known credential patterns are redacted from the message."""
         cases = [
-            ("github PAT", RuntimeError("token=ghp_abcdef0123456789abcdef0123456789ABCD")),
-            ("github oauth", RuntimeError("got gho_abcdef0123456789abcdef0123456789ABCD")),
-            ("github server", RuntimeError("got ghs_abcdef0123456789abcdef0123456789ABCD")),
-            ("github user", RuntimeError("got ghu_abcdef0123456789abcdef0123456789ABCD")),
-            ("github refresh", RuntimeError("got ghr_abcdef0123456789abcdef0123456789ABCD")),
+            (
+                "github PAT",
+                RuntimeError("token=ghp_abcdef0123456789abcdef0123456789ABCD"),
+            ),
+            (
+                "github oauth",
+                RuntimeError("got gho_abcdef0123456789abcdef0123456789ABCD"),
+            ),
+            (
+                "github server",
+                RuntimeError("got ghs_abcdef0123456789abcdef0123456789ABCD"),
+            ),
+            (
+                "github user",
+                RuntimeError("got ghu_abcdef0123456789abcdef0123456789ABCD"),
+            ),
+            (
+                "github refresh",
+                RuntimeError("got ghr_abcdef0123456789abcdef0123456789ABCD"),
+            ),
             ("gitlab", RuntimeError("header glpat-AbCdEfGhIjKlMnOpQrSt")),
             ("aws access key", RuntimeError("using AKIAIOSFODNN7EXAMPLE")),
             ("aws session", RuntimeError("using ASIAIOSFODNN7EXAMPLE")),
-            ("bearer", RuntimeError("Authorization: Bearer abcdefghijklmnopqrstuvwxyz")),
-            ("jwt-like", RuntimeError("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature")),
+            (
+                "bearer",
+                RuntimeError("Authorization: Bearer abcdefghijklmnopqrstuvwxyz"),
+            ),
+            (
+                "jwt-like",
+                RuntimeError("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature"),
+            ),
             ("password kv", RuntimeError("password=hunter2-secret")),
             ("api_key kv", RuntimeError("api_key=AKIAABCDEFGHIJKLMNOP")),
             ("token kv", RuntimeError("token=verysecrettokenvalue")),

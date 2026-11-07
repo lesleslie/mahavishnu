@@ -188,7 +188,9 @@ def test_upsert_to_session_buddy_sends_sse_accept_header(
             self.headers = headers or {}
 
     def fake_post(url, json=None, timeout=None, headers=None, **kwargs):
-        captured.setdefault("calls", []).append({"url": url, "headers": headers, "payload": json})
+        captured.setdefault("calls", []).append(
+            {"url": url, "headers": headers, "payload": json}
+        )
         if isinstance(json, dict) and json.get("method") == "initialize":
             return FakeResponse(headers={"mcp-session-id": "test-session"})
         return FakeResponse()

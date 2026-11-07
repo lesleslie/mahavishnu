@@ -153,7 +153,9 @@ class SkillSynthesizer:
                     goal_keywords.add(word)
 
         frequent_keywords = [
-            kw for kw in goal_keywords if sum(1 for g in all_goals if kw in g.lower()) >= 2
+            kw
+            for kw in goal_keywords
+            if sum(1 for g in all_goals if kw in g.lower()) >= 2
         ]
         for kw in frequent_keywords[:3]:
             conditions.append(f"Goal mentions '{kw}'")

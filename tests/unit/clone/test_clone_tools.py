@@ -34,10 +34,7 @@ def mock_mcp():
 
 def _diff_one_line() -> str:
     """Trivial extraction diff for tests that don't care about content."""
-    return (
-        "--- a/foo.py\n+++ b/foo.py\n"
-        "@@ -1 +1 @@\n-x = 1\n+x = 2\n"
-    )
+    return "--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n"
 
 
 @pytest.fixture
@@ -111,7 +108,9 @@ class TestCloneDetectEcosystem:
 
 @pytest.mark.req(["REQ-CLONE-007", "REQ-CLONE-009", "REQ-CLONE-015"])
 class TestCloneRefactorGroup:
-    async def test_returns_refactor_job_id_immediately(self, mock_app, mock_mcp_backend):
+    async def test_returns_refactor_job_id_immediately(
+        self, mock_app, mock_mcp_backend
+    ):
         """clone_refactor_group must return immediately with a job_id (C-NEW-5)."""
         from unittest.mock import AsyncMock, patch
 
@@ -222,7 +221,8 @@ class TestCloneRefactorGroup:
             AsyncMock(return_value=rejected_result),
         ):
             with patch.object(
-                tools, "_store",
+                tools,
+                "_store",
                 MagicMock(persist=AsyncMock(return_value=rejected_result)),
             ):
                 result = await tools.clone_refactor_group(
@@ -273,7 +273,8 @@ class TestCloneRefactorGroup:
             AsyncMock(return_value=approved_result),
         ):
             with patch.object(
-                tools, "_store",
+                tools,
+                "_store",
                 MagicMock(persist=AsyncMock(return_value=approved_result)),
             ):
                 result = await tools.clone_refactor_group(
@@ -377,7 +378,9 @@ class TestGetVerificationResult:
         from mahavishnu.mcp.tools.clone_tools import CloneTools
 
         # Force the store to be None by skipping the default build.
-        with patch("mahavishnu.core.verification.build_default_store", return_value=None):
+        with patch(
+            "mahavishnu.core.verification.build_default_store", return_value=None
+        ):
             tools = CloneTools(mock_app)
             result = await tools.get_verification_result(proposal_id="missing")
         assert result["status"] == "not_found"
@@ -456,7 +459,9 @@ class TestGetVerificationResult:
 class TestCloneRefactorGroupVerification:
     """Phase 1 Task 1.6 exit criteria — verification gate runs on every call."""
 
-    async def test_clone_refactor_group_runs_verification(self, mock_app, mock_mcp_backend):
+    async def test_clone_refactor_group_runs_verification(
+        self, mock_app, mock_mcp_backend
+    ):
         """clone_refactor_group must always return a ``verification`` field.
 
         This is the smoke check for Task 1.3 wiring: regardless of the

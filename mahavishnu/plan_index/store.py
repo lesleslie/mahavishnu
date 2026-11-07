@@ -55,12 +55,16 @@ _RECORD_TTL_SECONDS: Final[int] = 86400
 
 def _validate_status(status: str) -> None:
     if status not in VALID_STATUSES:
-        raise ValueError(f"invalid status: {status!r}; must be one of {sorted(VALID_STATUSES)}")
+        raise ValueError(
+            f"invalid status: {status!r}; must be one of {sorted(VALID_STATUSES)}"
+        )
 
 
 def _validate_plan_id(plan_id: str) -> None:
     if not re.match(VALID_PLAN_ID, plan_id):
-        raise ValueError(f"invalid plan_id: {plan_id!r}; must be 32 lowercase hex chars")
+        raise ValueError(
+            f"invalid plan_id: {plan_id!r}; must be 32 lowercase hex chars"
+        )
 
 
 def _validate_topic(topic: str) -> None:
@@ -128,11 +132,15 @@ class PlanIndexStore:
 
     @staticmethod
     def _status_key(record: PlanRecordDict) -> str:
-        return f"plan_index/status/{record['status']}/{record['date']}/{record['plan_id']}"
+        return (
+            f"plan_index/status/{record['status']}/{record['date']}/{record['plan_id']}"
+        )
 
     @staticmethod
     def _topic_key(record: PlanRecordDict) -> str:
-        return f"plan_index/topic/{record['topic']}/{record['date']}/{record['plan_id']}"
+        return (
+            f"plan_index/topic/{record['topic']}/{record['date']}/{record['plan_id']}"
+        )
 
     @staticmethod
     def _to_dict(record: PlanRecord) -> PlanRecordDict:
@@ -202,15 +210,21 @@ class PlanIndexStore:
             records.append(rec)
         return records
 
-    async def list_by_status(self, status: str, *, limit: int = 50) -> list[PlanRecordDict]:
+    async def list_by_status(
+        self, status: str, *, limit: int = 50
+    ) -> list[PlanRecordDict]:
         _validate_status(status)
         return await self._list_by_prefix(f"plan_index/status/{status}/", limit=limit)
 
-    async def list_by_topic(self, topic: str, *, limit: int = 50) -> list[PlanRecordDict]:
+    async def list_by_topic(
+        self, topic: str, *, limit: int = 50
+    ) -> list[PlanRecordDict]:
         _validate_topic(topic)
         return await self._list_by_prefix(f"plan_index/topic/{topic}/", limit=limit)
 
-    async def list_by_date_range(self, date_from: str, date_to: str) -> list[PlanRecordDict]:
+    async def list_by_date_range(
+        self, date_from: str, date_to: str
+    ) -> list[PlanRecordDict]:
         all_records = await self._list_by_prefix("plan_index/status/", limit=1000)
         return [r for r in all_records if date_from <= r["date"] <= date_to]
 
@@ -267,18 +281,26 @@ class PlanIndexStore:
             success_raw, key="plan_index/meta/last_success_ms", default=None
         )
         cycles_raw = await self._mcp.get("plan_index/meta/cycles_total")
-        cycles_total = _safe_int(cycles_raw, key="plan_index/meta/cycles_total", default=0)
-        success_cycles_raw = await self._mcp.get("plan_index/meta/successful_cycles_total")
+        cycles_total = _safe_int(
+            cycles_raw, key="plan_index/meta/cycles_total", default=0
+        )
+        success_cycles_raw = await self._mcp.get(
+            "plan_index/meta/successful_cycles_total"
+        )
         successful_cycles_total = _safe_int(
             success_cycles_raw,
             key="plan_index/meta/successful_cycles_total",
             default=0,
         )
         errors_raw = await self._mcp.get("plan_index/meta/errors_total")
-        errors_total = _safe_int(errors_raw, key="plan_index/meta/errors_total", default=0)
+        errors_total = _safe_int(
+            errors_raw, key="plan_index/meta/errors_total", default=0
+        )
         # recent_errors — read from a JSON list (last 20)
         recent_errors_raw = await self._mcp.get("plan_index/meta/recent_errors")
-        recent_errors = _safe_json_list(recent_errors_raw, key="plan_index/meta/recent_errors")
+        recent_errors = _safe_json_list(
+            recent_errors_raw, key="plan_index/meta/recent_errors"
+        )
         tripwire = self._compute_tripwire(all_records, last_rebuild_ms)
         oldest_active_ms = self._oldest_active_ms(all_records)
         result: PlanVitalsDict = {
@@ -332,15 +354,21 @@ class PlanIndexStore:
 
     async def rebuild_status(self) -> PlanRebuildStatusDict:
         cycles_raw = await self._mcp.get("plan_index/meta/cycles_total")
-        cycles_total = _safe_int(cycles_raw, key="plan_index/meta/cycles_total", default=0)
-        success_cycles_raw = await self._mcp.get("plan_index/meta/successful_cycles_total")
+        cycles_total = _safe_int(
+            cycles_raw, key="plan_index/meta/cycles_total", default=0
+        )
+        success_cycles_raw = await self._mcp.get(
+            "plan_index/meta/successful_cycles_total"
+        )
         successful_cycles_total = _safe_int(
             success_cycles_raw,
             key="plan_index/meta/successful_cycles_total",
             default=0,
         )
         errors_raw = await self._mcp.get("plan_index/meta/errors_total")
-        errors_total = _safe_int(errors_raw, key="plan_index/meta/errors_total", default=0)
+        errors_total = _safe_int(
+            errors_raw, key="plan_index/meta/errors_total", default=0
+        )
         rebuild_raw = await self._mcp.get("plan_index/meta/last_rebuild_ms")
         last_rebuild_ms = _safe_int(
             rebuild_raw, key="plan_index/meta/last_rebuild_ms", default=None
@@ -350,7 +378,9 @@ class PlanIndexStore:
             success_raw, key="plan_index/meta/last_success_ms", default=None
         )
         recent_errors_raw = await self._mcp.get("plan_index/meta/recent_errors")
-        recent_errors = _safe_json_list(recent_errors_raw, key="plan_index/meta/recent_errors")
+        recent_errors = _safe_json_list(
+            recent_errors_raw, key="plan_index/meta/recent_errors"
+        )
         lock_raw = await self._mcp.get("plan_index/meta/rebuild_lock/holder")
         lock_held_by = lock_raw if lock_raw else None
         lock_age_ms = None
@@ -358,7 +388,8 @@ class PlanIndexStore:
             # 60s lock TTL means staleness is determined by last_rebuild_ms
             lock_age_ms = 0  # placeholder; real impl reads lock_acquired_at_ms
         stale = last_rebuild_ms is None or (
-            int(datetime.now(tz=UTC).timestamp() * 1000) - last_rebuild_ms > 5 * 3600 * 1000
+            int(datetime.now(tz=UTC).timestamp() * 1000) - last_rebuild_ms
+            > 5 * 3600 * 1000
         )
         result: PlanRebuildStatusDict = {
             "cycles_total": cycles_total or 0,

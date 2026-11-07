@@ -27,7 +27,10 @@ from opentelemetry.exporter.otlp.proto.grpc.log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.logs import LoggerProvider
-from opentelemetry.sdk.logs.export import BatchLogRecordProcessor, ConsoleLogRecordExporter
+from opentelemetry.sdk.logs.export import (
+    BatchLogRecordProcessor,
+    ConsoleLogRecordExporter,
+)
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
@@ -134,7 +137,9 @@ def setup_telemetry(
 
     # Add OTLP handler to Python logging
     handler = logs.LoggingHandler(logger_provider=logger_provider)
-    handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
@@ -180,7 +185,9 @@ def generate_example_metrics(meter, count: int = 10):
     )
 
     histogram = meter.create_histogram(
-        "operation.duration", description="Operation duration in milliseconds", unit="ms"
+        "operation.duration",
+        description="Operation duration in milliseconds",
+        unit="ms",
     )
 
     gauge = meter.create_up_down_counter(
@@ -207,7 +214,8 @@ def generate_example_metrics(meter, count: int = 10):
 
         # Gauge
         gauge.add(
-            random.randint(-5, 5), {"connection.type": random.choice(["http", "grpc", "websocket"])}
+            random.randint(-5, 5),
+            {"connection.type": random.choice(["http", "grpc", "websocket"])},
         )
 
         print(f"  ✓ Generated metric batch {i + 1}/{count}")
@@ -256,7 +264,9 @@ def simulate_ai_assistant_workflow(tracer, meter, logger, source: str):
         span.set_attribute("ai.prompt", prompt)
         span.set_attribute("ai.prompt.length", len(prompt))
         span.set_attribute("ai.prompt.tokens", int(prompt_tokens))
-        span.set_attribute("ai.model", "claude-sonnet-4" if source == "claude" else "qwen-max")
+        span.set_attribute(
+            "ai.model", "claude-sonnet-4" if source == "claude" else "qwen-max"
+        )
 
         logger.info(f"Received prompt: {prompt[:50]}...")
 
@@ -321,24 +331,37 @@ Examples:
         help="OTLP endpoint (default: http://localhost:4317)",
     )
     parser.add_argument(
-        "--service", default="python-otlp-client", help="Service name (default: python-otlp-client)"
+        "--service",
+        default="python-otlp-client",
+        help="Service name (default: python-otlp-client)",
     )
     parser.add_argument(
         "--source", default=None, help="Source identifier (e.g., claude, qwen, custom)"
     )
     parser.add_argument(
-        "--environment", default="development", help="Deployment environment (default: development)"
+        "--environment",
+        default="development",
+        help="Deployment environment (default: development)",
     )
     parser.add_argument(
         "--console", action="store_true", help="Also export to console for debugging"
     )
-    parser.add_argument("--traces-only", action="store_true", help="Only generate traces")
-    parser.add_argument("--metrics-only", action="store_true", help="Only generate metrics")
+    parser.add_argument(
+        "--traces-only", action="store_true", help="Only generate traces"
+    )
+    parser.add_argument(
+        "--metrics-only", action="store_true", help="Only generate metrics"
+    )
     parser.add_argument("--logs-only", action="store_true", help="Only generate logs")
     parser.add_argument(
-        "--count", type=int, default=10, help="Number of items to generate (default: 10)"
+        "--count",
+        type=int,
+        default=10,
+        help="Number of items to generate (default: 10)",
     )
-    parser.add_argument("--ai-workflow", action="store_true", help="Simulate AI assistant workflow")
+    parser.add_argument(
+        "--ai-workflow", action="store_true", help="Simulate AI assistant workflow"
+    )
 
     args = parser.parse_args()
 

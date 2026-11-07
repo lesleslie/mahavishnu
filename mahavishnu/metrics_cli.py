@@ -27,7 +27,9 @@ import typer
 from mahavishnu.core.mcp_adapter import DEFAULT_SUBSTRATE_MCP_URL
 
 # Create metrics app
-metrics_app = typer.Typer(help="Metrics collection and reporting for the Mahavishnu ecosystem")
+metrics_app = typer.Typer(
+    help="Metrics collection and reporting for the Mahavishnu ecosystem"
+)
 console = Console()
 logger = get_logger(__name__)
 
@@ -63,7 +65,9 @@ def _resolve_postgres_dsn(explicit_dsn: str | None) -> str | None:
         dsn = persistence.get("postgres_url")
         if isinstance(dsn, str) and dsn.strip():
             return dsn.strip()
-    except Exception:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001
+    except (
+        Exception  # noqa: BLE001  # CLI entry point — broad catch is the documented contract
+    ):
         return None
 
     return None
@@ -77,7 +81,9 @@ async def _load_engine_metrics_from_postgres(
     try:
         import asyncpg
     except ImportError as exc:
-        raise RuntimeError("asyncpg is not installed; cannot query PostgreSQL source") from exc
+        raise RuntimeError(
+            "asyncpg is not installed; cannot query PostgreSQL source"
+        ) from exc
 
     cutoff: datetime | None = None
     if days is not None:
@@ -124,13 +130,23 @@ async def _load_engine_metrics_from_postgres(
     for row in selected_rows:
         adapter = row["adapter"]
         if adapter not in metrics:
-            metrics[adapter] = {"selected": 0, "executions": 0, "success": 0, "failure": 0}
+            metrics[adapter] = {
+                "selected": 0,
+                "executions": 0,
+                "success": 0,
+                "failure": 0,
+            }
         metrics[adapter]["selected"] = int(row["selected_count"])
 
     for row in execution_rows:
         adapter = row["adapter"]
         if adapter not in metrics:
-            metrics[adapter] = {"selected": 0, "executions": 0, "success": 0, "failure": 0}
+            metrics[adapter] = {
+                "selected": 0,
+                "executions": 0,
+                "success": 0,
+                "failure": 0,
+            }
         metrics[adapter]["executions"] = int(row["execution_count"])
         metrics[adapter]["success"] = int(row["success_count"])
         metrics[adapter]["failure"] = int(row["failure_count"])
@@ -157,7 +173,9 @@ def _fetch_prometheus_body(metrics_url: str) -> str:
         ) as response:
             return response.read().decode("utf-8", errors="replace")
     except urllib_error.URLError as exc:
-        raise RuntimeError(f"failed to fetch Prometheus metrics from {metrics_url}: {exc}") from exc
+        raise RuntimeError(
+            f"failed to fetch Prometheus metrics from {metrics_url}: {exc}"
+        ) from exc
 
 
 def _parse_labels(raw: str) -> dict[str, str]:
@@ -494,12 +512,16 @@ def show_history(
 
     if not metrics_dir.exists():
         console.print("[yellow]No metrics history found[/yellow]")
-        console.print("[dim]Collect metrics with --store-metrics flag to enable history[/dim]")
+        console.print(
+            "[dim]Collect metrics with --store-metrics flag to enable history[/dim]"
+        )
         return
 
     # Get all snapshot files, sorted by modification time (newest first)
     snapshots = sorted(
-        metrics_dir.glob("metrics_*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        metrics_dir.glob("metrics_*.json"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
     )[:limit]
 
     if not snapshots:
@@ -544,7 +566,9 @@ def show_history(
             else:
                 trend = ""
 
-            table.add_row(timestamp_str, f"{avg_cov:.1f}%", str(repos), str(files), trend)
+            table.add_row(
+                timestamp_str, f"{avg_cov:.1f}%", str(repos), str(files), trend
+            )
 
             prev_coverage = avg_cov
 
@@ -643,7 +667,11 @@ def verify_endpoints(
     """Probe ecosystem metrics endpoints and refresh verified Prometheus targets."""
     from scripts.verify_ecosystem_metrics import main as verify_main
 
-    sys.argv = ["verify_ecosystem_metrics", f"--inventory={inventory}", f"--output={output_format}"]
+    sys.argv = [
+        "verify_ecosystem_metrics",
+        f"--inventory={inventory}",
+        f"--output={output_format}",
+    ]
 
     if write_verified_file is not None:
         sys.argv.append(f"--write-verified-file={write_verified_file}")
@@ -684,9 +712,13 @@ def _fetch_engine_metrics(
             errors.append("postgres: no DSN configured")
         else:
             try:
-                metrics = asyncio.run(_load_engine_metrics_from_postgres(resolved_dsn, days))
+                metrics = asyncio.run(
+                    _load_engine_metrics_from_postgres(resolved_dsn, days)
+                )
                 selected_source = "postgres"
-            except Exception as exc:  # CLI entry point — broad catch is the documented contract
+            except (
+                Exception
+            ) as exc:  # CLI entry point — broad catch is the documented contract
                 errors.append(f"postgres: {exc}")
                 if source_normalized == "postgres":
                     console.print(f"[red]PostgreSQL query failed:[/red] {exc}")
@@ -696,7 +728,9 @@ def _fetch_engine_metrics(
         try:
             metrics = _load_engine_metrics_from_prometheus(metrics_url)
             selected_source = "prometheus"
-        except Exception as exc:  # CLI entry point — broad catch is the documented contract
+        except (
+            Exception
+        ) as exc:  # CLI entry point — broad catch is the documented contract
             errors.append(f"prometheus: {exc}")
             if source_normalized == "prometheus":
                 console.print(f"[red]Prometheus query failed:[/red] {exc}")
@@ -745,7 +779,9 @@ def _render_engine_output(
                 {
                     "source": selected_source,
                     "days": days,
-                    "metrics_url": metrics_url if selected_source == "prometheus" else None,
+                    "metrics_url": metrics_url
+                    if selected_source == "prometheus"
+                    else None,
                     "engines": rows,
                     "warnings": errors if errors else [],
                 }
@@ -825,7 +861,9 @@ def engine_metrics(
         source_normalized, resolved_dsn, metrics_url, days
     )
     rows = _build_engine_rows(metrics)
-    _render_engine_output(rows, output_format, selected_source, metrics_url, days, errors)
+    _render_engine_output(
+        rows, output_format, selected_source, metrics_url, days, errors
+    )
 
 
 # `mahavishnu metrics verification` — Ultracode Phase 1 verification verdicts
@@ -904,7 +942,9 @@ async def _fetch_mcp_entries(
                 value_raw = json.loads(value)
             except json.JSONDecodeError, TypeError:
                 value_raw = {}
-        entries.append({"key": key, "value": value_raw if isinstance(value_raw, dict) else {}})
+        entries.append(
+            {"key": key, "value": value_raw if isinstance(value_raw, dict) else {}}
+        )
     return entries
 
 
@@ -921,7 +961,9 @@ def _parse_since(value: str) -> datetime | None:
         return None
     match = re.match(r"^(\d+)\s*([mhd])$", normalized)
     if match is None:
-        console.print(f"[red]Invalid --since {value!r}. Use '24h', '7d', '30m', or 'all'.[/red]")
+        console.print(
+            f"[red]Invalid --since {value!r}. Use '24h', '7d', '30m', or 'all'.[/red]"
+        )
         raise typer.Exit(2)
     magnitude = int(match.group(1))
     unit = match.group(2)
@@ -1052,7 +1094,9 @@ def _render_verification_output(
     console.print("[cyan]Ultracode Phase 1 — Verification Verdicts[/cyan]\n")
     console.print(f"[dim]MCP URL: {mcp_url}[/dim]")
     console.print(f"[dim]Key prefix: {VERIFICATION_KEY_PREFIX}[/dim]")
-    console.print(f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n")
+    console.print(
+        f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n"
+    )
 
     summary = Table(title="Summary", show_header=True, header_style="bold magenta")
     summary.add_column("Metric", style="cyan")
@@ -1067,7 +1111,9 @@ def _render_verification_output(
         f"{persist_failure_rate * 100:.1f}%",
     )
     for consensus_name in sorted(consensus_counts.keys()):
-        summary.add_row(f"Consensus={consensus_name}", str(consensus_counts[consensus_name]))
+        summary.add_row(
+            f"Consensus={consensus_name}", str(consensus_counts[consensus_name])
+        )
     console.print(summary)
 
     if recent:
@@ -1085,8 +1131,12 @@ def _render_verification_output(
             ts_display = row["timestamp"] or "n/a"
             if ts_display != "n/a":
                 ts_display = ts_display[:19]
-            persisted_display = "[green]yes[/green]" if row["persisted"] else "[red]no[/red]"
-            recent_table.add_row(ts_display, row["consensus"], persisted_display, row["key"])
+            persisted_display = (
+                "[green]yes[/green]" if row["persisted"] else "[red]no[/red]"
+            )
+            recent_table.add_row(
+                ts_display, row["consensus"], persisted_display, row["key"]
+            )
         console.print(recent_table)
     else:
         console.print("\n[yellow]No verification records in window.[/yellow]")
@@ -1203,10 +1253,14 @@ def _render_dispatch_output(
     console.print("[cyan]Ultracode Phase 3 — Routing Dispatch Metrics[/cyan]\n")
     console.print(f"[dim]MCP URL: {mcp_url}[/dim]")
     console.print(f"[dim]Key prefix: {ROUTING_DECISIONS_KEY_PREFIX}[/dim]")
-    console.print(f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n")
+    console.print(
+        f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n"
+    )
 
     summary = Table(
-        title="Per-Caller-Kind Quota Usage", show_header=True, header_style="bold magenta"
+        title="Per-Caller-Kind Quota Usage",
+        show_header=True,
+        header_style="bold magenta",
     )
     summary.add_column("caller_kind", style="cyan")
     summary.add_column("Dispatches", justify="right")
@@ -1215,7 +1269,9 @@ def _render_dispatch_output(
     summary.add_row("[bold]Total[/bold]", str(total))
     console.print(summary)
 
-    stats = Table(title="Async Callback Stats", show_header=True, header_style="bold magenta")
+    stats = Table(
+        title="Async Callback Stats", show_header=True, header_style="bold magenta"
+    )
     stats.add_column("Metric", style="cyan")
     stats.add_column("Value", style="white")
     stats.add_row("Async callback count", str(async_callback_count))
@@ -1237,8 +1293,12 @@ def _render_dispatch_output(
             ts_display = row["timestamp"] or "n/a"
             if ts_display != "n/a":
                 ts_display = ts_display[:19]
-            async_display = "[green]yes[/green]" if row["async_callback"] else "[dim]no[/dim]"
-            recent_table.add_row(ts_display, row["caller_kind"], async_display, row["key"])
+            async_display = (
+                "[green]yes[/green]" if row["async_callback"] else "[dim]no[/dim]"
+            )
+            recent_table.add_row(
+                ts_display, row["caller_kind"], async_display, row["key"]
+            )
         console.print(recent_table)
     else:
         console.print("\n[yellow]No dispatch records in window.[/yellow]")
@@ -1278,7 +1338,9 @@ def dispatch_metrics(
     """
     effective_url = _resolve_mcp_url(mcp_url)
     cutoff = _parse_since(since)
-    entries = asyncio.run(_fetch_mcp_entries(effective_url, ROUTING_DECISIONS_KEY_PREFIX))
+    entries = asyncio.run(
+        _fetch_mcp_entries(effective_url, ROUTING_DECISIONS_KEY_PREFIX)
+    )
     _render_dispatch_output(
         entries,
         cutoff=cutoff,

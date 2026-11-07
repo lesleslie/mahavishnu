@@ -188,7 +188,13 @@ if __name__ == "__main__":
         "total_servers": len(servers),
     }
 
-    output_file = Path.home() / ".claude" / "scripts" / "marketplace" / "compiled_mcp_servers.json"
+    output_file = (
+        Path.home()
+        / ".claude"
+        / "scripts"
+        / "marketplace"
+        / "compiled_mcp_servers.json"
+    )
     with open(output_file, "w") as f:
         json.dump(output, f, indent=2)
 

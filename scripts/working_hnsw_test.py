@@ -21,7 +21,9 @@ print("HNSW Vector Search Benchmark")
 print("=" * 60)
 
 # Check current data
-result = conn.execute("SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL").fetchone()
+result = conn.execute(
+    "SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL"
+).fetchone()
 count = result[0] if result else 0
 print(f"\nCurrent records with embeddings: {count}")
 
@@ -30,7 +32,13 @@ if count < 1000:
     print(f"\nGenerating {1000 - count} test records...")
 
     now = datetime.now(UTC)
-    task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
+    task_types = [
+        "code_review",
+        "testing",
+        "deployment",
+        "documentation",
+        "optimization",
+    ]
     descriptions = [
         "Review pull request for authentication module",
         "Write unit tests for API endpoints",
@@ -101,7 +109,9 @@ if count < 1000:
         if (i + 1) % 100 == 0:
             print(f"  Inserted {i + 1}/1000")
 
-result = conn.execute("SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL").fetchone()
+result = conn.execute(
+    "SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL"
+).fetchone()
 print(f"\nTotal records with embeddings: {result[0]}")
 
 # Get query embedding
@@ -195,9 +205,13 @@ print(f"\nExact search (no index):   {avg_exact * 1000:.2f}ms")
 print(f"Approx search (HNSW):      {avg_approx * 1000:.2f}ms")
 print(f"\nSpeedup:                  {speedup:.2f}x")
 if speedup > 1:
-    print(f"Performance:               {(1 - avg_approx / avg_exact) * 100:.1f}% faster")
+    print(
+        f"Performance:               {(1 - avg_approx / avg_exact) * 100:.1f}% faster"
+    )
 else:
-    print(f"Performance:               {(avg_approx / avg_exact - 1) * 100:.1f}% slower")
+    print(
+        f"Performance:               {(avg_approx / avg_exact - 1) * 100:.1f}% slower"
+    )
 print("=" * 60)
 
 conn.close()

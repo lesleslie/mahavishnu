@@ -18,7 +18,9 @@ if TYPE_CHECKING:
 def manager(tmp_path: pathlib.Path) -> DurableWorkerManager:
     store = WorkerRecordStore(tmp_path)
     publisher = MagicMock()
-    return DurableWorkerManager(store=store, publisher=publisher, socket_dir=tmp_path / "tmux")
+    return DurableWorkerManager(
+        store=store, publisher=publisher, socket_dir=tmp_path / "tmux"
+    )
 
 
 def test_spawn_persists_record_and_emits_event(manager: DurableWorkerManager, tmp_path):
@@ -29,7 +31,9 @@ def test_spawn_persists_record_and_emits_event(manager: DurableWorkerManager, tm
         pane="%3",
         attach_command="tmux -S x.sock attach -t mvs",
     )
-    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info):
+    with patch(
+        "mahavishnu.workers.contract.manager.create_session", return_value=fake_info
+    ):
         info = manager.spawn(
             worker_type="terminal-claude",
             backend="claude_tui",
@@ -53,8 +57,12 @@ def test_status_returns_record(manager: DurableWorkerManager, tmp_path):
         window="@0",
         pane="%3",
     )
-    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info):
-        info = manager.spawn(worker_type="terminal-claude", backend="claude_tui", command=["claude"])
+    with patch(
+        "mahavishnu.workers.contract.manager.create_session", return_value=fake_info
+    ):
+        info = manager.spawn(
+            worker_type="terminal-claude", backend="claude_tui", command=["claude"]
+        )
     rec = manager.status(info.worker_id)
     assert rec is not None
     assert rec.worker_id == info.worker_id
@@ -72,9 +80,18 @@ def test_capture_output_uses_tmux_adapter(manager: DurableWorkerManager, tmp_pat
     fake_capture.next_offset = 5
     fake_capture.truncated = False
     fake_capture.pane_alive = True
-    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info), \
-         patch("mahavishnu.workers.contract.manager.capture_pane", return_value=fake_capture):
-        info = manager.spawn(worker_type="terminal-claude", backend="claude_tui", command=["claude"])
+    with (
+        patch(
+            "mahavishnu.workers.contract.manager.create_session", return_value=fake_info
+        ),
+        patch(
+            "mahavishnu.workers.contract.manager.capture_pane",
+            return_value=fake_capture,
+        ),
+    ):
+        info = manager.spawn(
+            worker_type="terminal-claude", backend="claude_tui", command=["claude"]
+        )
         out = manager.capture_output(info.worker_id, since_offset=0)
     assert out.text == "hello"
     assert out.next_offset == 5
@@ -87,9 +104,15 @@ def test_cancel_reaps_when_pane_dead(manager: DurableWorkerManager, tmp_path):
         window="@0",
         pane="%3",
     )
-    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info), \
-         patch("mahavishnu.workers.contract.manager.pane_alive", return_value=False):
-        info = manager.spawn(worker_type="terminal-claude", backend="claude_tui", command=["claude"])
+    with (
+        patch(
+            "mahavishnu.workers.contract.manager.create_session", return_value=fake_info
+        ),
+        patch("mahavishnu.workers.contract.manager.pane_alive", return_value=False),
+    ):
+        info = manager.spawn(
+            worker_type="terminal-claude", backend="claude_tui", command=["claude"]
+        )
         manager.cancel(info.worker_id, signal="soft", grace_ms=10)
     rec = manager.store.get(info.worker_id)
     assert rec is not None
@@ -110,9 +133,15 @@ def test_cancel_on_reaped_record_is_idempotent(
         window="@0",
         pane="%3",
     )
-    with patch("mahavishnu.workers.contract.manager.create_session", return_value=fake_info), \
-         patch("mahavishnu.workers.contract.manager.pane_alive", return_value=False):
-        info = manager.spawn(worker_type="terminal-claude", backend="claude_tui", command=["claude"])
+    with (
+        patch(
+            "mahavishnu.workers.contract.manager.create_session", return_value=fake_info
+        ),
+        patch("mahavishnu.workers.contract.manager.pane_alive", return_value=False),
+    ):
+        info = manager.spawn(
+            worker_type="terminal-claude", backend="claude_tui", command=["claude"]
+        )
         first = manager.cancel(info.worker_id, signal="soft", grace_ms=10)
         second = manager.cancel(info.worker_id, signal="SIGKILL", grace_ms=10)
     assert first is True

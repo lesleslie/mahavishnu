@@ -104,7 +104,9 @@ class MessageBus:
         self._max_queue_size = max_queue_size
         self._event_publisher = event_publisher
 
-    def set_event_publisher(self, event_publisher: EventPublisherProtocol | None) -> None:
+    def set_event_publisher(
+        self, event_publisher: EventPublisherProtocol | None
+    ) -> None:
         self._event_publisher = event_publisher
 
         logger.info(f"MessageBus initialized (max_queue_size={self._max_queue_size})")
@@ -145,7 +147,9 @@ class MessageBus:
         if msg.target_pool_id:
             # Create queue if it doesn't exist (lazy initialization)
             if msg.target_pool_id not in self._queues:
-                self._queues[msg.target_pool_id] = asyncio.Queue(maxsize=self._max_queue_size)
+                self._queues[msg.target_pool_id] = asyncio.Queue(
+                    maxsize=self._max_queue_size
+                )
 
             queue = self._queues[msg.target_pool_id]
             try:
@@ -154,7 +158,9 @@ class MessageBus:
                     f"Delivered message to pool {msg.target_pool_id} (type={msg_type.value})"
                 )
             except asyncio.QueueFull:
-                logger.warning(f"Queue full for pool {msg.target_pool_id} - message dropped")
+                logger.warning(
+                    f"Queue full for pool {msg.target_pool_id} - message dropped"
+                )
 
         # Deliver to subscribers
         for subscriber in self._subscribers.get(msg_type, []):
@@ -207,7 +213,9 @@ class MessageBus:
             self._subscribers[msg_type] = []
 
         self._subscribers[msg_type].append(handler)
-        logger.info(f"Subscribed to {msg_type.value} (total: {len(self._subscribers[msg_type])})")
+        logger.info(
+            f"Subscribed to {msg_type.value} (total: {len(self._subscribers[msg_type])})"
+        )
 
     async def receive(
         self,
@@ -296,10 +304,13 @@ class MessageBus:
         Returns:
             Statistics dictionary
         """
-        queue_sizes = {pool_id: self.get_queue_size(pool_id) for pool_id in self._queues}
+        queue_sizes = {
+            pool_id: self.get_queue_size(pool_id) for pool_id in self._queues
+        }
 
         subscriber_counts = {
-            msg_type.value: len(handlers) for msg_type, handlers in self._subscribers.items()
+            msg_type.value: len(handlers)
+            for msg_type, handlers in self._subscribers.items()
         }
 
         return {

@@ -226,6 +226,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
   from typing import Literal
   from pydantic import BaseModel, ConfigDict, Field
 
+
   class EvalSettings(BaseModel):
       model_config = ConfigDict(extra="forbid")
       enabled: bool = False
@@ -236,6 +237,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
       cost_budget_per_run: float = 5.0
       db_path: str = "~/.local/state/mahavishnu/eval/runs.sqlite"
 
+
   # (Corrected 2026-11-06: the sketch as first written also carried
   # `default_pool`, `concurrency`, and `regression_threshold`. None of
   # them is in the shipped model -- each was read by no production code,
@@ -245,9 +247,11 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
   # Phase 2 work); `concurrency` would only have set a ceiling Phase 1's
   # sequential loop never reaches.)
 
+
   def get_eval_settings() -> "EvalSettings":
       """Module-level lazy getter; mirrors get_settings() at mahavishnu/core/config.py:3455."""
       from mahavishnu.core.config import get_settings
+
       return get_settings().eval
   ```
 - [x] **2.4** In `mahavishnu/core/config.py`, add the `eval` field to `MahavishnuSettings` (after the `otel_ingester` field at line 3195): `eval: EvalSettings = Field(default_factory=EvalSettings)`. Add the import `from .eval.settings import EvalSettings` to the first-party import block — `eval.settings` imports only pydantic at module level and defers its own `get_settings` import into the function body, so there is no cycle.
@@ -463,11 +467,12 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
   from mahavishnu.core.eval.settings import get_eval_settings
   from mahavishnu.core.eval._registry import discover_storage, discover_model_backends
 
+
   def _build_eval_pool(
       config: PoolConfig,
       *,
-      terminal_manager: Any,       # unused; BasePool signature requires it
-      session_buddy_client: Any,   # unused; BasePool signature requires it
+      terminal_manager: Any,  # unused; BasePool signature requires it
+      session_buddy_client: Any,  # unused; BasePool signature requires it
   ) -> "EvalPool":
       settings = get_eval_settings()
       storage_cls = discover_storage()[settings.default_storage]
@@ -478,6 +483,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
           model_backend=backend_cls(),
           settings=settings,
       )
+
 
   class EvalPool(BasePool):
       """Single virtual worker; doesn't scale; doesn't collect memory.
@@ -490,7 +496,9 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 
       def __init__(self, config, storage, model_backend, settings):
           super().__init__(config)
-          self._engine = EvalEngine(storage=storage, model_backend=model_backend, settings=settings)
+          self._engine = EvalEngine(
+              storage=storage, model_backend=model_backend, settings=settings
+          )
 
       async def start(self) -> str:
           # BasePool abstract (base.py:134). Eval has no substrate to start.
@@ -502,7 +510,9 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
           result = await self._engine.run_suite(suite)
           return result.model_dump()
 
-      async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+      async def execute_batch(
+          self, tasks: list[dict[str, Any]]
+      ) -> dict[str, dict[str, Any]]:
           # BasePool abstract (base.py:160). Sequential in Phase 1.
           results: dict[str, dict[str, Any]] = {}
           for task in tasks:
@@ -512,9 +522,11 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
       async def scale(self, target_worker_count: int) -> None:
           # No-op per BasePool abstract signature (returns None, not int)
           from oneiric.core.logging import get_logger
+
           get_logger(__name__).warning(
               "eval pool scale(target=%d) is a no-op; current worker count is 1, "
-              "observable via get_status()", target_worker_count,
+              "observable via get_status()",
+              target_worker_count,
           )
 
       async def health_check(self) -> dict[str, Any]:
@@ -553,13 +565,20 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
       if not settings.enabled:
           return {"status": "error", "error": "evaluation disabled"}
       try:
-          return await _do_run_suite(suite=suite, model=model, params=params, settings=settings)
+          return await _do_run_suite(
+              suite=suite, model=model, params=params, settings=settings
+          )
       except (DatasetLoadError, ScoringError, EvalStorageError, EvalEngineError) as e:
           await get_eval_feed_state().record_error()
           return {"status": "error", "error": str(e), "error_type": type(e).__name__}
       except Exception as e:  # final fallback for the 4-signal contract
           await get_eval_feed_state().record_error()
-          return {"status": "error", "error": "internal error", "error_type": type(e).__name__}
+          return {
+              "status": "error",
+              "error": "internal error",
+              "error_type": type(e).__name__,
+          }
+
 
   async def _do_run_suite(suite: str, model: str, params: dict | None, settings) -> dict:
       """Helper for eval_run_suite. Owns the actual work; called by the @server.tool body."""
@@ -569,13 +588,30 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
       dataset = loader_cls().load(Path(suite))
       run_id = await storage.start_run(suite=dataset)
       try:
-          result = await engine.run_suite(EvalSuite(name=..., version=..., dataset=dataset, scorers=..., model_config=..., cost_budget=...))
-          await storage.finish_run(run_id=run_id, status=result.status, finished_at=result.finished_at, summary=result.summary)
+          result = await engine.run_suite(
+              EvalSuite(
+                  name=...,
+                  version=...,
+                  dataset=dataset,
+                  scorers=...,
+                  model_config=...,
+                  cost_budget=...,
+              )
+          )
+          await storage.finish_run(
+              run_id=run_id,
+              status=result.status,
+              finished_at=result.finished_at,
+              summary=result.summary,
+          )
       except Exception:
-          await storage.finish_run(run_id=run_id, status="failed", finished_at=datetime.now(UTC), summary={...})
+          await storage.finish_run(
+              run_id=run_id, status="failed", finished_at=datetime.now(UTC), summary={...}
+          )
           raise
       await get_eval_feed_state().record_cycle(case_count=result.summary["total_cases"])
       return {"status": result.status, "run_id": run_id, "summary": dict(result.summary)}
+
 
   async def _do_register_dataset(path: str) -> dict: ...
   async def _do_get_run(run_id: str) -> dict: ...
@@ -718,15 +754,22 @@ counts, which is an operator decision.
   import typer
   from pathlib import Path
 
-  eval_app = typer.Typer(help="Model evaluation commands (mirror mcp__mahavishnu__eval_*)")
+  eval_app = typer.Typer(
+      help="Model evaluation commands (mirror mcp__mahavishnu__eval_*)"
+  )
+
 
   @eval_app.command("run-suite")
   def run_suite(
-      suite: Path = typer.Option(..., "--suite", exists=True, help="Path to JSONL dataset"),
+      suite: Path = typer.Option(
+          ..., "--suite", exists=True, help="Path to JSONL dataset"
+      ),
       model: str = typer.Option("MiniMax-M3", "--model", help="Model backend name"),
-      budget: float | None = typer.Option(None, "--budget", help="Per-run cost cap in USD"),
-  ) -> None:
-      ...
+      budget: float | None = typer.Option(
+          None, "--budget", help="Per-run cost cap in USD"
+      ),
+  ) -> None: ...
+
 
   def add_eval_commands(app: typer.Typer) -> None:
       app.add_typer(eval_app, name="eval")

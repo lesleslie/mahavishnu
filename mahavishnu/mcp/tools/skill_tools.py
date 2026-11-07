@@ -171,7 +171,9 @@ def _read_body(filename: str) -> str:
     """
     path = _CATALOG_DIR / filename
     if not path.is_file():
-        raise FileNotFoundError(f"Skill body {filename!r} missing from catalog at {path}")
+        raise FileNotFoundError(
+            f"Skill body {filename!r} missing from catalog at {path}"
+        )
     return path.read_text(encoding="utf-8")
 
 

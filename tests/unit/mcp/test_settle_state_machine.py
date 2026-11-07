@@ -383,14 +383,18 @@ def test_from_dict_rejects_missing_run_ref() -> None:
     from mahavishnu.core.errors import ValidationError
 
     with pytest.raises(ValidationError):
-        SettleRunRecord.from_dict({"worker_id": "w", "bindings": [{"path": "x", "base": ""}]})
+        SettleRunRecord.from_dict(
+            {"worker_id": "w", "bindings": [{"path": "x", "base": ""}]}
+        )
 
 
 def test_from_dict_rejects_missing_bindings() -> None:
     from mahavishnu.core.errors import ValidationError
 
     with pytest.raises(ValidationError):
-        SettleRunRecord.from_dict({"run_ref": "r", "worker_id": "w", "bindings": "not-a-list"})
+        SettleRunRecord.from_dict(
+            {"run_ref": "r", "worker_id": "w", "bindings": "not-a-list"}
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -403,7 +407,9 @@ _actions = st.sampled_from(list(SettleAction))
 
 @settings(max_examples=200, deadline=None)
 @given(start=_states, action=_actions)
-def test_no_illegal_transition_is_reachable(start: SettleState, action: SettleAction) -> None:
+def test_no_illegal_transition_is_reachable(
+    start: SettleState, action: SettleAction
+) -> None:
     """Every (state, action) pair is either legal-and-returns-a-record, or raises.
 
     The state machine must never silently produce a record for an

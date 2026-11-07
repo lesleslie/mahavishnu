@@ -14,7 +14,10 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "MessageType": (".repository_messenger", "MessageType"),
     "RepositoryMessage": (".repository_messenger", "RepositoryMessage"),
     "RepositoryMessenger": (".repository_messenger", "RepositoryMessenger"),
-    "RepositoryMessengerManager": (".repository_messenger", "RepositoryMessengerManager"),
+    "RepositoryMessengerManager": (
+        ".repository_messenger",
+        "RepositoryMessengerManager",
+    ),
 }
 
 

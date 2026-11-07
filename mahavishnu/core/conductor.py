@@ -253,7 +253,9 @@ async def _dispatch_dag_waves(
         for nid, eid in zip(wave, handles, strict=True):
             envelope_ids[nid] = eid
             remaining.discard(nid)
-        wave = [nid for nid in remaining if all(p in envelope_ids for p in incoming[nid])]
+        wave = [
+            nid for nid in remaining if all(p in envelope_ids for p in incoming[nid])
+        ]
     return envelope_ids
 
 

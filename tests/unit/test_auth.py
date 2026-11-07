@@ -78,7 +78,9 @@ def test_create_access_token_requires_user_identifier():
 def test_expired_token():
     """Test that expired tokens are rejected."""
     secret = "x" * 32
-    auth = JWTAuth(secret=secret, expire_minutes=0.01)  # Expire in 0.01 minutes (0.6 seconds)
+    auth = JWTAuth(
+        secret=secret, expire_minutes=0.01
+    )  # Expire in 0.01 minutes (0.6 seconds)
 
     # Create a token using the current API
     token = auth.create_token(user_id="test_user")

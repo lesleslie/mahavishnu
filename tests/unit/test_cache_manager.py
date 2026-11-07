@@ -307,7 +307,9 @@ class TestLRUCache:
     ) -> None:
         """Test expired membership cleanup, key eviction cleanup, and update order."""
         current_time = {"now": 100.0}
-        monkeypatch.setattr("mahavishnu.core.cache_manager.time.time", lambda: current_time["now"])
+        monkeypatch.setattr(
+            "mahavishnu.core.cache_manager.time.time", lambda: current_time["now"]
+        )
 
         cache = LRUCache(max_size=2)
         cache.set("a", 1, ttl=5)
@@ -546,14 +548,16 @@ class TestCacheManager:
         mock_redis.set = AsyncMock()
         mock_redis.delete.return_value = 1
 
-        redis_manager = CacheManager(backend=CacheBackend.REDIS, redis_client=mock_redis)
+        redis_manager = CacheManager(
+            backend=CacheBackend.REDIS, redis_client=mock_redis
+        )
         await redis_manager.async_set("tasks", "task-123", {"id": 1}, ttl=60)
         mock_redis.set.assert_called_once()
 
         mock_redis.get.return_value = None
-        assert await redis_manager.async_get("tasks", "missing", default={"fallback": True}) == {
-            "fallback": True
-        }
+        assert await redis_manager.async_get(
+            "tasks", "missing", default={"fallback": True}
+        ) == {"fallback": True}
 
         mock_redis.get.return_value = '{"id": 2}'
         assert await redis_manager.async_get("tasks", "task-123") == {"id": 2}
@@ -576,7 +580,9 @@ class TestCacheManager:
             def get_stats(self) -> dict[str, Any]:
                 return {"hits": 2, "misses": 1, "hit_rate": 2 / 3}
 
-        result = aggregate_cache_health({"dataclass": _DataclassCache(), "mapping": _DictCache()})
+        result = aggregate_cache_health(
+            {"dataclass": _DataclassCache(), "mapping": _DictCache()}
+        )
 
         assert result["caches"]["dataclass"]["hits"] == 1
         assert result["caches"]["mapping"]["hits"] == 2

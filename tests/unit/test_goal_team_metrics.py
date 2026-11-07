@@ -41,7 +41,9 @@ def test_disabled_mode_noops_and_summary(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(gtm, "PROMETHEUS_AVAILABLE", False)
     metrics = gtm.GoalTeamMetrics("s1")
     metrics.record_team_created(mode="coordinate", skill_count=2)
-    metrics.record_goal_parsed(intent="review", domain="quality", method="pattern", confidence=0.8)
+    metrics.record_goal_parsed(
+        intent="review", domain="quality", method="pattern", confidence=0.8
+    )
     metrics.record_skill_usage("security")
     metrics.record_skills_usage(["quality", "performance"])
     metrics.record_error("MHV-465")
@@ -72,7 +74,9 @@ def test_enabled_mode_records_all_metric_paths(monkeypatch: pytest.MonkeyPatch) 
     assert metrics._metrics_initialized is False
 
     metrics.record_team_created(mode="coordinate", skill_count=3)
-    metrics.record_goal_parsed(intent="review", domain="security", method="llm", confidence=0.91)
+    metrics.record_goal_parsed(
+        intent="review", domain="security", method="llm", confidence=0.91
+    )
     metrics.record_skill_usage("security")
     metrics.record_skills_usage(["quality", "perf"])
     metrics.record_error("MHV-460")
@@ -108,12 +112,16 @@ async def test_metrics_recorder_sync_and_async(monkeypatch: pytest.MonkeyPatch) 
     metrics = gtm.GoalTeamMetrics("s3")
     metrics._initialize_metrics()
 
-    recorder = gtm.GoalTeamMetricsRecorder(metrics, operation="team_creation", mode="route")
+    recorder = gtm.GoalTeamMetricsRecorder(
+        metrics, operation="team_creation", mode="route"
+    )
     with recorder:
         recorder.set_metadata(repo="x")
     assert recorder.metadata["repo"] == "x"
 
-    async with gtm.GoalTeamMetricsRecorder(metrics, operation="team_creation", mode="broadcast"):
+    async with gtm.GoalTeamMetricsRecorder(
+        metrics, operation="team_creation", mode="broadcast"
+    ):
         pass
 
     assert metrics._team_creation_histogram.observe_calls
@@ -161,7 +169,9 @@ def test_reset_clears_registry_when_available(monkeypatch: pytest.MonkeyPatch) -
     assert len(unregistered) == 2
 
 
-def test_fallback_module_import_and_dummy_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fallback_module_import_and_dummy_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     real_import = __import__
 
     def fake_import(name, globals=None, locals=None, fromlist=(), level=0):

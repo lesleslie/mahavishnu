@@ -59,7 +59,9 @@ MIGRATION_DURATION: _PromHistogram = _PromHistogram(
 
 
 # Path: <repo>/migrations/versions. Resolved at import time.
-_MIGRATIONS_DIR = Path(__file__).resolve().parent.parent.parent / "migrations" / "versions"
+_MIGRATIONS_DIR = (
+    Path(__file__).resolve().parent.parent.parent / "migrations" / "versions"
+)
 
 
 class MigrationPreFlightError(RuntimeError):
@@ -91,7 +93,9 @@ def find_revision_file(revision_id: str) -> Path:
             f"No migration file found for revision {revision_id!r} in {_MIGRATIONS_DIR}"
         )
     if len(matches) > 1:
-        raise ValueError(f"Multiple migration files found for revision {revision_id!r}: {matches}")
+        raise ValueError(
+            f"Multiple migration files found for revision {revision_id!r}: {matches}"
+        )
     return matches[0]
 
 
@@ -208,10 +212,16 @@ async def apply_revision(
             await conn.execute(sql)
     finally:
         duration = time.time() - start_time
-        MIGRATION_DURATION.labels(revision=revision_id, direction=direction).observe(duration)
+        MIGRATION_DURATION.labels(revision=revision_id, direction=direction).observe(
+            duration
+        )
         logger.debug(
             "apply_revision",
-            extra={"revision": revision_id, "direction": direction, "seconds": duration},
+            extra={
+                "revision": revision_id,
+                "direction": direction,
+                "seconds": duration,
+            },
         )
 
 

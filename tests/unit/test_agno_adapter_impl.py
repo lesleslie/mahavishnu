@@ -22,7 +22,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.adapters.base import (
+    AdapterCapabilities,
+    AdapterType,
+    OrchestratorAdapter,
+)
 from mahavishnu.core.config import (
     AgnoAdapterConfig,
     AgnoLLMConfig,
@@ -309,11 +313,15 @@ class TestAgnoLLMConfigModel:
         }
         for provider, model_id in expected.items():
             config = ImplAgnoLLMConfig(provider=provider)
-            assert config.model_id == model_id, f"{provider} should default to {model_id}"
+            assert config.model_id == model_id, (
+                f"{provider} should default to {model_id}"
+            )
 
     def test_explicit_model_id_survives_provider_change(self) -> None:
         """An operator-pinned model id is never overwritten by the default."""
-        config = ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER, model_id="custom-model")
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.LLAMA_SERVER, model_id="custom-model"
+        )
         assert config.model_id == "custom-model"
 
     def test_fallback_providers_default_to_llama_server(self) -> None:
@@ -401,7 +409,9 @@ class TestAgnoLLMConfigModel:
         assert config.api_key_env is None
 
     def test_api_key_env_explicit_override_wins(self) -> None:
-        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX, api_key_env="MY_CUSTOM_KEY")
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.MINIMAX, api_key_env="MY_CUSTOM_KEY"
+        )
         assert config.api_key_env == "MY_CUSTOM_KEY"
 
 
@@ -601,7 +611,9 @@ class TestAgnoAdapterConfigModel:
 class TestLLMProviderFactory:
     """Tests for LLMProviderFactory."""
 
-    def test_factory_initialization(self, llama_server_llm_config: ImplAgnoLLMConfig) -> None:
+    def test_factory_initialization(
+        self, llama_server_llm_config: ImplAgnoLLMConfig
+    ) -> None:
         """Test factory initialization."""
         factory = LLMProviderFactory(llama_server_llm_config)
         assert factory.config == llama_server_llm_config
@@ -747,7 +759,9 @@ class TestLLMProviderFactory:
     @patch.dict(os.environ, {}, clear=True)
     def test_missing_api_key_anthropic(self) -> None:
         """Test error when Anthropic API key is missing and no fallback is allowed."""
-        config = ImplAgnoLLMConfig(provider=LLMProvider.ANTHROPIC, fallback_providers=[])
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.ANTHROPIC, fallback_providers=[]
+        )
         factory = LLMProviderFactory(config)
 
         with pytest.raises(ConfigurationError, match="API key not found"):
@@ -808,7 +822,9 @@ class TestLLMProviderFactory:
         config = ImplAgnoLLMConfig(provider=LLMProvider.OPENAI)
         factory = LLMProviderFactory(config)
 
-        with patch("agno.models.openai.OpenAIChat", side_effect=ImportError("No module")):
+        with patch(
+            "agno.models.openai.OpenAIChat", side_effect=ImportError("No module")
+        ):
             with pytest.raises(AgnoError, match="Failed to import"):
                 factory.create_model()
 
@@ -817,7 +833,9 @@ class TestLLMProviderFactory:
         config = ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER)
         factory = LLMProviderFactory(config)
 
-        with patch("agno.models.openai.like.OpenAIChat", side_effect=Exception("Unknown error")):
+        with patch(
+            "agno.models.openai.like.OpenAIChat", side_effect=Exception("Unknown error")
+        ):
             with pytest.raises(AgnoError, match="Failed to create LLM model"):
                 factory.create_model()
 
@@ -865,7 +883,9 @@ class TestLLMProviderChain:
 
     def test_explicit_model_id_is_kept_for_the_primary_provider(self) -> None:
         """An operator-pinned model id survives the chain resolution."""
-        config = ImplAgnoLLMConfig(provider=LLMProvider.MINIMAX, model_id="MiniMax-M3.1-Flash")
+        config = ImplAgnoLLMConfig(
+            provider=LLMProvider.MINIMAX, model_id="MiniMax-M3.1-Flash"
+        )
         factory = LLMProviderFactory(config)
 
         with patch.dict(os.environ, {"MINIMAX_API_KEY": "minimax-key"}):
@@ -907,7 +927,9 @@ class TestLLMProviderChain:
     def test_llama_server_base_url_still_defaults_to_local(self) -> None:
         """The llama-server provider resolves the local endpoint on its own."""
         config = ImplAgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER)
-        endpoint = LLMProviderFactory(config)._resolve_endpoint(LLMProvider.LLAMA_SERVER)
+        endpoint = LLMProviderFactory(config)._resolve_endpoint(
+            LLMProvider.LLAMA_SERVER
+        )
 
         assert endpoint.base_url == "http://localhost:8081"
         assert endpoint.via_gateway is False
@@ -1002,7 +1024,11 @@ class TestBifrostGatewayRouting:
     @staticmethod
     def _enable_gateway(monkeypatch: pytest.MonkeyPatch, base_url: str) -> None:
         """Route the oneiric Bifrost router at ``base_url``."""
-        from oneiric.adapters.llm.bifrost import BifrostLLMRouter, BifrostLLMSettings, RouteKind
+        from oneiric.adapters.llm.bifrost import (
+            BifrostLLMRouter,
+            BifrostLLMSettings,
+            RouteKind,
+        )
 
         router = BifrostLLMRouter(
             BifrostLLMSettings(
@@ -1013,7 +1039,9 @@ class TestBifrostGatewayRouting:
         )
         monkeypatch.setattr("oneiric.adapters.llm.bifrost.get_router", lambda: router)
 
-    def test_gateway_routes_url_and_virtual_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_gateway_routes_url_and_virtual_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A gateway-routed call targets the gateway and uses the virtual key."""
         self._enable_gateway(monkeypatch, "http://127.0.0.1:8471/v1")
 
@@ -1033,7 +1061,9 @@ class TestBifrostGatewayRouting:
                 assert call_kwargs["base_url"] == "http://127.0.0.1:8471/v1"
                 assert call_kwargs["api_key"] == "virtual-key"
 
-    def test_missing_virtual_key_falls_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_missing_virtual_key_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Without the gateway virtual key the gateway is unusable."""
         self._enable_gateway(monkeypatch, "http://127.0.0.1:8471/v1")
 
@@ -1049,7 +1079,9 @@ class TestBifrostGatewayRouting:
                 call_kwargs = mock_cls.call_args[1]
                 assert call_kwargs["base_url"] == "http://localhost:8081"
 
-    def test_explicit_base_url_overrides_the_gateway(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_explicit_base_url_overrides_the_gateway(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """An operator base_url wins over the router and keeps the provider key."""
         self._enable_gateway(monkeypatch, "http://127.0.0.1:8471/v1")
 
@@ -1122,11 +1154,15 @@ class TestMCPToolsRegistry:
             assert registry._mcp_tools is mock_tools
 
     @pytest.mark.asyncio
-    async def test_initialize_failure_graceful(self, tools_config: ImplAgnoToolsConfig) -> None:
+    async def test_initialize_failure_graceful(
+        self, tools_config: ImplAgnoToolsConfig
+    ) -> None:
         """Test that MCP init failure is handled gracefully (warning, not exception)."""
         registry = MCPToolsRegistry(tools_config)
 
-        with patch("agno.tools.mcp.MCPTools", side_effect=Exception("Connection refused")):
+        with patch(
+            "agno.tools.mcp.MCPTools", side_effect=Exception("Connection refused")
+        ):
             # Should not raise - just logs warning
             await registry.initialize()
 
@@ -1134,7 +1170,9 @@ class TestMCPToolsRegistry:
             assert registry._mcp_tools is None
 
     @pytest.mark.asyncio
-    async def test_initialize_idempotent(self, tools_config: ImplAgnoToolsConfig) -> None:
+    async def test_initialize_idempotent(
+        self, tools_config: ImplAgnoToolsConfig
+    ) -> None:
         """Test that initialize is idempotent."""
         registry = MCPToolsRegistry(tools_config)
 
@@ -1153,7 +1191,9 @@ class TestMCPToolsRegistry:
             assert first_tools is second_tools
 
     @pytest.mark.asyncio
-    async def test_get_tools_when_initialized(self, tools_config: ImplAgnoToolsConfig) -> None:
+    async def test_get_tools_when_initialized(
+        self, tools_config: ImplAgnoToolsConfig
+    ) -> None:
         """Test getting tools after initialization."""
         registry = MCPToolsRegistry(tools_config)
         mock_tools = MagicMock()
@@ -1164,7 +1204,9 @@ class TestMCPToolsRegistry:
         assert tools == [mock_tools]
 
     @pytest.mark.asyncio
-    async def test_get_tools_when_not_initialized(self, tools_config: ImplAgnoToolsConfig) -> None:
+    async def test_get_tools_when_not_initialized(
+        self, tools_config: ImplAgnoToolsConfig
+    ) -> None:
         """Test getting tools before initialization."""
         registry = MCPToolsRegistry(tools_config)
         assert registry.get_tools() == []
@@ -1387,7 +1429,9 @@ class TestAgnoAdapterInitialization:
             assert first_state == second_state
 
     @pytest.mark.asyncio
-    async def test_initialize_validates_agno_sdk(self, mock_settings: MagicMock) -> None:
+    async def test_initialize_validates_agno_sdk(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test initialization validates Agno SDK availability."""
         adapter = AgnoAdapter(mock_settings)
 
@@ -1398,7 +1442,9 @@ class TestAgnoAdapterInitialization:
             assert adapter._initialized is True
 
     @pytest.mark.asyncio
-    async def test_initialize_handles_agno_import_error(self, mock_settings: MagicMock) -> None:
+    async def test_initialize_handles_agno_import_error(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test initialization handles missing Agno gracefully."""
         adapter = AgnoAdapter(mock_settings)
 
@@ -1641,7 +1687,9 @@ class TestAgnoAdapterTaskExecution:
         assert result["results"][0]["status"] == "completed"
 
     @pytest.mark.asyncio
-    async def test_execute_multiple_repos_concurrent(self, mock_settings: MagicMock) -> None:
+    async def test_execute_multiple_repos_concurrent(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test execution on multiple repos runs concurrently."""
         adapter = AgnoAdapter(mock_settings)
         adapter.agno_config.max_concurrent_agents = 3
@@ -1771,7 +1819,9 @@ class TestAgnoAdapterTaskExecution:
         assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_process_single_repo_agno_error(self, mock_settings: MagicMock) -> None:
+    async def test_process_single_repo_agno_error(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test repo processing AgnoError handling."""
         adapter = AgnoAdapter(mock_settings)
 
@@ -1839,7 +1889,9 @@ class TestAgnoAdapterRunAgent:
         assert result.latency_ms > 0
 
     @pytest.mark.asyncio
-    async def test_run_agent_extracts_from_messages(self, mock_settings: MagicMock) -> None:
+    async def test_run_agent_extracts_from_messages(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test content extraction from response messages."""
         adapter = AgnoAdapter(mock_settings)
 
@@ -1965,7 +2017,9 @@ class TestAgnoAdapterTaskInstructions:
         assert "code analysis" in instructions.lower()
         assert "quality" in instructions.lower()
 
-    def test_get_task_instructions_quality_check(self, mock_settings: MagicMock) -> None:
+    def test_get_task_instructions_quality_check(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test quality_check task instructions."""
         adapter = AgnoAdapter(mock_settings)
         instructions = adapter._get_task_instructions("quality_check")
@@ -2120,7 +2174,9 @@ class TestAgnoAdapterTeamManagement:
         assert len(log) == 2
 
     @pytest.mark.asyncio
-    async def test_get_execution_log_invalid_limit(self, mock_settings: MagicMock) -> None:
+    async def test_get_execution_log_invalid_limit(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test execution log with invalid limit."""
         adapter = AgnoAdapter(mock_settings)
 
@@ -2571,7 +2627,9 @@ class TestLegacyConfigResolution:
         assert config.provider == LLMProvider.LLAMA_SERVER
         assert config.model_id == "llama2"
 
-    def test_resolve_legacy_with_invalid_provider(self, mock_settings: MagicMock) -> None:
+    def test_resolve_legacy_with_invalid_provider(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test legacy config with invalid provider raises error."""
         adapter = AgnoAdapter(mock_settings)
 
@@ -2592,7 +2650,9 @@ class TestRetryBehavior:
     """Tests for retry-decorated methods."""
 
     @pytest.mark.asyncio
-    async def test_process_single_repo_retry_on_failure(self, mock_settings: MagicMock) -> None:
+    async def test_process_single_repo_retry_on_failure(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test that _process_single_repo retries on transient failures."""
         adapter = AgnoAdapter(mock_settings)
 
@@ -2637,13 +2697,17 @@ class TestRetryBehavior:
 class TestAgentTeamManagerProperty:
     """Tests for agent_team_manager property."""
 
-    def test_agent_team_manager_when_not_initialized(self, mock_settings: MagicMock) -> None:
+    def test_agent_team_manager_when_not_initialized(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test agent_team_manager property before initialization."""
         adapter = AgnoAdapter(mock_settings)
         assert adapter.agent_team_manager is None
 
     @pytest.mark.asyncio
-    async def test_agent_team_manager_after_initialize(self, mock_settings: MagicMock) -> None:
+    async def test_agent_team_manager_after_initialize(
+        self, mock_settings: MagicMock
+    ) -> None:
         """Test agent_team_manager property after initialization."""
         adapter = AgnoAdapter(mock_settings)
 

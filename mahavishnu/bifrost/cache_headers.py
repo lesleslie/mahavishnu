@@ -179,7 +179,9 @@ def resolve_cache_mode() -> CacheMode:
         )
         return DEFAULT_CACHE_MODE
     if raw not in VALID_CACHE_MODES:
-        logger.warning("Unknown Bifrost cache mode %r; falling back to %r", raw, DEFAULT_CACHE_MODE)
+        logger.warning(
+            "Unknown Bifrost cache mode %r; falling back to %r", raw, DEFAULT_CACHE_MODE
+        )
         return DEFAULT_CACHE_MODE
     return cast("CacheMode", raw)
 
@@ -261,7 +263,9 @@ def build_cache_headers(mode: CacheMode, *, traffic_class: str = "") -> dict[str
         selects the lookup and write behaviour. ``off`` carries a bucket
         nothing was ever written to, so it neither reads nor writes.
     """
-    return _cache_headers_for(mode, resolve_cache_bucket(traffic_class, resolve_virtual_key()))
+    return _cache_headers_for(
+        mode, resolve_cache_bucket(traffic_class, resolve_virtual_key())
+    )
 
 
 def resolve_virtual_key() -> str | None:

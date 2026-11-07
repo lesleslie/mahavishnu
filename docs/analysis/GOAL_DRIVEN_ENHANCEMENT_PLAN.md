@@ -31,6 +31,7 @@ Expose the `GoalDrivenTeamFactory` via MCP for programmatic team creation.
 ```python
 from mcp_common.fastmcp import FastMCP
 
+
 @mcp.tool()
 async def team_from_goal(
     goal: str,
@@ -135,7 +136,9 @@ def create_team(
     goal: str = typer.Option(..., "--goal", "-g", help="Natural language goal"),
     name: str | None = typer.Option(None, "--name", "-n", help="Team name"),
     mode: str | None = typer.Option(None, "--mode", "-m", help="Team mode"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Show config without creating"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show config without creating"
+    ),
     run: bool = typer.Option(False, "--run", help="Run team immediately"),
     task: str | None = typer.Option(None, "--task", "-t", help="Task to run"),
 ) -> None:
@@ -365,14 +368,16 @@ class TeamLearningEngine:
         - Akosha: Embedding of goal + outcome for similarity search
         """
         # Store in Session-Buddy
-        await self.session_buddy.store_session({
-            "type": "team_execution",
-            "goal": outcome.goal,
-            "team_config": outcome.team_config.model_dump(),
-            "success": outcome.success,
-            "quality_score": outcome.quality_score,
-            "timestamp": outcome.timestamp.isoformat(),
-        })
+        await self.session_buddy.store_session(
+            {
+                "type": "team_execution",
+                "goal": outcome.goal,
+                "team_config": outcome.team_config.model_dump(),
+                "success": outcome.success,
+                "quality_score": outcome.quality_score,
+                "timestamp": outcome.timestamp.isoformat(),
+            }
+        )
 
         # Store embedding in Akosha
         embedding_text = f"Goal: {outcome.goal}\nOutcome: {'success' if outcome.success else 'failure'}"

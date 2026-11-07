@@ -270,14 +270,18 @@ class TestHeapRoutingScalability:
             linear_elapsed = time.time() - start
 
             print("\nPerformance comparison (50 pools, 1000 routes):")
-            print(f"  Heap (O(log n)):  {heap_elapsed:.4f}s ({1000 / heap_elapsed:.0f} routes/sec)")
+            print(
+                f"  Heap (O(log n)):  {heap_elapsed:.4f}s ({1000 / heap_elapsed:.0f} routes/sec)"
+            )
             print(
                 f"  Linear (O(n)):    {linear_elapsed:.4f}s ({1000 / linear_elapsed:.0f} routes/sec)"
             )
             print(f"  Speedup:          {linear_elapsed / heap_elapsed:.2f}x")
 
             # Heap should be faster (allowing some margin for small test sizes)
-            assert heap_elapsed < linear_elapsed * 1.5, "Heap routing should be faster than linear"
+            assert heap_elapsed < linear_elapsed * 1.5, (
+                "Heap routing should be faster than linear"
+            )
 
 
 class TestLeastLoadedRouting:

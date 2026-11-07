@@ -60,12 +60,16 @@ def test_state_change_emits_log_marker(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "worker_capability_transition" in args[0]
 
 
-def test_state_change_broadcasts_websocket_event(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_state_change_broadcasts_websocket_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """State change publishes a websocket event via ``_publish_event``."""
     reset_for_tests()
     monkeypatch.setattr("shutil.which", lambda _: None)
     calls = []
-    monkeypatch.setattr(observability, "_publish_event", lambda report: calls.append(report))
+    monkeypatch.setattr(
+        observability, "_publish_event", lambda report: calls.append(report)
+    )
 
     evaluate_worker_capabilities("terminal-claude", settings=S())
 
@@ -276,7 +280,9 @@ def test_publish_event_wraps_strings_through_safe_error_for_user(
         ("Bearer abcdefghijklmnop", "bearer-prefixed-token"),
     ],
 )
-def test_safe_error_for_user_redacts_known_provider_keys(secret: str, label: str) -> None:
+def test_safe_error_for_user_redacts_known_provider_keys(
+    secret: str, label: str
+) -> None:
     """Property-style: every known provider key shape is fully redacted."""
     redacted = safe_error_for_user(secret)
     assert redacted == "***", f"{label}: expected '***', got {redacted!r}"

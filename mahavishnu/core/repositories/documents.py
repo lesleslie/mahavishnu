@@ -43,9 +43,7 @@ _SELECT_BY_KEY_WITH_TYPE = (
     " ORDER BY created_at DESC LIMIT 1"
 )
 
-_SELECT_BY_KEY = (
-    "SELECT * FROM search.documents WHERE source_key = $1 ORDER BY created_at DESC LIMIT 1"
-)
+_SELECT_BY_KEY = "SELECT * FROM search.documents WHERE source_key = $1 ORDER BY created_at DESC LIMIT 1"
 
 _DELETE_BY_ID = "DELETE FROM search.documents WHERE id = $1"
 
@@ -183,7 +181,9 @@ class DocumentCreate(BaseModel):
     content: str = Field(..., description="Document content")
     repository: str | None = Field(None, description="Repository name")
     system_name: str | None = Field(None, description="System name")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class DocumentRead(BaseModel):
@@ -198,7 +198,9 @@ class DocumentRead(BaseModel):
     system_name: str | None = Field(None, description="System name")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class DocumentUpdate(BaseModel):
@@ -207,7 +209,9 @@ class DocumentUpdate(BaseModel):
     content: str | None = Field(None, description="Document content")
     repository: str | None = Field(None, description="Repository name")
     system_name: str | None = Field(None, description="System name")
-    metadata: dict[str, Any] | None = Field(None, description="Metadata updates (merged)")
+    metadata: dict[str, Any] | None = Field(
+        None, description="Metadata updates (merged)"
+    )
 
 
 class DocumentSearchResult(BaseModel):
@@ -254,7 +258,9 @@ class DocumentRepository(
                     )
                 return self._row_to_model(row)
         except Exception as e:  # DB driver (asyncpg) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("create_document", e, {"source_key": data.source_key})
+            raise self._handle_error(
+                "create_document", e, {"source_key": data.source_key}
+            )
 
     async def get_document(self, document_id: UUID) -> DocumentRead | None:
         """Get a document by ID."""
@@ -263,7 +269,9 @@ class DocumentRepository(
                 row = await conn.fetchrow(_SELECT_BY_ID, document_id)
                 return self._row_to_model(row) if row is not None else None
         except Exception as e:  # DB driver (asyncpg) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("get_document", e, {"document_id": str(document_id)})
+            raise self._handle_error(
+                "get_document", e, {"document_id": str(document_id)}
+            )
 
     async def get_document_by_key(
         self,
@@ -274,12 +282,16 @@ class DocumentRepository(
         try:
             async with self.connection() as conn:
                 if source_type:
-                    row = await conn.fetchrow(_SELECT_BY_KEY_WITH_TYPE, source_key, source_type)
+                    row = await conn.fetchrow(
+                        _SELECT_BY_KEY_WITH_TYPE, source_key, source_type
+                    )
                 else:
                     row = await conn.fetchrow(_SELECT_BY_KEY, source_key)
                 return self._row_to_model(row) if row is not None else None
         except Exception as e:  # DB driver (asyncpg) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("get_document_by_key", e, {"source_key": source_key})
+            raise self._handle_error(
+                "get_document_by_key", e, {"source_key": source_key}
+            )
 
     async def update_document(
         self,
@@ -287,7 +299,9 @@ class DocumentRepository(
         data: DocumentUpdate,
     ) -> DocumentRead | None:
         """Update document fields (partial update supported)."""
-        fields = frozenset(f for f in _UPDATE_FIELD_ORDER if getattr(data, f, None) is not None)
+        fields = frozenset(
+            f for f in _UPDATE_FIELD_ORDER if getattr(data, f, None) is not None
+        )
         if not fields:
             return await self.get_document(document_id)
 
@@ -304,7 +318,9 @@ class DocumentRepository(
                 row = await conn.fetchrow(query, *params)
                 return self._row_to_model(row) if row is not None else None
         except Exception as e:  # DB driver (asyncpg) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("update_document", e, {"document_id": str(document_id)})
+            raise self._handle_error(
+                "update_document", e, {"document_id": str(document_id)}
+            )
 
     async def delete_document(self, document_id: UUID) -> bool:
         """Delete a document."""
@@ -313,7 +329,9 @@ class DocumentRepository(
                 result = await conn.execute(_DELETE_BY_ID, document_id)
                 return result == "DELETE 1"  # type: ignore[no-any-return]
         except Exception as e:  # DB driver (asyncpg) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("delete_document", e, {"document_id": str(document_id)})
+            raise self._handle_error(
+                "delete_document", e, {"document_id": str(document_id)}
+            )
 
     async def search_documents(
         self,
@@ -368,7 +386,9 @@ class DocumentRepository(
                 return [self._row_to_model(row) for row in rows]
         except Exception as e:  # DB driver (asyncpg) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             raise self._handle_error(
-                "list_documents", e, {"repository": repository, "source_type": source_type}
+                "list_documents",
+                e,
+                {"repository": repository, "source_type": source_type},
             )
 
     def _row_to_model(self, row: Any) -> DocumentRead:

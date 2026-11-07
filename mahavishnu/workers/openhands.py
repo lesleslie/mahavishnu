@@ -57,7 +57,9 @@ class OpenHandsClient:
         import websockets
 
         url = (
-            self._config.base_url.replace("http://", "ws://").replace("https://", "wss://")
+            self._config.base_url.replace("http://", "ws://").replace(
+                "https://", "wss://"
+            )
             + f"/ws?conversation_id={conv_id}"
         )
         events: list[dict[str, Any]] = []
@@ -124,7 +126,9 @@ class OpenHandsWorker(BaseWorker):
         # Prefer WebSocket stream; fall back to REST polling on connection failure.
         try:
             events = await self._client.stream_events(conv_id)
-            finished = next((e for e in events if e.get("type") in ("FINISHED", "ERROR")), None)
+            finished = next(
+                (e for e in events if e.get("type") in ("FINISHED", "ERROR")), None
+            )
             if finished:
                 if finished.get("type") == "ERROR":
                     return WorkerResult(
@@ -142,7 +146,9 @@ class OpenHandsWorker(BaseWorker):
                     metadata={"worker_type": self.worker_type, "conv_id": conv_id},
                 )
         except Exception as ws_err:  # WebSocket streaming can fail on any network/protocol error; fall back to REST polling  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning(f"OpenHands WS stream failed, falling back to polling: {ws_err}")
+            logger.warning(
+                f"OpenHands WS stream failed, falling back to polling: {ws_err}"
+            )
 
         # REST polling fallback
         elapsed = 0.0

@@ -71,7 +71,9 @@ from pathlib import Path
 
         # Verify analysis results
         assert result["files_indexed"] >= 1
-        assert result["functions_indexed"] >= 3  # main_function, helper_function, process_result
+        assert (
+            result["functions_indexed"] >= 3
+        )  # main_function, helper_function, process_result
         assert result["classes_indexed"] >= 1  # TestClass
 
         # Verify that function nodes were created
@@ -97,7 +99,9 @@ async def test_workflow_state_persistence():
     await app.workflow_state_manager.create(workflow_id, task, repos)
 
     # Update workflow state
-    await app.workflow_state_manager.update(workflow_id=workflow_id, status="running", progress=50)
+    await app.workflow_state_manager.update(
+        workflow_id=workflow_id, status="running", progress=50
+    )
 
     # Retrieve workflow state
     state = await app.workflow_state_manager.get(workflow_id)
@@ -124,7 +128,9 @@ async def test_rbac_workflow_integration():
 
         # Create a test user with limited permissions
         user = await app.rbac_manager.create_user(
-            user_id="integration_test_user", roles=["developer"], allowed_repos=[repo_str]
+            user_id="integration_test_user",
+            roles=["developer"],
+            allowed_repos=[repo_str],
         )
 
         # Verify user was created
@@ -275,7 +281,11 @@ def hello_world():
 
         # Step 1: Create workflow state
         workflow_id = "complete_cycle_test"
-        task = {"type": "code_analysis", "params": {"analyze_functions": True}, "id": workflow_id}
+        task = {
+            "type": "code_analysis",
+            "params": {"analyze_functions": True},
+            "id": workflow_id,
+        }
         repos = [str(repo_str)]
 
         await app.workflow_state_manager.create(workflow_id, task, repos)

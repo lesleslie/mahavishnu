@@ -70,7 +70,9 @@ def get_health_metrics_registry() -> prometheus_client.CollectorRegistry:
 _health_feed_status_gauge: prometheus_client.Gauge | None = None
 
 
-def _get_or_create_gauge(registry: prometheus_client.CollectorRegistry) -> prometheus_client.Gauge:
+def _get_or_create_gauge(
+    registry: prometheus_client.CollectorRegistry,
+) -> prometheus_client.Gauge:
     """Return the cached ``mahavishnu_health_feed_status`` gauge.
 
     The cache is module-level because there is only one
@@ -324,7 +326,9 @@ def bifrost_dispatch_total(*, outcome: str, provider: str, route_class: str) -> 
     counter.labels(outcome=outcome, provider=provider, route_class=route_class).inc()
 
 
-def bifrost_dispatch_latency_seconds(*, provider: str, route_class: str, seconds: float) -> None:
+def bifrost_dispatch_latency_seconds(
+    *, provider: str, route_class: str, seconds: float
+) -> None:
     """Record a Bifrost dispatch latency sample.
 
     Phase A (v1.5 Bifrost spec §5.5). Default buckets match the
@@ -362,7 +366,9 @@ def bifrost_dispatch_failures_total(*, provider: str, reason: str) -> None:
     counter.labels(provider=provider, reason=reason).inc()
 
 
-def bifrost_local_dispatch_total(*, outcome: str, provider: str, route_class: str) -> None:
+def bifrost_local_dispatch_total(
+    *, outcome: str, provider: str, route_class: str
+) -> None:
     """Increment the local-target Bifrost dispatch counter.
 
     Phase G (REQ-007). Called from the

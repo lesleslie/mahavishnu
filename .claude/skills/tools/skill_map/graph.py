@@ -26,7 +26,9 @@ class SkillGraph:
         self.skills[skill.name] = skill
         self.graph.add_node(skill.name, **_skill_to_node_attributes(skill))
 
-    def add_relationship(self, source: str, target: str, relationship_type: str) -> None:
+    def add_relationship(
+        self, source: str, target: str, relationship_type: str
+    ) -> None:
         """Add a relationship edge between skills."""
         self.graph.add_edge(source, target, relationship_type=relationship_type)
 

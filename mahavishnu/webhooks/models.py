@@ -210,7 +210,9 @@ class OpenClawWorkflowRequest(BaseModel):
                 )
             # Check for absolute path attempts
             if repo.startswith(("/", "~")):
-                raise ValueError(f"Invalid repository path '{repo}'. Absolute paths not allowed")
+                raise ValueError(
+                    f"Invalid repository path '{repo}'. Absolute paths not allowed"
+                )
         return v
 
     @field_validator("metadata")

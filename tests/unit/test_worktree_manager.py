@@ -139,7 +139,9 @@ class TestCreateWorktree:
         # Set up a real git repo so ``git worktree add`` can run.
         repo = tmp_path / "repo"
         repo.mkdir()
-        subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True
+        )
         subprocess.run(
             ["git", "config", "user.email", "test@example.com"],
             cwd=repo,
@@ -204,9 +206,13 @@ class TestCreateWorktree:
             # Force the subprocess.run inside _git_worktree_add to raise
             with patch(
                 "mahavishnu.core.worktree_manager.subprocess.run",
-                side_effect=subprocess.CalledProcessError(128, "git", stderr=b"fatal: bad"),
+                side_effect=subprocess.CalledProcessError(
+                    128, "git", stderr=b"fatal: bad"
+                ),
             ):
-                with pytest.raises(WorktreeError, match="git diff failed|Failed to create"):
+                with pytest.raises(
+                    WorktreeError, match="git diff failed|Failed to create"
+                ):
                     await mgr.create_worktree(
                         task_id="task-1",
                         repo_path=Path("/nonexistent/repo"),
@@ -226,7 +232,9 @@ class TestCompleteWorktree:
         # Real repo with initial commit + worktree + change + second commit.
         repo = tmp_path / "repo"
         repo.mkdir()
-        subprocess.run(["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "init", "-b", "main"], cwd=repo, check=True, capture_output=True
+        )
         subprocess.run(
             ["git", "config", "user.email", "test@example.com"],
             cwd=repo,
@@ -260,7 +268,12 @@ class TestCompleteWorktree:
             )
             wt_path = repo / ".worktrees" / info.worktree_id
             (wt_path / "new_file.txt").write_text("hello\n")
-            subprocess.run(["git", "add", "new_file.txt"], cwd=wt_path, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "add", "new_file.txt"],
+                cwd=wt_path,
+                check=True,
+                capture_output=True,
+            )
             subprocess.run(
                 ["git", "commit", "-m", "add file"],
                 cwd=wt_path,

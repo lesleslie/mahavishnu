@@ -55,7 +55,9 @@ def _parse_since(value: str | None) -> datetime | None:
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError:
-        logger.warning("approval_list_since_unparsed", extra={"reason": "invalid_since"})
+        logger.warning(
+            "approval_list_since_unparsed", extra={"reason": "invalid_since"}
+        )
         return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
@@ -92,7 +94,9 @@ def _verify_caller(token: str | None) -> str | None:
         return None
     user_id = payload.get("user_id")
     if not isinstance(user_id, str) or not user_id:
-        logger.warning("approval_list_skipped", extra={"reason": "token_without_user_id"})
+        logger.warning(
+            "approval_list_skipped", extra={"reason": "token_without_user_id"}
+        )
         return None
     return user_id
 
@@ -175,7 +179,9 @@ async def list_approval_history(
 
     client = MCPClient(base_url=base_url, token=token)
     try:
-        pairs = await client.kv_list(f"approval-history/{approval_id}/", user_id=user_id)
+        pairs = await client.kv_list(
+            f"approval-history/{approval_id}/", user_id=user_id
+        )
     except Exception as exc:  # noqa: BLE001 — CLI entry point, broad catch is the contract
         logger.warning(
             "approval_list_skipped",

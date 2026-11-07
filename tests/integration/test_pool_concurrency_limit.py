@@ -116,9 +116,7 @@ class TestRateLimitErrorFailClosed:
             await _enforce_concurrency_limit(TaskCategory.CODE_GENERATION, "pool-1")
             await _enforce_concurrency_limit(TaskCategory.CODE_GENERATION, "pool-1")
             with pytest.raises(RateLimitError):
-                await _enforce_concurrency_limit(
-                    TaskCategory.CODE_GENERATION, "pool-1"
-                )
+                await _enforce_concurrency_limit(TaskCategory.CODE_GENERATION, "pool-1")
         finally:
             set_concurrency_gate(None)
 
@@ -233,9 +231,7 @@ class TestRealConcurrency:
             refill_rate_per_second=0.0,
             global_override=False,
         )
-        settings = ConcurrencyLimitsSettings(
-            by_category={TaskCategory.SWARM: spec}
-        )
+        settings = ConcurrencyLimitsSettings(by_category={TaskCategory.SWARM: spec})
         gate = ConcurrencyGate(settings)
 
         # Acquire 3 (saturate)
@@ -253,9 +249,7 @@ class TestRealConcurrency:
 
 @pytest.mark.req(["REQ-012"])
 class TestSpecForPublicAccessor:
-    def test_returns_spec(
-        self, settings_with_limit: ConcurrencyLimitsSettings
-    ) -> None:
+    def test_returns_spec(self, settings_with_limit: ConcurrencyLimitsSettings) -> None:
         gate = ConcurrencyGate(settings_with_limit)
         spec = gate.spec_for(TaskCategory.CODE_GENERATION)
         assert spec is not None

@@ -131,7 +131,9 @@ class TestVectorIndex:
         return VectorIndex(mock_db)
 
     @pytest.mark.asyncio
-    async def test_create_hnsw_index(self, index: VectorIndex, mock_db: MagicMock) -> None:
+    async def test_create_hnsw_index(
+        self, index: VectorIndex, mock_db: MagicMock
+    ) -> None:
         """Test creating HNSW index."""
         await index.create_hnsw_index(table="test_table", column="embedding")
 
@@ -154,7 +156,9 @@ class TestVectorIndex:
         assert "ef_construction = 128" in call_args
 
     @pytest.mark.asyncio
-    async def test_create_ivfflat_index(self, index: VectorIndex, mock_db: MagicMock) -> None:
+    async def test_create_ivfflat_index(
+        self, index: VectorIndex, mock_db: MagicMock
+    ) -> None:
         """Test creating IVFFlat index."""
         await index.create_ivfflat_index(lists=200)
 
@@ -166,7 +170,9 @@ class TestVectorIndex:
     @pytest.mark.asyncio
     async def test_drop_index(self, index: VectorIndex, mock_db: MagicMock) -> None:
         """Test dropping index."""
-        await index.drop_index(table="test_table", column="embedding", index_type="hnsw")
+        await index.drop_index(
+            table="test_table", column="embedding", index_type="hnsw"
+        )
 
         mock_db.execute.assert_called_once()
         call_args = mock_db.execute.call_args[0][0]
@@ -249,7 +255,9 @@ class TestVectorStore:
         assert result == [0.1, 0.2, 0.3]
 
     @pytest.mark.asyncio
-    async def test_get_embedding_not_found(self, store: VectorStore, mock_db: MagicMock) -> None:
+    async def test_get_embedding_not_found(
+        self, store: VectorStore, mock_db: MagicMock
+    ) -> None:
         """Test getting embedding not found."""
         mock_db.fetchrow = AsyncMock(return_value=None)
 
@@ -258,7 +266,9 @@ class TestVectorStore:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_delete_embedding(self, store: VectorStore, mock_db: MagicMock) -> None:
+    async def test_delete_embedding(
+        self, store: VectorStore, mock_db: MagicMock
+    ) -> None:
         """Test deleting embedding."""
         mock_db.execute = AsyncMock(return_value="DELETE 1")
 
@@ -267,7 +277,9 @@ class TestVectorStore:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_delete_embedding_not_found(self, store: VectorStore, mock_db: MagicMock) -> None:
+    async def test_delete_embedding_not_found(
+        self, store: VectorStore, mock_db: MagicMock
+    ) -> None:
         """Test deleting embedding not found."""
         mock_db.execute = AsyncMock(return_value="DELETE 0")
 
@@ -276,7 +288,9 @@ class TestVectorStore:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_batch_store(self, mock_db: MagicMock, mock_embedding_service: MagicMock) -> None:
+    async def test_batch_store(
+        self, mock_db: MagicMock, mock_embedding_service: MagicMock
+    ) -> None:
         """Test batch storing embeddings."""
         mock_db.fetchrow = AsyncMock(return_value={"id": "emb-123"})
         store = VectorStore(mock_db, mock_embedding_service)
@@ -499,25 +513,33 @@ class TestTaskSimilarity:
             ]
         )
 
-        matrix = await similarity.compute_similarity_matrix(["task-1", "task-2", "task-3"])
+        matrix = await similarity.compute_similarity_matrix(
+            ["task-1", "task-2", "task-3"]
+        )
 
         # Should have 6 entries (3 pairs, each direction)
         assert len(matrix) == 6
 
     @pytest.mark.asyncio
-    async def test_compute_similarity_matrix_single(self, similarity: TaskSimilarity) -> None:
+    async def test_compute_similarity_matrix_single(
+        self, similarity: TaskSimilarity
+    ) -> None:
         """Test computing similarity matrix with single task."""
         matrix = await similarity.compute_similarity_matrix(["task-1"])
         assert matrix == {}
 
     @pytest.mark.asyncio
-    async def test_compute_similarity_matrix_empty(self, similarity: TaskSimilarity) -> None:
+    async def test_compute_similarity_matrix_empty(
+        self, similarity: TaskSimilarity
+    ) -> None:
         """Test computing similarity matrix with empty list."""
         matrix = await similarity.compute_similarity_matrix([])
         assert matrix == {}
 
     @pytest.mark.asyncio
-    async def test_find_duplicates(self, similarity: TaskSimilarity, mock_db: MagicMock) -> None:
+    async def test_find_duplicates(
+        self, similarity: TaskSimilarity, mock_db: MagicMock
+    ) -> None:
         """Test finding duplicate tasks."""
         mock_db.fetch = AsyncMock(
             return_value=[

@@ -71,6 +71,7 @@ from fastmcp import FastMCP
 from mcp_common.cli import MCPServerCLIFactory, MCPServerSettings
 from mcp_common.ui import ServerPanels
 
+
 class MahavishnuMCPServer:
     """Mahavishnu MCP server using FastMCP + mcp-common patterns."""
 
@@ -98,6 +99,7 @@ class MahavishnuMCPServer:
         # Authentication (if configured)
         if self.settings.auth_enabled:
             from .auth import JWTAuthMiddleware
+
             auth_middleware = JWTAuthMiddleware(
                 secret=self.settings.auth_secret,
                 algorithm="HS256",
@@ -122,6 +124,7 @@ from fastmcp import FastMCP
 from mcp_common.ui import ServerPanels
 from ...core.config import MahavishnuSettings
 from ...core.app import MahavishnuApp
+
 
 def register_repo_tools(mcp_app: FastMCP, settings: MahavishnuSettings) -> None:
     """Register repository management tools."""
@@ -183,16 +186,19 @@ from .mcp.server import MahavishnuMCPServer
 
 mcp_app = typer.Typer()
 
+
 def _start_mcp_server():
     """Start the MCP server."""
     settings = MahavishnuSettings.load("mahavishnu")
     server = MahavishnuMCPServer(settings)
     server.run()
 
+
 def _stop_mcp_server(pid: int):
     """Stop the MCP server."""
     # Graceful shutdown handled by MCPServerCLIFactory
     pass
+
 
 def _health_probe():
     """Health check for the MCP server."""
@@ -209,6 +215,7 @@ def _health_probe():
         activity_state={"active_workflows": len(app.get_active_workflows())},
     )
 
+
 @mcp_app.command()
 def start():
     """Start the MCP server."""
@@ -221,6 +228,7 @@ def start():
     )
     factory.start()
 
+
 @mcp_app.command()
 def status():
     """Get MCP server status."""
@@ -230,6 +238,7 @@ def status():
     )
     factory.status()
 
+
 @mcp_app.command()
 def health():
     """Run health probe."""
@@ -238,6 +247,7 @@ def health():
         settings_class=MahavishnuSettings,
     )
     factory.health()
+
 
 @mcp_app.command()
 def stop():

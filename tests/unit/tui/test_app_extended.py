@@ -132,7 +132,9 @@ def _make_report(
     )
 
 
-def _patch_report(monkeypatch: pytest.MonkeyPatch, report: EcosystemStatusReport | None) -> None:
+def _patch_report(
+    monkeypatch: pytest.MonkeyPatch, report: EcosystemStatusReport | None
+) -> None:
     """Patch the inline-import chain that ``_get_report`` walks.
 
     We pin ``get_app_from_context`` to return ``None`` (no app), and short-
@@ -153,7 +155,9 @@ def _patch_report(monkeypatch: pytest.MonkeyPatch, report: EcosystemStatusReport
     async def _generate(self: Any, **_kw: Any) -> Any:
         return report
 
-    monkeypatch.setattr(core_ecosystem.EcosystemStatusService, "generate_report", _generate)
+    monkeypatch.setattr(
+        core_ecosystem.EcosystemStatusService, "generate_report", _generate
+    )
 
 
 # ===========================================================================
@@ -173,7 +177,9 @@ async def test_get_report_returns_none_when_settings_instantiation_fails(
     """When ``MahavishnuSettings()`` raises, ``_get_report`` returns ``None``."""
     from mahavishnu.core import config as core_config
 
-    monkeypatch.setattr(core_config, "MahavishnuSettings", MagicMock(side_effect=Exception("boom")))
+    monkeypatch.setattr(
+        core_config, "MahavishnuSettings", MagicMock(side_effect=Exception("boom"))
+    )
 
     from mahavishnu.tui.app import _get_report
 
@@ -1048,7 +1054,11 @@ async def test_fetch_correlation_trace_merges_status_with_trace(
 
     app = MagicMock()
     app.get_correlation_status = MagicMock(
-        return_value={"trace_count": 3, "latest_stage": "review", "latest_message": "ok"}
+        return_value={
+            "trace_count": 3,
+            "latest_stage": "review",
+            "latest_message": "ok",
+        }
     )
     app.get_fix_trace = MagicMock(return_value=[{"stage": "review"}])
     monkeypatch.setattr(core_context, "get_app_from_context", lambda: app)
@@ -1114,7 +1124,9 @@ async def test_forward_approval_request_returns_app_response(
     from mahavishnu.core import context as core_context
 
     app = MagicMock()
-    app.request_approval = MagicMock(return_value={"request_id": "r1", "status": "pending"})
+    app.request_approval = MagicMock(
+        return_value={"request_id": "r1", "status": "pending"}
+    )
     monkeypatch.setattr(core_context, "get_app_from_context", lambda: app)
 
     from mahavishnu.tui.app import forward_approval_request
@@ -1230,7 +1242,9 @@ def test_read_cockpit_file_returns_invalid_when_validator_rejects(
     monkeypatch.setattr(
         wv,
         "WorktreePathValidator",
-        lambda _roots: MagicMock(validate_worktree_path=lambda _p: (False, "outside worktree")),
+        lambda _roots: MagicMock(
+            validate_worktree_path=lambda _p: (False, "outside worktree")
+        ),
     )
 
     from mahavishnu.tui.app import _read_cockpit_file
@@ -1354,7 +1368,9 @@ async def test_fetch_diff_views_marks_invalid_paths(
     monkeypatch.setattr(
         wv,
         "WorktreePathValidator",
-        lambda _roots: MagicMock(validate_worktree_path=lambda _p: (False, "outside worktree")),
+        lambda _roots: MagicMock(
+            validate_worktree_path=lambda _p: (False, "outside worktree")
+        ),
     )
 
     from mahavishnu.tui.app import fetch_diff_views
@@ -1540,7 +1556,9 @@ def test_screen_classes_inherit_vertical_scroll() -> None:
         TraceScreen,
         BodaiComponentScreen,
     ):
-        assert issubclass(cls, VerticalScroll), f"{cls.__name__} must inherit VerticalScroll"
+        assert issubclass(cls, VerticalScroll), (
+            f"{cls.__name__} must inherit VerticalScroll"
+        )
 
 
 @pytest.mark.unit
@@ -1685,7 +1703,9 @@ def test_bodai_component_screen_stores_constructor_args() -> None:
     """The constructor pins ``_label``/``_slug``/``_base_url``."""
     from mahavishnu.tui.app import BodaiComponentScreen
 
-    screen = BodaiComponentScreen("Crackerjack — Quality", "crackerjack", "http://cj.local")
+    screen = BodaiComponentScreen(
+        "Crackerjack — Quality", "crackerjack", "http://cj.local"
+    )
     assert screen._label == "Crackerjack — Quality"
     assert screen._slug == "crackerjack"
     assert screen._base_url == "http://cj.local"
@@ -1755,7 +1775,8 @@ def test_action_refresh_all_calls_refresh_on_each_screen_widget() -> None:
 
     # Build a fake app instance whose ``query`` returns one mock widget per class.
     widgets_by_class: dict[type, Any] = {
-        cls: MagicMock() for cls in (
+        cls: MagicMock()
+        for cls in (
             OverviewScreen,
             SweepScreen,
             RoutingScreen,
@@ -1936,7 +1957,12 @@ def test_component_urls_returns_default_dict_when_settings_fail(
     from mahavishnu.tui.app import _component_urls
 
     result = _component_urls()
-    assert result == {"crackerjack": None, "akosha": None, "mcp": None, "sb-metrics": None}
+    assert result == {
+        "crackerjack": None,
+        "akosha": None,
+        "mcp": None,
+        "sb-metrics": None,
+    }
 
 
 @pytest.mark.unit
@@ -2009,7 +2035,9 @@ async def test_fetch_health_returns_available_on_2xx_dict(
     """``resp.json()`` is a dict → ``available=True`` + merged fields."""
     import httpx2
 
-    mock_resp = MagicMock(status_code=200, json=MagicMock(return_value={"status": "ok", "v": 1}))
+    mock_resp = MagicMock(
+        status_code=200, json=MagicMock(return_value={"status": "ok", "v": 1})
+    )
     mock_client = MagicMock()
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
@@ -2368,7 +2396,9 @@ async def test_routing_screen_fetch_with_no_adapters(
     monkeypatch.setattr(
         app_module,
         "fetch_routing_stats",
-        AsyncMock(return_value={"adapters": [], "total_decisions": 0, "cache_hit_rate": 0.0}),
+        AsyncMock(
+            return_value={"adapters": [], "total_decisions": 0, "cache_hit_rate": 0.0}
+        ),
     )
 
     Harness = _make_harness_app()

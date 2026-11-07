@@ -165,11 +165,14 @@ valid_score_strategy = st.integers(min_value=0, max_value=100)
 simple_text_strategy = st.text(
     alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_",
     min_size=1,
-    max_size=50
+    max_size=50,
 )
 
 # Sampled from enum
-routing_strategy = st.sampled_from(["round_robin", "least_loaded", "random", "affinity"])
+routing_strategy = st.sampled_from(
+    ["round_robin", "least_loaded", "random", "affinity"]
+)
+
 
 # Boolean combinations
 @given(
@@ -178,8 +181,7 @@ routing_strategy = st.sampled_from(["round_robin", "least_loaded", "random", "af
 )
 def test_boolean_fields(metrics_enabled, tracing_enabled):
     config = MahavishnuSettings(
-        metrics_enabled=metrics_enabled,
-        tracing_enabled=tracing_enabled
+        metrics_enabled=metrics_enabled, tracing_enabled=tracing_enabled
     )
     assert config.metrics_enabled == metrics_enabled
     assert config.tracing_enabled == tracing_enabled

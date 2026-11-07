@@ -21,7 +21,9 @@ import pytest
 # isn't available. Registering in ``sys.modules`` is required so the
 # ``@dataclass`` decorator can resolve ``cls.__module__`` (it reads
 # ``sys.modules[cls.__module__].__dict__`` for field defaults).
-SCRIPT_PATH = Path(__file__).resolve().parent.parent.parent / "scripts" / "check_merge_driver.py"
+SCRIPT_PATH = (
+    Path(__file__).resolve().parent.parent.parent / "scripts" / "check_merge_driver.py"
+)
 _spec = importlib.util.spec_from_file_location("check_merge_driver", SCRIPT_PATH)
 assert _spec is not None and _spec.loader is not None
 check_merge_driver = importlib.util.module_from_spec(_spec)
@@ -99,7 +101,9 @@ def test_check_python_grammar_present(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.state == "ok"
 
 
-def test_check_python_grammar_absent_is_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_check_python_grammar_absent_is_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """check_python_grammar returns warning (not missing) when absent.
 
     Soft failure — operators can still run with heuristics, but should
@@ -122,7 +126,9 @@ def test_check_python_grammar_absent_is_warning(monkeypatch: pytest.MonkeyPatch)
 
 def test_check_git_version_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     """check_git_version returns ok for git >= 2.38."""
-    monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/git" if cmd == "git" else None)
+    monkeypatch.setattr(
+        "shutil.which", lambda cmd: "/usr/bin/git" if cmd == "git" else None
+    )
     completed = MagicMock(spec=subprocess.CompletedProcess)
     completed.returncode = 0
     completed.stdout = "git version 2.55.0\n"
@@ -139,7 +145,9 @@ def test_check_git_version_ok(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_check_git_version_too_old(monkeypatch: pytest.MonkeyPatch) -> None:
     """check_git_version returns missing with migration hint for git < 2.38."""
-    monkeypatch.setattr("shutil.which", lambda cmd: "/usr/bin/git" if cmd == "git" else None)
+    monkeypatch.setattr(
+        "shutil.which", lambda cmd: "/usr/bin/git" if cmd == "git" else None
+    )
     completed = MagicMock(spec=subprocess.CompletedProcess)
     completed.returncode = 0
     completed.stdout = "git version 2.30.0\n"
@@ -268,10 +276,16 @@ def test_main_returns_1_on_hard_failure(monkeypatch: pytest.MonkeyPatch) -> None
         check_merge_driver,
         "run_checks",
         return_value=[
-            check_merge_driver.CheckResult(name="binary", state="missing", detail="no mergiraf"),
+            check_merge_driver.CheckResult(
+                name="binary", state="missing", detail="no mergiraf"
+            ),
             check_merge_driver.CheckResult(name="version", state="ok", detail="1.0"),
-            check_merge_driver.CheckResult(name="python_grammar", state="ok", detail="ok"),
-            check_merge_driver.CheckResult(name="git_version", state="ok", detail="2.55"),
+            check_merge_driver.CheckResult(
+                name="python_grammar", state="ok", detail="ok"
+            ),
+            check_merge_driver.CheckResult(
+                name="git_version", state="ok", detail="2.55"
+            ),
         ],
     ):
         rc = check_merge_driver.main([])
@@ -445,7 +459,9 @@ def test_main_repo_path_invalid_returns_2(
 # ---------------------------------------------------------------------------
 
 
-def test_merge_driver_health_when_binary_present(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_merge_driver_health_when_binary_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """``merge_driver_health`` returns ok payload when mergiraf is available.
 
     Phase 4 deferred review (M8): healthy probe sets ``probe_ok=True``.
@@ -474,7 +490,9 @@ def test_merge_driver_health_when_binary_present(monkeypatch: pytest.MonkeyPatch
     assert payload["degraded_since"] is None
 
 
-def test_merge_driver_health_when_binary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_merge_driver_health_when_binary_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """``merge_driver_health`` returns empty payload when mergiraf is missing.
 
     Phase 4 deferred review (M8): the binary-missing branch surfaces

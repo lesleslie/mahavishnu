@@ -199,7 +199,9 @@ class TestExecuteTask:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        req = _fake_run_request(status_value="COMPLETED", output_value={"ok": True}, job_id="job-1")
+        req = _fake_run_request(
+            status_value="COMPLETED", output_value={"ok": True}, job_id="job-1"
+        )
         endpoint_mock = MagicMock()
         endpoint_mock.run = MagicMock(return_value=req)
         pool._endpoint = endpoint_mock
@@ -212,11 +214,15 @@ class TestExecuteTask:
     @pytest.mark.asyncio
     async def test_output_timeout_is_configurable(self):
         """The budget is a pool config knob, not a constant."""
-        cfg = _make_pool_config(extra_config={"endpoint_id": "ep-1", "timeout_seconds": 42})
+        cfg = _make_pool_config(
+            extra_config={"endpoint_id": "ep-1", "timeout_seconds": 42}
+        )
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        req = _fake_run_request(status_value="COMPLETED", output_value={"ok": True}, job_id="job-1")
+        req = _fake_run_request(
+            status_value="COMPLETED", output_value={"ok": True}, job_id="job-1"
+        )
         endpoint_mock = MagicMock()
         endpoint_mock.run = MagicMock(return_value=req)
         pool._endpoint = endpoint_mock
@@ -298,7 +304,9 @@ class TestExecuteTask:
 
         assert result["status"] == "completed"
         assert any("UNKNOWN_STATE" in rec.message for rec in caplog.records)
-        assert any("SDK contract compatibility" in rec.message for rec in caplog.records)
+        assert any(
+            "SDK contract compatibility" in rec.message for rec in caplog.records
+        )
 
     @pytest.mark.asyncio
     async def test_empty_status_with_output_returning_means_completed(self):
@@ -325,7 +333,9 @@ class TestExecuteTask:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        endpoint_mock = MagicMock(run=MagicMock(side_effect=TimeoutError("execution timeout")))
+        endpoint_mock = MagicMock(
+            run=MagicMock(side_effect=TimeoutError("execution timeout"))
+        )
         pool._endpoint = endpoint_mock
 
         result = await pool.execute_task({"prompt": "slow task"})
@@ -340,7 +350,9 @@ class TestExecuteTask:
         pool = RunPodPool(config=cfg)
         pool._status = PoolStatus.RUNNING
 
-        endpoint_mock = MagicMock(run=MagicMock(side_effect=RuntimeError("GPU out of memory")))
+        endpoint_mock = MagicMock(
+            run=MagicMock(side_effect=RuntimeError("GPU out of memory"))
+        )
         pool._endpoint = endpoint_mock
 
         result = await pool.execute_task({"prompt": "big model"})
@@ -384,13 +396,17 @@ class TestExecuteBatch:
             prompt = payload.get("prompt", "")
             return _fake_run_request(
                 status_value="COMPLETED",
-                output_value={"result": {"a": "r1", "b": "r2", "c": "r3"}.get(prompt, "")},
+                output_value={
+                    "result": {"a": "r1", "b": "r2", "c": "r3"}.get(prompt, "")
+                },
             )
 
         endpoint_mock = MagicMock(run=MagicMock(side_effect=by_prompt))
         pool._endpoint = endpoint_mock
 
-        results = await pool.execute_batch([{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}])
+        results = await pool.execute_batch(
+            [{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}]
+        )
         assert len(results) == 3
         # asyncio.gather preserves input order in the returned list,
         # so index → submission order.
@@ -411,7 +427,9 @@ class TestExecuteBatch:
             call_index["n"] += 1
             if call_index["n"] == 2:
                 raise TimeoutError("timeout")
-            return _fake_run_request(status_value="COMPLETED", output_value={"result": "ok"})
+            return _fake_run_request(
+                status_value="COMPLETED", output_value={"result": "ok"}
+            )
 
         endpoint_mock = MagicMock(run=MagicMock(side_effect=by_index))
         pool._endpoint = endpoint_mock

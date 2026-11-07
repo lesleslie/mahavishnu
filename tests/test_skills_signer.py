@@ -131,7 +131,9 @@ class TestCanonicalPayloadForSigning:
         canonical = canonical_payload_for_signing(payload)
         assert b"signature" not in canonical
         assert b"server_pubkey_id" not in canonical
-        assert canonical == canonicalize_payload({"name": "akosha-search", "version": "1.0.0"})
+        assert canonical == canonicalize_payload(
+            {"name": "akosha-search", "version": "1.0.0"}
+        )
 
     def test_strips_signature_field_from_pydantic_model(self) -> None:
         """A Pydantic model with ``signature`` field strips it via model_dump."""
@@ -174,7 +176,9 @@ class TestCanonicalPayloadForSigning:
             "signature": "real_sig",
             "server_pubkey_id": "real_key",
         }
-        assert canonical_payload_for_signing(populated) != canonicalize_payload(populated)
+        assert canonical_payload_for_signing(populated) != canonicalize_payload(
+            populated
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -213,10 +217,13 @@ class TestGenerateKeypair:
         )
         assert len(raw) == 32
         reloaded = public_key_from_bytes(raw)
-        assert reloaded.public_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PublicFormat.Raw,
-        ) == raw
+        assert (
+            reloaded.public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+            == raw
+        )
 
     def test_public_key_from_bytes_wrong_length(self) -> None:
         with pytest.raises(ValueError, match="exactly 32 bytes"):
@@ -490,7 +497,9 @@ class TestPubkeyManifestRoundtrip:
             "public_key_b64": base64.b64encode(b"\x00" * 32).decode("ascii"),
             "created_at": 0.0,
         }
-        with pytest.raises(InvalidManifestAlgorithmError, match="unsupported manifest algorithm"):
+        with pytest.raises(
+            InvalidManifestAlgorithmError, match="unsupported manifest algorithm"
+        ):
             manifest_entry_from_dict(bad)
 
     def test_manifest_is_empty(self) -> None:
@@ -602,8 +611,11 @@ class TestEndToEndFlow:
 
         # Server publishes: the manifest is published in /health; the
         # signed metadata is the SkillMetadata returned by get_skill.
-        published_metadata = {**server_metadata, "signature": signed.signature_b64,
-                              "server_pubkey_id": signed.key_id}
+        published_metadata = {
+            **server_metadata,
+            "signature": signed.signature_b64,
+            "server_pubkey_id": signed.key_id,
+        }
         published_health = server_manifest.as_dict()
 
         # Client: receives manifest + signed metadata, strips signature

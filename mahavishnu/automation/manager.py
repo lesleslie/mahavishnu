@@ -69,7 +69,9 @@ class ManagerStats:
             "operations_success": self.operations_success,
             "operations_failed": self.operations_failed,
             "operations_dry_run": self.operations_dry_run,
-            "last_operation": self.last_operation.isoformat() if self.last_operation else None,
+            "last_operation": self.last_operation.isoformat()
+            if self.last_operation
+            else None,
             "backend_name": self.backend_name,
         }
 
@@ -160,7 +162,9 @@ class AutomationManager:
             if not self._permission_checker.check_accessibility():
                 logger.warning("Accessibility permissions not granted")
                 if not self._permission_checker.request_accessibility():
-                    raise PermissionDeniedError("Accessibility permissions required for automation")
+                    raise PermissionDeniedError(
+                        "Accessibility permissions required for automation"
+                    )
 
         # Initialize security
         self._security = get_security(self.config)
@@ -175,7 +179,9 @@ class AutomationManager:
         self._stats.backend_name = self._backend.backend_name
         self._initialized = True
 
-        logger.info(f"Automation manager initialized with backend: {self._backend.backend_name}")
+        logger.info(
+            f"Automation manager initialized with backend: {self._backend.backend_name}"
+        )
 
     def _select_backend(self) -> None:
         """Select the best available backend."""
@@ -194,9 +200,13 @@ class AutomationManager:
                 "pyautogui": PyAutoGUIBackend,
             }
             if self.preferred_backend in backend_map:
-                backends_to_try = [(self.preferred_backend, backend_map[self.preferred_backend])]
+                backends_to_try = [
+                    (self.preferred_backend, backend_map[self.preferred_backend])
+                ]
             else:
-                logger.warning(f"Unknown backend '{self.preferred_backend}', using auto")
+                logger.warning(
+                    f"Unknown backend '{self.preferred_backend}', using auto"
+                )
                 backends_to_try = [
                     ("native_macos", NativeMacOSBackend),
                     ("pyautogui", PyAutoGUIBackend),
@@ -254,7 +264,9 @@ class AutomationManager:
 
         # Check dry run - handle None explicitly to use config default
         dry_run_arg = kwargs.pop("dry_run", None)
-        dry_run = dry_run_arg if dry_run_arg is not None else self.config.dry_run_default
+        dry_run = (
+            dry_run_arg if dry_run_arg is not None else self.config.dry_run_default
+        )
 
         if dry_run:
             self._record_operation(True, dry_run=True)

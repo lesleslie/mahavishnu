@@ -14,6 +14,7 @@ Coverage:
 - stdin payload reading (``read_session_payload``)
 - Schema hook integration: registry writes happen via the hook path
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -94,12 +95,15 @@ def test_read_session_payload_parses_valid_json(
     import json
     import sys
 
-    payload_json = json.dumps({
-        "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-        "cwd": "/Users/les/Projects/mahavishnu",
-    })
+    payload_json = json.dumps(
+        {
+            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+            "cwd": "/Users/les/Projects/mahavishnu",
+        }
+    )
     monkeypatch.setattr(sys, "stdin", io.StringIO(payload_json))
     from _hook_io import read_session_payload
+
     payload = read_session_payload()
     assert payload.session_id == "0190f8a4-b9c1-7def-a012-3456789abcde"
     assert payload.cwd == "/Users/les/Projects/mahavishnu"
@@ -115,6 +119,7 @@ def test_read_session_payload_handles_empty_stdin(
 
     monkeypatch.setattr(sys, "stdin", io.StringIO(""))
     from _hook_io import read_session_payload
+
     payload = read_session_payload()
     assert payload.session_id == ""
     assert payload.cwd == ""
@@ -130,6 +135,7 @@ def test_read_session_payload_handles_malformed_stdin(
 
     monkeypatch.setattr(sys, "stdin", io.StringIO("not json {{{"))
     from _hook_io import read_session_payload
+
     payload = read_session_payload()
     assert payload.session_id == ""
     assert payload.raw == {}
@@ -145,9 +151,7 @@ def test_cwd_is_inside_worktree_returns_false_for_non_git_dir(
     # Load the hook module
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_for_cwd_test", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_for_cwd_test", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module._cwd_is_inside_worktree(str(tmp_path)) is False
@@ -210,9 +214,7 @@ def test_cwd_is_inside_worktree_returns_false_for_main_repo(
 
     main = _init_main_repo_with_commit(tmp_path)
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_cwd_main", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_cwd_main", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module._cwd_is_inside_worktree(str(main)) is False
@@ -238,9 +240,7 @@ def test_cwd_is_inside_worktree_returns_true_for_real_worktree(
         timeout=10,
     )
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_cwd_wt", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_cwd_wt", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module._cwd_is_inside_worktree(str(wt_path)) is True
@@ -264,9 +264,7 @@ def test_cwd_is_inside_worktree_returns_true_for_worktree_subdir(
     subdir = wt_path / "src" / "lib"
     subdir.mkdir(parents=True)
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_cwd_wt_subdir", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_cwd_wt_subdir", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module._cwd_is_inside_worktree(str(subdir)) is True
@@ -282,9 +280,7 @@ def test_cwd_is_inside_worktree_returns_false_for_main_repo_subdir(
     subdir = main / "src" / "lib"
     subdir.mkdir(parents=True)
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_cwd_main_subdir", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_cwd_main_subdir", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module._cwd_is_inside_worktree(str(subdir)) is False
@@ -317,13 +313,26 @@ def _load_hook_for_lifecycle(
     if env_overrides:
         for k, v in env_overrides.items():
             monkeypatch.setenv(k, v)
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
-        "session_id": session_id,
-        "cwd": cwd,
-    })))
-    monkeypatch.setattr(sys, "argv", [
-        "worktree-session-isolation.py", mode,
-    ])
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(
+                {
+                    "session_id": session_id,
+                    "cwd": cwd,
+                }
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "worktree-session-isolation.py",
+            mode,
+        ],
+    )
     captured = io.StringIO()
     monkeypatch.setattr(sys, "stderr", captured)
 
@@ -397,10 +406,10 @@ def test_session_end_marks_entry_abandoned(
     def patched_init(self, path=None):
         original_init(self, path=registry_path)
 
-    monkeypatch.setattr(reg_mod, "SessionWorktreeRegistry", reg_mod.SessionWorktreeRegistry)
     monkeypatch.setattr(
-        reg_mod.SessionWorktreeRegistry, "__init__", patched_init
+        reg_mod, "SessionWorktreeRegistry", reg_mod.SessionWorktreeRegistry
     )
+    monkeypatch.setattr(reg_mod.SessionWorktreeRegistry, "__init__", patched_init)
 
     module._run_session_end(session_id)
     record = SessionWorktreeRegistry(path=registry_path).get("a0c5d2a0")
@@ -448,9 +457,7 @@ def test_session_end_already_abandoned_is_idempotent(
     def patched_init(self, path=None):
         original_init(self, path=registry_path)
 
-    monkeypatch.setattr(
-        reg_mod.SessionWorktreeRegistry, "__init__", patched_init
-    )
+    monkeypatch.setattr(reg_mod.SessionWorktreeRegistry, "__init__", patched_init)
 
     module._run_session_end(session_id)
     second_record = SessionWorktreeRegistry(path=registry_path).get("a0c5d2a0")
@@ -482,9 +489,7 @@ def test_session_end_unknown_session_is_noop(
     def patched_init(self, path=None):
         original_init(self, path=registry_path)
 
-    monkeypatch.setattr(
-        reg_mod.SessionWorktreeRegistry, "__init__", patched_init
-    )
+    monkeypatch.setattr(reg_mod.SessionWorktreeRegistry, "__init__", patched_init)
 
     # Unknown session_id — short key won't match anything.
     module._run_session_end("00000000-1234-5678-9abc-def012345678")
@@ -514,9 +519,7 @@ def test_session_end_cleanup_keep_is_noop(
     # Record the original state — should remain 'active'.
     assert reg.get("a0c5d2a0")["state"] == "active"
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_session_end_keep", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_session_end_keep", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
@@ -527,9 +530,7 @@ def test_session_end_cleanup_keep_is_noop(
     def patched_init(self, path=None):
         original_init(self, path=registry_path)
 
-    monkeypatch.setattr(
-        reg_mod.SessionWorktreeRegistry, "__init__", patched_init
-    )
+    monkeypatch.setattr(reg_mod.SessionWorktreeRegistry, "__init__", patched_init)
     monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_CLEANUP", "keep")
 
     module._run_session_end(session_id)
@@ -566,7 +567,9 @@ def test_detect_repo_nickname_returns_basename_of_git_repo(
     assert hook_module._detect_repo_nickname(str(subdir)) == "myrepo"
 
 
-def test_detect_repo_nickname_returns_none_for_no_git(tmp_path: Path, hook_module) -> None:
+def test_detect_repo_nickname_returns_none_for_no_git(
+    tmp_path: Path, hook_module
+) -> None:
     """No ``.git`` anywhere up the tree: returns None."""
     subdir = tmp_path / "no-git" / "sub"
     subdir.mkdir(parents=True)
@@ -590,17 +593,23 @@ def test_main_returns_zero_when_env_unset(
     import sys
 
     monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE", raising=False)
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
-        "session_id": "abc",
-        "cwd": str(tmp_path),
-    })))
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(
+                {
+                    "session_id": "abc",
+                    "cwd": str(tmp_path),
+                }
+            )
+        ),
+    )
     monkeypatch.setattr(sys, "argv", ["worktree-session-isolation.py"])
 
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_default_off", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_default_off", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.main() == 0
@@ -617,17 +626,23 @@ def test_main_with_env_set_does_not_block_on_stdin(
     import sys
 
     monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE", "1")
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
-        "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-        "cwd": str(tmp_path),  # no .git here → step 5 returns 0
-    })))
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(
+                {
+                    "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                    "cwd": str(tmp_path),  # no .git here → step 5 returns 0
+                }
+            )
+        ),
+    )
     monkeypatch.setattr(sys, "argv", ["worktree-session-isolation.py"])
 
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_env_set", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_env_set", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
@@ -702,10 +717,12 @@ def test_discovery_hint_silent_when_env_set_truthy(
     module, captured = _load_with_stderr(
         monkeypatch,
         "hook_hint_opt_in",
-        json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": str(tmp_path),
-        }),
+        json.dumps(
+            {
+                "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                "cwd": str(tmp_path),
+            }
+        ),
         ["worktree-session-isolation.py"],
         env={"MAHAVISHNU_AUTO_WORKTREE": "1"},
         root=str(nonexistent_root),
@@ -734,10 +751,12 @@ def test_discovery_hint_fires_on_explicit_opt_out(
     module, captured = _load_with_stderr(
         monkeypatch,
         "hook_hint_opt_out",
-        json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": str(tmp_path),
-        }),
+        json.dumps(
+            {
+                "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                "cwd": str(tmp_path),
+            }
+        ),
         ["worktree-session-isolation.py", "session-start"],
         env={"MAHAVISHNU_AUTO_WORKTREE": "0"},
         root=str(nonexistent_root),
@@ -762,10 +781,12 @@ def test_discovery_hint_silent_when_not_git_repo(
     module, captured = _load_with_stderr(
         monkeypatch,
         "hook_hint_no_git",
-        json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": str(tmp_path),
-        }),
+        json.dumps(
+            {
+                "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                "cwd": str(tmp_path),
+            }
+        ),
         ["worktree-session-isolation.py"],
         root=str(nonexistent_root),
     )
@@ -787,10 +808,12 @@ def test_discovery_hint_silent_when_cwd_is_worktree(
     module, captured = _load_with_stderr(
         monkeypatch,
         "hook_hint_in_worktree",
-        json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": str(tmp_path),
-        }),
+        json.dumps(
+            {
+                "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                "cwd": str(tmp_path),
+            }
+        ),
         ["worktree-session-isolation.py"],
         root=str(nonexistent_root),
     )
@@ -818,10 +841,12 @@ def test_discovery_hint_silent_when_root_exists(
     module, captured = _load_with_stderr(
         monkeypatch,
         "hook_hint_root_exists",
-        json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": str(tmp_path),
-        }),
+        json.dumps(
+            {
+                "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                "cwd": str(tmp_path),
+            }
+        ),
         ["worktree-session-isolation.py"],
         root=str(existing_root),
     )
@@ -840,10 +865,12 @@ def test_discovery_hint_silent_when_cwd_empty(
     module, captured = _load_with_stderr(
         monkeypatch,
         "hook_hint_empty_cwd",
-        json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": "",
-        }),
+        json.dumps(
+            {
+                "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                "cwd": "",
+            }
+        ),
         ["worktree-session-isolation.py"],
     )
 
@@ -864,10 +891,12 @@ def test_discovery_hint_silent_on_session_end(
     module, captured = _load_with_stderr(
         monkeypatch,
         "hook_hint_session_end",
-        json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": str(tmp_path),
-        }),
+        json.dumps(
+            {
+                "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                "cwd": str(tmp_path),
+            }
+        ),
         ["worktree-session-isolation.py", "--mode", "session-end"],
         root=str(nonexistent_root),
     )
@@ -900,10 +929,12 @@ def test_default_on_completes_in_under_two_seconds(
     module, captured = _load_with_stderr(
         monkeypatch,
         "hook_default_on_fast_path",
-        json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": str(tmp_path),
-        }),
+        json.dumps(
+            {
+                "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                "cwd": str(tmp_path),
+            }
+        ),
         ["worktree-session-isolation.py", "session-start"],
         # env defaults to unset → default-on post-Phase-8
     )
@@ -930,9 +961,7 @@ def test_git_current_branch_returns_branch_name(
 
     main = _init_main_repo_with_commit(tmp_path)
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_current_branch", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_current_branch", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
@@ -962,9 +991,7 @@ def test_log_debug_writes_only_when_debug_env_set(
     import io
     import sys
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_log_debug_silent", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_log_debug_silent", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
@@ -982,9 +1009,7 @@ def test_log_debug_writes_when_debug_env_set(
     import io
     import sys
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_log_debug_verbose", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_log_debug_verbose", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
@@ -1007,10 +1032,18 @@ def test_main_dispatches_on_positional_session_start(
     import sys
 
     monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE", raising=False)
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
-        "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-        "cwd": str(tmp_path),
-    })))
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(
+                {
+                    "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                    "cwd": str(tmp_path),
+                }
+            )
+        ),
+    )
     monkeypatch.setattr(sys, "argv", ["worktree-session-isolation.py", "session-start"])
 
     captured = io.StringIO()
@@ -1018,9 +1051,7 @@ def test_main_dispatches_on_positional_session_start(
 
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_pos_start", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_pos_start", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.main() == 0
@@ -1045,9 +1076,7 @@ def test_main_dispatches_on_positional_session_end(
 
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_pos_end", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_pos_end", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.main() == 0
@@ -1063,18 +1092,22 @@ def test_main_dispatches_on_dash_mode_flag(
 
     monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE", raising=False)
     monkeypatch.setattr(sys, "stdin", io.StringIO(""))
-    monkeypatch.setattr(sys, "argv", [
-        "worktree-session-isolation.py", "--mode", "session-start",
-    ])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "worktree-session-isolation.py",
+            "--mode",
+            "session-start",
+        ],
+    )
 
     captured = io.StringIO()
     monkeypatch.setattr(sys, "stderr", captured)
 
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_dash_mode", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_dash_mode", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.main() == 0
@@ -1097,9 +1130,7 @@ def test_main_refuses_when_no_mode_provided(
 
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_no_mode", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_no_mode", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.main() == 0
@@ -1125,10 +1156,18 @@ def test_read_session_payload_rejects_non_string_session_id(
     from _hook_io import read_session_payload
 
     for bad in (42, [1, 2], {"a": 1}, True, 3.14, None):
-        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
-            "session_id": bad,
-            "cwd": "/tmp",
-        })))
+        monkeypatch.setattr(
+            sys,
+            "stdin",
+            io.StringIO(
+                json.dumps(
+                    {
+                        "session_id": bad,
+                        "cwd": "/tmp",
+                    }
+                )
+            ),
+        )
         payload = read_session_payload()
         assert payload.session_id == "", (
             f"non-string session_id {bad!r} should normalize to empty"
@@ -1146,14 +1185,20 @@ def test_read_session_payload_rejects_non_string_cwd(
     from _hook_io import read_session_payload
 
     for bad in (42, ["/tmp"], {"a": 1}, True, 3.14, None):
-        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
-            "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
-            "cwd": bad,
-        })))
-        payload = read_session_payload()
-        assert payload.cwd == "", (
-            f"non-string cwd {bad!r} should normalize to empty"
+        monkeypatch.setattr(
+            sys,
+            "stdin",
+            io.StringIO(
+                json.dumps(
+                    {
+                        "session_id": "0190f8a4-b9c1-7def-a012-3456789abcde",
+                        "cwd": bad,
+                    }
+                )
+            ),
         )
+        payload = read_session_payload()
+        assert payload.cwd == "", f"non-string cwd {bad!r} should normalize to empty"
 
 
 def test_read_session_payload_preserves_string_values(
@@ -1166,10 +1211,18 @@ def test_read_session_payload_preserves_string_values(
 
     from _hook_io import read_session_payload
 
-    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({
-        "session_id": "abc-123",
-        "cwd": "/tmp/work",
-    })))
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(
+                {
+                    "session_id": "abc-123",
+                    "cwd": "/tmp/work",
+                }
+            )
+        ),
+    )
     payload = read_session_payload()
     assert payload.session_id == "abc-123"
     assert payload.cwd == "/tmp/work"
@@ -1189,9 +1242,7 @@ def test_git_worktree_add_argv_includes_double_dash_separator(
     """
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location(
-        "hook_argv_test", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("hook_argv_test", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 

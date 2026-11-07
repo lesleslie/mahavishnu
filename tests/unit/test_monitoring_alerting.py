@@ -403,7 +403,9 @@ class TestAlertManagerTrigger:
         mgr = AlertManager()
         handler = AsyncMock()
         mgr.register_handler(AlertType.WORKFLOW_FAILURE, handler)
-        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc")
+        await mgr.trigger_alert(
+            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc"
+        )
         handler.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -421,7 +423,9 @@ class TestAlertManagerTrigger:
         mgr = AlertManager()
         ch = AsyncMock()
         mgr.register_notification_channel(ch)
-        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc")
+        await mgr.trigger_alert(
+            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc"
+        )
         ch.send_notification.assert_awaited_once()
 
 
@@ -444,7 +448,9 @@ class TestAlertManagerAcknowledge:
     @pytest.mark.asyncio
     async def test_acknowledge_by_rule_name(self):
         mgr = AlertManager()
-        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc")
+        await mgr.trigger_alert(
+            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail", "desc"
+        )
         # The alert has no rule_name, so acknowledge by id should work
         alert = await mgr.trigger_alert(
             AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "fail2", "desc2"
@@ -467,8 +473,12 @@ class TestAlertManagerGetActive:
     @pytest.mark.asyncio
     async def test_active_excludes_acknowledged(self):
         mgr = AlertManager()
-        a1 = await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a1", "d1")
-        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2")
+        a1 = await mgr.trigger_alert(
+            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a1", "d1"
+        )
+        await mgr.trigger_alert(
+            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2"
+        )
         await mgr.acknowledge_alert(a1.id, "alice")
         active = await mgr.get_active_alerts()
         assert len(active) == 1
@@ -477,8 +487,12 @@ class TestAlertManagerGetActive:
     @pytest.mark.asyncio
     async def test_active_excludes_resolved(self):
         mgr = AlertManager()
-        a1 = await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a1", "d1")
-        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2")
+        a1 = await mgr.trigger_alert(
+            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a1", "d1"
+        )
+        await mgr.trigger_alert(
+            AlertSeverity.HIGH, AlertType.WORKFLOW_FAILURE, "a2", "d2"
+        )
         mgr.resolve_alert(a1.id)  # sync method, not async
         active = await mgr.get_active_alerts()
         assert len(active) == 1  # a1 resolved (firing=False), only a2 active
@@ -571,7 +585,10 @@ class TestEmailNotificationChannel:
         ch.logger = MagicMock()
         alert = _make_alert(title="t")
 
-        with patch("mahavishnu.core.monitoring.smtplib.SMTP", side_effect=Exception("smtp fail")):
+        with patch(
+            "mahavishnu.core.monitoring.smtplib.SMTP",
+            side_effect=Exception("smtp fail"),
+        ):
             await ch.send_notification(alert)  # should not raise
 
 
@@ -583,7 +600,9 @@ class TestEmailNotificationChannel:
 class TestSlackNotificationChannel:
     @pytest.mark.asyncio
     async def test_send_notification_posts_webhook(self):
-        ch = SlackNotificationChannel(webhook_url="https://hooks.slack.com/xxx", channel="#alerts")
+        ch = SlackNotificationChannel(
+            webhook_url="https://hooks.slack.com/xxx", channel="#alerts"
+        )
         ch.logger = MagicMock()
         alert = _make_alert(
             severity=AlertSeverity.HIGH,
@@ -645,7 +664,10 @@ class TestSlackNotificationChannel:
         ch = SlackNotificationChannel(webhook_url="https://hooks.slack.com/xxx")
         ch.logger = MagicMock()
         alert = _make_alert()
-        with patch("mahavishnu.core.monitoring.requests.post", side_effect=Exception("net fail")):
+        with patch(
+            "mahavishnu.core.monitoring.requests.post",
+            side_effect=Exception("net fail"),
+        ):
             await ch.send_notification(alert)  # no raise
 
 
@@ -734,8 +756,12 @@ class TestMonitoringDashboard:
         dash = MonitoringDashboard(app)
         mgr = AlertManager()
         dash.set_alert_manager(mgr)
-        await mgr.trigger_alert(AlertSeverity.LOW, AlertType.SYSTEM_HEALTH, "first", "d1")
-        await mgr.trigger_alert(AlertSeverity.HIGH, AlertType.SYSTEM_HEALTH, "second", "d2")
+        await mgr.trigger_alert(
+            AlertSeverity.LOW, AlertType.SYSTEM_HEALTH, "first", "d1"
+        )
+        await mgr.trigger_alert(
+            AlertSeverity.HIGH, AlertType.SYSTEM_HEALTH, "second", "d2"
+        )
         alerts = await dash.get_recent_alerts(limit=10)
         assert len(alerts) == 2
         # Most recent first
@@ -749,7 +775,9 @@ class TestMonitoringDashboard:
         mgr = AlertManager()
         dash.set_alert_manager(mgr)
         for i in range(5):
-            await mgr.trigger_alert(AlertSeverity.INFO, AlertType.SYSTEM_HEALTH, f"a{i}", "d")
+            await mgr.trigger_alert(
+                AlertSeverity.INFO, AlertType.SYSTEM_HEALTH, f"a{i}", "d"
+            )
         alerts = await dash.get_recent_alerts(limit=2)
         assert len(alerts) == 2
 

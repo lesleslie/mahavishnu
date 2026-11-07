@@ -5,6 +5,7 @@ matrix expects.
 
 Req: REQ-004, REQ-005, REQ-006, REQ-009 (verification).
 """
+
 from __future__ import annotations
 
 import json
@@ -58,7 +59,9 @@ def _quantile(sorted_values: list[float], q: float) -> float:
     return sorted_values[idx]
 
 
-def _run_trial(detector, samples: list[float], reset_after_fire: bool = False) -> tuple[int | None, int]:
+def _run_trial(
+    detector, samples: list[float], reset_after_fire: bool = False
+) -> tuple[int | None, int]:
     total_fires = 0
     first_fire_at: int | None = None
     for i, x in enumerate(samples, start=1):
@@ -72,7 +75,13 @@ def _run_trial(detector, samples: list[float], reset_after_fire: bool = False) -
     return first_fire_at, total_fires
 
 
-def _benchmark_cusum(shift_size: float, n_trials: int = 50, n_baseline: int = 200, n_shift: int = 100, seed: int = 42) -> dict:
+def _benchmark_cusum(
+    shift_size: float,
+    n_trials: int = 50,
+    n_baseline: int = 200,
+    n_shift: int = 100,
+    seed: int = 42,
+) -> dict:
     import random
 
     rng = random.Random(seed)
@@ -102,7 +111,9 @@ def _benchmark_cusum(shift_size: float, n_trials: int = 50, n_baseline: int = 20
     }
 
 
-def _benchmark_arl0(detector_factory, n_trials: int = 30, n_samples: int = 5000, seed: int = 99) -> dict:
+def _benchmark_arl0(
+    detector_factory, n_trials: int = 30, n_samples: int = 5000, seed: int = 99
+) -> dict:
     import random
 
     rng = random.Random(seed)
@@ -110,7 +121,9 @@ def _benchmark_arl0(detector_factory, n_trials: int = 30, n_samples: int = 5000,
     for trial in range(n_trials):
         rng_trial = random.Random(rng.random() * 1e9 + trial)
         detector = detector_factory()
-        first_fire, _ = _run_trial(detector, [rng_trial.gauss(0.0, 1.0) for _ in range(n_samples)])
+        first_fire, _ = _run_trial(
+            detector, [rng_trial.gauss(0.0, 1.0) for _ in range(n_samples)]
+        )
         if first_fire is not None:
             arls.append(first_fire)
     if not arls:
@@ -207,7 +220,8 @@ class TestChangepointBenchmark:
     def test_cusum_arl0_smoke(self) -> None:
         stats = _benchmark_arl0(
             _production_detector_factory,
-            n_trials=10, n_samples=5000,
+            n_trials=10,
+            n_samples=5000,
         )
         assert stats["arl0"] > 100
         assert stats["arl0"] != float("inf")
@@ -284,7 +298,8 @@ class TestChangepointBenchmark:
         cusum_05 = _benchmark_cusum(shift_size=0.5, n_trials=10)
         arl0 = _benchmark_arl0(
             _production_detector_factory,
-            n_trials=5, n_samples=2000,
+            n_trials=5,
+            n_samples=2000,
         )
         # Re-measure FP rate so bench.json records the actual measured
         # value, not a hardcoded literal. n_trials is reduced here so
@@ -297,15 +312,21 @@ class TestChangepointBenchmark:
         # the dedicated `TestTwoStageBenchmark` tests do the full
         # n_trials=30 / n_trials=25 measurements that the §1/§7 gates
         # assert against.
-        two_stage_warning = _benchmark_two_stage_warning_latency(shift_size=0.5, n_trials=5)
+        two_stage_warning = _benchmark_two_stage_warning_latency(
+            shift_size=0.5, n_trials=5
+        )
         two_stage_fp = _benchmark_two_stage_fp_per_quiet(n_trials=5, n_samples=10_080)
         bench = {
             "cusum_p95_latency_at_0.5_sigma": cusum_05.get("p95_latency", float("nan")),
-            "cusum_median_latency_at_0.5_sigma": cusum_05.get("median_latency", float("nan")),
+            "cusum_median_latency_at_0.5_sigma": cusum_05.get(
+                "median_latency", float("nan")
+            ),
             "cusum_arl0": arl0.get("arl0", float("inf")),
             "cusum_fp_per_10080_quiet_samples": fp_stats["mean_fires"],
             "three_sigma_miss_rate_at_0.5_sigma": 0.98,
-            "page_hinkley_p95_latency_at_0.5_sigma": cusum_05.get("p95_latency", float("nan")),
+            "page_hinkley_p95_latency_at_0.5_sigma": cusum_05.get(
+                "p95_latency", float("nan")
+            ),
             "n_trials_per_shift": 10,
             "two_stage_warning_latency_at_0_5_sigma": two_stage_warning.get(
                 "warning_median_latency", float("nan")

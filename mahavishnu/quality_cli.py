@@ -41,7 +41,9 @@ async def run_quality_check(output: str) -> int | None:
 @quality_app.command(name="check")
 def quality_check(
     path: Path = typer.Argument(Path(), help="Path to check (file or directory)"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
 ) -> None:
     """Run quality checks on a path with Rich-formatted output."""
     console = get_console()

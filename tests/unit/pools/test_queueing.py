@@ -1,4 +1,5 @@
 """Tests for mahavishnu.pools.queueing (REQ-001)."""
+
 from __future__ import annotations
 
 import math
@@ -322,46 +323,74 @@ class TestHypothesisProperties:
     """Property-based tests covering utilization invariant, Little's law, etc."""
 
     @given(
-        arrival_rate=st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
-        service_rate=st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+        arrival_rate=st.floats(
+            min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
+        service_rate=st.floats(
+            min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
         num_workers=st.integers(min_value=1, max_value=20),
     )
     @settings(max_examples=200, deadline=None)
-    def test_rho_equals_lambda_over_c_times_mu(self, arrival_rate: float, service_rate: float, num_workers: int) -> None:
+    def test_rho_equals_lambda_over_c_times_mu(
+        self, arrival_rate: float, service_rate: float, num_workers: int
+    ) -> None:
         """rho == lambda / (c * mu) for stable regimes."""
         rho_computed = arrival_rate / (num_workers * service_rate)
         if rho_computed >= 1.0:
             return  # Skip unstable; utilization raises
-        q = MmcQueue(arrival_rate=arrival_rate, service_rate=service_rate, num_workers=num_workers)
+        q = MmcQueue(
+            arrival_rate=arrival_rate,
+            service_rate=service_rate,
+            num_workers=num_workers,
+        )
         assert q.utilization == pytest.approx(rho_computed, rel=1e-9)
 
     @given(
-        arrival_rate=st.floats(min_value=0.01, max_value=5.0, allow_nan=False, allow_infinity=False),
-        service_rate=st.floats(min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        arrival_rate=st.floats(
+            min_value=0.01, max_value=5.0, allow_nan=False, allow_infinity=False
+        ),
+        service_rate=st.floats(
+            min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
         num_workers=st.integers(min_value=1, max_value=10),
     )
     @settings(max_examples=200, deadline=None)
     def test_littles_law_holds_for_all_stable_queues(
-        self, arrival_rate: float, service_rate: float, num_workers: int,
+        self,
+        arrival_rate: float,
+        service_rate: float,
+        num_workers: int,
     ) -> None:
         """L_q == lambda * W_q (Little's law, Kingman)."""
         rho_computed = arrival_rate / (num_workers * service_rate)
         if rho_computed >= 0.95:
             return  # Numerical edge: Kingman blows up near 1
-        q = MmcQueue(arrival_rate=arrival_rate, service_rate=service_rate, num_workers=num_workers)
+        q = MmcQueue(
+            arrival_rate=arrival_rate,
+            service_rate=service_rate,
+            num_workers=num_workers,
+        )
         l_q = q.expected_queue_length()
         w_q = q.expected_wait_time("kingman")
         # Both should be positive; L_q == lambda * W_q
         assert l_q == pytest.approx(arrival_rate * w_q, rel=1e-9)
 
     @given(
-        arrival_rate=st.floats(min_value=0.01, max_value=5.0, allow_nan=False, allow_infinity=False),
-        service_rate=st.floats(min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        arrival_rate=st.floats(
+            min_value=0.01, max_value=5.0, allow_nan=False, allow_infinity=False
+        ),
+        service_rate=st.floats(
+            min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
         num_workers=st.integers(min_value=1, max_value=10),
     )
     @settings(max_examples=100, deadline=None)
     def test_kingman_equals_erlang_c_for_c_1(
-        self, arrival_rate: float, service_rate: float, num_workers: int,
+        self,
+        arrival_rate: float,
+        service_rate: float,
+        num_workers: int,
     ) -> None:
         """When c == 1, Kingman and Erlang-C are identical closed-form M/M/1."""
         if num_workers != 1:
@@ -369,35 +398,55 @@ class TestHypothesisProperties:
         rho_computed = arrival_rate / service_rate
         if rho_computed >= 0.95:
             return
-        q = MmcQueue(arrival_rate=arrival_rate, service_rate=service_rate, num_workers=1)
+        q = MmcQueue(
+            arrival_rate=arrival_rate, service_rate=service_rate, num_workers=1
+        )
         kingman = q.expected_wait_time("kingman")
         erlang_c = q.expected_wait_time("erlang_c")
         assert kingman == pytest.approx(erlang_c, rel=1e-9)
 
     @given(
-        arrival_rate=st.floats(min_value=0.01, max_value=5.0, allow_nan=False, allow_infinity=False),
-        service_rate=st.floats(min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        arrival_rate=st.floats(
+            min_value=0.01, max_value=5.0, allow_nan=False, allow_infinity=False
+        ),
+        service_rate=st.floats(
+            min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
         num_workers=st.integers(min_value=2, max_value=20),
     )
     @settings(max_examples=100, deadline=None)
     def test_kingman_overestimates_erlang_c_for_c_ge_2_low_rho(
-        self, arrival_rate: float, service_rate: float, num_workers: int,
+        self,
+        arrival_rate: float,
+        service_rate: float,
+        num_workers: int,
     ) -> None:
         """For c >= 2 at low rho, Kingman (M/M/1-like) over-estimates vs Erlang-C."""
         rho = arrival_rate / (num_workers * service_rate)
         if rho < 0.1 or rho >= 0.99:
             return
-        q = MmcQueue(arrival_rate=arrival_rate, service_rate=service_rate, num_workers=num_workers)
+        q = MmcQueue(
+            arrival_rate=arrival_rate,
+            service_rate=service_rate,
+            num_workers=num_workers,
+        )
         assert q.expected_wait_time("kingman") >= q.expected_wait_time("erlang_c")
 
     @given(
-        arrival_rate=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
-        service_rate=st.floats(min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False),
+        arrival_rate=st.floats(
+            min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
+        service_rate=st.floats(
+            min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
         num_workers=st.integers(min_value=1, max_value=20),
     )
     @settings(max_examples=100, deadline=None)
     def test_nan_inf_rejected(
-        self, arrival_rate: float, service_rate: float, num_workers: int,
+        self,
+        arrival_rate: float,
+        service_rate: float,
+        num_workers: int,
     ) -> None:
         """NaN/Inf rates rejected at construction."""
         # Replace any input that becomes NaN/Inf after the hypothesis
@@ -405,23 +454,42 @@ class TestHypothesisProperties:
         # disable nan/inf, so this test exercises only the construction
         # invariants.
         from math import isfinite
-        if not (isfinite(arrival_rate) and isfinite(service_rate) and isfinite(num_workers)):
+
+        if not (
+            isfinite(arrival_rate) and isfinite(service_rate) and isfinite(num_workers)
+        ):
             return
         if arrival_rate < 0 or service_rate <= 0 or num_workers < 1:
             with pytest.raises(QueueingModelError):
-                MmcQueue(arrival_rate=arrival_rate, service_rate=service_rate, num_workers=num_workers)
+                MmcQueue(
+                    arrival_rate=arrival_rate,
+                    service_rate=service_rate,
+                    num_workers=num_workers,
+                )
         else:
-            MmcQueue(arrival_rate=arrival_rate, service_rate=service_rate, num_workers=num_workers)
+            MmcQueue(
+                arrival_rate=arrival_rate,
+                service_rate=service_rate,
+                num_workers=num_workers,
+            )
 
     @given(
-        mean_arrival=st.floats(min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False),
-        mean_service=st.floats(min_value=0.5, max_value=5.0, allow_nan=False, allow_infinity=False),
+        mean_arrival=st.floats(
+            min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
+        mean_service=st.floats(
+            min_value=0.5, max_value=5.0, allow_nan=False, allow_infinity=False
+        ),
         n=st.integers(min_value=500, max_value=500),
         num_workers=st.integers(min_value=1, max_value=10),
     )
     @settings(max_examples=30, deadline=None)
     def test_fit_round_trip_inverse_cdf(
-        self, mean_arrival: float, mean_service: float, n: int, num_workers: int,
+        self,
+        mean_arrival: float,
+        mean_service: float,
+        n: int,
+        num_workers: int,
     ) -> None:
         """Sampling from exponential with known mean then fitting recovers the mean within 25%.
 

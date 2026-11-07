@@ -60,7 +60,9 @@ async def initialize_workflow_state(
     return workflow_id
 
 
-async def validate_pre_execution_qc(app: Any, workflow_id: str, validated_repos: list[str]) -> None:
+async def validate_pre_execution_qc(
+    app: Any, workflow_id: str, validated_repos: list[str]
+) -> None:
     if not app.config.qc.enabled:
         return
 
@@ -98,7 +100,11 @@ async def create_session_checkpoint(
 
 
 async def prepare_execution(
-    app: Any, adapter_name: str, task: dict[str, Any], repos: list[str] | None, user_id: str | None
+    app: Any,
+    adapter_name: str,
+    task: dict[str, Any],
+    repos: list[str] | None,
+    user_id: str | None,
 ) -> tuple[Any, list[str]]:
     if adapter_name not in app.adapters:
         raise ValidationError(
@@ -201,7 +207,9 @@ async def process_single_repo(
             await app.workflow_state_manager.add_result(workflow_id, result)
 
             repo_processing_time = time.time() - start_repo_time
-            completed_repos = await app.workflow_state_manager.get_completed_count(workflow_id)
+            completed_repos = await app.workflow_state_manager.get_completed_count(
+                workflow_id
+            )
             await app.workflow_state_manager.update_progress(
                 workflow_id, completed_repos + 1, total_repos
             )
@@ -303,7 +311,9 @@ async def execute_parallel_workflow(
         errors_count = sum(1 for r in results if isinstance(r, Exception))
         successful_count = len(results) - errors_count
         final_status = (
-            "completed" if errors_count == 0 else ("partial" if successful_count > 0 else "failed")
+            "completed"
+            if errors_count == 0
+            else ("partial" if successful_count > 0 else "failed")
         )
         app.observability.end_workflow_trace(workflow_id, final_status)
 
@@ -312,7 +322,11 @@ async def execute_parallel_workflow(
     for i, result in enumerate(results):
         if isinstance(result, Exception):
             errors.append(
-                {"repo": validated_repos[i], "error": str(result), "type": type(result).__name__}
+                {
+                    "repo": validated_repos[i],
+                    "error": str(result),
+                    "type": type(result).__name__,
+                }
             )
             if app.observability:
                 error_counter = app.observability.create_error_counter()
@@ -343,7 +357,9 @@ async def finalize_workflow_execution(
     checkpoint_id: str | None,
 ) -> dict[str, Any]:
     logger = logging.getLogger(__name__)
-    final_status = "completed" if not errors else ("partial" if successful_results else "failed")
+    final_status = (
+        "completed" if not errors else ("partial" if successful_results else "failed")
+    )
     task_type = task.get("type", "unknown")
 
     await app.workflow_state_manager.update(
@@ -377,7 +393,9 @@ async def finalize_workflow_execution(
     if app.config.qc.enabled:
         qc_result = await app.qc.validate_post_execution(validated_repos)
         if not qc_result:
-            logger.warning("Post-execution QC check failed for repos: %s", validated_repos)
+            logger.warning(
+                "Post-execution QC check failed for repos: %s", validated_repos
+            )
 
     mahavishnu_workflows_total.labels(
         adapter=adapter_name,
@@ -548,10 +566,16 @@ async def execute_workflow_parallel(
     progress_callback=None,
     user_id: str | None = None,
 ) -> dict[str, Any] | None:
-    adapter, validated_repos = await app._prepare_execution(adapter_name, task, repos, user_id)
-    workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
+    adapter, validated_repos = await app._prepare_execution(
+        adapter_name, task, repos, user_id
+    )
+    workflow_id = await initialize_workflow_state(
+        app, task, adapter_name, validated_repos
+    )
     await validate_pre_execution_qc(app, workflow_id, validated_repos)
-    checkpoint_id = await create_session_checkpoint(app, task, adapter_name, validated_repos)
+    checkpoint_id = await create_session_checkpoint(
+        app, task, adapter_name, validated_repos
+    )
 
     return await _run_initialized_workflow(
         app=app,
@@ -597,13 +621,19 @@ async def dispatch_workflow_async(
 
     Implements: REQ-007
     """
-    adapter, validated_repos = await app._prepare_execution(adapter_name, task, repos, user_id)
-    workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
+    adapter, validated_repos = await app._prepare_execution(
+        adapter_name, task, repos, user_id
+    )
+    workflow_id = await initialize_workflow_state(
+        app, task, adapter_name, validated_repos
+    )
     # QC runs inline so a pre-execution failure is reported to the
     # caller instead of leaving a "running" workflow that never runs.
     # It marks the workflow state failed and re-raises.
     await validate_pre_execution_qc(app, workflow_id, validated_repos)
-    checkpoint_id = await create_session_checkpoint(app, task, adapter_name, validated_repos)
+    checkpoint_id = await create_session_checkpoint(
+        app, task, adapter_name, validated_repos
+    )
 
     scheduled = asyncio.create_task(
         _run_initialized_workflow(

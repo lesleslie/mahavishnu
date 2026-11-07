@@ -70,7 +70,9 @@ def mahavishnu_workflow(
         wrapped function and returns it unchanged.
     """
     if not intent or not intent.strip():
-        raise ValueError("mahavishnu_workflow: 'intent' is required and must be non-empty")
+        raise ValueError(
+            "mahavishnu_workflow: 'intent' is required and must be non-empty"
+        )
 
     normalized_tags = tuple(tags) if not isinstance(tags, tuple) else tags
 

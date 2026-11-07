@@ -133,7 +133,11 @@ class ApprovalManager:
             The created approval request.
         """
         request_id = f"approval-{uuid.uuid4().hex[:8]}"
-        timeout = timedelta(minutes=timeout_minutes) if timeout_minutes else self._default_timeout
+        timeout = (
+            timedelta(minutes=timeout_minutes)
+            if timeout_minutes
+            else self._default_timeout
+        )
 
         if options is None:
             options = self._generate_default_options(approval_type, context)
@@ -319,13 +323,17 @@ class ApprovalManager:
         Returns:
             Number of requests removed.
         """
-        expired_ids = [req.id for req in self._pending_requests.values() if req.is_expired]
+        expired_ids = [
+            req.id for req in self._pending_requests.values() if req.is_expired
+        ]
         for req_id in expired_ids:
             del self._pending_requests[req_id]
             self._schedule_mcp_delete(req_id)
         return len(expired_ids)
 
-    def restore_from_mcp_entries(self, entries: list[tuple[str, dict[str, Any]]]) -> int:
+    def restore_from_mcp_entries(
+        self, entries: list[tuple[str, dict[str, Any]]]
+    ) -> int:
         """Re-register non-expired approvals recovered from MCP on restart.
 
         Args:

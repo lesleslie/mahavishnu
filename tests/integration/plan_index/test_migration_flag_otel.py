@@ -43,14 +43,15 @@ def _otel_wired() -> bool:
 
 
 _SKIP_REASON = (
-    "OTel not yet wired in cron_core; rewrite once Task 14 "
-    "instrumentation lands"
+    "OTel not yet wired in cron_core; rewrite once Task 14 instrumentation lands"
 )
 
 
 class TestMigrationFlagOtel:
     @pytest.mark.skipif(not _otel_wired(), reason=_SKIP_REASON)
-    async def test_cycle_1_span_has_migration_flag_true(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_cycle_1_span_has_migration_flag_true(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         captured: list[dict[str, Any]] = []
 
         class _FakeSpan:
@@ -73,7 +74,9 @@ class TestMigrationFlagOtel:
         # instrumentation lands.
         monkeypatch.setattr(
             "opentelemetry.trace.get_tracer",
-            lambda *a, **kw: type("T", (), {"start_as_current_span": _fake_start_as_current_span})(),
+            lambda *a, **kw: type(
+                "T", (), {"start_as_current_span": _fake_start_as_current_span}
+            )(),
             raising=False,
         )
 

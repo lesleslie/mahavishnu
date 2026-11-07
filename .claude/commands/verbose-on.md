@@ -10,7 +10,7 @@ Enable verbose mode by running the toggle script:
 import json
 from pathlib import Path
 
-settings_file = Path.cwd() / '.claude' / 'settings.local.json'
+settings_file = Path.cwd() / ".claude" / "settings.local.json"
 settings_file.parent.mkdir(parents=True, exist_ok=True)
 
 # Read existing settings
@@ -21,11 +21,11 @@ else:
     data = {}
 
 # Enable verbose
-data['verbose'] = True
-data['debug'] = True
+data["verbose"] = True
+data["debug"] = True
 
 # Write back
-with open(settings_file, 'w') as f:
+with open(settings_file, "w") as f:
     json.dump(data, f, indent=2)
 
 print("✅ Verbose mode ENABLED")

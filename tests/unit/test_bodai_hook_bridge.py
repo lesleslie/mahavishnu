@@ -2,6 +2,7 @@
 
 This file was created in the pool-bootstrap plan (2026-10-09).
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch

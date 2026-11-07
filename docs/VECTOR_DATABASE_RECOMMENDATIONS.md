@@ -78,6 +78,7 @@ pip install 'oneiric[vector-pgvector]'
 from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
 from oneiric.adapters.vector.common import VectorDocument, VectorSearchResult
 
+
 class VectorStore:
     """Thin wrapper around Oneiric pgvector adapter."""
 
@@ -94,35 +95,24 @@ class VectorStore:
         self,
         query_embedding: list[float],
         limit: int = 10,
-        tags: list[str] | None = None
+        tags: list[str] | None = None,
     ) -> list[dict]:
         filter_expr = {"tags": tags} if tags else None
         results = await self.adapter.search(
             collection="workflows",
             query_vector=query_embedding,
             limit=limit,
-            filter_expr=filter_expr
+            filter_expr=filter_expr,
         )
         return [
-            {
-                "workflow_id": r.id,
-                "similarity_score": r.score,
-                "metadata": r.metadata
-            }
+            {"workflow_id": r.id, "similarity_score": r.score, "metadata": r.metadata}
             for r in results
         ]
 
     async def index_workflow(
-        self,
-        workflow_id: str,
-        embedding: list[float],
-        metadata: dict
+        self, workflow_id: str, embedding: list[float], metadata: dict
     ):
-        doc = VectorDocument(
-            id=workflow_id,
-            vector=embedding,
-            metadata=metadata
-        )
+        doc = VectorDocument(id=workflow_id, vector=embedding, metadata=metadata)
         await self.adapter.upsert("workflows", [doc])
 ```
 
@@ -135,6 +125,7 @@ class VectorStore:
 from oneiric.adapters.vector.pgvector import PgvectorAdapter, PgvectorSettings
 from oneiric.adapters.vector.common import VectorDocument
 from mahavishnu.core.config import MahavishnuSettings
+
 
 class MahavishnuVectorStore:
     """Mahavishnu-specific vector store with business logic."""
@@ -156,12 +147,12 @@ class MahavishnuVectorStore:
         for collection in [
             self.COLLECTION_WORKFLOWS,
             self.COLLECTION_REPOSITORIES,
-            self.COLLECTION_SESSIONS
+            self.COLLECTION_SESSIONS,
         ]:
             await self.adapter.create_collection(
                 name=collection,
                 dimension=self.settings.default_dimension,
-                distance_metric=self.settings.default_distance_metric
+                distance_metric=self.settings.default_distance_metric,
             )
 
     async def search_workflows_by_similarity(
@@ -169,7 +160,7 @@ class MahavishnuVectorStore:
         query_embedding: list[float],
         limit: int = 10,
         tags: list[str] | None = None,
-        min_similarity: float = 0.7
+        min_similarity: float = 0.7,
     ) -> list[dict]:
         """Search workflows by vector similarity with Mahavishnu-specific filtering."""
         filter_expr = {"tags": tags} if tags else None
@@ -177,25 +168,18 @@ class MahavishnuVectorStore:
             collection=self.COLLECTION_WORKFLOWS,
             query_vector=query_embedding,
             limit=limit,
-            filter_expr=filter_expr
+            filter_expr=filter_expr,
         )
 
         # Apply business logic
         return [
-            {
-                "workflow_id": r.id,
-                "similarity_score": r.score,
-                "metadata": r.metadata
-            }
+            {"workflow_id": r.id, "similarity_score": r.score, "metadata": r.metadata}
             for r in results
             if r.score >= min_similarity  # Business rule
         ]
 
     async def index_workflow_execution(
-        self,
-        workflow_id: str,
-        embedding: list[float],
-        execution_metadata: dict
+        self, workflow_id: str, embedding: list[float], execution_metadata: dict
     ):
         """Index a workflow execution with validated metadata."""
         # Validate metadata schema
@@ -204,36 +188,30 @@ class MahavishnuVectorStore:
             raise ValueError(f"Missing required fields: {required_fields}")
 
         doc = VectorDocument(
-            id=workflow_id,
-            vector=embedding,
-            metadata=execution_metadata
+            id=workflow_id, vector=embedding, metadata=execution_metadata
         )
         await self.adapter.upsert(self.COLLECTION_WORKFLOWS, [doc])
 
     async def get_workflow_embeddings(
-        self,
-        workflow_ids: list[str]
+        self, workflow_ids: list[str]
     ) -> dict[str, list[float]]:
         """Batch retrieve workflow embeddings."""
         docs = await self.adapter.get(
-            collection=self.COLLECTION_WORKFLOWS,
-            ids=workflow_ids,
-            include_vectors=True
+            collection=self.COLLECTION_WORKFLOWS, ids=workflow_ids, include_vectors=True
         )
         return {doc.id: doc.vector for doc in docs}
 
     async def delete_workflow_embeddings(self, workflow_ids: list[str]):
         """Delete workflow embeddings."""
         await self.adapter.delete(
-            collection=self.COLLECTION_WORKFLOWS,
-            ids=workflow_ids
+            collection=self.COLLECTION_WORKFLOWS, ids=workflow_ids
         )
 
     async def health_check(self) -> dict:
         """Comprehensive health check."""
         return {
             "vector_db": await self.adapter.health(),
-            "collections": await self.adapter.list_collections()
+            "collections": await self.adapter.list_collections(),
         }
 
     async def cleanup(self):
@@ -248,6 +226,7 @@ class MahavishnuVectorStore:
 # mahavishnu/core/config.py
 from pydantic import Field, SecretStr
 from oneiric.adapters.vector.pgvector import PgvectorSettings
+
 
 class MahavishnuSettings(MCPServerSettings):
     # ... existing fields ...
@@ -467,7 +446,7 @@ settings = PgvectorSettings(
     user="postgres",
     password="secret",
     database="mahavishnu",
-    ensure_extension=True
+    ensure_extension=True,
 )
 
 # Initialize
@@ -481,7 +460,7 @@ await adapter.create_collection("workflows", dimension=1536)
 doc = VectorDocument(
     id="workflow-123",
     vector=[0.1, 0.2, 0.3, ...],
-    metadata={"repository": "my-repo", "adapter": "langgraph"}
+    metadata={"repository": "my-repo", "adapter": "langgraph"},
 )
 await adapter.insert("workflows", [doc])
 
@@ -490,7 +469,7 @@ results = await adapter.search(
     collection="workflows",
     query_vector=[0.1, 0.2, 0.3, ...],
     limit=10,
-    filter_expr={"adapter": "langgraph"}
+    filter_expr={"adapter": "langgraph"},
 )
 
 # Cleanup
@@ -517,15 +496,13 @@ await vector_store.index_workflow(
     metadata={
         "repository": "my-repo",
         "adapter": "langgraph",
-        "tags": ["backend", "python"]
-    }
+        "tags": ["backend", "python"],
+    },
 )
 
 # Search similar workflows
 similar = await vector_store.search_similar_workflows(
-    query_embedding=current_workflow_embedding,
-    limit=5,
-    tags=["backend"]
+    query_embedding=current_workflow_embedding, limit=5, tags=["backend"]
 )
 ```
 

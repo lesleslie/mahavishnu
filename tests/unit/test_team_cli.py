@@ -177,7 +177,10 @@ class TestAddTeamCommands:
 class TestCheckFeatureFlags:
     """Tests for _check_feature_flags() gate."""
 
-    @patch("mahavishnu.cli.team_cli.is_feature_enabled", side_effect=lambda f: f != "enabled")
+    @patch(
+        "mahavishnu.cli.team_cli.is_feature_enabled",
+        side_effect=lambda f: f != "enabled",
+    )
     def test_master_switch_disabled(self, mock_flags):
         """When master switch is disabled, commands should exit with code 1."""
         app = _make_app()
@@ -251,7 +254,17 @@ class TestCreateTeam:
         app = _make_app()
         result = runner.invoke(
             app,
-            ["team", "create", "-g", "Review code", "-n", "my_team", "-m", "coordinate", "-v"],
+            [
+                "team",
+                "create",
+                "-g",
+                "Review code",
+                "-n",
+                "my_team",
+                "-m",
+                "coordinate",
+                "-v",
+            ],
         )
         assert result.exit_code == 0
 

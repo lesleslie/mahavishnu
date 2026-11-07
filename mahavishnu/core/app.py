@@ -76,7 +76,9 @@ from .bootstrap import init_memory_aggregator as _init_memory_aggregator_helper
 from .bootstrap import init_observability as _init_observability_helper
 from .bootstrap import init_pool_manager as _init_pool_manager_helper
 from .bootstrap import init_terminal_manager as _init_terminal_manager_helper
-from .bootstrap import initialize_runtime_services as _initialize_runtime_services_helper
+from .bootstrap import (
+    initialize_runtime_services as _initialize_runtime_services_helper,
+)
 from .bootstrap import load_config as _load_config_helper
 from .bootstrap import load_repos as _load_repos_helper
 from .bootstrap import recover_approvals_from_mcp as _recover_approvals_from_mcp_helper
@@ -117,7 +119,9 @@ from .control_surface import (
 )
 from .dependency_waiter import wait_for_dependencies as _wait_for_dependencies_helper
 from .errors import AdapterError
-from .lifecycle import initialize_worktree_coordinator as _initialize_worktree_coordinator_helper
+from .lifecycle import (
+    initialize_worktree_coordinator as _initialize_worktree_coordinator_helper,
+)
 from .lifecycle import start_learning_pipeline as _start_learning_pipeline_helper
 from .lifecycle import start_poller as _start_poller_helper
 from .lifecycle import stop_learning_pipeline as _stop_learning_pipeline_helper
@@ -384,7 +388,10 @@ class MahavishnuApp:
                             # shape is unexpected.
                             if isinstance(data, dict) and "result" in data:
                                 result = data["result"]
-                                if isinstance(result, dict) and "cycles_total" in result:
+                                if (
+                                    isinstance(result, dict)
+                                    and "cycles_total" in result
+                                ):
                                     signature = int(result["cycles_total"])
                                 else:
                                     signature = hash(response.text)
@@ -399,17 +406,21 @@ class MahavishnuApp:
                             last_signature = signature
                             try:
                                 await self.report_runtime_facts()
-                            except (
-                                Exception
-                            ):  # background task — broad catch is the documented contract
-                                logger.exception("runtime-facts reconfigure push failed")
+                            except Exception:  # background task — broad catch is the documented contract
+                                logger.exception(
+                                    "runtime-facts reconfigure push failed"
+                                )
 
                         await asyncio.sleep(poll_interval_seconds)
             except asyncio.CancelledError:
                 logger.debug("runtime-facts poll loop cancelled")
                 raise
-            except Exception:  # background task — broad catch is the documented contract
-                logger.exception("runtime-facts poll loop crashed; reconfigure hook disabled")
+            except (
+                Exception
+            ):  # background task — broad catch is the documented contract
+                logger.exception(
+                    "runtime-facts poll loop crashed; reconfigure hook disabled"
+                )
 
         # Probe Oneiric reachability first (do NOT block boot if unreachable)
         try:
@@ -514,7 +525,9 @@ class MahavishnuApp:
         )
 
         store: Any = None
-        mcp_client = getattr(self, "_mcp_client", None) or getattr(self, "mcp_client", None)
+        mcp_client = getattr(self, "_mcp_client", None) or getattr(
+            self, "mcp_client", None
+        )
         if mcp_client is not None and hasattr(mcp_client, "call_tool"):
             try:
                 store = MCPBudgetStore(mcp_client)
@@ -768,7 +781,9 @@ class MahavishnuApp:
     ) -> list[dict[str, Any]]:
         return _get_fix_trace(self, correlation_id=correlation_id, limit=limit)
 
-    def get_correlation_status(self, correlation_id: str | None = None) -> dict[str, Any]:
+    def get_correlation_status(
+        self, correlation_id: str | None = None
+    ) -> dict[str, Any]:
         return _get_correlation_status(self, correlation_id=correlation_id)
 
     def list_pending_approvals(self) -> list[dict[str, Any]]:
@@ -811,13 +826,20 @@ class MahavishnuApp:
         _persist_workflow_start_helper(self, execution_id, workflow_name, metadata)
 
     def _persist_workflow_end(
-        self, execution_id: str, workflow_name: str, status: str, error: str | None = None
+        self,
+        execution_id: str,
+        workflow_name: str,
+        status: str,
+        error: str | None = None,
     ) -> None:
         """Fire-and-forget: record workflow completion/failure in MCP."""
         _persist_workflow_end_helper(self, execution_id, workflow_name, status, error)
 
     def get_repos(
-        self, tag: str | None = None, role: str | None = None, user_id: str | None = None
+        self,
+        tag: str | None = None,
+        role: str | None = None,
+        user_id: str | None = None,
     ) -> list[str]:
         """Get repository paths based on tag, role, or return all.
 
@@ -930,7 +952,9 @@ class MahavishnuApp:
         worker_manager = getattr(self, "_worker_manager", None)
         adapter_health = "healthy" if await self.is_healthy() else "degraded"
         pools_active = len(getattr(pool_manager, "_pools", {})) if pool_manager else 0
-        workers_running = len(getattr(worker_manager, "_workers", {})) if worker_manager else 0
+        workers_running = (
+            len(getattr(worker_manager, "_workers", {})) if worker_manager else 0
+        )
         return {
             "workflows_active": len(self.active_workflows),
             "workflows_completed": 0,
@@ -966,7 +990,9 @@ class MahavishnuApp:
             AdapterError: If adapter execution fails
         """
         # Validate adapter and prepare for execution
-        adapter, validated_repos = await self._prepare_execution(adapter_name, task, repos, user_id)
+        adapter, validated_repos = await self._prepare_execution(
+            adapter_name, task, repos, user_id
+        )
 
         # Execute with adapter using parallel processing
         try:
@@ -975,20 +1001,30 @@ class MahavishnuApp:
                 workflow_counter = self.observability.create_workflow_counter()
                 if workflow_counter:
                     workflow_counter.add(
-                        1, {"adapter": adapter_name, "task_type": task.get("type", "unknown")}
+                        1,
+                        {
+                            "adapter": adapter_name,
+                            "task_type": task.get("type", "unknown"),
+                        },
                     )
 
             result = await adapter.execute(task, validated_repos)
             return result
-        except Exception as e:  # background task — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # background task — broad catch is the documented contract
             # Record error in observability if enabled
             if self.observability:
                 error_counter = self.observability.create_error_counter()
                 if error_counter:
-                    error_counter.add(1, {"adapter": adapter_name, "error_type": type(e).__name__})
+                    error_counter.add(
+                        1, {"adapter": adapter_name, "error_type": type(e).__name__}
+                    )
 
             # Log error to OpenSearch
-            workflow_id = f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}_single"
+            workflow_id = (
+                f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}_single"
+            )
             await self.opensearch_integration.log_error(
                 workflow_id=workflow_id, error_msg=str(e), adapter=adapter_name
             )
@@ -1005,7 +1041,11 @@ class MahavishnuApp:
             ) from e
 
     async def _prepare_execution(
-        self, adapter_name: str, task: dict[str, Any], repos: list[str] | None, user_id: str | None
+        self,
+        adapter_name: str,
+        task: dict[str, Any],
+        repos: list[str] | None,
+        user_id: str | None,
     ) -> tuple[OrchestratorAdapter, list[str]]:
         """Helper method to validate adapter and prepare for execution."""
         return await _prepare_execution_helper(self, adapter_name, task, repos, user_id)
@@ -1038,7 +1078,9 @@ class MahavishnuApp:
         Returns:
             workflow_id: Unique workflow identifier
         """
-        return await _initialize_workflow_state_helper(self, task, adapter_name, validated_repos)
+        return await _initialize_workflow_state_helper(
+            self, task, adapter_name, validated_repos
+        )
 
     async def _validate_pre_execution_qc(
         self, workflow_id: str, validated_repos: list[str]
@@ -1067,7 +1109,9 @@ class MahavishnuApp:
         Returns:
             checkpoint_id: Checkpoint ID if created, None otherwise
         """
-        return await _create_session_checkpoint_helper(self, task, adapter_name, validated_repos)
+        return await _create_session_checkpoint_helper(
+            self, task, adapter_name, validated_repos
+        )
 
     async def _process_single_repo(
         self,
@@ -1391,7 +1435,9 @@ class MahavishnuApp:
 
         # In-flight de-dup: drop the call if a push is already running.
         if self.runtime_facts_lock.locked():
-            logger.debug("runtime-facts: push already in flight, dropping concurrent call")
+            logger.debug(
+                "runtime-facts: push already in flight, dropping concurrent call"
+            )
             return
         async with self.runtime_facts_lock:
             oneiric_url = os.environ.get(self.ONEIRIC_ENV_VAR, self.ONEIRIC_MCP_URL)
@@ -1486,7 +1532,9 @@ class MahavishnuApp:
                         "runtime-push component=mahavishnu adapter=%s status=ok",
                         key,
                     )
-                except Exception:  # background task — broad catch is the documented contract
+                except (
+                    Exception
+                ):  # background task — broad catch is the documented contract
                     logger.exception(
                         "runtime-push component=mahavishnu adapter=%s status=fail",
                         key,

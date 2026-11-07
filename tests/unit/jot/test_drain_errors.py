@@ -3,6 +3,7 @@
 All drain errors inherit from JotError so existing capture/read handlers
 that catch JotError will not silently swallow them.
 """
+
 from __future__ import annotations
 
 from mahavishnu.jot.errors import (

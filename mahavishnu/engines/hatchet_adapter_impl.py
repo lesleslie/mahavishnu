@@ -12,7 +12,11 @@ import logging
 import os
 from typing import Any
 
-from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.adapters.base import (
+    AdapterCapabilities,
+    AdapterType,
+    OrchestratorAdapter,
+)
 from mahavishnu.core.capabilities import (
     Capability,
     CapabilityKind,

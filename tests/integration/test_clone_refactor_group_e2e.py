@@ -52,8 +52,9 @@ def _make_clone_tools(
     # that need it (TestRejectBlocksDAG). Tests that don't care about
     # verification_enabled ignore this value.
     app.settings.verification_enabled = True
-    app.settings.mcp_state = MagicMock(enabled=True, flush_interval_seconds=60,
-                                       max_routing_buffer_age_seconds=3600)
+    app.settings.mcp_state = MagicMock(
+        enabled=True, flush_interval_seconds=60, max_routing_buffer_age_seconds=3600
+    )
     app.mcp_url = "http://localhost:8683"
     tools = CloneTools(app=app)
     # Inject a mocked MCPStateBackend that we control
@@ -102,32 +103,33 @@ def git_repo(tmp_path):
     """Initialize a git repo at tmp_path/<random> with user.email/name."""
     import secrets
     import subprocess
+
     repo = tmp_path / f"target-{secrets.token_hex(4)}"
     repo.mkdir()
     subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
     subprocess.run(
         ["git", "-C", str(repo), "config", "user.email", "x@x"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "-C", str(repo), "config", "user.name", "X"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     (repo / "foo.py").write_text("x = 1\n")
     subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
     subprocess.run(
         ["git", "-C", str(repo), "commit", "-m", "init"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     return repo
 
 
 def _diff_one_line() -> str:
     """Trivial extraction diff for tests that don't care about content."""
-    return (
-        "--- a/foo.py\n+++ b/foo.py\n"
-        "@@ -1 +1 @@\n-x = 1\n+x = 2\n"
-    )
+    return "--- a/foo.py\n+++ b/foo.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n"
 
 
 @pytest.mark.req(["REQ-CLONE-007"])
@@ -135,7 +137,9 @@ class TestCloneRefactorGroupHappyPath:
     """REQ-CLONE-007: returns refactor_job_id + status: queued."""
 
     async def test_returns_job_id_and_starts_dag(
-        self, clone_tools_with_backend, git_repo,
+        self,
+        clone_tools_with_backend,
+        git_repo,
     ):
         tools, backend = clone_tools_with_backend
 
@@ -167,7 +171,9 @@ class TestUUID7Format:
     """REQ-CLONE-007: refactor_job_id is UUIDv7."""
 
     async def test_refactor_job_id_is_uuid7(
-        self, clone_tools_with_backend, git_repo,
+        self,
+        clone_tools_with_backend,
+        git_repo,
     ):
         tools, backend = clone_tools_with_backend
 
@@ -197,7 +203,9 @@ class TestRejectBlocksDAG:
     """REQ-CLONE-001: consensus=REJECT blocks DAG."""
 
     async def test_clone_refactor_group_reject_blocks_dag(
-        self, clone_tools_with_backend, git_repo,
+        self,
+        clone_tools_with_backend,
+        git_repo,
     ):
         tools, backend = clone_tools_with_backend
 
@@ -205,6 +213,7 @@ class TestRejectBlocksDAG:
         # must also return the SAME reject_result (not a fresh MagicMock) so
         # the consensus check downstream still sees Consensus.REJECT.
         from mahavishnu.core.verification import Consensus
+
         reject_result = MagicMock()
         reject_result.consensus = Consensus.REJECT
         # CR-B4 fix (v4): see note in TestCloneRefactorGroupHappyPath.
@@ -213,7 +222,8 @@ class TestRejectBlocksDAG:
             AsyncMock(return_value=reject_result),
         ):
             with patch.object(
-                tools, "_store",
+                tools,
+                "_store",
                 MagicMock(persist=AsyncMock(return_value=reject_result)),
             ):
                 result = await tools.clone_refactor_group(
@@ -234,7 +244,9 @@ class TestConcurrentCalls:
     raises ConcurrentDAGError."""
 
     async def test_concurrent_calls_deduplicate(
-        self, clone_tools_with_backend, git_repo,
+        self,
+        clone_tools_with_backend,
+        git_repo,
     ):
         tools, backend = clone_tools_with_backend
 
@@ -292,7 +304,8 @@ class TestMCPStateBackendUnavailable:
     """SF-B6: substrate circuit-open raises MCPStateBackendUnavailable."""
 
     async def test_substrate_unavailable_raises_unavailable(
-        self, clone_tools_with_backend,
+        self,
+        clone_tools_with_backend,
     ):
         tools, backend = clone_tools_with_backend
 
@@ -319,7 +332,9 @@ class TestCancellationMarksTerminal:
     """REQ-CLONE-016: client cancellation marks terminal "cancelled"."""
 
     async def test_dag_cancellation_marks_terminal(
-        self, clone_tools_with_backend, git_repo,
+        self,
+        clone_tools_with_backend,
+        git_repo,
     ):
         tools, backend = clone_tools_with_backend
 

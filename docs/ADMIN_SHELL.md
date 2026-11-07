@@ -29,12 +29,12 @@ IPython magic commands for quick repository and workflow inspection:
 The shell includes useful objects and imports:
 
 ```python
-app              # MahavishnuApp instance
-asyncio          # Asyncio module
-run              # Shortcut for asyncio.run()
-WorkflowStatus   # Workflow status enum
-MahavishnuApp    # App class for introspection
-logger           # Structlog logger
+app  # MahavishnuApp instance
+asyncio  # Asyncio module
+run  # Shortcut for asyncio.run()
+WorkflowStatus  # Workflow status enum
+MahavishnuApp  # App class for introspection
+logger  # Structlog logger
 ```
 
 ## Quick Start
@@ -316,9 +316,11 @@ async def my_helper(app: MahavishnuApp) -> None:
 
 ```python
 def _add_mahavishnu_namespace(self) -> None:
-    self.namespace.update({
-        "my_helper": lambda: asyncio.run(my_helper(self.app)),
-    })
+    self.namespace.update(
+        {
+            "my_helper": lambda: asyncio.run(my_helper(self.app)),
+        }
+    )
 ```
 
 **Add new magic command** (in `mahavishnu/shell/magics.py`):
@@ -339,6 +341,7 @@ def my_command(self, line: str) -> None:
 async def test_my_helper():
     app = MahavishnuApp()
     await my_helper(app)  # Should not raise
+
 
 # Test magic command
 def test_my_magic():

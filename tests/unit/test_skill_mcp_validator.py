@@ -182,7 +182,9 @@ def test_extract_mcp_refs_no_trailing_hyphen_server():
 def test_validate_skill_file_port_not_matched_in_prose(tmp_path):
     # A number appearing near a server name in prose should NOT trigger wrong_port
     skill = tmp_path / "SKILL.md"
-    skill.write_text("# Skill\n\n## Overview\n\nsession-buddy stores 12345 records per session.\n")
+    skill.write_text(
+        "# Skill\n\n## Overview\n\nsession-buddy stores 12345 records per session.\n"
+    )
     report = validate_skill_file(skill)
     assert report.wrong_ports == []
 

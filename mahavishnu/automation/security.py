@@ -157,7 +157,9 @@ class AutomationSecurity:
         self._allowed_apps = self.config.allowed_apps
 
         # Initialize blocked patterns
-        self._blocked_patterns = DEFAULT_BLOCKED_PATTERNS | self.config.blocked_text_patterns
+        self._blocked_patterns = (
+            DEFAULT_BLOCKED_PATTERNS | self.config.blocked_text_patterns
+        )
 
         # Rate limiting state
         self._rate_limit_state: dict[str, RateLimitState] = defaultdict(RateLimitState)
@@ -345,7 +347,9 @@ class AutomationSecurity:
         """
         return {
             "blocked_apps_count": len(self._blocked_apps),
-            "allowed_apps_count": len(self._allowed_apps) if self._allowed_apps else None,
+            "allowed_apps_count": len(self._allowed_apps)
+            if self._allowed_apps
+            else None,
             "blocked_patterns_count": len(self._blocked_patterns),
             "rate_limit_per_second": self.config.max_operations_per_second,
             "active_rate_limit_keys": len(self._rate_limit_state),

@@ -14,10 +14,13 @@ def test_server_core_calls_apply_tool_profile():
     tree = ast.parse(server_core.read_text())
     found = any(
         isinstance(node, ast.Call)
-        and getattr(node.func, "id", "") in ("apply_tool_profile", "_apply_tool_profile")
+        and getattr(node.func, "id", "")
+        in ("apply_tool_profile", "_apply_tool_profile")
         for node in ast.walk(tree)
     )
-    assert found, "server_core.py must call apply_tool_profile() or _apply_tool_profile()"
+    assert found, (
+        "server_core.py must call apply_tool_profile() or _apply_tool_profile()"
+    )
 
 
 @pytest.mark.asyncio
@@ -111,7 +114,9 @@ async def test_full_matches_golden_fixture(monkeypatch):
     "profile",
     ["minimal", "standard", "full"],
 )
-def test_mandatory_groups_invariant(profile: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mandatory_groups_invariant(
+    profile: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Per-repo mandatory group keys must be in REGISTRATION_MAP.
 
     W0.5 helper's ``mandatory_groups`` parameter expects registration_map keys
@@ -130,4 +135,6 @@ def test_mandatory_groups_invariant(profile: str, monkeypatch: pytest.MonkeyPatc
     assert not missing, f"MANDATORY groups not in REGISTRATION_MAP: {sorted(missing)}"
     expected = json.loads(Path(f"tests/fixtures/{profile}/tool_names.json").read_text())
     expected_set = set(expected)
-    assert expected_set, f"profile={profile} golden fixture is empty — registration broke"
+    assert expected_set, (
+        f"profile={profile} golden fixture is empty — registration broke"
+    )

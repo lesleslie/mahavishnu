@@ -48,7 +48,9 @@ def make_review(
         reviewer="test-reviewer",
         decision=decision,
         rationale="Looks good",
-        required_changes=[] if decision == SkillReviewDecision.APPROVE else ["fix something"],
+        required_changes=[]
+        if decision == SkillReviewDecision.APPROVE
+        else ["fix something"],
     )
 
 
@@ -96,7 +98,9 @@ class TestSkillRegistryRegister:
 
     def test_register_appends_to_history(self):
         registry = SkillRegistry()
-        draft = make_draft(skill_id="skill_history", name="history-skill", version="1.0.0")
+        draft = make_draft(
+            skill_id="skill_history", name="history-skill", version="1.0.0"
+        )
         review = make_review(skill_id="skill_history")
 
         registry.register(draft, review, activated_by="tester")
@@ -157,7 +161,9 @@ class TestSkillRegistryListActive:
         review1 = make_review(skill_id="skill_list1")
         registry.register(draft1, review1, activated_by="tester")
 
-        draft2 = make_draft(skill_id="skill_list2", name="list-skill-2", version="2.0.0")
+        draft2 = make_draft(
+            skill_id="skill_list2", name="list-skill-2", version="2.0.0"
+        )
         review2 = make_review(skill_id="skill_list2")
         registry.register(draft2, review2, activated_by="tester")
 
@@ -193,12 +199,16 @@ class TestSkillRegistryRollback:
         registry = SkillRegistry()
 
         # Register v1
-        draft_v1 = make_draft(skill_id="skill_rb", name="rb-skill", version="1.0.0", body="# v1")
+        draft_v1 = make_draft(
+            skill_id="skill_rb", name="rb-skill", version="1.0.0", body="# v1"
+        )
         review_v1 = make_review(skill_id="skill_rb")
         registry.register(draft_v1, review_v1, activated_by="tester")
 
         # Register v2
-        draft_v2 = make_draft(skill_id="skill_rb", name="rb-skill", version="2.0.0", body="# v2")
+        draft_v2 = make_draft(
+            skill_id="skill_rb", name="rb-skill", version="2.0.0", body="# v2"
+        )
         review_v2 = make_review(skill_id="skill_rb")
         registry.register(draft_v2, review_v2, activated_by="tester")
 
@@ -235,7 +245,9 @@ class TestSkillRegistryRollback:
     def test_execute_rollback_target_not_found_raises(self):
         registry = SkillRegistry()
 
-        draft = make_draft(skill_id="skill_missing_target", name="mt-skill", version="1.0.0")
+        draft = make_draft(
+            skill_id="skill_missing_target", name="mt-skill", version="1.0.0"
+        )
         review = make_review(skill_id="skill_missing_target")
         registry.register(draft, review, activated_by="tester")
 

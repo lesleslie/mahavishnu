@@ -103,7 +103,9 @@ class TestShellHelpers:
         await ps(mock_app)
 
         # Verify list_workflows was called
-        mock_app.workflow_state_manager.list_workflows.assert_called_once_with(limit=100)
+        mock_app.workflow_state_manager.list_workflows.assert_called_once_with(
+            limit=100
+        )
 
     @pytest.mark.asyncio
     async def test_ps_handles_empty_workflow_list(self):
@@ -174,7 +176,9 @@ class TestShellHelpers:
         await errors(mock_app, limit=10)
 
         # Verify list_workflows was called
-        mock_app.workflow_state_manager.list_workflows.assert_called_once_with(limit=100)
+        mock_app.workflow_state_manager.list_workflows.assert_called_once_with(
+            limit=100
+        )
 
     @pytest.mark.asyncio
     async def test_errors_respects_limit(self):
@@ -184,7 +188,8 @@ class TestShellHelpers:
 
         # Create workflow with many errors
         errors_list = [
-            {"timestamp": f"2025-01-25T{i:02d}:00:00", "message": f"Error {i}"} for i in range(20)
+            {"timestamp": f"2025-01-25T{i:02d}:00:00", "message": f"Error {i}"}
+            for i in range(20)
         ]
         mock_app.workflow_state_manager.list_workflows = AsyncMock(
             return_value=[
@@ -205,7 +210,9 @@ class TestShellHelpers:
         mock_app = MagicMock(spec=MahavishnuApp)
         mock_app.workflow_state_manager = AsyncMock()
         mock_app.workflow_state_manager.list_workflows = AsyncMock(
-            return_value=[{"id": "wf-1", "status": WorkflowStatus.COMPLETED, "errors": []}]
+            return_value=[
+                {"id": "wf-1", "status": WorkflowStatus.COMPLETED, "errors": []}
+            ]
         )
 
         # Should not raise
@@ -216,7 +223,9 @@ class TestShellHelpers:
         """Test sync() helper checks OpenSearch health."""
         mock_app = MagicMock(spec=MahavishnuApp)
         mock_app.opensearch_integration = AsyncMock()
-        mock_app.opensearch_integration.health_check = AsyncMock(return_value={"status": "green"})
+        mock_app.opensearch_integration.health_check = AsyncMock(
+            return_value={"status": "green"}
+        )
         mock_app.opensearch_integration.get_workflow_stats = AsyncMock(
             return_value={"total_workflows": 42}
         )
@@ -449,7 +458,11 @@ class TestRepoFormatter:
         """Test formatter displays repos without tags."""
         formatter = RepoFormatter()
         repos = [
-            {"path": "/path/to/repo1", "description": "Test repo 1", "tags": ["python"]},
+            {
+                "path": "/path/to/repo1",
+                "description": "Test repo 1",
+                "tags": ["python"],
+            },
             {"path": "/path/to/repo2", "description": "Test repo 2", "tags": ["rust"]},
         ]
 

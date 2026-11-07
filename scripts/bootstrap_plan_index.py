@@ -244,12 +244,17 @@ def _record_from_file(
         role=str(front.get("role", "implementation")),
         topic=str(front.get("topic", "—")),
         date=_coerce_date(front.get("date")),
-        last_reviewed=_coerce_date(front.get("last_reviewed")) or _coerce_date(front.get("date")),
-        superseded_by=(str(front["superseded_by"]) if front.get("superseded_by") else None),
+        last_reviewed=_coerce_date(front.get("last_reviewed"))
+        or _coerce_date(front.get("date")),
+        superseded_by=(
+            str(front["superseded_by"]) if front.get("superseded_by") else None
+        ),
         blocks_on=[str(b) for b in front.get("blocks_on", []) or []],
         sha=str(front.get("sha", "0" * 40)),
         repo=repo,
-        lifecycle_state=(str(front["lifecycle_state"]) if front.get("lifecycle_state") else None),
+        lifecycle_state=(
+            str(front["lifecycle_state"]) if front.get("lifecycle_state") else None
+        ),
         updated_at_ms=updated_at_ms,
     )
 
@@ -406,7 +411,13 @@ async def _run_async(args: argparse.Namespace) -> int:
         "success": success,
         "errors_count": errors_count,
         "error_samples": errors[:5],
-        "mode": ("dry-run" if args.dry_run else "audit-only" if mcp_client is None else "live"),
+        "mode": (
+            "dry-run"
+            if args.dry_run
+            else "audit-only"
+            if mcp_client is None
+            else "live"
+        ),
     }
     print(_format_summary(summary))
     if success == 0 and errors_count == 0:

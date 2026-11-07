@@ -158,7 +158,9 @@ class BasePool(ABC):
         """
 
     @abstractmethod
-    async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    async def execute_batch(
+        self, tasks: list[dict[str, Any]]
+    ) -> dict[str, dict[str, Any]]:
         """Execute multiple tasks concurrently.
 
         Args:

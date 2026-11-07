@@ -1,4 +1,5 @@
 """Tests for Phase 6: MetricSampler + ObservabilityManager change-point wiring (REQ-005, REQ-006, REQ-009)."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -22,7 +23,10 @@ from mahavishnu.observability.sampler import (
 class TestMetricSample:
     def test_construct(self) -> None:
         s = MetricSample(
-            metric="x", ts_monotonic=1.0, ts_wall=datetime(2026, 1, 1, tzinfo=UTC), value=42.0
+            metric="x",
+            ts_monotonic=1.0,
+            ts_wall=datetime(2026, 1, 1, tzinfo=UTC),
+            value=42.0,
         )
         assert s.metric == "x"
         assert s.ts_monotonic == 1.0
@@ -30,7 +34,10 @@ class TestMetricSample:
 
     def test_is_frozen(self) -> None:
         s = MetricSample(
-            metric="x", ts_monotonic=1.0, ts_wall=datetime(2026, 1, 1, tzinfo=UTC), value=1.0
+            metric="x",
+            ts_monotonic=1.0,
+            ts_wall=datetime(2026, 1, 1, tzinfo=UTC),
+            value=1.0,
         )
         with pytest.raises((AttributeError, Exception)):
             s.value = 99.0  # type: ignore[misc]
@@ -319,6 +326,7 @@ class TestObservabilityManagerDriftDetection:
         from mahavishnu.core.observability import ObservabilityManager
 
         changepoint_cfg = ChangepointConfig(**kwargs)
+
         # Build a settings-like object that exposes the top-level
         # .changepoint sibling (per C5 fix; not under pools).
         class _StubSettings:
@@ -499,9 +507,13 @@ class TestObservabilityManagerDriftDetection:
 
         assert ObservabilityManager._classify_drift_severity(0, 8) == "minor"
         assert ObservabilityManager._classify_drift_severity(15, 8) == "minor"  # < 16
-        assert ObservabilityManager._classify_drift_severity(16, 8) == "moderate"  # >= 2*8
+        assert (
+            ObservabilityManager._classify_drift_severity(16, 8) == "moderate"
+        )  # >= 2*8
         assert ObservabilityManager._classify_drift_severity(31, 8) == "moderate"
-        assert ObservabilityManager._classify_drift_severity(32, 8) == "critical"  # >= 4*8
+        assert (
+            ObservabilityManager._classify_drift_severity(32, 8) == "critical"
+        )  # >= 4*8
         assert ObservabilityManager._classify_drift_severity(100, 8) == "critical"
 
     def test_metric_sampler_lazy_init(self) -> None:
@@ -613,7 +625,9 @@ class TestDriftCounterEmission:
         amount, attrs = added[0]
         assert amount == 1
         assert attrs["metric_name"] == "pool_queue_depth"
-        assert "cusum" in attrs["detector"].lower() or "page" in attrs["detector"].lower()
+        assert (
+            "cusum" in attrs["detector"].lower() or "page" in attrs["detector"].lower()
+        )
         assert attrs["severity"] in {"minor", "moderate", "critical"}
 
     def test_drift_span_attributes_complete(self) -> None:
@@ -878,4 +892,6 @@ class TestTargetMeanAutoColdPath:
         # Drive a sustained 5.0 shift
         for _ in range(50):
             mgr._evaluate_change_point("pool_queue_depth", 5.0)
-        assert added == [], "Cold-path detector must NOT fire (target_mean_auto deferred)"
+        assert added == [], (
+            "Cold-path detector must NOT fire (target_mean_auto deferred)"
+        )

@@ -114,7 +114,9 @@ class TestAppStructure:
         # commit db06fc87). Consumers use `mcp__oneiric__list_adapters` /
         # `get_adapter` / `get_adapter_health`. See
         # ``docs/architecture/MEMORY_ARCHITECTURE.md``.
-        registered_names = [g.name for g in cli_module.app.registered_groups if g.typer_instance]
+        registered_names = [
+            g.name for g in cli_module.app.registered_groups if g.typer_instance
+        ]
         expected = [
             "worktree",
             "workflow",
@@ -169,7 +171,9 @@ class TestSweepCommand:
         mock_auth.is_claude_subscribed.return_value = False
         mock_auth_cls.return_value = mock_auth
 
-        result = runner.invoke(cli_module.app, ["sweep", "--tag", "python", "-a", "missing"])
+        result = runner.invoke(
+            cli_module.app, ["sweep", "--tag", "python", "-a", "missing"]
+        )
         assert result.exit_code == 1
         assert "not found" in result.output
 
@@ -191,7 +195,9 @@ class TestSweepCommand:
         mock_auth.is_claude_subscribed.return_value = False
         mock_auth_cls.return_value = mock_auth
 
-        result = runner.invoke(cli_module.app, ["sweep", "-t", "python", "-a", "langgraph"])
+        result = runner.invoke(
+            cli_module.app, ["sweep", "-t", "python", "-a", "langgraph"]
+        )
         assert result.exit_code == 0
 
     @patch("mahavishnu._main_cli.MultiAuthHandler")
@@ -275,7 +281,9 @@ class TestWorkflowQualityCheck:
         mock_app.execute_workflow_parallel = AsyncMock(return_value={"status": "done"})
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(cli_module.app, ["workflow", "quality-check", "-t", "python"])
+        result = runner.invoke(
+            cli_module.app, ["workflow", "quality-check", "-t", "python"]
+        )
         assert result.exit_code == 0
         assert "Quality check completed" in result.output
 
@@ -297,7 +305,9 @@ class TestWorkflowQualityCheck:
         mock_app.get_repos.return_value = []
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(cli_module.app, ["workflow", "quality-check", "-t", "python"])
+        result = runner.invoke(
+            cli_module.app, ["workflow", "quality-check", "-t", "python"]
+        )
         assert result.exit_code == 1
         assert "No repositories found" in result.output
 
@@ -447,7 +457,9 @@ class TestWorkflowReview:
         mock_tools.review_and_fix = AsyncMock(return_value={"findings": []})
         mock_tools_cls.return_value = mock_tools
 
-        result = runner.invoke(cli_module.app, ["workflow", "review", "-s", "all", "--fix"])
+        result = runner.invoke(
+            cli_module.app, ["workflow", "review", "-s", "all", "--fix"]
+        )
         assert result.exit_code == 0
 
     @patch("mahavishnu.mcp.tools.self_improvement_tools.ReviewScope")
@@ -488,7 +500,9 @@ class TestAdapterList:
 
     def test_adapter_list_with_domain_filter_command_removed(self):
         """`mahavishnu adapter list -d <domain>` no longer exists."""
-        result = runner.invoke(cli_module.app, ["adapter", "list", "-d", "orchestration"])
+        result = runner.invoke(
+            cli_module.app, ["adapter", "list", "-d", "orchestration"]
+        )
         assert result.exit_code != 0
 
     def test_adapter_list_healthy_only_command_removed(self):
@@ -580,7 +594,9 @@ class TestMCPStart:
     @patch("mahavishnu.mcp.server_core.FastMCPServer")
     @patch("mahavishnu._main_cli.MultiAuthHandler")
     @patch("mahavishnu._main_cli.MahavishnuApp")
-    def test_mcp_start_with_terminal_enabled(self, mock_app_cls, mock_auth_cls, mock_server_cls):
+    def test_mcp_start_with_terminal_enabled(
+        self, mock_app_cls, mock_auth_cls, mock_server_cls
+    ):
         config = _make_mock_config()
         config.terminal.enabled = True
         maha = _make_mock_app()
@@ -601,7 +617,9 @@ class TestMCPStart:
     @patch("mahavishnu.mcp.server_core.FastMCPServer")
     @patch("mahavishnu._main_cli.MultiAuthHandler")
     @patch("mahavishnu._main_cli.MahavishnuApp")
-    def test_mcp_start_claude_subscription(self, mock_app_cls, mock_auth_cls, mock_server_cls):
+    def test_mcp_start_claude_subscription(
+        self, mock_app_cls, mock_auth_cls, mock_server_cls
+    ):
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
         mock_auth = MagicMock()
@@ -906,7 +924,9 @@ class TestListRepos:
         mock_auth.is_claude_subscribed.return_value = False
         mock_auth_cls.return_value = mock_auth
 
-        result = runner.invoke(cli_module.app, ["list-repos", "-t", "python", "-r", "orchestrator"])
+        result = runner.invoke(
+            cli_module.app, ["list-repos", "-t", "python", "-r", "orchestrator"]
+        )
         assert result.exit_code == 1
         assert "Cannot specify both" in result.output
 
@@ -1053,7 +1073,10 @@ class TestListNicknames:
     @patch("mahavishnu._main_cli.MahavishnuApp")
     def test_list_nicknames_with_data(self, mock_app_cls):
         mock_app = _make_mock_app()
-        mock_app.get_all_nicknames.return_value = {"vishnu": "mahavishnu", "jack": "crackerjack"}
+        mock_app.get_all_nicknames.return_value = {
+            "vishnu": "mahavishnu",
+            "jack": "crackerjack",
+        }
         mock_app_cls.return_value = mock_app
 
         result = runner.invoke(cli_module.app, ["list-nicknames"])
@@ -1189,10 +1212,14 @@ class TestTerminalLaunch:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.launch_sessions = AsyncMock(return_value=["sess_1", "sess_2"])
+        maha.terminal_manager.launch_sessions = AsyncMock(
+            return_value=["sess_1", "sess_2"]
+        )
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(cli_module.app, ["terminal", "launch", "echo hello", "-c", "2"])
+        result = runner.invoke(
+            cli_module.app, ["terminal", "launch", "echo hello", "-c", "2"]
+        )
         assert result.exit_code == 0
         assert "sess_1" in result.output
         assert "sess_2" in result.output
@@ -1204,7 +1231,9 @@ class TestTerminalLaunch:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.launch_sessions = AsyncMock(side_effect=Exception("launch failed"))
+        maha.terminal_manager.launch_sessions = AsyncMock(
+            side_effect=Exception("launch failed")
+        )
         mock_app_cls.return_value = maha
 
         result = runner.invoke(cli_module.app, ["terminal", "launch", "echo hello"])
@@ -1283,7 +1312,9 @@ class TestTerminalSend:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.send_command = AsyncMock(side_effect=Exception("send error"))
+        maha.terminal_manager.send_command = AsyncMock(
+            side_effect=Exception("send error")
+        )
         mock_app_cls.return_value = maha
 
         result = runner.invoke(cli_module.app, ["terminal", "send", "sess_1", "ls"])
@@ -1313,7 +1344,9 @@ class TestTerminalCapture:
         )
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(cli_module.app, ["terminal", "capture", "sess_1", "-l", "50"])
+        result = runner.invoke(
+            cli_module.app, ["terminal", "capture", "sess_1", "-l", "50"]
+        )
         assert result.exit_code == 0
         assert "output line 1" in result.output
 
@@ -1324,7 +1357,9 @@ class TestTerminalCapture:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.capture_output = AsyncMock(side_effect=Exception("capture error"))
+        maha.terminal_manager.capture_output = AsyncMock(
+            side_effect=Exception("capture error")
+        )
         mock_app_cls.return_value = maha
 
         result = runner.invoke(cli_module.app, ["terminal", "capture", "sess_1"])
@@ -1363,7 +1398,9 @@ class TestTerminalClose:
         maha = _make_mock_app()
         maha.config = config
         maha.terminal_manager = MagicMock()
-        maha.terminal_manager.list_sessions = AsyncMock(return_value=[{"id": "s1"}, {"id": "s2"}])
+        maha.terminal_manager.list_sessions = AsyncMock(
+            return_value=[{"id": "s1"}, {"id": "s2"}]
+        )
         maha.terminal_manager.close_all = AsyncMock()
         mock_app_cls.return_value = maha
 
@@ -1421,7 +1458,9 @@ class TestWorkersSpawn:
         maha.config = config
         mock_app_cls.return_value = maha
 
-        result = runner.invoke(cli_module.app, ["workers", "spawn", "-t", "terminal-qwen"])
+        result = runner.invoke(
+            cli_module.app, ["workers", "spawn", "-t", "terminal-qwen"]
+        )
         assert result.exit_code == 1
         assert "disabled" in result.output
 
@@ -1437,7 +1476,9 @@ class TestWorkersSpawn:
         mock_wm.spawn_workers = AsyncMock(side_effect=Exception("spawn failed"))
         mock_wm_cls.return_value = mock_wm
 
-        result = runner.invoke(cli_module.app, ["workers", "spawn", "-t", "terminal-qwen"])
+        result = runner.invoke(
+            cli_module.app, ["workers", "spawn", "-t", "terminal-qwen"]
+        )
         assert result.exit_code == 1
         assert "spawn failed" in result.output
 
@@ -1463,7 +1504,15 @@ class TestWorkersExecute:
 
         result = runner.invoke(
             cli_module.app,
-            ["workers", "execute", "-p", "Implement a REST API", "-n", "2", "--dry-run"],
+            [
+                "workers",
+                "execute",
+                "-p",
+                "Implement a REST API",
+                "-n",
+                "2",
+                "--dry-run",
+            ],
         )
         assert result.exit_code == 0
         assert "Planning capability DAG" in result.output
@@ -1514,10 +1563,12 @@ class TestWorkersExecute:
 
         # Even if some legacy attribute is referenced, the migrated handler
         # must not call WorkerManager.
-        with patch(
-            "mahavishnu.workers.WorkerManager"
-        ) as mock_wm_cls, patch(
-            "mahavishnu.core.adapters.worker.WorkerOrchestratorAdapter", _StubAdapter
+        with (
+            patch("mahavishnu.workers.WorkerManager") as mock_wm_cls,
+            patch(
+                "mahavishnu.core.adapters.worker.WorkerOrchestratorAdapter",
+                _StubAdapter,
+            ),
         ):
             result = runner.invoke(
                 cli_module.app,
@@ -1572,7 +1623,9 @@ class TestWorkersListTypes:
         mock_eval.return_value = mock_report
 
         # -c is not a recognized option for list-types (typer rejects with exit code 2)
-        result = runner.invoke(cli_module.app, ["workers", "list-types", "-c", "invalid_cat"])
+        result = runner.invoke(
+            cli_module.app, ["workers", "list-types", "-c", "invalid_cat"]
+        )
         assert result.exit_code == 2
 
     @patch("mahavishnu.core.config.MahavishnuSettings")
@@ -1684,7 +1737,9 @@ class TestPoolSpawn:
     @patch("mahavishnu.pools.PoolManager")
     @patch("mahavishnu.terminal.manager.TerminalManager")
     @patch("mahavishnu._main_cli.MahavishnuApp")
-    def test_pool_spawn_error(self, mock_app_cls, mock_tm_cls, mock_pm_cls, mock_mb_cls):
+    def test_pool_spawn_error(
+        self, mock_app_cls, mock_tm_cls, mock_pm_cls, mock_mb_cls
+    ):
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
         mock_tm = MagicMock()
@@ -1767,7 +1822,9 @@ class TestPoolExecute:
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"])
+        result = runner.invoke(
+            cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"]
+        )
         assert result.exit_code == 1
 
     @patch("mahavishnu._main_cli.MahavishnuApp")
@@ -1780,7 +1837,9 @@ class TestPoolExecute:
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"])
+        result = runner.invoke(
+            cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"]
+        )
         assert result.exit_code == 0
         assert "completed" in result.output
 
@@ -1794,7 +1853,9 @@ class TestPoolExecute:
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"])
+        result = runner.invoke(
+            cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"]
+        )
         assert result.exit_code == 0
         assert "something went wrong" in result.output
 
@@ -1806,7 +1867,9 @@ class TestPoolExecute:
         mock_app.pool_manager = mock_pm
         mock_app_cls.return_value = mock_app
 
-        result = runner.invoke(cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"])
+        result = runner.invoke(
+            cli_module.app, ["pool", "execute", "pool_1", "-p", "do something"]
+        )
         assert result.exit_code == 1
 
     def test_pool_execute_missing_args(self):
@@ -1870,7 +1933,9 @@ class TestPoolRoute:
             edges=[],
         )
 
-        result = runner.invoke(cli_module.app, ["pool", "route", "-p", "write python code"])
+        result = runner.invoke(
+            cli_module.app, ["pool", "route", "-p", "write python code"]
+        )
         assert result.exit_code == 0
         assert "model=MiniMax-M3" in result.output
 

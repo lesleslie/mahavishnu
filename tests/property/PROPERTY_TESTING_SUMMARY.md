@@ -19,16 +19,20 @@ From `tests/unit/test_config_complete.py`:
 class TestPropertyBasedTests:
     @pytest.mark.unit
     @hyp_settings(deadline=None)
-    @given(server_name=text(min_size=1, max_size=100),
-           debug=booleans(),
-           port=integers(min_value=1024, max_value=65535))
+    @given(
+        server_name=text(min_size=1, max_size=100),
+        debug=booleans(),
+        port=integers(min_value=1024, max_value=65535),
+    )
     def test_property_based_settings_creation(self, server_name, debug, port):
         """Test that settings can be created with various valid inputs."""
 
     @pytest.mark.unit
-    @given(enabled=booleans(),
-           min_workers=integers(min_value=1, max_value=10),
-           max_workers=integers(min_value=10, max_value=100))
+    @given(
+        enabled=booleans(),
+        min_workers=integers(min_value=1, max_value=10),
+        max_workers=integers(min_value=10, max_value=100),
+    )
     def test_property_based_pool_config(self, enabled, min_workers, max_workers):
         """Test PoolConfig with various valid inputs."""
 ```
@@ -274,7 +278,7 @@ When Hypothesis finds a bug, it will:
 
 Example:
 ```python
-@reproduce_failure('6.148.13', b'AA...')
+@reproduce_failure("6.148.13", b"AA...")
 @given(st.text())
 def test_fails(text):
     assert len(text) <= 10

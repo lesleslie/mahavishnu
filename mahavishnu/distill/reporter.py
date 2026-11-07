@@ -39,7 +39,9 @@ class WorkflowRun:
 def report_run(conn: _ConnLike, run: WorkflowRun) -> bool:
 
     started_at_str = _isoformat(run.started_at)
-    completed_at_str = _isoformat(run.completed_at) if run.completed_at is not None else None
+    completed_at_str = (
+        _isoformat(run.completed_at) if run.completed_at is not None else None
+    )
 
     conn.execute(
         """

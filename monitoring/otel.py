@@ -252,7 +252,9 @@ class TraceOperation:
 
     async def __aenter__(self):
         tracer = get_tracer()
-        self.span = tracer.start_as_current_span(self.name, attributes=self.attributes or {})
+        self.span = tracer.start_as_current_span(
+            self.name, attributes=self.attributes or {}
+        )
         return self.span
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

@@ -33,8 +33,11 @@ class _FakeResolverCandidate:
 
 
 class _FakeResolver:
-    def __init__(self, candidates: list[_FakeResolverCandidate] | None = None,
-                 raise_on_resolve: bool = False) -> None:
+    def __init__(
+        self,
+        candidates: list[_FakeResolverCandidate] | None = None,
+        raise_on_resolve: bool = False,
+    ) -> None:
         self._candidates = candidates or []
         self._raise = raise_on_resolve
 

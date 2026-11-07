@@ -101,7 +101,14 @@ class TestCompletionFunctions:
     def test_complete_status_all_statuses(self) -> None:
         result = complete_status(ctx=MagicMock(), args=[], incomplete="")
         assert len(result) == 6
-        for s in ["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]:
+        for s in [
+            "pending",
+            "in_progress",
+            "completed",
+            "failed",
+            "cancelled",
+            "blocked",
+        ]:
             assert s in result
 
     def test_complete_priority_all(self) -> None:
@@ -345,7 +352,9 @@ class TestTaskCreateCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_create_success(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_create_success(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_task = _make_task()
         mock_store = MagicMock()
         mock_store.create = AsyncMock(return_value=mock_task)
@@ -401,7 +410,9 @@ class TestTaskCreateCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_create_with_due_date(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_create_with_due_date(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_task = _make_task()
         mock_store = MagicMock()
         mock_store.create = AsyncMock(return_value=mock_task)
@@ -489,7 +500,9 @@ class TestTaskListCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_list_success(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_list_success(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_task = _make_task()
         mock_store = MagicMock()
         mock_store.list = AsyncMock(return_value=[mock_task])
@@ -503,7 +516,9 @@ class TestTaskListCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_list_empty(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_list_empty(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_store = MagicMock()
         mock_store.list = AsyncMock(return_value=[])
         mock_store.count = AsyncMock(return_value=0)
@@ -514,7 +529,9 @@ class TestTaskListCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_list_with_filters(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_list_with_filters(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_store = MagicMock()
         mock_store.list = AsyncMock(return_value=[])
         mock_store.count = AsyncMock(return_value=0)
@@ -544,7 +561,9 @@ class TestTaskListCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_list_json_output(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_list_json_output(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_task = _make_task()
         mock_store = MagicMock()
         mock_store.list = AsyncMock(return_value=[mock_task])
@@ -565,7 +584,9 @@ class TestTaskUpdateCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_update_status(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_update_status(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_task = _make_task(status_val="completed")
         mock_store = MagicMock()
         mock_store.update = AsyncMock(return_value=mock_task)
@@ -585,7 +606,9 @@ class TestTaskUpdateCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_update_title(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_update_title(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_task = _make_task(title="New title")
         mock_store = MagicMock()
         mock_store.update = AsyncMock(return_value=mock_task)
@@ -629,7 +652,9 @@ class TestTaskUpdateCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_update_json_output(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_update_json_output(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_task = _make_task(status_val="completed")
         mock_store = MagicMock()
         mock_store.update = AsyncMock(return_value=mock_task)
@@ -686,7 +711,9 @@ class TestTaskDeleteCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_delete_force(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_delete_force(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_store = MagicMock()
         mock_store.delete = AsyncMock(return_value=None)
         mock_store_cls.return_value = mock_store
@@ -714,7 +741,9 @@ class TestTaskDeleteCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_delete_interactive_no(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_delete_interactive_no(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_store = MagicMock()
         mock_store.delete = AsyncMock(return_value=None)
         mock_store_cls.return_value = mock_store
@@ -743,7 +772,9 @@ class TestTaskStatusCommand:
 
     @patch("mahavishnu.core.database.get_database", new_callable=AsyncMock)
     @patch("mahavishnu.core.task_store.TaskStore")
-    def test_status_update(self, mock_store_cls: MagicMock, mock_get_db: AsyncMock) -> None:
+    def test_status_update(
+        self, mock_store_cls: MagicMock, mock_get_db: AsyncMock
+    ) -> None:
         mock_task = _make_task(status_val="completed")
         mock_store = MagicMock()
         mock_store.update = AsyncMock(return_value=mock_task)
@@ -797,7 +828,10 @@ class TestCLIErrorHandling:
     """Test error handling across commands."""
 
     def test_create_handles_exception(self) -> None:
-        with patch("mahavishnu.task_cli.asyncio.run", side_effect=RuntimeError("database error")):
+        with patch(
+            "mahavishnu.task_cli.asyncio.run",
+            side_effect=RuntimeError("database error"),
+        ):
             result = runner.invoke(
                 task_group,
                 [
@@ -810,22 +844,36 @@ class TestCLIErrorHandling:
             assert result.exit_code != 0
 
     def test_list_handles_exception(self) -> None:
-        with patch("mahavishnu.task_cli.asyncio.run", side_effect=RuntimeError("database error")):
+        with patch(
+            "mahavishnu.task_cli.asyncio.run",
+            side_effect=RuntimeError("database error"),
+        ):
             result = runner.invoke(task_group, ["list"])
             assert result.exit_code != 0
 
     def test_update_handles_exception(self) -> None:
-        with patch("mahavishnu.task_cli.asyncio.run", side_effect=RuntimeError("database error")):
-            result = runner.invoke(task_group, ["update", "task-abc123", "-s", "completed"])
+        with patch(
+            "mahavishnu.task_cli.asyncio.run",
+            side_effect=RuntimeError("database error"),
+        ):
+            result = runner.invoke(
+                task_group, ["update", "task-abc123", "-s", "completed"]
+            )
             assert result.exit_code != 0
 
     def test_delete_handles_exception(self) -> None:
-        with patch("mahavishnu.task_cli.asyncio.run", side_effect=RuntimeError("database error")):
+        with patch(
+            "mahavishnu.task_cli.asyncio.run",
+            side_effect=RuntimeError("database error"),
+        ):
             result = runner.invoke(task_group, ["delete", "task-abc123", "-f"])
             assert result.exit_code != 0
 
     def test_status_handles_exception(self) -> None:
-        with patch("mahavishnu.task_cli.asyncio.run", side_effect=RuntimeError("database error")):
+        with patch(
+            "mahavishnu.task_cli.asyncio.run",
+            side_effect=RuntimeError("database error"),
+        ):
             result = runner.invoke(task_group, ["status", "task-abc123", "completed"])
             assert result.exit_code != 0
 

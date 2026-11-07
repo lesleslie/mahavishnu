@@ -180,9 +180,9 @@ class QueueingObservationBuffer:
 
     def ready_to_fit(self) -> bool:
         """True iff the buffer has enough observations to fit an MmcQueue."""
-        return len(self.arrivals) >= self.min_observations and len(self.arrivals) == len(
-            self.services
-        )
+        return len(self.arrivals) >= self.min_observations and len(
+            self.arrivals
+        ) == len(self.services)
 
     def due_for_refit(self) -> bool:
         """True iff enough wall-clock time has elapsed since the last fit."""

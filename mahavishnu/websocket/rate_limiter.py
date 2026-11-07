@@ -230,7 +230,9 @@ class TokenBucketRateLimiter:
 
         # Find idle connections
         idle_connections = [
-            conn_id for conn_id, last_update in self._last_update.items() if last_update < cutoff
+            conn_id
+            for conn_id, last_update in self._last_update.items()
+            if last_update < cutoff
         ]
 
         # Remove idle buckets
@@ -289,12 +291,15 @@ class TokenBucketRateLimiter:
         # Global stats
         total_connections = len(self._tokens)
         total_rate_limited = sum(
-            len([e for e in events if now - e < 60]) for events in self._rate_limit_events.values()
+            len([e for e in events if now - e < 60])
+            for events in self._rate_limit_events.values()
         )
 
         # Average tokens across all connections
         avg_tokens = (
-            sum(self._tokens.values()) / len(self._tokens) if self._tokens else self.burst_size
+            sum(self._tokens.values()) / len(self._tokens)
+            if self._tokens
+            else self.burst_size
         )
 
         return {

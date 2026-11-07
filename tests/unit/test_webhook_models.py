@@ -275,7 +275,9 @@ class TestOpenClawWorkflowRequest:
     def test_metadata_exceeds_4kb_rejected(self):
         large_value = "y" * 4097
         with pytest.raises(ValidationError, match="4KB"):
-            OpenClawWorkflowRequest(repos=["org/repo"], metadata={"payload": large_value})
+            OpenClawWorkflowRequest(
+                repos=["org/repo"], metadata={"payload": large_value}
+            )
 
     # -- Workflow type validation ---------------------------------------------
 
@@ -362,7 +364,9 @@ class TestWebhookErrorResponse:
         assert err.message == "Invalid tag format"
         assert len(err.recovery) == 1
         assert err.details["field"] == "tag"
-        assert err.documentation_url == ("https://docs.mahavishnu.org/errors/validation")
+        assert err.documentation_url == (
+            "https://docs.mahavishnu.org/errors/validation"
+        )
 
     def test_status_always_defaults_to_error(self):
         err = WebhookErrorResponse(message="fail")

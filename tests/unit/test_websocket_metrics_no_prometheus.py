@@ -137,9 +137,7 @@ class TestWebSocketMetricsDisabledMode:
         assert m._enabled is False
         assert m.server_name == "srv"
 
-    def test_constructor_logs_warning(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_constructor_logs_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mod = _reload_without_prometheus(monkeypatch)
         with patch.object(mod.logger, "warning") as warn:
             mod.WebSocketMetrics("srv")
@@ -210,9 +208,7 @@ class TestStartMetricsServerFallback:
         with patch.object(mod.logger, "warning") as warn:
             result = mod.start_metrics_server(9091)
         assert result is None
-        messages = " ".join(
-            str(c.args[0]) for c in warn.call_args_list
-        ).lower()
+        messages = " ".join(str(c.args[0]) for c in warn.call_args_list).lower()
         # The fallback path advertises how to install prometheus_client
         assert "prometheus" in messages or "install" in messages
 
@@ -236,9 +232,7 @@ class TestModuleLevelHelpersUnderFallback:
         m2 = mod.get_metrics("lean-install-server")
         assert m2 is m
 
-    def test_reset_metrics_safe(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_reset_metrics_safe(self, monkeypatch: pytest.MonkeyPatch) -> None:
         mod = _reload_without_prometheus(monkeypatch)
         mod._instances["a"] = mod.WebSocketMetrics("a")
         mod._instances["b"] = mod.WebSocketMetrics("b")
@@ -247,9 +241,7 @@ class TestModuleLevelHelpersUnderFallback:
         assert mod._instances == {}
         info.assert_called()
 
-    def test_reload_is_idempotent(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_reload_is_idempotent(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Re-loading the module under the sentinel does not raise."""
         mod1 = _reload_without_prometheus(monkeypatch)
         mod2 = _reload_without_prometheus(monkeypatch)

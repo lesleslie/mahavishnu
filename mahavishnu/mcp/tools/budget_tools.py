@@ -67,7 +67,9 @@ async def budget_enforce_tool(
         declared_by=declared_by,
     )
     try:
-        existing_raw = await _budget_store.get(f"mahavishni://budgets/{workflow_id}.json")
+        existing_raw = await _budget_store.get(
+            f"mahavishni://budgets/{workflow_id}.json"
+        )
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("budget_enforce: read failed for %s: %s", workflow_id, exc)
         existing_raw = None
@@ -107,7 +109,9 @@ async def budget_enforce_tool(
         "spec": spec.to_dict(),
         "state": sm.record.state.value,
         "started_at": (
-            sm.record.started_at.isoformat() if sm.record.started_at is not None else None
+            sm.record.started_at.isoformat()
+            if sm.record.started_at is not None
+            else None
         ),
     }
 

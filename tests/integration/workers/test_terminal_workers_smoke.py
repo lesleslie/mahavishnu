@@ -8,6 +8,7 @@ Workers whose `requires_tool` isn't on PATH (shutil.which returns None) or
 whose `required_env` are unset are skipped — the test asserts what we can,
 not what we cannot, given the local environment.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -102,6 +103,7 @@ async def test_each_terminal_worker_spawns_functional_pane() -> None:
         terminal_manager=terminal,
         message_bus=MessageBus(),
     )
+
     # PoolManager doesn't expose `terminal_capture` directly; shim it here so
     # the loop body can read pane output through the pool's adapter.
     async def _terminal_capture(*, pool_id: str, lines: int) -> str:
@@ -119,7 +121,9 @@ async def test_each_terminal_worker_spawns_functional_pane() -> None:
         if not entry.worker_type.startswith("terminal-"):
             continue
         if entry.requires_tool and not shutil.which(entry.requires_tool):
-            skipped.append((entry.worker_type, f"tool {entry.requires_tool!r} not on PATH"))
+            skipped.append(
+                (entry.worker_type, f"tool {entry.requires_tool!r} not on PATH")
+            )
             continue
         # one_shot workers substitute "$1" in their command template and the
         # spawn path validates that a prompt was supplied. The smoke test
@@ -131,9 +135,7 @@ async def test_each_terminal_worker_spawns_functional_pane() -> None:
             continue
         # SSH requires a `host` kwarg that the smoke loop doesn't supply.
         if entry.worker_type == "terminal-ssh":
-            skipped.append(
-                (entry.worker_type, "ssh worker requires host kwarg")
-            )
+            skipped.append((entry.worker_type, "ssh worker requires host kwarg"))
             continue
         missing_env = [v for v in entry.required_env if not os.environ.get(v)]
         if missing_env:
@@ -172,4 +174,6 @@ async def test_each_terminal_worker_spawns_functional_pane() -> None:
             f"spawned {len(spawned)} workers; skipped {len(skipped)} "
             f"(missing tool/env): {skipped}"
         )
-    assert spawned, "no terminal-* workers registered — settings/mahavishnu.yaml broken?"
+    assert spawned, (
+        "no terminal-* workers registered — settings/mahavishnu.yaml broken?"
+    )

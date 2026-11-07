@@ -453,7 +453,11 @@ class MahavishnuApp:
         self.client_detector = ClientDetector(config) if config else None
 
     async def execute_workflow_hybrid(
-        self, task: dict, adapter_name: str, repos: list, request_headers: dict | None = None
+        self,
+        task: dict,
+        adapter_name: str,
+        repos: list,
+        request_headers: dict | None = None,
     ) -> dict:
         """Execute workflow with client-aware auth (HYBRID MODE).
 
@@ -472,7 +476,9 @@ class MahavishnuApp:
             client_type = self.client_detector.detect_client(request_headers)
 
         # Check if auth required
-        if self.client_detector and self.client_detector.should_require_auth(client_type):
+        if self.client_detector and self.client_detector.should_require_auth(
+            client_type
+        ):
             # Verify subscription token
             auth_header = request_headers.get("authorization", "")
             if not auth_header:
@@ -593,7 +599,9 @@ from mahavishnu.core.config import MahavishnuSettings
 import os
 
 # Configure
-os.environ["MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"] = "your_32char_secret_key_here_minimum"
+os.environ["MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"] = (
+    "your_32char_secret_key_here_minimum"
+)
 
 config = MahavishnuSettings(
     subscription_auth_enabled=True,
@@ -663,7 +671,9 @@ async def mahavishnu_workflow_sweep(
 
         # Check subscription type
         if auth_result["subscription_type"] not in ["claude_code", "codex"]:
-            raise Exception(f"Invalid subscription type: {auth_result['subscription_type']}")
+            raise Exception(
+                f"Invalid subscription type: {auth_result['subscription_type']}"
+            )
 
         # Proceed with workflow
         result = await app.execute_workflow(

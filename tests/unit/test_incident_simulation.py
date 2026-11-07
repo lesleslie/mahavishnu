@@ -117,7 +117,9 @@ class TestIncidentScenario:
             assert scenario.affected_components, (
                 f"Scenario {scenario_id} missing affected_components"
             )
-            assert scenario.runbook_reference, f"Scenario {scenario_id} missing runbook_reference"
+            assert scenario.runbook_reference, (
+                f"Scenario {scenario_id} missing runbook_reference"
+            )
             assert scenario.expected_mitigation_time_minutes > 0, (
                 f"Scenario {scenario_id} missing mitigation time"
             )

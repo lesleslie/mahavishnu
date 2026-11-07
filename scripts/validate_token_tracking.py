@@ -44,7 +44,9 @@ def validate_transcript_parsing(jsonl_path: str) -> dict:
     print(f"  {'─' * 45}")
     print(f"  Billable Total:        {stats['billable_tokens']:>10,}")
     print(f"  Budget Limit:          {TOKEN_BUDGET:>10,}")
-    print(f"  Usage:                 {(stats['billable_tokens'] / TOKEN_BUDGET) * 100:>9.1f}%")
+    print(
+        f"  Usage:                 {(stats['billable_tokens'] / TOKEN_BUDGET) * 100:>9.1f}%"
+    )
 
     print("\nSession Timing:")
     if stats["session_start"]:
@@ -128,7 +130,9 @@ def validate_transcript_parsing(jsonl_path: str) -> dict:
         print("  ✓ Billable token formula correct (input + cache_creation + output)")
         checks_passed += 1
     else:
-        print(f"  ✗ Formula mismatch: {stats['billable_tokens']} != {calculated_billable}")
+        print(
+            f"  ✗ Formula mismatch: {stats['billable_tokens']} != {calculated_billable}"
+        )
 
     # Summary
     print(f"\n{'─' * 60}")
@@ -152,9 +156,13 @@ def test_load_session_progress(jsonl_path: str):
     print(f"Message Count:  {progress['message_count']}")
 
     if progress["session_start"]:
-        print(f"Session Start:  {progress['session_start'].strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        print(
+            f"Session Start:  {progress['session_start'].strftime('%Y-%m-%d %H:%M:%S UTC')}"
+        )
     if progress["reset_time"]:
-        print(f"Reset Time:     {progress['reset_time'].strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        print(
+            f"Reset Time:     {progress['reset_time'].strftime('%Y-%m-%d %H:%M:%S UTC')}"
+        )
         print(f"Time Remaining: {progress['time_remaining']}")
 
     print(f"{'─' * 60}\n")

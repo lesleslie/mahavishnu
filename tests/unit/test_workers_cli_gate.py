@@ -10,8 +10,17 @@ def test_workers_enabled_false_blocks_spawn() -> None:
     env = os.environ.copy()
     env["MAHAVISHNU_WORKERS__ENABLED"] = "false"
     result = subprocess.run(
-        [sys.executable, "-m", "mahavishnu", "workers", "spawn",
-         "--type", "terminal-shell", "--count", "1"],
+        [
+            sys.executable,
+            "-m",
+            "mahavishnu",
+            "workers",
+            "spawn",
+            "--type",
+            "terminal-shell",
+            "--count",
+            "1",
+        ],
         capture_output=True,
         text=True,
         env=env,

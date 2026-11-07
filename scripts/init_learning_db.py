@@ -204,7 +204,9 @@ def main() -> int:
         action="store_true",
         help="Drop and recreate if exists",
     )
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
 
     args = parser.parse_args()
 

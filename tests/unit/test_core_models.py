@@ -38,7 +38,11 @@ from mahavishnu.core.errors import (
     format_error_for_cli,
     get_contextual_help,
 )
-from mahavishnu.core.repo_models import Repository, RepositoryManifest, RepositoryMetadata
+from mahavishnu.core.repo_models import (
+    Repository,
+    RepositoryManifest,
+    RepositoryMetadata,
+)
 from mahavishnu.core.status import (
     BlockingStatus,
     CoordinationStatus,
@@ -186,7 +190,9 @@ class TestMahavishnuError:
             error_code=ErrorCode.DATABASE_CONNECTION_ERROR,
         )
         assert len(err.recovery) > 0
-        assert any("database" in r.lower() or "postgres" in r.lower() for r in err.recovery)
+        assert any(
+            "database" in r.lower() or "postgres" in r.lower() for r in err.recovery
+        )
 
     def test_unknown_code_gets_default_recovery(self):
         # Use a code that has no recovery guidance — it should fall back
@@ -575,7 +581,9 @@ class TestErrorTemplates:
         assert err.details["agent_name"] == "coder"
 
     def test_agno_llm_error(self):
-        err = ErrorTemplates.agno_llm_error("llama_server", "qwen3.5", "model not found")
+        err = ErrorTemplates.agno_llm_error(
+            "llama_server", "qwen3.5", "model not found"
+        )
         assert err.error_code == ErrorCode.AGNO_LLM_PROVIDER_ERROR
         assert err.details["provider"] == "llama_server"
 
@@ -649,7 +657,14 @@ class TestStatusEnums:
     """Test all status StrEnum classes for completeness and string values."""
 
     def test_task_status_values(self):
-        expected = {"pending", "in_progress", "completed", "failed", "cancelled", "blocked"}
+        expected = {
+            "pending",
+            "in_progress",
+            "completed",
+            "failed",
+            "cancelled",
+            "blocked",
+        }
         assert set(TaskStatus) == expected
         for v in TaskStatus:
             assert isinstance(v, str)

@@ -41,7 +41,9 @@ def _format_frontmatter(metadata: dict[str, Any]) -> str:
                 else:
                     lines.append(f"  - {_yaml_scalar(item)}")
         elif isinstance(value, dict):
-            lines.append(f"{key}: {json.dumps(value, sort_keys=True, separators=(',', ':'))}")
+            lines.append(
+                f"{key}: {json.dumps(value, sort_keys=True, separators=(',', ':'))}"
+            )
         else:
             lines.append(f"{key}: {_yaml_scalar(value)}")
     lines.append("---")

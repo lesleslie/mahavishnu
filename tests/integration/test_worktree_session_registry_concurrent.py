@@ -10,6 +10,7 @@ start their RMW simultaneously — without the barrier, the natural
 process startup stagger produces only intermittent failures (~33% per
 prior observation), which masked the bug as flakiness.
 """
+
 from __future__ import annotations
 
 import multiprocessing
@@ -52,10 +53,7 @@ def test_register_atomic_under_concurrent_writes(tmp_path: Path) -> None:
     n = 8
 
     barrier = multiprocessing.Barrier(n)
-    args = [
-        (str(path), f"child{i:02d}", 1000 + i, barrier)
-        for i in range(n)
-    ]
+    args = [(str(path), f"child{i:02d}", 1000 + i, barrier) for i in range(n)]
 
     # Use spawn to avoid macOS fork issues with file descriptor state.
     ctx = multiprocessing.get_context("spawn")

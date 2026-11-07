@@ -34,7 +34,9 @@ def get_project_agents(project_path: Path) -> list[str]:
     return [f.stem for f in agent_files]
 
 
-def map_agents_to_plugins(agent_names: list[str], categorization: dict) -> dict[str, list[str]]:
+def map_agents_to_plugins(
+    agent_names: list[str], categorization: dict
+) -> dict[str, list[str]]:
     """Map agent names to their plugin IDs."""
     plugin_agents = defaultdict(list)
 
@@ -52,13 +54,17 @@ def generate_plugins_json(plugins: list[str]) -> dict:
     return {
         "version": "1.0.0",
         "plugins": [
-            {"marketplace": "dot-claude", "id": plugin_id, "enabled": True} for plugin_id in plugins
+            {"marketplace": "dot-claude", "id": plugin_id, "enabled": True}
+            for plugin_id in plugins
         ],
     }
 
 
 def migrate_project(
-    project_path: Path, categorization: dict, dry_run: bool = False, remove_agents: bool = False
+    project_path: Path,
+    categorization: dict,
+    dry_run: bool = False,
+    remove_agents: bool = False,
 ) -> dict:
     """
     Migrate a single project to plugin-based architecture.
@@ -115,25 +121,34 @@ def migrate_project(
             agents_dir = project_path / ".claude/agents"
             for agent_file in agents_dir.glob("*.md"):
                 agent_file.unlink()
-            report["actions_taken"].append(f"Removed {len(agent_names)} duplicate agent files")
+            report["actions_taken"].append(
+                f"Removed {len(agent_names)} duplicate agent files"
+            )
 
             # Remove agents directory if empty
             if not any(agents_dir.iterdir()):
                 agents_dir.rmdir()
-                report["actions_taken"].append("Removed empty .claude/agents/ directory")
+                report["actions_taken"].append(
+                    "Removed empty .claude/agents/ directory"
+                )
     else:
         report["actions_taken"].append(
             f"[DRY RUN] Would create .claude/plugins.json with {len(plugin_ids)} plugins"
         )
         if remove_agents:
-            report["actions_taken"].append(f"[DRY RUN] Would remove {len(agent_names)} agent files")
+            report["actions_taken"].append(
+                f"[DRY RUN] Would remove {len(agent_names)} agent files"
+            )
 
     report["success"] = True
     return report
 
 
 def migrate_all_projects(
-    projects_file: Path, claude_home: Path, dry_run: bool = False, remove_agents: bool = False
+    projects_file: Path,
+    claude_home: Path,
+    dry_run: bool = False,
+    remove_agents: bool = False,
 ) -> list[dict]:
     """
     Migrate all projects listed in active_projects.txt.
@@ -230,12 +245,16 @@ def save_report(reports: list[dict], output_path: Path):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Migrate projects to plugin-based architecture")
+    parser = argparse.ArgumentParser(
+        description="Migrate projects to plugin-based architecture"
+    )
     parser.add_argument(
         "--dry-run", action="store_true", help="Preview changes without modifying files"
     )
     parser.add_argument(
-        "--remove-agents", action="store_true", help="Remove duplicate agent files after migration"
+        "--remove-agents",
+        action="store_true",
+        help="Remove duplicate agent files after migration",
     )
     parser.add_argument(
         "--output",
@@ -252,7 +271,10 @@ if __name__ == "__main__":
 
     # Run migration
     reports = migrate_all_projects(
-        projects_file, claude_home, dry_run=args.dry_run, remove_agents=args.remove_agents
+        projects_file,
+        claude_home,
+        dry_run=args.dry_run,
+        remove_agents=args.remove_agents,
     )
 
     # Print and save report
@@ -264,8 +286,12 @@ if __name__ == "__main__":
     total = len(reports)
 
     if args.dry_run:
-        print("\n🔍 Dry run complete. Use --remove-agents to migrate and clean up agent files.")
+        print(
+            "\n🔍 Dry run complete. Use --remove-agents to migrate and clean up agent files."
+        )
     elif successful == total:
         print("\n✅ All projects migrated successfully!")
     else:
-        print(f"\n⚠️  {total - successful} project(s) had issues. Check the report above.")
+        print(
+            f"\n⚠️  {total - successful} project(s) had issues. Check the report above."
+        )

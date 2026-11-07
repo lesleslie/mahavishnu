@@ -25,7 +25,9 @@ design are retained below as the historical record.
 ## Bug repro (this session, verified)
 
 ```python
-mcp__mahavishnu__dispatch_to_pool(prompt="outcome-1-bug-reproduction: ...", async_callback=True)
+mcp__mahavishnu__dispatch_to_pool(
+    prompt="outcome-1-bug-reproduction: ...", async_callback=True
+)
 # → {"workflow_id": "10633f68-279a-4bcc-8c7b-634d870f71c8", "status": "queued", ...}
 
 mcp__mahavishnu__workflow_result(workflow_id="10633f68-279a-4bcc-8c7b-634d870f71c8")
@@ -68,7 +70,7 @@ the result — `workflow_result` returns `not_found`. Graceful degradation broke
 ```python
 def _init_state_backend(app: Any) -> Any:
     if not (app.config.mcp_state.enabled and app.mcp_url):
-        return None                                   # ← returns None when not configured
+        return None  # ← returns None when not configured
     ...
 ```
 
@@ -84,7 +86,7 @@ silent-no-op, which makes `workflow_result` return `not_found`.
 ```python
 state = getattr(pool_manager, "_state_backend", None)
 if state is None:
-    return {"workflow_id": workflow_id, "status": "not_found"}     # ← same root
+    return {"workflow_id": workflow_id, "status": "not_found"}  # ← same root
 record = await state.get(f"workflow-results/{workflow_id}/")
 if not record:
     return {"workflow_id": workflow_id, "status": "not_found"}
@@ -102,6 +104,7 @@ to consult the dead-letter file.
 
 ```python
 state = getattr(pool_manager, "_state_backend", None)
+
 
 async def _persist_state(state_value: str, payload: dict[str, Any]) -> None:
     """Persist workflow state to the durable-state backend, with dead-letter fallback."""
@@ -121,7 +124,8 @@ async def _persist_state(state_value: str, payload: dict[str, Any]) -> None:
             logger.exception(
                 "dispatch_to_pool: state.put failed for workflow_id=%s "
                 "state=%s; falling back to dead-letter",
-                workflow_id, state_value,
+                workflow_id,
+                state_value,
             )
             # Fall through to dead-letter
     _dead_letter_append(workflow_id, state_value, payload)
@@ -149,13 +153,16 @@ if not record:
     if dead_letter_path.exists():
         try:
             loaded = json.loads(dead_letter_path.read_text())
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             loaded = None
         if isinstance(loaded, dict):
             states = loaded.get("states", [])
             # Find the latest terminal state (completed/failed) for the result.
             for entry in reversed(states):
-                if isinstance(entry, dict) and entry.get("status") in ("completed", "failed"):
+                if isinstance(entry, dict) and entry.get("status") in (
+                    "completed",
+                    "failed",
+                ):
                     payload_inner = entry.get("payload", {})
                     record = {
                         "status": entry["status"],
@@ -197,22 +204,26 @@ def _dead_letter_append(workflow_id: str, status: str, payload: dict[str, Any]) 
                 loaded = json.loads(dead_letter_path.read_text())
                 if isinstance(loaded, dict):
                     existing_states = list(loaded.get("states", []))
-            except (json.JSONDecodeError, OSError):
+            except json.JSONDecodeError, OSError:
                 pass
-        existing_states.append({
-            "status": status,
-            "updated_at": datetime.now(UTC).isoformat(),
-            "payload": payload,
-        })
-        dead_letter_path.write_text(json.dumps(
-            {"workflow_id": workflow_id, "states": existing_states},
-            default=str,
-        ))
+        existing_states.append(
+            {
+                "status": status,
+                "updated_at": datetime.now(UTC).isoformat(),
+                "payload": payload,
+            }
+        )
+        dead_letter_path.write_text(
+            json.dumps(
+                {"workflow_id": workflow_id, "states": existing_states},
+                default=str,
+            )
+        )
     except Exception:
         logger.exception(
-            "dispatch_to_pool: dead-letter write FAILED "
-            "workflow_id=%s status=%s",
-            workflow_id, status,
+            "dispatch_to_pool: dead-letter write FAILED workflow_id=%s status=%s",
+            workflow_id,
+            status,
         )
 ```
 
@@ -275,7 +286,9 @@ async def test_dispatch_to_pool_async_persists_via_dead_letter_when_state_backen
 
     # Dead-letter file exists
     safe_wid = workflow_id.replace("/", "_").replace("..", "_")[:200]
-    dead_letter_path = tmp_dead_letter_dir / ".mahavishnu" / "async-dead-letter" / f"{safe_wid}.json"
+    dead_letter_path = (
+        tmp_dead_letter_dir / ".mahavishnu" / "async-dead-letter" / f"{safe_wid}.json"
+    )
     assert dead_letter_path.exists()
     payload = json.loads(dead_letter_path.read_text())
     assert payload["workflow_id"] == workflow_id
@@ -291,17 +304,25 @@ async def test_workflow_result_recovers_from_dead_letter(monkeypatch, tmp_path):
     safe_wid = workflow_id.replace("/", "_").replace("..", "_")[:200]
     dead_letter_dir = tmp_path / ".mahavishnu" / "async-dead-letter"
     dead_letter_dir.mkdir(parents=True, exist_ok=True)
-    (dead_letter_dir / f"{safe_wid}.json").write_text(json.dumps({
-        "workflow_id": workflow_id,
-        "states": [
-            {"status": "running", "updated_at": "2026-08-29T00:00:00Z", "payload": {}},
+    (dead_letter_dir / f"{safe_wid}.json").write_text(
+        json.dumps(
             {
-                "status": "completed",
-                "updated_at": "2026-08-29T00:00:01Z",
-                "payload": {"result": {"answer": 42}},
-            },
-        ],
-    }))
+                "workflow_id": workflow_id,
+                "states": [
+                    {
+                        "status": "running",
+                        "updated_at": "2026-08-29T00:00:00Z",
+                        "payload": {},
+                    },
+                    {
+                        "status": "completed",
+                        "updated_at": "2026-08-29T00:00:01Z",
+                        "payload": {"result": {"answer": 42}},
+                    },
+                ],
+            }
+        )
+    )
 
     # Patch Path.home() to tmp_path
     monkeypatch.setattr(
@@ -342,9 +363,9 @@ The v2 plan's Phase 0 task #4 reads:
 I verified the migration path is **NOT yet available** in this environment:
 
 ```python
-mcp__mahavishnu__execute_capability(requires=["code_generation"],
-                                    prompt="...",
-                                    trace_id="outcome-1-test-trace")
+mcp__mahavishnu__execute_capability(
+    requires=["code_generation"], prompt="...", trace_id="outcome-1-test-trace"
+)
 # → Error: No such tool available: mcp__mahavishnu__execute_capability
 
 mcp__mahavishnu__get_capability_result(trace_id="outcome-1-test-trace")

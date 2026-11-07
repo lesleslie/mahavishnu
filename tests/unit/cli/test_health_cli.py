@@ -79,7 +79,13 @@ def _mock_health_endpoint(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMoc
 
     maha_app = MagicMock()
     maha_app.health_endpoint = endpoint
-    fake_merge_driver = {"available": True, "binary": "/usr/local/bin/mergiraf", "version": "0.19.1", "grammars": [], "degraded_since": None}
+    fake_merge_driver = {
+        "available": True,
+        "binary": "/usr/local/bin/mergiraf",
+        "version": "0.19.1",
+        "grammars": [],
+        "degraded_since": None,
+    }
 
     monkeypatch.setattr(cli_module, "MahavishnuApp", lambda: maha_app)
     monkeypatch.setattr(
@@ -90,7 +96,9 @@ def _mock_health_endpoint(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMoc
     # monkey-patch the canonical module path so the import resolves.
     from mahavishnu.core import health as core_health_module
 
-    monkeypatch.setattr(core_health_module, "merge_driver_health", lambda: fake_merge_driver)
+    monkeypatch.setattr(
+        core_health_module, "merge_driver_health", lambda: fake_merge_driver
+    )
 
     return {
         "liveness": liveness,
@@ -172,7 +180,9 @@ class TestHealthSectionFlag:
         # The error message should guide the user to the supported list.
         combined = result.output + (result.stderr or "")
         for key in ("liveness", "readiness", "dependencies", "merge_driver", "status"):
-            assert key in combined, f"missing supported key '{key}' in error: {combined}"
+            assert key in combined, (
+                f"missing supported key '{key}' in error: {combined}"
+            )
 
     def test_section_when_health_disabled_surfaces_failure(
         self, monkeypatch: pytest.MonkeyPatch

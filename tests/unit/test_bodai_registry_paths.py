@@ -33,7 +33,9 @@ def _load_generator() -> ModuleType:
     importable as a module -- but it is deliberately dependency-light
     (stdlib plus PyYAML) so it stays runnable standalone.
     """
-    spec = importlib.util.spec_from_file_location("regen_bodai_registry", GENERATOR_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "regen_bodai_registry", GENERATOR_PATH
+    )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -59,7 +61,9 @@ class TestProjectsRootInference:
 
         assert root == Path("/Users/someone/Projects")
 
-    def test_a_stray_repo_does_not_drag_the_root_upwards(self, generator: ModuleType) -> None:
+    def test_a_stray_repo_does_not_drag_the_root_upwards(
+        self, generator: ModuleType
+    ) -> None:
         """The *mode* of the parents wins, not the common ancestor.
 
         One repo kept elsewhere must not pull the root up to the home
@@ -94,11 +98,15 @@ class TestRelativeRendering:
     def test_renders_nested_paths(self, generator: ModuleType) -> None:
         root = Path("/Users/someone/Projects")
 
-        rendered = generator.render_repo_path("/Users/someone/Projects/ARCHIVED/old-repo", root)
+        rendered = generator.render_repo_path(
+            "/Users/someone/Projects/ARCHIVED/old-repo", root
+        )
 
         assert rendered == "ARCHIVED/old-repo/"
 
-    def test_out_of_root_repo_falls_back_to_its_name(self, generator: ModuleType) -> None:
+    def test_out_of_root_repo_falls_back_to_its_name(
+        self, generator: ModuleType
+    ) -> None:
         """A repo outside the root must not drag the layout in with it."""
         root = Path("/Users/someone/Projects")
 

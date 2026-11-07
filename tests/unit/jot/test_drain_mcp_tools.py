@@ -10,6 +10,7 @@ into the documented TypedDict return. The drain primitives themselves
 
 See spec §3.3.
 """
+
 from __future__ import annotations
 
 from dataclasses import replace
@@ -29,9 +30,15 @@ from mahavishnu.jot.fold import JotSummary
 # ---------------------------------------------------------------------------
 
 _jot_tools_path = (
-    Path(__file__).resolve().parents[3] / "mahavishnu" / "mcp" / "tools" / "jot_tools.py"
+    Path(__file__).resolve().parents[3]
+    / "mahavishnu"
+    / "mcp"
+    / "tools"
+    / "jot_tools.py"
 )
-_spec = importlib.util.spec_from_file_location("jot_tools_drain_under_test", _jot_tools_path)
+_spec = importlib.util.spec_from_file_location(
+    "jot_tools_drain_under_test", _jot_tools_path
+)
 jot_tools = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
 sys.modules[_spec.name] = jot_tools
 _spec.loader.exec_module(jot_tools)  # type: ignore[union-attr]
@@ -39,7 +46,8 @@ _spec.loader.exec_module(jot_tools)  # type: ignore[union-attr]
 
 @pytest.fixture(autouse=True)
 def _redirect_to_tmp(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """Sandbox ~/.mahavishnu/jot/ in tmp_path (mirrors test_jot_tools.py)."""
     from mahavishnu.jot import hlc as hlc_module
@@ -91,7 +99,9 @@ def test_jot_drain_returns_drain_plan_dict() -> None:
     )
     with mock.patch.object(drain_module, "drain_plan", return_value=plan) as mp:
         result = jot_tools.jot_drain.fn(
-            query="urgent", limit=20, include_in_flight=False,
+            query="urgent",
+            limit=20,
+            include_in_flight=False,
         )
 
     assert result["query"] == "urgent"
@@ -100,7 +110,9 @@ def test_jot_drain_returns_drain_plan_dict() -> None:
     assert result["candidates"][1]["short_id"] == "b4e8d1"
     assert result["action_proposals"] == []
     mp.assert_called_once_with(
-        query="urgent", limit=20, include_in_flight=False,
+        query="urgent",
+        limit=20,
+        include_in_flight=False,
     )
 
 
@@ -122,7 +134,9 @@ def test_jot_drain_default_query_is_none() -> None:
     assert result["query"] is None
     assert result["candidates"] == []
     mp.assert_called_once_with(
-        query=None, limit=20, include_in_flight=False,
+        query=None,
+        limit=20,
+        include_in_flight=False,
     )
 
 
@@ -164,13 +178,17 @@ def test_jot_defer_returns_jot_summary_dict() -> None:
     deferred = replace(_summary("c5f7e0"), deferred_until=1_800_000_000_000)
     with mock.patch.object(drain_module, "defer_jot", return_value=deferred) as mp:
         result = jot_tools.jot_defer.fn(
-            handle="c5f7e0", until_ms=1_800_000_000_000, reason="later",
+            handle="c5f7e0",
+            until_ms=1_800_000_000_000,
+            reason="later",
         )
 
     assert result["short_id"] == "c5f7e0"
     assert result["deferred_until"] == 1_800_000_000_000
     mp.assert_called_once_with(
-        handle="c5f7e0", until_ms=1_800_000_000_000, reason="later",
+        handle="c5f7e0",
+        until_ms=1_800_000_000_000,
+        reason="later",
     )
 
 
@@ -182,7 +200,9 @@ def test_jot_defer_optional_reason() -> None:
         jot_tools.jot_defer.fn(handle="d6a8f1", until_ms=1_800_000_000_000)
 
     mp.assert_called_once_with(
-        handle="d6a8f1", until_ms=1_800_000_000_000, reason=None,
+        handle="d6a8f1",
+        until_ms=1_800_000_000_000,
+        reason=None,
     )
 
 
@@ -242,10 +262,14 @@ def test_jot_resurface_returns_list_of_summary_dicts() -> None:
         matches=[_summary("a1b2c3"), _summary("d4e5f6")],
     )
     with mock.patch.object(
-        drain_module, "surface_relevant", return_value=surface,
+        drain_module,
+        "surface_relevant",
+        return_value=surface,
     ) as mp:
         result = jot_tools.jot_resurface.fn(
-            trigger="session_start", context_text="investigating", limit=3,
+            trigger="session_start",
+            context_text="investigating",
+            limit=3,
         )
 
     assert isinstance(result, list)
@@ -253,7 +277,9 @@ def test_jot_resurface_returns_list_of_summary_dicts() -> None:
     assert result[0]["short_id"] == "a1b2c3"
     assert result[1]["short_id"] == "d4e5f6"
     mp.assert_called_once_with(
-        trigger="session_start", context_text="investigating", limit=3,
+        trigger="session_start",
+        context_text="investigating",
+        limit=3,
     )
 
 
@@ -262,12 +288,16 @@ def test_jot_resurface_default_limit_is_three() -> None:
 
     surface = SimpleNamespace(matches=[])
     with mock.patch.object(
-        drain_module, "surface_relevant", return_value=surface,
+        drain_module,
+        "surface_relevant",
+        return_value=surface,
     ) as mp:
         jot_tools.jot_resurface.fn(trigger="tool_result", context_text="x")
 
     mp.assert_called_once_with(
-        trigger="tool_result", context_text="x", limit=3,
+        trigger="tool_result",
+        context_text="x",
+        limit=3,
     )
 
 
@@ -282,8 +312,12 @@ def test_new_tool_names_appear_in_register_list() -> None:
     """The 6 new tool names must be in the registration list."""
     src = _jot_tools_path.read_text()
     for name in (
-        "jot_drain", "jot_dispatch", "jot_defer",
-        "jot_delete", "jot_retry", "jot_resurface",
+        "jot_drain",
+        "jot_dispatch",
+        "jot_defer",
+        "jot_delete",
+        "jot_retry",
+        "jot_resurface",
     ):
         assert name in src, f"{name} missing from jot_tools.py"
 
@@ -291,8 +325,12 @@ def test_new_tool_names_appear_in_register_list() -> None:
 def test_new_tools_expose_underlying_callable_via_fn() -> None:
     """Each wrapped FunctionTool exposes the original function via .fn."""
     for name in (
-        "jot_drain", "jot_dispatch", "jot_defer",
-        "jot_delete", "jot_retry", "jot_resurface",
+        "jot_drain",
+        "jot_dispatch",
+        "jot_defer",
+        "jot_delete",
+        "jot_retry",
+        "jot_resurface",
     ):
         tool = getattr(jot_tools, name)
         assert hasattr(tool, "fn"), f"{name} missing .fn accessor"

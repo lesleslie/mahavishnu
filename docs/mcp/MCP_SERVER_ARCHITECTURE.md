@@ -65,7 +65,7 @@ from fastmcp import FastMCP
 mcp_server = FastMCP(
     name="My Server",
     version=__version__,  # ✅ Dynamic, never stale
-    lifespan=lifecycle_manager
+    lifespan=lifecycle_manager,
 )
 ```
 
@@ -114,10 +114,7 @@ class FastMCPServer:
             self.app = app
 
         # Initialize FastMCP with dynamic version
-        self.server = FastMCP(
-            name="Mahavishnu Orchestrator",
-            version=__version__
-        )
+        self.server = FastMCP(name="Mahavishnu Orchestrator", version=__version__)
 
         # Register all tools
         self._register_tools()
@@ -160,10 +157,9 @@ from typing import Any
 from ...mcp.auth import require_mcp_auth
 from ...core.permissions import Permission, RBACManager
 
+
 def register_session_buddy_tools(
-    server,
-    mcp_client,
-    rbac_manager: RBACManager | None = None
+    server, mcp_client, rbac_manager: RBACManager | None = None
 ):
     """Register Session Buddy integration tools with MCP server."""
 
@@ -174,8 +170,7 @@ def register_session_buddy_tools(
         require_repo_param="project_path",
     )
     async def index_code_graph(
-        project_path: str,
-        user_id: str | None = None
+        project_path: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """Index codebase structure for better context.
 
@@ -201,11 +196,7 @@ def _register_session_buddy_tools(self):
     """Register Session Buddy integration tools."""
     from ..mcp.tools.session_buddy_tools import register_session_buddy_tools
 
-    register_session_buddy_tools(
-        self.server,
-        self.mcp_client,
-        self.rbac_manager
-    )
+    register_session_buddy_tools(self.server, self.mcp_client, self.rbac_manager)
     logger.info("Registered Session Buddy integration tools")
 ```
 
@@ -296,12 +287,16 @@ When importing from within `package/mcp/tools/`:
 # └── messaging.py
 
 # ✅ CORRECT - Count the directories
-from ...core.permissions import Permission      # Up 3 levels to package/, then core/permissions
-from ...messaging import MessagePriority        # Up 3 levels to package/, then messaging
-from ...mcp.auth import require_mcp_auth        # Up 3 levels to package/, then mcp/auth
+from ...core.permissions import (
+    Permission,
+)  # Up 3 levels to package/, then core/permissions
+from ...messaging import MessagePriority  # Up 3 levels to package/, then messaging
+from ...mcp.auth import require_mcp_auth  # Up 3 levels to package/, then mcp/auth
 
 # ❌ WRONG - Too few dots
-from ..core.permissions import Permission       # Resolves to package.mcp.core (doesn't exist)
+from ..core.permissions import (
+    Permission,
+)  # Resolves to package.mcp.core (doesn't exist)
 ```
 
 **Visual Guide:**
@@ -360,6 +355,7 @@ Add import path validation to CI:
 import sys
 from pathlib import Path
 
+
 def test_import_paths():
     """Verify all modules can be imported."""
     project_root = Path(__file__).parent.parent
@@ -388,6 +384,7 @@ All tools MUST use `@require_mcp_auth` decorator:
 from ...mcp.auth import require_mcp_auth
 from ...core.permissions import Permission, RBACManager
 
+
 @server.tool()
 @require_mcp_auth(
     rbac_manager=rbac_manager,
@@ -395,8 +392,7 @@ from ...core.permissions import Permission, RBACManager
     require_repo_param="project_path",
 )
 async def sensitive_operation(
-    project_path: str,
-    user_id: str | None = None
+    project_path: str, user_id: str | None = None
 ) -> dict[str, Any]:
     """Perform operation requiring authorization."""
     # user_id is injected by decorator if authentication succeeds
@@ -434,22 +430,19 @@ async def my_tool(param: str, user_id: str | None = None) -> dict[str, Any]:
         # Attempt operation
         result = await do_something(param)
 
-        return {
-            "status": "success",
-            "result": result
-        }
+        return {"status": "success", "result": result}
     except ValueError as e:
         return {
             "status": "error",
             "error": f"Invalid parameter: {e}",
-            "error_code": "INVALID_PARAM"
+            "error_code": "INVALID_PARAM",
         }
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         return {
             "status": "error",
             "error": "Operation failed",
-            "error_code": "INTERNAL_ERROR"
+            "error_code": "INTERNAL_ERROR",
         }
 ```
 
@@ -458,9 +451,9 @@ async def my_tool(param: str, user_id: str | None = None) -> dict[str, Any]:
 ```python
 {
     "status": "error" | "success",
-    "error": str | None,           # Human-readable message
-    "error_code": str | None,      # Machine-readable code
-    "result": Any | None           # Success result
+    "error": str | None,  # Human-readable message
+    "error_code": str | None,  # Machine-readable code
+    "result": Any | None,  # Success result
 }
 ```
 
@@ -476,8 +469,7 @@ Tools that access files/resources should use context managers:
     require_repo_param="repo_path",
 )
 async def analyze_repository(
-    repo_path: str,
-    user_id: str | None = None
+    repo_path: str, user_id: str | None = None
 ) -> dict[str, Any]:
     """Analyze repository with proper resource management."""
     try:
@@ -490,7 +482,7 @@ async def analyze_repository(
             return {
                 "status": "error",
                 "error": f"Path does not exist: {repo_path}",
-                "error_code": "NOT_FOUND"
+                "error_code": "NOT_FOUND",
             }
 
         # Use context manager for file operations
@@ -498,16 +490,13 @@ async def analyze_repository(
             readme_content = f.read()
 
         # Process and return
-        return {
-            "status": "success",
-            "result": {"readme": readme_content[:500]}
-        }
+        return {"status": "success", "result": {"readme": readme_content[:500]}}
 
     except OSError as e:
         return {
             "status": "error",
             "error": f"File system error: {e}",
-            "error_code": "IO_ERROR"
+            "error_code": "IO_ERROR",
         }
 ```
 
@@ -522,20 +511,20 @@ All MCP servers MUST integrate with RBAC system:
 ```python
 # mahavishnu/core/permissions.py
 
+
 class Permission(str, Enum):
     """Permission types for repository access control."""
-    READ_REPO = "read_repo"       # Read repository contents
-    WRITE_REPO = "write_repo"     # Modify repository
-    ADMIN_REPO = "admin_repo"     # Administrative operations
+
+    READ_REPO = "read_repo"  # Read repository contents
+    WRITE_REPO = "write_repo"  # Modify repository
+    ADMIN_REPO = "admin_repo"  # Administrative operations
+
 
 class RBACManager:
     """Role-Based Access Control manager."""
 
     async def check_permission(
-        self,
-        user_id: str,
-        repo: str,
-        permission: Permission
+        self, user_id: str, repo: str, permission: Permission
     ) -> bool:
         """Check if user has permission for repo.
 
@@ -561,6 +550,7 @@ All security events MUST be logged:
 
 ```python
 # mahavishnu/mcp/auth.py
+
 
 class AuditLogger:
     """Audit logger for security events."""
@@ -603,9 +593,7 @@ class AuditLogger:
             f.write(json.dumps(log_entry) + "\n")
 
         # Also log to standard logger
-        logger.info(
-            f"[{event_type}] user={user_id}, tool={tool_name}, result={result}"
-        )
+        logger.info(f"[{event_type}] user={user_id}, tool={tool_name}, result={result}")
 ```
 
 **Audit Log Format:**
@@ -628,8 +616,15 @@ class AuditLogger:
 
 ```python
 SENSITIVE_KEYS = {
-    "password", "token", "key", "secret", "credential",
-    "api_key", "auth_token", "access_token", "ssh_key"
+    "password",
+    "token",
+    "key",
+    "secret",
+    "credential",
+    "api_key",
+    "auth_token",
+    "access_token",
+    "ssh_key",
 }
 
 # Before redaction:
@@ -651,6 +646,7 @@ ______________________________________________________________________
 import pytest
 from unittest.mock import Mock
 
+
 class MockFastMCP:
     """Mock FastMCP server for testing."""
 
@@ -661,15 +657,19 @@ class MockFastMCP:
 
     def tool(self):
         """Decorator for registering tools."""
+
         def decorator(func):
             self.tools_registered.append(func.__name__)
             return func
+
         return decorator
+
 
 @pytest.fixture
 def mock_mcp_server():
     """Mock FastMCP server for testing."""
     return MockFastMCP("test-server", version="1.0.0-test")
+
 
 @pytest.fixture
 def mock_rbac_manager():
@@ -687,14 +687,13 @@ def mock_rbac_manager():
 import pytest
 from mahavishnu.mcp.tools.session_buddy_tools import register_session_buddy_tools
 
+
 @pytest.mark.asyncio
 async def test_session_buddy_tools_registration(mock_mcp_server, mock_rbac_manager):
     """Test Session Buddy tools register correctly."""
     # Register tools
     register_session_buddy_tools(
-        mock_mcp_server,
-        mcp_client=None,
-        rbac_manager=mock_rbac_manager
+        mock_mcp_server, mcp_client=None, rbac_manager=mock_rbac_manager
     )
 
     # Verify tools were registered
@@ -715,9 +714,11 @@ import pytest
 from mahavishnu.mcp.auth import require_mcp_auth
 from mahavishnu.core.permissions import Permission
 
+
 @pytest.mark.asyncio
 async def test_require_auth_with_no_user_id():
     """Test that tool rejects requests without user_id."""
+
     @require_mcp_auth(rbac_manager=None)
     async def test_tool(user_id: str | None = None):
         return {"status": "success"}
@@ -729,6 +730,7 @@ async def test_require_auth_with_no_user_id():
     assert result["status"] == "error"
     assert result["error_code"] == "AUTH_REQUIRED"
 
+
 @pytest.mark.asyncio
 async def test_require_auth_with_valid_user(mock_rbac_manager):
     """Test that tool accepts requests with valid user_id."""
@@ -737,16 +739,13 @@ async def test_require_auth_with_valid_user(mock_rbac_manager):
     @require_mcp_auth(
         rbac_manager=mock_rbac_manager,
         required_permission=Permission.READ_REPO,
-        require_repo_param="repo_path"
+        require_repo_param="repo_path",
     )
     async def test_tool(repo_path: str, user_id: str | None = None):
         return {"status": "success"}
 
     # Call with valid parameters
-    result = await test_tool(
-        repo_path="/path/to/repo",
-        user_id="user@example.com"
-    )
+    result = await test_tool(repo_path="/path/to/repo", user_id="user@example.com")
 
     # Should succeed
     assert result["status"] == "success"
@@ -757,12 +756,14 @@ async def test_require_auth_with_valid_user(mock_rbac_manager):
 ```python
 # tests/test_import_paths.py
 
+
 def test_mcp_tool_imports():
     """Test all MCP tool modules can be imported."""
     # These should not raise ImportError
     from mahavishnu.mcp.tools.session_buddy_tools import register_session_buddy_tools
     from mahavishnu.mcp.tools.git_analytics import register_git_analytics_tools
     from mahavishnu.mcp.tools.terminal_tools import register_terminal_tools
+
 
 def test_relative_import_depth():
     """Test that relative imports have correct depth."""
@@ -908,6 +909,7 @@ server = FastMCP("name", version="1.0.0")
 
 # ✅ CORRECT
 from importlib.metadata import version as pkg_version
+
 try:
     __version__ = pkg_version("package-name")
 except Exception:
@@ -1084,23 +1086,17 @@ except Exception:
     __version__ = "0.0.0-unknown"
 
 # Create server with lifecycle
-mcp = FastMCP(
-    name="Your Server",
-    version=__version__,
-    lifespan=lifespan_manager
-)
+mcp = FastMCP(name="Your Server", version=__version__, lifespan=lifespan_manager)
+
 
 # Register tools with authorization
 @mcp.tool()
 @require_mcp_auth(
     rbac_manager=rbac_manager,
     required_permission=Permission.READ_REPO,
-    require_repo_param="repo_path"
+    require_repo_param="repo_path",
 )
-async def your_tool(
-    repo_path: str,
-    user_id: str | None = None
-) -> dict[str, Any]:
+async def your_tool(repo_path: str, user_id: str | None = None) -> dict[str, Any]:
     """Tool description."""
     try:
         # Implementation

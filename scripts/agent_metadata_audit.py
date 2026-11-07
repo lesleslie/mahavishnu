@@ -192,12 +192,16 @@ def check_duplicates(agents):
     print("\n=== POTENTIAL OVERLAPS ===")
     names = [a["metadata"].get("name", "") for a in agents]
     name_counts = Counter(names)
-    duplicates = [(name, count) for name, count in name_counts.items() if count > 1 and name]
+    duplicates = [
+        (name, count) for name, count in name_counts.items() if count > 1 and name
+    ]
 
     if duplicates:
         for name, count in duplicates:
             print(f"  - '{name}' appears {count} times")
-            matching_files = [a["file"] for a in agents if a["metadata"].get("name") == name]
+            matching_files = [
+                a["file"] for a in agents if a["metadata"].get("name") == name
+            ]
             for f in matching_files:
                 print(f"    - {f}")
     else:
@@ -219,7 +223,9 @@ def check_naming_inconsistencies(agents):
             matching = [a for a in agents if a["metadata"].get("name") == name]
             if matching:
                 agent = matching[0]
-                found.append(f"{name} [{agent['metadata'].get('lifecycle', 'unknown')}]")
+                found.append(
+                    f"{name} [{agent['metadata'].get('lifecycle', 'unknown')}]"
+                )
         if len(found) > 1:
             print(f"  - Similar agents: {', '.join(found)}")
 
@@ -237,7 +243,9 @@ def check_instruction_quality(agents):
         file = agent["file"]
 
         if len(body.strip()) < 200:
-            quality_issues.append(f"{file}: Very short content ({len(body.strip())} chars)")
+            quality_issues.append(
+                f"{file}: Very short content ({len(body.strip())} chars)"
+            )
 
         if "```" not in body and len(body.strip()) > 500:
             quality_issues.append(f"{file}: No code examples despite length")

@@ -69,7 +69,7 @@ opensearch:
 
 ```python
 # mahavishnu/core/opensearch_integration.py:54
-http_auth=None,  # ⚠️ Add authentication if needed
+http_auth = (None,)  # ⚠️ Add authentication if needed
 ```
 
 **Assessment:** TLS is **CONFIGURED** but not **OPERATIONAL**. The system will fail to connect to OpenSearch with these settings.
@@ -387,7 +387,7 @@ self.secret = config.auth_secret or "fallback_secret_for_testing"
 
 ```python
 # mahavishnu/core/opensearch_integration.py:54
-http_auth=None,  # Add authentication if needed
+http_auth = (None,)  # Add authentication if needed
 ```
 
 **Issue:** OpenSearch connection has no authentication.

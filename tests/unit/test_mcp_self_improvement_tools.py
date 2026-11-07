@@ -56,7 +56,9 @@ def mock_approval_manager():
     """Build a mock approval manager."""
     mgr = MagicMock(spec=ApprovalManager)
     mgr.create_request = MagicMock(return_value=_make_approval_request())
-    mgr.respond = MagicMock(return_value=ApprovalResult(approved=True, selected_option=0))
+    mgr.respond = MagicMock(
+        return_value=ApprovalResult(approved=True, selected_option=0)
+    )
     mgr.pending_requests = [_make_approval_request("apr-2")]
     return mgr
 
@@ -223,7 +225,9 @@ class TestReviewAndFix:
 
     async def test_dry_run_no_issues(self, tools):
         """Dry run should not create issues or auto-fix."""
-        result = await tools.review_and_fix(scope=ReviewScope.CRITICAL, auto_fix=True, dry_run=True)
+        result = await tools.review_and_fix(
+            scope=ReviewScope.CRITICAL, auto_fix=True, dry_run=True
+        )
         assert result["dry_run"] is True
         assert result["scope"] == "critical"
         assert result["findings_count"] == 0
@@ -252,7 +256,9 @@ class TestReviewAndFix:
         assert call_kwargs["title"] == "Test finding"
         assert call_kwargs["metadata"]["finding_id"] == "f-1"
 
-    async def test_issue_creation_exception_continues(self, tools, mock_coordination_manager):
+    async def test_issue_creation_exception_continues(
+        self, tools, mock_coordination_manager
+    ):
         """If create_issue raises, the loop should continue."""
         mock_coordination_manager.create_issue.side_effect = RuntimeError("boom")
         with patch.object(tools, "_run_review") as mock_run:
@@ -277,7 +283,10 @@ class TestReviewAndFix:
                 scope=ReviewScope.QUALITY, auto_fix=True, dry_run=False
             )
         assert result["auto_fixed"] == 1
-        assert result["auto_fix_results"] == [{"status": "fixed"}, {"status": "skipped"}]
+        assert result["auto_fix_results"] == [
+            {"status": "fixed"},
+            {"status": "skipped"},
+        ]
 
     async def test_no_coordination_manager(self):
         """When coordination_manager is None, issue creation is skipped silently."""
@@ -303,7 +312,9 @@ class TestRequestApproval:
 
     async def test_request_approval_success(self, tools, mock_approval_manager):
         """Should return a dict with approval details."""
-        result = await tools.request_approval(approval_type="version_bump", context={"v": "1.0"})
+        result = await tools.request_approval(
+            approval_type="version_bump", context={"v": "1.0"}
+        )
         assert result["approval_id"] == "apr-1"
         assert result["status"] == "pending"
         assert result["approval_type"] == "version_bump"
@@ -458,7 +469,9 @@ class TestAutoFix:
                 return_value=tmp_path,
             ),
         ):
-            result = await tools._auto_fix([{"affected_files": [str(tmp_path / "foo.py")]}])
+            result = await tools._auto_fix(
+                [{"affected_files": [str(tmp_path / "foo.py")]}]
+            )
         # Should call _run_ruff_command 3 times
         assert mock_ruff.call_count == 3
         # Result should be a single dict
@@ -472,7 +485,9 @@ class TestAutoFix:
         def fake_ruff(args, cwd):
             call_count["n"] += 1
             returncode = (
-                1 if "check" in args and "--fix" not in args and "format" not in args else 0
+                1
+                if "check" in args and "--fix" not in args and "format" not in args
+                else 0
             )
             # For the third call (validate), return non-zero
             if call_count["n"] == 3:
@@ -491,7 +506,9 @@ class TestAutoFix:
                 return_value=tmp_path,
             ),
         ):
-            result = await tools._auto_fix([{"affected_files": [str(tmp_path / "foo.py")]}])
+            result = await tools._auto_fix(
+                [{"affected_files": [str(tmp_path / "foo.py")]}]
+            )
         assert result[0]["status"] == "partial"
         assert "remaining issues" in result[0]["message"]
 
@@ -542,7 +559,9 @@ class TestRegisterSelfImprovementTools:
             SelfImprovementTools, "respond_to_approval", new_callable=AsyncMock
         ) as mock_method:
             mock_method.return_value = {"approved": True}
-            await registered_mcp._tools["respond_to_approval"](approval_id="apr-1", approved=True)
+            await registered_mcp._tools["respond_to_approval"](
+                approval_id="apr-1", approved=True
+            )
         mock_method.assert_awaited_once()
 
     async def test_get_pending_approvals_dispatches(self, registered_mcp):

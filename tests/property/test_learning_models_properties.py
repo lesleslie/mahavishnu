@@ -73,7 +73,9 @@ class TestExecutionRecordConstraints:
         complexity_score=st.integers(min_value=0, max_value=100),
     )
     @settings(max_examples=50)
-    def test_non_negative_integer_fields(self, file_count, estimated_tokens, complexity_score):
+    def test_non_negative_integer_fields(
+        self, file_count, estimated_tokens, complexity_score
+    ):
         """Non-negative integer fields should accept valid values."""
         record = ExecutionRecord(
             task_type="test",
@@ -173,7 +175,9 @@ class TestCostCalculation:
         cost_estimate=st.floats(
             min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False
         ),
-        actual_cost=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        actual_cost=st.floats(
+            min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @settings(max_examples=100)
     def test_cost_error_non_negative(self, cost_estimate, actual_cost):
@@ -198,7 +202,9 @@ class TestCostCalculation:
         cost_estimate=st.floats(
             min_value=0.01, max_value=10.0, allow_nan=False, allow_infinity=False
         ),
-        actual_cost=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        actual_cost=st.floats(
+            min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @settings(max_examples=100)
     def test_cost_error_percentage_calculated(self, cost_estimate, actual_cost):
@@ -224,7 +230,9 @@ class TestCostCalculation:
 
     @given(
         cost_estimate=st.just(0.0),
-        actual_cost=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        actual_cost=st.floats(
+            min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @settings(max_examples=50)
     def test_zero_estimate_handling(self, cost_estimate, actual_cost):
@@ -251,7 +259,9 @@ class TestCostCalculation:
         cost_estimate=st.floats(
             min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False
         ),
-        actual_cost=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        actual_cost=st.floats(
+            min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @settings(max_examples=100)
     def test_cost_error_symmetry(self, cost_estimate, actual_cost):
@@ -455,7 +465,9 @@ class TestSolutionRecord:
     @given(
         task_context=st.text(min_size=1, max_size=200),
         solution_summary=st.text(min_size=1, max_size=500),
-        success_rate=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+        success_rate=st.floats(
+            min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @settings(max_examples=50)
     def test_solution_record_bounds(self, task_context, solution_summary, success_rate):

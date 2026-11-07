@@ -265,7 +265,9 @@ class TestPrefectAdapterInitialization:
 class TestOrchestratorAdapterInterface:
     """Tests that PrefectAdapter conforms to OrchestratorAdapter interface."""
 
-    def test_inherits_from_orchestrator_adapter(self, prefect_adapter: PrefectAdapter) -> None:
+    def test_inherits_from_orchestrator_adapter(
+        self, prefect_adapter: PrefectAdapter
+    ) -> None:
         """Test adapter inherits from OrchestratorAdapter."""
         assert isinstance(prefect_adapter, OrchestratorAdapter)
 
@@ -322,7 +324,9 @@ class TestLifecycleManagement:
         mock_prefect_client: MagicMock,
     ) -> None:
         """Test successful initialization."""
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -340,7 +344,9 @@ class TestLifecycleManagement:
         mock_prefect_client: MagicMock,
     ) -> None:
         """Test initialization when already initialized is no-op."""
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -361,7 +367,9 @@ class TestLifecycleManagement:
         mock_prefect_client: MagicMock,
     ) -> None:
         """Test shutdown cleans up resources."""
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -381,7 +389,9 @@ class TestLifecycleManagement:
         prefect_adapter: PrefectAdapter,
     ) -> None:
         """Test cleanup calls shutdown."""
-        with patch.object(prefect_adapter, "shutdown", new_callable=AsyncMock) as mock_shutdown:
+        with patch.object(
+            prefect_adapter, "shutdown", new_callable=AsyncMock
+        ) as mock_shutdown:
             await prefect_adapter.cleanup()
 
             mock_shutdown.assert_called_once()
@@ -569,7 +579,9 @@ class TestHelperFunctions:
         client = MagicMock()
         client.fallback_method = AsyncMock(return_value="fallback_result")
 
-        result = await _invoke_client_method(client, "nonexistent", fallback="fallback_method")
+        result = await _invoke_client_method(
+            client, "nonexistent", fallback="fallback_method"
+        )
         assert result == "fallback_result"
 
     @pytest.mark.asyncio
@@ -604,7 +616,9 @@ class TestResponseConversion:
         assert response.paused == mock_deployment.paused
         assert response.tags == mock_deployment.tags
 
-    def test_flow_run_to_response(self, mock_flow_run: MagicMock, mock_state: MagicMock) -> None:
+    def test_flow_run_to_response(
+        self, mock_flow_run: MagicMock, mock_state: MagicMock
+    ) -> None:
         """Test _flow_run_to_response conversion."""
         mock_flow_run.state = mock_state
         response = _flow_run_to_response(mock_flow_run)
@@ -656,7 +670,9 @@ class TestWorkflowExecution:
         mock_flow_run.state = mock_state
         prefect_adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -693,7 +709,9 @@ class TestWorkflowExecution:
         mock_flow_run.state = mock_state
         prefect_adapter._wait_for_flow_run = AsyncMock(return_value=mock_flow_run)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -713,9 +731,13 @@ class TestWorkflowExecution:
         mock_prefect_client: MagicMock,
     ) -> None:
         """Test execute returns failed status on error."""
-        mock_prefect_client.create_flow_run = AsyncMock(side_effect=Exception("API error"))
+        mock_prefect_client.create_flow_run = AsyncMock(
+            side_effect=Exception("API error")
+        )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -748,7 +770,9 @@ class TestHealthCheck:
         mock_prefect_client: MagicMock,
     ) -> None:
         """Test get_health returns healthy status."""
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -777,7 +801,9 @@ class TestHealthCheck:
             )
         )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -801,7 +827,9 @@ class TestHealthCheck:
             side_effect=RuntimeError("Unexpected error")
         )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -836,7 +864,9 @@ class TestDeploymentManagement:
         mock_prefect_client.read_flow_by_name = AsyncMock(return_value=mock_flow)
         mock_prefect_client.create_deployment = AsyncMock(return_value=mock_deployment)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -868,7 +898,9 @@ class TestDeploymentManagement:
         """Test update_deployment success."""
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -895,7 +927,9 @@ class TestDeploymentManagement:
         """Test delete_deployment success."""
         mock_prefect_client.delete_deployment = AsyncMock(return_value=None)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -918,7 +952,9 @@ class TestDeploymentManagement:
         """Test get_deployment success."""
         mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -939,9 +975,13 @@ class TestDeploymentManagement:
         mock_deployment: MagicMock,
     ) -> None:
         """Test get_deployment_by_name success."""
-        mock_prefect_client.read_deployment_by_name = AsyncMock(return_value=mock_deployment)
+        mock_prefect_client.read_deployment_by_name = AsyncMock(
+            return_value=mock_deployment
+        )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -967,7 +1007,9 @@ class TestDeploymentManagement:
         """Test list_deployments success."""
         mock_prefect_client.read_deployments = AsyncMock(return_value=[mock_deployment])
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1001,9 +1043,13 @@ class TestFlowRunManagement:
         mock_flow_run: MagicMock,
     ) -> None:
         """Test trigger_flow_run success."""
-        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(return_value=mock_flow_run)
+        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(
+            return_value=mock_flow_run
+        )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1030,7 +1076,9 @@ class TestFlowRunManagement:
         """Test get_flow_run success."""
         mock_prefect_client.read_flow_run = AsyncMock(return_value=mock_flow_run)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1053,7 +1101,9 @@ class TestFlowRunManagement:
         """Test list_flow_runs success."""
         mock_prefect_client.read_flow_runs = AsyncMock(return_value=[mock_flow_run])
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1079,7 +1129,9 @@ class TestFlowRunManagement:
         """Test cancel_flow_run success."""
         mock_prefect_client.set_flow_run_state = AsyncMock(return_value=None)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1111,7 +1163,9 @@ class TestWorkPoolManagement:
         """Test list_work_pools success."""
         mock_prefect_client.read_work_pools = AsyncMock(return_value=[mock_work_pool])
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1135,7 +1189,9 @@ class TestWorkPoolManagement:
         """Test get_work_pool success."""
         mock_prefect_client.read_work_pool = AsyncMock(return_value=mock_work_pool)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1167,7 +1223,9 @@ class TestScheduleManagement:
         """Test set_deployment_schedule delegates to update_deployment."""
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1207,9 +1265,13 @@ class TestScheduleManagement:
         mock_deployment_no_schedule.version = None
         mock_deployment_no_schedule.created = datetime.now(UTC)
         mock_deployment_no_schedule.updated = None
-        mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment_no_schedule)
+        mock_prefect_client.update_deployment = AsyncMock(
+            return_value=mock_deployment_no_schedule
+        )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1231,7 +1293,9 @@ class TestScheduleManagement:
         """Test get_deployment_schedule returns CronSchedule."""
         mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1266,9 +1330,13 @@ class TestScheduleManagement:
         mock_deployment_no_schedule.version = None
         mock_deployment_no_schedule.created = datetime.now(UTC)
         mock_deployment_no_schedule.updated = None
-        mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment_no_schedule)
+        mock_prefect_client.read_deployment = AsyncMock(
+            return_value=mock_deployment_no_schedule
+        )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1395,7 +1463,9 @@ class TestErrorHandling:
             side_effect=ObjectNotFound("Flow not found")
         )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1422,7 +1492,9 @@ class TestErrorHandling:
             side_effect=ObjectNotFound("Deployment not found")
         )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1452,7 +1524,9 @@ class TestErrorHandling:
             )
         )
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1482,7 +1556,9 @@ class TestClientContextManager:
         config = PrefectConfig(api_url="http://cloud:4200", api_key="test-key")
         adapter = PrefectAdapter(config=config)
 
-        with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client"
+        ) as mock_get_client:
             mock_get_client.return_value = MagicMock(
                 __aenter__=AsyncMock(return_value=mock_prefect_client),
                 __aexit__=AsyncMock(return_value=None),
@@ -1492,7 +1568,9 @@ class TestClientContextManager:
                 assert client is not None
 
     @pytest.mark.asyncio
-    async def test_client_context_fallback_shim(self, prefect_adapter: PrefectAdapter) -> None:
+    async def test_client_context_fallback_shim(
+        self, prefect_adapter: PrefectAdapter
+    ) -> None:
         """Test client context falls back to shim when get_client fails."""
         with patch(
             "mahavishnu.engines.prefect_adapter_impl.get_client",
@@ -1522,7 +1600,9 @@ class TestPrefectTasksAndFlows:
     @pytest.mark.asyncio
     async def test_process_repository_default_task(self) -> None:
         """Test process_repository with default task type."""
-        result = await process_repository.fn("/test/repo", {"type": "unknown", "id": "test-123"})
+        result = await process_repository.fn(
+            "/test/repo", {"type": "unknown", "id": "test-123"}
+        )
 
         assert result["status"] == "completed"
         assert result["repo"] == "/test/repo"
@@ -1531,7 +1611,9 @@ class TestPrefectTasksAndFlows:
     @pytest.mark.asyncio
     async def test_process_repository_with_exception(self) -> None:
         """Test process_repository handles exceptions gracefully."""
-        with patch("mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer") as mock_analyzer:
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer"
+        ) as mock_analyzer:
             mock_analyzer.side_effect = Exception("Analysis failed")
 
             result = await process_repository.fn(

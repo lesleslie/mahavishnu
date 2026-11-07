@@ -91,7 +91,9 @@ def normalize_file(path: Path) -> tuple[str, str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--apply", action="store_true", help="Write changes (default: dry-run, prints diff)"
+        "--apply",
+        action="store_true",
+        help="Write changes (default: dry-run, prints diff)",
     )
     parser.add_argument("files", nargs="+", help="Files to process")
     args = parser.parse_args()

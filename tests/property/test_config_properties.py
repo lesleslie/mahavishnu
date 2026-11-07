@@ -65,7 +65,9 @@ valid_path_strategy = st.text(
 )
 
 # List strategies
-small_list_strategy = st.lists(simple_text_strategy, min_size=0, max_size=10, unique=True)
+small_list_strategy = st.lists(
+    simple_text_strategy, min_size=0, max_size=10, unique=True
+)
 
 
 # =============================================================================
@@ -86,7 +88,8 @@ class TestQCConfigProperties:
 
     @given(
         score=st.one_of(
-            st.integers(min_value=-1000, max_value=-1), st.integers(min_value=101, max_value=1000)
+            st.integers(min_value=-1000, max_value=-1),
+            st.integers(min_value=101, max_value=1000),
         )
     )
     @settings(max_examples=30, deadline=None)
@@ -96,7 +99,9 @@ class TestQCConfigProperties:
         with pytest.raises(ValidationError):
             QualityControlConfig(min_score=score)
 
-    @given(qc_enabled=st.booleans(), qc_min_score=st.integers(min_value=0, max_value=100))
+    @given(
+        qc_enabled=st.booleans(), qc_min_score=st.integers(min_value=0, max_value=100)
+    )
     @settings(max_examples=30, deadline=None)
     def test_qc_fields_independent(self, qc_enabled, qc_min_score):
         """QC enabled flag and min_score are independent."""
@@ -118,7 +123,9 @@ class TestConcurrencyConfigProperties:
         max_workers=valid_concurrency_strategy,
         min_workers=valid_pool_min_strategy,
     )
-    @settings(max_examples=40, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+    @settings(
+        max_examples=40, deadline=None, suppress_health_check=[HealthCheck.too_slow]
+    )
     def test_concurrency_bounds_enforced(self, max_workflows, max_workers, min_workers):
         """Concurrency settings respect configured bounds."""
         pool_config = PoolConfig(min_workers=min_workers, max_workers=max_workers)
@@ -145,10 +152,14 @@ class TestAdapterConfigProperties:
     """Property-based tests for adapter configuration."""
 
     @given(
-        prefect_enabled=st.booleans(), llamaindex_enabled=st.booleans(), agno_enabled=st.booleans()
+        prefect_enabled=st.booleans(),
+        llamaindex_enabled=st.booleans(),
+        agno_enabled=st.booleans(),
     )
     @settings(max_examples=20, deadline=None)
-    def test_adapter_flags_independent(self, prefect_enabled, llamaindex_enabled, agno_enabled):
+    def test_adapter_flags_independent(
+        self, prefect_enabled, llamaindex_enabled, agno_enabled
+    ):
         """Adapter enable flags are independent boolean fields."""
         config = MahavishnuSettings(
             prefect_enabled=prefect_enabled,
@@ -234,7 +245,8 @@ class TestResilienceConfigProperties:
 
     @given(
         timeout=st.one_of(
-            st.integers(min_value=1, max_value=29), st.integers(min_value=3601, max_value=10000)
+            st.integers(min_value=1, max_value=29),
+            st.integers(min_value=3601, max_value=10000),
         )
     )
     @settings(max_examples=30, deadline=None)
@@ -255,11 +267,15 @@ class TestOTelStorageConfigProperties:
     @given(
         embedding_dim=st.integers(min_value=128, max_value=1024),
         cache_size=st.integers(min_value=100, max_value=10000),
-        similarity=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+        similarity=st.floats(
+            min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
         batch_size=st.integers(min_value=10, max_value=1000),
     )
     @settings(max_examples=40, deadline=None)
-    def test_otel_storage_bounds(self, embedding_dim, cache_size, similarity, batch_size):
+    def test_otel_storage_bounds(
+        self, embedding_dim, cache_size, similarity, batch_size
+    ):
         """OTel storage configuration respects declared bounds."""
         otel_config = OTelStorageConfig(
             embedding_dimension=embedding_dim,
@@ -276,15 +292,20 @@ class TestOTelStorageConfigProperties:
 
     @given(
         enabled=st.booleans(),
-        connection_string=st.just("postgresql://user:strong_secure_password_12345@localhost/db"),
+        connection_string=st.just(
+            "postgresql://user:strong_secure_password_12345@localhost/db"
+        ),
     )
     @settings(max_examples=20, deadline=None)
-    def test_otel_storage_requires_connection_when_enabled(self, enabled, connection_string):
+    def test_otel_storage_requires_connection_when_enabled(
+        self, enabled, connection_string
+    ):
         """OTel storage requires connection string when enabled."""
         if enabled:
             # Should succeed with valid connection string
             config = MahavishnuSettings(
-                otel_storage_enabled=enabled, otel_storage_connection_string=connection_string
+                otel_storage_enabled=enabled,
+                otel_storage_connection_string=connection_string,
             )
             assert config.otel_storage_enabled == enabled
         else:
@@ -295,7 +316,9 @@ class TestOTelStorageConfigProperties:
     @given(
         embedding_dim=st.integers(min_value=128, max_value=1024),
         cache_size=st.integers(min_value=100, max_value=10000),
-        similarity=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+        similarity=st.floats(
+            min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
         batch_size=st.integers(min_value=10, max_value=1000),
     )
     @settings(max_examples=20, deadline=None)
@@ -326,13 +349,20 @@ class TestPoolConfigProperties:
     @given(
         pools_enabled=st.booleans(),
         default_pool_type=st.sampled_from(["mahavishnu", "session-buddy", "runpod"]),
-        routing_strategy=st.sampled_from(["round_robin", "least_loaded", "random", "affinity"]),
+        routing_strategy=st.sampled_from(
+            ["round_robin", "least_loaded", "random", "affinity"]
+        ),
         min_workers=valid_pool_min_strategy,
         max_workers=valid_pool_max_strategy,
     )
     @settings(max_examples=30, deadline=None)
     def test_pool_configuration(
-        self, pools_enabled, default_pool_type, routing_strategy, min_workers, max_workers
+        self,
+        pools_enabled,
+        default_pool_type,
+        routing_strategy,
+        min_workers,
+        max_workers,
     ):
         """Pool configuration settings are preserved correctly."""
         pool_config = PoolConfig(min_workers=min_workers, max_workers=max_workers)
@@ -362,7 +392,9 @@ class TestAuthConfigProperties:
     @given(
         auth_enabled=st.booleans(),
         secret=st.text(
-            min_size=32, max_size=100, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=32,
+            max_size=100,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         algorithm=st.sampled_from(["HS256", "RS256"]),
         expire_minutes=st.integers(min_value=5, max_value=1440),
@@ -390,7 +422,9 @@ class TestAuthConfigProperties:
     @given(
         auth_enabled=st.just(True),
         secret=st.text(
-            min_size=1, max_size=31, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=1,
+            max_size=31,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
     )
     @settings(max_examples=20, deadline=None)
@@ -413,7 +447,9 @@ class TestPathConfigProperties:
 
     @given(
         path_component=st.text(
-            min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=1,
+            max_size=20,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         )
     )
     @settings(max_examples=30, deadline=None)
@@ -464,7 +500,11 @@ class TestRepoTagProperties:
 
     @given(
         tags=st.lists(
-            st.text(min_size=1, max_size=20, alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_"),
+            st.text(
+                min_size=1,
+                max_size=20,
+                alphabet="abcdefghijklmnopqrstuvwxyz0123456789-_",
+            ),
             min_size=0,
             max_size=10,
         )
@@ -477,7 +517,8 @@ class TestRepoTagProperties:
 
         assert len(tags) == len(normalized_tags)
         assert all(
-            tag.islower() or any(c.isdigit() or c in "_-" for c in tag) for tag in normalized_tags
+            tag.islower() or any(c.isdigit() or c in "_-" for c in tag)
+            for tag in normalized_tags
         )
 
 
@@ -516,7 +557,12 @@ class TestBooleanConfigProperties:
         # Property: All should be boolean type
         assert all(
             isinstance(getattr(config, field), bool)
-            for field in ["metrics_enabled", "tracing_enabled", "shell_enabled", "workers_enabled"]
+            for field in [
+                "metrics_enabled",
+                "tracing_enabled",
+                "shell_enabled",
+                "workers_enabled",
+            ]
         )
 
 

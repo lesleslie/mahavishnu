@@ -6,6 +6,7 @@ callsite importing engine modules directly. Also verifies that engines
 listed in `settings.engines.disabled` are skipped and that pydantic_ai is
 silently skipped when the optional `ai` dependency group is missing.
 """
+
 from __future__ import annotations
 
 import builtins
@@ -20,9 +21,11 @@ _PYDANTIC_AI_MOD = "mahavishnu.adapters.ai.pydantic_ai_adapter"
 
 
 def test_load_engine_registrations_returns_enabled_only() -> None:
-    s = MahavishnuSettings.model_validate({
-        "engines": {"disabled": ["hatchet"]},
-    })
+    s = MahavishnuSettings.model_validate(
+        {
+            "engines": {"disabled": ["hatchet"]},
+        }
+    )
     regs = load_engine_registrations(s)
     ids = {r.engine_id for r in regs}
     assert "hatchet" not in ids

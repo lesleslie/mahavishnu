@@ -172,19 +172,28 @@ class TestValidateDraftIsolation:
         draft = make_draft(name="fs-skill", body='f = open("file.txt")')
         issues = validate_draft_isolation(draft)
 
-        assert any("filesystem access pattern" in issue and "open(" in issue for issue in issues)
+        assert any(
+            "filesystem access pattern" in issue and "open(" in issue
+            for issue in issues
+        )
 
     def test_fs_access_pathlib_warning(self):
         draft = make_draft(name="path-skill", body="from pathlib import Path")
         issues = validate_draft_isolation(draft)
 
-        assert any("filesystem access pattern" in issue and "pathlib" in issue for issue in issues)
+        assert any(
+            "filesystem access pattern" in issue and "pathlib" in issue
+            for issue in issues
+        )
 
     def test_fs_access_os_path_warning(self):
         draft = make_draft(name="ospath-skill", body="os.path.exists")
         issues = validate_draft_isolation(draft)
 
-        assert any("filesystem access pattern" in issue and "os.path" in issue for issue in issues)
+        assert any(
+            "filesystem access pattern" in issue and "os.path" in issue
+            for issue in issues
+        )
 
     def test_network_requests_warning(self):
         draft = make_draft(
@@ -192,31 +201,47 @@ class TestValidateDraftIsolation:
         )
         issues = validate_draft_isolation(draft)
 
-        assert any("network access pattern" in issue and "requests." in issue for issue in issues)
+        assert any(
+            "network access pattern" in issue and "requests." in issue
+            for issue in issues
+        )
 
     def test_network_httpx_warning(self):
-        draft = make_draft(name="httpx-skill", body="import httpx; httpx.get('http://example.com')")
+        draft = make_draft(
+            name="httpx-skill", body="import httpx; httpx.get('http://example.com')"
+        )
         issues = validate_draft_isolation(draft)
 
-        assert any("network access pattern" in issue and "httpx." in issue for issue in issues)
+        assert any(
+            "network access pattern" in issue and "httpx." in issue for issue in issues
+        )
 
     def test_network_urllib_warning(self):
         draft = make_draft(name="url-skill", body="from urllib import request")
         issues = validate_draft_isolation(draft)
 
-        assert any("network access pattern" in issue and "urllib" in issue for issue in issues)
+        assert any(
+            "network access pattern" in issue and "urllib" in issue for issue in issues
+        )
 
     def test_network_socket_warning(self):
         draft = make_draft(name="sock-skill", body="import socket; socket.socket()")
         issues = validate_draft_isolation(draft)
 
-        assert any("network access pattern" in issue and "socket." in issue for issue in issues)
+        assert any(
+            "network access pattern" in issue and "socket." in issue for issue in issues
+        )
 
     def test_network_http_client_warning(self):
-        draft = make_draft(name="hc-skill", body="from http.client import HTTPConnection")
+        draft = make_draft(
+            name="hc-skill", body="from http.client import HTTPConnection"
+        )
         issues = validate_draft_isolation(draft)
 
-        assert any("network access pattern" in issue and "http.client" in issue for issue in issues)
+        assert any(
+            "network access pattern" in issue and "http.client" in issue
+            for issue in issues
+        )
 
     def test_multiple_path_separators_reported(self):
         draft = make_draft(name="bad/slash\\dot")

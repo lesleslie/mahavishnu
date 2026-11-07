@@ -39,7 +39,9 @@ class Hypothesis:
 
     def __post_init__(self) -> None:
         if not isinstance(self.confidence, int) or isinstance(self.confidence, bool):
-            raise TypeError(f"confidence must be int (got {type(self.confidence).__name__})")
+            raise TypeError(
+                f"confidence must be int (got {type(self.confidence).__name__})"
+            )
         if not 0 <= self.confidence <= 100:
             raise ValueError(f"confidence must be in [0, 100] (got {self.confidence})")
 

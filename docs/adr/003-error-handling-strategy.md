@@ -66,7 +66,8 @@ import asyncio
 import random
 from typing import Callable, TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 async def retry_with_backoff(
     func: Callable[..., Awaitable[T]],
@@ -112,7 +113,7 @@ async def retry_with_backoff(
                 raise
 
             # Calculate delay with exponential backoff
-            delay = min(base_delay * (2 ** attempt), max_delay)
+            delay = min(base_delay * (2**attempt), max_delay)
 
             # Add jitter to prevent thundering herd
             if jitter:
@@ -145,11 +146,14 @@ from enum import Enum
 from datetime import datetime, timedelta
 from typing import Optional
 
+
 class CircuitState(Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Failing, reject requests
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, reject requests
     HALF_OPEN = "half_open"  # Testing if recovered
+
 
 class CircuitBreaker:
     """Circuit breaker to prevent cascading failures."""
@@ -262,9 +266,11 @@ from pathlib import Path
 import json
 import uuid
 
+
 @dataclass
 class DeadLetterEntry:
     """Entry in dead letter queue."""
+
     id: str
     workflow_id: str
     task: dict[str, Any]
@@ -274,6 +280,7 @@ class DeadLetterEntry:
     error_type: str
     timestamp: str
     metadata: dict[str, Any]
+
 
 class DeadLetterQueue:
     """Dead letter queue for failed workflows."""
@@ -388,15 +395,18 @@ class DeadLetterQueue:
 from dataclasses import dataclass
 from typing import Any
 
+
 @dataclass
 class PartialResult:
     """Result from partial workflow execution."""
+
     status: str  # "partial", "success", "failure"
     total_repos: int
     successful_repos: list[str]
     failed_repos: list[tuple[str, str]]  # (repo, error)
     execution_time_seconds: float
     metadata: dict[str, Any]
+
 
 async def execute_with_graceful_degradation(
     task: dict[str, Any],
@@ -461,6 +471,7 @@ async def execute_with_graceful_degradation(
             "adapter": adapter.__class__.__name__,
         },
     )
+
 
 async def _process_single_repo(
     adapter: OrchestratorAdapter,

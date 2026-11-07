@@ -63,7 +63,9 @@ async def test_write_envelope_uses_typed_address() -> None:
 
 
 @pytest.mark.asyncio
-async def test_write_envelope_redacts_secret_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_write_envelope_redacts_secret_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """secrets in MAHAVISHNU_REDACT_FIELDS are scrubbed before mcp.put.
 
     Use monkeypatch.setenv (NOT os.environ direct) so the change doesn't leak
@@ -107,8 +109,14 @@ async def test_list_envelopes_filters_by_trace_id() -> None:
     trace = TraceId("a" * 32)
     other_trace = TraceId("b" * 32)
     mcp.kv_list.return_value = [
-        (f"envelopes/{trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}", "{}"),
-        (f"envelopes/{other_trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}", "{}"),
+        (
+            f"envelopes/{trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}",
+            "{}",
+        ),
+        (
+            f"envelopes/{other_trace}/{EnvelopeId('12345678-1234-4234-8234-123456789012')}",
+            "{}",
+        ),
     ]
     addrs = await list_envelopes(trace, mcp=mcp)
     assert len(addrs) == 1

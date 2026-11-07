@@ -179,12 +179,14 @@ from opentelemetry.exporter.otlp.proto.grpc.log_exporter import OTLPLogExporter
 from opentelemetry.sdk.resources import Resource
 
 # Create resource with service metadata
-resource = Resource.create({
-    "service.name": "my-python-app",
-    "service.namespace": "my-team",
-    "deployment.environment": "production",
-    "telemetry.source": "custom"  # Custom identifier
-})
+resource = Resource.create(
+    {
+        "service.name": "my-python-app",
+        "service.namespace": "my-team",
+        "deployment.environment": "production",
+        "telemetry.source": "custom",  # Custom identifier
+    }
+)
 
 # ==============================================================================
 # TRACE SETUP
@@ -192,7 +194,7 @@ resource = Resource.create({
 trace_provider = TracerProvider(resource=resource)
 trace_exporter = OTLPSpanExporter(
     endpoint="http://localhost:4317",  # Or :4319 for Claude, :4321 for Qwen
-    insecure=True
+    insecure=True,
 )
 trace_provider.add_span_processor(BatchSpanProcessor(trace_exporter))
 trace.set_tracer_provider(trace_provider)
@@ -203,7 +205,7 @@ trace.set_tracer_provider(trace_provider)
 metric_reader = PeriodicExportingMetricReader(
     OTLPMetricExporter(
         endpoint="http://localhost:4317",  # Or :4319 for Claude, :4321 for Qwen
-        insecure=True
+        insecure=True,
     ),
     export_interval_millis=15000,  # Export every 15 seconds
 )
@@ -216,7 +218,7 @@ metrics.set_meter_provider(metrics_provider)
 logger_provider = LoggerProvider(resource=resource)
 log_exporter = OTLPLogExporter(
     endpoint="http://localhost:4317",  # Or :4319 for Claude, :4321 for Qwen
-    insecure=True
+    insecure=True,
 )
 logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
 logs.set_logger_provider(logger_provider)
@@ -243,8 +245,7 @@ with tracer.start_as_current_span("example-operation") as span:
 
     # Example: Create a metric
     counter = meter.create_counter(
-        "operations.completed",
-        description="Number of operations completed"
+        "operations.completed", description="Number of operations completed"
     )
     counter.add(1, {"operation.type": "example"})
 
@@ -323,19 +324,24 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 
 # Setup Claude-specific tracer
-resource = Resource.create({
-    "service.name": "claude-integration",
-    "telemetry.source": "claude",
-    "telemetry.source.type": "ai_assistant",
-    "ai.model": "claude-sonnet-4"
-})
+resource = Resource.create(
+    {
+        "service.name": "claude-integration",
+        "telemetry.source": "claude",
+        "telemetry.source.type": "ai_assistant",
+        "ai.model": "claude-sonnet-4",
+    }
+)
 
 provider = TracerProvider(resource=resource)
-provider.add_span_processor(BatchSpanProcessor(
-    OTLPSpanExporter(endpoint="http://localhost:4319", insecure=True)
-))
+provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://localhost:4319", insecure=True)
+    )
+)
 trace.set_tracer_provider(provider)
 tracer = trace.get_tracer("claude-tracer")
+
 
 def call_claude(prompt: str, **kwargs) -> Dict[str, Any]:
     """
@@ -353,14 +359,23 @@ def call_claude(prompt: str, **kwargs) -> Dict[str, Any]:
         try:
             # Your actual Claude API call here
             # response = anthropic_client.messages.create(...)
-            response = {"completion": "...", "usage": {"input_tokens": 100, "output_tokens": 200}}
+            response = {
+                "completion": "...",
+                "usage": {"input_tokens": 100, "output_tokens": 200},
+            }
 
             # Track response metadata
             duration = time.time() - start_time
             span.set_attribute("ai.duration.ms", duration * 1000)
-            span.set_attribute("ai.response.completion_length", len(response.get("completion", "")))
-            span.set_attribute("ai.usage.input_tokens", response["usage"]["input_tokens"])
-            span.set_attribute("ai.usage.output_tokens", response["usage"]["output_tokens"])
+            span.set_attribute(
+                "ai.response.completion_length", len(response.get("completion", ""))
+            )
+            span.set_attribute(
+                "ai.usage.input_tokens", response["usage"]["input_tokens"]
+            )
+            span.set_attribute(
+                "ai.usage.output_tokens", response["usage"]["output_tokens"]
+            )
 
             return response
 
@@ -368,6 +383,7 @@ def call_claude(prompt: str, **kwargs) -> Dict[str, Any]:
             span.record_exception(e)
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             raise
+
 
 # Example usage
 response = call_claude("Write a haiku about telemetry")
@@ -389,10 +405,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Configure structured logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("claude-logger")
 
 # Log directory (mapped to collector)
@@ -403,11 +416,8 @@ log_dir.mkdir(parents=True, exist_ok=True)
 session_id = "session-20250131-123456"
 log_file = log_dir / f"{session_id}.log"
 
-def log_claude_interaction(
-    role: str,
-    content: str,
-    metadata: dict = None
-):
+
+def log_claude_interaction(role: str, content: str, metadata: dict = None):
     """
     Log Claude interaction in structured JSON format
     Expected by filelog receiver in otel-collector-config.yaml
@@ -419,7 +429,7 @@ def log_claude_interaction(
         "level": "info",
         "role": role,
         "content": content,
-        "metadata": metadata or {}
+        "metadata": metadata or {},
     }
 
     # Write to log file
@@ -429,17 +439,18 @@ def log_claude_interaction(
     # Also log to console
     logger.info(json.dumps(log_entry))
 
+
 # Example usage
 log_claude_interaction(
     role="user",
     content="Explain OTLP",
-    metadata={"model": "claude-sonnet-4", "tokens": 150}
+    metadata={"model": "claude-sonnet-4", "tokens": 150},
 )
 
 log_claude_interaction(
     role="assistant",
     content="OTLP is OpenTelemetry Protocol...",
-    metadata={"tokens": 500, "duration_ms": 1234}
+    metadata={"tokens": 500, "duration_ms": 1234},
 )
 ```
 
@@ -500,19 +511,24 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 
 # Setup Qwen-specific tracer
-resource = Resource.create({
-    "service.name": "qwen-integration",
-    "telemetry.source": "qwen",
-    "telemetry.source.type": "ai_assistant",
-    "ai.model": "qwen-max"
-})
+resource = Resource.create(
+    {
+        "service.name": "qwen-integration",
+        "telemetry.source": "qwen",
+        "telemetry.source.type": "ai_assistant",
+        "ai.model": "qwen-max",
+    }
+)
 
 provider = TracerProvider(resource=resource)
-provider.add_span_processor(BatchSpanProcessor(
-    OTLPSpanExporter(endpoint="http://localhost:4321", insecure=True)
-))
+provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://localhost:4321", insecure=True)
+    )
+)
 trace.set_tracer_provider(provider)
 tracer = trace.get_tracer("qwen-tracer")
+
 
 def call_qwen(prompt: str, **kwargs) -> Dict[str, Any]:
     """
@@ -530,14 +546,21 @@ def call_qwen(prompt: str, **kwargs) -> Dict[str, Any]:
         try:
             # Your actual Qwen API call here
             # response = qwen_client.generate(...)
-            response = {"text": "...", "usage": {"input_tokens": 100, "output_tokens": 200}}
+            response = {
+                "text": "...",
+                "usage": {"input_tokens": 100, "output_tokens": 200},
+            }
 
             # Track response metadata
             duration = time.time() - start_time
             span.set_attribute("ai.duration.ms", duration * 1000)
             span.set_attribute("ai.response.text_length", len(response.get("text", "")))
-            span.set_attribute("ai.usage.input_tokens", response["usage"]["input_tokens"])
-            span.set_attribute("ai.usage.output_tokens", response["usage"]["output_tokens"])
+            span.set_attribute(
+                "ai.usage.input_tokens", response["usage"]["input_tokens"]
+            )
+            span.set_attribute(
+                "ai.usage.output_tokens", response["usage"]["output_tokens"]
+            )
 
             return response
 
@@ -545,6 +568,7 @@ def call_qwen(prompt: str, **kwargs) -> Dict[str, Any]:
             span.record_exception(e)
             span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
             raise
+
 
 # Example usage
 response = call_qwen("Explain distributed tracing")
@@ -569,11 +593,8 @@ log_dir.mkdir(parents=True, exist_ok=True)
 session_id = "session-20250131-789012"
 log_file = log_dir / f"{session_id}.log"
 
-def log_qwen_interaction(
-    role: str,
-    content: str,
-    metadata: dict = None
-):
+
+def log_qwen_interaction(role: str, content: str, metadata: dict = None):
     """Log Qwen interaction in structured JSON format"""
     log_entry = {
         "timestamp": datetime.utcnow().isoformat(),
@@ -582,23 +603,22 @@ def log_qwen_interaction(
         "level": "info",
         "role": role,
         "content": content,
-        "metadata": metadata or {}
+        "metadata": metadata or {},
     }
 
     with open(log_file, "a") as f:
         f.write(json.dumps(log_entry) + "\n")
 
+
 # Example usage
 log_qwen_interaction(
-    role="user",
-    content="What is OTLP?",
-    metadata={"model": "qwen-max", "tokens": 120}
+    role="user", content="What is OTLP?", metadata={"model": "qwen-max", "tokens": 120}
 )
 
 log_qwen_interaction(
     role="assistant",
     content="OTLP stands for OpenTelemetry Protocol...",
-    metadata={"tokens": 450, "duration_ms": 987}
+    metadata={"tokens": 450, "duration_ms": 987},
 )
 ```
 
@@ -653,15 +673,14 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
 # Setup tracing
-resource = Resource.create({
-    "service.name": "flask-app",
-    "telemetry.source": "flask"
-})
+resource = Resource.create({"service.name": "flask-app", "telemetry.source": "flask"})
 
 provider = TracerProvider(resource=resource)
-provider.add_span_processor(BatchSpanProcessor(
-    OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
-))
+provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
+    )
+)
 trace.set_tracer_provider(provider)
 
 # Create Flask app
@@ -670,11 +689,13 @@ app = Flask(__name__)
 # Auto-instrument Flask
 FlaskInstrumentor().instrument_app(app)
 
-@app.route('/api/hello')
+
+@app.route("/api/hello")
 def hello():
     return jsonify({"message": "Hello with telemetry!"})
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app.run(debug=True)
 ```
 
@@ -694,15 +715,16 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 # Setup tracing
-resource = Resource.create({
-    "service.name": "fastapi-app",
-    "telemetry.source": "fastapi"
-})
+resource = Resource.create(
+    {"service.name": "fastapi-app", "telemetry.source": "fastapi"}
+)
 
 provider = TracerProvider(resource=resource)
-provider.add_span_processor(BatchSpanProcessor(
-    OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
-))
+provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
+    )
+)
 trace.set_tracer_provider(provider)
 
 # Create FastAPI app
@@ -710,6 +732,7 @@ app = FastAPI()
 
 # Auto-instrument FastAPI
 FastAPIInstrumentor.instrument_app(app)
+
 
 @app.get("/api/hello")
 def hello():
@@ -1123,10 +1146,12 @@ ______________________________________________________________________
 1. **Set resource attributes:**
 
    ```python
-   resource = Resource.create({
-       "telemetry.source": "claude",  # or "qwen"
-       "telemetry.source.type": "ai_assistant"
-   })
+   resource = Resource.create(
+       {
+           "telemetry.source": "claude",  # or "qwen"
+           "telemetry.source.type": "ai_assistant",
+       }
+   )
    ```
 
 1. **Verify in Jaeger:**

@@ -158,9 +158,9 @@ trace_data = {
         {
             "name": "HTTP GET /api/users",
             "start_time": "2024-01-01T00:00:00Z",
-            "attributes": {"service.name": "claude"}
+            "attributes": {"service.name": "claude"},
         }
-    ]
+    ],
 }
 await ingester.ingest_trace(trace_data)
 
@@ -186,7 +186,7 @@ from mahavishnu.ingesters.otel_ingester import create_otel_ingester
 ingester = await create_otel_ingester(
     hot_store_path="/data/traces.db",
     embedding_model="all-MiniLM-L6-v2",
-    cache_size=2000
+    cache_size=2000,
 )
 ```
 
@@ -293,6 +293,7 @@ mahavishnu/ingesters/
    ```python
    if settings.otel_ingester_enabled:
        from mahavishnu.ingesters.otel_ingester import OtelIngester
+
        self.otel_ingester = OtelIngester()
        await self.otel_ingester.initialize()
    ```
@@ -305,6 +306,7 @@ mahavishnu/ingesters/
        """Ingest OTel trace data."""
        await app.otel_ingester.ingest_trace(trace_data)
        return {"status": "success"}
+
 
    @mcp.tool()
    async def search_otel_traces(query: str, limit: int = 10) -> list:

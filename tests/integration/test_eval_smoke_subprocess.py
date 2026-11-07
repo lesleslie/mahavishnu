@@ -186,9 +186,7 @@ async def test_eval_tools_are_callable_through_a_real_server(
             output = ""
             if process.stdout is not None:
                 with contextlib.suppress(asyncio.TimeoutError):
-                    output = (await asyncio.wait_for(process.stdout.read(), 10))[
-                        -4000:
-                    ]
+                    output = (await asyncio.wait_for(process.stdout.read(), 10))[-4000:]
             pytest.fail(
                 "the Mahavishnu MCP server did not come up within "
                 f"{WARMUP_SECONDS:.0f}s on port {port}; "

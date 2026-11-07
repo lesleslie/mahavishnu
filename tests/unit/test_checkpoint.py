@@ -51,7 +51,9 @@ class TestCreateCheckpoint:
 
     async def test_enabled_returns_uuid(self):
         sb = SessionBuddy(_mock_config())
-        with patch.object(sb._mcp, "call_tool", AsyncMock(return_value=_SUCCESS_RESPONSE)):
+        with patch.object(
+            sb._mcp, "call_tool", AsyncMock(return_value=_SUCCESS_RESPONSE)
+        ):
             checkpoint_id = await sb.create_checkpoint("sess-1", {})
         # UUID format: 8-4-4-4-12
         assert len(checkpoint_id) == 36

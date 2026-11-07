@@ -109,12 +109,18 @@ class TestPoolSpawnDispatch:
             result = runner.invoke(
                 cli_module.app,
                 [
-                    "pool", "spawn",
-                    "--type", "mahavishnu",
-                    "--name", "local",
-                    "--min", "1",
-                    "--max", "3",
-                    "--worker-type", "shepherd",
+                    "pool",
+                    "spawn",
+                    "--type",
+                    "mahavishnu",
+                    "--name",
+                    "local",
+                    "--min",
+                    "1",
+                    "--max",
+                    "3",
+                    "--worker-type",
+                    "shepherd",
                 ],
             )
 
@@ -156,10 +162,14 @@ class TestPoolSpawnDispatch:
             runner.invoke(
                 cli_module.app,
                 [
-                    "pool", "spawn",
-                    "--type", "mahavishnu",
-                    "--name", "remote",
-                    "--worker-type", "shepherd",
+                    "pool",
+                    "spawn",
+                    "--type",
+                    "mahavishnu",
+                    "--name",
+                    "remote",
+                    "--worker-type",
+                    "shepherd",
                 ],
             )
         mock_app_cls.assert_not_called()
@@ -177,10 +187,14 @@ class TestPoolSpawnDispatch:
                 runner.invoke(
                     cli_module.app,
                     [
-                        "pool", "spawn",
-                        "--type", "mahavishnu",
-                        "--name", "x",
-                        "--worker-type", "shepherd",
+                        "pool",
+                        "spawn",
+                        "--type",
+                        "mahavishnu",
+                        "--name",
+                        "x",
+                        "--worker-type",
+                        "shepherd",
                     ],
                 )
 
@@ -196,6 +210,7 @@ class TestPoolSpawnDispatch:
         a clear warning so the operator knows the new pool is NOT
         visible to future SessionStart bootstraps.
         """
+
         # httpx raises immediately (connection refused).
         class _FailingClient:
             def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -225,10 +240,14 @@ class TestPoolSpawnDispatch:
             result = runner.invoke(
                 cli_module.app,
                 [
-                    "pool", "spawn",
-                    "--type", "mahavishnu",
-                    "--name", "fallback",
-                    "--worker-type", "shepherd",
+                    "pool",
+                    "spawn",
+                    "--type",
+                    "mahavishnu",
+                    "--name",
+                    "fallback",
+                    "--worker-type",
+                    "shepherd",
                 ],
             )
 

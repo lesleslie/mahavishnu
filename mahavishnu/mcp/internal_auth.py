@@ -137,7 +137,8 @@ def request_headers() -> Any:
         from fastmcp.server.dependencies import get_http_request
 
         return get_http_request().headers
-    except Exception:  # MCP tool error handler — no HTTP request in scope  # noqa: BLE001, RUF100
+    # MCP tool error handler — no HTTP request in scope
+    except Exception:  # noqa: BLE001, RUF100
         return None
 
 
@@ -157,9 +158,11 @@ async def internal_principal_verified() -> bool:
         from fastmcp.server.dependencies import get_context
 
         ctx = get_context()
-    except Exception:  # MCP tool error handler — no active context  # noqa: BLE001, RUF100
+    # MCP tool error handler — no active context
+    except Exception:  # noqa: BLE001, RUF100
         return False
     try:
         return bool(await ctx.get_state(INTERNAL_PRINCIPAL_STATE_KEY))
-    except Exception:  # MCP tool error handler — state read failed  # noqa: BLE001, RUF100
+    # MCP tool error handler — state read failed
+    except Exception:  # noqa: BLE001, RUF100
         return False

@@ -12,6 +12,7 @@ in subprocess context without PoolManager access. Future work may
 move the body into the bridge handler once the bridge has direct
 MCP access.
 """
+
 from __future__ import annotations
 
 import json
@@ -52,7 +53,7 @@ def _safe_parse_payload() -> dict[str, object]:
         return {}
     try:
         data = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return {}
     return data if isinstance(data, dict) else {}
 
@@ -73,7 +74,9 @@ def _invoke_bootstrap() -> dict[str, object] | None:
             if session_id is None:
                 return None
             result = call_tool(client, mcp_url, "pool_bootstrap", session_id, {})
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except (
+        Exception  # noqa: BLE001  # hook handler — broad catch is the documented contract
+    ) as exc:
         sys.stderr.write(f"Hook output: pool_bootstrap call failed: {exc}\n")
         sys.stderr.flush()
         return None
@@ -112,8 +115,12 @@ def main() -> int:
     payload = _safe_parse_payload()
     result = _invoke_bootstrap()
 
-    additional_context = _format_result(result) if result is not None else (
-        "Mahavishnu pool bootstrap: MCP unreachable, session proceeds in degraded mode."
+    additional_context = (
+        _format_result(result)
+        if result is not None
+        else (
+            "Mahavishnu pool bootstrap: MCP unreachable, session proceeds in degraded mode."
+        )
     )
     output = {
         "hookSpecificOutput": {
@@ -130,7 +137,9 @@ def main() -> int:
     # Bridge audit (fire-and-forget; failures ignored)
     try:
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100  # hook handler — broad catch is the documented contract
+    ):
         sys.stderr.write("Hook output: pool-bootstrap bridge routing failed\n")
         sys.stderr.flush()
 
@@ -140,7 +149,9 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100  # hook handler — broad catch is the documented contract
+    ):
         sys.stderr.write("Hook output: pool-bootstrap unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

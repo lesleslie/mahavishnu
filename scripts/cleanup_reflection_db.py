@@ -174,7 +174,9 @@ class CleanupResult:
     def ok(self) -> bool:
         """True if every stage that ran completed without error."""
         return (
-            self.checkpoint_ok and (self.restart_ok is not False) and (self.health_ok is not False)
+            self.checkpoint_ok
+            and (self.restart_ok is not False)
+            and (self.health_ok is not False)
         )
 
 
@@ -540,7 +542,9 @@ def force_release_lock(
             duration_seconds=time.monotonic() - start,
         )
 
-    log(f"  Lock held by PID {initial.holder_pid} ({'STALE' if initial.stale else 'live'})")
+    log(
+        f"  Lock held by PID {initial.holder_pid} ({'STALE' if initial.stale else 'live'})"
+    )
 
     # Step 1: shutdown the holder (live or stale — even a stale PID
     # whose process has been reaped needs no extra work, but we still
@@ -696,7 +700,9 @@ def main(argv: list[str] | None = None) -> int:
         alive = "live" if not initial.stale else "stale"
         log(f"  Lock held by PID {initial.holder_pid} ({alive})")
         if initial.stale:
-            log("  Would: skip shutdown, run CHECKPOINT, then restart (if --no-restart is not set)")
+            log(
+                "  Would: skip shutdown, run CHECKPOINT, then restart (if --no-restart is not set)"
+            )
         else:
             log(
                 f"  Would: SIGTERM PID {initial.holder_pid} (timeout={args.shutdown_timeout}s, "

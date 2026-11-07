@@ -433,7 +433,9 @@ class NativeMacOSBackend(DesktopAutomationBackend):
         """
 
         # AppleScript menu listing is limited. Return empty with note.
-        logger.debug("list_menus: AppleScript cannot reliably enumerate menus for %s", bundle_id)
+        logger.debug(
+            "list_menus: AppleScript cannot reliably enumerate menus for %s", bundle_id
+        )
         return []
 
     # =====================================================================
@@ -544,7 +546,12 @@ class NativeMacOSBackend(DesktopAutomationBackend):
             return True
         except Exception as e:  # native macOS automation — broad catch wraps cliclick drag subprocess failures into False  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
-                "Failed to drag from %d,%d to %d,%d: %s", start_x, start_y, end_x, end_y, e
+                "Failed to drag from %d,%d to %d,%d: %s",
+                start_x,
+                start_y,
+                end_x,
+                end_y,
+                e,
             )
             return False
 
@@ -564,7 +571,9 @@ class NativeMacOSBackend(DesktopAutomationBackend):
     # Screenshot Operations
     # =====================================================================
 
-    async def screenshot(self, region: tuple[int, int, int, int] | None = None) -> bytes:
+    async def screenshot(
+        self, region: tuple[int, int, int, int] | None = None
+    ) -> bytes:
         """Capture a screenshot.
 
         Args:

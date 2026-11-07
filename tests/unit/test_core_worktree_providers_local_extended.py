@@ -292,7 +292,11 @@ def _init_git_repo(tmp_path: Path) -> Path:
 
     repo = tmp_path / "repo"
     repo.mkdir()
-    subprocess.run(["git", "init", "--initial-branch=main", str(repo)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", str(repo)],
+        check=True,
+        capture_output=True,
+    )
     subprocess.run(
         ["git", "-C", str(repo), "config", "user.email", "test@example.com"],
         check=True,
@@ -304,9 +308,13 @@ def _init_git_repo(tmp_path: Path) -> Path:
         capture_output=True,
     )
     (repo / "README.md").write_text("hi\n")
-    subprocess.run(["git", "-C", str(repo), "add", "README.md"], check=True, capture_output=True)
     subprocess.run(
-        ["git", "-C", str(repo), "commit", "-m", "init"], check=True, capture_output=True
+        ["git", "-C", str(repo), "add", "README.md"], check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-m", "init"],
+        check=True,
+        capture_output=True,
     )
     return repo
 
@@ -724,7 +732,10 @@ class TestRemoveHandle:
     async def test_raises_for_non_local_storage_ref(self):
         handle = _handle(storage_ref=_RemoteWorktreeRef())
         provider = LocalWorktreeProvider()
-        with pytest.raises(NotImplementedError, match="LocalWorktreeProvider can only remove LocalWorktreeRef"):
+        with pytest.raises(
+            NotImplementedError,
+            match="LocalWorktreeProvider can only remove LocalWorktreeRef",
+        ):
             await provider.remove_handle(handle, caller=_principal())
 
     async def test_skips_git_cleanup_on_error(self, monkeypatch):
@@ -738,7 +749,9 @@ class TestRemoveHandle:
             return None
 
         # Patch git subprocess helper to raise — must be swallowed.
-        monkeypatch.setattr(local_mod_inner, "_remove_worktree_via_git", _exploding_remove)
+        monkeypatch.setattr(
+            local_mod_inner, "_remove_worktree_via_git", _exploding_remove
+        )
         # Patch MCP remove directly so we don't trip the ownership check.
         monkeypatch.setattr(mcp_registry, "remove_handle", _fake_mcp_remove)
 
@@ -964,7 +977,9 @@ class TestHealthFailurePaths:
 class TestCreateWorktreeHandleFailure:
     """``create_worktree_handle`` records success=False metric on exception."""
 
-    async def test_records_failure_metric_when_helper_raises(self, tmp_path, monkeypatch):
+    async def test_records_failure_metric_when_helper_raises(
+        self, tmp_path, monkeypatch
+    ):
         from mahavishnu.core.worktree_providers import local as local_mod_inner
         from mahavishnu.observability import metrics as metrics_mod
 
@@ -986,7 +1001,9 @@ class TestCreateWorktreeHandleFailure:
         async def _exploding_create(*_a, **_kw):
             raise RuntimeError("git blew up")
 
-        monkeypatch.setattr(local_mod_inner, "_create_worktree_via_git", _exploding_create)
+        monkeypatch.setattr(
+            local_mod_inner, "_create_worktree_via_git", _exploding_create
+        )
 
         provider = LocalWorktreeProvider()
         with pytest.raises(RuntimeError, match="git blew up"):
@@ -1100,9 +1117,7 @@ class TestRemoveWorktreeViaGit:
         with patch(
             "asyncio.create_subprocess_exec", AsyncMock(return_value=process)
         ) as mock_exec:
-            await _remove_worktree_via_git(
-                "git", Path("/r"), Path("/wt"), force=True
-            )
+            await _remove_worktree_via_git("git", Path("/r"), Path("/wt"), force=True)
         cmd = mock_exec.call_args[0]
         assert "--force" in cmd
 
@@ -1111,9 +1126,7 @@ class TestRemoveWorktreeViaGit:
         with patch(
             "asyncio.create_subprocess_exec", AsyncMock(return_value=process)
         ) as mock_exec:
-            await _remove_worktree_via_git(
-                "git", Path("/r"), Path("/wt"), force=False
-            )
+            await _remove_worktree_via_git("git", Path("/r"), Path("/wt"), force=False)
         cmd = mock_exec.call_args[0]
         assert "--force" not in cmd
 
@@ -1137,9 +1150,7 @@ class TestRemoveWorktreeViaGit:
             patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)),
             pytest.raises(WorktreeOperationError, match="Failed to remove worktree"),
         ):
-            await _remove_worktree_via_git(
-                "git", Path("/r"), Path("/wt"), force=False
-            )
+            await _remove_worktree_via_git("git", Path("/r"), Path("/wt"), force=False)
 
     async def test_exception_wraps_in_operation_error(self):
         from mahavishnu.core.worktree_providers.errors import WorktreeOperationError
@@ -1151,15 +1162,15 @@ class TestRemoveWorktreeViaGit:
             ),
             pytest.raises(WorktreeOperationError, match="git worktree remove failed"),
         ):
-            await _remove_worktree_via_git(
-                "git", Path("/r"), Path("/wt"), force=False
-            )
+            await _remove_worktree_via_git("git", Path("/r"), Path("/wt"), force=False)
 
     async def test_real_git_in_tmp_path(self, tmp_path):
         repo = _init_git_repo(tmp_path)
         wt = tmp_path / "wt"
         # Create + remove via real git
-        await _create_worktree_via_git("git", repo, "feature-real", wt, create_branch=True)
+        await _create_worktree_via_git(
+            "git", repo, "feature-real", wt, create_branch=True
+        )
         assert wt.exists()
         result = await _remove_worktree_via_git("git", repo, wt, force=True)
         assert result["success"] is True

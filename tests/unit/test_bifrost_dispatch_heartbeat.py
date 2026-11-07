@@ -228,7 +228,11 @@ def test_resolve_dispatch_heartbeat_args_local_flag() -> None:
         return cfg
 
     # Localhost variants: is_local True.
-    for url in ("http://localhost:8081", "http://127.0.0.1:8081", "http://127.0.0.1:8081/v1"):
+    for url in (
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+        "http://127.0.0.1:8081/v1",
+    ):
         cfg = _config("minimax", url)
         provider, model, route_class, is_local = _resolve_dispatch_heartbeat_args(cfg)
         assert provider == "minimax"

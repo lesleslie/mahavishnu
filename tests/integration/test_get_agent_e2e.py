@@ -59,13 +59,9 @@ async def test_get_agent_returns_signed_metadata_and_body(_server) -> None:
 async def test_get_agent_content_hash_matches_body_bytes(_server) -> None:
     """``metadata.content_hash`` matches sha256(body) (per plan §5 Phase 3 exit criteria)."""
     for name in ("mahavishnu-specialist", "pool-router-agent", "workflow-monitor"):
-        result = await _server.server.call_tool(
-            "mahavishnu_get_agent", {"name": name}
-        )
+        result = await _server.server.call_tool("mahavishnu_get_agent", {"name": name})
         payload = json.loads(result.content[0].text)
-        assert payload["success"] is True, (
-            f"get_agent({name!r}) returned {payload}"
-        )
+        assert payload["success"] is True, f"get_agent({name!r}) returned {payload}"
 
         metadata = payload["metadata"]
         body = payload["body"]

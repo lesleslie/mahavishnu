@@ -25,7 +25,9 @@ async def test_worker_kill_triggers_adapter_fallback() -> None:
     router, primary, secondary = build_task_router(primary_failures=1)
 
     task = {"task_type": "workflow", "prompt": "deploy chaos-safe workflow"}
-    result = await router.execute_with_fallback(task, max_retries=1, retry_delay_base=0.0)
+    result = await router.execute_with_fallback(
+        task, max_retries=1, retry_delay_base=0.0
+    )
 
     assert result["success"] is True
     assert result["adapter"].value == "agno"
@@ -77,7 +79,8 @@ async def test_resource_exhaustion_backs_pressure_into_local_buffer() -> None:
     from mahavishnu.pools.memory_aggregator import MemoryAggregator
 
     memory_items = [
-        {"content": f"payload-{index}", "metadata": {"index": index}} for index in range(505)
+        {"content": f"payload-{index}", "metadata": {"index": index}}
+        for index in range(505)
     ]
     pool_manager = build_failing_pool_manager("pool-chaos", memory_items)
 

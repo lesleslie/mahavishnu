@@ -81,7 +81,9 @@ def test_subcommand_help_exits_zero(runner: CliRunner, args: list[str]) -> None:
     ],
 )
 def test_subcommand_help_advertises_flag(
-    runner: CliRunner, args: list[str], expected_flag: str,
+    runner: CliRunner,
+    args: list[str],
+    expected_flag: str,
 ) -> None:
     result = runner.invoke(jot_app, args)
     assert result.exit_code == 0

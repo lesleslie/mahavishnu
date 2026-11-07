@@ -87,7 +87,9 @@ class CoordinationStep:
             "dependencies": self.dependencies,
             "status": self.status.value,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "error": self.error,
         }
 
@@ -119,8 +121,12 @@ class CoordinationPlan:
             Dictionary with progress statistics
         """
         total = len(self.steps)
-        completed = sum(1 for s in self.steps if s.status == CoordinationStatus.COMPLETED)
-        in_progress = sum(1 for s in self.steps if s.status == CoordinationStatus.IN_PROGRESS)
+        completed = sum(
+            1 for s in self.steps if s.status == CoordinationStatus.COMPLETED
+        )
+        in_progress = sum(
+            1 for s in self.steps if s.status == CoordinationStatus.IN_PROGRESS
+        )
         pending = sum(1 for s in self.steps if s.status == CoordinationStatus.PENDING)
         failed = sum(1 for s in self.steps if s.status == CoordinationStatus.FAILED)
 
@@ -370,7 +376,9 @@ class MultiRepoCoordinator:
             step.status = CoordinationStatus.COMPLETED
             step.completed_at = datetime.now(UTC)
 
-            logger.info(f"Completed coordination step {step.step_id} for task {step.task_id}")
+            logger.info(
+                f"Completed coordination step {step.step_id} for task {step.task_id}"
+            )
             return True
 
         except Exception as e:  # task store update may raise any library error; mark step failed and let caller decide  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -456,12 +464,15 @@ class MultiRepoCoordinator:
 
         for repo in repositories:
             try:
-                tasks = await self.task_store.list(TaskListFilter(repository=repo, limit=10000))
+                tasks = await self.task_store.list(
+                    TaskListFilter(repository=repo, limit=10000)
+                )
 
                 pending = sum(
                     1
                     for t in tasks
-                    if t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED)
+                    if t.status
+                    in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED)
                 )
                 completed = sum(1 for t in tasks if t.status == TaskStatus.COMPLETED)
 

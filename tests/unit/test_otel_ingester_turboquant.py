@@ -142,7 +142,9 @@ class TestGetEmbeddingWithCompression:
         ingester = _make_ingester(turboquant_bits=4)
         emb = _fake_embedding()
         _attach_mock_embedder(ingester, emb)
-        mock_tq = _attach_mock_compressor(ingester, available=True, compress_return=b"packed")
+        mock_tq = _attach_mock_compressor(
+            ingester, available=True, compress_return=b"packed"
+        )
 
         result = await ingester._get_embedding("test content")
 
@@ -155,7 +157,9 @@ class TestGetEmbeddingWithCompression:
         restored = _fake_embedding()
         ingester = _make_ingester(turboquant_bits=4)
         _attach_mock_embedder(ingester)
-        mock_tq = _attach_mock_compressor(ingester, available=True, decompress_return=restored)
+        mock_tq = _attach_mock_compressor(
+            ingester, available=True, decompress_return=restored
+        )
 
         # Pre-seed the cache with packed data
         ingester._embedding_cache["cached content"] = b"packed_blob"
@@ -170,7 +174,9 @@ class TestGetEmbeddingWithCompression:
         restored = _fake_embedding()
         ingester = _make_ingester(turboquant_bits=4)
         mock_embedder = _attach_mock_embedder(ingester)
-        mock_tq = _attach_mock_compressor(ingester, available=True, decompress_return=restored)
+        mock_tq = _attach_mock_compressor(
+            ingester, available=True, decompress_return=restored
+        )
         ingester._embedding_cache["existing"] = b"packed"
 
         await ingester._get_embedding("existing")
@@ -218,7 +224,8 @@ class TestGetEmbeddingWithCompression:
 
         # Corrupt entry must be evicted; fresh embedding returned
         assert (
-            "key" not in ingester._embedding_cache or ingester._embedding_cache["key"] == fresh_emb
+            "key" not in ingester._embedding_cache
+            or ingester._embedding_cache["key"] == fresh_emb
         )
         assert result == fresh_emb
         mock_embedder.encode.assert_called_once_with("key")
@@ -264,7 +271,9 @@ class TestCreateOtelIngesterFactory:
         mock_hot_store.initialize = AsyncMock()
 
         with (
-            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False
+            ),
             patch("akosha.storage.HotStore", return_value=mock_hot_store),
         ):
             from mahavishnu.ingesters.otel_ingester import create_otel_ingester

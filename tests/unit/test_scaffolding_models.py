@@ -87,7 +87,9 @@ class TestPattern:
             source_repos=["splashstand"],
             tags=["auth", "session"],
             structure={
-                "dirs": [{"path": "adapters/", "required": True, "description": "Adapters"}],
+                "dirs": [
+                    {"path": "adapters/", "required": True, "description": "Adapters"}
+                ],
                 "files": [{"path": "adapters/auth.py", "required": True}],
             },
             templates={"auth-module": "from starlette.middleware import Middleware"},
@@ -100,14 +102,19 @@ class TestPattern:
             },
         )
         assert len(p.structure["dirs"]) == 1
-        assert p.templates["auth-module"] == "from starlette.middleware import Middleware"
+        assert (
+            p.templates["auth-module"] == "from starlette.middleware import Middleware"
+        )
 
     def test_rejects_path_traversal_in_dirs(self):
         with pytest.raises(ValidationError):
             Pattern(
                 id="bad/pattern",
                 name="Bad",
-                structure={"dirs": [{"path": "../../etc/", "required": True}], "files": []},
+                structure={
+                    "dirs": [{"path": "../../etc/", "required": True}],
+                    "files": [],
+                },
             )
 
     def test_rejects_path_traversal_in_files(self):
@@ -115,5 +122,8 @@ class TestPattern:
             Pattern(
                 id="bad/pattern",
                 name="Bad",
-                structure={"dirs": [], "files": [{"path": "/etc/passwd", "required": True}]},
+                structure={
+                    "dirs": [],
+                    "files": [{"path": "/etc/passwd", "required": True}],
+                },
             )

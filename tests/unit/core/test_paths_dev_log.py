@@ -1,6 +1,7 @@
 """CI guard test: paths.py must expose DEV_LOG_DIR constant and
 get_dev_log_path() helper, mirroring get_audit_path() pattern.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

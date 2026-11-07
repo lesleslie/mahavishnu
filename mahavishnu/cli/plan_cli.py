@@ -17,7 +17,9 @@ import typer
 
 from mahavishnu.plan_index import PlanId
 from mahavishnu.plan_index.store import PlanIndexStore
-from mahavishnu.plan_index.testing import FakeMCP  # dev-time only; production uses real MCP
+from mahavishnu.plan_index.testing import (
+    FakeMCP,
+)  # dev-time only; production uses real MCP
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine
@@ -66,7 +68,9 @@ def list_cmd(
 
 
 @plan_app.command("show")
-def show_cmd(plan_id: str = typer.Argument(..., help="32-hex plan_id or 8-hex prefix")) -> None:
+def show_cmd(
+    plan_id: str = typer.Argument(..., help="32-hex plan_id or 8-hex prefix"),
+) -> None:
     """Show one plan by plan_id."""
     store = _get_store()
     record = _run_async(store.get(PlanId(plan_id)))
@@ -96,7 +100,9 @@ def search_cmd(
 
 
 @plan_app.command("purge")
-def purge_cmd(plan_id: str = typer.Argument(..., help="Plan to purge from MCP")) -> None:
+def purge_cmd(
+    plan_id: str = typer.Argument(..., help="Plan to purge from MCP"),
+) -> None:
     """Operator escape hatch — explicit MCP-record deletion.
 
     PLACEHOLDER: returns "not yet implemented" until the broader

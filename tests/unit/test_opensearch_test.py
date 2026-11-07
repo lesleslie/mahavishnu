@@ -50,7 +50,9 @@ def test_connection_routine_returns_true_on_success(opensearch_proto) -> None:
     fake_sc = SimpleNamespace(from_defaults=MagicMock(return_value=fake_storage_ctx))
 
     with (
-        patch.object(opensearch_proto, "OpensearchVectorStore", return_value=fake_vector_store),
+        patch.object(
+            opensearch_proto, "OpensearchVectorStore", return_value=fake_vector_store
+        ),
         patch.object(opensearch_proto, "StorageContext", new=fake_sc),
         patch.object(opensearch_proto, "VectorStoreIndex", new=fake_vsi),
     ):
@@ -59,7 +61,9 @@ def test_connection_routine_returns_true_on_success(opensearch_proto) -> None:
         fake_vsi.from_documents.assert_called_once()
         fake_sc.from_defaults.assert_called_once_with(vector_store=fake_vector_store)
         mock_index.as_query_engine.assert_called_once()
-        mock_query_engine.query.assert_called_once_with("What are these documents about?")
+        mock_query_engine.query.assert_called_once_with(
+            "What are these documents about?"
+        )
 
     assert result is True
 
@@ -86,7 +90,9 @@ def test_connection_routine_returns_false_on_query_error(opensearch_proto) -> No
     fake_sc = SimpleNamespace(from_defaults=MagicMock(return_value=MagicMock()))
 
     with (
-        patch.object(opensearch_proto, "OpensearchVectorStore", return_value=MagicMock()),
+        patch.object(
+            opensearch_proto, "OpensearchVectorStore", return_value=MagicMock()
+        ),
         patch.object(opensearch_proto, "StorageContext", new=fake_sc),
         patch.object(opensearch_proto, "VectorStoreIndex", new=fake_vsi),
     ):

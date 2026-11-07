@@ -151,7 +151,9 @@ class EcosystemLoader:
             # Find ecosystem.yaml relative to this file
             # This file is in mahavishnu/core/, so go up 3 levels to reach project root
             current_file = Path(__file__)
-            config_path = current_file.parent.parent.parent / "settings" / "ecosystem.yaml"
+            config_path = (
+                current_file.parent.parent.parent / "settings" / "ecosystem.yaml"
+            )
 
         self.config_path = config_path
         self._config: EcosystemConfig | None = None
@@ -168,7 +170,9 @@ class EcosystemLoader:
         if not self.config_path.exists():
             raise ConfigurationError(
                 message=f"Ecosystem configuration file not found: {self.config_path}",
-                details={"suggestion": "Create ecosystem.yaml with MCP server configurations"},
+                details={
+                    "suggestion": "Create ecosystem.yaml with MCP server configurations"
+                },
             )
 
         try:
@@ -203,7 +207,9 @@ class EcosystemLoader:
         if self._config is None:
             raise ConfigurationError(
                 message="Configuration not loaded. Call load() first.",
-                details={"suggestion": "Call ecosystem_loader.load() before accessing config"},
+                details={
+                    "suggestion": "Call ecosystem_loader.load() before accessing config"
+                },
             )
         return self._config
 
@@ -223,7 +229,9 @@ class EcosystemLoader:
         while remaining:
             # Find servers with no unresolved dependencies
             ready = [
-                s for s in remaining.values() if all(dep in resolved for dep in s.dependencies)
+                s
+                for s in remaining.values()
+                if all(dep in resolved for dep in s.dependencies)
             ]
 
             if not ready:
@@ -309,9 +317,13 @@ class EcosystemLoader:
 
             # Check if dependencies exist
             for dep in server.dependencies:
-                dep_server = next((s for s in self.config.mcp_servers if s.name == dep), None)
+                dep_server = next(
+                    (s for s in self.config.mcp_servers if s.name == dep), None
+                )
                 if not dep_server:
-                    errors.append(f"{server.name}: Dependency '{dep}' not found in MCP servers")
+                    errors.append(
+                        f"{server.name}: Dependency '{dep}' not found in MCP servers"
+                    )
                 elif dep_server.status != "enabled":
                     warnings.append(
                         f"{server.name}: Dependency '{dep}' is disabled, "
@@ -332,7 +344,9 @@ class EcosystemLoader:
 
         for repo in self.config.repos:
             if repo.role not in known_roles:
-                errors.append(f"{repo.name}: role '{repo.role}' is not defined in roles catalog")
+                errors.append(
+                    f"{repo.name}: role '{repo.role}' is not defined in roles catalog"
+                )
 
         return {"errors": errors, "warnings": warnings}
 
@@ -344,11 +358,15 @@ class EcosystemLoader:
         try:
             updated = date.fromisoformat(self.config.last_updated)
         except ValueError:
-            warnings.append(f"ecosystem last_updated is invalid: {self.config.last_updated!r}")
+            warnings.append(
+                f"ecosystem last_updated is invalid: {self.config.last_updated!r}"
+            )
         else:
             age_days = (datetime.now(UTC).date() - updated).days
             if age_days > 30:
-                warnings.append(f"ecosystem last_updated is {age_days} days old; refresh metadata")
+                warnings.append(
+                    f"ecosystem last_updated is {age_days} days old; refresh metadata"
+                )
 
         for server in self.config.mcp_servers:
             if server.status != "enabled":
@@ -413,7 +431,9 @@ class EcosystemLoader:
         """
         try:
             with self.config_path.open("w") as f:
-                yaml.dump(self._config.model_dump(mode="yaml"), f, default_flow_style=False)  # ty: ignore[unresolved-attribute]
+                yaml.dump(
+                    self._config.model_dump(mode="yaml"), f, default_flow_style=False
+                )  # ty: ignore[unresolved-attribute]
         except Exception as e:
             raise ConfigurationError(
                 message=f"Failed to save ecosystem configuration: {e}",

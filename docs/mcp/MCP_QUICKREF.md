@@ -42,10 +42,7 @@ server = FastMCP("name", version=__version__)
     required_permission=Permission.READ_REPO,
     require_repo_param="repo_path",
 )
-async def my_tool(
-    repo_path: str,
-    user_id: str | None = None
-) -> dict[str, Any]:
+async def my_tool(repo_path: str, user_id: str | None = None) -> dict[str, Any]:
     """Tool description.
 
     Args:
@@ -67,9 +64,9 @@ async def my_tool(
 ```python
 {
     "status": "success" | "error",
-    "result": Any,        # On success
-    "error": str,         # On error
-    "error_code": str     # On error
+    "result": Any,  # On success
+    "error": str,  # On error
+    "error_code": str,  # On error
 }
 ```
 

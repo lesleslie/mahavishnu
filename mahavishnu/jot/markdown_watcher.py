@@ -233,7 +233,9 @@ async def _default_dispatch(card: dict) -> None:
     the mcp tool surface (keeps tests cheap and avoids loading MCP at
     module import time).
     """
-    from mahavishnu.mcp.tools.pool_tools import pool_route_execute  # ty: ignore[import-not-found]
+    from mahavishnu.mcp.tools.pool_tools import (
+        pool_route_execute,  # ty: ignore[import-not-found]
+    )
 
     prompt = str(card.get("prompt", ""))
     pool_selector = str(card.get("pool", "mahavishnu"))

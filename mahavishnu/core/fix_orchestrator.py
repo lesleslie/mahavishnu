@@ -208,18 +208,32 @@ class FixOrchestrator:
             coordination_manager: Coordination manager for tracking issues.
             approval_manager: Approval manager for manual gates.
         """
-        if pool_manager is None or coordination_manager is None or approval_manager is None:
+        if (
+            pool_manager is None
+            or coordination_manager is None
+            or approval_manager is None
+        ):
             app = MahavishnuApp()
             pool_manager = pool_manager or app.pool_manager
             coordination_manager = coordination_manager or app.coordination_manager
             approval_manager = approval_manager or app.approval_manager
             quality_control = quality_control or getattr(app, "qc", None)
-            session_checkpoint = session_checkpoint or getattr(app, "session_buddy", None)
-            coordination_memory = coordination_memory or getattr(app, "coordination_memory", None)
+            session_checkpoint = session_checkpoint or getattr(
+                app, "session_buddy", None
+            )
+            coordination_memory = coordination_memory or getattr(
+                app, "coordination_memory", None
+            )
             trace_recorder = trace_recorder or getattr(app, "record_fix_trace", None)
 
-        if pool_manager is None or coordination_manager is None or approval_manager is None:
-            raise ValueError("FixOrchestrator requires pool, coordination, and approval managers")
+        if (
+            pool_manager is None
+            or coordination_manager is None
+            or approval_manager is None
+        ):
+            raise ValueError(
+                "FixOrchestrator requires pool, coordination, and approval managers"
+            )
 
         self.pool_manager = pool_manager
         self.coordination_manager = coordination_manager
@@ -322,7 +336,9 @@ class FixOrchestrator:
                     limit=10,
                 )
             )
-            trace.append(f"Coordination memory search returned {len(search_results)} result(s)")
+            trace.append(
+                f"Coordination memory search returned {len(search_results)} result(s)"
+            )
         except Exception as exc:  # Coordination memory search degrades gracefully so the fix flow can still proceed  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             trace.append(f"Coordination memory search degraded: {exc}")
 
@@ -371,7 +387,9 @@ class FixOrchestrator:
         correlation_id = task.correlation_id or task.issue_id
         trace: list[str] = []
 
-        trace.append(f"Starting fix for {task.issue_id} with correlation {correlation_id}")
+        trace.append(
+            f"Starting fix for {task.issue_id} with correlation {correlation_id}"
+        )
         if self.trace_recorder is not None:
             self.trace_recorder(
                 correlation_id,
@@ -385,14 +403,18 @@ class FixOrchestrator:
                 },
             )
 
-        checkpoint_id = await self._init_checkpoint(task, pool_id, correlation_id, trace)
+        checkpoint_id = await self._init_checkpoint(
+            task, pool_id, correlation_id, trace
+        )
 
         issue = None
         if self.coordination_manager is not None and hasattr(
             self.coordination_manager, "get_issue"
         ):
             with contextlib.suppress(Exception):
-                issue = await _await_if_needed(self.coordination_manager.get_issue(task.issue_id))
+                issue = await _await_if_needed(
+                    self.coordination_manager.get_issue(task.issue_id)
+                )
 
         await self._record_coord_start(issue, correlation_id, pool_id, trace)
 
@@ -400,7 +422,11 @@ class FixOrchestrator:
         try:
             execution_result = await self.pool_manager.execute_on_pool(
                 pool_id,
-                {"prompt": task.prompt, "issue_id": task.issue_id, "files": task.affected_files},
+                {
+                    "prompt": task.prompt,
+                    "issue_id": task.issue_id,
+                    "files": task.affected_files,
+                },
             )
         except Exception as e:  # Fix orchestrator wraps any pool-execution failure into a FixResult rather than propagating  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return FixResult(success=False, stage="execution", error_message=str(e))
@@ -412,7 +438,10 @@ class FixOrchestrator:
                         self.session_checkpoint.update_checkpoint(
                             checkpoint_id,
                             "failed",
-                            {"quality_score": 0, "error": execution_result.get("error")},
+                            {
+                                "quality_score": 0,
+                                "error": execution_result.get("error"),
+                            },
                         )
                     )
             return FixResult(
@@ -457,8 +486,12 @@ class FixOrchestrator:
 
         # Step 4: Update issue status and finalize
         await self._update_issue_status(task.issue_id, execution_result, quality_result)
-        await self._record_coord_close(issue, correlation_id, pool_id, execution_result, trace)
-        await self._complete_checkpoint(checkpoint_id, quality_result, execution_result, trace)
+        await self._record_coord_close(
+            issue, correlation_id, pool_id, execution_result, trace
+        )
+        await self._complete_checkpoint(
+            checkpoint_id, quality_result, execution_result, trace
+        )
 
         if self.trace_recorder is not None:
             self.trace_recorder(
@@ -543,13 +576,17 @@ class FixOrchestrator:
                 repo_targets = ["mahavishnu"]
 
             pre_passed = await self.quality_control.validate_pre_execution(repo_targets)
-            post_passed = await self.quality_control.validate_post_execution(repo_targets)
+            post_passed = await self.quality_control.validate_post_execution(
+                repo_targets
+            )
             return QualityGateResult(
                 fast_hooks=pre_passed,
                 tests=post_passed,
                 comprehensive=pre_passed and post_passed,
                 coverage=100.0 if pre_passed and post_passed else 0.0,
-                errors=[] if pre_passed and post_passed else ["quality control checks failed"],
+                errors=[]
+                if pre_passed and post_passed
+                else ["quality control checks failed"],
             )
 
         return QualityGateResult(
@@ -598,4 +635,6 @@ class FixOrchestrator:
                 "changes": execution_result.get("changes", []),
             },
         }
-        await _await_if_needed(self.coordination_manager.update_issue(issue_id, updates))
+        await _await_if_needed(
+            self.coordination_manager.update_issue(issue_id, updates)
+        )

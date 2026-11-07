@@ -770,7 +770,9 @@ class MahavishnuError(Exception):
         }
 
     def __str__(self) -> str:
-        recovery_text = "\n  ".join(f"{i + 1}. {step}" for i, step in enumerate(self.recovery))
+        recovery_text = "\n  ".join(
+            f"{i + 1}. {step}" for i, step in enumerate(self.recovery)
+        )
         return f"[{self.error_code.value}] {self.message}\n\nRecovery steps:\n  {recovery_text}\n\nDocumentation: https://docs.mahavishnu.org/errors/{self.error_code.value.lower()}\n"
 
 
@@ -1057,7 +1059,9 @@ class WorkflowExecutionError(MahavishnuError):
                 - resource_usage: CPU/memory usage at failure
         """
         if step_name:
-            full_message = f"Workflow '{workflow_id}' failed at step '{step_name}': {message}"
+            full_message = (
+                f"Workflow '{workflow_id}' failed at step '{step_name}': {message}"
+            )
         else:
             full_message = f"Workflow '{workflow_id}' execution failed: {message}"
 
@@ -1512,7 +1516,9 @@ class ErrorTemplates:
     """Templates for common error scenarios."""
 
     @staticmethod
-    def task_create_validation(title: str, repository: str, issues: list[str]) -> ValidationError:
+    def task_create_validation(
+        title: str, repository: str, issues: list[str]
+    ) -> ValidationError:
         """Create a validation error for task creation.
 
         Args:
@@ -1527,7 +1533,9 @@ class ErrorTemplates:
         if any("title" in i.lower() for i in issues):
             recovery.append("Title must be 3-500 characters")
         if any("repository" in i.lower() for i in issues):
-            recovery.append("Repository must be configured in ecosystem.yaml or repos.yaml")
+            recovery.append(
+                "Repository must be configured in ecosystem.yaml or repos.yaml"
+            )
             recovery.append("Use 'mhv lr' to list available repositories")
 
         recovery.extend(
@@ -1547,7 +1555,9 @@ class ErrorTemplates:
         )
 
     @staticmethod
-    def database_connection_failed(host: str, port: int, original_error: str) -> DatabaseError:
+    def database_connection_failed(
+        host: str, port: int, original_error: str
+    ) -> DatabaseError:
         """Create a database connection error with context.
 
         Args:
@@ -1633,7 +1643,9 @@ class ErrorTemplates:
         )
 
     @staticmethod
-    def prefect_flow_failed(flow_name: str, flow_run_id: str, reason: str) -> PrefectError:
+    def prefect_flow_failed(
+        flow_name: str, flow_run_id: str, reason: str
+    ) -> PrefectError:
         """Create a Prefect flow run error.
 
         Args:
@@ -1857,7 +1869,11 @@ class ErrorTemplates:
         return LearningSystemError(
             message=f"Failed to record {feedback_type} feedback for team {team_id}: {reason}",
             error_code=ErrorCode.LEARNING_FEEDBACK_FAILED,
-            details={"team_id": team_id, "feedback_type": feedback_type, "reason": reason},
+            details={
+                "team_id": team_id,
+                "feedback_type": feedback_type,
+                "reason": reason,
+            },
         )
 
 
@@ -2014,9 +2030,7 @@ class PiRPCTimeout(MahavishnuError):
         method = self.details.get("method", "")
         timeout = self.details.get("timeout_seconds", 0.0)
         if method:
-            return (
-                f"[{self.error_code.value}] {self.message} (method={method!r}, timeout={timeout}s)"
-            )
+            return f"[{self.error_code.value}] {self.message} (method={method!r}, timeout={timeout}s)"
         return f"[{self.error_code.value}] {self.message}"
 
 
@@ -2059,7 +2073,9 @@ class PiProtocolError(MahavishnuError):
     def __str__(self) -> str:
         excerpt = self.details.get("frame_excerpt", "")
         if excerpt:
-            return f"[{self.error_code.value}] {self.message} (frame_excerpt={excerpt!r})"
+            return (
+                f"[{self.error_code.value}] {self.message} (frame_excerpt={excerpt!r})"
+            )
         return f"[{self.error_code.value}] {self.message}"
 
 

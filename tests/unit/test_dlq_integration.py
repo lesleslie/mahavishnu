@@ -42,7 +42,9 @@ def _make_integration(strategy=DLQIntegrationStrategy.AUTOMATIC):
     """Create a DLQIntegration with mocked app/dlq."""
     mock_app = MagicMock()
     mock_app.error_recovery_manager = AsyncMock()
-    mock_app.error_recovery_manager.classify_error = AsyncMock(return_value=ErrorCategory.TRANSIENT)
+    mock_app.error_recovery_manager.classify_error = AsyncMock(
+        return_value=ErrorCategory.TRANSIENT
+    )
     mock_app.config = MagicMock()
     mock_app.config.dlq_default_max_retries = 3
     mock_app.execute_workflow_parallel = AsyncMock(return_value={"status": "ok"})
@@ -101,32 +103,44 @@ class TestShouldEnqueue:
 
     async def test_selective_transient(self):
         integration, _, _ = _make_integration(DLQIntegrationStrategy.SELECTIVE)
-        result = await integration.should_enqueue(RuntimeError("err"), ErrorCategory.TRANSIENT)
+        result = await integration.should_enqueue(
+            RuntimeError("err"), ErrorCategory.TRANSIENT
+        )
         assert result is True
 
     async def test_selective_network(self):
         integration, _, _ = _make_integration(DLQIntegrationStrategy.SELECTIVE)
-        result = await integration.should_enqueue(RuntimeError("err"), ErrorCategory.NETWORK)
+        result = await integration.should_enqueue(
+            RuntimeError("err"), ErrorCategory.NETWORK
+        )
         assert result is True
 
     async def test_selective_resource(self):
         integration, _, _ = _make_integration(DLQIntegrationStrategy.SELECTIVE)
-        result = await integration.should_enqueue(RuntimeError("err"), ErrorCategory.RESOURCE)
+        result = await integration.should_enqueue(
+            RuntimeError("err"), ErrorCategory.RESOURCE
+        )
         assert result is True
 
     async def test_selective_permanent(self):
         integration, _, _ = _make_integration(DLQIntegrationStrategy.SELECTIVE)
-        result = await integration.should_enqueue(RuntimeError("err"), ErrorCategory.PERMANENT)
+        result = await integration.should_enqueue(
+            RuntimeError("err"), ErrorCategory.PERMANENT
+        )
         assert result is False
 
     async def test_selective_permission(self):
         integration, _, _ = _make_integration(DLQIntegrationStrategy.SELECTIVE)
-        result = await integration.should_enqueue(RuntimeError("err"), ErrorCategory.PERMISSION)
+        result = await integration.should_enqueue(
+            RuntimeError("err"), ErrorCategory.PERMISSION
+        )
         assert result is False
 
     async def test_selective_validation(self):
         integration, _, _ = _make_integration(DLQIntegrationStrategy.SELECTIVE)
-        result = await integration.should_enqueue(RuntimeError("err"), ErrorCategory.VALIDATION)
+        result = await integration.should_enqueue(
+            RuntimeError("err"), ErrorCategory.VALIDATION
+        )
         assert result is False
 
     async def test_selective_classifies_when_no_category(self):
@@ -307,7 +321,9 @@ class TestExecuteWithDlq:
         integration, mock_app, _ = _make_integration()
         mock_app.execute_workflow_parallel = AsyncMock(return_value={"status": "done"})
 
-        result = await integration.execute_with_dlq(task={"type": "sweep"}, adapter_name="prefect")
+        result = await integration.execute_with_dlq(
+            task={"type": "sweep"}, adapter_name="prefect"
+        )
 
         assert result["status"] == "done"
         assert integration._stats["workflows_executed"] == 1
@@ -322,7 +338,9 @@ class TestExecuteWithDlq:
         mock_task.max_retries = 3
         mock_dlq.enqueue = AsyncMock(return_value=mock_task)
 
-        result = await integration.execute_with_dlq(task={"type": "sweep"}, adapter_name="prefect")
+        result = await integration.execute_with_dlq(
+            task={"type": "sweep"}, adapter_name="prefect"
+        )
 
         assert result["status"] == "failed"
         assert result["dlq_enqueued"] is True
@@ -333,7 +351,9 @@ class TestExecuteWithDlq:
         mock_app.execute_workflow_parallel = AsyncMock(side_effect=RuntimeError("boom"))
 
         with pytest.raises(AdapterError, match="not enqueued"):
-            await integration.execute_with_dlq(task={"type": "sweep"}, adapter_name="prefect")
+            await integration.execute_with_dlq(
+                task={"type": "sweep"}, adapter_name="prefect"
+            )
 
     async def test_uses_task_id_from_task(self):
         integration, mock_app, mock_dlq = _make_integration()
@@ -361,7 +381,9 @@ class TestExecuteWithDlq:
         mock_task.max_retries = 3
         mock_dlq.enqueue = AsyncMock(return_value=mock_task)
 
-        result = await integration.execute_with_dlq(task={"type": "sweep"}, adapter_name="prefect")
+        result = await integration.execute_with_dlq(
+            task={"type": "sweep"}, adapter_name="prefect"
+        )
 
         # Should have generated a workflow ID with prefix "wf_"
         assert result["workflow_id"].startswith("wf_")

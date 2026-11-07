@@ -386,7 +386,13 @@ def test_render_json_report_shape() -> None:
     out = render_json_report(verdicts)
     payload = json.loads(out)
     assert payload["ecosystem"] == "Bodai"
-    assert payload["summary"] == {"total": 2, "pass": 1, "warn": 0, "fail": 1, "skip": 0}
+    assert payload["summary"] == {
+        "total": 2,
+        "pass": 1,
+        "warn": 0,
+        "fail": 1,
+        "skip": 0,
+    }
     assert payload["repos"][0]["status"] == "PASS"
     assert payload["repos"][0]["matched_rule"] == ".claude/handoff/"
     assert payload["repos"][1]["status"] == "FAIL"

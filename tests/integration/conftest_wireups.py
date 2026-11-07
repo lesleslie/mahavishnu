@@ -1,4 +1,5 @@
 """T-0 wire-up fixtures. Consumed by every integration test in tests/integration/."""
+
 from __future__ import annotations
 
 import asyncio
@@ -24,12 +25,16 @@ from mahavishnu.core.config import (
     get_settings,
 )
 from mahavishnu.core.event_store import EventStore
-from mahavishnu.core.database import Database  # FIX round-6: EventStore takes a Database, not a Path
+from mahavishnu.core.database import (
+    Database,
+)  # FIX round-6: EventStore takes a Database, not a Path
 from mahavishnu.pools import PoolManager
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Iterator
-    from mahavishnu.core.worktree_manager import WorktreeManager  # FIX round-6: real module is worktree_manager, not worktree
+    from mahavishnu.core.worktree_manager import (
+        WorktreeManager,
+    )  # FIX round-6: real module is worktree_manager, not worktree
 
 
 @pytest_asyncio.fixture
@@ -52,7 +57,9 @@ async def isolated_database() -> AsyncIterator[Path]:
 
 
 @contextmanager
-def tmp_xdg_state_dir_impl(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
+def tmp_xdg_state_dir_impl(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Iterator[Path]:
     """Redirect platformdirs-derived XDG paths to tmp_path. Affects:
     - mahavishnu's config cache ($XDG_CACHE_HOME/mahavishnu)
     - worktree base ($XDG_DATA_HOME/mahavishnu/worktrees)
@@ -65,7 +72,9 @@ def tmp_xdg_state_dir_impl(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> I
 
 
 @pytest.fixture
-def tmp_xdg_state_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
+def tmp_xdg_state_dir(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Iterator[Path]:
     """Fixture form of tmp_xdg_state_dir_impl — usable in test signatures."""
     with tmp_xdg_state_dir_impl(monkeypatch, tmp_path) as p:
         yield p
@@ -108,6 +117,7 @@ def ecosystem_intake_signed_post() -> Callable[..., dict[str, Any]]:
     """Generate sanitized POST payloads for C-10 tests. NO HMAC (C-10 dropped that).
     Returns a factory that takes a source_name + body dict and produces a JSON
     payload ready to POST."""
+
     def _make(source_name: str, body: dict[str, Any]) -> dict[str, Any]:
         return {
             "source": source_name,
@@ -115,6 +125,7 @@ def ecosystem_intake_signed_post() -> Callable[..., dict[str, Any]]:
             "body": body,
             "id": str(uuid.uuid4()),
         }
+
     return _make
 
 
@@ -137,6 +148,7 @@ def ecosystem_dlq_inspector() -> Callable[..., list[dict[str, Any]]]:
     Inspector reads the Akosha stream filtered to source=mahavishnu.eco.intake.
     Returns a closure that takes (since: datetime) and returns events.
     """
+
     def _inspect(since: datetime | None = None) -> list[dict[str, Any]]:
         from mahavishnu.core.events.akosha import get_akosha_client
 
@@ -145,6 +157,7 @@ def ecosystem_dlq_inspector() -> Callable[..., list[dict[str, Any]]]:
             pattern="ecosystem.intake.rejected",
             since=since or datetime.now(UTC) - timedelta(seconds=60),
         )
+
     return _inspect
 
 
@@ -172,9 +185,7 @@ def idempotency_flag_monkeypatch(
     fail_mode = marker.args[0] if marker else "fail_closed"
     settings = get_settings()
     settings.idempotency.fail_mode = fail_mode
-    monkeypatch.setattr(
-        "mahavishnu.core.config.get_settings_cached", lambda: settings
-    )
+    monkeypatch.setattr("mahavishnu.core.config.get_settings_cached", lambda: settings)
     yield
 
 
@@ -196,9 +207,7 @@ def safe_publisher_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> Iterator[None
     from mahavishnu.core.events.publisher import set_publisher
 
     captured: list[dict[str, Any]] = []
-    monkeypatch.setattr(
-        "mahavishnu.core.events.publisher._capture_singleton", captured
-    )
+    monkeypatch.setattr("mahavishnu.core.events.publisher._capture_singleton", captured)
     set_publisher(lambda envelope: captured.append(envelope.model_dump()))
     try:
         yield captured
@@ -209,7 +218,9 @@ def safe_publisher_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> Iterator[None
 
 
 @pytest.fixture(autouse=True)
-def mark_finished_tasks(request: pytest.FixtureRequest, tmp_xdg_state_dir: Path) -> Iterator[None]:
+def mark_finished_tasks(
+    request: pytest.FixtureRequest, tmp_xdg_state_dir: Path
+) -> Iterator[None]:
     """Per round-3 QA — explicit try/finally, NO contextmanager shortcut.
     Scan $XDG_DATA_HOME/mahavishnu/worktrees/ for worktrees newer than this test
     invocation, git worktree remove --force on the failure path. This is a

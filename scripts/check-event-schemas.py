@@ -138,7 +138,9 @@ def main() -> int:
     # --- Check 3: every registered schema has at least one sample envelope ---
     for schema in schemas:
         if schema.event_type not in event_types_covered:
-            errors.append(f"No sample envelope for registered schema: {schema.event_type}")
+            errors.append(
+                f"No sample envelope for registered schema: {schema.event_type}"
+            )
 
     # --- Report ---
     if errors:
@@ -148,7 +150,9 @@ def main() -> int:
         print(f"\n{len(errors)} issue(s) found.", file=sys.stderr)
         return 1
 
-    print(f"✅ All {len(schemas)} schemas and {len(envelopes)} envelopes passed validation")
+    print(
+        f"✅ All {len(schemas)} schemas and {len(envelopes)} envelopes passed validation"
+    )
     return 0
 
 

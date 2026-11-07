@@ -178,7 +178,9 @@ def test_import_regex_ignores_docstring_mentions(tmp_path: Path) -> None:
     ``mahavishnu`` must not be matched.
     """
     no_imports = tmp_path / "test_docstring.py"
-    no_imports.write_text('"""The mahavishnu module is great."""\n\ndef test_thing(): pass\n')
+    no_imports.write_text(
+        '"""The mahavishnu module is great."""\n\ndef test_thing(): pass\n'
+    )
     assert infer_component_from_imports(no_imports) is None
 
 
@@ -199,7 +201,9 @@ def test_map_test_files_to_components_filters_phantom(
     test_files = sorted(p for p in unit.glob("test_*.py"))
 
     valid = {"mahavishnu/core", "mahavishnu/workers"}
-    grouped = map_test_files_to_components(test_files, tests_root, valid_components=valid)
+    grouped = map_test_files_to_components(
+        test_files, tests_root, valid_components=valid
+    )
 
     # The catch-all bucket must be present and contain the phantom test.
     assert "mahavishnu" in grouped, (
@@ -210,7 +214,9 @@ def test_map_test_files_to_components_filters_phantom(
     # No phantom buckets should exist (i.e. no key starts with
     # ``mahavishnu/`` unless it's a real, valid component).
     phantom_keys = [
-        k for k in grouped if k.startswith("mahavishnu/") and k not in valid and k != "mahavishnu"
+        k
+        for k in grouped
+        if k.startswith("mahavishnu/") and k not in valid and k != "mahavishnu"
     ]
     assert not phantom_keys, f"phantom components leaked: {phantom_keys}"
 
@@ -265,7 +271,9 @@ def test_build_summary_includes_components_with_no_tests(
 # ---------------------------------------------------------------------------
 
 
-def test_main_end_to_end_writes_json(make_fixture_project: Path, tmp_path: Path) -> None:
+def test_main_end_to_end_writes_json(
+    make_fixture_project: Path, tmp_path: Path
+) -> None:
     out = tmp_path / "out.json"
     rc = main(
         [
@@ -346,7 +354,9 @@ def test_main_rejects_unsafe_output_path(make_fixture_project: Path, capsys) -> 
     ), f"expected a safety-check error message; got stderr={captured.err!r}"
 
 
-def test_main_rejects_out_equal_to_project_root(make_fixture_project: Path, capsys) -> None:
+def test_main_rejects_out_equal_to_project_root(
+    make_fixture_project: Path, capsys
+) -> None:
     """T3.1: --out pointing at the project root itself (a
     confused-deputy case) must be rejected. The directory exists, the
     path is technically "under" the project, but writing the JSON
@@ -438,7 +448,9 @@ def test_component_coverage_dataclass_is_not_frozen() -> None:
     try:
         cov.covered = False
     except AttributeError as exc:  # FrozenInstanceError subclasses AttributeError
-        pytest.fail(f"ComponentCoverage should not be frozen; assignment raised: {exc!r}")
+        pytest.fail(
+            f"ComponentCoverage should not be frozen; assignment raised: {exc!r}"
+        )
     assert cov.covered is False
 
 
@@ -569,7 +581,9 @@ def test_main_mixed_stack(make_fixture_project: Path, tmp_path: Path) -> None:
     assert "src/foo" not in components
 
 
-def test_m2_python_only_no_phantom_go_or_node(make_fixture_project: Path, tmp_path: Path) -> None:
+def test_m2_python_only_no_phantom_go_or_node(
+    make_fixture_project: Path, tmp_path: Path
+) -> None:
     """M2 follow-up: a Python-only fixture (no ``go.mod``, no
     ``package.json``) running with ``--stack python`` must NOT report
     phantom Go/Node components like ``htmlcov/``, ``dist/``,
@@ -700,7 +714,9 @@ def test_t32_force_stack_rejects_unknown_stack(tmp_path: Path, capsys) -> None:
     assert "rust" in captured.err
 
 
-def test_main_rejects_out_of_range_coverage_target(make_fixture_project: Path, capsys) -> None:
+def test_main_rejects_out_of_range_coverage_target(
+    make_fixture_project: Path, capsys
+) -> None:
     """M2 follow-up: ``--coverage-target`` must be 0..100; values
     outside the range must produce a non-zero exit and a clear
     stderr message.
@@ -748,7 +764,9 @@ def test_infer_component_from_filename_websocket(tmp_path: Path) -> None:
     tests_root.mkdir(parents=True)
     test_file = tests_root / "test_websocket_integration.py"
     test_file.write_text("# no imports\n")
-    assert infer_component_from_filename(test_file, tests_root) == ("mahavishnu/websocket")
+    assert infer_component_from_filename(test_file, tests_root) == (
+        "mahavishnu/websocket"
+    )
 
 
 def test_infer_component_from_filename_top_level_catchall(
@@ -761,7 +779,9 @@ def test_infer_component_from_filename_top_level_catchall(
     tests_root = make_fixture_project / "tests"
     test_files = [tests_root / "test_top.py"]
     valid = {"mahavishnu/core", "mahavishnu/workers"}
-    grouped = map_test_files_to_components(test_files, tests_root, valid_components=valid)
+    grouped = map_test_files_to_components(
+        test_files, tests_root, valid_components=valid
+    )
     assert "mahavishnu" in grouped
     assert any("test_top.py" in f for f in grouped["mahavishnu"])
 

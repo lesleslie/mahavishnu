@@ -187,7 +187,11 @@ def _as_int(value: object, default: int = 0) -> int:
 
 def _as_float(value: object) -> float | None:
     """Narrow a SQLite scalar to ``float``, or ``None`` when it is NULL."""
-    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+    return (
+        float(value)
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+        else None
+    )
 
 
 def log_baseline() -> int:
@@ -320,7 +324,9 @@ def wait_for_qwen_row(
 
 def _run(cmd: list[str], timeout: int = 60) -> subprocess.CompletedProcess[str]:
     try:
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+        return subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout, check=False
+        )
     except OSError, subprocess.SubprocessError:
         return subprocess.CompletedProcess(cmd, 127, "", "")
 
@@ -411,7 +417,8 @@ def run_gate(timeout: int = WAIT_SECONDS) -> int:
     expected_agent = expected_qwen_user_agent()
     if expected_agent is None:
         typer.echo(
-            "FAIL: could not read 'qwen --version'; refusing to guess a user agent", err=True
+            "FAIL: could not read 'qwen --version'; refusing to guess a user agent",
+            err=True,
         )
         return EXIT_PRECONDITION
     typer.echo(f"INFO: expecting rows from {expected_model!r} via {expected_agent!r}")
@@ -420,14 +427,18 @@ def run_gate(timeout: int = WAIT_SECONDS) -> int:
         return EXIT_FAIL
 
     if not LOGS_DB.exists():
-        typer.echo(f"FAIL: {LOGS_DB} is missing -- no Bifrost activity at all", err=True)
+        typer.echo(
+            f"FAIL: {LOGS_DB} is missing -- no Bifrost activity at all", err=True
+        )
         return EXIT_NO_LOG
 
     typer.echo(
         f"INFO: waiting up to {timeout}s for a {expected_model} row "
         f"on virtual key {VIRTUAL_KEY_NAME!r}"
     )
-    hit = wait_for_qwen_row(baseline, timeout, model=expected_model, user_agent=expected_agent)
+    hit = wait_for_qwen_row(
+        baseline, timeout, model=expected_model, user_agent=expected_agent
+    )
     if hit is None:
         typer.echo(f"FAIL: no Qwen-route row appeared within {timeout}s", err=True)
         return EXIT_FAIL

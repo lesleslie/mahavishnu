@@ -113,7 +113,9 @@ def _make_ingester(
     )
 
 
-def _attach_embedder(ingester: OtelIngester, embedding: list[float] | None = None) -> MagicMock:
+def _attach_embedder(
+    ingester: OtelIngester, embedding: list[float] | None = None
+) -> MagicMock:
     """Attach a mock embedder to an ingester."""
     mock_embedder = _make_embedder(embedding)
     ingester._embedder = mock_embedder
@@ -227,7 +229,9 @@ class TestOtelIngesterConstructor:
 
     def test_storage_type_string_is_coerced_to_enum(self) -> None:
         """A string storage_type is converted to StorageType enum at construction."""
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         assert ingester.storage_type is StorageType.POSTGRESQL
 
     def test_invalid_storage_type_string_raises(self) -> None:
@@ -274,7 +278,9 @@ class TestCreateEmbedder:
         embedder = ingester._create_embedder()
         assert isinstance(embedder, TextOnlyEmbedder)
 
-    def test_unavailable_backend_raises_import_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_unavailable_backend_raises_import_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """If a chosen backend is unavailable, _create_embedder raises ImportError."""
         # Force sentence-transformers to be "unavailable" for the test
         monkeypatch.setattr(
@@ -314,7 +320,10 @@ class TestMapToFastEmbedModel:
     def test_unknown_model_falls_back_to_default(self) -> None:
         """Unknown names fall back to the default fastembed model."""
         ingester = _make_ingester(preferred_backend="text_only")
-        assert ingester._map_to_fastembed_model("totally-unknown-model") == "BAAI/bge-small-en-v1.5"
+        assert (
+            ingester._map_to_fastembed_model("totally-unknown-model")
+            == "BAAI/bge-small-en-v1.5"
+        )
 
 
 # ============== initialize (DuckDB path) ==============
@@ -630,7 +639,9 @@ class TestSearchTraces:
         ingester = _make_ingester(hot_store=hot_store, preferred_backend="text_only")
         embedder = _attach_embedder(ingester)
 
-        results = await ingester.search_traces("error", limit=5, system_id="claude", threshold=0.5)
+        results = await ingester.search_traces(
+            "error", limit=5, system_id="claude", threshold=0.5
+        )
 
         embedder.encode.assert_called_once_with("error")
         hot_store.search_similar.assert_awaited_once()
@@ -1051,7 +1062,9 @@ class TestCreateOtelIngesterFactory:
             "postgresql://u:p@localhost/db",
         )
         with patch("akosha.storage.HotStore"):
-            with patch("mahavishnu.adapters.pgvector_adapter.PgvectorAdapter") as Adapter:
+            with patch(
+                "mahavishnu.adapters.pgvector_adapter.PgvectorAdapter"
+            ) as Adapter:
                 with patch("mahavishnu.adapters.pgvector_adapter.PgvectorSettings"):
                     fake = MagicMock()
                     fake.init = AsyncMock()

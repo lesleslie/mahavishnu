@@ -72,7 +72,10 @@ class CompatibilityPolicy:
         - MAJOR version bumps
         - MINOR version decreases (not possible in practice)
         """
-        return new_version.major != old_version.major or new_version.minor < old_version.minor
+        return (
+            new_version.major != old_version.major
+            or new_version.minor < old_version.minor
+        )
 
     @classmethod
     def validate_version_transition(

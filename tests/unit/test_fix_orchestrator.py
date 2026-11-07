@@ -217,7 +217,9 @@ class TestFixOrchestrator:
         """Create mock approval manager."""
         manager = MagicMock()
         manager.create_request = MagicMock(return_value=MagicMock(id="approval-001"))
-        manager.respond = MagicMock(return_value=MagicMock(approved=True, selected_option=0))
+        manager.respond = MagicMock(
+            return_value=MagicMock(approved=True, selected_option=0)
+        )
         return manager
 
     @pytest.fixture
@@ -338,7 +340,12 @@ class TestFixOrchestrator:
     ) -> None:
         """Test batch execution runs in parallel."""
         tasks = [
-            FixTask(issue_id=f"MHV-00{i}", pool_type="python", prompt=f"Fix {i}", affected_files=[])
+            FixTask(
+                issue_id=f"MHV-00{i}",
+                pool_type="python",
+                prompt=f"Fix {i}",
+                affected_files=[],
+            )
             for i in range(1, 4)
         ]
 
@@ -359,8 +366,18 @@ class TestFixOrchestrator:
     ) -> None:
         """Test batch execution handles exceptions gracefully."""
         tasks = [
-            FixTask(issue_id="MHV-010", pool_type="python", prompt="Fix 1", affected_files=[]),
-            FixTask(issue_id="MHV-011", pool_type="python", prompt="Fix 2", affected_files=[]),
+            FixTask(
+                issue_id="MHV-010",
+                pool_type="python",
+                prompt="Fix 1",
+                affected_files=[],
+            ),
+            FixTask(
+                issue_id="MHV-011",
+                pool_type="python",
+                prompt="Fix 2",
+                affected_files=[],
+            ),
         ]
 
         call_count = 0

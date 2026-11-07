@@ -485,7 +485,8 @@ class TestTerminalManagerOutputCapture:
         assert len(outputs) == 3
         assert all(sid in outputs for sid in session_ids)
         assert all(
-            output == "Line 0\nLine 1\nLine 2\nLine 3\nLine 4" for output in outputs.values()
+            output == "Line 0\nLine 1\nLine 2\nLine 3\nLine 4"
+            for output in outputs.values()
         )
 
     @pytest.mark.asyncio

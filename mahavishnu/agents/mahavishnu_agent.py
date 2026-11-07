@@ -241,9 +241,7 @@ class MahavishnuAgent:
                 results=result,
             )
 
-        except (
-            Exception
-        ) as e:  # Agent tool entry point translates any sweep failure into a typed SweepReposResult
+        except Exception as e:  # Agent tool entry point translates any sweep failure into a typed SweepReposResult
             logger.exception("sweep_repos failed for tag=%s", request.tag)
             return SweepReposResult(
                 tag=request.tag,

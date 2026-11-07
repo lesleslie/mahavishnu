@@ -155,10 +155,10 @@ docker exec otel-collector wget -O- http://localhost:4317
 
    ```python
    # Use service name when both are in Docker
-   endpoint="http://otel-collector:4317"
+   endpoint = "http://otel-collector:4317"
 
    # Use localhost when client is on host
-   endpoint="http://localhost:4317"
+   endpoint = "http://localhost:4317"
    ```
 
 ______________________________________________________________________
@@ -446,11 +446,13 @@ docker logs otel-collector 2>&1 | grep -i "resource"
 1. **Set resource attributes:**
 
    ```python
-   resource = Resource.create({
-       "service.name": "claude-integration",
-       "telemetry.source": "claude",  # This is key
-       "telemetry.source.type": "ai_assistant"
-   })
+   resource = Resource.create(
+       {
+           "service.name": "claude-integration",
+           "telemetry.source": "claude",  # This is key
+           "telemetry.source.type": "ai_assistant",
+       }
+   )
    ```
 
 1. **Use attributes processor:**

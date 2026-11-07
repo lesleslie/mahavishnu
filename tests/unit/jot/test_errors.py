@@ -1,4 +1,5 @@
 """JotError hierarchy (TD-B2)."""
+
 from __future__ import annotations
 
 from mahavishnu.jot.errors import (

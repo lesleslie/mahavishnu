@@ -58,14 +58,18 @@ async def test_wait_for_dependencies_recovers_and_validates(
         validate_strict = staticmethod(lambda: None)
 
     monkeypatch.setattr("mahavishnu.core.health.DependencyWaiter", FakeWaiter)
-    monkeypatch.setattr("mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig)
+    monkeypatch.setattr(
+        "mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig
+    )
 
     mcp_state = SimpleNamespace(
         probe=AsyncMock(return_value=True),
     )
     app = SimpleNamespace(
         config=SimpleNamespace(
-            health=SimpleNamespace(enabled=True, dependencies={"session_buddy": object()}),
+            health=SimpleNamespace(
+                enabled=True, dependencies={"session_buddy": object()}
+            ),
             unified_validation_enabled=False,
         ),
         _mcp_state=mcp_state,
@@ -105,7 +109,9 @@ async def test_wait_for_dependencies_returns_false_on_strict_validation_error(
             raise RuntimeError("invalid strict config")
 
     monkeypatch.setattr("mahavishnu.core.health.DependencyWaiter", FakeWaiter)
-    monkeypatch.setattr("mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig)
+    monkeypatch.setattr(
+        "mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig
+    )
 
     app = SimpleNamespace(
         config=SimpleNamespace(
@@ -144,11 +150,15 @@ async def test_wait_for_dependencies_returns_false_on_failed_health_check(
         validate_strict = staticmethod(lambda: None)
 
     monkeypatch.setattr("mahavishnu.core.health.DependencyWaiter", FakeWaiter)
-    monkeypatch.setattr("mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig)
+    monkeypatch.setattr(
+        "mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig
+    )
 
     app = SimpleNamespace(
         config=SimpleNamespace(
-            health=SimpleNamespace(enabled=True, dependencies={"session_buddy": object()}),
+            health=SimpleNamespace(
+                enabled=True, dependencies={"session_buddy": object()}
+            ),
             unified_validation_enabled=True,
         ),
         _mcp_state=None,
@@ -185,11 +195,15 @@ async def test_wait_for_dependencies_swallows_validation_exception(
         validate_strict = staticmethod(lambda: None)
 
     monkeypatch.setattr("mahavishnu.core.health.DependencyWaiter", FakeWaiter)
-    monkeypatch.setattr("mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig)
+    monkeypatch.setattr(
+        "mahavishnu.core.unified_config.UnifiedConfig", FakeUnifiedConfig
+    )
 
     app = SimpleNamespace(
         config=SimpleNamespace(
-            health=SimpleNamespace(enabled=True, dependencies={"session_buddy": object()}),
+            health=SimpleNamespace(
+                enabled=True, dependencies={"session_buddy": object()}
+            ),
             unified_validation_enabled=False,
         ),
         _mcp_state=None,

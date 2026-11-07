@@ -67,7 +67,9 @@ def mcp_tool_config() -> MCPToolConfig:
 
 
 @pytest.fixture
-def settings(model_config: ModelConfig, fallback_model_config: ModelConfig) -> PydanticAISettings:
+def settings(
+    model_config: ModelConfig, fallback_model_config: ModelConfig
+) -> PydanticAISettings:
     """Create adapter settings with primary and fallback models."""
     return PydanticAISettings(
         primary_model=model_config,
@@ -106,7 +108,9 @@ class TestModelConfig:
         """Test OpenAI model string conversion."""
         assert model_config.to_model_string() == "openai:gpt-4"
 
-    def test_to_model_string_anthropic(self, fallback_model_config: ModelConfig) -> None:
+    def test_to_model_string_anthropic(
+        self, fallback_model_config: ModelConfig
+    ) -> None:
         """Test Anthropic model string conversion."""
         assert fallback_model_config.to_model_string() == "anthropic:claude-sonnet-4-5"
 
@@ -169,12 +173,16 @@ class TestInitialization:
     """Tests for adapter initialization."""
 
     @pytest.mark.asyncio
-    async def test_initialize_success(self, initialized_adapter: PydanticAIAdapter) -> None:
+    async def test_initialize_success(
+        self, initialized_adapter: PydanticAIAdapter
+    ) -> None:
         """Test successful initialization."""
         assert initialized_adapter._initialized is True
 
     @pytest.mark.asyncio
-    async def test_initialize_without_pydantic_ai(self, settings: PydanticAISettings) -> None:
+    async def test_initialize_without_pydantic_ai(
+        self, settings: PydanticAISettings
+    ) -> None:
         """Test initialization fails without pydantic-ai package."""
         adapter = PydanticAIAdapter(settings)
         adapter._pydantic_ai_available = False
@@ -202,7 +210,9 @@ class TestInitialization:
         assert adapter._initialized is True
 
     @pytest.mark.asyncio
-    async def test_double_initialize(self, initialized_adapter: PydanticAIAdapter) -> None:
+    async def test_double_initialize(
+        self, initialized_adapter: PydanticAIAdapter
+    ) -> None:
         """Test double initialization is handled gracefully."""
         # Should not raise, just log warning
         await initialized_adapter.initialize()
@@ -218,7 +228,9 @@ class TestHealthCheck:
     """Tests for health check functionality."""
 
     @pytest.mark.asyncio
-    async def test_health_unhealthy_without_package(self, settings: PydanticAISettings) -> None:
+    async def test_health_unhealthy_without_package(
+        self, settings: PydanticAISettings
+    ) -> None:
         """Test health returns unhealthy when pydantic-ai not installed."""
         adapter = PydanticAIAdapter(settings)
         adapter._pydantic_ai_available = False
@@ -229,7 +241,9 @@ class TestHealthCheck:
         assert "not installed" in health["details"]["reason"]
 
     @pytest.mark.asyncio
-    async def test_health_degraded_when_not_initialized(self, settings: PydanticAISettings) -> None:
+    async def test_health_degraded_when_not_initialized(
+        self, settings: PydanticAISettings
+    ) -> None:
         """Test health returns degraded when not initialized."""
         adapter = PydanticAIAdapter(settings)
         adapter._pydantic_ai_available = True
@@ -310,7 +324,9 @@ class TestRateLimiting:
     """Tests for rate limiting."""
 
     @pytest.mark.asyncio
-    async def test_create_agent_rate_limit(self, initialized_adapter: PydanticAIAdapter) -> None:
+    async def test_create_agent_rate_limit(
+        self, initialized_adapter: PydanticAIAdapter
+    ) -> None:
         """Test that agent creation is rate-limited."""
         # Populate agents up to the limit directly
         for i in range(MAX_AGENTS):
@@ -364,7 +380,9 @@ class TestErrorHandling:
         assert "not initialized" in str(exc).lower()
 
     @pytest.mark.asyncio
-    async def test_execute_agent_not_found(self, initialized_adapter: PydanticAIAdapter) -> None:
+    async def test_execute_agent_not_found(
+        self, initialized_adapter: PydanticAIAdapter
+    ) -> None:
         """Test execute_agent raises error for non-existent agent."""
         with pytest.raises(PydanticAIAdapterError) as exc:
             await initialized_adapter.execute_agent(
@@ -405,14 +423,19 @@ class TestFallbackStrategy:
         """Test that fallback is triggered when primary model fails."""
         # This tests the fallback configuration is properly set up
         # Full integration tests require actual API calls
-        assert initialized_adapter.settings.fallback_strategy == FallbackStrategy.SEQUENTIAL
+        assert (
+            initialized_adapter.settings.fallback_strategy
+            == FallbackStrategy.SEQUENTIAL
+        )
         assert len(initialized_adapter.settings.fallback_models) == 1
         fallback_model = initialized_adapter.settings.fallback_models[0]
         assert fallback_model.provider == "anthropic"
         assert "claude" in fallback_model.model_name.lower()
 
     @pytest.mark.asyncio
-    async def test_fallback_all_models_fail(self, initialized_adapter: PydanticAIAdapter) -> None:
+    async def test_fallback_all_models_fail(
+        self, initialized_adapter: PydanticAIAdapter
+    ) -> None:
         """Test fallback model list is configured correctly."""
         # Verify we have a proper fallback chain
         all_models = [
@@ -434,7 +457,9 @@ class TestShutdown:
     """Tests for adapter shutdown."""
 
     @pytest.mark.asyncio
-    async def test_shutdown_clears_resources(self, initialized_adapter: PydanticAIAdapter) -> None:
+    async def test_shutdown_clears_resources(
+        self, initialized_adapter: PydanticAIAdapter
+    ) -> None:
         """Test that shutdown clears all resources."""
         # Add a mock MCP server
         mock_server = MagicMock()

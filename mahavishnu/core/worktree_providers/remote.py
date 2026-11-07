@@ -110,7 +110,9 @@ MAX_CONCURRENT_WORKTREE_STREAMS: int = 8
 # Module-level asyncio semaphore used by ``RemoteWorktreeProvider.fetch``
 # to enforce the concurrency cap. The semaphore is process-global so
 # sibling fetch coroutines cooperate across awaits.
-_fetch_stream_semaphore: asyncio.Semaphore = asyncio.Semaphore(MAX_CONCURRENT_WORKTREE_STREAMS)
+_fetch_stream_semaphore: asyncio.Semaphore = asyncio.Semaphore(
+    MAX_CONCURRENT_WORKTREE_STREAMS
+)
 
 
 def supports_streaming(storage: Any) -> bool:
@@ -458,9 +460,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 principal=principal.name,
             )
             return handle
-        except (
-            Exception
-        ):  # metrics + re-raise wrapper — broad catch to record failure telemetry then rethrow
+        except Exception:  # metrics + re-raise wrapper — broad catch to record failure telemetry then rethrow
             record_worktree_op(
                 backend=backend_kind,
                 op="create",
@@ -509,7 +509,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
         cache_key = f"materialized:{handle.handle_id}"
 
         # 1. Cache hit path
-        cached = await self._try_remote_cache_hit(cache_key, handle, start, backend_kind)
+        cached = await self._try_remote_cache_hit(
+            cache_key, handle, start, backend_kind
+        )
         if cached is not None:
             return cached
 
@@ -571,10 +573,10 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 path=target,
                 worktree_id=handle.handle_id,
             )
-        except (
-            Exception
-        ):  # metrics + re-raise wrapper — broad catch to record failure telemetry then rethrow
-            self._record_fetch_outcome(start, backend_kind, success=False, handle=handle)
+        except Exception:  # metrics + re-raise wrapper — broad catch to record failure telemetry then rethrow
+            self._record_fetch_outcome(
+                start, backend_kind, success=False, handle=handle
+            )
             raise
 
     @staticmethod
@@ -643,7 +645,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
                 error_code=ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE,
             )
 
-    def _open_storage_chunk_reader(self, storage_key: str) -> Callable[[], Iterator[bytes]]:
+    def _open_storage_chunk_reader(
+        self, storage_key: str
+    ) -> Callable[[], Iterator[bytes]]:
         """MHV-222 first half: map load_stream acquisition to NOT_FOUND.
 
         ``load_stream`` returns a ``Callable[[], Iterator[bytes]]``
@@ -724,7 +728,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
         return cast("bytes", first_chunk_any)
 
     @staticmethod
-    def _reject_legacy_gzip_magic(first_chunk: bytes, producer: threading.Thread) -> None:
+    def _reject_legacy_gzip_magic(
+        first_chunk: bytes, producer: threading.Thread
+    ) -> None:
         """MHV-213: reject legacy ``.tar.gz`` bundles."""
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
@@ -787,7 +793,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
         return target
 
     @staticmethod
-    def _record_successful_deserialize(start: float, backend_kind: str, byte_size: int) -> None:
+    def _record_successful_deserialize(
+        start: float, backend_kind: str, byte_size: int
+    ) -> None:
         """Emit the ``DESERIALIZE`` histogram for the streaming success path."""
         from mahavishnu.observability.metrics import (
             StreamingOp,
@@ -874,7 +882,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
             _validate_path_component(handle.branch, kind="branch")
             wt_path = get_worktree_path(handle.repo, handle.branch)
             if wt_path.exists():
-                await _remove_worktree_via_git("git", Path(handle.repo), wt_path, force=True)
+                await _remove_worktree_via_git(
+                    "git", Path(handle.repo), wt_path, force=True
+                )
         except Exception as exc:  # best-effort on-disk cleanup — broad catch to log and continue with remote delete  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.debug(
                 "worktree-remove-handle-on-disk-cleanup-skipped",
@@ -944,7 +954,9 @@ class RemoteWorktreeProvider(WorktreeProvider):
         )
 
         if caller is None:
-            raise PermissionError("RemoteWorktreeProvider.list_handles requires a caller")
+            raise PermissionError(
+                "RemoteWorktreeProvider.list_handles requires a caller"
+            )
         if self._mcp_client is None:
             return []
         return await mcp_list_handles(

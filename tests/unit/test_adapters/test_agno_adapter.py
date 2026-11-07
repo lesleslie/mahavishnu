@@ -316,7 +316,9 @@ async def test_execute_code_sweep_multiple_repos(mock_config):
         adapter._initialized = True
         adapter._semaphore = asyncio.Semaphore(5)
 
-        result = await adapter.execute(task={"type": "code_sweep", "id": "test_123"}, repos=repos)
+        result = await adapter.execute(
+            task={"type": "code_sweep", "id": "test_123"}, repos=repos
+        )
 
         assert result["status"] in ("completed", "partial")
         assert result["repos_processed"] == 3
@@ -473,7 +475,9 @@ async def test_process_single_repo_exception_handling(mock_config):
     adapter._semaphore = asyncio.Semaphore(5)
 
     # Mock _create_agent to raise an exception
-    with patch.object(adapter, "_create_agent", side_effect=Exception("Agent creation failed")):
+    with patch.object(
+        adapter, "_create_agent", side_effect=Exception("Agent creation failed")
+    ):
         result = await adapter._process_single_repo(
             repo="/nonexistent/path",
             task={"type": "code_sweep", "id": "test_exception"},
@@ -704,7 +708,9 @@ async def test_execute_with_empty_repo_list(mock_config):
     adapter._initialized = True
     adapter._semaphore = asyncio.Semaphore(5)
 
-    result = await adapter.execute(task={"type": "code_sweep", "id": "empty_test"}, repos=[])
+    result = await adapter.execute(
+        task={"type": "code_sweep", "id": "empty_test"}, repos=[]
+    )
 
     assert result["repos_processed"] == 0
     assert result["success_count"] == 0

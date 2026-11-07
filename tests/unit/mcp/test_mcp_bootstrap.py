@@ -90,7 +90,9 @@ def _stub_server(
     fastmcp: Any = None,
 ) -> SimpleNamespace:
     """Build the minimal ``FastMCPServer`` surface the bootstrap helpers read."""
-    app_kwargs: dict[str, Any] = {"config": config if config is not None else SimpleNamespace()}
+    app_kwargs: dict[str, Any] = {
+        "config": config if config is not None else SimpleNamespace()
+    }
     app_kwargs.update(app_extra or {})
     return SimpleNamespace(
         server=fastmcp if fastmcp is not None else MagicMock(),
@@ -167,7 +169,9 @@ class TestBuildCrowAdapter:
         monkeypatch.setattr(crow_server, "create_crow_mcp_client", built)
         monkeypatch.setattr(crow_module, "CrowTerminalAdapter", _FakeCrowAdapter)
 
-        config = SimpleNamespace(crow_enabled=True, crow_http_host="10.0.0.5", crow_http_port=9999)
+        config = SimpleNamespace(
+            crow_enabled=True, crow_http_host="10.0.0.5", crow_http_port=9999
+        )
         adapter = bootstrap._build_crow_adapter(config, mcp_client=None)
 
         assert adapter.client == "built-client"
@@ -185,7 +189,9 @@ class TestBuildCrowAdapter:
             MagicMock(side_effect=ConnectionError("crow unreachable")),
         )
 
-        config = SimpleNamespace(crow_enabled=True, crow_http_host=None, crow_http_port=None)
+        config = SimpleNamespace(
+            crow_enabled=True, crow_http_host=None, crow_http_port=None
+        )
         adapter = bootstrap._build_crow_adapter(config, mcp_client=None)
 
         assert isinstance(adapter, MockTerminalAdapter)
@@ -212,7 +218,10 @@ class TestResolveTerminalAdapter:
 
         monkeypatch.setattr(
             "mahavishnu.terminal.adapters._ADAPTER_REGISTRY",
-            {"crow": _fake_crow_factory, "mock": lambda *a, **kw: MockTerminalAdapter()},
+            {
+                "crow": _fake_crow_factory,
+                "mock": lambda *a, **kw: MockTerminalAdapter(),
+            },
         )
         config = TerminalSettings(adapter_preference="crow")
 
@@ -268,7 +277,9 @@ def test_init_terminal_manager_returns_none_on_failure(
         "_resolve_terminal_adapter",
         MagicMock(side_effect=RuntimeError("adapter build failed")),
     )
-    server = _stub_server(config=SimpleNamespace(terminal=TerminalSettings(enabled=True)))
+    server = _stub_server(
+        config=SimpleNamespace(terminal=TerminalSettings(enabled=True))
+    )
 
     assert bootstrap.init_terminal_manager(server) is None  # ty: ignore[invalid-argument-type]
 
@@ -315,7 +326,9 @@ class TestHealthEndpointHandlers:
         assert set(recorder.routes) == {"/health", "/healthz", "/metrics"}
         assert all(m == ["GET"] for m in recorder.methods.values())
 
-    async def test_health_reports_service_and_version(self, recorder: _RouteRecorder) -> None:
+    async def test_health_reports_service_and_version(
+        self, recorder: _RouteRecorder
+    ) -> None:
         """``/health`` echoes the version passed at registration time."""
         response = await recorder.routes["/health"]()
 
@@ -323,7 +336,9 @@ class TestHealthEndpointHandlers:
         assert b'"version":"9.9.9"' in response.body
         assert b'"service":"mahavishnu"' in response.body
 
-    async def test_healthz_is_a_bare_liveness_probe(self, recorder: _RouteRecorder) -> None:
+    async def test_healthz_is_a_bare_liveness_probe(
+        self, recorder: _RouteRecorder
+    ) -> None:
         """``/healthz`` returns only ``{"status": "ok"}`` for k8s-style probes."""
         response = await recorder.routes["/healthz"]()
 
@@ -370,21 +385,26 @@ class TestWorkerAndPoolBlocks:
 
         register.assert_not_called()
 
-    def test_worker_block_skips_when_manager_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_worker_block_skips_when_manager_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """An uninitialized worker manager is a warning, not a crash."""
         from mahavishnu.mcp.tools import worker_tools
 
         register = MagicMock()
         monkeypatch.setattr(worker_tools, "register_worker_tools", register)
         server = _stub_server(
-            config=SimpleNamespace(workers_enabled=True), app_extra={"_worker_manager": None}
+            config=SimpleNamespace(workers_enabled=True),
+            app_extra={"_worker_manager": None},
         )
 
         bootstrap._register_worker_block(server)  # ty: ignore[invalid-argument-type]
 
         register.assert_not_called()
 
-    def test_worker_block_registers_with_manager(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_worker_block_registers_with_manager(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """With both gates open the worker tools are registered."""
         from mahavishnu.mcp.tools import worker_tools
 
@@ -400,7 +420,9 @@ class TestWorkerAndPoolBlocks:
 
         register.assert_called_once_with(server.server, manager)
 
-    def test_pool_block_skips_when_pools_disabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_pool_block_skips_when_pools_disabled(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``pools_enabled=False`` short-circuits before importing tools."""
         from mahavishnu.mcp.tools import pool_tools
 
@@ -415,7 +437,9 @@ class TestWorkerAndPoolBlocks:
 
         register.assert_not_called()
 
-    def test_pool_block_skips_when_manager_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_pool_block_skips_when_manager_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """An uninitialized pool manager is a warning, not a crash."""
         from mahavishnu.mcp.tools import pool_tools
 
@@ -429,7 +453,9 @@ class TestWorkerAndPoolBlocks:
 
         register.assert_not_called()
 
-    def test_pool_block_registers_with_manager(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_pool_block_registers_with_manager(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """With both gates open the pool tools are registered."""
         from mahavishnu.mcp.tools import pool_tools
 
@@ -437,7 +463,8 @@ class TestWorkerAndPoolBlocks:
         monkeypatch.setattr(pool_tools, "register_pool_tools", register)
         manager = MagicMock()
         server = _stub_server(
-            config=SimpleNamespace(pools_enabled=True), app_extra={"pool_manager": manager}
+            config=SimpleNamespace(pools_enabled=True),
+            app_extra={"pool_manager": manager},
         )
 
         bootstrap._register_pool_block(server)  # ty: ignore[invalid-argument-type]
@@ -453,7 +480,9 @@ class TestWorkerAndPoolBlocks:
 class TestDurableWorkerManagerFallback:
     """``_try_build_durable_worker_manager`` and the no-op shim it falls back to."""
 
-    def test_returns_none_when_tmux_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_returns_none_when_tmux_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """No tmux on PATH means no durable manager (CI stays green)."""
         monkeypatch.setattr(shutil, "which", lambda _name: None)
 
@@ -509,7 +538,9 @@ class TestDurableWorkerManagerFallback:
 # =============================================================================
 
 
-@pytest.mark.parametrize("register_fn_name", ["_register_otel_block", "_register_otel_tools"])
+@pytest.mark.parametrize(
+    "register_fn_name", ["_register_otel_block", "_register_otel_tools"]
+)
 class TestOtelRegistrationGating:
     """Both OTel entry points gate identically on Akosha importability."""
 
@@ -522,7 +553,9 @@ class TestOtelRegistrationGating:
         register = MagicMock()
         monkeypatch.setattr(otel_tools, "register_otel_tools", register)
         monkeypatch.setattr(
-            importlib.util, "find_spec", MagicMock(side_effect=ImportError("akosha broken"))
+            importlib.util,
+            "find_spec",
+            MagicMock(side_effect=ImportError("akosha broken")),
         )
 
         getattr(bootstrap, register_fn_name)(_stub_server())
@@ -551,7 +584,9 @@ class TestOtelRegistrationGating:
 
         register = MagicMock()
         monkeypatch.setattr(otel_tools, "register_otel_tools", register)
-        monkeypatch.setattr(importlib.util, "find_spec", MagicMock(return_value=object()))
+        monkeypatch.setattr(
+            importlib.util, "find_spec", MagicMock(return_value=object())
+        )
         server = _stub_server()
 
         getattr(bootstrap, register_fn_name)(server)
@@ -569,7 +604,9 @@ class TestOtelRegistrationGating:
             "register_otel_tools",
             MagicMock(side_effect=RuntimeError("hotstore handshake failed")),
         )
-        monkeypatch.setattr(importlib.util, "find_spec", MagicMock(return_value=object()))
+        monkeypatch.setattr(
+            importlib.util, "find_spec", MagicMock(return_value=object())
+        )
 
         getattr(bootstrap, register_fn_name)(_stub_server())
 
@@ -594,7 +631,9 @@ class TestOptionalToolBlockGating:
 
         register = MagicMock()
         monkeypatch.setattr(goal_team_tools, "register_goal_team_tools", register)
-        monkeypatch.setattr(feature_flags, "is_feature_enabled", lambda name: name == "enabled")
+        monkeypatch.setattr(
+            feature_flags, "is_feature_enabled", lambda name: name == "enabled"
+        )
 
         getattr(bootstrap, register_fn_name)(_stub_server())
 
@@ -622,8 +661,16 @@ class TestOptionalToolBlockGating:
     @pytest.mark.parametrize(
         ("register_fn_name", "module_name", "attr_name"),
         [
-            ("_register_treesitter_block", "treesitter_tools", "register_treesitter_tools"),
-            ("_register_treesitter_tools", "treesitter_tools", "register_treesitter_tools"),
+            (
+                "_register_treesitter_block",
+                "treesitter_tools",
+                "register_treesitter_tools",
+            ),
+            (
+                "_register_treesitter_tools",
+                "treesitter_tools",
+                "register_treesitter_tools",
+            ),
             (
                 "_register_adapter_registry_block",
                 "adapter_registry_tools",
@@ -636,8 +683,16 @@ class TestOptionalToolBlockGating:
             ),
             ("_register_pycharm_block", "pycharm_tools", "register_pycharm_tools"),
             ("_register_pycharm_tools", "pycharm_tools", "register_pycharm_tools"),
-            ("_register_primitive_block", "primitive_tools", "register_primitive_tools"),
-            ("_register_primitive_tools", "primitive_tools", "register_primitive_tools"),
+            (
+                "_register_primitive_block",
+                "primitive_tools",
+                "register_primitive_tools",
+            ),
+            (
+                "_register_primitive_tools",
+                "primitive_tools",
+                "register_primitive_tools",
+            ),
         ],
     )
     def test_optional_group_swallows_import_error(
@@ -699,7 +754,9 @@ class TestOptionalToolBlockGating:
             )
 
         register = MagicMock()
-        monkeypatch.setattr(adapter_registry_tools, "register_adapter_registry_tools", register)
+        monkeypatch.setattr(
+            adapter_registry_tools, "register_adapter_registry_tools", register
+        )
         server = _stub_server(
             config=SimpleNamespace(adapter_registry=SimpleNamespace(enabled=False))
         )
@@ -726,7 +783,9 @@ class TestOptionalToolBlockGating:
             )
 
         register = MagicMock()
-        monkeypatch.setattr(adapter_registry_tools, "register_adapter_registry_tools", register)
+        monkeypatch.setattr(
+            adapter_registry_tools, "register_adapter_registry_tools", register
+        )
         server = _stub_server(
             config=SimpleNamespace(adapter_registry=SimpleNamespace(enabled=True))
         )
@@ -771,12 +830,42 @@ class TestOptionalToolBlockGating:
     @pytest.mark.parametrize(
         ("register_fn_name", "module_name", "attr_name", "takes_app"),
         [
-            ("_register_treesitter_block", "treesitter_tools", "register_treesitter_tools", False),
-            ("_register_treesitter_tools", "treesitter_tools", "register_treesitter_tools", False),
-            ("_register_pycharm_block", "pycharm_tools", "register_pycharm_tools", True),
-            ("_register_pycharm_tools", "pycharm_tools", "register_pycharm_tools", True),
-            ("_register_primitive_block", "primitive_tools", "register_primitive_tools", False),
-            ("_register_primitive_tools", "primitive_tools", "register_primitive_tools", False),
+            (
+                "_register_treesitter_block",
+                "treesitter_tools",
+                "register_treesitter_tools",
+                False,
+            ),
+            (
+                "_register_treesitter_tools",
+                "treesitter_tools",
+                "register_treesitter_tools",
+                False,
+            ),
+            (
+                "_register_pycharm_block",
+                "pycharm_tools",
+                "register_pycharm_tools",
+                True,
+            ),
+            (
+                "_register_pycharm_tools",
+                "pycharm_tools",
+                "register_pycharm_tools",
+                True,
+            ),
+            (
+                "_register_primitive_block",
+                "primitive_tools",
+                "register_primitive_tools",
+                False,
+            ),
+            (
+                "_register_primitive_tools",
+                "primitive_tools",
+                "register_primitive_tools",
+                False,
+            ),
         ],
     )
     def test_optional_group_registers_when_importable(
@@ -800,12 +889,16 @@ class TestOptionalToolBlockGating:
         expected = (server.server, server.app) if takes_app else (server.server,)
         register.assert_called_once_with(*expected)
 
-    def test_self_improvement_block_registers(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_self_improvement_block_registers(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """The self-improvement group takes both the FastMCP and the app."""
         from mahavishnu.mcp.tools import self_improvement_tools
 
         register = MagicMock()
-        monkeypatch.setattr(self_improvement_tools, "register_self_improvement_tools", register)
+        monkeypatch.setattr(
+            self_improvement_tools, "register_self_improvement_tools", register
+        )
         server = _stub_server()
 
         bootstrap._register_self_improvement_block(server)  # ty: ignore[invalid-argument-type]
@@ -852,7 +945,9 @@ def test_capability_block_skips_reader_when_registration_fails(
 
     core_register = MagicMock()
     monkeypatch.setattr(capability_tools, "register_capability_tools", core_register)
-    monkeypatch.setattr(core_bootstrap, "resolve_mcp_url", MagicMock(return_value="http://d"))
+    monkeypatch.setattr(
+        core_bootstrap, "resolve_mcp_url", MagicMock(return_value="http://d")
+    )
     monkeypatch.setattr(mcp_adapter, "MCPClient", MagicMock())
     monkeypatch.setattr(
         get_capability_result_tool,
@@ -878,7 +973,9 @@ def test_capability_block_skips_reader_when_registration_fails(
 class TestA2ARouteMount:
     """A2A is gated on ``a2a.enabled`` and patches ``http_app`` when on."""
 
-    def test_skips_when_a2a_config_absent(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_skips_when_a2a_config_absent(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """No ``a2a`` config attribute means no mount attempt."""
         from mahavishnu.a2a import server as a2a_server
 
@@ -916,7 +1013,9 @@ class TestA2ARouteMount:
         from mahavishnu.a2a import server as a2a_server
 
         a2a_app = object()
-        monkeypatch.setattr(a2a_server, "build_a2a_router", MagicMock(return_value=a2a_app))
+        monkeypatch.setattr(
+            a2a_server, "build_a2a_router", MagicMock(return_value=a2a_app)
+        )
         mount_webhooks = MagicMock()
         monkeypatch.setattr(webhooks, "mount_durable_webhooks", mount_webhooks)
 
@@ -1036,7 +1135,9 @@ class TestMakeA2AExecuteFn:
 class TestW0Registrars:
     """The ``REGISTRATION_MAP`` entries used by ``apply_tool_profile``."""
 
-    def test_terminal_tools_noop_without_manager(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_terminal_tools_noop_without_manager(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A ``None`` terminal manager short-circuits before importing tools."""
         from mahavishnu.mcp.tools import terminal_tools
 
@@ -1049,7 +1150,9 @@ class TestW0Registrars:
 
         register.assert_not_called()
 
-    def test_terminal_tools_registers_with_manager(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_terminal_tools_registers_with_manager(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A present manager is forwarded along with the MCP client."""
         from mahavishnu.mcp.tools import terminal_tools
 
@@ -1062,7 +1165,9 @@ class TestW0Registrars:
 
         register.assert_called_once_with(server.server, manager, None)
 
-    @pytest.mark.parametrize("register_fn_name", ["_register_worker_tools", "_register_pool_tools"])
+    @pytest.mark.parametrize(
+        "register_fn_name", ["_register_worker_tools", "_register_pool_tools"]
+    )
     def test_manager_gated_registrars_skip_when_disabled(
         self, monkeypatch: pytest.MonkeyPatch, register_fn_name: str
     ) -> None:
@@ -1119,7 +1224,12 @@ class TestW0Registrars:
                 "worker_tools",
                 "register_worker_tools",
             ),
-            ("_register_pool_tools", "pool_manager", "pool_tools", "register_pool_tools"),
+            (
+                "_register_pool_tools",
+                "pool_manager",
+                "pool_tools",
+                "register_pool_tools",
+            ),
         ],
     )
     def test_manager_gated_registrars_register_when_wired(
@@ -1153,7 +1263,9 @@ class TestW0Registrars:
         from mahavishnu.mcp.tools import worker_contract_tools
 
         register = MagicMock()
-        monkeypatch.setattr(worker_contract_tools, "register_worker_contract_tools", register)
+        monkeypatch.setattr(
+            worker_contract_tools, "register_worker_contract_tools", register
+        )
         manager = MagicMock()
         server = _stub_server(app_extra={"_durable_worker_manager": manager})
 
@@ -1168,7 +1280,9 @@ class TestW0Registrars:
         from mahavishnu.mcp.tools import worker_contract_tools
 
         register = MagicMock()
-        monkeypatch.setattr(worker_contract_tools, "register_worker_contract_tools", register)
+        monkeypatch.setattr(
+            worker_contract_tools, "register_worker_contract_tools", register
+        )
         server = _stub_server(app_extra={"_durable_worker_manager": None})
 
         bootstrap._register_worker_contract_tools(server)  # ty: ignore[invalid-argument-type]
@@ -1187,8 +1301,18 @@ class TestW0Registrars:
                 "register_ecosystem_tools",
                 False,
             ),
-            ("_register_workflow_tools", "workflow_tools", "register_workflow_tools", False),
-            ("_register_webhook_tools", "webhook_tools", "register_webhook_tools", False),
+            (
+                "_register_workflow_tools",
+                "workflow_tools",
+                "register_workflow_tools",
+                False,
+            ),
+            (
+                "_register_webhook_tools",
+                "webhook_tools",
+                "register_webhook_tools",
+                False,
+            ),
             (
                 "_register_session_buddy_tools",
                 "session_buddy_tools",
@@ -1309,7 +1433,9 @@ class TestCoreIntegrationDispatcher:
 
         registrars["terminal"].assert_not_called()
 
-    async def test_registers_every_gated_group(self, registrars: dict[str, MagicMock]) -> None:
+    async def test_registers_every_gated_group(
+        self, registrars: dict[str, MagicMock]
+    ) -> None:
         """With all four entries present every group registers exactly once."""
         manager = MagicMock()
         server = _stub_server(terminal_manager=manager)
@@ -1357,7 +1483,9 @@ class TestWorkerPoolDispatcher:
             mocks[name] = mock
         return mocks
 
-    async def test_empty_methods_set_dispatches_nothing(self, blocks: dict[str, MagicMock]) -> None:
+    async def test_empty_methods_set_dispatches_nothing(
+        self, blocks: dict[str, MagicMock]
+    ) -> None:
         """Each ``in methods_set`` check is a precondition guard, not a branch."""
         await bootstrap._register_worker_pool_tools(_stub_server(), set())  # ty: ignore[invalid-argument-type]
 
@@ -1414,7 +1542,9 @@ async def test_register_profile_tools_registers_mandatory_groups(
         (workflow_tools, "register_workflow_tools", "workflow"),
         (webhook_tools, "register_webhook_tools", "webhook"),
     ):
-        monkeypatch.setattr(module, attr, lambda *_a, _label=label, **_kw: calls.append(_label))
+        monkeypatch.setattr(
+            module, attr, lambda *_a, _label=label, **_kw: calls.append(_label)
+        )
 
     server = _stub_server(config=SimpleNamespace(a2a=None))
     server.register_worktree_tools = AsyncMock()

@@ -118,7 +118,9 @@ async def test_service_probe_returns_healthy_on_200() -> None:
     patched_action = _action_with_transport(real_action, transport)
     http_probe_module._http_probe_action = lambda: patched_action
     try:
-        result = await service_probe("https://probe.example/health", expected_status=200)
+        result = await service_probe(
+            "https://probe.example/health", expected_status=200
+        )
         assert result["healthy"] is True, (
             f"service_probe mis-classified healthy response: {result}"
         )

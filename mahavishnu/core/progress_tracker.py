@@ -123,7 +123,18 @@ class ProgressSpinner:
         active: Whether spinner is active
     """
 
-    DEFAULT_FRAMES: ClassVar[list[str]] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+    DEFAULT_FRAMES: ClassVar[list[str]] = [
+        "⠋",
+        "⠙",
+        "⠹",
+        "⠸",
+        "⠼",
+        "⠴",
+        "⠦",
+        "⠧",
+        "⠇",
+        "⠏",
+    ]
 
     def __init__(
         self,
@@ -501,11 +512,19 @@ class ProgressTracker:
         Returns:
             Dictionary with statistics
         """
-        pending = sum(1 for t in self.tasks.values() if t.state == ProgressState.PENDING)
-        running = sum(1 for t in self.tasks.values() if t.state == ProgressState.RUNNING)
-        completed = sum(1 for t in self.tasks.values() if t.state == ProgressState.COMPLETED)
+        pending = sum(
+            1 for t in self.tasks.values() if t.state == ProgressState.PENDING
+        )
+        running = sum(
+            1 for t in self.tasks.values() if t.state == ProgressState.RUNNING
+        )
+        completed = sum(
+            1 for t in self.tasks.values() if t.state == ProgressState.COMPLETED
+        )
         failed = sum(1 for t in self.tasks.values() if t.state == ProgressState.FAILED)
-        cancelled = sum(1 for t in self.tasks.values() if t.state == ProgressState.CANCELLED)
+        cancelled = sum(
+            1 for t in self.tasks.values() if t.state == ProgressState.CANCELLED
+        )
 
         return {
             "total_tasks": len(self.tasks),
@@ -618,7 +637,9 @@ class ProgressTracker:
         """
         task_id = self.add_task(description, total)
 
-        def update(completed: float | None = None, advance: float | None = None) -> None:
+        def update(
+            completed: float | None = None, advance: float | None = None
+        ) -> None:
             self.update_task(task_id, completed=completed, advance=advance)
 
         try:

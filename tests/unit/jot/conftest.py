@@ -5,6 +5,7 @@ and tests/integration/jot/ (and property tests via parent conftest.py
 inheritance). It ensures module-level caches and lazy-init globals in
 mahavishnu.jot.* don't leak between tests.
 """
+
 from __future__ import annotations
 
 import pytest

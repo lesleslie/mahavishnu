@@ -66,7 +66,9 @@ class TestConcurrentRebuildsSerialize:
         proceeded = [r for r in results if not isinstance(r, BaseException)]
         aborted = [r for r in results if isinstance(r, PlanRebuildLockedError)]
         assert len(proceeded) == 1, f"expected 1 proceed, got {len(proceeded)}"
-        assert len(aborted) == 1, f"expected 1 PlanRebuildLockedError, got {len(aborted)}"
+        assert len(aborted) == 1, (
+            f"expected 1 PlanRebuildLockedError, got {len(aborted)}"
+        )
 
         # The cycle that succeeded released its lock afterwards.
         assert await mcp.get("plan_index/meta/rebuild_lock/holder") is None

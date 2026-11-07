@@ -87,7 +87,9 @@ class TestRoutingFitnessReader:
         assert set(signals) == {"least_loaded", "random"}
         assert signals["least_loaded"].score == 0.9
         assert signals["random"].samples == 8
-        mcp_state.list_prefix.assert_awaited_once_with("routing_fitness/code_generation/")
+        mcp_state.list_prefix.assert_awaited_once_with(
+            "routing_fitness/code_generation/"
+        )
 
     @pytest.mark.asyncio
     async def test_get_fitness_signals_ignores_bad_entries_and_backend_errors(self):

@@ -47,7 +47,9 @@ def main():
     conn.execute("SET hnsw_enable_experimental_persistence=true")
 
     # Check current data
-    result = conn.execute("SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL").fetchone()
+    result = conn.execute(
+        "SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL"
+    ).fetchone()
     embedding_count = result[0] if result else 0
 
     print(f"\nCurrent records with embeddings: {embedding_count}")
@@ -56,7 +58,13 @@ def main():
         print(f"\nGenerating {1000 - embedding_count} additional test records...")
 
         now = datetime.now(UTC)
-        task_types = ["code_review", "testing", "deployment", "documentation", "optimization"]
+        task_types = [
+            "code_review",
+            "testing",
+            "deployment",
+            "documentation",
+            "optimization",
+        ]
         descriptions = [
             "Review pull request for authentication module",
             "Write unit tests for API endpoints",
@@ -117,7 +125,9 @@ def main():
         print(f"Generated records in {elapsed:.2f}s ({1000 / elapsed:.1f} records/s)")
 
     # Check final count
-    result = conn.execute("SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL").fetchone()
+    result = conn.execute(
+        "SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL"
+    ).fetchone()
     print(f"\nTotal records with embeddings: {result[0]}")
 
     # Get query embedding (use first record)

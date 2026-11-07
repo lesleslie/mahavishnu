@@ -76,15 +76,24 @@ class QualityThresholds:
 
         overall = report.score
         if overall < self.overall_flag:
-            return True, f"Overall score {overall:.2f} below threshold {self.overall_flag}"
+            return (
+                True,
+                f"Overall score {overall:.2f} below threshold {self.overall_flag}",
+            )
 
         readability = metrics.get(QualityMetric.READABILITY.value, 1.0)
         if readability < self.readability_rewrite:
-            return True, f"Readability {readability:.2f} below threshold {self.readability_rewrite}"
+            return (
+                True,
+                f"Readability {readability:.2f} below threshold {self.readability_rewrite}",
+            )
 
         depth = metrics.get("technical_depth", 1.0)
         if depth < self.technical_depth_skip:
-            return True, f"Technical depth {depth:.2f} below threshold {self.technical_depth_skip}"
+            return (
+                True,
+                f"Technical depth {depth:.2f} below threshold {self.technical_depth_skip}",
+            )
 
         completeness = metrics.get(QualityMetric.COMPLETENESS.value, 1.0)
         if completeness < self.completeness_augment:
@@ -434,11 +443,17 @@ class ContentQualityScorer:
             issues.append(reason)
 
         if readability < 0.50:
-            suggestions.append("Consider shorter sentences, more headers, and code formatting")
+            suggestions.append(
+                "Consider shorter sentences, more headers, and code formatting"
+            )
         if depth < 0.40:
-            suggestions.append("Add code examples and API references to increase technical depth")
+            suggestions.append(
+                "Add code examples and API references to increase technical depth"
+            )
         if completeness < 0.50:
-            suggestions.append("Add prerequisites section, examples, and next-step references")
+            suggestions.append(
+                "Add prerequisites section, examples, and next-step references"
+            )
 
         report = EvaluationReport(
             content_id=content_id,
@@ -486,7 +501,9 @@ class ContentQualityScorer:
             "max": round(max(scores), 3),
         }
 
-    def check_drift(self, baseline_mean: float, baseline_variance: float) -> dict[str, Any]:
+    def check_drift(
+        self, baseline_mean: float, baseline_variance: float
+    ) -> dict[str, Any]:
         """Check for drift from baseline statistics.
 
         Alerts when:
@@ -501,7 +518,9 @@ class ContentQualityScorer:
 
         mean_drop = baseline_mean - stats["mean"]
         if mean_drop > 0.10:
-            alerts.append(f"Mean dropped {mean_drop:.3f} from baseline {baseline_mean:.3f}")
+            alerts.append(
+                f"Mean dropped {mean_drop:.3f} from baseline {baseline_mean:.3f}"
+            )
 
         if baseline_variance > 0 and stats["variance"] > baseline_variance * 1.5:
             alerts.append(

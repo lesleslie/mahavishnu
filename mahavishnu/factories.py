@@ -175,7 +175,9 @@ def _wire_eventbridge_publisher(server: MahavishnuWebSocketServer) -> None:
         else:
             set_publisher(None)
             server.set_eventbridge_publisher(None)
-            logger.debug("EventBridge publisher not wired (opt-out or runtime unavailable)")
+            logger.debug(
+                "EventBridge publisher not wired (opt-out or runtime unavailable)"
+            )
     except Exception as exc:  # EventBridge is opt-in feature; server runs without publisher  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning(
             "EventBridge wiring failed (%s); continuing without publisher",

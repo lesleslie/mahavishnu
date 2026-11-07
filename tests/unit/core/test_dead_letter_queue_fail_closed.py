@@ -21,12 +21,16 @@ from mahavishnu.core.errors import ExternalServiceError
 pytestmark = pytest.mark.asyncio
 
 
-def _stub_opensearch_availability(monkeypatch: pytest.MonkeyPatch, available: bool) -> None:
+def _stub_opensearch_availability(
+    monkeypatch: pytest.MonkeyPatch, available: bool
+) -> None:
     """Force the module-level ``OPENSEARCH_AVAILABLE`` constant."""
     monkeypatch.setattr(dlq_module, "OPENSEARCH_AVAILABLE", available, raising=False)
 
 
-async def test_dlq_silent_when_flag_false_default(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_dlq_silent_when_flag_false_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Default (flag off): silent in-memory fallback when OpenSearch unavailable."""
     _stub_opensearch_availability(monkeypatch, False)
 
@@ -100,7 +104,9 @@ async def test_dlq_works_normally_when_opensearch_available(
     assert call_kwargs["id"] == "wf_ok"
 
 
-async def test_dlq_fail_closed_no_opensearch_client_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_dlq_fail_closed_no_opensearch_client_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Fail-closed flag on, library importable but no client injected: still raises.
 
     Guards the case where ``OPENSEARCH_AVAILABLE`` is True (the library

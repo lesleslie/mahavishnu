@@ -37,7 +37,9 @@ def _make_process_mock(returncode: int, stdout: str, stderr: str = "") -> AsyncM
     function under test can branch deterministically on the exit code.
     """
     proc = AsyncMock(spec=asyncio.subprocess.Process)
-    proc.communicate = AsyncMock(return_value=(stdout.encode("utf-8"), stderr.encode("utf-8")))
+    proc.communicate = AsyncMock(
+        return_value=(stdout.encode("utf-8"), stderr.encode("utf-8"))
+    )
     proc.returncode = returncode
     return proc
 
@@ -88,11 +90,7 @@ async def test_merge_three_way_clean_merge_returns_result(
 
 async def test_merge_three_way_conflict_raises_with_markers() -> None:
     merged_with_markers = (
-        "<<<<<<< ours\n"
-        "ours-line\n"
-        "=======\n"
-        "theirs-line\n"
-        ">>>>>>> theirs\n"
+        "<<<<<<< ours\nours-line\n=======\ntheirs-line\n>>>>>>> theirs\n"
     )
     proc = _make_process_mock(returncode=1, stdout=merged_with_markers)
     with patch(
@@ -216,7 +214,9 @@ async def test_merge_semantic_duration_ms_histogram_registered() -> None:
 
     assert hasattr(merge_module, "_merge_semantic_duration_ms")
     # Noop or real histogram — both expose ``record(amount, attributes)``.
-    merge_module._merge_semantic_duration_ms.record(0.0, {"strategy": "line", "outcome": "noop"})
+    merge_module._merge_semantic_duration_ms.record(
+        0.0, {"strategy": "line", "outcome": "noop"}
+    )
 
 
 async def test_merge_three_way_line_records_success_sample() -> None:
@@ -229,10 +229,13 @@ async def test_merge_three_way_line_records_success_sample() -> None:
     """
     proc = _make_process_mock(returncode=0, stdout="merged\n")
     histogram = MagicMock()
-    with patch(
-        "asyncio.create_subprocess_exec",
-        AsyncMock(return_value=proc),
-    ), patch("mahavishnu.settle.merge._merge_semantic_duration_ms", histogram):
+    with (
+        patch(
+            "asyncio.create_subprocess_exec",
+            AsyncMock(return_value=proc),
+        ),
+        patch("mahavishnu.settle.merge._merge_semantic_duration_ms", histogram),
+    ):
         result = await merge_three_way(
             base="b",
             ours="o",
@@ -243,7 +246,11 @@ async def test_merge_three_way_line_records_success_sample() -> None:
     histogram.record.assert_called_once()
     # Sample carries strategy="line" and outcome="success" for clean merges.
     call_args = histogram.record.call_args
-    attrs = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("attributes", {})
+    attrs = (
+        call_args.args[1]
+        if len(call_args.args) > 1
+        else call_args.kwargs.get("attributes", {})
+    )
     assert attrs.get("strategy") == "line"
     assert attrs.get("outcome") == "success"
     # Duration is a float in milliseconds; > 0 because time.monotonic advances.
@@ -263,10 +270,13 @@ async def test_merge_three_way_line_records_conflict_sample() -> None:
     merged_with_markers = "<<<<<<< ours\nA\n=======\nB\n>>>>>>> theirs\n"
     proc = _make_process_mock(returncode=1, stdout=merged_with_markers)
     histogram = MagicMock()
-    with patch(
-        "asyncio.create_subprocess_exec",
-        AsyncMock(return_value=proc),
-    ), patch("mahavishnu.settle.merge._merge_semantic_duration_ms", histogram):
+    with (
+        patch(
+            "asyncio.create_subprocess_exec",
+            AsyncMock(return_value=proc),
+        ),
+        patch("mahavishnu.settle.merge._merge_semantic_duration_ms", histogram),
+    ):
         with pytest.raises(MergeConflictError):
             await merge_three_way(
                 base="orig\n",
@@ -276,7 +286,11 @@ async def test_merge_three_way_line_records_conflict_sample() -> None:
             )
     histogram.record.assert_called_once()
     call_args = histogram.record.call_args
-    attrs = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("attributes", {})
+    attrs = (
+        call_args.args[1]
+        if len(call_args.args) > 1
+        else call_args.kwargs.get("attributes", {})
+    )
     assert attrs.get("strategy") == "line"
     assert attrs.get("outcome") == "conflict"
 
@@ -294,14 +308,21 @@ def test_merge_three_way_sync_internal_records_success_sample() -> None:
 
     completed = _make_completed_proc(returncode=0, stdout="ok\n")
     histogram = MagicMock()
-    with patch("subprocess.run", return_value=completed), patch.object(
-        merge_module, "_merge_semantic_duration_ms", histogram
+    with (
+        patch("subprocess.run", return_value=completed),
+        patch.object(merge_module, "_merge_semantic_duration_ms", histogram),
     ):
-        result = merge_module._merge_three_way_sync_internal(base="b", ours="o", theirs="t")
+        result = merge_module._merge_three_way_sync_internal(
+            base="b", ours="o", theirs="t"
+        )
     assert isinstance(result, MergeResult)
     histogram.record.assert_called_once()
     call_args = histogram.record.call_args
-    attrs = call_args.args[1] if len(call_args.args) > 1 else call_args.kwargs.get("attributes", {})
+    attrs = (
+        call_args.args[1]
+        if len(call_args.args) > 1
+        else call_args.kwargs.get("attributes", {})
+    )
     assert attrs.get("strategy") == "line"
     assert attrs.get("outcome") == "success"
 
@@ -419,7 +440,9 @@ def _mixed_strategy_record() -> SettleRunRecord:
         task_signature="sig",
         bindings=(
             Binding(path="line.py", base="x", merge_strategy=MergeStrategy.LINE),
-            Binding(path="semantic.py", base="y", merge_strategy=MergeStrategy.SEMANTIC),
+            Binding(
+                path="semantic.py", base="y", merge_strategy=MergeStrategy.SEMANTIC
+            ),
         ),
     )
 

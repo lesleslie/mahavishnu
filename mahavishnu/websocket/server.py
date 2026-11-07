@@ -518,7 +518,10 @@ class MahavishnuWebSocketServer(WebSocketServer):
             Pool status dictionary
         """
         try:
-            if hasattr(self.pool_manager, "pools") and pool_id in self.pool_manager.pools:
+            if (
+                hasattr(self.pool_manager, "pools")
+                and pool_id in self.pool_manager.pools
+            ):
                 pool = self.pool_manager.pools[pool_id]
                 return {
                     "pool_id": pool_id,
@@ -566,7 +569,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
 
     # Broadcast methods for orchestration events
 
-    async def broadcast_workflow_started(self, workflow_id: str, metadata: dict) -> None:
+    async def broadcast_workflow_started(
+        self, workflow_id: str, metadata: dict
+    ) -> None:
         """Broadcast workflow started event.
 
         Args:
@@ -575,7 +580,11 @@ class MahavishnuWebSocketServer(WebSocketServer):
         """
         event = WebSocketProtocol.create_event(
             EventTypes.WORKFLOW_STARTED,
-            {"workflow_id": workflow_id, "timestamp": self._get_timestamp(), **metadata},
+            {
+                "workflow_id": workflow_id,
+                "timestamp": self._get_timestamp(),
+                **metadata,
+            },
             room=f"workflow:{workflow_id}",
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
@@ -606,7 +615,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
 
-    async def broadcast_workflow_completed(self, workflow_id: str, final_result: dict) -> None:
+    async def broadcast_workflow_completed(
+        self, workflow_id: str, final_result: dict
+    ) -> None:
         """Broadcast workflow completed event.
 
         Args:
@@ -624,7 +635,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
         )
         await self.broadcast_to_room(f"workflow:{workflow_id}", event)
         # Also publish to the Bodai EventBridge queue (Phase 6.2c).
-        await self._publish_workflow_completed_via_eventbridge(workflow_id, final_result)
+        await self._publish_workflow_completed_via_eventbridge(
+            workflow_id, final_result
+        )
 
     async def broadcast_workflow_failed(self, workflow_id: str, error: str) -> None:
         """Broadcast workflow failed event.
@@ -682,7 +695,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
             return
         await publish_workflow_completed(workflow_id, result, publisher=publisher)
 
-    async def _publish_workflow_failed_via_eventbridge(self, workflow_id: str, error: str) -> None:
+    async def _publish_workflow_failed_via_eventbridge(
+        self, workflow_id: str, error: str
+    ) -> None:
         from ..core.events.mahavishnu_publisher import publish_workflow_failed
 
         publisher = self._get_eventbridge_publisher()
@@ -1149,7 +1164,9 @@ class MahavishnuWebSocketServer(WebSocketServer):
         await self.broadcast_to_room("adapters", event)
 
 
-async def broadcast_event(event_type: str, payload: dict[str, Any], *, room: str) -> None:
+async def broadcast_event(
+    event_type: str, payload: dict[str, Any], *, room: str
+) -> None:
     """Module-level broadcast helper for capability/event publishers.
 
     Wraps ``WebSocketProtocol.create_event`` + ``broadcast_to_room`` so callers
@@ -1170,7 +1187,9 @@ async def broadcast_event(event_type: str, payload: dict[str, Any], *, room: str
         app = None
     server = getattr(app, "websocket_server", None) if app is not None else None
     if server is None:
-        logger.debug("broadcast_event no-op: no websocket server in context (room=%s)", room)
+        logger.debug(
+            "broadcast_event no-op: no websocket server in context (room=%s)", room
+        )
         return
     event = WebSocketProtocol.create_event(event_type, payload, room=room)
     await server.broadcast_to_room(room, event)

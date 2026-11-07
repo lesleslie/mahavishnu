@@ -106,8 +106,10 @@ class TestMCPToolInventory:
 
     @pytest.mark.parametrize(
         "doc_path",
-        [pytest.param(README_FILE, id="README.md"),
-         pytest.param(CLAUDE_FILE, id="CLAUDE.md")],
+        [
+            pytest.param(README_FILE, id="README.md"),
+            pytest.param(CLAUDE_FILE, id="CLAUDE.md"),
+        ],
     )
     def test_readme_tool_claim_within_headroom(self, doc_path: Path):
         """The numeric "tools" claim must be within ±5 of the scanned count."""
@@ -122,8 +124,10 @@ class TestMCPToolInventory:
 
     @pytest.mark.parametrize(
         "doc_path",
-        [pytest.param(README_FILE, id="README.md"),
-         pytest.param(CLAUDE_FILE, id="CLAUDE.md")],
+        [
+            pytest.param(README_FILE, id="README.md"),
+            pytest.param(CLAUDE_FILE, id="CLAUDE.md"),
+        ],
     )
     def test_readme_group_claim_matches_profile(self, doc_path: Path):
         """The numeric "groups" claim must equal FULL_REGISTRATIONS length."""

@@ -22,13 +22,10 @@ if TYPE_CHECKING:
 
 class TestRenderMatchesOldScanner:
     def test_render_matches_golden(self) -> None:
-        golden_path = (
-            Path(__file__).parent / "fixtures" / "PLAN_INDEX.golden.md"
-        )
+        golden_path = Path(__file__).parent / "fixtures" / "PLAN_INDEX.golden.md"
         if not golden_path.exists():
             pytest.skip(
-                "Golden file not yet created; "
-                "run test_golden_first_run.py first"
+                "Golden file not yet created; run test_golden_first_run.py first"
             )
         golden = golden_path.read_text()
 

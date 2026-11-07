@@ -59,7 +59,9 @@ EXIT_ERROR = 2
 # --------------------------------------------------------------------------
 
 
-def _active_provider(settings: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None]:
+def _active_provider(
+    settings: dict[str, Any],
+) -> tuple[str | None, dict[str, Any] | None]:
     """Locate the ``modelProviders`` entry backing the active model.
 
     Qwen Code resolves ``model.name`` against ``modelProviders`` before it
@@ -276,7 +278,9 @@ def _harness_header_prefixes(harness: HarnessDescriptor) -> list[str]:
     return prefixes
 
 
-def _strip_harness_headers(generation: dict[str, Any], harness: HarnessDescriptor) -> None:
+def _strip_harness_headers(
+    generation: dict[str, Any], harness: HarnessDescriptor
+) -> None:
     """Remove the harness-owned headers from one ``generationConfig`` block.
 
     Only the headers this toggle writes are removed; anything else in
@@ -291,7 +295,9 @@ def _strip_harness_headers(generation: dict[str, Any], harness: HarnessDescripto
         generation.pop("customHeaders", None)
 
 
-def _strip_generic_model_headers(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
+def _strip_generic_model_headers(
+    settings: dict[str, Any], harness: HarnessDescriptor
+) -> None:
     """Remove the harness-owned headers from the generic ``model`` block.
 
     Qwen Code reads the generic ``model.generationConfig`` block only for a
@@ -359,7 +365,9 @@ def _set_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> N
     _upsert_custom_header(settings, harness, header, value)
 
 
-def _read_route_header(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
+def _read_route_header(
+    settings: dict[str, Any], harness: HarnessDescriptor
+) -> str | None:
     """Read this harness's route header value, or ``None`` if it is absent.
 
     ``None`` is ambiguous for a harness that has no route header at all;
@@ -397,14 +405,18 @@ def _set_cache_header(
     _upsert_custom_header(settings, harness, CACHE_KEY_HEADER, bucket)
 
 
-def _read_cache_header(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
+def _read_cache_header(
+    settings: dict[str, Any], harness: HarnessDescriptor
+) -> str | None:
     """Read this harness's cache-bucket header value, or ``None``."""
     if harness.cache_traffic_class is None:
         return None
     return _read_custom_header(settings, harness, CACHE_KEY_HEADER)
 
 
-def _set_credential(settings: dict[str, Any], harness: HarnessDescriptor, virtual_key: str) -> None:
+def _set_credential(
+    settings: dict[str, Any], harness: HarnessDescriptor, virtual_key: str
+) -> None:
     """Write the ``x-bf-vk`` header to the sink this harness actually reads.
 
     The route header and the cache bucket are deliberately **not** written
@@ -416,7 +428,9 @@ def _set_credential(settings: dict[str, Any], harness: HarnessDescriptor, virtua
     _upsert_custom_header(settings, harness, VIRTUAL_KEY_HEADER, virtual_key)
 
 
-def _read_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> str | None:
+def _read_credential(
+    settings: dict[str, Any], harness: HarnessDescriptor
+) -> str | None:
     """Return the currently-configured virtual key for ``harness``, if any."""
     return _read_custom_header(settings, harness, VIRTUAL_KEY_HEADER)
 
@@ -669,11 +683,15 @@ def _action_bifrost(
         harness.cache_traffic_class is None
         or _read_cache_header(settings, harness) == expected_bucket
     )
-    already_configured = existing == url and _read_credential(settings, harness) == virtual_key
+    already_configured = (
+        existing == url and _read_credential(settings, harness) == virtual_key
+    )
     strays = _stray_headers(settings, harness)
 
     if already_configured and route_installed and cache_installed and not strays:
-        typer.echo(f"{harness.label} already points at {url} with a matching key; no-op")
+        typer.echo(
+            f"{harness.label} already points at {url} with a matching key; no-op"
+        )
         return
 
     if already_configured and route_installed and cache_installed and strays:
@@ -707,9 +725,13 @@ def _action_bifrost(
             installed.append(f"{header}: {value}")
         if harness.cache_traffic_class is not None and not cache_installed:
             _set_cache_header(settings, harness, principal)
-            installed.append(f"{CACHE_KEY_HEADER}: {_read_cache_header(settings, harness)}")
+            installed.append(
+                f"{CACHE_KEY_HEADER}: {_read_cache_header(settings, harness)}"
+            )
         if dry_run:
-            typer.echo(f"[dry-run] would install {', '.join(installed)} in {harness.settings_path}")
+            typer.echo(
+                f"[dry-run] would install {', '.join(installed)} in {harness.settings_path}"
+            )
             return
         _write_settings(harness.settings_path, settings)
         for item in installed:
@@ -760,11 +782,15 @@ def _action_bifrost(
         return
 
     _write_settings(harness.settings_path, settings)
-    typer.echo(f"wrote {_endpoint_label(settings, harness)}={url} in {harness.settings_path}")
+    typer.echo(
+        f"wrote {_endpoint_label(settings, harness)}={url} in {harness.settings_path}"
+    )
     typer.echo(f"note: {harness.restart_note}")
 
 
-def _present_harness_headers(settings: dict[str, Any], harness: HarnessDescriptor) -> list[str]:
+def _present_harness_headers(
+    settings: dict[str, Any], harness: HarnessDescriptor
+) -> list[str]:
     """The harness-owned custom headers currently set, by header name.
 
     Everything here is something the toggle wrote, so ``direct`` removes all
@@ -773,7 +799,10 @@ def _present_harness_headers(settings: dict[str, Any], harness: HarnessDescripto
     present: list[str] = []
     if _read_credential(settings, harness) is not None:
         present.append(VIRTUAL_KEY_HEADER)
-    if harness.route_header is not None and _read_route_header(settings, harness) is not None:
+    if (
+        harness.route_header is not None
+        and _read_route_header(settings, harness) is not None
+    ):
         present.append(harness.route_header[0])
     if (
         harness.cache_traffic_class is not None
@@ -788,14 +817,20 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
     url = _get_url(settings, harness)
     existing_key = _read_credential(settings, harness)
 
-    if url is None and existing_key is None and _read_cache_header(settings, harness) is None:
+    if (
+        url is None
+        and existing_key is None
+        and _read_cache_header(settings, harness) is None
+    ):
         typer.echo(f"{_endpoint_label(settings, harness)} is unset; no-op")
         return
 
     # Compare against whichever endpoint this toggle would have written, so a
     # provider-routed Qwen model (``/anthropic``) is recognised as
     # Bifrost-managed rather than mistaken for a hand-set third-party URL.
-    bifrost_url = provider_bifrost_url(settings, DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT)
+    bifrost_url = provider_bifrost_url(
+        settings, DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
+    )
     if bifrost_url is None:
         bifrost_url = harness.bifrost_url()
 
@@ -808,7 +843,9 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
         # into a third party's traffic. Drop it either way.
         stranded = _present_harness_headers(settings, harness)
         if not stranded:
-            typer.echo(f"{harness.url_env_var}={url!r} is not Bifrost-managed; leaving it alone")
+            typer.echo(
+                f"{harness.url_env_var}={url!r} is not Bifrost-managed; leaving it alone"
+            )
             return
         if dry_run:
             typer.echo(
@@ -833,7 +870,9 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
     _pop_credential(settings, harness)
 
     if dry_run:
-        typer.echo(f"[dry-run] would restore {harness.label} to {prior_url or '<unset>'}")
+        typer.echo(
+            f"[dry-run] would restore {harness.label} to {prior_url or '<unset>'}"
+        )
         return
 
     if prior_url:
@@ -857,7 +896,9 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
 
     _write_settings(harness.settings_path, settings)
     harness.backup_path.unlink(missing_ok=True)
-    typer.echo(f"restored {harness.label} to {prior_url or '<removed>'} in {harness.settings_path}")
+    typer.echo(
+        f"restored {harness.label} to {prior_url or '<removed>'} in {harness.settings_path}"
+    )
     typer.echo(f"note: {harness.restart_note}")
 
 
@@ -878,7 +919,9 @@ def _endpoint_label(settings: dict[str, Any], harness: HarnessDescriptor) -> str
 def _action_status(harness: HarnessDescriptor) -> None:
     settings = _read_settings(harness.settings_path)
     url = _get_url(settings, harness)
-    provider_url = provider_bifrost_url(settings, DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT)
+    provider_url = provider_bifrost_url(
+        settings, DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
+    )
     if provider_url is None:
         provider_url = harness.bifrost_url()
     label = _endpoint_label(settings, harness)
@@ -894,7 +937,9 @@ def _action_status(harness: HarnessDescriptor) -> None:
     if harness.route_header is not None:
         header, value = harness.route_header
         current = _read_route_header(settings, harness)
-        typer.echo(f"{header} header: {current if current else 'absent'} (expected {value!r})")
+        typer.echo(
+            f"{header} header: {current if current else 'absent'} (expected {value!r})"
+        )
     if harness.cache_traffic_class is not None:
         bucket = _read_cache_header(settings, harness)
         typer.echo(f"{CACHE_KEY_HEADER} header: {bucket if bucket else 'absent'}")
@@ -923,7 +968,9 @@ def apply(
         return EXIT_OK
 
     if gate_blocks(action):
-        typer.echo(f"{GATE_ENV} is set; skipping {harness.label} URL rewrite (action={action})")
+        typer.echo(
+            f"{GATE_ENV} is set; skipping {harness.label} URL rewrite (action={action})"
+        )
         return EXIT_OK
 
     resolved_key = _resolve_virtual_key(key_file)
@@ -935,5 +982,7 @@ def apply(
         _action_direct(harness, dry_run)
         return EXIT_OK
 
-    typer.echo(f"error: unknown action {action!r}; expected bifrost|direct|status", err=True)
+    typer.echo(
+        f"error: unknown action {action!r}; expected bifrost|direct|status", err=True
+    )
     return EXIT_ERROR

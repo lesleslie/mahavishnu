@@ -33,7 +33,12 @@ def _refresh_module_references() -> None:
     ``sys.modules["mahavishnu.websocket.metrics"]``, not to the one whose
     ``__globals__`` the tests' functions actually close over.
     """
-    global _metrics_module, WebSocketMetrics, get_metrics, reset_metrics, start_metrics_server
+    global \
+        _metrics_module, \
+        WebSocketMetrics, \
+        get_metrics, \
+        reset_metrics, \
+        start_metrics_server
     _metrics_module = sys.modules["mahavishnu.websocket.metrics"]
     WebSocketMetrics = _metrics_module.WebSocketMetrics
     get_metrics = _metrics_module.get_metrics
@@ -130,15 +135,21 @@ class TestWebSocketMetricsInit:
         metrics._initialize_metrics()
         assert metrics._message_counter is not None
 
-    def test_initialize_metrics_creates_connection_gauge(self, metrics: WebSocketMetrics):
+    def test_initialize_metrics_creates_connection_gauge(
+        self, metrics: WebSocketMetrics
+    ):
         metrics._initialize_metrics()
         assert metrics._connection_gauge is not None
 
-    def test_initialize_metrics_creates_subscription_gauge(self, metrics: WebSocketMetrics):
+    def test_initialize_metrics_creates_subscription_gauge(
+        self, metrics: WebSocketMetrics
+    ):
         metrics._initialize_metrics()
         assert metrics._subscription_gauge is not None
 
-    def test_initialize_metrics_handles_duplicate_counter(self, metrics: WebSocketMetrics):
+    def test_initialize_metrics_handles_duplicate_counter(
+        self, metrics: WebSocketMetrics
+    ):
         """When Counter() raises ValueError, _get_existing_collector is used
         to recover the already-registered counter."""
         metrics._initialize_metrics()
@@ -163,7 +174,9 @@ class TestWebSocketMetricsInit:
             # Verify the counter name was among the calls.
             mock_get.assert_any_call("websocket_messages_total")
 
-    def test_initialize_metrics_handles_duplicate_gauge(self, metrics: WebSocketMetrics):
+    def test_initialize_metrics_handles_duplicate_gauge(
+        self, metrics: WebSocketMetrics
+    ):
         """When Gauge() raises ValueError, _get_existing_collector is used
         to recover the already-registered gauge."""
         metrics._initialize_metrics()
@@ -227,7 +240,9 @@ class TestGetExistingCollector:
         except ImportError:
             pytest.skip("prometheus_client not available")
 
-        with patch.dict(REGISTRY._names_to_collectors, {"my_metric": mock_collector}, clear=False):
+        with patch.dict(
+            REGISTRY._names_to_collectors, {"my_metric": mock_collector}, clear=False
+        ):
             result = metrics._get_existing_collector("my_metric")
             assert result is mock_collector
 
@@ -241,7 +256,9 @@ class TestGetExistingCollector:
         except ImportError:
             pytest.skip("prometheus_client not available")
 
-        with patch.dict(REGISTRY._names_to_collectors, {"key1": mock_collector}, clear=False):
+        with patch.dict(
+            REGISTRY._names_to_collectors, {"key1": mock_collector}, clear=False
+        ):
             result = metrics._get_existing_collector("my_metric")
             assert result is mock_collector
 

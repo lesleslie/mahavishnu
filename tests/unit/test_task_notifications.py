@@ -245,7 +245,9 @@ class TestEventFilter:
         sample_task: dict[str, Any],
     ) -> None:
         """Filter with custom predicate."""
-        filter = EventFilter(predicate=lambda e: e.data.get("task", {}).get("priority") == "high")
+        filter = EventFilter(
+            predicate=lambda e: e.data.get("task", {}).get("priority") == "high"
+        )
 
         event = TaskEvent(
             event_type=TaskEventType.UPDATED,

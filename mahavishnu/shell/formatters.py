@@ -26,7 +26,9 @@ class WorkflowFormatter(BaseTableFormatter):
     status indicators, progress bars, and detailed views.
     """
 
-    def format_workflows(self, workflows: list[dict[str, Any]], show_details: bool = False) -> None:
+    def format_workflows(
+        self, workflows: list[dict[str, Any]], show_details: bool = False
+    ) -> None:
         """Display workflows in a table.
 
         Args:
@@ -121,7 +123,9 @@ class WorkflowFormatter(BaseTableFormatter):
         if workflow.get("errors"):
             details.append(f"\nErrors ({len(workflow['errors'])}):\n", style="bold red")
             for error in workflow.get("errors", [])[:5]:
-                details.append(f"  - {error.get('message', 'Unknown error')}\n", style="red")
+                details.append(
+                    f"  - {error.get('message', 'Unknown error')}\n", style="red"
+                )
 
         panel = Panel(details, title="Workflow Details", border_style="blue")
         self.console.print(panel)
@@ -221,7 +225,9 @@ class RepoFormatter(BaseTableFormatter):
     tag and metadata display.
     """
 
-    def format_repos(self, repos: list[dict[str, Any]], show_tags: bool = False) -> None:
+    def format_repos(
+        self, repos: list[dict[str, Any]], show_tags: bool = False
+    ) -> None:
         """Display repositories in a table.
 
         Args:
@@ -252,7 +258,9 @@ class RepoFormatter(BaseTableFormatter):
 
         self.console.print(table)
 
-    def _format_repos_fallback(self, repos: list[dict[str, Any]], show_tags: bool) -> None:
+    def _format_repos_fallback(
+        self, repos: list[dict[str, Any]], show_tags: bool
+    ) -> None:
         """Fallback repo formatting without Rich.
 
         Args:

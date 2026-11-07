@@ -186,12 +186,8 @@ class TestRequireMCPAuthEnforcement:
         """When the wrapped tool has a ``repo`` kwarg, it is forwarded to RBAC."""
         fake = _FakeRBAC(allow=True)
 
-        @require_mcp_auth(
-            rbac_manager=fake, required_permission=Permission.READ_REPO
-        )
-        async def sample_tool(
-            repo: str, user_id: str | None = None
-        ) -> dict[str, Any]:
+        @require_mcp_auth(rbac_manager=fake, required_permission=Permission.READ_REPO)
+        async def sample_tool(repo: str, user_id: str | None = None) -> dict[str, Any]:
             return {"status": "ok", "repo": repo}
 
         result = await sample_tool(repo="github.com/foo/bar", user_id="alice")
@@ -226,7 +222,9 @@ class TestRequireMCPAuthEnforcement:
         """Audit event fields line up with the AuthAuditEvent signature."""
         fake = _FakeRBAC(allow=True)
 
-        @require_mcp_auth(rbac_manager=fake, required_permission=Permission.READ_PLAN_INDEX)
+        @require_mcp_auth(
+            rbac_manager=fake, required_permission=Permission.READ_PLAN_INDEX
+        )
         async def sample_tool(arg: str, user_id: str | None = None) -> dict[str, Any]:
             return {"status": "ok"}
 

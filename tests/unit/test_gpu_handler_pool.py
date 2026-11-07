@@ -10,7 +10,9 @@ from mahavishnu.pools.base import PoolConfig
 from mahavishnu.pools.gpu_handler_pool import GPU_TASK_CATEGORIES, GpuHandlerPool
 
 
-def _fake_run_request(status_value: str = "COMPLETED", output_value: object = None, job_id: str = "job-1"):
+def _fake_run_request(
+    status_value: str = "COMPLETED", output_value: object = None, job_id: str = "job-1"
+):
     """RunRequest-shaped fake (matches the runpod SDK 2.0 contract)."""
     req = MagicMock()
     req.id = job_id
@@ -137,7 +139,9 @@ class TestExecuteTask:
             f"Category '{category}' should be accepted but was rejected: {result}"
         )
 
-    async def test_empty_category_key_is_accepted(self, pool_config: PoolConfig) -> None:
+    async def test_empty_category_key_is_accepted(
+        self, pool_config: PoolConfig
+    ) -> None:
         """execute_task() with empty string category falls through to parent."""
         pool = GpuHandlerPool(pool_config)
 
@@ -150,7 +154,9 @@ class TestExecuteTask:
             f"Empty category should not be rejected but got: {result}"
         )
 
-    async def test_missing_category_key_is_accepted(self, pool_config: PoolConfig) -> None:
+    async def test_missing_category_key_is_accepted(
+        self, pool_config: PoolConfig
+    ) -> None:
         """execute_task() with no 'category' key falls through to parent."""
         pool = GpuHandlerPool(pool_config)
 
@@ -161,7 +167,9 @@ class TestExecuteTask:
         # Missing category should not trigger rejection
         assert result.get("status") != "rejected"
 
-    async def test_rejection_includes_sorted_gpu_categories(self, pool_config: PoolConfig) -> None:
+    async def test_rejection_includes_sorted_gpu_categories(
+        self, pool_config: PoolConfig
+    ) -> None:
         """Rejected error message includes all valid GPU categories."""
         pool = GpuHandlerPool(pool_config)
 

@@ -300,7 +300,8 @@ def discover_files(
         if _is_excluded(rel):
             continue
         if any(
-            ds != store_rel and rel.startswith(ds.rstrip("/") + "/") for ds in skip_deeper_stores
+            ds != store_rel and rel.startswith(ds.rstrip("/") + "/")
+            for ds in skip_deeper_stores
         ):
             continue
         out.append((path, rel))
@@ -395,7 +396,9 @@ def _label_for_store(store_rel: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _entry_from_file(abs_path: Path, rel: str, store: str, yaml_module: Any) -> Entry | None:
+def _entry_from_file(
+    abs_path: Path, rel: str, store: str, yaml_module: Any
+) -> Entry | None:
     """Parse one file. Returns None when the file has no valid frontmatter
     or fails to read — those are silently skipped because PLAN_INDEX only
     indexes docs that have frontmatter (the validator's contract)."""
@@ -464,7 +467,9 @@ def _is_mahavishnu_layout(repo_root: Path) -> bool:
     ``docs/adr/`` and ``docs/plans/`` present). Used to switch the
     Authority Matrix between the rich Mahavishnu-specific table and the
     generic dynamic one."""
-    return (repo_root / "docs" / "adr").is_dir() and (repo_root / "docs" / "superpowers").is_dir()
+    return (repo_root / "docs" / "adr").is_dir() and (
+        repo_root / "docs" / "superpowers"
+    ).is_dir()
 
 
 def _authority_matrix(
@@ -695,7 +700,9 @@ def _render_distribution(entries: list[Entry], store_count: int) -> str:
         grand_total += col_sum
         col_totals.append(str(col_sum) if col_sum else "·")
     rows.append(
-        "| **Total** | " + " | ".join(f"**{t}**" for t in col_totals) + f" | **{grand_total}** |"
+        "| **Total** | "
+        + " | ".join(f"**{t}**" for t in col_totals)
+        + f" | **{grand_total}** |"
     )
     rows.append("")
     return "\n".join(rows)
@@ -766,7 +773,9 @@ def _render_by_kind(entries: list[Entry]) -> str:
             continue
         rows.append("| Path | Date | Title |")
         rows.append("|---|---|---|")
-        for entry in sorted(kind_entries, key=lambda e: (-_date_sort_key(e.date), e.rel)):
+        for entry in sorted(
+            kind_entries, key=lambda e: (-_date_sort_key(e.date), e.rel)
+        ):
             link = _entry_link(entry.rel, entry.store)
             rows.append(f"| {link} | {entry.date or '—'} | {entry.title} |")
         rows.append("")
@@ -789,7 +798,9 @@ def _render_index(
     is_mahavishnu = _is_mahavishnu_layout(repo_root)
     frontmatter_date = generated_at if is_mahavishnu else generated_at
 
-    purpose_subject = "Mahavishnu/Bodai plans" if is_mahavishnu else f"{repo_name} plans"
+    purpose_subject = (
+        "Mahavishnu/Bodai plans" if is_mahavishnu else f"{repo_name} plans"
+    )
     topic_value = "convergence-control-plane" if is_mahavishnu else "plan-registry"
     blocks_on_value: str | None = (
         "docs/schemas/document-frontmatter-v1.md" if is_mahavishnu else None
@@ -831,7 +842,9 @@ def _render_index(
     sections.append("")
     sections.append(_authority_matrix(repo_root, stores, entries_by_store).rstrip())
     sections.append("")
-    sections.append(_review_entry_points(generated_at, store_count=len(stores)).rstrip())
+    sections.append(
+        _review_entry_points(generated_at, store_count=len(stores)).rstrip()
+    )
     sections.append("")
 
     sections.append("## Canonical and Active Plan Registry")
@@ -1181,8 +1194,12 @@ def main(argv: list[str] | None = None) -> int:
     # Compile --exclude / --exclude-from patterns into a path matcher.
     exclude_patterns: list[str] = list(args.exclude)
     if args.exclude_from is not None:
-        exclude_patterns.extend(_load_exclude_patterns(Path(args.exclude_from).resolve()))
-    is_excluded_by_user = _compile_exclude_matcher(exclude_patterns) if exclude_patterns else None
+        exclude_patterns.extend(
+            _load_exclude_patterns(Path(args.exclude_from).resolve())
+        )
+    is_excluded_by_user = (
+        _compile_exclude_matcher(exclude_patterns) if exclude_patterns else None
+    )
 
     # Phase A — scan the repo and collect entries.
     entries_by_store: dict[str, list[Entry]] = {}
@@ -1283,7 +1300,9 @@ def main(argv: list[str] | None = None) -> int:
             except OSError as exc:
                 sys.stderr.write(f"--check: could not read {out_path}: {exc}\n")
         if rendered != existing:
-            sys.stderr.write(f"--check: drift detected ({out_path}); rendered vs current differ.\n")
+            sys.stderr.write(
+                f"--check: drift detected ({out_path}); rendered vs current differ.\n"
+            )
             return 1
         sys.stderr.write(f"--check: {out_path} is up-to-date.\n")
         return 0
@@ -1322,7 +1341,9 @@ def main(argv: list[str] | None = None) -> int:
             "excluded": total_excluded,
             "with_frontmatter": total_with_frontmatter,
             "stores": stores,
-            "per_store": {store: len(entries_by_store.get(store, [])) for store in stores},
+            "per_store": {
+                store: len(entries_by_store.get(store, [])) for store in stores
+            },
             "phase_b": {
                 "ran": args.mcp_url is not None and not args.dry_run,
                 "success": phase_b_success,

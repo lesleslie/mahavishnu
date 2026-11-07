@@ -494,7 +494,9 @@ class WebhookHandler:
         """Handle an issue opened event."""
         actions: list[str] = []
 
-        issue_data = event.payload.get("issue", event.payload.get("object_attributes", {}))
+        issue_data = event.payload.get(
+            "issue", event.payload.get("object_attributes", {})
+        )
 
         if issue_data:
             actions.append(
@@ -507,10 +509,14 @@ class WebhookHandler:
         """Handle an issue closed event."""
         actions: list[str] = []
 
-        issue_data = event.payload.get("issue", event.payload.get("object_attributes", {}))
+        issue_data = event.payload.get(
+            "issue", event.payload.get("object_attributes", {})
+        )
 
         if issue_data:
-            actions.append(f"Issue #{issue_data.get('number', issue_data.get('iid', '?'))} closed")
+            actions.append(
+                f"Issue #{issue_data.get('number', issue_data.get('iid', '?'))} closed"
+            )
 
         return actions
 
@@ -518,7 +524,9 @@ class WebhookHandler:
         """Handle a pull request event."""
         actions: list[str] = []
 
-        pr_data = event.payload.get("pull_request", event.payload.get("object_attributes", {}))
+        pr_data = event.payload.get(
+            "pull_request", event.payload.get("object_attributes", {})
+        )
 
         if pr_data:
             actions.append(

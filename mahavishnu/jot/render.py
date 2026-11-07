@@ -28,7 +28,9 @@ TEXT_TRUNCATE = 50
 
 def _format_ms(ms: int) -> str:
     """ms epoch -> 'YYYY-MM-DD HH:MM' (UTC)."""
-    return datetime.datetime.fromtimestamp(ms / 1000, tz=datetime.UTC).strftime("%Y-%m-%d %H:%M")
+    return datetime.datetime.fromtimestamp(ms / 1000, tz=datetime.UTC).strftime(
+        "%Y-%m-%d %H:%M"
+    )
 
 
 # =============================================================================

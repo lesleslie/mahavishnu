@@ -418,21 +418,29 @@ class QueryAnalyzer:
         tables = []
 
         # FROM clause
-        from_match = re.search(r"\bFROM\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
+        from_match = re.search(
+            r"\bFROM\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE
+        )
         if from_match:
             tables.append(from_match.group(1))
 
         # JOIN clauses
-        join_matches = re.findall(r"\bJOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
+        join_matches = re.findall(
+            r"\bJOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE
+        )
         tables.extend(join_matches)
 
         # INSERT INTO
-        insert_match = re.search(r"\bINTO\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
+        insert_match = re.search(
+            r"\bINTO\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE
+        )
         if insert_match:
             tables.append(insert_match.group(1))
 
         # UPDATE
-        update_match = re.search(r"\bUPDATE\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
+        update_match = re.search(
+            r"\bUPDATE\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE
+        )
         if update_match:
             tables.append(update_match.group(1))
 
@@ -471,7 +479,9 @@ class QueryAnalyzer:
         """Extract tables from JOIN clauses."""
         tables = []
 
-        join_matches = re.findall(r"\bJOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE)
+        join_matches = re.findall(
+            r"\bJOIN\s+([a-zA-Z_][a-zA-Z0-9_]*)", query, re.IGNORECASE
+        )
         tables.extend(join_matches)
 
         return list(set(tables))
@@ -573,7 +583,9 @@ class QueryAnalyzer:
 
         # Non-security fingerprint for query caching; not used for authentication
         # or any cryptographic purpose, so usedforsecurity=False is safe.
-        fingerprint = hashlib.md5(normalized.encode(), usedforsecurity=False).hexdigest()[:16]
+        fingerprint = hashlib.md5(
+            normalized.encode(), usedforsecurity=False
+        ).hexdigest()[:16]
         self._fingerprint_cache[query] = fingerprint
         return fingerprint
 
@@ -606,7 +618,11 @@ class QueryAnalyzer:
         Returns:
             List of slow query metrics
         """
-        return [metrics for metrics in self._metrics.values() if metrics.is_slow(threshold_ms)]
+        return [
+            metrics
+            for metrics in self._metrics.values()
+            if metrics.is_slow(threshold_ms)
+        ]
 
 
 __all__ = [

@@ -54,7 +54,9 @@ def get_pool_factory(name: str) -> Callable[..., Any]:
     """
     factory = _POOL_FACTORIES.get(name)
     if factory is None:
-        raise KeyError(f"Unknown pool type {name!r}. Available: {', '.join(list_pool_types())}")
+        raise KeyError(
+            f"Unknown pool type {name!r}. Available: {', '.join(list_pool_types())}"
+        )
     return factory
 
 

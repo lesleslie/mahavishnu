@@ -38,6 +38,7 @@ incur no mahavishnu import cost (mirrors the pattern in
 
 Reference: spec §4.2 (REQ-005); REQ-006 wires it into ``settings.json``.
 """
+
 from __future__ import annotations
 
 import json
@@ -122,7 +123,7 @@ def is_worktree(worktree_path: str) -> bool:
             check=True,
             timeout=5,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+    except subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError:
         return False
     git_dir = result.stdout.strip()
     return "/worktrees/" in git_dir
@@ -155,7 +156,7 @@ def is_sticky_failed(worktree_path: str) -> bool:
         return False
     try:
         data = json.loads(state_path.read_text())
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         return False
     if not isinstance(data, dict):
         return False
@@ -211,7 +212,9 @@ def run_hook(
     inspected in v0.1.
     """
     if not _is_auto_merge_enabled():
-        _log(f"auto-merge disabled ({AUTO_MERGE_ENV}={os.environ.get(AUTO_MERGE_ENV)!r}); skipping")
+        _log(
+            f"auto-merge disabled ({AUTO_MERGE_ENV}={os.environ.get(AUTO_MERGE_ENV)!r}); skipping"
+        )
         return 0
 
     if not worktree_path:

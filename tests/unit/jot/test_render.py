@@ -1,4 +1,5 @@
 """render layer: list, show, vitals formats."""
+
 from __future__ import annotations
 
 from mahavishnu.jot.fold import FoldResult, JotDetail, JotSummary
@@ -42,7 +43,8 @@ def test_render_list_limit() -> None:
 def test_render_show_includes_id_status_text() -> None:
     s = _s("a3f9c2", "refactor fold")
     d = JotDetail(
-        summary=s, hlc="1700000000000-0-aaaaaaaa",
+        summary=s,
+        hlc="1700000000000-0-aaaaaaaa",
         created_ms=1700000000000,
         ctx={"cwd": "/x", "repo": "/y", "branch": "main", "sha": "abc1234"},
     )

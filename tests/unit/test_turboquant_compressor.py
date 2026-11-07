@@ -78,7 +78,12 @@ class TestTurboQuantCompressorProperties:
     def test_estimate_savings_keys(self):
         c = _make_compressor(bits=4, dimension=384)
         savings = c.estimate_savings(1000)
-        assert set(savings.keys()) == {"uncompressed_kb", "compressed_kb", "savings_kb", "ratio"}
+        assert set(savings.keys()) == {
+            "uncompressed_kb",
+            "compressed_kb",
+            "savings_kb",
+            "ratio",
+        }
 
     def test_estimate_savings_values(self):
         c = _make_compressor(bits=4, dimension=384)
@@ -100,23 +105,31 @@ class TestTurboQuantAvailability:
     """Tests for the TURBOQUANT_AVAILABLE flag logic."""
 
     def test_available_false_when_not_installed(self):
-        with patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False):
+        with patch(
+            "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False
+        ):
             c = _make_compressor()
             assert c.available is False
 
     def test_available_true_when_installed(self):
-        with patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True):
+        with patch(
+            "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True
+        ):
             c = _make_compressor()
             assert c.available is True
 
     def test_compress_batch_raises_when_unavailable(self):
-        with patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False):
+        with patch(
+            "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False
+        ):
             c = _make_compressor()
             with pytest.raises(ImportError, match="turboquant-pro not installed"):
                 c.compress_batch([[0.1] * 384])
 
     def test_decompress_batch_raises_when_unavailable(self):
-        with patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False):
+        with patch(
+            "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False
+        ):
             c = _make_compressor()
             with pytest.raises(ImportError, match="turboquant-pro not installed"):
                 c.decompress_batch([b"dummy"])
@@ -139,8 +152,13 @@ class TestTurboQuantBatchOps:
             mock_tq_instance.decompress.return_value = decompress_return
         mock_tq_cls = MagicMock(return_value=mock_tq_instance)
         return (
-            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True),
-            patch("mahavishnu.ingesters.turboquant_compressor.TurboQuantPGVector", mock_tq_cls),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True
+            ),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TurboQuantPGVector",
+                mock_tq_cls,
+            ),
             mock_tq_instance,
         )
 
@@ -154,7 +172,9 @@ class TestTurboQuantBatchOps:
         mock_tq_cls = MagicMock(return_value=mock_tq_instance)
 
         with (
-            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True
+            ),
             patch(self._TQ_PATCH, mock_tq_cls, create=True),
         ):
             c = _make_compressor()
@@ -171,7 +191,9 @@ class TestTurboQuantBatchOps:
         mock_tq_cls = MagicMock(return_value=mock_tq_instance)
 
         with (
-            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True
+            ),
             patch(self._TQ_PATCH, mock_tq_cls, create=True),
         ):
             c = _make_compressor()
@@ -187,7 +209,9 @@ class TestTurboQuantBatchOps:
         mock_tq_cls = MagicMock(return_value=mock_tq_instance)
 
         with (
-            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True
+            ),
             patch(self._TQ_PATCH, mock_tq_cls, create=True),
         ):
             c = _make_compressor()
@@ -201,7 +225,9 @@ class TestTurboQuantBatchOps:
         mock_tq_cls = MagicMock(return_value=mock_tq_instance)
 
         with (
-            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True
+            ),
             patch(self._TQ_PATCH, mock_tq_cls, create=True),
         ):
             c = _make_compressor()
@@ -231,7 +257,9 @@ class TestTurboQuantSearchPgvector:
         mock_conn = MagicMock()
 
         with (
-            patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True),
+            patch(
+                "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", True
+            ),
             patch(self._TQ_PATCH, mock_tq_cls, create=True),
         ):
             c = _make_compressor()
@@ -245,11 +273,16 @@ class TestTurboQuantSearchPgvector:
         assert result == expected_results
         mock_tq_instance.search_compressed.assert_called_once()
         _, kwargs = mock_tq_instance.search_compressed.call_args
-        assert kwargs.get("top_k") == 5 or mock_tq_instance.search_compressed.call_args[0][3] == 5
+        assert (
+            kwargs.get("top_k") == 5
+            or mock_tq_instance.search_compressed.call_args[0][3] == 5
+        )
 
     @pytest.mark.asyncio
     async def test_search_pgvector_raises_when_unavailable(self):
-        with patch("mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False):
+        with patch(
+            "mahavishnu.ingesters.turboquant_compressor.TURBOQUANT_AVAILABLE", False
+        ):
             c = _make_compressor()
             with pytest.raises(ImportError):
                 await c.search_pgvector(

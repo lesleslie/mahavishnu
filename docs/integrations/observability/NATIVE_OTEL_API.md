@@ -30,6 +30,7 @@ Main class for ingesting and searching OpenTelemetry traces using Akosha HotStor
 ```python
 from mahavishnu.otel import OtelIngester
 
+
 class OtelIngester:
     """Ingest OTel traces into Akosha HotStore with semantic search.
 
@@ -93,9 +94,7 @@ def __init__(
 ingester = OtelIngester()
 
 # Persistent storage
-ingester = OtelIngester(
-    database_path="/var/lib/mahavishnu/otel.db"
-)
+ingester = OtelIngester(database_path="/var/lib/mahavishnu/otel.db")
 
 # High-quality embeddings
 ingester = OtelIngester(
@@ -243,8 +242,8 @@ result = await ingester.ingest_log_file("/path/to/session.json")
 print(f"Ingested {result['traces_ingested']} traces")
 
 # Check for errors
-if result['errors']:
-    for error in result['errors']:
+if result["errors"]:
+    for error in result["errors"]:
         print(f"Error: {error}")
 ```
 
@@ -394,17 +393,19 @@ from datetime import datetime, timezone
 # Create batch of traces
 traces = []
 for i in range(100):
-    traces.append({
-        "trace_id": f"trace-{i}",
-        "span_id": f"span-{i}",
-        "name": f"operation.{i}",
-        "summary": f"Operation number {i} processing data",
-        "start_time": datetime.now(timezone.utc),
-        "end_time": datetime.now(timezone.utc),
-        "kind": "INTERNAL",
-        "status": "OK",
-        "attributes": {"index": i},
-    })
+    traces.append(
+        {
+            "trace_id": f"trace-{i}",
+            "span_id": f"span-{i}",
+            "name": f"operation.{i}",
+            "summary": f"Operation number {i} processing data",
+            "start_time": datetime.now(timezone.utc),
+            "end_time": datetime.now(timezone.utc),
+            "kind": "INTERNAL",
+            "status": "OK",
+            "attributes": {"index": i},
+        }
+    )
 
 # Store in batch
 result = await ingester.batch_store(traces)
@@ -481,9 +482,7 @@ Performs semantic search using cosine similarity between query embedding and sto
 
 ```python
 # Basic search
-results = await ingester.search_traces(
-    query="authentication error when accessing API"
-)
+results = await ingester.search_traces(query="authentication error when accessing API")
 
 # Search with threshold
 results = await ingester.search_traces(
@@ -628,7 +627,7 @@ stats = await ingester.get_statistics()
 print(f"Total traces: {stats['total_traces']}")
 print(f"Average duration: {stats['avg_duration_ms']:.2f}ms")
 print(f"Traces by status:")
-for status, count in stats['by_status'].items():
+for status, count in stats["by_status"].items():
     print(f"  {status}: {count}")
 ```
 
@@ -671,7 +670,7 @@ async def health_check() -> dict[str, Any]
 # Check health
 health = await ingester.health_check()
 
-if health['healthy']:
+if health["healthy"]:
     print("✅ HotStore is healthy")
     print(f"   Traces: {health['total_traces']}")
     print(f"   Cache: {health['cache_entries']}/{health['cache_size']}")
@@ -825,6 +824,7 @@ ______________________________________________________________________
 ```python
 from mahavishnu.otel import OtelIngester
 
+
 async def safe_ingestion():
     ingester = OtelIngester()
 
@@ -902,11 +902,11 @@ results = await ingester.search_traces(
 )
 
 # Step 2: Filter results
-error_results = [r for r in results if r['status'] == 'ERROR']
+error_results = [r for r in results if r["status"] == "ERROR"]
 
 # Step 3: Analyze top results
 for result in error_results[:10]:
-    print(result['summary'])
+    print(result["summary"])
 ```
 
 ### 4. Memory Management
@@ -1030,11 +1030,9 @@ ingester = OtelIngester(
 # Process multiple files in parallel
 import asyncio
 
+
 async def ingest_files(file_paths):
-    tasks = [
-        ingester.ingest_log_file(fp)
-        for fp in file_paths
-    ]
+    tasks = [ingester.ingest_log_file(fp) for fp in file_paths]
     results = await asyncio.gather(*tasks)
     return results
 ```
@@ -1044,10 +1042,7 @@ async def ingest_files(file_paths):
 ```python
 # Search multiple HotStore instances
 async def distributed_search(query, stores):
-    tasks = [
-        store.search_traces(query, limit=10)
-        for store in stores
-    ]
+    tasks = [store.search_traces(query, limit=10) for store in stores]
     all_results = await asyncio.gather(*tasks)
 
     # Merge and deduplicate results
@@ -1055,12 +1050,12 @@ async def distributed_search(query, stores):
     seen = set()
     for results in all_results:
         for result in results:
-            if result['trace_id'] not in seen:
+            if result["trace_id"] not in seen:
                 merged.append(result)
-                seen.add(result['trace_id'])
+                seen.add(result["trace_id"])
 
     # Sort by similarity
-    merged.sort(key=lambda r: r['similarity'], reverse=True)
+    merged.sort(key=lambda r: r["similarity"], reverse=True)
     return merged[:10]
 ```
 

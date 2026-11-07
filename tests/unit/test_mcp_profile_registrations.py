@@ -330,7 +330,9 @@ class TestEdgeCases:
 
     def test_all_registration_lists_are_flat_string_lists(self) -> None:
         """All registration lists should contain only string method names."""
-        all_registrations = MINIMAL_REGISTRATIONS + STANDARD_REGISTRATIONS + FULL_REGISTRATIONS
+        all_registrations = (
+            MINIMAL_REGISTRATIONS + STANDARD_REGISTRATIONS + FULL_REGISTRATIONS
+        )
         for item in all_registrations:
             assert isinstance(item, str), f"Expected str, got {type(item)}: {item!r}"
 
@@ -344,7 +346,9 @@ class TestEdgeCases:
 
     def test_no_worktree_tools_in_any_profile(self) -> None:
         """register_worktree_tools is async and conditionally registered; not in any profile."""
-        all_methods = MINIMAL_REGISTRATIONS + STANDARD_REGISTRATIONS + FULL_REGISTRATIONS
+        all_methods = (
+            MINIMAL_REGISTRATIONS + STANDARD_REGISTRATIONS + FULL_REGISTRATIONS
+        )
         for method in all_methods:
             assert "worktree" not in method.lower()
 

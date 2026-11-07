@@ -122,7 +122,9 @@ def test_eventbridge_default_factory_resolves() -> None:
 def test_config_custom_values():
     """Test that custom configuration values are respected."""
     config = MahavishnuSettings(
-        repos_path="/custom/path.yaml", max_concurrent_workflows=20, qc={"min_score": 90}
+        repos_path="/custom/path.yaml",
+        max_concurrent_workflows=20,
+        qc={"min_score": 90},
     )
 
     assert config.repos_path == "/custom/path.yaml"
@@ -208,7 +210,9 @@ class TestOTelStorageConnectionStringSecurity:
 
     def test_empty_connection_string_when_disabled(self):
         """Test that empty connection string is allowed when storage is disabled."""
-        config = MahavishnuSettings(otel_storage={"enabled": False, "connection_string": ""})
+        config = MahavishnuSettings(
+            otel_storage={"enabled": False, "connection_string": ""}
+        )
         assert config.otel_storage.connection_string == ""
 
     def test_empty_connection_string_rejected_when_enabled(self):
@@ -296,7 +300,9 @@ class TestOTelStorageConnectionStringSecurity:
 
     def test_invalid_scheme_rejected(self):
         """Test that non-PostgreSQL schemes are rejected."""
-        with pytest.raises(ValueError, match="must use postgresql:// or postgres:// scheme"):
+        with pytest.raises(
+            ValueError, match="must use postgresql:// or postgres:// scheme"
+        ):
             MahavishnuSettings(
                 otel_storage={
                     "enabled": True,
@@ -304,7 +310,9 @@ class TestOTelStorageConnectionStringSecurity:
                 }
             )
 
-        with pytest.raises(ValueError, match="must use postgresql:// or postgres:// scheme"):
+        with pytest.raises(
+            ValueError, match="must use postgresql:// or postgres:// scheme"
+        ):
             MahavishnuSettings(
                 otel_storage={
                     "enabled": True,
@@ -422,10 +430,14 @@ class TestOTelStorageConnectionStringSecurity:
 
     def test_environment_variable_override_description(self):
         """Test that error messages reference environment variable for setup."""
-        with pytest.raises(ValueError, match="MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING"):
+        with pytest.raises(
+            ValueError, match="MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING"
+        ):
             MahavishnuSettings(otel_storage={"enabled": True, "connection_string": ""})
 
-        with pytest.raises(ValueError, match="MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING"):
+        with pytest.raises(
+            ValueError, match="MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING"
+        ):
             MahavishnuSettings(
                 otel_storage={
                     "enabled": True,
@@ -685,7 +697,9 @@ class TestObservabilityConfigDefaults:
 class TestQualityControlConfigDefaults:
     def test_defaults(self):
         cfg = QualityControlConfig()
-        assert cfg.enabled is False  # OFF by default; opt-in for production (see docstring)
+        assert (
+            cfg.enabled is False
+        )  # OFF by default; opt-in for production (see docstring)
         assert cfg.min_score == 80
         assert "linting" in cfg.checks
 

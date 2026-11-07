@@ -70,7 +70,8 @@ def _assert_published_cleanly(dest: Path) -> None:
     leftovers = [
         p.name
         for p in dest.parent.iterdir()
-        if p != dest and (p.name.endswith(".tmp") or p.name.startswith(f".{dest.name}."))
+        if p != dest
+        and (p.name.endswith(".tmp") or p.name.startswith(f".{dest.name}."))
     ]
     assert not leftovers, f"the writer left temp files behind: {leftovers}"
 
@@ -161,7 +162,9 @@ class TestPostToolUseHook:
         )
         return _load_hook("bodai-activity-post-tool-use")
 
-    def test_the_state_is_published_owner_only(self, hook: ModuleType, tmp_path: Path) -> None:
+    def test_the_state_is_published_owner_only(
+        self, hook: ModuleType, tmp_path: Path
+    ) -> None:
         hook._write_state({"last_message_id": "1-0"})
 
         dest = tmp_path / "state.json"
@@ -221,7 +224,9 @@ class TestSubscriberHook:
         )
         return _load_hook("bodai-activity-subscriber")
 
-    def test_the_state_is_published_owner_only(self, hook: ModuleType, tmp_path: Path) -> None:
+    def test_the_state_is_published_owner_only(
+        self, hook: ModuleType, tmp_path: Path
+    ) -> None:
         hook._write_state({"pid": 1234})
 
         dest = tmp_path / "state.json"

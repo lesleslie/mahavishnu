@@ -104,7 +104,10 @@ async def db_connection(
         TimeoutError: If connection acquisition times out
         MahavishnuError: If database error occurs
     """
-    async with timeout_context(timeout_seconds, "database_connection"), pool.acquire() as conn:
+    async with (
+        timeout_context(timeout_seconds, "database_connection"),
+        pool.acquire() as conn,
+    ):
         try:
             yield conn
         except asyncio.CancelledError:

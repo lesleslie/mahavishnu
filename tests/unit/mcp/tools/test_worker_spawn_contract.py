@@ -82,7 +82,9 @@ def test_worker_spawn_falls_back_when_durable_unset(
     out = asyncio.run(worker_tools.worker_spawn("terminal-claude", 1))
 
     assert out["worker_ids"] == ["w-1"]
-    legacy.spawn_workers.assert_awaited_once_with(worker_type="terminal-claude", count=1)
+    legacy.spawn_workers.assert_awaited_once_with(
+        worker_type="terminal-claude", count=1
+    )
 
 
 def test_worker_spawn_validates_count(monkeypatch: pytest.MonkeyPatch) -> None:

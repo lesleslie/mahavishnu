@@ -210,7 +210,9 @@ class Task:
             "external_id": self.external_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "created_by": self.created_by,
         }
 
@@ -416,7 +418,9 @@ class TaskStore:
 
         return Task.from_row(row) if row else None
 
-    async def update(self, task_id: str, data: TaskUpdate, actor: str = "system") -> Task:
+    async def update(
+        self, task_id: str, data: TaskUpdate, actor: str = "system"
+    ) -> Task:
         """Update a task.
 
         Args:
@@ -811,7 +815,10 @@ class TaskStore:
             await self.event_store.append(
                 task_id=task_id,
                 event_type=TaskEventType.DEPENDENCY_ADDED,
-                data={"depends_on_task_id": depends_on_task_id, "type": dependency_type},
+                data={
+                    "depends_on_task_id": depends_on_task_id,
+                    "type": dependency_type,
+                },
                 actor=actor,
             )
 

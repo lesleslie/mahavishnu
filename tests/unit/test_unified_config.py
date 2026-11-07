@@ -13,11 +13,16 @@ from mahavishnu.core.unified_config import ConfigValidationError, UnifiedConfig
 
 def _make_report(valid: bool = True, errors: list | None = None):
     """Build a minimal ConfigValidationReport mock."""
-    from mahavishnu.core.config_validator import ConfigValidationReport, ValidationResult
+    from mahavishnu.core.config_validator import (
+        ConfigValidationReport,
+        ValidationResult,
+    )
 
     report = ConfigValidationReport(valid=valid)
     for msg in errors or []:
-        report.add_result(ValidationResult(valid=False, message=msg, path="settings/test.yaml"))
+        report.add_result(
+            ValidationResult(valid=False, message=msg, path="settings/test.yaml")
+        )
     return report
 
 
@@ -54,7 +59,9 @@ class TestUnifiedConfigValidate:
 
                 report.add_result(
                     ValidationResult(
-                        valid=False, message="Bad field", path="settings/mahavishnu.yaml"
+                        valid=False,
+                        message="Bad field",
+                        path="settings/mahavishnu.yaml",
                     )
                 )
 

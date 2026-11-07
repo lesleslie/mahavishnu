@@ -97,7 +97,12 @@ class MCPKvClient:
         try:
             await self._client.call_tool(
                 "mahavishnu_kv_put",
-                {"key": key, "value": value, "ttl": ttl, "user_id": INTERNAL_SERVICE_USER_ID},
+                {
+                    "key": key,
+                    "value": value,
+                    "ttl": ttl,
+                    "user_id": INTERNAL_SERVICE_USER_ID,
+                },
             )
         except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return
@@ -107,7 +112,8 @@ class MCPKvClient:
             return []
         try:
             envelope = await self._client.call_tool(
-                "mahavishnu_kv_list", {"prefix": prefix, "user_id": INTERNAL_SERVICE_USER_ID}
+                "mahavishnu_kv_list",
+                {"prefix": prefix, "user_id": INTERNAL_SERVICE_USER_ID},
             )
         except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return []
@@ -142,7 +148,8 @@ class MCPKvClient:
             return
         try:
             await self._client.call_tool(
-                "mahavishnu_kv_delete", {"key": key, "user_id": INTERNAL_SERVICE_USER_ID}
+                "mahavishnu_kv_delete",
+                {"key": key, "user_id": INTERNAL_SERVICE_USER_ID},
             )
         except Exception:  # KV backend is non-authoritative — any MCP failure degrades to a no-op rather than crashing the caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return

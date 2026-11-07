@@ -70,7 +70,9 @@ def compute_blockers(
 
     cutover = parse_date(cutover_date)
     if cutover is None:
-        blockers.append("cutover date unknown (set --cutover-date or PLAN_INDEX_CUTOVER_DATE)")
+        blockers.append(
+            "cutover date unknown (set --cutover-date or PLAN_INDEX_CUTOVER_DATE)"
+        )
     else:
         cond_a = cutover + timedelta(days=_GRACE_DAYS)
         if today < cond_a:

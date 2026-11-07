@@ -192,8 +192,8 @@ Modify `mahavishnu/_main_cli.py:1073, 1156, 1381` so each constructs a `mcp_clie
    from mahavishnu.mcp.crow_client import CrowMCPClient  # canonical helper, see below
 
    mcp_client = CrowMCPClient(
-       host=settings.crow.http_host,   # default 127.0.0.1
-       port=settings.crow.http_port,   # default 8675
+       host=settings.crow.http_host,  # default 127.0.0.1
+       port=settings.crow.http_port,  # default 8675
    )
    terminal_mgr = TerminalManager(
        adapter_preference=settings.terminal.adapter_preference,
@@ -234,7 +234,7 @@ Smallest code change that keeps the bundled default intent intact. Adds one conf
    ```python
    if (
        adapter_preference == "crow"
-       and settings.crow.enabled   # ← new guard
+       and settings.crow.enabled  # ← new guard
        and mcp_client is None
    ):
        raise ConfigurationError(

@@ -45,12 +45,18 @@ async def main():
                     {
                         "name": "HTTP POST /api/rag/query",
                         "start_time": "2026-02-01T15:30:00Z",
-                        "attributes": {"service.name": "claude", "http.status_code": 200},
+                        "attributes": {
+                            "service.name": "claude",
+                            "http.status_code": 200,
+                        },
                     },
                     {
                         "name": "vector_store.query",
                         "start_time": "2026-02-01T15:30:01Z",
-                        "attributes": {"service.name": "claude", "db.system": "pgvector"},
+                        "attributes": {
+                            "service.name": "claude",
+                            "db.system": "pgvector",
+                        },
                     },
                 ],
             },
@@ -86,7 +92,10 @@ async def main():
                     {
                         "name": "HTTP POST /api/generate",
                         "start_time": "2026-02-01T15:30:00Z",
-                        "attributes": {"service.name": "qwen", "llm.model": "qwen-72b-chat"},
+                        "attributes": {
+                            "service.name": "qwen",
+                            "llm.model": "qwen-72b-chat",
+                        },
                     },
                 ],
             },
@@ -165,7 +174,9 @@ async def main():
             cont = result.get("content", "N/A")[:40]
             print(f"   {i}. [{sim:.2f}] {cid}: {cont}")
     else:
-        print("ℹ️  No matches — dummy embedding didn't pass the similarity threshold (expected)")
+        print(
+            "ℹ️  No matches — dummy embedding didn't pass the similarity threshold (expected)"
+        )
 
     # Test 2: Count traces by system
     print("\n📊 Test 2: Trace Statistics")

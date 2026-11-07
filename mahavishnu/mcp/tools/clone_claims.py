@@ -81,7 +81,9 @@ async def cluster_state_claim(
             # SF-M4: missing/None refactor_job_id (corrupt/legacy sentinel) is
             # treated as unowned — overwrite rather than raise with None.
             if existing_job_id is None:
-                logger.warning("cluster_claim: stale sentinel at %s, overwriting", sentinel_key)
+                logger.warning(
+                    "cluster_claim: stale sentinel at %s, overwriting", sentinel_key
+                )
             elif existing_job_id == refactor_job_id:
                 # Idempotent: same caller re-claiming their own job
                 return
@@ -89,7 +91,10 @@ async def cluster_state_claim(
                 raise ConcurrentDAGError(existing_job_id=existing_job_id)
         await mcp_backend.put(
             sentinel_key,
-            {"refactor_job_id": refactor_job_id, "claimed_at": asyncio.get_event_loop().time()},
+            {
+                "refactor_job_id": refactor_job_id,
+                "claimed_at": asyncio.get_event_loop().time(),
+            },
         )
 
 

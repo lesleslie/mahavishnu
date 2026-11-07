@@ -208,7 +208,9 @@ class TestWebhookHandler:
         handler = WebhookHandler(mock_task_store, github_secret=secret)
 
         payload = b'{"test": "data"}'
-        signature = "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+        signature = (
+            "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+        )
 
         assert handler.verify_github_signature(payload, signature) is True
         assert handler.verify_github_signature(payload, "sha256=invalid") is False
@@ -334,12 +336,16 @@ class TestWebhookHandler:
         # GitHub event types
         assert handler.classify_github_event("push", {}) == EventType.PUSH
         assert (
-            handler.classify_github_event("issues", {"action": "opened"}) == EventType.ISSUE_OPENED
+            handler.classify_github_event("issues", {"action": "opened"})
+            == EventType.ISSUE_OPENED
         )
         assert (
-            handler.classify_github_event("issues", {"action": "closed"}) == EventType.ISSUE_CLOSED
+            handler.classify_github_event("issues", {"action": "closed"})
+            == EventType.ISSUE_CLOSED
         )
-        assert handler.classify_github_event("pull_request", {}) == EventType.PULL_REQUEST
+        assert (
+            handler.classify_github_event("pull_request", {}) == EventType.PULL_REQUEST
+        )
 
     @pytest.mark.asyncio
     async def test_handle_with_invalid_signature(
@@ -358,7 +364,9 @@ class TestWebhookHandler:
         )
 
         assert result.success is False
-        assert "signature" in result.error.lower() or "invalid" in result.message.lower()
+        assert (
+            "signature" in result.error.lower() or "invalid" in result.message.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_handle_gitlab_webhook(
@@ -403,7 +411,10 @@ class TestWebhookHandler:
         result2 = await handler.handle_event(event)
         assert result2.success is True
         # Should indicate it was already processed
-        assert "duplicate" in result2.message.lower() or "already" in result2.message.lower()
+        assert (
+            "duplicate" in result2.message.lower()
+            or "already" in result2.message.lower()
+        )
 
     def test_extract_repository_info(
         self,
@@ -443,11 +454,15 @@ class TestWebhookHandler:
     # verify_github_signature without secret (no-verify path)
     # ------------------------------------------------------------------
 
-    def test_verify_github_signature_no_secret(self, mock_task_store: AsyncMock) -> None:
+    def test_verify_github_signature_no_secret(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)  # no github_secret
         assert handler.verify_github_signature(b"data", "sha256=anything") is True
 
-    def test_verify_github_signature_bad_prefix(self, mock_task_store: AsyncMock) -> None:
+    def test_verify_github_signature_bad_prefix(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store, github_secret="secret")
         assert handler.verify_github_signature(b"data", "sha1=badsig") is False
 
@@ -463,7 +478,9 @@ class TestWebhookHandler:
     # classify_github_event — ISSUE_UPDATED and UNKNOWN branches
     # ------------------------------------------------------------------
 
-    def test_classify_github_event_issue_updated(self, mock_task_store: AsyncMock) -> None:
+    def test_classify_github_event_issue_updated(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
         result = handler.classify_github_event("issues", {"action": "labeled"})
         assert result == EventType.ISSUE_UPDATED
@@ -481,21 +498,41 @@ class TestWebhookHandler:
         handler = WebhookHandler(mock_task_store)
         assert handler.classify_gitlab_event("push", {}) == EventType.PUSH
 
-    def test_classify_gitlab_event_issue_opened(self, mock_task_store: AsyncMock) -> None:
+    def test_classify_gitlab_event_issue_opened(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
-        assert handler.classify_gitlab_event("issue", {"action": "open"}) == EventType.ISSUE_OPENED
+        assert (
+            handler.classify_gitlab_event("issue", {"action": "open"})
+            == EventType.ISSUE_OPENED
+        )
 
-    def test_classify_gitlab_event_issue_closed(self, mock_task_store: AsyncMock) -> None:
+    def test_classify_gitlab_event_issue_closed(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
-        assert handler.classify_gitlab_event("issue", {"action": "close"}) == EventType.ISSUE_CLOSED
+        assert (
+            handler.classify_gitlab_event("issue", {"action": "close"})
+            == EventType.ISSUE_CLOSED
+        )
 
-    def test_classify_gitlab_event_issue_updated(self, mock_task_store: AsyncMock) -> None:
+    def test_classify_gitlab_event_issue_updated(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
-        assert handler.classify_gitlab_event("issue", {"action": "edit"}) == EventType.ISSUE_UPDATED
+        assert (
+            handler.classify_gitlab_event("issue", {"action": "edit"})
+            == EventType.ISSUE_UPDATED
+        )
 
-    def test_classify_gitlab_event_merge_request(self, mock_task_store: AsyncMock) -> None:
+    def test_classify_gitlab_event_merge_request(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
-        assert handler.classify_gitlab_event("merge_request", {}) == EventType.MERGE_REQUEST
+        assert (
+            handler.classify_gitlab_event("merge_request", {})
+            == EventType.MERGE_REQUEST
+        )
 
     def test_classify_gitlab_event_unknown(self, mock_task_store: AsyncMock) -> None:
         handler = WebhookHandler(mock_task_store)
@@ -534,7 +571,9 @@ class TestWebhookHandler:
         assert result.success is True
 
     @pytest.mark.asyncio
-    async def test_handle_event_exception_returns_failure(self, mock_task_store: AsyncMock) -> None:
+    async def test_handle_event_exception_returns_failure(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         from unittest.mock import patch
 
         handler = WebhookHandler(mock_task_store)
@@ -547,7 +586,9 @@ class TestWebhookHandler:
             received_at=datetime.now(UTC),
         )
         # Patch _handle_push to raise inside the try block
-        with patch.object(handler, "_handle_push", side_effect=RuntimeError("simulated error")):
+        with patch.object(
+            handler, "_handle_push", side_effect=RuntimeError("simulated error")
+        ):
             result = await handler.handle_event(event)
         assert result.success is False
         assert "failed" in result.message.lower()
@@ -566,22 +607,30 @@ class TestWebhookHandler:
         assert result.success is True
 
     @pytest.mark.asyncio
-    async def test_handle_github_webhook_json_error(self, mock_task_store: AsyncMock) -> None:
+    async def test_handle_github_webhook_json_error(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
         result = await handler.handle_github_webhook(b"not-json", "sha256=x", "push")
         assert result.success is False
         assert "JSON" in result.message or "parse" in result.message.lower()
 
     @pytest.mark.asyncio
-    async def test_handle_github_webhook_unknown_event(self, mock_task_store: AsyncMock) -> None:
+    async def test_handle_github_webhook_unknown_event(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
         payload = json.dumps({"repository": {"full_name": "a/b"}}).encode()
-        result = await handler.handle_github_webhook(payload, "sha256=x", "unknown_event_xyz")
+        result = await handler.handle_github_webhook(
+            payload, "sha256=x", "unknown_event_xyz"
+        )
         # Unknown event is still "handled" (succeeds) with UNKNOWN type
         assert result.success is True
 
     @pytest.mark.asyncio
-    async def test_handle_github_webhook_parse_failure(self, mock_task_store: AsyncMock) -> None:
+    async def test_handle_github_webhook_parse_failure(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
         payload = json.dumps({"repository": {"full_name": "a/b"}}).encode()
 
@@ -605,13 +654,17 @@ class TestWebhookHandler:
         assert result.success is False
 
     @pytest.mark.asyncio
-    async def test_handle_gitlab_webhook_json_error(self, mock_task_store: AsyncMock) -> None:
+    async def test_handle_gitlab_webhook_json_error(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
         result = await handler.handle_gitlab_webhook(b"bad-json", token=None)
         assert result.success is False
 
     @pytest.mark.asyncio
-    async def test_handle_gitlab_webhook_unknown_event(self, mock_task_store: AsyncMock) -> None:
+    async def test_handle_gitlab_webhook_unknown_event(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
         # Valid JSON but unknown event kind — parse_gitlab_event returns UNKNOWN type, still succeeds
         result = await handler.handle_gitlab_webhook(
@@ -620,7 +673,9 @@ class TestWebhookHandler:
         assert result.success is True
 
     @pytest.mark.asyncio
-    async def test_handle_gitlab_webhook_parse_failure(self, mock_task_store: AsyncMock) -> None:
+    async def test_handle_gitlab_webhook_parse_failure(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         handler = WebhookHandler(mock_task_store)
         payload = json.dumps({"object_kind": "push"}).encode()
 
@@ -638,7 +693,9 @@ class TestWebhookHandler:
         self, mock_task_store: AsyncMock, sample_gitlab_push_payload: dict[str, Any]
     ) -> None:
         handler = WebhookHandler(mock_task_store)
-        info = handler.extract_repository_info(sample_gitlab_push_payload, WebhookSource.GITLAB)
+        info = handler.extract_repository_info(
+            sample_gitlab_push_payload, WebhookSource.GITLAB
+        )
         assert info["name"] == "test-repo"
         assert info["full_name"] == "owner/test-repo"
 

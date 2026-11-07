@@ -223,9 +223,7 @@ class TestMCPKvClientCronCoreIntBug:
     async def test_json_loads_of_recent_errors(self):
         import json
 
-        recent_raw = (
-            '[{"ts_ms": 1234, "op": "upsert", "err": "see ctx", "ctx": {"path_hash": "abc"}}]'
-        )
+        recent_raw = '[{"ts_ms": 1234, "op": "upsert", "err": "see ctx", "ctx": {"path_hash": "abc"}}]'
         envelope = {
             "ok": True,
             "key": "plan_index/meta/recent_errors",

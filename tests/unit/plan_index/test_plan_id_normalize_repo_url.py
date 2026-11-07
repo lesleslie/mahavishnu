@@ -33,7 +33,9 @@ class TestDerivePlanIdCallsNormalizeRepoUrl:
         """The hash output must be exactly 32 lowercase hex chars."""
         rb = PlanIndexRebuilder()
         pid = rb.derive_plan_id("https://github.com/foo/bar.git", "docs/x.md")
-        assert re.match(r"\A[0-9a-f]{32}\z", pid), f"plan_id {pid!r} is not 32 hex chars"
+        assert re.match(r"\A[0-9a-f]{32}\z", pid), (
+            f"plan_id {pid!r} is not 32 hex chars"
+        )
 
     def test_two_distinct_repos_produce_distinct_plan_ids(self) -> None:
         """Different repos produce different plan_ids (no collision)."""

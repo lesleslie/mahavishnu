@@ -292,7 +292,9 @@ class TestAutomationManagerSecurity:
         mock_backend.backend_name = "test"
         manager._backend = mock_backend
         manager._security = MagicMock()
-        manager._security.validate_app.side_effect = BlockedAppError("com.apple.loginwindow")
+        manager._security.validate_app.side_effect = BlockedAppError(
+            "com.apple.loginwindow"
+        )
 
         with pytest.raises(BlockedAppError):
             await manager.launch_application("com.apple.loginwindow")
@@ -348,7 +350,9 @@ class TestAutomationManagerOperations:
 
         await manager.quit_application("com.apple.finder", force=True)
 
-        mock_backend.quit_application.assert_called_once_with("com.apple.finder", force=True)
+        mock_backend.quit_application.assert_called_once_with(
+            "com.apple.finder", force=True
+        )
 
     @pytest.mark.asyncio
     async def test_type_text(self):

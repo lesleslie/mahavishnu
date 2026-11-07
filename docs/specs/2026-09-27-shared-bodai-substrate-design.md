@@ -206,6 +206,7 @@ class SubstrateSettings(BaseModel):
     source. Don't read this field as defining env-var resolution rules; read
     the spec §7.3 resolution chain.
     """
+
     model_config = SettingsConfigDict(
         env_prefix="ONEIRIC_SUBSTRATE_",
         env_nested_delimiter="__",
@@ -218,7 +219,9 @@ class SubstrateSettings(BaseModel):
 
     # Tier 1 — warm (shared pgvector)
     warm__backend: Literal["pgvector"] = "pgvector"  # duckdb_vss removed
-    warm__pg_url: str = "postgresql+psycopg://user:pass@localhost:5432/oneiric_substrate"
+    warm__pg_url: str = (
+        "postgresql+psycopg://user:pass@localhost:5432/oneiric_substrate"
+    )
     warm__pg_pool_size: int = 8  # per-component; sum must stay < max_connections
     warm__schema_namespace: Literal["akosha", "sb"]  # vishnu reserved
     warm__embedding_dim: int = 384
@@ -237,10 +240,16 @@ class SubstrateSettings(BaseModel):
     cold__retention_days: int = 365
 
     # Embedding service
-    embedding__backend: Literal["openai", "fastembed", "llama_server", "ollama"] = "llama_server"
-    embedding__model: str = "nomic-embed-text"  # forced single default; per-component override forbidden
+    embedding__backend: Literal["openai", "fastembed", "llama_server", "ollama"] = (
+        "llama_server"
+    )
+    embedding__model: str = (
+        "nomic-embed-text"  # forced single default; per-component override forbidden
+    )
     embedding__dim: int = 384
-    embedding__normalize: bool = True  # substrate MUST L2-normalize when True (see §5.4)
+    embedding__normalize: bool = (
+        True  # substrate MUST L2-normalize when True (see §5.4)
+    )
     embedding__batch_size: int = 32
     embedding__timeout_seconds: float = 30.0
     embedding__endpoint_url: str | None = None
@@ -256,7 +265,9 @@ class SubstrateSettings(BaseModel):
     circuit_breaker__failure_threshold: int = 5
     circuit_breaker__reset_timeout_seconds: int = 60
     telemetry__service_namespace: str = "oneiric-substrate"
-    telemetry__service_name: str  # per-component: "akosha" / "session-buddy" / "mahavishnu"
+    telemetry__service_name: (
+        str  # per-component: "akosha" / "session-buddy" / "mahavishnu"
+    )
     telemetry__exporter: Literal["otlp", "console", "jaeger"] = "otlp"
     telemetry__sample_ratio: float = 1.0
     backup__retention_days: int = 30
@@ -315,6 +326,7 @@ class FeedState(TypedDict):
     last_updated_timestamp: float  # unix epoch
     errors_total: int
     cycles_total: int
+
 
 # Each substrate adapter:
 def get_feed_state() -> FeedState: ...

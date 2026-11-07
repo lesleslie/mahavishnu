@@ -1,4 +1,5 @@
 """Tests for scripts/feature_eligibility.py (REQ-007)."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -12,7 +13,9 @@ import pytest
 # Load scripts/feature_eligibility.py as a module so the tests don't
 # require `mahavishnu` on sys.path. Mirrors the pattern used by
 # tests/unit/test_audit_type_checking_runtime_refs.py.
-SCRIPT_PATH = Path(__file__).resolve().parent.parent.parent / "scripts" / "feature_eligibility.py"
+SCRIPT_PATH = (
+    Path(__file__).resolve().parent.parent.parent / "scripts" / "feature_eligibility.py"
+)
 SPEC = importlib.util.spec_from_file_location("feature_eligibility", SCRIPT_PATH)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"could not load {SCRIPT_PATH}")
@@ -42,7 +45,12 @@ def _write_followup(plan_root: Path, trigger_name: str, status: str) -> None:
 
 
 def _write_phase8(plan_root: Path, status: str) -> None:
-    path = plan_root / "docs" / "feature-tracking" / "2026-09-10-observability-changepoint.md"
+    path = (
+        plan_root
+        / "docs"
+        / "feature-tracking"
+        / "2026-09-10-observability-changepoint.md"
+    )
     path.write_text(
         f"---\nstatus: {status}\nname: changepoint\nrole: implementation\n"
         f"date: 2026-09-10\nlast_reviewed: 2026-09-10\nowner: ops\n---\n\n# stub\n",
@@ -52,7 +60,9 @@ def _write_phase8(plan_root: Path, status: str) -> None:
 
 def test_clean_run_no_triggers_fired(plan_root: Path) -> None:
     """No MCP config + no requests log + no followups: all triggers below/unknown, exit 0."""
-    report = feature_eligibility.build_report(plan_root, requests_log=plan_root / "no.log", mcp_config=None)
+    report = feature_eligibility.build_report(
+        plan_root, requests_log=plan_root / "no.log", mcp_config=None
+    )
     assert report.triggers_fired == 0
     assert report.followon_plans_missing == 0
     # optimal_transport: unknown (no data)
@@ -151,8 +161,10 @@ def test_multi_metric_drift_below_threshold(plan_root: Path, tmp_path: Path) -> 
     log = tmp_path / "requests.log"
     now = datetime.now(UTC)
     log.write_text(
-        json.dumps({"metric": "pool_queue_depth", "ts": now.isoformat()}) + "\n"
-        + json.dumps({"metric": "workflow_duration_p99", "ts": now.isoformat()}) + "\n",
+        json.dumps({"metric": "pool_queue_depth", "ts": now.isoformat()})
+        + "\n"
+        + json.dumps({"metric": "workflow_duration_p99", "ts": now.isoformat()})
+        + "\n",
         encoding="utf-8",
     )
     report = feature_eligibility.build_report(plan_root, log, None)
@@ -176,15 +188,20 @@ def test_multi_metric_drift_fires_at_3(plan_root: Path, tmp_path: Path) -> None:
     assert trig.current == "5 distinct metrics"
 
 
-def test_multi_metric_drift_window_excludes_old(plan_root: Path, tmp_path: Path) -> None:
+def test_multi_metric_drift_window_excludes_old(
+    plan_root: Path, tmp_path: Path
+) -> None:
     """Metrics older than 30 days are excluded from the count."""
     log = tmp_path / "requests.log"
     now = datetime.now(UTC)
     old = (now - timedelta(days=45)).isoformat()
     log.write_text(
-        json.dumps({"metric": "metric_a", "ts": old}) + "\n"
-        + json.dumps({"metric": "metric_b", "ts": old}) + "\n"
-        + json.dumps({"metric": "metric_c", "ts": now.isoformat()}) + "\n",
+        json.dumps({"metric": "metric_a", "ts": old})
+        + "\n"
+        + json.dumps({"metric": "metric_b", "ts": old})
+        + "\n"
+        + json.dumps({"metric": "metric_c", "ts": now.isoformat()})
+        + "\n",
         encoding="utf-8",
     )
     report = feature_eligibility.build_report(plan_root, log, None)
@@ -221,44 +238,75 @@ def test_to_dict_serializable(plan_root: Path) -> None:
     assert len(decoded["triggers"]) == 4
 
 
-def test_main_dry_run_exits_zero_with_fired_trigger(plan_root: Path, tmp_path: Path) -> None:
+def test_main_dry_run_exits_zero_with_fired_trigger(
+    plan_root: Path, tmp_path: Path
+) -> None:
     """Even with a fired trigger, --dry-run exits 0."""
     cfg = tmp_path / "cfg.json"
-    cfg.write_text(json.dumps({"akosha_patterns_cross_system_snapshot_count": 50_000}), encoding="utf-8")
-    rc = feature_eligibility.main([
-        "--mcp-config", str(cfg),
-        "--plan-root", str(plan_root),
-        "--dry-run",
-    ])
+    cfg.write_text(
+        json.dumps({"akosha_patterns_cross_system_snapshot_count": 50_000}),
+        encoding="utf-8",
+    )
+    rc = feature_eligibility.main(
+        [
+            "--mcp-config",
+            str(cfg),
+            "--plan-root",
+            str(plan_root),
+            "--dry-run",
+        ]
+    )
     assert rc == 0
 
 
-def test_main_exits_1_when_fired_without_followup(plan_root: Path, tmp_path: Path) -> None:
+def test_main_exits_1_when_fired_without_followup(
+    plan_root: Path, tmp_path: Path
+) -> None:
     cfg = tmp_path / "cfg.json"
-    cfg.write_text(json.dumps({"akosha_patterns_cross_system_snapshot_count": 50_000}), encoding="utf-8")
-    rc = feature_eligibility.main([
-        "--mcp-config", str(cfg),
-        "--plan-root", str(plan_root),
-    ])
+    cfg.write_text(
+        json.dumps({"akosha_patterns_cross_system_snapshot_count": 50_000}),
+        encoding="utf-8",
+    )
+    rc = feature_eligibility.main(
+        [
+            "--mcp-config",
+            str(cfg),
+            "--plan-root",
+            str(plan_root),
+        ]
+    )
     assert rc == 1
 
 
-def test_main_exits_0_when_fired_with_active_followup(plan_root: Path, tmp_path: Path) -> None:
+def test_main_exits_0_when_fired_with_active_followup(
+    plan_root: Path, tmp_path: Path
+) -> None:
     _write_followup(plan_root, "optimal_transport", "active")
     cfg = tmp_path / "cfg.json"
-    cfg.write_text(json.dumps({"akosha_patterns_cross_system_snapshot_count": 50_000}), encoding="utf-8")
-    rc = feature_eligibility.main([
-        "--mcp-config", str(cfg),
-        "--plan-root", str(plan_root),
-    ])
+    cfg.write_text(
+        json.dumps({"akosha_patterns_cross_system_snapshot_count": 50_000}),
+        encoding="utf-8",
+    )
+    rc = feature_eligibility.main(
+        [
+            "--mcp-config",
+            str(cfg),
+            "--plan-root",
+            str(plan_root),
+        ]
+    )
     assert rc == 0
 
 
 def test_main_exits_2_on_missing_mcp_config(tmp_path: Path) -> None:
-    rc = feature_eligibility.main([
-        "--mcp-config", str(tmp_path / "does_not_exist.json"),
-        "--plan-root", str(tmp_path),
-    ])
+    rc = feature_eligibility.main(
+        [
+            "--mcp-config",
+            str(tmp_path / "does_not_exist.json"),
+            "--plan-root",
+            str(tmp_path),
+        ]
+    )
     assert rc == 2
 
 
@@ -266,20 +314,27 @@ def test_main_json_output(tmp_path: Path) -> None:
     """--json emits parseable JSON to stdout."""
     from contextlib import redirect_stdout
     import io
+
     buf = io.StringIO()
-    feature_eligibility.main([
-        "--json",
-        "--plan-root", str(tmp_path),
-        "--dry-run",
-    ])
+    feature_eligibility.main(
+        [
+            "--json",
+            "--plan-root",
+            str(tmp_path),
+            "--dry-run",
+        ]
+    )
     # rc non-0 acceptable here (no followups, may exit 1); we just care
     # that stdout was JSON.
     with redirect_stdout(buf):
-        feature_eligibility.main([
-            "--json",
-            "--plan-root", str(tmp_path),
-            "--dry-run",
-        ])
+        feature_eligibility.main(
+            [
+                "--json",
+                "--plan-root",
+                str(tmp_path),
+                "--dry-run",
+            ]
+        )
     payload = json.loads(buf.getvalue())
     assert "triggers" in payload
     assert len(payload["triggers"]) == 4

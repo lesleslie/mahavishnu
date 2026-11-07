@@ -66,7 +66,9 @@ class RepoIndexLock:
             self.lock_file.parent.mkdir(parents=True, exist_ok=True)
             fd = os.open(str(self.lock_file), _O_CREAT_EXCL, 0o644)
             try:
-                os.write(fd, f"{os.getpid()}\n{time.time()}\n{self.repo_path}\n".encode())
+                os.write(
+                    fd, f"{os.getpid()}\n{time.time()}\n{self.repo_path}\n".encode()
+                )
             finally:
                 os.close(fd)
             return True

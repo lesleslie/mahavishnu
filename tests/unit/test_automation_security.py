@@ -188,7 +188,9 @@ class TestIsTextAllowed:
 
     @pytest.mark.unit
     def test_api_key_blocked(self, security):
-        is_allowed, pattern = security.is_text_allowed("api_key=abc123def456ghi789jkl012")
+        is_allowed, pattern = security.is_text_allowed(
+            "api_key=abc123def456ghi789jkl012"
+        )
         assert is_allowed is False
         assert pattern in {"api_key", "sensitive_data_pattern"}
 

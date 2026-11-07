@@ -143,7 +143,9 @@ KNOWN_PORTS: dict[str, int] = {
     "akosha": 8682,
 }
 
-_MCP_REF_RE = re.compile(r"mcp__[a-zA-Z\d](?:[a-zA-Z\d-]*[a-zA-Z\d])?___?[\w]+(?:__[\w]+)*")
+_MCP_REF_RE = re.compile(
+    r"mcp__[a-zA-Z\d](?:[a-zA-Z\d-]*[a-zA-Z\d])?___?[\w]+(?:__[\w]+)*"
+)
 _PORT_RE = re.compile(
     r"\b(crackerjack|session[_-]buddy|mahavishnu|oneiric|akosha)\b[^.\n]*?\bport\s+(\d{4,5})",
     re.IGNORECASE,
@@ -218,7 +220,9 @@ def validate_skill_file(path: Path) -> SkillValidationReport:
 
 def validate_agent_dir(directory: Path) -> dict[str, AgentValidationReport]:
     """Validate all *.md files in an agents directory."""
-    return {path.name: validate_agent_file(path) for path in sorted(directory.glob("*.md"))}
+    return {
+        path.name: validate_agent_file(path) for path in sorted(directory.glob("*.md"))
+    }
 
 
 def validate_skill_dir(

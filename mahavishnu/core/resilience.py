@@ -81,7 +81,8 @@ class RetryPolicy:
     def delay_for_attempt(self, attempt_number: int) -> float:
         """Compute retry delay for a failed attempt number."""
         delay = min(
-            self.initial_delay_seconds * (self.backoff_factor ** max(attempt_number - 1, 0)),
+            self.initial_delay_seconds
+            * (self.backoff_factor ** max(attempt_number - 1, 0)),
             self.max_delay_seconds,
         )
         if self.jitter_ratio > 0:
@@ -106,7 +107,9 @@ class DependencyProfile:
     name: str
     required: bool = True
     retry_policy: RetryPolicy = field(default_factory=RetryPolicy)
-    circuit_breaker_policy: CircuitBreakerPolicy = field(default_factory=CircuitBreakerPolicy)
+    circuit_breaker_policy: CircuitBreakerPolicy = field(
+        default_factory=CircuitBreakerPolicy
+    )
 
 
 class RetryExhaustedError(Exception):
@@ -115,7 +118,9 @@ class RetryExhaustedError(Exception):
     def __init__(self, last_exception: Exception | None, attempts: int) -> None:
         self.last_exception = last_exception
         self.attempts = attempts
-        super().__init__(str(last_exception) if last_exception is not None else "Retry exhausted")
+        super().__init__(
+            str(last_exception) if last_exception is not None else "Retry exhausted"
+        )
 
 
 class ResilienceMetrics:
@@ -183,7 +188,9 @@ class ResilienceMetrics:
         ratio = attempts / max(successes, 1)
         self._retry_amplification_gauge.labels(dependency=dependency).set(ratio)
 
-    def record_circuit_transition(self, dependency: str, from_state: str, to_state: str) -> None:
+    def record_circuit_transition(
+        self, dependency: str, from_state: str, to_state: str
+    ) -> None:
         if not self._enabled:
             return
         self._initialize()
@@ -245,12 +252,16 @@ class CircuitBreaker:
         if self.state == CircuitState.HALF_OPEN:
             self.failure_count = max(self.failure_count, self.threshold)
             self._transition(CircuitState.OPEN)
-            self.logger.warning("Circuit breaker reopened after failure while half-open")
+            self.logger.warning(
+                "Circuit breaker reopened after failure while half-open"
+            )
             return
 
         if self.failure_count >= self.threshold and self.state != CircuitState.OPEN:
             self._transition(CircuitState.OPEN)
-            self.logger.warning(f"Circuit breaker opened after {self.failure_count} failures")
+            self.logger.warning(
+                f"Circuit breaker opened after {self.failure_count} failures"
+            )
 
     def record_success(self) -> None:
         """Record a success and reset failure count."""
@@ -346,7 +357,9 @@ async def retry_async(
         try:
             result = await func(*args, **kwargs)
             metrics_collector.record_retry_attempt(dependency, operation, "success")
-            metrics_collector.record_retry_amplification(dependency, attempts, successes=1)
+            metrics_collector.record_retry_amplification(
+                dependency, attempts, successes=1
+            )
             return result, attempts
         except asyncio.CancelledError:
             raise
@@ -449,12 +462,16 @@ class ErrorRecoveryManager:
 
         # Permission errors - skip and continue (no point retrying)
         self.recovery_actions["PERMISSION"] = RecoveryAction(
-            strategy=RecoveryStrategy.SKIP, category=ErrorCategory.PERMISSION, max_attempts=1
+            strategy=RecoveryStrategy.SKIP,
+            category=ErrorCategory.PERMISSION,
+            max_attempts=1,
         )
 
         # Permanent errors - skip and continue
         self.recovery_actions["PERMANENT"] = RecoveryAction(
-            strategy=RecoveryStrategy.SKIP, category=ErrorCategory.PERMANENT, max_attempts=1
+            strategy=RecoveryStrategy.SKIP,
+            category=ErrorCategory.PERMANENT,
+            max_attempts=1,
         )
 
     async def classify_error(self, error: Exception) -> ErrorCategory:
@@ -619,7 +636,8 @@ class ErrorRecoveryManager:
                 "success": recovery_result["success"],
                 "result": recovery_result.get("result"),
                 "error": recovery_result.get("error"),
-                "attempts": recovery_result["attempts"] + 1,  # Add 1 for the initial failed attempt
+                "attempts": recovery_result["attempts"]
+                + 1,  # Add 1 for the initial failed attempt
                 "execution_time": execution_time,
                 "recovered": recovery_result["recovered"],
                 "skipped": recovery_result.get("skipped", False),
@@ -650,7 +668,13 @@ class ErrorRecoveryManager:
 
         if strategy == RecoveryStrategy.RETRY:
             return await self._retry_operation(
-                operation, args, kwargs, max_attempts, backoff_factor, workflow_id, repo_path
+                operation,
+                args,
+                kwargs,
+                max_attempts,
+                backoff_factor,
+                workflow_id,
+                repo_path,
             )
         if strategy == RecoveryStrategy.FALLBACK and recovery_action.fallback_function:
             return await self._execute_fallback(
@@ -660,10 +684,21 @@ class ErrorRecoveryManager:
             return await self._skip_and_continue(error, workflow_id, repo_path)
         if strategy == RecoveryStrategy.NOTIFY:
             await self._notify_error(error, workflow_id, repo_path)
-            return {"success": False, "error": str(error), "attempts": 1, "recovered": False}
+            return {
+                "success": False,
+                "error": str(error),
+                "attempts": 1,
+                "recovered": False,
+            }
         # Default to retry if no specific strategy
         return await self._retry_operation(
-            operation, args, kwargs, max_attempts, backoff_factor, workflow_id, repo_path
+            operation,
+            args,
+            kwargs,
+            max_attempts,
+            backoff_factor,
+            workflow_id,
+            repo_path,
         )
 
     async def _retry_operation(
@@ -683,7 +718,9 @@ class ErrorRecoveryManager:
             try:
                 if attempt > 1:
                     # Calculate backoff time with jitter
-                    backoff_time = min(backoff_factor ** (attempt - 1), 60)  # Cap at 60 seconds
+                    backoff_time = min(
+                        backoff_factor ** (attempt - 1), 60
+                    )  # Cap at 60 seconds
                     jitter = random.uniform(0.1, 0.3) * backoff_time
                     await asyncio.sleep(backoff_time + jitter)
 
@@ -698,7 +735,12 @@ class ErrorRecoveryManager:
                     result=result,
                 )
 
-                return {"success": True, "result": result, "attempts": attempt, "recovered": True}
+                return {
+                    "success": True,
+                    "result": result,
+                    "attempts": attempt,
+                    "recovered": True,
+                }
             except Exception as e:  # resilience retry path — broad catch captures the last failure for retry decision  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 last_exception = e
                 self.logger.warning(
@@ -752,24 +794,42 @@ class ErrorRecoveryManager:
 
             return {"success": True, "result": result, "attempts": 1, "recovered": True}
         except Exception as e:  # resilience fallback path — broad catch logs fallback failure and continues  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            self.logger.error(f"Fallback function failed for workflow {workflow_id}: {e}")
+            self.logger.error(
+                f"Fallback function failed for workflow {workflow_id}: {e}"
+            )
 
             # Log failed fallback
             await self._log_recovery_action(
-                workflow_id=workflow_id, repo_path=repo_path, action="fallback_failed", error=str(e)
+                workflow_id=workflow_id,
+                repo_path=repo_path,
+                action="fallback_failed",
+                error=str(e),
             )
 
-            return {"success": False, "error": str(e), "attempts": 1, "recovered": False}
+            return {
+                "success": False,
+                "error": str(e),
+                "attempts": 1,
+                "recovered": False,
+            }
 
     async def _skip_and_continue(
-        self, error: Exception, workflow_id: str | None = None, repo_path: str | None = None
+        self,
+        error: Exception,
+        workflow_id: str | None = None,
+        repo_path: str | None = None,
     ) -> dict[str, Any]:
         """Skip the operation and continue."""
-        self.logger.warning(f"Skipping operation for workflow {workflow_id} due to error: {error}")
+        self.logger.warning(
+            f"Skipping operation for workflow {workflow_id} due to error: {error}"
+        )
 
         # Log skip action
         await self._log_recovery_action(
-            workflow_id=workflow_id, repo_path=repo_path, action="skip_operation", error=str(error)
+            workflow_id=workflow_id,
+            repo_path=repo_path,
+            action="skip_operation",
+            error=str(error),
         )
 
         return {
@@ -781,7 +841,10 @@ class ErrorRecoveryManager:
         }
 
     async def _notify_error(
-        self, error: Exception, workflow_id: str | None = None, repo_path: str | None = None
+        self,
+        error: Exception,
+        workflow_id: str | None = None,
+        repo_path: str | None = None,
     ) -> dict[str, Any]:
         """Notify about the error (placeholder for notification system)."""
         self.logger.error(f"Notifying about error in workflow {workflow_id}: {error}")
@@ -789,14 +852,22 @@ class ErrorRecoveryManager:
         # In a real implementation, this would send notifications
         # via email, Slack, etc.
 
-        return {"success": False, "error": str(error), "attempts": 1, "recovered": False}
+        return {
+            "success": False,
+            "error": str(error),
+            "attempts": 1,
+            "recovered": False,
+        }
 
     async def _resource_fallback(self, *args, **kwargs) -> Any:
         """Fallback function for resource errors."""
         # This is a placeholder - in a real implementation, this would
         # try to use alternative resources or reduce resource usage
         self.logger.info("Executing resource fallback strategy")
-        return {"status": "fallback_executed", "message": "Used alternative resource approach"}
+        return {
+            "status": "fallback_executed",
+            "message": "Used alternative resource approach",
+        }
 
     async def _log_operation_result(
         self,
@@ -817,18 +888,22 @@ class ErrorRecoveryManager:
             "execution_time": execution_time,
             "error": error,
             "error_category": error_category,
-            "result_summary": str(result)[:200] if result else None,  # Truncate long results
+            "result_summary": str(result)[:200]
+            if result
+            else None,  # Truncate long results
         }
 
         # Log to application observability if available
         if self.app.observability:
             if success:
                 self.app.observability.log_info(
-                    f"Operation completed for workflow {workflow_id}", attributes=log_entry
+                    f"Operation completed for workflow {workflow_id}",
+                    attributes=log_entry,
                 )
             else:
                 self.app.observability.log_error(
-                    f"Operation failed for workflow {workflow_id}: {error}", attributes=log_entry
+                    f"Operation failed for workflow {workflow_id}: {error}",
+                    attributes=log_entry,
                 )
 
         # Also log to OpenSearch if available
@@ -872,7 +947,8 @@ class ErrorRecoveryManager:
         # Log to application observability if available
         if self.app.observability:
             self.app.observability.log_info(
-                f"Recovery action '{action}' for workflow {workflow_id}", attributes=log_entry
+                f"Recovery action '{action}' for workflow {workflow_id}",
+                attributes=log_entry,
             )
 
         # Also log to OpenSearch if available
@@ -912,13 +988,17 @@ class ErrorRecoveryManager:
         except Exception as e:  # resilience sweeper — broad catch keeps the monitoring loop alive  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self.logger.error(f"Error in workflow monitoring: {e}")
 
-    async def _heal_workflow(self, workflow_id: str, workflow_state: dict[str, Any]) -> bool:
+    async def _heal_workflow(
+        self, workflow_id: str, workflow_state: dict[str, Any]
+    ) -> bool:
         """Attempt to heal a failed workflow."""
         try:
             # Check if this workflow has already been retried too many times
             error_count = len(workflow_state.get("errors", []))
             if error_count > 5:  # Don't endlessly retry
-                self.logger.info(f"Skipping healing for workflow {workflow_id} - too many errors")
+                self.logger.info(
+                    f"Skipping healing for workflow {workflow_id} - too many errors"
+                )
                 return False
 
             # Get the original task and repos
@@ -926,11 +1006,15 @@ class ErrorRecoveryManager:
             repos = workflow_state.get("repos", [])
 
             if not original_task or not repos:
-                self.logger.warning(f"Cannot heal workflow {workflow_id} - missing task or repos")
+                self.logger.warning(
+                    f"Cannot heal workflow {workflow_id} - missing task or repos"
+                )
                 return False
 
             # Update the task ID to indicate this is a retry
-            original_task["id"] = f"{original_task.get('id', workflow_id)}_retry_{int(time.time())}"
+            original_task["id"] = (
+                f"{original_task.get('id', workflow_id)}_retry_{int(time.time())}"
+            )
 
             # Get the adapter name from the original task or workflow
             adapter_name = original_task.get("adapter") or workflow_state.get(
@@ -959,7 +1043,9 @@ class ErrorRecoveryManager:
 
                 return True
             else:
-                self.logger.warning(f"Failed to heal workflow {workflow_id}: {result.get('error')}")
+                self.logger.warning(
+                    f"Failed to heal workflow {workflow_id}: {result.get('error')}"
+                )
                 return False
 
         except Exception as e:  # resilience sweeper — broad catch logs heal failure and returns False so other workflows still process  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -975,7 +1061,9 @@ class ErrorRecoveryManager:
             )
 
             current_time = datetime.now(UTC)
-            timeout_threshold = timedelta(hours=1)  # Consider workflows stuck after 1 hour
+            timeout_threshold = timedelta(
+                hours=1
+            )  # Consider workflows stuck after 1 hour
 
             for workflow in running_workflows:
                 updated_at_str = workflow.get("updated_at")
@@ -984,7 +1072,9 @@ class ErrorRecoveryManager:
                         updated_at = datetime.fromisoformat(updated_at_str)
                         if current_time - updated_at > timeout_threshold:
                             # Workflow appears stuck, mark as failed
-                            workflow_id = workflow.get("id") or workflow.get("workflow_id")
+                            workflow_id = workflow.get("id") or workflow.get(
+                                "workflow_id"
+                            )
                             if workflow_id:
                                 await self.app.workflow_state_manager.update(
                                     workflow_id=workflow_id,
@@ -1008,8 +1098,12 @@ class ErrorRecoveryManager:
         # This would aggregate metrics from logs in a real implementation
         return {
             "total_recovery_attempts": len(self.recovery_history),
-            "successful_recoveries": len([r for r in self.recovery_history if r.get("success")]),
-            "failed_recoveries": len([r for r in self.recovery_history if not r.get("success")]),
+            "successful_recoveries": len(
+                [r for r in self.recovery_history if r.get("success")]
+            ),
+            "failed_recoveries": len(
+                [r for r in self.recovery_history if not r.get("success")]
+            ),
             "most_common_error_categories": {},  # Would be computed from logs
             "average_recovery_time": 0.0,  # Would be computed from logs
             "recovery_effectiveness_rate": 0.0,  # Would be computed from logs

@@ -144,7 +144,9 @@ def list_cmd(
 ) -> None:
     """List recent executions."""
     try:
-        executions = _run(_list_async(status=status, workflow_id=workflow_id, limit=limit))
+        executions = _run(
+            _list_async(status=status, workflow_id=workflow_id, limit=limit)
+        )
     except MahavishnuError as exc:
         typer.echo(f"ERROR: {exc}", err=True)
         raise typer.Exit(code=1) from exc
@@ -211,7 +213,9 @@ async def _list_async(
     try:
         async with _event_session() as session:
             stmt = (
-                select(ExecutionEvent).order_by(ExecutionEvent.occurred_at.desc()).limit(limit * 10)
+                select(ExecutionEvent)
+                .order_by(ExecutionEvent.occurred_at.desc())
+                .limit(limit * 10)
             )
             if target_status is not None:
                 stmt = stmt.where(ExecutionEvent.event_type == target_status)

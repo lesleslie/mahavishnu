@@ -29,7 +29,9 @@ class TestMCPUtilityTools:
         tools = await mcp_server.list_tools()
         tool_names = {tool.name for tool in tools}
 
-        assert {"mcp_list_tools", "mcp_test_connection", "mcp_get_metrics"}.issubset(tool_names)
+        assert {"mcp_list_tools", "mcp_test_connection", "mcp_get_metrics"}.issubset(
+            tool_names
+        )
 
     @pytest.mark.asyncio
     async def test_mcp_list_tools_returns_inventory(self, mcp_server):
@@ -40,7 +42,9 @@ class TestMCPUtilityTools:
         assert result["total_tools"] >= 3
         tool_names = {item["name"] for item in result["tools"]}
 
-        assert {"mcp_list_tools", "mcp_test_connection", "mcp_get_metrics"}.issubset(tool_names)
+        assert {"mcp_list_tools", "mcp_test_connection", "mcp_get_metrics"}.issubset(
+            tool_names
+        )
 
     @pytest.mark.asyncio
     async def test_mcp_test_connection_returns_connectivity(self, mcp_server):
@@ -81,7 +85,9 @@ class TestMCPUtilityTools:
                 "mahavishnu.mcp.tools.health_tools.HealthChecker.check",
                 new=AsyncMock(return_value=fake_result),
             ),
-            pytest.warns(DeprecationWarning, match="health_check_service is deprecated"),
+            pytest.warns(
+                DeprecationWarning, match="health_check_service is deprecated"
+            ),
         ):
             await (await mcp_server.get_tool("health_check_service")).fn(
                 service_name="session-buddy", host="localhost", port=8678
@@ -114,7 +120,8 @@ class TestMCPUtilityTools:
 
         with (
             patch(
-                "mahavishnu.mcp.tools.health_tools.get_metrics_registry", return_value=fake_registry
+                "mahavishnu.mcp.tools.health_tools.get_metrics_registry",
+                return_value=fake_registry,
             ),
             patch(
                 "mahavishnu.mcp.tools.health_tools.expose_metrics",

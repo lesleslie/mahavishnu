@@ -492,7 +492,9 @@ class TaskOrderer:
         # Invert: lower probability = higher score
         return 1.0 - blocker_prob  # type: ignore[no-any-return]
 
-    def _score_duration(self, task: dict[str, Any], prediction: dict[str, Any]) -> float:
+    def _score_duration(
+        self, task: dict[str, Any], prediction: dict[str, Any]
+    ) -> float:
         """Score based on duration (shorter = higher score for quick wins)."""
         hours = prediction.get("estimated_hours") or task.get("estimated_hours", 8.0)
 
@@ -624,7 +626,9 @@ class TaskOrderer:
 
         return result
 
-    def _generate_reasoning(self, factors: list[dict[str, Any]], strategy: OrderingStrategy) -> str:
+    def _generate_reasoning(
+        self, factors: list[dict[str, Any]], strategy: OrderingStrategy
+    ) -> str:
         """Generate human-readable reasoning for task ordering."""
         reasons = []
 
@@ -648,7 +652,9 @@ class TaskOrderer:
 
         return f"[{strategy_names[strategy]}] " + "; ".join(reasons)
 
-    def _calculate_urgency(self, task: dict[str, Any], score_data: dict[str, Any]) -> str:
+    def _calculate_urgency(
+        self, task: dict[str, Any], score_data: dict[str, Any]
+    ) -> str:
         """Calculate task urgency level."""
         score = score_data["total_score"]
         priority = str(task.get("priority", "medium")).lower()
@@ -700,7 +706,9 @@ class TaskOrderer:
             all_blocked.update(blocked_list)
 
         end_tasks = [
-            t.get("id", "unknown") for t in tasks if t.get("id", "unknown") not in all_blocked
+            t.get("id", "unknown")
+            for t in tasks
+            if t.get("id", "unknown") not in all_blocked
         ]
 
         if not end_tasks:

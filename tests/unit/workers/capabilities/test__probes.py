@@ -92,7 +92,10 @@ def test_loopback_http_is_allowed_to_carry_a_secret() -> None:
     Bifrost gateway, which is served over loopback http by design.
     """
     assert _check_endpoint_scheme(BIFROST_MODELS, has_secret=True) is None
-    assert _check_endpoint_scheme("http://localhost:8471/v1/models", has_secret=True) is None
+    assert (
+        _check_endpoint_scheme("http://localhost:8471/v1/models", has_secret=True)
+        is None
+    )
 
 
 def test_remote_http_still_rejects_a_secret() -> None:
@@ -100,9 +103,9 @@ def test_remote_http_still_rejects_a_secret() -> None:
     assert _check_endpoint_scheme("http://evil.example/v1/models", has_secret=True) == (
         "insecure_endpoint"
     )
-    assert _check_endpoint_scheme("http://api.minimax.io/v1/models", has_secret=True) == (
-        "insecure_endpoint"
-    )
+    assert _check_endpoint_scheme(
+        "http://api.minimax.io/v1/models", has_secret=True
+    ) == ("insecure_endpoint")
 
 
 def test_resolved_base_url_gains_v1_only_once() -> None:
@@ -145,9 +148,7 @@ def _disable_bifrost(monkeypatch: pytest.MonkeyPatch) -> None:
 class TestResolveProbeEndpoint:
     """REQ-BIFROST-007: Bifrost routing for the minimax probe."""
 
-    def test_probe_uses_router(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_probe_uses_router(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """When the router is enabled and routes OPENAI, the minimax
         probe goes to ``<gateway>/v1/models`` (the OpenAI-compatible
         /v1/models endpoint on the Bifrost gateway).
@@ -155,10 +156,7 @@ class TestResolveProbeEndpoint:
         _enable_bifrost(monkeypatch, routes=("qwen_route",))
         # The router returns http://127.0.0.1:8471/ (Pydantic
         # HttpUrl adds trailing slash); rstrip + /v1/models.
-        assert (
-            resolve_probe_endpoint("minimax")
-            == "http://127.0.0.1:8471/v1/models"
-        )
+        assert resolve_probe_endpoint("minimax") == "http://127.0.0.1:8471/v1/models"
 
     def test_probe_passthrough_when_router_disabled(
         self, monkeypatch: pytest.MonkeyPatch
@@ -167,10 +165,7 @@ class TestResolveProbeEndpoint:
         the literal ``PROVIDER_PROBES["minimax"][1]`` value.
         """
         _disable_bifrost(monkeypatch)
-        assert (
-            resolve_probe_endpoint("minimax")
-            == PROVIDER_PROBES["minimax"][1]
-        )
+        assert resolve_probe_endpoint("minimax") == PROVIDER_PROBES["minimax"][1]
         assert resolve_probe_endpoint("minimax") == "https://api.minimax.io/v1/models"
 
     def test_probe_passthrough_for_non_minimax_providers(
@@ -198,10 +193,7 @@ class TestResolveProbeEndpoint:
         monkeypatch.delenv("BIFROST_ALLOW_REMOTE", raising=False)
         reset_router_for_tests()
 
-        assert (
-            resolve_probe_endpoint("minimax")
-            == PROVIDER_PROBES["minimax"][1]
-        )
+        assert resolve_probe_endpoint("minimax") == PROVIDER_PROBES["minimax"][1]
 
     def test_probe_raises_keyerror_for_unknown_provider(
         self, monkeypatch: pytest.MonkeyPatch

@@ -168,7 +168,9 @@ COMMAND_CATEGORIES: dict[str, dict[str, Any]] = {
             "ingest blog": {
                 "usage": "mahavishnu ingest blog --url <url>",
                 "description": "Ingest blog post content",
-                "examples": ["mahavishnu ingest blog --url 'https://blog.example.com/post'"],
+                "examples": [
+                    "mahavishnu ingest blog --url 'https://blog.example.com/post'"
+                ],
             },
             "ingest book": {
                 "usage": "mahavishnu ingest book --path <path>",
@@ -347,7 +349,9 @@ def show_general_help() -> None:
         console.print(f"  Commands: {', '.join(info['commands'].keys())}")
 
     console.print("\n[bold]Common Workflows[/]")
-    console.print("  1. Create a task:      mahavishnu task create 'Fix bug' -r my-repo")
+    console.print(
+        "  1. Create a task:      mahavishnu task create 'Fix bug' -r my-repo"
+    )
     console.print("  2. List tasks:         mahavishnu task list -s in_progress")
     console.print("  3. Update status:      mahavishnu task status task-123 completed")
     console.print("  4. Search tasks:       mahavishnu search tasks 'API endpoint'")

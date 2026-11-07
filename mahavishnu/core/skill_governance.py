@@ -103,9 +103,14 @@ class SkillReview(BaseModel):
 
     @model_validator(mode="after")
     def _validate_required_changes(self) -> SkillReview:
-        if self.decision in {SkillReviewDecision.REJECT, SkillReviewDecision.REQUEST_CHANGES}:
+        if self.decision in {
+            SkillReviewDecision.REJECT,
+            SkillReviewDecision.REQUEST_CHANGES,
+        }:
             if not self.required_changes:
-                raise ValueError("required_changes must be provided when review is not approved")
+                raise ValueError(
+                    "required_changes must be provided when review is not approved"
+                )
         return self
 
 

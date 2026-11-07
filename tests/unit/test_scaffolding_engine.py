@@ -14,7 +14,9 @@ from mahavishnu.scaffolding.library import PatternLibrary
 
 @pytest.fixture
 def engine(tmp_path: Path) -> ScaffoldingEngine:
-    lib = PatternLibrary(root=Path(__file__).resolve().parent.parent.parent / "patterns")
+    lib = PatternLibrary(
+        root=Path(__file__).resolve().parent.parent.parent / "patterns"
+    )
     lib.load_all()
     return ScaffoldingEngine(library=lib)
 
@@ -30,7 +32,9 @@ class TestEngineScaffold:
         assert (result / "pyproject.toml").exists()
         assert "test-app" in (result / "pyproject.toml").read_text()
 
-    def test_scaffold_project_creates_dirs(self, engine: ScaffoldingEngine, tmp_path: Path):
+    def test_scaffold_project_creates_dirs(
+        self, engine: ScaffoldingEngine, tmp_path: Path
+    ):
         result = engine.scaffold(
             project_name="test-app",
             patterns=["scaffolding/project"],
@@ -115,7 +119,9 @@ class TestEngineScaffold:
         with pytest.raises(Exception, match="not found"):
             engine.scaffold("test", ["nonexistent/x"], tmp_path / "test")
 
-    def test_atomic_rollback_on_failure(self, engine: ScaffoldingEngine, tmp_path: Path):
+    def test_atomic_rollback_on_failure(
+        self, engine: ScaffoldingEngine, tmp_path: Path
+    ):
         output = tmp_path / "should-not-exist"
         with pytest.raises(Exception):
             engine.scaffold("test", ["nonexistent/x"], output)

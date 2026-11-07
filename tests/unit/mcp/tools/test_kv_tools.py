@@ -62,7 +62,9 @@ class _RecordingRBAC:
         self._granted = granted
         self.checked: list[Permission] = []
 
-    async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
+    async def check_permission(
+        self, user_id: str, repo: str, permission: Permission
+    ) -> bool:
         self.checked.append(permission)
         return permission in self._granted
 
@@ -75,7 +77,9 @@ def _register(granted: set[Permission]) -> tuple[FastMCP, _RecordingRBAC]:
     return server, rbac
 
 
-async def _call(server: FastMCP, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+async def _call(
+    server: FastMCP, name: str, arguments: dict[str, Any]
+) -> dict[str, Any]:
     """Call a registered tool and return its result payload."""
     tool = next(t for t in await server.list_tools() if t.name == name)
     result = await tool.fn(**arguments)  # ty: ignore[unresolved-attribute]
@@ -323,7 +327,11 @@ async def test_unowned_namespace_needs_no_extra_permission() -> None:
     result = await _call(
         server,
         "mahavishnu_kv_put",
-        {"key": "plan_index/meta/rebuild_lock/holder", "value": "x", "user_id": "alice"},
+        {
+            "key": "plan_index/meta/rebuild_lock/holder",
+            "value": "x",
+            "user_id": "alice",
+        },
     )
 
     assert result["ok"] is True

@@ -63,7 +63,9 @@ def test_derive_dispatch_with_done_terminal_marks_succeeded() -> None:
     assert started == 100
 
 
-def test_derive_dispatch_with_failed_terminal_budget_remaining_keeps_in_flight() -> None:
+def test_derive_dispatch_with_failed_terminal_budget_remaining_keeps_in_flight() -> (
+    None
+):
     """Failed dispatch on attempt 1 (budget remaining) → IN_FLIGHT, NOT FAILED."""
     events = [
         _ev("dispatch", {"workflow_id": "wf-a", "attempt": 1}),

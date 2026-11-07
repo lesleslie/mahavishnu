@@ -15,7 +15,7 @@ This checklist ensures Mahavishnu CLI is accessible to users with disabilities.
 
 ```python
 # In output formatting
-if os.environ.get('NO_COLOR'):
+if os.environ.get("NO_COLOR"):
     # Disable ANSI color codes
     use_colors = False
 

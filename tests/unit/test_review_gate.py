@@ -115,7 +115,10 @@ class TestBodyValidation:
         assert not result.passed
         body_check = next(c for c in result.checks if c.name == "body_validation")
         assert not body_check.passed
-        assert "empty" in body_check.message.lower() or "whitespace" in body_check.message.lower()
+        assert (
+            "empty" in body_check.message.lower()
+            or "whitespace" in body_check.message.lower()
+        )
 
     def test_short_body_fails(self) -> None:
         draft = _make_draft(body="hi")
@@ -127,7 +130,9 @@ class TestBodyValidation:
         assert "too short" in body_check.message.lower()
 
     def test_valid_body_passes(self) -> None:
-        draft = _make_draft(body="Focus on authentication, secrets, and input validation.")
+        draft = _make_draft(
+            body="Focus on authentication, secrets, and input validation."
+        )
         gate = ReviewGate()
         result = gate.validate_for_promotion(draft)
         body_check = next(c for c in result.checks if c.name == "body_validation")
@@ -221,7 +226,10 @@ class TestCrackerjackIntegration:
         cj_check = next(c for c in result.checks if c.name == "crackerjack_quality")
         # The check should pass (not block promotion) but note unavailability.
         assert cj_check.passed is True
-        assert "unavailable" in cj_check.message.lower() or "skipped" in cj_check.message.lower()
+        assert (
+            "unavailable" in cj_check.message.lower()
+            or "skipped" in cj_check.message.lower()
+        )
 
     def test_available_crackerjack_passes(self) -> None:
         """When crackerjack is importable, the check should pass."""

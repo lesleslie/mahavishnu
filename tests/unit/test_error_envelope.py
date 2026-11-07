@@ -60,7 +60,10 @@ class TestFormatEnvelopeJsonStructure:
         assert parsed["error"] is True
         assert parsed["error_code"] == "validation_error"
         assert parsed["message"] == "Invalid input provided"
-        assert parsed["recovery"] == ["Check the input format", "Refer to API documentation"]
+        assert parsed["recovery"] == [
+            "Check the input format",
+            "Refer to API documentation",
+        ]
         assert parsed["retryable"] is True
         assert parsed["retry_after_seconds"] == 30
         assert parsed["details"] == {"field": "email", "value": "not-an-email"}
@@ -211,7 +214,9 @@ class TestDetailsDictSerialization:
             message="test",
             details={"outer": {"inner": "value", "nested": {"deep": True}}},
         )
-        assert envelope.details == {"outer": {"inner": "value", "nested": {"deep": True}}}
+        assert envelope.details == {
+            "outer": {"inner": "value", "nested": {"deep": True}}
+        }
 
     def test_list_in_details(self):
         envelope = McpErrorEnvelope(
@@ -251,7 +256,10 @@ class TestDetailsDictSerialization:
         )
         json_str = envelope.model_dump_json()
         parsed = json.loads(json_str)
-        assert parsed["details"] == {"field": "email", "errors": ["invalid format", "missing @"]}
+        assert parsed["details"] == {
+            "field": "email",
+            "errors": ["invalid format", "missing @"],
+        }
 
 
 class TestEdgeCases:
@@ -283,7 +291,9 @@ class TestEdgeCases:
             "level_0": {
                 "level_1": {
                     "level_2": {
-                        "level_3": {"level_4": {"level_5": {"level_6": {"level_7": "deep"}}}}
+                        "level_3": {
+                            "level_4": {"level_5": {"level_6": {"level_7": "deep"}}}
+                        }
                     }
                 }
             }
@@ -293,12 +303,16 @@ class TestEdgeCases:
 
     def test_wide_nested_details(self):
         """Test details with many sibling keys at multiple levels."""
-        wide_details = {f"key_{i}": {"sub_key": f"value_{i}", "another_sub": i} for i in range(50)}
+        wide_details = {
+            f"key_{i}": {"sub_key": f"value_{i}", "another_sub": i} for i in range(50)
+        }
         envelope = wrap_error(error_code="test", message="test", details=wide_details)
         assert len(envelope.details) == 50
 
     def test_special_characters_in_message(self):
-        envelope = wrap_error(error_code="test", message="Message with tabs\ttab and\nnewlines")
+        envelope = wrap_error(
+            error_code="test", message="Message with tabs\ttab and\nnewlines"
+        )
         assert envelope.message == "Message with tabs\ttab and\nnewlines"
 
     def test_unicode_in_message(self):
@@ -317,7 +331,11 @@ class TestEdgeCases:
         envelope = wrap_error(
             error_code="test",
             message="test",
-            recovery=["Step 1: Check input", "Step 2: Validate format", "Step 3: Retry"],
+            recovery=[
+                "Step 1: Check input",
+                "Step 2: Validate format",
+                "Step 3: Retry",
+            ],
         )
         assert len(envelope.recovery) == 3
 

@@ -569,7 +569,9 @@ class TestEmbeddingCacheL2Enabled:
     @pytest.mark.asyncio
     async def test_get_l2_miss_when_no_redis_client(self) -> None:
         """When L2 is enabled but client fails to connect, fall through."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://invalid:9999/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://invalid:9999/0"
+        )
         cache = EmbeddingCache(config)
         # Force l2 client to None to simulate unavailable
         with patch.object(cache, "_get_l2_client", AsyncMock(return_value=None)):
@@ -579,7 +581,9 @@ class TestEmbeddingCacheL2Enabled:
     @pytest.mark.asyncio
     async def test_get_l2_hit_populates_l1(self) -> None:
         """L2 hit should populate L1 for future reads."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         emb = [0.5, 0.6, 0.7]
@@ -600,7 +604,9 @@ class TestEmbeddingCacheL2Enabled:
     @pytest.mark.asyncio
     async def test_get_l2_exception_recorded_as_failure(self) -> None:
         """L2 client exception should be recorded as circuit failure."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         l2_client = MagicMock()
@@ -614,7 +620,9 @@ class TestEmbeddingCacheL2Enabled:
     @pytest.mark.asyncio
     async def test_get_l2_circuit_open_skips_redis(self) -> None:
         """If circuit is open, L2 calls are skipped."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         # Force circuit breaker to be open (with recent failure time so it doesn't recover)
@@ -630,7 +638,9 @@ class TestEmbeddingCacheL2Enabled:
     @pytest.mark.asyncio
     async def test_set_l2_failure_recorded(self) -> None:
         """L2 set failure should record circuit breaker failure."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         l2_client = MagicMock()
@@ -643,7 +653,9 @@ class TestEmbeddingCacheL2Enabled:
     @pytest.mark.asyncio
     async def test_set_l2_success_records(self) -> None:
         """L2 set success should record circuit breaker success."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         l2_client = MagicMock()
@@ -657,7 +669,9 @@ class TestEmbeddingCacheL2Enabled:
     @pytest.mark.asyncio
     async def test_set_l2_circuit_open_skips_redis(self) -> None:
         """If circuit is open, L2 set is skipped."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
         cache._circuit_breaker.state = CircuitState.OPEN
         cache._circuit_breaker.last_failure_time = time.monotonic()
@@ -672,7 +686,9 @@ class TestEmbeddingCacheL2Enabled:
         import sys
         import types
 
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         fake_client = MagicMock()
@@ -699,7 +715,9 @@ class TestEmbeddingCacheL2Enabled:
         import sys
         import types
 
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://invalid:9999/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://invalid:9999/0"
+        )
         cache = EmbeddingCache(config)
 
         # Build fake redis package whose from_url raises
@@ -725,7 +743,9 @@ class TestEmbeddingCacheL2Enabled:
         import sys
         import types
 
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         fake_client = MagicMock()
@@ -886,7 +906,9 @@ class TestEmbeddingCacheClearL2:
     @pytest.mark.asyncio
     async def test_clear_l2_circuit_open_returns_zero(self) -> None:
         """clear_l2 returns 0 when circuit breaker is open."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
         cache._circuit_breaker.state = CircuitState.OPEN
 
@@ -896,7 +918,9 @@ class TestEmbeddingCacheClearL2:
     @pytest.mark.asyncio
     async def test_clear_l2_no_client_returns_zero(self) -> None:
         """clear_l2 returns 0 when Redis client is unavailable."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
         with patch.object(cache, "_get_l2_client", AsyncMock(return_value=None)):
             result = await cache.clear_l2()
@@ -905,7 +929,9 @@ class TestEmbeddingCacheClearL2:
     @pytest.mark.asyncio
     async def test_clear_l2_no_keys_returns_zero(self) -> None:
         """clear_l2 returns 0 when no keys to delete."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         l2_client = MagicMock()
@@ -922,7 +948,9 @@ class TestEmbeddingCacheClearL2:
     @pytest.mark.asyncio
     async def test_clear_l2_deletes_keys(self) -> None:
         """clear_l2 should delete all matching keys and return count."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         async def fake_iter(match: str):
@@ -940,7 +968,9 @@ class TestEmbeddingCacheClearL2:
     @pytest.mark.asyncio
     async def test_clear_l2_exception_returns_zero(self) -> None:
         """clear_l2 exception should be caught, returns 0, records failure."""
-        config = EmbeddingCacheConfig(l2_enabled=True, l2_redis_url="redis://localhost:6379/0")
+        config = EmbeddingCacheConfig(
+            l2_enabled=True, l2_redis_url="redis://localhost:6379/0"
+        )
         cache = EmbeddingCache(config)
 
         async def failing_iter(match: str):

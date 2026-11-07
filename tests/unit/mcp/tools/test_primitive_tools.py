@@ -30,7 +30,9 @@ def server_with_tools() -> FastMCP:
 
 
 @pytest.mark.unit
-async def test_list_primitives_returns_dict_with_primitives_key(server_with_tools: FastMCP) -> None:
+async def test_list_primitives_returns_dict_with_primitives_key(
+    server_with_tools: FastMCP,
+) -> None:
     """list_primitives returns a dict containing a 'primitives' list."""
     from mahavishnu.mcp.tools.primitive_tools import list_primitives
 
@@ -62,7 +64,9 @@ async def test_list_primitives_each_entry_has_required_fields(
 
 
 @pytest.mark.unit
-async def test_list_primitives_includes_registered_tools(server_with_tools: FastMCP) -> None:
+async def test_list_primitives_includes_registered_tools(
+    server_with_tools: FastMCP,
+) -> None:
     """list_primitives includes the actual tools registered on the FastMCP server."""
     from mahavishnu.mcp.tools.primitive_tools import list_primitives
 
@@ -83,7 +87,9 @@ async def test_list_primitives_filter_by_category(server_with_tools: FastMCP) ->
     all_count = len(result_all["primitives"])
 
     # Filter by a category that nothing matches must return empty list
-    result_none = await list_primitives(server=server_with_tools, category="no-such-category")
+    result_none = await list_primitives(
+        server=server_with_tools, category="no-such-category"
+    )
     assert result_none["primitives"] == []
     assert result_none["category_filter"] == "no-such-category"
 

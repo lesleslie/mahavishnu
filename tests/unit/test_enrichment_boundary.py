@@ -63,7 +63,9 @@ def test_mcp_common_telemetry_unchanged() -> None:
     # carrying the old default. Cross-repo coordination and operator
     # sign-off obtained; the version bump in mcp-common's pyproject is the
     # operator's to make, not the agent's.
-    pinned_pre_phase1_hash = "e8b996df082883f1a94e66132fd1c72df1aa200dcfc55012bfc1ef2f72a0000a"
+    pinned_pre_phase1_hash = (
+        "e8b996df082883f1a94e66132fd1c72df1aa200dcfc55012bfc1ef2f72a0000a"
+    )
     assert expected_hash == pinned_pre_phase1_hash, (
         f"mcp_common/server/telemetry.py sha256 changed "
         f"({pinned_pre_phase1_hash[:12]}... -> {expected_hash[:12]}...); "

@@ -7,7 +7,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from scripts.check_step8_ready import compute_blockers, main, parse_date, parse_frontmatter
+from scripts.check_step8_ready import (
+    compute_blockers,
+    main,
+    parse_date,
+    parse_frontmatter,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -119,7 +124,9 @@ def test_blocked_when_status_not_adopted(tmp_path: Path) -> None:
     assert any("status != adopted" in b for b in blockers)
 
 
-def test_main_exits_one_when_blocked(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_exits_one_when_blocked(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     code = main(
         [
             "--cutover-date",
@@ -132,7 +139,9 @@ def test_main_exits_one_when_blocked(tmp_path: Path, capsys: pytest.CaptureFixtu
     assert "ready: no" in capsys.readouterr().out
 
 
-def test_main_exits_zero_when_ready(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_exits_zero_when_ready(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     code = main(
         [
             "--cutover-date",

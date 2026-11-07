@@ -401,13 +401,17 @@ class TestAnalyzeCode:
         """Test that async functions are detected."""
         result = _analyze_code_impl(str(sample_python_file))
 
-        async_func = next(f for f in result["functions"] if f["name"] == "async_process")
+        async_func = next(
+            f for f in result["functions"] if f["name"] == "async_process"
+        )
         assert async_func["is_async"] is True
 
         sync_func = next(f for f in result["functions"] if f["name"] == "greet")
         assert sync_func["is_async"] is False
 
-    def test_analyze_code_detects_high_complexity(self, sample_python_file: Path) -> None:
+    def test_analyze_code_detects_high_complexity(
+        self, sample_python_file: Path
+    ) -> None:
         """Test that high complexity is detected."""
         result = _analyze_code_impl(str(sample_python_file))
 
@@ -576,7 +580,9 @@ class TestCodeToolPathGuards:
             ),
         ],
     )
-    def test_a_path_outside_the_allowed_directories_is_refused(self, tool: object) -> None:
+    def test_a_path_outside_the_allowed_directories_is_refused(
+        self, tool: object
+    ) -> None:
         """A file outside the allowed base directories is not read."""
         with pytest.raises(AgnoError) as exc_info:
             tool("/etc/hosts")  # type: ignore[operator]

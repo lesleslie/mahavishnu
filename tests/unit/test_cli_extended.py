@@ -167,7 +167,9 @@ class TestSweepCommand:
     def test_sweep_command_with_invalid_adapter(self):
         """Test sweep command rejects invalid adapter."""
         runner = CliRunner()
-        result = runner.invoke(app, ["sweep", "--tag", "python", "--adapter", "invalid-adapter"])
+        result = runner.invoke(
+            app, ["sweep", "--tag", "python", "--adapter", "invalid-adapter"]
+        )
 
         # Should fail with invalid adapter
         assert result.exit_code != 0
@@ -257,10 +259,14 @@ class TestWorkerCommands:
             # Mock WorkerManager and TerminalManager
             with (
                 patch("mahavishnu.workers.WorkerManager") as mock_worker_mgr_class,
-                patch("mahavishnu.terminal.manager.TerminalManager") as mock_term_mgr_class,
+                patch(
+                    "mahavishnu.terminal.manager.TerminalManager"
+                ) as mock_term_mgr_class,
             ):
                 mock_worker_mgr = AsyncMock()
-                mock_worker_mgr.spawn_workers = AsyncMock(return_value=["worker-1", "worker-2"])
+                mock_worker_mgr.spawn_workers = AsyncMock(
+                    return_value=["worker-1", "worker-2"]
+                )
                 mock_worker_mgr.list_workers = AsyncMock(return_value=[])
                 mock_worker_mgr_class.return_value = mock_worker_mgr
 
@@ -273,7 +279,10 @@ class TestWorkerCommands:
                 )
 
                 # Command should execute (may fail during execution but should parse)
-                assert result.exit_code in [0, 1]  # May succeed or fail during execution
+                assert result.exit_code in [
+                    0,
+                    1,
+                ]  # May succeed or fail during execution
 
     def test_workers_execute_command_validation(self):
         """Test workers execute requires prompt."""
@@ -331,19 +340,29 @@ class TestWorkerCommands:
             )
             fake_dag = _FakeDAG(nodes=(fake_node,), edges=())
 
-            with patch(
-                "mahavishnu.engines.load_engine_registrations",
-                return_value=[],
-            ), patch(
-                "mahavishnu.core.conductor.resolve",
-                return_value=[],
-            ), patch(
-                "mahavishnu.core.conductor.plan",
-                return_value=fake_dag,
+            with (
+                patch(
+                    "mahavishnu.engines.load_engine_registrations",
+                    return_value=[],
+                ),
+                patch(
+                    "mahavishnu.core.conductor.resolve",
+                    return_value=[],
+                ),
+                patch(
+                    "mahavishnu.core.conductor.plan",
+                    return_value=fake_dag,
+                ),
             ):
                 result = runner.invoke(
                     app,
-                    ["workers", "execute", "--prompt", "Write Python code", "--dry-run"],
+                    [
+                        "workers",
+                        "execute",
+                        "--prompt",
+                        "Write Python code",
+                        "--dry-run",
+                    ],
                 )
 
         assert result.exit_code == 0
@@ -462,7 +481,10 @@ class TestTokenGeneration:
             result = runner.invoke(app, ["generate-claude-token", "user-123"])
 
             assert result.exit_code == 1
-            assert "Claude Code subscription authentication is not configured" in result.stdout
+            assert (
+                "Claude Code subscription authentication is not configured"
+                in result.stdout
+            )
 
     def test_generate_codex_token_without_subscription(self):
         """Test Codex token generation fails when not configured."""
@@ -476,7 +498,9 @@ class TestTokenGeneration:
             result = runner.invoke(app, ["generate-codex-token", "user-123"])
 
             assert result.exit_code == 1
-            assert "Codex subscription authentication is not configured" in result.stdout
+            assert (
+                "Codex subscription authentication is not configured" in result.stdout
+            )
 
     def test_generate_claude_token_requires_user_id(self):
         """Test Claude token generation requires user ID."""

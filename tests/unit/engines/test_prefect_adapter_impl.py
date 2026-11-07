@@ -148,7 +148,9 @@ async def test_execute_unwraps_poll_result_state_not_flow_run_directly() -> None
         (datetime(2026, 10, 11, tzinfo=UTC), None),  # datetimes NOT seconds
     ],
 )
-def test_coerce_seconds_handles_all_prefect_shapes(value: object, expected: float | None) -> None:
+def test_coerce_seconds_handles_all_prefect_shapes(
+    value: object, expected: float | None
+) -> None:
     """Pin the four behaviour quadrants:
     - ``None`` → ``None`` (passthrough)
     - ``timedelta`` → float seconds via ``.total_seconds()``

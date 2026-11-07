@@ -42,7 +42,9 @@ def make_doc_row(**overrides):
 
 
 class _FakeConn:
-    def __init__(self, fetchrow_result=None, fetch_results=None, execute_result="DELETE 1"):
+    def __init__(
+        self, fetchrow_result=None, fetch_results=None, execute_result="DELETE 1"
+    ):
         self._fetchrow_result = fetchrow_result
         self._fetch_results = fetch_results or []
         self._execute_result = execute_result
@@ -150,7 +152,11 @@ class TestInit:
         import asyncio
 
         with pytest.raises(NotImplementedError):
-            asyncio.run(repo.create(DocumentCreate(source_type="x", source_key="y", content="z")))
+            asyncio.run(
+                repo.create(
+                    DocumentCreate(source_type="x", source_key="y", content="z")
+                )
+            )
 
 
 # =============================================================================
@@ -255,7 +261,9 @@ class TestGetDocumentByKey:
         result = await repo.get_document_by_key("k1")
         assert result is not None
         assert "source_key = $1" in conn.last_query
-        assert "source_type" not in conn.last_query.split("WHERE")[1].split("ORDER BY")[0]
+        assert (
+            "source_type" not in conn.last_query.split("WHERE")[1].split("ORDER BY")[0]
+        )
 
     async def test_get_by_key_not_found(self, repo):
         conn = _FakeConn(fetchrow_result=None)
@@ -286,7 +294,9 @@ class TestUpdateDocument:
         conn = _FakeConn(fetchrow_result=row)
         patch_repo_connection(repo, conn)
 
-        result = await repo.update_document(uuid4(), DocumentUpdate(content="new content"))
+        result = await repo.update_document(
+            uuid4(), DocumentUpdate(content="new content")
+        )
         assert result is not None
         assert "UPDATE search.documents" in conn.last_query
         assert "content = $2" in conn.last_query

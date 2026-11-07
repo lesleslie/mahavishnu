@@ -11,6 +11,7 @@ missing), the skill will not fire — this test pins both:
 Also asserts the wrapper script exists and invokes the right module path
 so the skill can actually run via `python .claude/skills/.../cli_scan.py`.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -47,7 +48,7 @@ def _frontmatter_description(skill_md: Path) -> str:
     if yaml_match:
         for line in yaml_match.group(1).splitlines():
             if line.startswith("description:"):
-                value = line[len("description:"):].strip()
+                value = line[len("description:") :].strip()
                 if value.startswith(("'", '"')) and value.endswith(value[0]):
                     value = value[1:-1]
                 return value

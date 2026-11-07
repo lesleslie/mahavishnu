@@ -106,7 +106,9 @@ def probe_service(
                     failure_reasons.append(f"{probe_url} -> http_error: {status}")
                     continue
                 if status != 200:
-                    failure_reasons.append(f"{probe_url} -> unexpected HTTP status {status}")
+                    failure_reasons.append(
+                        f"{probe_url} -> unexpected HTTP status {status}"
+                    )
                     continue
                 if not is_prometheus_text(content_type, body):
                     failure_reasons.append(
@@ -232,7 +234,9 @@ def main() -> int:
     if selected:
         services = [service for service in services if service["name"] in selected]
 
-    results = [probe_service(service, args.timeout, args.scrape_host) for service in services]
+    results = [
+        probe_service(service, args.timeout, args.scrape_host) for service in services
+    ]
 
     if args.write_verified_file:
         write_verified_targets(results, args.write_verified_file)
@@ -245,7 +249,8 @@ def main() -> int:
     failures = [
         result
         for result in results
-        if not result["ok"] and (result["required"] or result["verification_status"] == "verified")
+        if not result["ok"]
+        and (result["required"] or result["verification_status"] == "verified")
     ]
     return 1 if failures else 0
 

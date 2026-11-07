@@ -92,7 +92,9 @@ class AdapterEntry:
         """Create an entry from MCP's adapter registry schema."""
         metadata = dict(adapter.get("metadata") or {})
         domain = str(adapter.get("domain") or "")
-        key = str(adapter.get("key") or metadata.get("key") or metadata.get("category") or "")
+        key = str(
+            adapter.get("key") or metadata.get("key") or metadata.get("category") or ""
+        )
         provider = str(adapter.get("provider") or "")
         adapter_id = str(adapter.get("adapter_id") or f"{domain}:{key}:{provider}")
         category = str(metadata.get("category") or key)
@@ -146,8 +148,12 @@ class AdapterEntry:
             "factory_path": self.factory_path,
             "health_check_url": self.health_check_url,
             "metadata": self.metadata,
-            "registered_at": self.registered_at.isoformat() if self.registered_at else None,
-            "last_heartbeat": self.last_heartbeat.isoformat() if self.last_heartbeat else None,
+            "registered_at": self.registered_at.isoformat()
+            if self.registered_at
+            else None,
+            "last_heartbeat": self.last_heartbeat.isoformat()
+            if self.last_heartbeat
+            else None,
             "health_status": self.health_status,
         }
 
@@ -215,7 +221,10 @@ class MCPAdapterRegistryClient:
         self._circuit_breaker = AdapterCircuitBreaker()
         self._cache: dict[str, tuple[list[AdapterEntry], datetime]] = {}
         self._connected = False
-        logger.info("MCP adapter registry client initialized (base_url=%s)", self._client.base_url)
+        logger.info(
+            "MCP adapter registry client initialized (base_url=%s)",
+            self._client.base_url,
+        )
 
     async def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         if not self.config.enabled:
@@ -258,7 +267,9 @@ class MCPAdapterRegistryClient:
         cache_key = self._make_cache_key(project, domain, category, healthy_only)
         if use_cache and cache_key in self._cache:
             adapters, cached_at = self._cache[cache_key]
-            if (datetime.now(UTC) - cached_at).total_seconds() < self.config.cache_ttl_sec:
+            if (
+                datetime.now(UTC) - cached_at
+            ).total_seconds() < self.config.cache_ttl_sec:
                 return adapters
             del self._cache[cache_key]
 
@@ -267,10 +278,14 @@ class MCPAdapterRegistryClient:
             {"domain": domain, "category": category},
         )
         if isinstance(payload, dict) and payload.get("success") is False:
-            raise ConnectionError(payload.get("error") or "MCP oneiric_list_adapters failed")
+            raise ConnectionError(
+                payload.get("error") or "MCP oneiric_list_adapters failed"
+            )
 
         raw_adapters = payload.get("adapters", []) if isinstance(payload, dict) else []  # type: ignore[var-annotated]
-        adapters = [AdapterEntry.from_mcp(a) for a in raw_adapters if isinstance(a, dict)]
+        adapters = [
+            AdapterEntry.from_mcp(a) for a in raw_adapters if isinstance(a, dict)
+        ]
 
         if project:
             adapters = [a for a in adapters if a.project == project]

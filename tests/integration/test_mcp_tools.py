@@ -121,7 +121,9 @@ async def test_trigger_workflow_executes_via_fastmcp_call_tool(server, mock_app)
 @pytest.mark.asyncio
 async def test_get_workflow_status_executes_via_fastmcp_call_tool(server):
     """Workflow status lookup should use the current public tool interface."""
-    result = await server.server.call_tool("get_workflow_status", {"workflow_id": "test_wf_123"})
+    result = await server.server.call_tool(
+        "get_workflow_status", {"workflow_id": "test_wf_123"}
+    )
 
     assert result is not None
     assert hasattr(result, "content")

@@ -397,7 +397,9 @@ class TestPatternAnalysisResult:
             std_deviation=0.5,
         )
         blocker = BlockerPattern(blocker_keyword="k", blocker_category="c")
-        sequence = CompletionSequencePattern(sequence=["a", "b"], completion_probability=0.7)
+        sequence = CompletionSequencePattern(
+            sequence=["a", "b"], completion_probability=0.7
+        )
         result = PatternAnalysisResult(
             task_count=10,
             duration_patterns=[duration],

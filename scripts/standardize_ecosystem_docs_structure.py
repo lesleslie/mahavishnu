@@ -137,7 +137,9 @@ def render_archive_readme(repo: dict[str, Any]) -> str:
     )
 
 
-def render_plan_index(repo: dict[str, Any], docs_path: Path, plan_files: list[Path]) -> str:
+def render_plan_index(
+    repo: dict[str, Any], docs_path: Path, plan_files: list[Path]
+) -> str:
     """Render a standard plan index for a repo."""
     title = repo_display_name(repo)
     lines = [
@@ -153,7 +155,9 @@ def render_plan_index(repo: dict[str, Any], docs_path: Path, plan_files: list[Pa
         for path in plan_files:
             lines.append(f"- [{path.stem}]({markdown_link(path, index_dir)})")
     else:
-        lines.append("- No plan-like markdown files were discovered during standardization.")
+        lines.append(
+            "- No plan-like markdown files were discovered during standardization."
+        )
 
     lines.extend(
         [
@@ -194,7 +198,8 @@ def collect_writes(
             has_or_will_have_plan_index=will_have_plan_index,
         )
         if not docs_readme.exists() or (
-            refresh_generated and has_marker(docs_readme, "- Status: active ecosystem repository")
+            refresh_generated
+            and has_marker(docs_readme, "- Status: active ecosystem repository")
         ):
             writes.append(
                 PendingWrite(
@@ -209,7 +214,9 @@ def collect_writes(
             not archive_readme.exists()
             or (
                 refresh_generated
-                and has_marker(archive_readme, "This directory contains historical documentation.")
+                and has_marker(
+                    archive_readme, "This directory contains historical documentation."
+                )
             )
         ):
             writes.append(PendingWrite(archive_readme, render_archive_readme(repo)))
@@ -225,7 +232,9 @@ def collect_writes(
             )
         )
         if should_write_plan_index:
-            writes.append(PendingWrite(plan_index, render_plan_index(repo, docs_path, plan_files)))
+            writes.append(
+                PendingWrite(plan_index, render_plan_index(repo, docs_path, plan_files))
+            )
 
     return writes
 

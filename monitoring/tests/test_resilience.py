@@ -330,7 +330,9 @@ class TestRetry:
         """Retry should use exponential delay between attempts."""
         retry_logic = Retry(
             max_attempts=4,
-            backoff=BackoffStrategy.exponential(base_delay=0.1, max_delay=1.0, exponent=2.0),
+            backoff=BackoffStrategy.exponential(
+                base_delay=0.1, max_delay=1.0, exponent=2.0
+            ),
         )
 
         call_times = []

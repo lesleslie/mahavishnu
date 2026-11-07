@@ -228,7 +228,9 @@ def _validate_task_content_for_dispatch(content: str) -> str:
     truncated = encoded.decode("utf-8", errors="replace")
     if encoded != sanitized.encode("utf-8"):
         # Lost bytes during cap — refuse rather than silently truncate.
-        raise ValueError(f"task content exceeds {_MAX_CONTENT_BYTES} bytes after sanitization")
+        raise ValueError(
+            f"task content exceeds {_MAX_CONTENT_BYTES} bytes after sanitization"
+        )
     return truncated
 
 
@@ -246,7 +248,9 @@ _RATE_LIMIT_PER_MINUTE = 10
 class _HandoffRateLimiter:
     """Per-caller sliding-window limiter, ``limit`` requests per 60 s."""
 
-    def __init__(self, limit: int = _RATE_LIMIT_PER_MINUTE, window_seconds: int = 60) -> None:
+    def __init__(
+        self, limit: int = _RATE_LIMIT_PER_MINUTE, window_seconds: int = 60
+    ) -> None:
         self.limit = limit
         self.window_seconds = window_seconds
         self._requests: dict[str, list[float]] = {}
@@ -378,7 +382,9 @@ def _publish_task_handoff_completed(
     asyncio.create_task(_publish_task_event("task.handoff_completed", payload))
 
 
-def _publish_task_handoff_orphan(task_id: str, reason: str, workflow_id: str = "") -> None:
+def _publish_task_handoff_orphan(
+    task_id: str, reason: str, workflow_id: str = ""
+) -> None:
     payload: dict[str, Any] = {
         "task_id": task_id,
         "actor": _derive_caller_key(),
@@ -543,13 +549,19 @@ def register_tasks_handoff_tools(
             if session_buddy_client is not None
             else _session_buddy_link_workflow
         )
-        dispatch = workflow_dispatch_fn if workflow_dispatch_fn is not None else _dispatch_workflow
+        dispatch = (
+            workflow_dispatch_fn
+            if workflow_dispatch_fn is not None
+            else _dispatch_workflow
+        )
 
         # ---- Step 1: lookup ----
         try:
             task = await get_task(task_id=task_id)
         except Exception as exc:  # session-buddy lookup — broad catch re-raises typed TaskNotFoundError regardless of underlying session-buddy exception
-            raise TaskNotFoundError(task_id, details={"cause": type(exc).__name__}) from exc
+            raise TaskNotFoundError(
+                task_id, details={"cause": type(exc).__name__}
+            ) from exc
 
         # Content must be dispatch-safe (mirrors session-buddy's sanitizer).
         task_content = _validate_task_content_for_dispatch(str(task.get("content", "")))
@@ -567,8 +579,14 @@ def register_tasks_handoff_tools(
         repo = repo.strip() if isinstance(repo, str) else None
         if not repo:
             task_metadata = task.get("metadata")
-            candidate = task_metadata.get("repo") if isinstance(task_metadata, dict) else None
-            repo = candidate.strip() if isinstance(candidate, str) and candidate.strip() else None
+            candidate = (
+                task_metadata.get("repo") if isinstance(task_metadata, dict) else None
+            )
+            repo = (
+                candidate.strip()
+                if isinstance(candidate, str) and candidate.strip()
+                else None
+            )
         if not repo:
             raise NoRepoScopeError(task_id)
 
@@ -596,7 +614,9 @@ def register_tasks_handoff_tools(
                     prompt=task_content,
                     adapter=adapter,
                     repo=repo,
-                    timeout=float(dispatch_timeout) if dispatch_timeout is not None else None,
+                    timeout=float(dispatch_timeout)
+                    if dispatch_timeout is not None
+                    else None,
                 )
             except Exception:  # step-2 dispatch failure — broad catch to emit orphan marker then re-raise as typed HandoffError
                 # Step 2 dispatch failure — no workflow exists, so emit

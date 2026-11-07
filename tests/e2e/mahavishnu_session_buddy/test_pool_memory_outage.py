@@ -30,7 +30,9 @@ if TYPE_CHECKING:
 pytestmark = [pytest.mark.e2e, pytest.mark.requires_network]
 
 
-async def test_pool_memory_survives_session_buddy_outage(tmp_path: pathlib.Path) -> None:
+async def test_pool_memory_survives_session_buddy_outage(
+    tmp_path: pathlib.Path,
+) -> None:
     os.environ["MAHAVISHNU_OUTBOX_ENABLED"] = "true"
     os.environ["MAHAVISHNU_OUTBOX_DRAIN"] = "true"
 

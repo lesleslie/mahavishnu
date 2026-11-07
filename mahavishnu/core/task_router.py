@@ -210,7 +210,9 @@ class StateManager:
                     if isinstance(adapter_states, dict):
                         record["adapter_states"] = adapter_states
                 self._workflows[wf_id] = record
-            logger.debug("Loaded %d workflow states from %s", len(self._workflows), path)
+            logger.debug(
+                "Loaded %d workflow states from %s", len(self._workflows), path
+            )
         except Exception:  # task router — broad catch keeps state load non-fatal so an empty state survives a corrupt file
             logger.warning("Failed to load workflow state from %s", path, exc_info=True)
 
@@ -266,7 +268,8 @@ class StateManager:
         copied["results"] = list(record.get("results", []))
         copied["errors"] = list(record.get("errors", []))
         copied["adapter_states"] = {
-            str(key): dict(value) for key, value in record.get("adapter_states", {}).items()
+            str(key): dict(value)
+            for key, value in record.get("adapter_states", {}).items()
         }
         return copied
 
@@ -301,7 +304,8 @@ class StateManager:
             updates["errors"] = list(updates["errors"])
         if "adapter_states" in updates and isinstance(updates["adapter_states"], dict):
             updates["adapter_states"] = {
-                str(key): dict(value) for key, value in updates["adapter_states"].items()
+                str(key): dict(value)
+                for key, value in updates["adapter_states"].items()
             }
         record.update(updates)
         self._persist()
@@ -329,7 +333,9 @@ class StateManager:
         self._workflows.pop(workflow_id, None)
         self._persist()
 
-    async def update_progress(self, workflow_id: str, completed: int, total: int) -> None:
+    async def update_progress(
+        self, workflow_id: str, completed: int, total: int
+    ) -> None:
         progress = int((completed / total) * 100) if total > 0 else 0
         await self.update(workflow_id, progress=progress)
 
@@ -385,7 +391,11 @@ class StateManager:
 
     @staticmethod
     def _adapter_key(adapter_type: str | AdapterType) -> str:
-        return adapter_type.value if isinstance(adapter_type, AdapterType) else str(adapter_type)
+        return (
+            adapter_type.value
+            if isinstance(adapter_type, AdapterType)
+            else str(adapter_type)
+        )
 
 
 class CapabilityRouter:
@@ -519,7 +529,9 @@ class CapabilityRouter:
 
             required_caps_set = set(required_caps)
             matching_adapters = [
-                c for c in candidates_iter if required_caps_set.issubset(set(_cand_capabilities(c)))
+                c
+                for c in candidates_iter
+                if required_caps_set.issubset(set(_cand_capabilities(c)))
             ]
 
             if not matching_adapters:
@@ -540,7 +552,9 @@ class CapabilityRouter:
                     adapter_name=best_adapter.adapter_id,
                     adapter=None,  # Lazy-loaded by registry
                     matched_capabilities=[
-                        cap for cap in required_caps if cap in _cand_capabilities(best_adapter)
+                        cap
+                        for cap in required_caps
+                        if cap in _cand_capabilities(best_adapter)
                     ],
                     resolution_time_ms=resolution_time_ms,
                     fallback_used=False,
@@ -890,7 +904,9 @@ class TaskRouter:
                     if isinstance(result, dict) and "execution_id" in result
                     else result
                 )
-                latency_ms = result.get("latency_ms", 0) if isinstance(result, dict) else 0
+                latency_ms = (
+                    result.get("latency_ms", 0) if isinstance(result, dict) else 0
+                )
                 self.adapter_registry.record_execution(adapter_type, success=True)
                 self.metrics.record_adapter_execution(
                     adapter=cast("Any", adapter_type),
@@ -911,7 +927,9 @@ class TaskRouter:
 
             except RetryExhaustedError as exc:
                 total_attempts += exc.attempts
-                last_error = exc.last_exception if exc.last_exception is not None else exc
+                last_error = (
+                    exc.last_exception if exc.last_exception is not None else exc
+                )
             except Exception as exc:  # task router — broad catch captures the last failure for retry-attempt reporting  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 last_error = exc
 
@@ -927,7 +945,9 @@ class TaskRouter:
 
         return {
             "success": False,
-            "error": str(last_error) if last_error is not None else "All adapters failed",
+            "error": str(last_error)
+            if last_error is not None
+            else "All adapters failed",
             "adapter": None,
             "result": None,
             "task_type": task_type.value,
@@ -952,7 +972,9 @@ class TaskRouter:
             ),
         }
 
-    async def _get_adapter_health(self, adapter_type: AdapterType | str) -> dict[str, Any]:
+    async def _get_adapter_health(
+        self, adapter_type: AdapterType | str
+    ) -> dict[str, Any]:
         adapter_enum = self._coerce_adapter_type(adapter_type)
         if adapter_enum is None:
             return {

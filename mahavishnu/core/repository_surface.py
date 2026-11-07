@@ -38,7 +38,10 @@ def validate_path(path_str: str, allowed_base_paths: list[str] | None = None) ->
     ):
         raise ValidationError(
             message=f"Invalid path contains directory traversal: {path_str}",
-            details={"path": path_str, "suggestion": "Remove any '..' sequences from path"},
+            details={
+                "path": path_str,
+                "suggestion": "Remove any '..' sequences from path",
+            },
         )
 
     abs_path = path.expanduser().resolve()
@@ -65,7 +68,9 @@ def validate_path(path_str: str, allowed_base_paths: list[str] | None = None) ->
     return abs_path
 
 
-def persist_workflow_start(app: Any, execution_id: str, workflow_name: str, metadata: dict) -> None:
+def persist_workflow_start(
+    app: Any, execution_id: str, workflow_name: str, metadata: dict
+) -> None:
     """Fire-and-forget: record workflow start in MCP."""
     if app._mcp_state is None:
         return
@@ -81,7 +86,11 @@ def persist_workflow_start(app: Any, execution_id: str, workflow_name: str, meta
 
 
 def persist_workflow_end(
-    app: Any, execution_id: str, workflow_name: str, status: str, error: str | None = None
+    app: Any,
+    execution_id: str,
+    workflow_name: str,
+    status: str,
+    error: str | None = None,
 ) -> None:
     """Fire-and-forget: record workflow completion/failure in MCP."""
     if app._mcp_state is None:
@@ -98,7 +107,9 @@ def persist_workflow_end(
     )
 
 
-def _filter_repos_by_criteria(repos: list[dict], tag: str | None, role: str | None) -> list[str]:
+def _filter_repos_by_criteria(
+    repos: list[dict], tag: str | None, role: str | None
+) -> list[str]:
     if tag:
         return [r["path"] for r in repos if tag in r.get("tags", [])]
     if role:
@@ -106,13 +117,17 @@ def _filter_repos_by_criteria(repos: list[dict], tag: str | None, role: str | No
     return [r["path"] for r in repos]
 
 
-def _collect_valid_repo(app: Any, repo_path: str, user_id: str | None, logger: Any) -> str | None:
+def _collect_valid_repo(
+    app: Any, repo_path: str, user_id: str | None, logger: Any
+) -> str | None:
     try:
         validated_path = validate_path(repo_path, app.config.allowed_repo_paths)
         if not validated_path.exists():
             logger.warning("Repository path does not exist: %s", validated_path)
             return None
-        if user_id and not check_user_repo_permission(app, user_id, str(validated_path)):
+        if user_id and not check_user_repo_permission(
+            app, user_id, str(validated_path)
+        ):
             return None
         return str(validated_path)
     except ValidationError as e:
@@ -121,7 +136,10 @@ def _collect_valid_repo(app: Any, repo_path: str, user_id: str | None, logger: A
 
 
 def get_repos(
-    app: Any, tag: str | None = None, role: str | None = None, user_id: str | None = None
+    app: Any,
+    tag: str | None = None,
+    role: str | None = None,
+    user_id: str | None = None,
 ) -> list[str]:
     """Get repository paths based on tag, role, or return all."""
     logger = __import__("logging").getLogger(__name__)
@@ -164,14 +182,18 @@ def check_user_repo_permission(app: Any, user_id: str, repo_path: str) -> bool:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(
                     asyncio.run,
-                    app.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO),
+                    app.rbac_manager.check_permission(
+                        user_id, repo_path, Permission.READ_REPO
+                    ),
                 )
                 return cast("bool", future.result(timeout=5.0))
         except RuntimeError:
             return cast(
                 "bool",
                 asyncio.run(
-                    app.rbac_manager.check_permission(user_id, repo_path, Permission.READ_REPO)
+                    app.rbac_manager.check_permission(
+                        user_id, repo_path, Permission.READ_REPO
+                    )
                 ),
             )
     except Exception:  # RBAC fail-open: deny-by-default would be a stronger posture, but compatibility wins here  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -208,7 +230,11 @@ def get_repos_by_role(app: Any, role_name: str) -> list[dict[str, Any]]:
                 "suggestion": f"Use one of: {', '.join(valid_roles)}",
             },
         )
-    return [repo for repo in app.repos_config.get("repos", []) if repo.get("role") == role_name]
+    return [
+        repo
+        for repo in app.repos_config.get("repos", [])
+        if repo.get("role") == role_name
+    ]
 
 
 def get_all_nicknames(app: Any) -> dict[str, str]:
@@ -249,7 +275,9 @@ def update_workflow_runtime_gauges(app: Any) -> None:
     max_concurrency = max(app.config.max_concurrent_workflows, 1)
 
     mahavishnu_active_workflows.labels(service="mahavishnu").set(active_count)
-    mahavishnu_workflow_queue_depth.labels(service="mahavishnu").set(app.workflow_queue.qsize())
+    mahavishnu_workflow_queue_depth.labels(service="mahavishnu").set(
+        app.workflow_queue.qsize()
+    )
     mahavishnu_workflow_concurrency_utilization.labels(service="mahavishnu").set(
         active_count / max_concurrency
     )

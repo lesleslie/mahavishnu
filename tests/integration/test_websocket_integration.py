@@ -183,7 +183,9 @@ class TestConnectionHandling:
     """Test WebSocket connection handling."""
 
     @pytest.mark.asyncio
-    async def test_on_connect_sends_welcome(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_on_connect_sends_welcome(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test on_connect handler sends welcome message."""
         # Arrange
         mock_websocket = MagicMock()
@@ -206,7 +208,9 @@ class TestConnectionHandling:
         assert decoded["data"]["server"] == "mahavishnu"
 
     @pytest.mark.asyncio
-    async def test_on_disconnect_cleans_up_rooms(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_on_disconnect_cleans_up_rooms(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test on_disconnect handler cleans up room subscriptions."""
         # Arrange
         mock_websocket = MagicMock()
@@ -222,10 +226,14 @@ class TestConnectionHandling:
         # Assert
         assert connection_id not in websocket_server.connections
         # Room should be cleaned up (connection removed from room)
-        assert connection_id not in websocket_server.connection_rooms.get("test_room", set())
+        assert connection_id not in websocket_server.connection_rooms.get(
+            "test_room", set()
+        )
 
     @pytest.mark.asyncio
-    async def test_multiple_connections_tracked(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_multiple_connections_tracked(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test server tracks multiple connections."""
         # Arrange
         mock_ws1 = MagicMock()
@@ -280,7 +288,9 @@ class TestMessageHandling:
         await websocket_server.on_message(mock_websocket, message)
 
         # Assert
-        assert connection_id in websocket_server.connection_rooms.get("test_channel", set())
+        assert connection_id in websocket_server.connection_rooms.get(
+            "test_channel", set()
+        )
         mock_websocket.send.assert_called_once()
 
         # Check response
@@ -291,7 +301,9 @@ class TestMessageHandling:
         assert sent_msg["data"]["status"] == "subscribed"
 
     @pytest.mark.asyncio
-    async def test_unsubscribe_request(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_unsubscribe_request(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test unsubscribe request removes connection from room."""
         # Arrange
         from mcp_common.websocket import MessageType, WebSocketMessage
@@ -315,11 +327,15 @@ class TestMessageHandling:
         await websocket_server.on_message(mock_websocket, message)
 
         # Assert
-        assert connection_id not in websocket_server.connection_rooms.get("test_channel", set())
+        assert connection_id not in websocket_server.connection_rooms.get(
+            "test_channel", set()
+        )
         mock_websocket.send.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_unknown_request_returns_error(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_unknown_request_returns_error(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test unknown request type returns error response."""
         # Arrange
         from mcp_common.websocket import MessageType, WebSocketMessage
@@ -392,7 +408,9 @@ class TestBroadcastFunctionality:
         assert not mock_client3.called
 
     @pytest.mark.asyncio
-    async def test_broadcast_pool_status_changed(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcast_pool_status_changed(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting pool status changed event."""
         # Arrange
         mock_client = AsyncMock()
@@ -416,7 +434,9 @@ class TestBroadcastFunctionality:
         assert sent_msg["data"]["status"]["worker_count"] == 5
 
     @pytest.mark.asyncio
-    async def test_broadcast_workflow_started(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcast_workflow_started(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting workflow started event."""
         # Arrange
         mock_client = AsyncMock()
@@ -466,7 +486,9 @@ class TestBroadcastFunctionality:
         assert sent_msg["data"]["stage_name"] == "stage1"
 
     @pytest.mark.asyncio
-    async def test_broadcast_workflow_failed(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcast_workflow_failed(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting workflow failed event."""
         # Arrange
         mock_client = AsyncMock()
@@ -525,7 +547,9 @@ class TestBroadcastFunctionality:
 class TestRoomManagement:
     """Test room subscription and unsubscription."""
 
-    def test_join_room_adds_connection(self, websocket_server: MahavishnuWebSocketServer):
+    def test_join_room_adds_connection(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test joining a room adds connection to room."""
         # Arrange
         connection_id = "conn1"
@@ -538,7 +562,9 @@ class TestRoomManagement:
         # Assert
         assert connection_id in websocket_server.connection_rooms["test_room"]
 
-    def test_leave_room_removes_connection(self, websocket_server: MahavishnuWebSocketServer):
+    def test_leave_room_removes_connection(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test leaving a room removes connection from room."""
         # Arrange
         connection_id = "conn1"
@@ -565,8 +591,12 @@ class TestRoomManagement:
         asyncio.run(websocket_server.leave_all_rooms(connection_id))
 
         # Assert
-        assert connection_id not in websocket_server.connection_rooms.get("room1", set())
-        assert connection_id not in websocket_server.connection_rooms.get("room2", set())
+        assert connection_id not in websocket_server.connection_rooms.get(
+            "room1", set()
+        )
+        assert connection_id not in websocket_server.connection_rooms.get(
+            "room2", set()
+        )
 
 
 # =============================================================================
@@ -579,7 +609,9 @@ class TestPoolStatus:
     """Test pool status retrieval."""
 
     @pytest.mark.asyncio
-    async def test_get_pool_status_found(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_get_pool_status_found(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test getting status for existing pool."""
         # Arrange
         mock_pool = MagicMock()
@@ -596,7 +628,9 @@ class TestPoolStatus:
         assert status["workers"] == ["worker1", "worker2"]
 
     @pytest.mark.asyncio
-    async def test_get_pool_status_not_found(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_get_pool_status_not_found(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test getting status for non-existent pool."""
         # Arrange - empty pools dict
         websocket_server.pool_manager.pools = {}
@@ -619,7 +653,9 @@ class TestPoolBroadcasting:
     """Test pool event broadcasting integration."""
 
     @pytest.mark.asyncio
-    async def test_broadcaster_pool_spawned(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcaster_pool_spawned(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting pool spawned event via WebSocketBroadcaster."""
         # Arrange
         broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
@@ -664,7 +700,9 @@ class TestPoolBroadcasting:
         websocket_server.connection_rooms["pool:pool_abc"] = {conn_id}
 
         # Act
-        result = await broadcaster.broadcast_worker_status_changed("pool_abc", "worker_1", "busy")
+        result = await broadcaster.broadcast_worker_status_changed(
+            "pool_abc", "worker_1", "busy"
+        )
 
         # Assert
         assert result is True
@@ -678,7 +716,9 @@ class TestPoolBroadcasting:
         assert sent_msg["data"]["status"] == "busy"
 
     @pytest.mark.asyncio
-    async def test_broadcaster_task_assigned(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcaster_task_assigned(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting task assigned via WebSocketBroadcaster."""
         # Arrange
         broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
@@ -704,7 +744,9 @@ class TestPoolBroadcasting:
         assert sent_msg["data"]["task"] == task
 
     @pytest.mark.asyncio
-    async def test_broadcaster_task_completed(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcaster_task_completed(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting task completed via WebSocketBroadcaster."""
         # Arrange
         broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
@@ -732,7 +774,9 @@ class TestPoolBroadcasting:
         assert sent_msg["data"]["result"] == result
 
     @pytest.mark.asyncio
-    async def test_broadcaster_pool_scaled(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcaster_pool_scaled(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting pool scaled via WebSocketBroadcaster."""
         # Arrange
         broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
@@ -784,7 +828,9 @@ class TestPoolBroadcasting:
         assert sent_msg["data"]["status"] == status
 
     @pytest.mark.asyncio
-    async def test_broadcaster_worker_added(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcaster_worker_added(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting worker added via WebSocketBroadcaster."""
         # Arrange
         broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)
@@ -808,7 +854,9 @@ class TestPoolBroadcasting:
         assert sent_msg["data"]["worker_id"] == "worker_1"
 
     @pytest.mark.asyncio
-    async def test_broadcaster_worker_removed(self, websocket_server: MahavishnuWebSocketServer):
+    async def test_broadcaster_worker_removed(
+        self, websocket_server: MahavishnuWebSocketServer
+    ):
         """Test broadcasting worker removed via WebSocketBroadcaster."""
         # Arrange
         broadcaster = WebSocketBroadcaster(websocket_server=websocket_server)

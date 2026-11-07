@@ -1,4 +1,5 @@
 """resolve_handle (R8)."""
+
 from __future__ import annotations
 
 import pytest

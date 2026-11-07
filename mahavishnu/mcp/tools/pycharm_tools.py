@@ -24,14 +24,18 @@ logger = logging.getLogger(__name__)
 # --- Subprocess fallbacks ---
 
 
-def _fallback_diagnostics(file_path: str, errors_only: bool = False) -> list[dict[str, Any]]:
+def _fallback_diagnostics(
+    file_path: str, errors_only: bool = False
+) -> list[dict[str, Any]]:
     """Fallback diagnostics using ruff when PyCharm MCP is unavailable."""
     cmd = ["ruff", "check", "--output-format", "json", file_path]
     if errors_only:
         cmd.append("--select")
         cmd.append("E,F")
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=30, check=False
+        )
         if result.returncode != 0:
             import json
 
@@ -59,7 +63,9 @@ def _fallback_diagnostics(file_path: str, errors_only: bool = False) -> list[dic
         return [{"message": "ruff check timed out", "severity": "warning"}]
 
 
-def _fallback_search(pattern: str, file_pattern: str | None = None) -> list[dict[str, Any]]:
+def _fallback_search(
+    pattern: str, file_pattern: str | None = None
+) -> list[dict[str, Any]]:
     """Fallback search using grep when PyCharm MCP is unavailable."""
     results = []
     try:
@@ -67,7 +73,9 @@ def _fallback_search(pattern: str, file_pattern: str | None = None) -> list[dict
         if file_pattern:
             cmd.extend(["--include", file_pattern])
         cmd.append(".")
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15, check=False)
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=15, check=False
+        )
         for line in proc.stdout.split("\n")[:100]:
             if ":" in line:
                 parts = line.split(":", 2)
@@ -186,7 +194,9 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_open_file(file_path: str, line: int | None = None) -> dict[str, Any]:
+    async def pycharm_open_file(
+        file_path: str, line: int | None = None
+    ) -> dict[str, Any]:
         """Open a file in PyCharm editor, optionally at a specific line."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
@@ -199,7 +209,11 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                         mcp_client.call_tool("jetbrains__open_file", args),
                         timeout=15,
                     )
-                    return {"source": "pycharm_mcp", "opened": True, "file_path": file_path}
+                    return {
+                        "source": "pycharm_mcp",
+                        "opened": True,
+                        "file_path": file_path,
+                    }
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Failed to open file in PyCharm: {e}")
             return {
@@ -289,7 +303,9 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
                 mcp_client = getattr(app.worker_manager, "mcp_client", None)
                 if mcp_client:
                     result = await asyncio.wait_for(
-                        mcp_client.call_tool("jetbrains__reformat_file", {"file_path": file_path}),
+                        mcp_client.call_tool(
+                            "jetbrains__reformat_file", {"file_path": file_path}
+                        ),
                         timeout=30,
                     )
                     return {"source": "pycharm_mcp", "reformatted": bool(result)}

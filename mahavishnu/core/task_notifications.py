@@ -262,7 +262,9 @@ class TaskEventEmitter:
                 try:
                     subscription.callback(event)
                 except Exception as e:  # background task — broad catch is the documented contract; one bad callback must not stop the rest  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                    logger.error(f"Error in event callback for {subscription.subscription_id}: {e}")
+                    logger.error(
+                        f"Error in event callback for {subscription.subscription_id}: {e}"
+                    )
         self._publish_canonical_event(event)
 
     def _publish_canonical_event(self, event: TaskEvent) -> None:

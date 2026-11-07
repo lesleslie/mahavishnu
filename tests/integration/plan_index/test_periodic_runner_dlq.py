@@ -24,8 +24,12 @@ class TestPeriodicRunnerDLQ:
         store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         mcp = store._mcp  # type: ignore[attr-defined]
         existing_errors = [
-            {"ts_ms": 1700000000000 + i, "op": "upsert", "err": "see ctx",
-             "ctx": {"path_hash": f"deadbeef{i:04x}00", "op": "upsert"}}
+            {
+                "ts_ms": 1700000000000 + i,
+                "op": "upsert",
+                "err": "see ctx",
+                "ctx": {"path_hash": f"deadbeef{i:04x}00", "op": "upsert"},
+            }
             for i in range(3)
         ]
         await mcp.put(

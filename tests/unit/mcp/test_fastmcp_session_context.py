@@ -48,7 +48,9 @@ class _FakeRBAC:
         self.allow = allow
         self.calls: list[tuple[str, str, Permission]] = []
 
-    async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
+    async def check_permission(
+        self, user_id: str, repo: str, permission: Permission
+    ) -> bool:
         self.calls.append((user_id, repo, permission))
         return self.allow
 
@@ -159,7 +161,9 @@ class TestRequireMCPAuthContextState:
         assert result == {"status": "ok", "arg": "x"}
         # check_permission received alice from Context state — NOT a
         # spurious kwarg value.
-        assert fake_rbac.calls == [("alice-from-context", "*", Permission.READ_PLAN_INDEX)]
+        assert fake_rbac.calls == [
+            ("alice-from-context", "*", Permission.READ_PLAN_INDEX)
+        ]
         # Single allowed audit event with alice as the caller.
         assert len(_swap_audit_logger.events) == 1
         event = _swap_audit_logger.events[0]
@@ -228,7 +232,9 @@ class TestRequireMCPAuthContextState:
         result = await sample_tool(arg="x", ctx=fake_ctx, user_id="intruder")
 
         assert result == {"status": "ok", "arg": "x"}
-        assert fake_rbac.calls == [("alice-from-context", "*", Permission.READ_PLAN_INDEX)]
+        assert fake_rbac.calls == [
+            ("alice-from-context", "*", Permission.READ_PLAN_INDEX)
+        ]
         assert _swap_audit_logger.events[0].caller_id == "alice-from-context"
 
     @pytest.mark.asyncio
@@ -274,7 +280,9 @@ class TestAuthContextMiddleware:
         )
 
         middleware = AuthContextMiddleware()
-        result = await middleware.on_call_tool(call_context, call_next=_next_call_returns)  # type: ignore[arg-type]
+        result = await middleware.on_call_tool(
+            call_context, call_next=_next_call_returns
+        )  # type: ignore[arg-type]
 
         # The middleware passes through to call_next unchanged.
         assert result == {"status": "next-ok"}
@@ -297,7 +305,9 @@ class TestAuthContextMiddleware:
         )
 
         middleware = AuthContextMiddleware()
-        result = await middleware.on_call_tool(call_context, call_next=_next_call_returns)  # type: ignore[arg-type]
+        result = await middleware.on_call_tool(
+            call_context, call_next=_next_call_returns
+        )  # type: ignore[arg-type]
 
         assert result == {"status": "next-ok"}
         # State was written (with None), not skipped — the decorator
@@ -324,7 +334,9 @@ class TestAuthContextMiddleware:
         )
 
         middleware = AuthContextMiddleware()
-        result = await middleware.on_call_tool(call_context, call_next=_next_call_returns)  # type: ignore[arg-type]
+        result = await middleware.on_call_tool(
+            call_context, call_next=_next_call_returns
+        )  # type: ignore[arg-type]
 
         # The middleware must not propagate state-write failures; the
         # tool path runs, and the kwargs fallback in require_mcp_auth
@@ -342,7 +354,9 @@ class TestAuthContextMiddleware:
         )
 
         middleware = AuthContextMiddleware()
-        result = await middleware.on_call_tool(call_context, call_next=_next_call_returns)  # type: ignore[arg-type]
+        result = await middleware.on_call_tool(
+            call_context, call_next=_next_call_returns
+        )  # type: ignore[arg-type]
 
         assert result == {"status": "next-ok"}
 

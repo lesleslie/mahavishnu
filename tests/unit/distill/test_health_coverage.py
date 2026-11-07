@@ -39,7 +39,7 @@ class TestExceptBranch:
             distilled_workflow_health(conn, require_table_exists=True)
 
     def test_exception_without_require_table_exists_returns_empty(self) -> None:
-        """Line 56: except handler swallows the exception and returns [].  """
+        """Line 56: except handler swallows the exception and returns []."""
         conn = _RaisingCursor()
         assert distilled_workflow_health(conn) == []
         assert distilled_workflow_health(conn, require_table_exists=False) == []
@@ -55,10 +55,13 @@ class TestMissingTableBranch:
         query is exercised."""
         c = duckdb.connect(":memory:")
         # Sanity check: distilled_workflows truly absent in fresh conn.
-        assert c.execute(
-            "SELECT 1 FROM information_schema.tables "
-            "WHERE table_name = 'distilled_workflows' LIMIT 1"
-        ).fetchone() is None
+        assert (
+            c.execute(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_name = 'distilled_workflows' LIMIT 1"
+            ).fetchone()
+            is None
+        )
         assert distilled_workflow_health(c) == []
         assert distilled_workflow_health(c, require_table_exists=False) == []
 

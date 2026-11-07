@@ -140,7 +140,10 @@ async def fallback_example() -> None:
     # If primary fails, adapter will try fallbacks in order. output_type=str
     # so Pydantic AI has a valid output schema for Agent().
     result = await adapter.execute(
-        task={"prompt": "Analyze the sentiment: 'I love this product!'", "output_type": str},
+        task={
+            "prompt": "Analyze the sentiment: 'I love this product!'",
+            "output_type": str,
+        },
         repos=[],
     )
     print(f"  Result: {result}")

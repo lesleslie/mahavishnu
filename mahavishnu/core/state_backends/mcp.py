@@ -209,7 +209,9 @@ class MCPStateBackend:
         self._consecutive_failures = 0
         self._available = True
 
-    async def put(self, key: str, value: dict[str, Any], ttl: int | None = None) -> None:
+    async def put(
+        self, key: str, value: dict[str, Any], ttl: int | None = None
+    ) -> None:
         """Persist key/value to MCP. No-op when unavailable or circuit open.
 
         Implements: REQ-SUB-003"""
@@ -315,7 +317,9 @@ class MCPStateBackend:
         ttl: int | None = None,
     ) -> None:
         """Persist a routing decision using the canonical key schema."""
-        await self.put(self.routing_key(task_class, timestamp=timestamp), value, ttl=ttl)
+        await self.put(
+            self.routing_key(task_class, timestamp=timestamp), value, ttl=ttl
+        )
 
     async def persist_approval(
         self,
@@ -370,7 +374,8 @@ class MCPStateBackend:
             return
         try:
             await self._client.call_tool(
-                "mahavishnu_kv_delete", {"key": key, "user_id": INTERNAL_SERVICE_USER_ID}
+                "mahavishnu_kv_delete",
+                {"key": key, "user_id": INTERNAL_SERVICE_USER_ID},
             )
             self._record_success()
         except Exception as exc:  # circuit-breaker sink for delete(): substrate failure → no-op  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -383,7 +388,8 @@ class MCPStateBackend:
             return []
         try:
             result = await self._client.call_tool(
-                "mahavishnu_kv_list", {"prefix": prefix, "user_id": INTERNAL_SERVICE_USER_ID}
+                "mahavishnu_kv_list",
+                {"prefix": prefix, "user_id": INTERNAL_SERVICE_USER_ID},
             )
             self._record_success()
             items = result.get("items") if isinstance(result, dict) else None
@@ -399,7 +405,9 @@ class MCPStateBackend:
             logger.debug("MCP list_prefix(%r) failed: %s", prefix, exc)
             return []
 
-    def schedule_put(self, key: str, value: dict[str, Any], ttl: int | None = None) -> None:
+    def schedule_put(
+        self, key: str, value: dict[str, Any], ttl: int | None = None
+    ) -> None:
         """Fire-and-forget put — does not block the event loop."""
         asyncio.create_task(self.put(key, value, ttl=ttl))
 
@@ -411,7 +419,8 @@ class MCPStateBackend:
         """Check if the substrate is reachable. Updates availability flag."""
         try:
             await self._client.call_tool(
-                "mahavishnu_kv_get", {"key": "__probe__", "user_id": INTERNAL_SERVICE_USER_ID}
+                "mahavishnu_kv_get",
+                {"key": "__probe__", "user_id": INTERNAL_SERVICE_USER_ID},
             )
             self._available = True
             self._consecutive_failures = 0

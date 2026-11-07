@@ -15,7 +15,9 @@ if TYPE_CHECKING:
     import pytest
 
 
-def test_discover_returns_none_when_no_sop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_discover_returns_none_when_no_sop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     (tmp_path / "some_file.py").write_text("# no sop here")
     monkeypatch.chdir(tmp_path)
     # Walk up to filesystem root — should return None when no SOP exists.
@@ -64,14 +66,18 @@ def test_load_style_sop_handles_missing_frontmatter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     (tmp_path / ".bodai").mkdir()
-    (tmp_path / ".bodai" / "style-sop.md").write_text("# Just markdown\n\nNo frontmatter.")
+    (tmp_path / ".bodai" / "style-sop.md").write_text(
+        "# Just markdown\n\nNo frontmatter."
+    )
     monkeypatch.chdir(tmp_path)
     sop = load_style_sop(tmp_path)
     assert sop["frontmatter"] == {}
     assert "Just markdown" in sop["body"]
 
 
-def test_load_style_sop_falls_back_to_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_load_style_sop_falls_back_to_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     (tmp_path / "no_sop_here.py").write_text("")
     monkeypatch.chdir(tmp_path)
     sop = load_style_sop(tmp_path)

@@ -70,7 +70,9 @@ def fake_manager():
             "blocked_by": [],
         }
     )
-    mgr.get_ecosystem_status = MagicMock(return_value={"health": "ok", "plans": [], "blockers": []})
+    mgr.get_ecosystem_status = MagicMock(
+        return_value={"health": "ok", "plans": [], "blockers": []}
+    )
     mgr.save = MagicMock()
     mgr._coordination = {"todos": []}
     return mgr
@@ -209,7 +211,9 @@ class TestIssueTools:
                 )
 
     @pytest.mark.asyncio
-    async def test_update_issue_requires_at_least_one_field(self, mcp_server, fake_manager):
+    async def test_update_issue_requires_at_least_one_field(
+        self, mcp_server, fake_manager
+    ):
         """Calling update_issue with neither status nor priority should raise."""
         with patch.object(ct, "_get_manager", return_value=fake_manager):
             with pytest.raises(ValueError, match="No updates specified"):
@@ -230,7 +234,9 @@ class TestIssueTools:
     @pytest.mark.asyncio
     async def test_update_issue_passes_through(self, mcp_server, fake_manager):
         """Valid status/priority should be passed to manager.update_issue."""
-        fake_manager.get_issue.return_value = _make_issue("ISSUE-1", status=IssueStatus.IN_PROGRESS)
+        fake_manager.get_issue.return_value = _make_issue(
+            "ISSUE-1", status=IssueStatus.IN_PROGRESS
+        )
         with patch.object(ct, "_get_manager", return_value=fake_manager):
             await _invoke(
                 mcp_server,
@@ -244,11 +250,15 @@ class TestIssueTools:
     @pytest.mark.asyncio
     async def test_close_issue_marks_status_closed(self, mcp_server, fake_manager):
         """close_issue should send status='closed' to the manager."""
-        fake_manager.get_issue.return_value = _make_issue("ISSUE-9", status=IssueStatus.CLOSED)
+        fake_manager.get_issue.return_value = _make_issue(
+            "ISSUE-9", status=IssueStatus.CLOSED
+        )
         with patch.object(ct, "_get_manager", return_value=fake_manager):
             result = await _invoke(mcp_server, "coord_close_issue", issue_id="ISSUE-9")
 
-        fake_manager.update_issue.assert_called_once_with("ISSUE-9", {"status": "closed"})
+        fake_manager.update_issue.assert_called_once_with(
+            "ISSUE-9", {"status": "closed"}
+        )
         assert result["status"] == "closed"
 
 
@@ -276,7 +286,9 @@ class TestTodoTools:
                 await _invoke(mcp_server, "coord_get_todo", todo_id="missing")
 
     @pytest.mark.asyncio
-    async def test_create_todo_appends_to_coordination_dict(self, mcp_server, fake_manager):
+    async def test_create_todo_appends_to_coordination_dict(
+        self, mcp_server, fake_manager
+    ):
         """create_todo should append a dict under _coordination['todos'] and save."""
         with patch.object(ct, "_get_manager", return_value=fake_manager):
             result = await _invoke(
@@ -372,7 +384,9 @@ class TestPlansAndDeps:
         """get_blocking_issues should return issue dumps for a repo."""
         fake_manager.get_blocking_issues.return_value = [_make_issue("ISSUE-7")]
         with patch.object(ct, "_get_manager", return_value=fake_manager):
-            result = await _invoke(mcp_server, "coord_get_blocking_issues", repo="repo-a")
+            result = await _invoke(
+                mcp_server, "coord_get_blocking_issues", repo="repo-a"
+            )
 
         assert result[0]["id"] == "ISSUE-7"
 
@@ -424,6 +438,8 @@ class TestGetManager:
 
     def test_returns_coordination_manager(self):
         """_get_manager should construct and return a CoordinationManager."""
-        with patch("mahavishnu.mcp.tools.coordination_tools.CoordinationManager") as MockMgr:
+        with patch(
+            "mahavishnu.mcp.tools.coordination_tools.CoordinationManager"
+        ) as MockMgr:
             ct._get_manager()
             MockMgr.assert_called_once()

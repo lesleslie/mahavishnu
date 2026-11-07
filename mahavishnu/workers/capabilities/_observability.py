@@ -71,7 +71,9 @@ def record_probe(worker_type: str, kind: str, duration: float, result: str) -> N
     _PROBE_DURATION.labels(worker_type, kind, result).observe(duration)
 
 
-def record_probe_failure(report: WorkerCapabilityReport, kind: str, reason: str) -> None:
+def record_probe_failure(
+    report: WorkerCapabilityReport, kind: str, reason: str
+) -> None:
     logger.warning(
         "worker_capability_probe_failed",
         extra={

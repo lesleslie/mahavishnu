@@ -63,7 +63,12 @@ class TestPlanRecordShape:
 
 class TestPlanRecordBlocksOn:
     def test_blocks_on_accepts_plan_ids(self) -> None:
-        rec = _sample(blocks_on=["11111111111111111111111111111111", "22222222222222222222222222222222"])
+        rec = _sample(
+            blocks_on=[
+                "11111111111111111111111111111111",
+                "22222222222222222222222222222222",
+            ]
+        )
         assert len(rec.blocks_on) == 2
 
     def test_blocks_on_empty_default(self) -> None:

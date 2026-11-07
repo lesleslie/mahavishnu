@@ -79,7 +79,9 @@ def _do_list(category: str | None, status: str | None) -> None:
             for server in sorted(cat_servers, key=lambda s: s.name):
                 status_icon = "✅" if server.status == "enabled" else "❌"
                 port_info = f":{server.port}" if server.port else "stdio"
-                typer.echo(f"  {status_icon} {server.name:20} {port_info:10} - {server.function}")
+                typer.echo(
+                    f"  {status_icon} {server.name:20} {port_info:10} - {server.function}"
+                )
     except ConfigurationError as e:
         _print_config_error(e)
 
@@ -148,7 +150,9 @@ def _do_audit(server_name: str | None) -> None:
         _print_config_error(e)
 
 
-def _do_update_audit(server_name: str, field: str, value: str, notes: str | None) -> None:
+def _do_update_audit(
+    server_name: str, field: str, value: str, notes: str | None
+) -> None:
     """Update audit timestamp for an MCP server."""
     try:
         loader = get_ecosystem_loader()
@@ -189,7 +193,9 @@ def _do_show_server_urls(server_name: str) -> None:
             for key, url in sorted(server.urls.items()):
                 typer.echo(f"   {key}: {url}")
 
-        if not any([server.repo_url, server.homepage_url, server.docs_url, server.urls]):
+        if not any(
+            [server.repo_url, server.homepage_url, server.docs_url, server.urls]
+        ):
             typer.echo("No URLs configured for this server")
     except ConfigurationError as e:
         _print_config_error(e)
@@ -263,7 +269,9 @@ def _print_lsp_server_details(server: dict) -> None:
     typer.echo(f"Language:      {server.get('language')}")
     typer.echo(f"Type:          {server.get('type')}")
     typer.echo(f"Status:        {'enabled' if server.get('enabled') else 'disabled'}")
-    typer.echo(f"Command:       {server.get('command')} {' '.join(server.get('args', []))}")
+    typer.echo(
+        f"Command:       {server.get('command')} {' '.join(server.get('args', []))}"
+    )
     typer.echo(f"Config File:   {server.get('config_file') or 'N/A'}")
     typer.echo(f"Config Section: {server.get('config_section') or 'N/A'}")
 
@@ -288,7 +296,9 @@ def _do_lsp_info(server_name: str | None) -> None:
         loader = get_ecosystem_loader()
 
         if server_name:
-            servers = [s for s in loader.config.lsp_servers if s.get("name") == server_name]
+            servers = [
+                s for s in loader.config.lsp_servers if s.get("name") == server_name
+            ]
             if not servers:
                 typer.echo(f"❌ LSP server not found: {server_name}", err=True)
                 raise typer.Exit(code=1)
@@ -329,9 +339,13 @@ def _do_list_ports(type_filter: str | None, status: str | None) -> None:
         portmap = loader.config.portmap
 
         if type_filter:
-            portmap = [p for p in portmap if p.get("type", "").upper() == type_filter.upper()]
+            portmap = [
+                p for p in portmap if p.get("type", "").upper() == type_filter.upper()
+            ]
         if status:
-            portmap = [p for p in portmap if p.get("status", "").lower() == status.lower()]
+            portmap = [
+                p for p in portmap if p.get("status", "").lower() == status.lower()
+            ]
 
         if not portmap:
             typer.echo("No port mappings found")
@@ -350,7 +364,9 @@ def _do_list_ports(type_filter: str | None, status: str | None) -> None:
         total = len(portmap)
         enabled = sum(1 for p in portmap if p.get("status") == "enabled")
         typer.echo("\n" + "─" * 80)
-        typer.echo(f"Total: {total} ports | Enabled: {enabled} | Disabled: {total - enabled}")
+        typer.echo(
+            f"Total: {total} ports | Enabled: {enabled} | Disabled: {total - enabled}"
+        )
         typer.echo("=" * 80 + "\n")
     except ConfigurationError as e:
         _print_config_error(e)
@@ -387,7 +403,9 @@ def _print_status_table(report: EcosystemStatusReport) -> None:
         )
     if report.alerts:
         a = report.alerts
-        typer.echo(f"\nAlerts: total={a.total_active} critical={a.by_severity.get('critical', 0)}")
+        typer.echo(
+            f"\nAlerts: total={a.total_active} critical={a.by_severity.get('critical', 0)}"
+        )
     if report.recommendations:
         typer.echo(f"\nRecommendations ({len(report.recommendations)}):")
         for rec in report.recommendations:
@@ -437,7 +455,9 @@ def _do_ecosystem_capabilities(json_output: bool, capability: str | None) -> Non
     if json_output:
         typer.echo(
             json.dumps(
-                {k: v.model_dump(mode="json") for k, v in caps.items()}, indent=2, default=str
+                {k: v.model_dump(mode="json") for k, v in caps.items()},
+                indent=2,
+                default=str,
             )
         )
         return
@@ -462,7 +482,9 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
     @app.command("list")
     def list_servers(
-        category: str = typer.Option(None, "--category", "-c", help="Filter by category"),
+        category: str = typer.Option(
+            None, "--category", "-c", help="Filter by category"
+        ),
         status: str = typer.Option(
             None, "--status", "-s", help="Filter by status (enabled/disabled)"
         ),
@@ -475,14 +497,18 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
         output: Path | None = typer.Option(
             None, "--output", "-o", help="Output path for generated config"
         ),
-        dry_run: bool = typer.Option(False, "--dry-run", help="Print config without writing"),
+        dry_run: bool = typer.Option(
+            False, "--dry-run", help="Print config without writing"
+        ),
     ) -> None:
         """Generate ~/.claude.json MCP server configuration from ecosystem.yaml."""
         _do_generate_claude_config(output, dry_run)
 
     @app.command("audit")
     def audit_info(
-        server_name: str = typer.Argument(None, help="Server name (omit for all servers)"),
+        server_name: str = typer.Argument(
+            None, help="Server name (omit for all servers)"
+        ),
     ) -> None:
         """Show audit information for MCP servers."""
         _do_audit(server_name)
@@ -515,7 +541,9 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
     @app.command("list-lsp")
     def list_lsp_servers(
-        language: str = typer.Option(None, "--language", "-l", help="Filter by language"),
+        language: str = typer.Option(
+            None, "--language", "-l", help="Filter by language"
+        ),
         enabled: str = typer.Option(
             None, "--enabled", "-e", help="Filter by enabled status (true/false)"
         ),
@@ -525,7 +553,9 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
 
     @app.command("lsp-info")
     def lsp_info(
-        server_name: str = typer.Argument(None, help="LSP server name (omit for all servers)"),
+        server_name: str = typer.Argument(
+            None, help="LSP server name (omit for all servers)"
+        ),
     ) -> None:
         """Show detailed information about LSP servers."""
         _do_lsp_info(server_name)
@@ -552,7 +582,9 @@ def add_ecosystem_commands(app: typer.Typer) -> None:
     @app.command("capabilities")
     def ecosystem_capabilities(
         json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
-        capability: str = typer.Option(None, "--capability", help="Filter by capability name"),
+        capability: str = typer.Option(
+            None, "--capability", help="Filter by capability name"
+        ),
     ) -> None:
         """Show ecosystem capabilities and adapter capabilities."""
         _do_ecosystem_capabilities(json_output, capability)

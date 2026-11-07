@@ -164,7 +164,9 @@ def _resolve_terminal_adapter(config: Any, mcp_client: Any) -> TerminalAdapter:
         )
         return MockTerminalAdapter()
 
-    return factory(config=config, mcp_client=mcp_client)  # ConfigurationError propagates naturally
+    return factory(
+        config=config, mcp_client=mcp_client
+    )  # ConfigurationError propagates naturally
 
 
 def init_terminal_manager(server: FastMCPServer | Any) -> TerminalManager | None:
@@ -223,7 +225,9 @@ def _register_skills_signer_tools(server: FastMCPServer) -> None:
     from ..mcp.tools.skill_tools import register_skill_tools
 
     register_skill_tools(server.server)
-    logger.info("Registered skill_tools (mahavishnu_list_skills + mahavishnu_get_skill)")
+    logger.info(
+        "Registered skill_tools (mahavishnu_list_skills + mahavishnu_get_skill)"
+    )
 
 
 def _register_agents_tools(server: FastMCPServer) -> None:
@@ -249,7 +253,9 @@ def _register_agents_tools(server: FastMCPServer) -> None:
     from ..mcp.tools.agents_tools import register_agents_tools
 
     register_agents_tools(server.server)
-    logger.info("Registered agents_tools (mahavishnu_list_agents + mahavishnu_get_agent)")
+    logger.info(
+        "Registered agents_tools (mahavishnu_list_agents + mahavishnu_get_agent)"
+    )
 
 
 def _register_dispatch_specialist_tools(server: FastMCPServer) -> None:
@@ -406,8 +412,13 @@ def register_health_endpoint(server: FastMCPServer, version: str) -> None:
         return await prometheus_metrics_endpoint()
 
 
-async def _register_core_integration_tools(server: FastMCPServer, methods_set: set[str]) -> None:
-    if server.terminal_manager is not None and "_register_terminal_tools" in methods_set:
+async def _register_core_integration_tools(
+    server: FastMCPServer, methods_set: set[str]
+) -> None:
+    if (
+        server.terminal_manager is not None
+        and "_register_terminal_tools" in methods_set
+    ):
         from ..mcp.tools.terminal_tools import register_terminal_tools
 
         register_terminal_tools(
@@ -447,7 +458,9 @@ async def _register_core_integration_tools(server: FastMCPServer, methods_set: s
         logger.info("Registered repository messaging tools with MCP server")
 
 
-async def _register_worker_pool_tools(server: FastMCPServer, methods_set: set[str]) -> None:
+async def _register_worker_pool_tools(
+    server: FastMCPServer, methods_set: set[str]
+) -> None:
     """Coordinate registration of the worker/pool/OTel tool groups.
 
     Each sub-registration is its own function so this dispatcher stays
@@ -548,7 +561,9 @@ def _try_build_durable_worker_manager() -> Any:
         from ..workers.contract.publisher import CanonicalEnvelopePublisher
         from ..workers.contract.store import WorkerRecordStore
 
-        store = WorkerRecordStore(pathlib.Path.home() / ".mahavishnu" / "worker-sessions")
+        store = WorkerRecordStore(
+            pathlib.Path.home() / ".mahavishnu" / "worker-sessions"
+        )
         publisher = CanonicalEnvelopePublisher(
             source="mahavishnu.terminal",
             sink=_enqueue_to_eventbridge,
@@ -647,13 +662,17 @@ def _register_otel_block(server: FastMCPServer) -> None:
     try:
         from ..mcp.tools.otel_tools import register_otel_tools
 
-        register_otel_tools(server.server, server.app, getattr(server, "mcp_client", None))
+        register_otel_tools(
+            server.server, server.app, getattr(server, "mcp_client", None)
+        )
         logger.info("Registered 4 OTel trace management tools with MCP server")
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("Skipping OTel tool registration after spec found: %s", exc)
 
 
-async def _register_optional_tools(server: FastMCPServer, methods_set: set[str]) -> None:
+async def _register_optional_tools(
+    server: FastMCPServer, methods_set: set[str]
+) -> None:
     """Register optional tool groups gated by ``methods_set`` plus the A2A routes.
 
     Each gated registration is its own function so this dispatcher stays
@@ -747,7 +766,9 @@ def _register_eval_tools_block(server: FastMCPServer) -> None:
     from ..mcp.tools.eval_tools import register_eval_tools
 
     register_eval_tools(server.server)
-    logger.info("Registered eval tools (eval_register_dataset + eval_run_suite + eval_get_run)")
+    logger.info(
+        "Registered eval tools (eval_register_dataset + eval_run_suite + eval_get_run)"
+    )
 
 
 def _register_capability_block(server: FastMCPServer) -> None:
@@ -764,7 +785,9 @@ def _register_capability_block(server: FastMCPServer) -> None:
     from ..mcp.tools.get_capability_result_tool import register_get_capability_result
 
     register_capability_tools(
-        server.server, server.app.config, rbac_manager=getattr(server.app, "rbac_manager", None)
+        server.server,
+        server.app.config,
+        rbac_manager=getattr(server.app, "rbac_manager", None),
     )
     logger.info("Registered 4 capability tools with MCP server")
 
@@ -783,7 +806,9 @@ def _register_capability_block(server: FastMCPServer) -> None:
         register_get_capability_result(server.server, mcp=mcp)
         logger.info("Registered get_capability_result tool with MCP server")
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.warning("Skipping get_capability_result registration after MCP init: %s", exc)
+        logger.warning(
+            "Skipping get_capability_result registration after MCP init: %s", exc
+        )
 
 
 def _register_search_block(server: FastMCPServer) -> None:
@@ -992,9 +1017,13 @@ async def register_profile_tools(server: FastMCPServer, methods_set: set[str]) -
     logger.info("Registered health check tools with MCP server")
     register_ecosystem_tools(server.server)
     logger.info("Registered 3 canonical ecosystem status tools with MCP server")
-    register_workflow_tools(server.server, rbac_manager=getattr(server.app, "rbac_manager", None))
+    register_workflow_tools(
+        server.server, rbac_manager=getattr(server.app, "rbac_manager", None)
+    )
     logger.info("Registered workflow outcome tools with MCP server")
-    register_webhook_tools(server.server, rbac_manager=getattr(server.app, "rbac_manager", None))
+    register_webhook_tools(
+        server.server, rbac_manager=getattr(server.app, "rbac_manager", None)
+    )
     logger.info("Registered webhook replay tools with MCP server")
     register_ecosystem_state_tools(
         server.server, rbac_manager=getattr(server.app, "rbac_manager", None)
@@ -1161,7 +1190,10 @@ def _register_session_buddy_tools(server: FastMCPServer) -> None:
 
     rbac_manager = getattr(server.app, "rbac_manager", None)
     register_session_buddy_tools(
-        server.server, server.app, getattr(server, "mcp_client", None), rbac_manager=rbac_manager
+        server.server,
+        server.app,
+        getattr(server, "mcp_client", None),
+        rbac_manager=rbac_manager,
     )
     logger.info("Registered 9 Session Buddy integration tools with MCP server")
 
@@ -1265,7 +1297,9 @@ def _register_otel_tools(server: FastMCPServer) -> None:
     try:
         from ..mcp.tools.otel_tools import register_otel_tools
 
-        register_otel_tools(server.server, server.app, getattr(server, "mcp_client", None))
+        register_otel_tools(
+            server.server, server.app, getattr(server, "mcp_client", None)
+        )
         logger.info("Registered 4 OTel trace management tools with MCP server")
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("Skipping OTel tool registration after spec found: %s", exc)
@@ -1399,7 +1433,9 @@ def _register_plan_tools(server: FastMCPServer) -> None:
         return PlanIndexStore(_resolve_mcp_client(server))  # ty: ignore[invalid-argument-type]
 
     rbac_manager = getattr(server.app, "rbac_manager", None)
-    register_plan_tools(server.server, store_provider=_store_provider, rbac_manager=rbac_manager)
+    register_plan_tools(
+        server.server, store_provider=_store_provider, rbac_manager=rbac_manager
+    )
 
 
 def _resolve_mcp_client(server: FastMCPServer) -> object:

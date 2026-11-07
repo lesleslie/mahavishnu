@@ -138,7 +138,9 @@ class TaskCreateRequest(BaseModel):
         # Remove control characters (except newline and tab)
         # Control characters: ASCII 0-31 and 127 (DEL)
         v = "".join(
-            char for char in v if char in ("\n", "\t") or not (ord(char) < 32 or ord(char) == 127)
+            char
+            for char in v
+            if char in ("\n", "\t") or not (ord(char) < 32 or ord(char) == 127)
         )
 
         # Strip leading/trailing whitespace
@@ -225,7 +227,9 @@ class TaskCreateRequest(BaseModel):
 
         # Additional checks for edge cases
         if v.startswith(("-", "_")):
-            raise ValueError(f"Repository name cannot start with hyphen or underscore: '{v}'")
+            raise ValueError(
+                f"Repository name cannot start with hyphen or underscore: '{v}'"
+            )
 
         if len(v) > 100:
             raise ValueError(f"Repository name too long: {len(v)} characters (max 100)")
@@ -351,7 +355,9 @@ class TaskUpdateRequest(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = Field(None, max_length=5000)
     priority: Literal["low", "medium", "high", "critical"] | None = None
-    status: Literal["pending", "in_progress", "blocked", "completed", "cancelled"] | None = None
+    status: (
+        Literal["pending", "in_progress", "blocked", "completed", "cancelled"] | None
+    ) = None
     deadline: str | None = None
     tags: list[str] | None = Field(None, max_length=10)
 
@@ -524,7 +530,9 @@ class TaskFilter(BaseModel):
         'in_progress'
     """
 
-    status: Literal["pending", "in_progress", "blocked", "completed", "cancelled"] | None = None
+    status: (
+        Literal["pending", "in_progress", "blocked", "completed", "cancelled"] | None
+    ) = None
     priority: Literal["low", "medium", "high", "critical"] | None = None
     repository: str | None = Field(None, max_length=100)
     assigned_to: str | None = Field(None, max_length=100)

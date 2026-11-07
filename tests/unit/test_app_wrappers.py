@@ -21,7 +21,9 @@ def _fake_config() -> SimpleNamespace:
         repos_config={"repos": [], "roles": []},
         auth=SimpleNamespace(enabled=False),
         health=SimpleNamespace(
-            dependencies={"mcp": SimpleNamespace(use_tls=False, host="localhost", port=8683)}
+            dependencies={
+                "mcp": SimpleNamespace(use_tls=False, host="localhost", port=8683)
+            }
         ),
     )
 
@@ -39,7 +41,9 @@ def _make_app_instance() -> MahavishnuApp:
 
 class TestMahavishnuAppInit:
     def test_load_returns_instance(self, monkeypatch):
-        monkeypatch.setattr(MahavishnuApp, "__init__", lambda self, config=None: None, raising=True)
+        monkeypatch.setattr(
+            MahavishnuApp, "__init__", lambda self, config=None: None, raising=True
+        )
         assert isinstance(MahavishnuApp.load(), MahavishnuApp)
 
     def test_init_sets_runtime_state(self, monkeypatch):
@@ -52,7 +56,10 @@ class TestMahavishnuAppInit:
 
         monkeypatch.setattr(app_module, "CircuitBreaker", _CircuitBreaker, raising=True)
         monkeypatch.setattr(
-            app_module, "_load_repos_helper", lambda self: calls.append("repos"), raising=True
+            app_module,
+            "_load_repos_helper",
+            lambda self: calls.append("repos"),
+            raising=True,
         )
         monkeypatch.setattr(
             bootstrap_module,
@@ -70,7 +77,10 @@ class TestMahavishnuAppInit:
             app_module, "_init_observability_helper", lambda self: "obs", raising=True
         )
         monkeypatch.setattr(
-            app_module, "_init_health_endpoint_helper", lambda self: "health", raising=True
+            app_module,
+            "_init_health_endpoint_helper",
+            lambda self: "health",
+            raising=True,
         )
         monkeypatch.setattr(
             app_module,
@@ -94,39 +104,70 @@ class TestWrapperMethods:
         app = _make_app_instance()
 
         monkeypatch.setattr(
-            app_module, "_init_terminal_manager_helper", lambda self: "terminal", raising=True
+            app_module,
+            "_init_terminal_manager_helper",
+            lambda self: "terminal",
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_initialize_runtime_services_helper", lambda self: "runtime", raising=True
+            app_module,
+            "_initialize_runtime_services_helper",
+            lambda self: "runtime",
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_init_observability_helper", lambda self: "observability", raising=True
+            app_module,
+            "_init_observability_helper",
+            lambda self: "observability",
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_init_health_endpoint_helper", lambda self: "health", raising=True
+            app_module,
+            "_init_health_endpoint_helper",
+            lambda self: "health",
+            raising=True,
         )
         monkeypatch.setattr(
             app_module, "_init_pool_manager_helper", lambda self: "pool", raising=True
         )
         monkeypatch.setattr(
-            app_module, "_init_memory_aggregator_helper", lambda self: "memory", raising=True
+            app_module,
+            "_init_memory_aggregator_helper",
+            lambda self: "memory",
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_init_learning_pipeline_helper", lambda self: "learning", raising=True
+            app_module,
+            "_init_learning_pipeline_helper",
+            lambda self: "learning",
+            raising=True,
         )
-        monkeypatch.setattr(app_module, "_load_config_helper", lambda: "config", raising=True)
-        monkeypatch.setattr(app_module, "_load_repos_helper", lambda self: "loaded", raising=True)
         monkeypatch.setattr(
-            bootstrap_module, "initialize_adapters", lambda self: "adapters", raising=True
+            app_module, "_load_config_helper", lambda: "config", raising=True
+        )
+        monkeypatch.setattr(
+            app_module, "_load_repos_helper", lambda self: "loaded", raising=True
+        )
+        monkeypatch.setattr(
+            bootstrap_module,
+            "initialize_adapters",
+            lambda self: "adapters",
+            raising=True,
         )
         monkeypatch.setattr(
             bootstrap_module, "set_app_context", lambda self: "context", raising=True
         )
         monkeypatch.setattr(
-            app_module, "_resolve_mcp_url_helper", lambda config: "http://mcp", raising=True
+            app_module,
+            "_resolve_mcp_url_helper",
+            lambda config: "http://mcp",
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_get_recovery_summary", AsyncMock(return_value={"ok": True}), raising=True
+            app_module,
+            "_get_recovery_summary",
+            AsyncMock(return_value={"ok": True}),
+            raising=True,
         )
         monkeypatch.setattr(
             app_module,
@@ -135,13 +176,22 @@ class TestWrapperMethods:
             raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_record_event_activity", lambda self, envelope: envelope, raising=True
+            app_module,
+            "_record_event_activity",
+            lambda self, envelope: envelope,
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_get_event_activity", lambda self, limit=25: [limit], raising=True
+            app_module,
+            "_get_event_activity",
+            lambda self, limit=25: [limit],
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_record_fix_trace", lambda self, *args, **kwargs: None, raising=True
+            app_module,
+            "_record_fix_trace",
+            lambda self, *args, **kwargs: None,
+            raising=True,
         )
         monkeypatch.setattr(
             app_module,
@@ -156,22 +206,37 @@ class TestWrapperMethods:
             raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_list_pending_approvals", lambda self: ["approval"], raising=True
+            app_module,
+            "_list_pending_approvals",
+            lambda self: ["approval"],
+            raising=True,
         )
         monkeypatch.setattr(
             app_module, "_request_approval", lambda self, **kwargs: kwargs, raising=True
         )
         monkeypatch.setattr(
-            app_module, "_respond_to_approval", lambda self, **kwargs: kwargs, raising=True
+            app_module,
+            "_respond_to_approval",
+            lambda self, **kwargs: kwargs,
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_persist_workflow_start_helper", lambda *args, **kwargs: None, raising=True
+            app_module,
+            "_persist_workflow_start_helper",
+            lambda *args, **kwargs: None,
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_persist_workflow_end_helper", lambda *args, **kwargs: None, raising=True
+            app_module,
+            "_persist_workflow_end_helper",
+            lambda *args, **kwargs: None,
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_get_repos_helper", lambda self, **kwargs: ["repo"], raising=True
+            app_module,
+            "_get_repos_helper",
+            lambda self, **kwargs: ["repo"],
+            raising=True,
         )
         monkeypatch.setattr(
             app_module,
@@ -180,13 +245,22 @@ class TestWrapperMethods:
             raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_get_all_repos_helper", lambda self: [{"path": "/repo"}], raising=True
+            app_module,
+            "_get_all_repos_helper",
+            lambda self: [{"path": "/repo"}],
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_get_all_repo_paths_helper", lambda self: ["/repo"], raising=True
+            app_module,
+            "_get_all_repo_paths_helper",
+            lambda self: ["/repo"],
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_get_roles_helper", lambda self: [{"name": "dev"}], raising=True
+            app_module,
+            "_get_roles_helper",
+            lambda self: [{"name": "dev"}],
+            raising=True,
         )
         monkeypatch.setattr(
             app_module,
@@ -201,7 +275,10 @@ class TestWrapperMethods:
             raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_get_all_nicknames_helper", lambda self: {"nick": "repo"}, raising=True
+            app_module,
+            "_get_all_nicknames_helper",
+            lambda self: {"nick": "repo"},
+            raising=True,
         )
         monkeypatch.setattr(
             app_module, "_is_healthy_helper", AsyncMock(return_value=True), raising=True
@@ -213,7 +290,10 @@ class TestWrapperMethods:
             raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_update_workflow_runtime_gauges_helper", lambda self: None, raising=True
+            app_module,
+            "_update_workflow_runtime_gauges_helper",
+            lambda self: None,
+            raising=True,
         )
 
         assert app._init_terminal_manager() == "terminal"
@@ -260,9 +340,9 @@ class TestWrapperMethods:
         assert app.get_role_by_name("dev") == {"name": "dev"}
         assert app.get_repos_by_role("dev") == [{"role": "dev"}]
         assert app.get_all_nicknames() == {"nick": "repo"}
-        assert MahavishnuApp.get_repo_nicknames({"nicknames": ["alpha"], "path": "/repo"}) == [
-            "alpha"
-        ]
+        assert MahavishnuApp.get_repo_nicknames(
+            {"nicknames": ["alpha"], "path": "/repo"}
+        ) == ["alpha"]
         assert asyncio.run(app.is_healthy()) is True
         assert asyncio.run(app.get_active_workflows()) == ["wf-1"]
         app._update_workflow_runtime_gauges()
@@ -272,13 +352,22 @@ class TestWrapperMethods:
         app = _make_app_instance()
 
         monkeypatch.setattr(
-            app_module, "_start_poller_helper", AsyncMock(return_value=None), raising=True
+            app_module,
+            "_start_poller_helper",
+            AsyncMock(return_value=None),
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_wait_for_dependencies_helper", AsyncMock(return_value=True), raising=True
+            app_module,
+            "_wait_for_dependencies_helper",
+            AsyncMock(return_value=True),
+            raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_stop_poller_helper", AsyncMock(return_value=None), raising=True
+            app_module,
+            "_stop_poller_helper",
+            AsyncMock(return_value=None),
+            raising=True,
         )
         monkeypatch.setattr(
             app_module,
@@ -287,7 +376,10 @@ class TestWrapperMethods:
             raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_stop_learning_pipeline_helper", AsyncMock(return_value=None), raising=True
+            app_module,
+            "_stop_learning_pipeline_helper",
+            AsyncMock(return_value=None),
+            raising=True,
         )
         monkeypatch.setattr(
             app_module,
@@ -380,7 +472,10 @@ class TestWrapperMethods:
             raising=True,
         )
         monkeypatch.setattr(
-            app_module, "_get_recovery_summary", AsyncMock(return_value={"ok": True}), raising=True
+            app_module,
+            "_get_recovery_summary",
+            AsyncMock(return_value={"ok": True}),
+            raising=True,
         )
 
         await app.start_poller()
@@ -391,17 +486,25 @@ class TestWrapperMethods:
         await app.initialize_worktree_coordinator()
         await app._recover_workflow_state_from_mcp()
         await app._recover_approvals_from_mcp()
-        assert await app._prepare_execution("prefect", {"type": "check"}, ["/repo"], None) == (
+        assert await app._prepare_execution(
+            "prefect", {"type": "check"}, ["/repo"], None
+        ) == (
             "adapter",
             ["/repo"],
         )
         await app._check_dependency_health()
         assert (
-            await app._initialize_workflow_state({"type": "check"}, "prefect", ["/repo"]) == "wf-1"
+            await app._initialize_workflow_state(
+                {"type": "check"}, "prefect", ["/repo"]
+            )
+            == "wf-1"
         )
         await app._validate_pre_execution_qc("wf-1", ["/repo"])
         assert (
-            await app._create_session_checkpoint({"type": "check"}, "prefect", ["/repo"]) == "cp-1"
+            await app._create_session_checkpoint(
+                {"type": "check"}, "prefect", ["/repo"]
+            )
+            == "cp-1"
         )
         assert await app._process_single_repo(
             "a", {"type": "check"}, "prefect", "wf-1", "/repo", 1, asyncio.Semaphore(1)
@@ -410,20 +513,27 @@ class TestWrapperMethods:
             "a", {"type": "check"}, "prefect", "wf-1", ["/repo"]
         ) == (1.0, [{"ok": True}], [])
         assert await app._finalize_workflow_execution(
-            "wf-1", "prefect", {"type": "check"}, ["/repo"], 1.0, [{"ok": True}], [], None
+            "wf-1",
+            "prefect",
+            {"type": "check"},
+            ["/repo"],
+            1.0,
+            [{"ok": True}],
+            [],
+            None,
         ) == {"status": "completed"}
         await app._handle_workflow_execution_error(
             "wf-1", "prefect", {"type": "check"}, ["/repo"], RuntimeError("boom"), None
         )
-        assert await app.execute_workflow_parallel({"type": "check"}, "prefect", ["/repo"]) == {
-            "status": "ok"
-        }
-        assert await app.execute_workflow_with_fallback({"type": "check"}, ["/repo"]) == {
-            "status": "ok"
-        }
-        assert await app.execute_workflow_with_routing({"type": "check"}, ["/repo"]) == {
-            "status": "ok"
-        }
+        assert await app.execute_workflow_parallel(
+            {"type": "check"}, "prefect", ["/repo"]
+        ) == {"status": "ok"}
+        assert await app.execute_workflow_with_fallback(
+            {"type": "check"}, ["/repo"]
+        ) == {"status": "ok"}
+        assert await app.execute_workflow_with_routing(
+            {"type": "check"}, ["/repo"]
+        ) == {"status": "ok"}
 
     @pytest.mark.asyncio
     async def test_execute_workflow_success_and_error(self, monkeypatch):
@@ -432,8 +542,12 @@ class TestWrapperMethods:
         adapter.execute = AsyncMock(return_value={"status": "ok"})
         workflow_counter = MagicMock(add=MagicMock())
         app.observability = MagicMock()
-        app.observability.create_workflow_counter = MagicMock(return_value=workflow_counter)
-        app.observability.create_error_counter = MagicMock(return_value=MagicMock(add=MagicMock()))
+        app.observability.create_workflow_counter = MagicMock(
+            return_value=workflow_counter
+        )
+        app.observability.create_error_counter = MagicMock(
+            return_value=MagicMock(add=MagicMock())
+        )
         app.opensearch_integration = MagicMock()
         app.opensearch_integration.log_error = AsyncMock(return_value=None)
 

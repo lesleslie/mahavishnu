@@ -24,7 +24,12 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
-from mcp_common.websocket import MessageType, WebSocketMessage, WebSocketProtocol, WebSocketServer
+from mcp_common.websocket import (
+    MessageType,
+    WebSocketMessage,
+    WebSocketProtocol,
+    WebSocketServer,
+)
 from mcp_common.websocket.auth import WebSocketAuthenticator
 import pytest
 import websockets
@@ -186,7 +191,9 @@ def expired_jwt_token(jwt_authenticator: WebSocketAuthenticator) -> str:
         "exp": int(time.time()) - 3600,  # Expired 1 hour ago
         "iat": int(time.time()) - 7200,
     }
-    return jwt.encode(payload, jwt_authenticator.secret, algorithm=jwt_authenticator.algorithm)
+    return jwt.encode(
+        payload, jwt_authenticator.secret, algorithm=jwt_authenticator.algorithm
+    )
 
 
 @pytest.fixture
@@ -234,7 +241,9 @@ async def auth_websocket_server(
             """Handle message."""
             if message.event == "refresh_token":
                 token = message.data.get("token")
-                user = self.authenticator.authenticate_connection(token) if token else None
+                user = (
+                    self.authenticator.authenticate_connection(token) if token else None
+                )
                 if user is None:
                     error = WebSocketProtocol.create_error(
                         error_code="AUTH_FAILED",
@@ -259,7 +268,11 @@ async def auth_websocket_server(
                 channel = message.data.get("channel")
                 if channel:
                     connection_id = next(
-                        (cid for cid, ws in self.connections.items() if ws is websocket),
+                        (
+                            cid
+                            for cid, ws in self.connections.items()
+                            if ws is websocket
+                        ),
                         None,
                     )
                     if connection_id:
@@ -338,7 +351,11 @@ async def simple_websocket_server(temp_certificate: tuple[str, str]) -> WebSocke
                 channel = message.data.get("channel")
                 if channel:
                     connection_id = next(
-                        (cid for cid, ws in self.connections.items() if ws is websocket),
+                        (
+                            cid
+                            for cid, ws in self.connections.items()
+                            if ws is websocket
+                        ),
                         None,
                     )
                     if connection_id:
@@ -640,7 +657,9 @@ class TestTLSConnections:
 
         # Check subject
         subject = cert.subject
-        assert subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value == "localhost"
+        assert (
+            subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value == "localhost"
+        )
 
     async def test_tls_cipher_suites(
         self,
@@ -651,7 +670,9 @@ class TestTLSConnections:
 
         # Create SSL context with only secure ciphers
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ssl_context.set_ciphers("ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256")
+        ssl_context.set_ciphers(
+            "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256"
+        )
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
 
@@ -884,7 +905,11 @@ class TestCrossServiceCommunication:
                     channel = msg.data.get("channel")
                     if channel:
                         connection_id = next(
-                            (cid for cid, socket in self.connections.items() if socket is ws),
+                            (
+                                cid
+                                for cid, socket in self.connections.items()
+                                if socket is ws
+                            ),
                             None,
                         )
                         if connection_id:

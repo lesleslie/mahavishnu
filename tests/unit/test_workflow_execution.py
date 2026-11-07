@@ -133,7 +133,9 @@ class TestInitializeWorkflowState:
         adapter_name = "prefect"
         validated_repos = ["/repo/a"]
 
-        workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
+        workflow_id = await initialize_workflow_state(
+            app, task, adapter_name, validated_repos
+        )
 
         assert workflow_id is not None
         assert workflow_id.startswith("wf_")
@@ -159,7 +161,9 @@ class TestInitializeWorkflowState:
         adapter_name = "prefect"
         validated_repos = ["/repo/a"]
 
-        workflow_id = await initialize_workflow_state(app, task, adapter_name, validated_repos)
+        workflow_id = await initialize_workflow_state(
+            app, task, adapter_name, validated_repos
+        )
 
         assert workflow_id in app.active_workflows
 
@@ -244,7 +248,9 @@ class TestCreateSessionCheckpoint:
         app = _make_mock_app()
         app.config.session.enabled = False
 
-        result = await create_session_checkpoint(app, {"id": "task_1"}, "prefect", ["/repo/a"])
+        result = await create_session_checkpoint(
+            app, {"id": "task_1"}, "prefect", ["/repo/a"]
+        )
 
         assert result is None
 
@@ -752,7 +758,9 @@ class TestWorkflowExecutionErrorHandling:
         app.adapters = {}
 
         with pytest.raises(Exception) as exc_info:
-            await prepare_execution(app, "missing", {"type": "check"}, ["/repo/a"], None)
+            await prepare_execution(
+                app, "missing", {"type": "check"}, ["/repo/a"], None
+            )
 
         error_message = str(exc_info.value)
         assert "Adapter not found" in error_message
@@ -761,12 +769,16 @@ class TestWorkflowExecutionErrorHandling:
 
 class TestWorkflowExecutionCoverageAdditions:
     @pytest.mark.asyncio
-    async def test_prepare_execution_uses_get_repos_and_checks_permissions(self, monkeypatch):
+    async def test_prepare_execution_uses_get_repos_and_checks_permissions(
+        self, monkeypatch
+    ):
         app = _make_mock_app()
         app.get_repos = MagicMock(return_value=["/repo/a"])
         app.rbac_manager.check_permission = AsyncMock(return_value=True)
 
-        monkeypatch.setattr(we, "validate_path", lambda path, allowed: Path(path), raising=True)
+        monkeypatch.setattr(
+            we, "validate_path", lambda path, allowed: Path(path), raising=True
+        )
         monkeypatch.setattr(
             we, "check_dependency_health", AsyncMock(return_value=None), raising=True
         )
@@ -794,10 +806,14 @@ class TestWorkflowExecutionCoverageAdditions:
     async def test_prepare_execution_permission_denied(self, monkeypatch):
         app = _make_mock_app()
         app.rbac_manager.check_permission = AsyncMock(return_value=False)
-        monkeypatch.setattr(we, "validate_path", lambda path, allowed: Path(path), raising=True)
+        monkeypatch.setattr(
+            we, "validate_path", lambda path, allowed: Path(path), raising=True
+        )
 
         with pytest.raises(ValidationError, match="does not have permission"):
-            await prepare_execution(app, "prefect", {"type": "check"}, ["/repo/a"], "user-1")
+            await prepare_execution(
+                app, "prefect", {"type": "check"}, ["/repo/a"], "user-1"
+            )
 
     @pytest.mark.asyncio
     async def test_check_dependency_health_session_warning(self, caplog):
@@ -853,7 +869,9 @@ class TestWorkflowExecutionCoverageAdditions:
         app.observability = MagicMock()
         app.observability.create_workflow_counter = MagicMock(return_value=None)
         app.observability.create_repo_counter = MagicMock(return_value=None)
-        app.observability.create_error_counter = MagicMock(return_value=MagicMock(add=MagicMock()))
+        app.observability.create_error_counter = MagicMock(
+            return_value=MagicMock(add=MagicMock())
+        )
         app.observability.start_workflow_trace = MagicMock()
         app.observability.start_workflow_trace.return_value.__enter__ = MagicMock()
         app.observability.start_workflow_trace.return_value.__exit__ = MagicMock()
@@ -863,7 +881,9 @@ class TestWorkflowExecutionCoverageAdditions:
                 return RuntimeError("boom")
             return {"repo": kwargs["repo_path"]}
 
-        monkeypatch.setattr(we, "process_single_repo", fake_process_single_repo, raising=True)
+        monkeypatch.setattr(
+            we, "process_single_repo", fake_process_single_repo, raising=True
+        )
 
         execution_time, results, errors = await execute_parallel_workflow(
             app,
@@ -918,23 +938,34 @@ class TestWorkflowExecutionCoverageAdditions:
         app.session_buddy.update_checkpoint.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_execute_workflow_with_fallback_success_and_failure(self, monkeypatch):
+    async def test_execute_workflow_with_fallback_success_and_failure(
+        self, monkeypatch
+    ):
         app = _make_mock_app()
         app._persist_workflow_start = MagicMock()
         app._persist_workflow_end = MagicMock()
         fake_router = MagicMock()
-        fake_router.generate_fallback_chain.return_value = [AdapterType.AGNO, AdapterType.PREFECT]
+        fake_router.generate_fallback_chain.return_value = [
+            AdapterType.AGNO,
+            AdapterType.PREFECT,
+        ]
         monkeypatch.setattr(we, "TaskRouter", lambda: fake_router, raising=True)
-        app.execute_workflow_parallel = AsyncMock(side_effect=[RuntimeError("boom"), {"ok": True}])
+        app.execute_workflow_parallel = AsyncMock(
+            side_effect=[RuntimeError("boom"), {"ok": True}]
+        )
 
-        result = await execute_workflow_with_fallback(app, {"type": "ai_task"}, ["/repo/a"])
+        result = await execute_workflow_with_fallback(
+            app, {"type": "ai_task"}, ["/repo/a"]
+        )
         assert result["success"] is True
         assert result["adapter_used"] == AdapterType.PREFECT.value
 
         app.execute_workflow_parallel = AsyncMock(
             side_effect=[RuntimeError("boom"), RuntimeError("oops")]
         )
-        result = await execute_workflow_with_fallback(app, {"type": "ai_task"}, ["/repo/a"])
+        result = await execute_workflow_with_fallback(
+            app, {"type": "ai_task"}, ["/repo/a"]
+        )
         assert result["success"] is False
         assert len(result["errors"]) == 2
 
@@ -945,7 +976,11 @@ class TestWorkflowExecutionCoverageAdditions:
         app.execute_workflow_parallel = AsyncMock(return_value={"success": True})
 
         result = await execute_workflow_with_routing(
-            app, {"type": "ai_task"}, ["/repo/a"], routing_strategy="balanced", enable_fallback=True
+            app,
+            {"type": "ai_task"},
+            ["/repo/a"],
+            routing_strategy="balanced",
+            enable_fallback=True,
         )
         assert result["success"] is True
         app.execute_workflow_with_fallback.assert_awaited_once()
@@ -969,13 +1004,19 @@ class TestWorkflowExecutionCoverageAdditions:
         app._prepare_execution = AsyncMock(return_value=(MagicMock(), ["/repo/a"]))
 
         monkeypatch.setattr(
-            we, "initialize_workflow_state", AsyncMock(return_value="wf_123"), raising=True
+            we,
+            "initialize_workflow_state",
+            AsyncMock(return_value="wf_123"),
+            raising=True,
         )
         monkeypatch.setattr(
             we, "validate_pre_execution_qc", AsyncMock(return_value=None), raising=True
         )
         monkeypatch.setattr(
-            we, "create_session_checkpoint", AsyncMock(return_value="cp_123"), raising=True
+            we,
+            "create_session_checkpoint",
+            AsyncMock(return_value="cp_123"),
+            raising=True,
         )
         monkeypatch.setattr(
             we,
@@ -1005,13 +1046,19 @@ class TestWorkflowExecutionCoverageAdditions:
         app._prepare_execution = AsyncMock(return_value=(MagicMock(), ["/repo/a"]))
 
         monkeypatch.setattr(
-            we, "initialize_workflow_state", AsyncMock(return_value="wf_123"), raising=True
+            we,
+            "initialize_workflow_state",
+            AsyncMock(return_value="wf_123"),
+            raising=True,
         )
         monkeypatch.setattr(
             we, "validate_pre_execution_qc", AsyncMock(return_value=None), raising=True
         )
         monkeypatch.setattr(
-            we, "create_session_checkpoint", AsyncMock(return_value="cp_123"), raising=True
+            we,
+            "create_session_checkpoint",
+            AsyncMock(return_value="cp_123"),
+            raising=True,
         )
         monkeypatch.setattr(
             we,
@@ -1020,7 +1067,9 @@ class TestWorkflowExecutionCoverageAdditions:
             raising=True,
         )
         handle_error = AsyncMock(return_value=None)
-        monkeypatch.setattr(we, "handle_workflow_execution_error", handle_error, raising=True)
+        monkeypatch.setattr(
+            we, "handle_workflow_execution_error", handle_error, raising=True
+        )
 
         result = await we.execute_workflow_parallel(
             app=app,

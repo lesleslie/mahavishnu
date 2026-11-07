@@ -28,12 +28,14 @@ class _Metric:
 def _make_app(**kwargs):
     app = SimpleNamespace(
         config=SimpleNamespace(
-            allowed_repo_paths=kwargs.get("allowed_repo_paths", []), max_concurrent_workflows=4
+            allowed_repo_paths=kwargs.get("allowed_repo_paths", []),
+            max_concurrent_workflows=4,
         ),
         repos_config=kwargs.get("repos_config", {"repos": [], "roles": []}),
         _mcp_state=kwargs.get("_mcp_state"),
         rbac_manager=kwargs.get(
-            "rbac_manager", SimpleNamespace(check_permission=AsyncMock(return_value=True))
+            "rbac_manager",
+            SimpleNamespace(check_permission=AsyncMock(return_value=True)),
         ),
         adapters=kwargs.get("adapters", {}),
         workflow_state_manager=kwargs.get("workflow_state_manager", AsyncMock()),
@@ -59,7 +61,10 @@ class TestValidatePath:
     def test_allows_safe_path(self, tmp_path):
         safe = tmp_path / "safe.txt"
         safe.write_text("ok")
-        assert rs.validate_path(str(safe), allowed_base_paths=[str(tmp_path)]) == safe.resolve()
+        assert (
+            rs.validate_path(str(safe), allowed_base_paths=[str(tmp_path)])
+            == safe.resolve()
+        )
 
 
 class TestWorkflowPersistence:
@@ -100,13 +105,18 @@ class TestRepoFiltering:
         app = _make_app(allowed_repo_paths=[str(tmp_path)])
         logger = MagicMock()
 
-        assert rs._collect_valid_repo(app, str(repo), None, logger) == str(repo.resolve())
+        assert rs._collect_valid_repo(app, str(repo), None, logger) == str(
+            repo.resolve()
+        )
 
         missing = tmp_path / "missing"
         assert rs._collect_valid_repo(app, str(missing), None, logger) is None
 
         monkeypatch.setattr(
-            rs, "check_user_repo_permission", lambda *args, **kwargs: False, raising=True
+            rs,
+            "check_user_repo_permission",
+            lambda *args, **kwargs: False,
+            raising=True,
         )
         assert rs._collect_valid_repo(app, str(repo), "user-1", logger) is None
 
@@ -138,7 +148,10 @@ class TestRepoFiltering:
             rs.get_repos(app, role="ops")
 
         monkeypatch.setattr(
-            rs, "_collect_valid_repo", lambda *args, **kwargs: str(repo.resolve()), raising=True
+            rs,
+            "_collect_valid_repo",
+            lambda *args, **kwargs: str(repo.resolve()),
+            raising=True,
         )
         assert rs.get_repos(app, tag="python", role="dev") == [str(repo.resolve())]
 
@@ -148,7 +161,9 @@ class TestPermissions:
         async def _check_permission(user_id, repo_path, permission):
             return True
 
-        app = _make_app(rbac_manager=SimpleNamespace(check_permission=_check_permission))
+        app = _make_app(
+            rbac_manager=SimpleNamespace(check_permission=_check_permission)
+        )
         monkeypatch.setattr(asyncio, "get_running_loop", lambda: object(), raising=True)
 
         class _Future:
@@ -169,7 +184,10 @@ class TestPermissions:
                 return _Future(fn(*args, **kwargs))
 
         monkeypatch.setattr(
-            rs.concurrent.futures, "ThreadPoolExecutor", lambda: _Executor(), raising=True
+            rs.concurrent.futures,
+            "ThreadPoolExecutor",
+            lambda: _Executor(),
+            raising=True,
         )
 
         assert rs.check_user_repo_permission(app, "u1", "/repo") is True
@@ -178,7 +196,9 @@ class TestPermissions:
         async def _check_permission(user_id, repo_path, permission):
             return False
 
-        app = _make_app(rbac_manager=SimpleNamespace(check_permission=_check_permission))
+        app = _make_app(
+            rbac_manager=SimpleNamespace(check_permission=_check_permission)
+        )
         monkeypatch.setattr(
             asyncio,
             "get_running_loop",
@@ -221,12 +241,16 @@ class TestAccessors:
         assert rs.get_role_by_name(app, "missing") is None
         with pytest.raises(ValidationError, match="Invalid role"):
             rs.get_repos_by_role(app, "missing")
-        assert rs.get_repos_by_role(app, "dev") == [{"path": "a", "name": "repo-a", "role": "dev"}]
+        assert rs.get_repos_by_role(app, "dev") == [
+            {"path": "a", "name": "repo-a", "role": "dev"}
+        ]
 
     def test_all_nicknames(self):
         app = _make_app(
             repos_config={
-                "repos": [{"path": "a", "name": "repo-a", "nicknames": ["alpha", "beta"]}]
+                "repos": [
+                    {"path": "a", "name": "repo-a", "nicknames": ["alpha", "beta"]}
+                ]
             }
         )
         assert rs.get_all_nicknames(app) == {"alpha": "repo-a", "beta": "repo-a"}
@@ -238,7 +262,9 @@ class TestHealthAndMetrics:
         app = _make_app(adapters={})
         assert await rs.is_healthy(app) is False
 
-        healthy_adapter = SimpleNamespace(get_health=AsyncMock(return_value={"status": "healthy"}))
+        healthy_adapter = SimpleNamespace(
+            get_health=AsyncMock(return_value={"status": "healthy"})
+        )
         unhealthy_adapter = SimpleNamespace(
             get_health=AsyncMock(return_value={"status": "degraded"})
         )
@@ -247,7 +273,9 @@ class TestHealthAndMetrics:
         app = _make_app(adapters={"a": healthy_adapter})
         assert await rs.is_healthy(app) is True
 
-        boom_adapter = SimpleNamespace(get_health=AsyncMock(side_effect=RuntimeError("boom")))
+        boom_adapter = SimpleNamespace(
+            get_health=AsyncMock(side_effect=RuntimeError("boom"))
+        )
         app = _make_app(adapters={"a": boom_adapter})
         assert await rs.is_healthy(app) is False
 

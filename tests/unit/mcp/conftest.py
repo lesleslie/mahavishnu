@@ -26,7 +26,11 @@ def _restore_real_mcp() -> None:
     if mcp_types_missing:
         # Evict any stub or partial mcp modules
         for key in list(sys.modules.keys()):
-            if key == "mcp" or key.startswith("mcp.") or key.startswith("fastmcp.server"):
+            if (
+                key == "mcp"
+                or key.startswith("mcp.")
+                or key.startswith("fastmcp.server")
+            ):
                 del sys.modules[key]
 
         try:

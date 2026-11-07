@@ -41,7 +41,9 @@ class TestResolveMcpUrl:
     def test_health_dependency_overrides_the_own_server_url(self) -> None:
         config = SimpleNamespace(
             health=SimpleNamespace(
-                dependencies={"mcp": SimpleNamespace(host="mcp.internal", port=9999, use_tls=True)}
+                dependencies={
+                    "mcp": SimpleNamespace(host="mcp.internal", port=9999, use_tls=True)
+                }
             ),
             tools=SimpleNamespace(mcp_server_url="http://localhost:8680/mcp"),
         )
@@ -101,7 +103,9 @@ class TestAnalyticsHasNoWriter:
         adapter = MCPAdapter(base_url="http://localhost:8680/mcp")
 
         with pytest.raises(NoAnalyticsWriterError) as excinfo:
-            await adapter.query_time_series(metric_type="git_velocity", entity_id="/repo")
+            await adapter.query_time_series(
+                metric_type="git_velocity", entity_id="/repo"
+            )
 
         assert "git_velocity" in str(excinfo.value)
         assert "writer" in str(excinfo.value)

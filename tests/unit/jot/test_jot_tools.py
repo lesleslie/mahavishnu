@@ -1,4 +1,5 @@
 """MCP tools return TypedDicts (R11, TD-B1, TD-H5)."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -16,7 +17,13 @@ from mahavishnu.jot.paths import log_path as default_log_path
 # currently imports sibling WIP modules that aren't on disk). Direct file
 # import avoids triggering the broken __init__.py while still exercising
 # the module's full top-level wrapper code.
-_jot_tools_path = Path(__file__).resolve().parents[3] / "mahavishnu" / "mcp" / "tools" / "jot_tools.py"
+_jot_tools_path = (
+    Path(__file__).resolve().parents[3]
+    / "mahavishnu"
+    / "mcp"
+    / "tools"
+    / "jot_tools.py"
+)
 _spec = importlib.util.spec_from_file_location("jot_tools_under_test", _jot_tools_path)
 jot_tools = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
 sys.modules[_spec.name] = jot_tools
@@ -25,7 +32,8 @@ _spec.loader.exec_module(jot_tools)  # type: ignore[union-attr]
 
 @pytest.fixture(autouse=True)
 def _redirect_to_tmp(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """Redirect jot files to tmp_path and seed a fixed node ID.
 
@@ -48,9 +56,12 @@ def _seed(events: list[JotEvent]) -> None:
 
 def _capture(event_id: str, text: str, wall_ms: int) -> JotEvent:
     return JotEvent(
-        id=event_id.ljust(32, "0"), op="capture",
+        id=event_id.ljust(32, "0"),
+        op="capture",
         hlc=HLC(wall_ms=wall_ms, ctr=0, node="a" * 8),
-        text=text, ctx={}, created_ms=wall_ms,
+        text=text,
+        ctx={},
+        created_ms=wall_ms,
     )
 
 
@@ -59,7 +70,13 @@ def test_jot_list_returns_list_of_typed_dicts(tmp_path: Path) -> None:
     result = jot_tools.jot_list.fn(status=None, limit=50)  # access underlying fn
     assert isinstance(result, list)
     assert isinstance(result[0], dict)
-    assert set(result[0].keys()) >= {"id", "short_id", "text", "status", "last_modified_ms"}
+    assert set(result[0].keys()) >= {
+        "id",
+        "short_id",
+        "text",
+        "status",
+        "last_modified_ms",
+    }
 
 
 def test_jot_show_returns_typed_dict_with_ctx(tmp_path: Path) -> None:
@@ -93,10 +110,12 @@ def test_jot_add_returns_the_jot_it_just_created(tmp_path: Path) -> None:
 
 def test_jot_edit_returns_the_edited_jot(tmp_path: Path) -> None:
     """``jot_edit`` must return the jot it edited, not the oldest one."""
-    _seed([
-        _capture("a" * 32, "v1", wall_ms=1),
-        _capture("b" * 32, "other jot", wall_ms=2),
-    ])
+    _seed(
+        [
+            _capture("a" * 32, "v1", wall_ms=1),
+            _capture("b" * 32, "other jot", wall_ms=2),
+        ]
+    )
     result = jot_tools.jot_edit.fn(handle="a" * 6, new_text="v2")
     assert result["id"] == "a" * 32
     assert result["text"] == "v2"
@@ -104,10 +123,12 @@ def test_jot_edit_returns_the_edited_jot(tmp_path: Path) -> None:
 
 def test_jot_done_returns_the_jot_it_marked_done(tmp_path: Path) -> None:
     """``jot_done`` must return the jot it marked done."""
-    _seed([
-        _capture("a" * 32, "first", wall_ms=1),
-        _capture("b" * 32, "second", wall_ms=2),
-    ])
+    _seed(
+        [
+            _capture("a" * 32, "first", wall_ms=1),
+            _capture("b" * 32, "second", wall_ms=2),
+        ]
+    )
     result = jot_tools.jot_done.fn(handle="a" * 6)
     assert result["id"] == "a" * 32
     assert result["status"] == "done"
@@ -115,15 +136,20 @@ def test_jot_done_returns_the_jot_it_marked_done(tmp_path: Path) -> None:
 
 def test_jot_reopen_returns_the_jot_it_reopened(tmp_path: Path) -> None:
     """``jot_reopen`` must return the jot it reopened."""
-    _seed([
-        _capture("a" * 32, "first", wall_ms=1),
-        JotEvent(
-            id="a" * 32, op="done",
-            hlc=HLC(wall_ms=2, ctr=0, node="a" * 8),
-            text="", ctx={}, created_ms=2,
-        ),
-        _capture("b" * 32, "second", wall_ms=3),
-    ])
+    _seed(
+        [
+            _capture("a" * 32, "first", wall_ms=1),
+            JotEvent(
+                id="a" * 32,
+                op="done",
+                hlc=HLC(wall_ms=2, ctr=0, node="a" * 8),
+                text="",
+                ctx={},
+                created_ms=2,
+            ),
+            _capture("b" * 32, "second", wall_ms=3),
+        ]
+    )
     result = jot_tools.jot_reopen.fn(handle="a" * 6)
     assert result["id"] == "a" * 32
     assert result["status"] == "open"
@@ -133,15 +159,20 @@ def test_jot_vitals_returns_counts(tmp_path: Path) -> None:
     # Brief's body seeds two captures; we additionally append a done event
     # for the second jot so the fold transitions one to "done" — otherwise
     # both captures remain status="open" and the assertion below fails.
-    _seed([
-        _capture("a" * 32, "open", wall_ms=1),
-        _capture("b" * 32, "done", wall_ms=2),
-        JotEvent(
-            id="b" * 32, op="done",
-            hlc=HLC(wall_ms=3, ctr=0, node="a" * 8),
-            text="", ctx={}, created_ms=3,
-        ),
-    ])
+    _seed(
+        [
+            _capture("a" * 32, "open", wall_ms=1),
+            _capture("b" * 32, "done", wall_ms=2),
+            JotEvent(
+                id="b" * 32,
+                op="done",
+                hlc=HLC(wall_ms=3, ctr=0, node="a" * 8),
+                text="",
+                ctx={},
+                created_ms=3,
+            ),
+        ]
+    )
     result = jot_tools.jot_vitals.fn()
     assert result["open"] == 1
     assert result["done"] == 1
@@ -153,10 +184,12 @@ def test_jot_vitals_returns_counts(tmp_path: Path) -> None:
 
 
 def test_jot_search_returns_substring_matches(tmp_path: Path) -> None:
-    _seed([
-        _capture("a" * 32, "refactor fold", wall_ms=1),
-        _capture("b" * 32, "investigate", wall_ms=2),
-    ])
+    _seed(
+        [
+            _capture("a" * 32, "refactor fold", wall_ms=1),
+            _capture("b" * 32, "investigate", wall_ms=2),
+        ]
+    )
     result = jot_tools.jot_search.fn(query="fold", limit=20)
     assert len(result) == 1
     assert "refactor" in result[0]["text"]
@@ -201,7 +234,10 @@ def test_jot_tools_module_importable_without_fastmcp(tmp_path: Path) -> None:
 
     jot_tools_path = (
         Path(__file__).resolve().parents[3]
-        / "mahavishnu" / "mcp" / "tools" / "jot_tools.py"
+        / "mahavishnu"
+        / "mcp"
+        / "tools"
+        / "jot_tools.py"
     )
     module_name = "jot_tools_no_fastmcp_under_test"
     spec = _ilu.spec_from_file_location(module_name, jot_tools_path)

@@ -114,9 +114,15 @@ def load_catalog_snapshot(ecosystem_path: Path) -> CatalogSnapshot:
         workflow_count=len(data.get("workflows", {}))
         if isinstance(data.get("workflows", {}), dict)
         else 0,
-        skill_count=len(data.get("skills", {})) if isinstance(data.get("skills", {}), dict) else 0,
-        tool_count=len(data.get("tools", {})) if isinstance(data.get("tools", {}), dict) else 0,
-        role_count=len(data.get("roles", [])) if isinstance(data.get("roles", []), list) else 0,
+        skill_count=len(data.get("skills", {}))
+        if isinstance(data.get("skills", {}), dict)
+        else 0,
+        tool_count=len(data.get("tools", {}))
+        if isinstance(data.get("tools", {}), dict)
+        else 0,
+        role_count=len(data.get("roles", []))
+        if isinstance(data.get("roles", []), list)
+        else 0,
     )
 
 
@@ -200,7 +206,9 @@ def build_audit_report(
     issues = audit_catalog_snapshot(snapshot, docs_path)
     issues.extend(audit_health_probe_metadata(ecosystem_data))
     repos = [
-        repo for repo in ecosystem_data.get("repos", []) if repo.get("status", "active") == "active"
+        repo
+        for repo in ecosystem_data.get("repos", [])
+        if repo.get("status", "active") == "active"
     ]
     summaries = [summarize_repo(repo) for repo in repos]
     return snapshot, issues, summaries
@@ -359,9 +367,15 @@ def summarize_repo(repo: dict[str, Any]) -> RepoDocsSummary:
             if docs_exists
             else []
         ),
-        backup_like_paths=sorted(repo_relative(path, repo_path) for path in backup_like_files),
-        generated_paths=sorted(repo_relative(path, repo_path) for path in generated_files),
-        stale_root_paths=sorted(repo_relative(path, repo_path) for path in stale_root_candidates),
+        backup_like_paths=sorted(
+            repo_relative(path, repo_path) for path in backup_like_files
+        ),
+        generated_paths=sorted(
+            repo_relative(path, repo_path) for path in generated_files
+        ),
+        stale_root_paths=sorted(
+            repo_relative(path, repo_path) for path in stale_root_candidates
+        ),
         recommendations=recommendations,
     )
 
@@ -394,7 +408,11 @@ def render_text(
                 lines.append(f"  - {issue}")
         lines.append("")
     for summary in summaries:
-        status = "OK" if summary.has_docs_readme and not summary.backup_like_files else "CHECK"
+        status = (
+            "OK"
+            if summary.has_docs_readme and not summary.backup_like_files
+            else "CHECK"
+        )
         lines.append(
             f"{status:5} {summary.name:14} files={summary.total_files:<4} "
             f"md={summary.markdown_files:<4} archive={summary.archive_files:<4} "
@@ -506,7 +524,11 @@ def _render_markdown_cleanup_candidates(summaries: list[RepoDocsSummary]) -> lis
     for summary in summaries:
         lines.append(f"### {summary.name}")
         lines.append("")
-        if not (summary.backup_like_paths or summary.generated_paths or summary.stale_root_paths):
+        if not (
+            summary.backup_like_paths
+            or summary.generated_paths
+            or summary.stale_root_paths
+        ):
             lines.append("- no detailed candidates")
             lines.append("")
             continue
@@ -576,7 +598,9 @@ def main() -> int:
             catalog_issues=catalog_issues,
         )
     else:
-        rendered = render_text(summaries, catalog=catalog, catalog_issues=catalog_issues)
+        rendered = render_text(
+            summaries, catalog=catalog, catalog_issues=catalog_issues
+        )
 
     if args.write:
         args.write.parent.mkdir(parents=True, exist_ok=True)

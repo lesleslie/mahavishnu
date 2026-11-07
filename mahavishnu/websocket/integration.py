@@ -87,14 +87,20 @@ async def start_websocket_server(
             tls_enabled = _raw_tls_enabled.lower() in ("true", "1", "yes", "on")
         else:
             tls_enabled = None
-        cert_file = env_tls["cert_file"] if isinstance(env_tls["cert_file"], str) else cert_file
-        key_file = env_tls["key_file"] if isinstance(env_tls["key_file"], str) else key_file
+        cert_file = (
+            env_tls["cert_file"] if isinstance(env_tls["cert_file"], str) else cert_file
+        )
+        key_file = (
+            env_tls["key_file"] if isinstance(env_tls["key_file"], str) else key_file
+        )
         ca_file = env_tls["ca_file"] if isinstance(env_tls["ca_file"], str) else ca_file
         _raw_verify = env_tls.get("verify_client", False)
         if isinstance(_raw_verify, bool):
             verify_client = bool(verify_client or _raw_verify)
         elif isinstance(_raw_verify, str):
-            verify_client = bool(verify_client or _raw_verify.lower() in ("true", "1", "yes", "on"))
+            verify_client = bool(
+                verify_client or _raw_verify.lower() in ("true", "1", "yes", "on")
+            )
         else:
             verify_client = bool(verify_client)
 
@@ -119,7 +125,9 @@ async def start_websocket_server(
 
         if event_transport is not None:
             dlq_handler = (
-                DLQEventHandler(dead_letter_queue) if dead_letter_queue is not None else None
+                DLQEventHandler(dead_letter_queue)
+                if dead_letter_queue is not None
+                else None
             )
             websocket_handler = RetryingEventEnvelopeHandler(
                 handler=server,
@@ -314,7 +322,9 @@ class WebSocketBroadcaster:
 
     async def workflow_started(self, workflow_id: str, metadata: dict) -> bool:
         """Broadcast workflow started event."""
-        return await broadcast_workflow_event(self.server, "started", workflow_id, metadata)
+        return await broadcast_workflow_event(
+            self.server, "started", workflow_id, metadata
+        )
 
     async def workflow_stage_completed(
         self, workflow_id: str, stage_name: str, result: dict
@@ -329,17 +339,25 @@ class WebSocketBroadcaster:
 
     async def workflow_completed(self, workflow_id: str, result: dict) -> bool:
         """Broadcast workflow completed event."""
-        return await broadcast_workflow_event(self.server, "completed", workflow_id, result)
+        return await broadcast_workflow_event(
+            self.server, "completed", workflow_id, result
+        )
 
     async def workflow_failed(self, workflow_id: str, error: str) -> bool:
         """Broadcast workflow failed event."""
-        return await broadcast_workflow_event(self.server, "failed", workflow_id, {"error": error})
+        return await broadcast_workflow_event(
+            self.server, "failed", workflow_id, {"error": error}
+        )
 
     async def pool_status_changed(self, pool_id: str, status: dict) -> bool:
         """Broadcast pool status changed event."""
-        return await broadcast_pool_event(self.server, "status_changed", pool_id, status)
+        return await broadcast_pool_event(
+            self.server, "status_changed", pool_id, status
+        )
 
-    async def worker_status_changed(self, worker_id: str, status: str, pool_id: str) -> bool:
+    async def worker_status_changed(
+        self, worker_id: str, status: str, pool_id: str
+    ) -> bool:
         """Broadcast worker status changed event."""
         return await broadcast_pool_event(
             self.server,

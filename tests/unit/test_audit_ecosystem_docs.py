@@ -142,7 +142,12 @@ def test_load_catalog_snapshot_counts_roles_and_repos(tmp_path: Path) -> None:
             "description": "test",
             "repos": [
                 {"name": "repo-a", "path": "/tmp/a", "role": "orchestrator"},
-                {"name": "repo-b", "path": "/tmp/b", "role": "manager", "status": "disabled"},
+                {
+                    "name": "repo-b",
+                    "path": "/tmp/b",
+                    "role": "manager",
+                    "status": "disabled",
+                },
             ],
             "mcp_servers": [],
             "claude_agents": {"a": {}, "b": {}},

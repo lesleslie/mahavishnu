@@ -36,7 +36,16 @@ def _looks_like_plugin_file(name: str) -> bool:
         return False
     if name_lower in ("__init__.py", "setup.py", "conftest.py"):
         return False
-    indicators = ("plugin", "hook", "extension", "addon", "crackerjack", "check", "lint", "format")
+    indicators = (
+        "plugin",
+        "hook",
+        "extension",
+        "addon",
+        "crackerjack",
+        "check",
+        "lint",
+        "format",
+    )
     return any(i in name_lower for i in indicators)
 
 
@@ -65,7 +74,9 @@ def test_plugin_json_parses_and_has_required_top_level_keys() -> None:
     config = json.loads(PLUGIN_PATH.read_text(encoding="utf-8"))
     for key in ("name", "version", "type", "description", "hooks"):
         assert key in config, f"Plugin config missing top-level key: {key}"
-    assert config["type"] == "hook", f"Plugin type must be 'hook', got {config['type']!r}"
+    assert config["type"] == "hook", (
+        f"Plugin type must be 'hook', got {config['type']!r}"
+    )
 
 
 def test_plugin_hook_schema_matches_crackerjack_loader() -> None:

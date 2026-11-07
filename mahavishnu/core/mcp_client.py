@@ -112,7 +112,9 @@ class MCPThinClient:
         if not isinstance(result, dict):
             # The proxy contract is a dict. Surface unexpected shapes so
             # callers don't silently consume garbage.
-            raise MCPProxyError(f"sql_proxy_execute returned non-dict: {type(result).__name__}")
+            raise MCPProxyError(
+                f"sql_proxy_execute returned non-dict: {type(result).__name__}"
+            )
         return result
 
     async def query(
@@ -133,7 +135,9 @@ class MCPThinClient:
                 value = result.get(key)
                 if isinstance(value, list):
                     return value
-        raise MCPProxyError(f"sql_proxy_query returned unexpected shape: {type(result).__name__}")
+        raise MCPProxyError(
+            f"sql_proxy_query returned unexpected shape: {type(result).__name__}"
+        )
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client if this instance owns it.
@@ -159,7 +163,9 @@ class MCPThinClient:
             return await self._invoke_via_adapter(tool_name, arguments)
         return await self._invoke_via_http(tool_name, arguments)
 
-    async def _invoke_via_adapter(self, tool_name: str, arguments: dict[str, Any]) -> Any:
+    async def _invoke_via_adapter(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> Any:
         """Call the tool through the registered adapter."""
         if self._adapter is None:
             raise MCPProxyError(
@@ -181,7 +187,9 @@ class MCPThinClient:
         """Call the tool through the direct MCP client."""
         if self._client is None:
             # Defensive: someone called after aclose(). Re-open on demand.
-            self._client = CommonMCPClient(base_url=self.base_url, timeout=self.timeout, token=None)
+            self._client = CommonMCPClient(
+                base_url=self.base_url, timeout=self.timeout, token=None
+            )
 
         try:
             return await self._client.call_tool(tool_name, arguments)

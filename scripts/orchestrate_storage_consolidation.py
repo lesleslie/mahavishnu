@@ -87,7 +87,9 @@ class WorkstreamTask:
             "result": self.result,
             "error": self.error,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
         }
 
 
@@ -377,7 +379,11 @@ class OrchestrationCoordinator:
 
         self._broadcast_websocket(
             "task_started",
-            {"task_id": task.id, "name": task.name, "workstream": task.workstream.value},
+            {
+                "task_id": task.id,
+                "name": task.name,
+                "workstream": task.workstream.value,
+            },
         )
 
         if self.dry_run:
@@ -491,7 +497,9 @@ class OrchestrationCoordinator:
             "total_tasks": sum(p.total_tasks for p in self.workstreams.values()),
             "completed": total_completed,
             "failed": total_failed,
-            "workstreams": {ws.value: p.to_dict() for ws, p in self.workstreams.items()},
+            "workstreams": {
+                ws.value: p.to_dict() for ws, p in self.workstreams.items()
+            },
             "websocket_events": len(self.websocket_events),
             "message_bus_messages": len(self.message_bus),
         }

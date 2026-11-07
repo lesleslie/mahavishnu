@@ -30,6 +30,7 @@ Test cases mirror Task C.8 from
 - ``test_round_trip_empty_worktree`` — empty source dir still produces
   a valid tar.zst that deserializes to an empty target dir.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -115,9 +116,7 @@ def synthetic_worktree(tmp_path: Path) -> Path:
     # Files with content
     (root / "README.md").write_text("# Test worktree\n")
     (root / "src" / "main.py").write_text("print('hello')\n")
-    (root / "tests" / "test_main.py").write_text(
-        "def test_main(): assert True\n"
-    )
+    (root / "tests" / "test_main.py").write_text("def test_main(): assert True\n")
     return root
 
 
@@ -257,9 +256,7 @@ def test_round_trip_sha_mismatch_raises(
     assert not extracted.exists()
 
     # And no stale staging sibling should be left behind either.
-    leftovers = [
-        p for p in tmp_path.iterdir() if p.name.startswith(".staging-")
-    ]
+    leftovers = [p for p in tmp_path.iterdir() if p.name.startswith(".staging-")]
     assert not leftovers, f"staging leftovers: {leftovers}"
 
 
@@ -326,9 +323,9 @@ def test_round_trip_path_traversal_blocked(
     # check; the parent-class WorktreeError may also catch it).
     from mahavishnu.core.errors import ErrorCode
 
-    assert (
-        exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_PATH_TRAVERSAL
-    ), f"expected MHV-211, got {exc_info.value.error_code}"
+    assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_PATH_TRAVERSAL, (
+        f"expected MHV-211, got {exc_info.value.error_code}"
+    )
 
     # Atomic-promote invariant: target dir must NOT exist.
     assert not target.exists()

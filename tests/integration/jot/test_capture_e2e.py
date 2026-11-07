@@ -19,7 +19,9 @@ def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
-def _run_hook(stdin_payload: dict, isolated_home_path: Path) -> subprocess.CompletedProcess:
+def _run_hook(
+    stdin_payload: dict, isolated_home_path: Path
+) -> subprocess.CompletedProcess:
     """Spawn the hook as a subprocess with the given stdin payload."""
     return subprocess.run(
         [sys.executable, str(HOOK_PATH)],
@@ -101,7 +103,9 @@ class TestSubprocess:
             _run_hook(stdin_payload, isolated_home)
 
         log = isolated_home / ".mahavishnu" / "jot" / "log.jsonl"
-        lines = [json.loads(line) for line in log.read_text().split("\n") if line.strip()]
+        lines = [
+            json.loads(line) for line in log.read_text().split("\n") if line.strip()
+        ]
         assert len(lines) == 3
         for prev, curr in zip(lines, lines[1:]):
             prev_hlc = prev["hlc"]

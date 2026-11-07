@@ -29,7 +29,9 @@ from typing import List, Optional
 from mahavishnu.core.models import WorkflowConfig
 
 
-def get_workflow_configs(repo_path: str, tags: Optional[List[str]] = None) -> List[WorkflowConfig]:
+def get_workflow_configs(
+    repo_path: str, tags: Optional[List[str]] = None
+) -> List[WorkflowConfig]:
     """Retrieve workflow configurations for a repository.
 
     Args:
@@ -100,7 +102,10 @@ logger.info("workflow_started", workflow_id=workflow_id, adapter=adapter_name)
 
 # Error logging with context
 logger.error(
-    "adapter_initialization_failed", adapter_name=adapter_name, error=str(e), details=e.details
+    "adapter_initialization_failed",
+    adapter_name=adapter_name,
+    error=str(e),
+    details=e.details,
 )
 ```
 

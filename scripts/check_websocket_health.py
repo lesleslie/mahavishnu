@@ -336,7 +336,11 @@ async def check_websocket_server(
                         # Parse response to verify it's valid JSON
                         try:
                             response_data = json.loads(response)
-                            if response_data.get("type") in ("pong", "event", "response"):
+                            if response_data.get("type") in (
+                                "pong",
+                                "event",
+                                "response",
+                            ):
                                 status = HealthStatus.HEALTHY
                             else:
                                 status = HealthStatus.DEGRADED
@@ -464,11 +468,15 @@ class OutputFormatter:
             if result.status == HealthStatus.HEALTHY:
                 symbol = "\u2713"  # Checkmark
                 color = cls.COLOR_GREEN
-                latency_str = f"{result.latency_ms:.0f}ms" if result.latency_ms else "N/A"
+                latency_str = (
+                    f"{result.latency_ms:.0f}ms" if result.latency_ms else "N/A"
+                )
             elif result.status == HealthStatus.DEGRADED:
                 symbol = "\u26a0"  # Warning sign
                 color = cls.COLOR_YELLOW
-                latency_str = f"{result.latency_ms:.0f}ms" if result.latency_ms else "N/A"
+                latency_str = (
+                    f"{result.latency_ms:.0f}ms" if result.latency_ms else "N/A"
+                )
             else:
                 symbol = "\u2717"  # X mark
                 color = cls.COLOR_RED
@@ -535,7 +543,9 @@ class OutputFormatter:
         lines = []
 
         # HELP and TYPE for websocket_up metric
-        lines.append("# HELP websocket_health Whether the WebSocket server is up (1=up, 0=down)")
+        lines.append(
+            "# HELP websocket_health Whether the WebSocket server is up (1=up, 0=down)"
+        )
         lines.append("# TYPE websocket_health gauge")
         for result in summary.results:
             status_value = 1 if result.status == HealthStatus.HEALTHY else 0
@@ -546,7 +556,9 @@ class OutputFormatter:
         lines.append("")
 
         # HELP and TYPE for websocket_latency_ms metric
-        lines.append("# HELP websocket_latency_ms WebSocket connection latency in milliseconds")
+        lines.append(
+            "# HELP websocket_latency_ms WebSocket connection latency in milliseconds"
+        )
         lines.append("# TYPE websocket_latency_ms gauge")
         for result in summary.results:
             latency = result.latency_ms if result.latency_ms is not None else 0
@@ -557,7 +569,9 @@ class OutputFormatter:
         lines.append("")
 
         # HELP and TYPE for websocket_status_info metric
-        lines.append("# HELP websocket_status_info WebSocket server status as info label")
+        lines.append(
+            "# HELP websocket_status_info WebSocket server status as info label"
+        )
         lines.append("# TYPE websocket_status_info gauge")
         for result in summary.results:
             status_value = 1 if result.status != HealthStatus.UNHEALTHY else 0
@@ -573,7 +587,9 @@ class OutputFormatter:
 # =============================================================================
 
 
-def load_config_from_yaml(config_path: Path | None = None) -> dict[ServerName, ServerConfig] | None:
+def load_config_from_yaml(
+    config_path: Path | None = None,
+) -> dict[ServerName, ServerConfig] | None:
     """Load server configurations from YAML file.
 
     Args:
@@ -674,11 +690,16 @@ def main(
     if servers:
         selected_servers = servers.split(",")
         servers_to_check = {
-            name: servers_config[name] for name in selected_servers if name in servers_config
+            name: servers_config[name]
+            for name in selected_servers
+            if name in servers_config
         }
         if not servers_to_check:
             print(f"Error: No valid servers found in '{servers}'", file=sys.stderr)
-            print(f"Available servers: {', '.join(servers_config.keys())}", file=sys.stderr)
+            print(
+                f"Available servers: {', '.join(servers_config.keys())}",
+                file=sys.stderr,
+            )
             raise Exit(code=2)
     else:
         servers_to_check = servers_config

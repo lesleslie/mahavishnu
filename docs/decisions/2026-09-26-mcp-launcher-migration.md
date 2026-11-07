@@ -111,6 +111,7 @@ FastMCP exposes `run_http_async(...)` — neither matches. The _RunAsyncAdapter
 below wraps FastMCPServer so the launcher can drive it. See
 docs/decisions/2026-09-26-mcp-launcher-migration.md §4 trap #1.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -133,7 +134,9 @@ class _RunAsyncAdapter:
         # launcher-passed one. We call the inner FastMCP directly so the
         # launcher's timeout_graceful_shutdown (REQ-007) actually wins.
         await self._server.server.run_http_async(
-            host=host, port=port, uvicorn_config=uvicorn_config,
+            host=host,
+            port=port,
+            uvicorn_config=uvicorn_config,
         )
 
 

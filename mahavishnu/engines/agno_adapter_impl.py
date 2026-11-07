@@ -289,7 +289,10 @@ class LLMProviderFactory:
         id explicitly, because the gateway's provider surface may serve a
         different catalogue than the upstream vendor's.
         """
-        if provider == self.config.provider and "model_id" in self.config.model_fields_set:
+        if (
+            provider == self.config.provider
+            and "model_id" in self.config.model_fields_set
+        ):
             return self.config.model_id
         if endpoint.gateway_model_id is not None:
             return endpoint.gateway_model_id
@@ -356,7 +359,9 @@ class LLMProviderFactory:
         # otherwise the primary's credential would be sent to a different
         # vendor's endpoint — e.g. MINIMAX_API_KEY posted to OpenAI.
         if is_primary:
-            api_key_env = self.config.api_key_env or self._PROVIDER_API_KEY_ENV.get(provider)
+            api_key_env = self.config.api_key_env or self._PROVIDER_API_KEY_ENV.get(
+                provider
+            )
         else:
             api_key_env = self._PROVIDER_API_KEY_ENV.get(provider)
 
@@ -368,13 +373,19 @@ class LLMProviderFactory:
         gateway_url = self._gateway_url(provider)
         if gateway_url is not None:
             gateway_model_id = (
-                GATEWAY_ANTHROPIC_MODEL_ID if provider is LLMProvider.ANTHROPIC else None
+                GATEWAY_ANTHROPIC_MODEL_ID
+                if provider is LLMProvider.ANTHROPIC
+                else None
             )
-            return _ResolvedEndpoint(gateway_url, True, VIRTUAL_KEY_ENV, gateway_model_id)
+            return _ResolvedEndpoint(
+                gateway_url, True, VIRTUAL_KEY_ENV, gateway_model_id
+            )
 
         return _ResolvedEndpoint(None, False, api_key_env)
 
-    def _provider_available(self, provider: LLMProvider, endpoint: _ResolvedEndpoint) -> bool:
+    def _provider_available(
+        self, provider: LLMProvider, endpoint: _ResolvedEndpoint
+    ) -> bool:
         """Whether ``provider`` can serve a request in the current environment.
 
         Availability is credential presence: a cloud provider without its
@@ -388,7 +399,9 @@ class LLMProviderFactory:
             return False
         return bool(os.getenv(endpoint.api_key_env))
 
-    def _available_models(self) -> tuple[list[tuple[LLMProvider, Any]], Exception | None]:
+    def _available_models(
+        self,
+    ) -> tuple[list[tuple[LLMProvider, Any]], Exception | None]:
         """Build a model for every provider in the chain that is usable.
 
         Providers are walked in chain order. A provider whose credentials
@@ -415,7 +428,9 @@ class LLMProviderFactory:
                         error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
                         details={"provider": provider},
                     )
-                logger.warning("Skipping unsupported Agno LLM fallback provider: %s", provider)
+                logger.warning(
+                    "Skipping unsupported Agno LLM fallback provider: %s", provider
+                )
                 continue
 
             endpoint = self._resolve_endpoint(provider)
@@ -430,7 +445,9 @@ class LLMProviderFactory:
 
             model_id = self._model_id_for(provider, endpoint)
             try:
-                model = self._instantiate_model(provider, model_id, factory_name, endpoint)
+                model = self._instantiate_model(
+                    provider, model_id, factory_name, endpoint
+                )
             except (AgnoError, ConfigurationError) as exc:  # fmt: skip
                 if "import_error" in getattr(exc, "details", {}):
                     raise
@@ -447,7 +464,11 @@ class LLMProviderFactory:
                 last_error = AgnoError(
                     f"Failed to create LLM model: {e}",
                     error_code=ErrorCode.AGNO_LLM_PROVIDER_ERROR,
-                    details={"provider": provider, "model_id": model_id, "error": str(e)},
+                    details={
+                        "provider": provider,
+                        "model_id": model_id,
+                        "error": str(e),
+                    },
                 )
                 logger.warning(
                     "Agno LLM provider %s failed to initialize (%s); trying next provider",
@@ -502,7 +523,9 @@ class LLMProviderFactory:
             )
 
         models = [model for _, model in built]
-        self._model_instance = models[0] if len(models) == 1 else FallbackModel(models=models)
+        self._model_instance = (
+            models[0] if len(models) == 1 else FallbackModel(models=models)
+        )
         logger.info(
             "Agno LLM chain resolved: providers=%s",
             [provider.value for provider, _ in built],
@@ -578,7 +601,9 @@ class LLMProviderFactory:
             max_tokens=self.config.max_tokens,
         )
 
-    def _create_anthropic_model(self, model_id: str, endpoint: _ResolvedEndpoint) -> Any:
+    def _create_anthropic_model(
+        self, model_id: str, endpoint: _ResolvedEndpoint
+    ) -> Any:
         """Create Anthropic Claude model instance.
 
         Routing (resolved by :meth:`_resolve_endpoint`):
@@ -627,7 +652,9 @@ class LLMProviderFactory:
                 max_tokens=self.config.max_tokens,
             )
 
-    def _create_llama_server_model(self, model_id: str, endpoint: _ResolvedEndpoint) -> Any:
+    def _create_llama_server_model(
+        self, model_id: str, endpoint: _ResolvedEndpoint
+    ) -> Any:
         """Create llama.cpp server (llama_server) model instance for local LLM.
 
         Uses Agno's OpenAIChat in OpenAI-compatible mode against a llama.cpp
@@ -818,7 +845,9 @@ def _bifrost_dispatch_heartbeat(
             bifrost_local_dispatch_total,
         )
 
-        bifrost_dispatch_total(outcome=outcome, provider=provider, route_class=route_class)
+        bifrost_dispatch_total(
+            outcome=outcome, provider=provider, route_class=route_class
+        )
         bifrost_dispatch_latency_seconds(
             provider=provider, route_class=route_class, seconds=latency_seconds
         )
@@ -828,7 +857,9 @@ def _bifrost_dispatch_heartbeat(
             bifrost_local_dispatch_total(
                 outcome=outcome, provider=provider, route_class=route_class
             )
-    except Exception:  # best-effort metric emit; dispatch must not break on a metric failure
+    except (
+        Exception
+    ):  # best-effort metric emit; dispatch must not break on a metric failure
         logger.exception("bifrost_dispatch_heartbeat: counter emit failed")
 
     # Append a compact JSON line to bifrost.log. Best-effort; the
@@ -928,7 +959,9 @@ class MCPToolsRegistry:
             elif configured == "sse":
                 transport: Literal["stdio", "sse", "streamable-http"] = "sse"
             elif configured == "streamable-http":
-                transport: Literal["stdio", "sse", "streamable-http"] = "streamable-http"
+                transport: Literal["stdio", "sse", "streamable-http"] = (
+                    "streamable-http"
+                )
             else:
                 transport: Literal["stdio", "sse", "streamable-http"] = "sse"
             self._mcp_tools = MCPTools(
@@ -1268,7 +1301,9 @@ class AgnoAdapter(OrchestratorAdapter):
                 f"native_tools={len(self.get_available_tools())}"
             )
 
-        except Exception as e:  # translate any factory error to typed AgnoError at init boundary
+        except (
+            Exception
+        ) as e:  # translate any factory error to typed AgnoError at init boundary
             logger.error(f"Failed to initialize AgnoAdapter: {e}")
             raise AgnoError(
                 f"AgnoAdapter initialization failed: {e}",
@@ -1596,7 +1631,9 @@ class AgnoAdapter(OrchestratorAdapter):
         legacy_provider = getattr(self.config, "llm_provider", None)
         # A MagicMock auto-creates any attribute, so only a real string
         # counts as an explicit legacy directive.
-        explicit_legacy_provider = legacy_provider if isinstance(legacy_provider, str) else None
+        explicit_legacy_provider = (
+            legacy_provider if isinstance(legacy_provider, str) else None
+        )
 
         if explicit_legacy_provider is None and self._has_agno_block():
             return self.agno_config.llm
@@ -1624,7 +1661,9 @@ class AgnoAdapter(OrchestratorAdapter):
             base_url = _clean_str(getattr(llm_config, "base_url", None))
 
         api_key_env = (
-            _clean_str(getattr(llm_config, "api_key_env", None)) if llm_config is not None else None
+            _clean_str(getattr(llm_config, "api_key_env", None))
+            if llm_config is not None
+            else None
         )
         temperature = (
             _clean_number(getattr(llm_config, "temperature", None))
@@ -1669,7 +1708,8 @@ class AgnoAdapter(OrchestratorAdapter):
             provider=provider,
             model_id=model_id
             or (parent_llm.model_id if same_provider else default_model_for(provider)),
-            api_key_env=api_key_env or (parent_llm.api_key_env if same_provider else None),
+            api_key_env=api_key_env
+            or (parent_llm.api_key_env if same_provider else None),
             base_url=base_url or (parent_llm.base_url if same_provider else None),
             fallback_providers=list(parent_llm.fallback_providers),
             temperature=temperature,
@@ -1692,7 +1732,9 @@ class AgnoAdapter(OrchestratorAdapter):
         except AgnoError as exc:
             message = str(exc)
             if "Unsupported LLM provider" in message:
-                raise ConfigurationError(message, details=getattr(exc, "details", None)) from exc
+                raise ConfigurationError(
+                    message, details=getattr(exc, "details", None)
+                ) from exc
             if "Failed to import LLM provider" in message:
                 raise ImportError(message) from exc
             raise
@@ -1724,8 +1766,8 @@ class AgnoAdapter(OrchestratorAdapter):
         # Resolve the dispatch metadata once; the heartbeat fires
         # with the same provider / model / route_class on every
         # exit path (success, timeout, generic failure).
-        hb_provider, hb_model, hb_route_class, hb_is_local = _resolve_dispatch_heartbeat_args(
-            self.agno_config.llm
+        hb_provider, hb_model, hb_route_class, hb_is_local = (
+            _resolve_dispatch_heartbeat_args(self.agno_config.llm)
         )
 
         try:
@@ -1893,7 +1935,9 @@ class AgnoAdapter(OrchestratorAdapter):
                     "error_code": e.error_code.value,
                     "task_id": task.get("id", "unknown"),
                 }
-            except Exception as e:  # per-repo failure is recorded, not raised; aggregate continues
+            except (
+                Exception
+            ) as e:  # per-repo failure is recorded, not raised; aggregate continues
                 logger.exception(f"Unexpected error processing repo {repo}")
                 return {
                     "repo": repo,
@@ -1991,7 +2035,9 @@ Available tools include:
         execution_id = data.get("execution_id") or data.get("id") or crew_id
         return str(execution_id)
 
-    async def execute_task_batch(self, crew_id: str, tasks: list[dict[str, Any]]) -> list[str]:
+    async def execute_task_batch(
+        self, crew_id: str, tasks: list[dict[str, Any]]
+    ) -> list[str]:
         """Execute a batch of tasks via the compatibility API."""
         results: list[str] = []
         for task in tasks:
@@ -2107,7 +2153,9 @@ Use available tools to complete the task and provide a summary."""
                     processed_results.append(cast("dict[str, Any]", result))
 
             # Calculate success/failure counts
-            success_count = sum(1 for r in processed_results if r.get("status") == "completed")
+            success_count = sum(
+                1 for r in processed_results if r.get("status") == "completed"
+            )
             failure_count = len(processed_results) - success_count
             self._execution_log.append(
                 {
@@ -2133,7 +2181,9 @@ Use available tools to complete the task and provide a summary."""
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-        except Exception as e:  # CLI/MCP entry point — translate any error to typed AgnoError
+        except (
+            Exception
+        ) as e:  # CLI/MCP entry point — translate any error to typed AgnoError
             logger.exception("Agno execution failed")
             raise AgnoError(
                 f"Agno execution failed: {e}",
@@ -2153,7 +2203,9 @@ Use available tools to complete the task and provide a summary."""
             "version": self.ADAPTER_VERSION,
             "configured": self.agno_config is not None,
             "initialized": self._initialized,
-            "llm_provider": self.agno_config.llm.provider.value if self.agno_config else None,
+            "llm_provider": self.agno_config.llm.provider.value
+            if self.agno_config
+            else None,
             "model_id": self.agno_config.llm.model_id if self.agno_config else None,
             "agents_cached": len(self._agents),
             "teams_count": len(self._teams),

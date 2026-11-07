@@ -129,9 +129,7 @@ def stub_app(monkeypatch: pytest.MonkeyPatch) -> _StubApp:
 
     # Module-top binding (used by get-dashboard / get-alerts / acknowledge-alert
     # / trigger-test-alert).
-    monkeypatch.setattr(
-        "mahavishnu.cli.monitoring_cli.MahavishnuApp", _factory
-    )
+    monkeypatch.setattr("mahavishnu.cli.monitoring_cli.MahavishnuApp", _factory)
     # Inline-import binding (used by ``_print_rich_dashboard`` from ``watch``).
     monkeypatch.setattr("mahavishnu.core.app.MahavishnuApp", _factory)
 
@@ -227,7 +225,9 @@ class TestGetAlerts:
         assert result.exit_code == 0, result.output
         assert "No active alerts" in result.output
 
-    def test_lists_populated_alerts_with_severity_icons(self, stub_app: _StubApp) -> None:
+    def test_lists_populated_alerts_with_severity_icons(
+        self, stub_app: _StubApp
+    ) -> None:
         stub_app.monitoring_service.alert_manager.get_active_alerts.return_value = [
             _make_alert(AlertSeverity.CRITICAL, "Disk Full", "No space left"),
             _make_alert(AlertSeverity.HIGH, "API Latency", "p99 > 2s"),
@@ -395,7 +395,9 @@ class TestWatch:
     """``monitor watch`` exercises the rich-fallback branch
     (``TUI_AVAILABLE=False`` is forced by ``stub_app``)."""
 
-    def test_watch_uses_rich_fallback_and_prints_metrics(self, stub_app: _StubApp) -> None:
+    def test_watch_uses_rich_fallback_and_prints_metrics(
+        self, stub_app: _StubApp
+    ) -> None:
         app = _build_app()
         result = _RUNNER.invoke(app, ["monitor", "watch"])
         assert result.exit_code == 0, result.output

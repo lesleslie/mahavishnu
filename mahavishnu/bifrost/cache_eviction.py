@@ -232,7 +232,8 @@ def resolve_vector_store_addr(
         payload = json.loads(path.read_text(encoding="utf-8"))
     except OSError, ValueError:
         logger.warning(
-            "Could not read the Bifrost config at %s; using the default Redis address", path
+            "Could not read the Bifrost config at %s; using the default Redis address",
+            path,
         )
         return ("localhost", 6379)
 
@@ -297,7 +298,10 @@ async def sweep_expired_entries(
                     await client.eval(
                         DELETE_IF_EXPIRED_LUA,
                         list(pending),
-                        [EXPIRES_FIELD.encode("utf-8"), str(int(cutoff)).encode("utf-8")],
+                        [
+                            EXPIRES_FIELD.encode("utf-8"),
+                            str(int(cutoff)).encode("utf-8"),
+                        ],
                     )
                 )
             except Exception:
@@ -396,7 +400,9 @@ def run_sweep(
             # count of deleted keys. The cast is at the boundary, where
             # that is known.
             typed = cast("RedisLike", client)
-            return await sweep_expired_entries(typed, prefixes=prefixes, now=now, dry_run=dry_run)
+            return await sweep_expired_entries(
+                typed, prefixes=prefixes, now=now, dry_run=dry_run
+            )
 
     return anyio.run(_run, backend="asyncio")
 

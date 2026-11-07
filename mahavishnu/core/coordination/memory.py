@@ -66,7 +66,11 @@ class SessionBuddyMemoryClient:
         if isinstance(result, list):
             return result
         if isinstance(result, dict):
-            items = result.get("results") or result.get("items") or result.get("conversations")
+            items = (
+                result.get("results")
+                or result.get("items")
+                or result.get("conversations")
+            )
             if isinstance(items, list):
                 return items
         return []
@@ -162,7 +166,9 @@ class CoordinationMemory:
         if not self.session_buddy:
             return
 
-        content = f"{event_type.capitalize()} todo {todo.id}: {todo.task} in {todo.repo}"
+        content = (
+            f"{event_type.capitalize()} todo {todo.id}: {todo.task} in {todo.repo}"
+        )
 
         metadata = {
             "event_type": event_type,
@@ -361,7 +367,9 @@ class CoordinationMemory:
         except MCPServerError as exc:
             logger.warning("Akosha coordination push degraded: %s", exc)
 
-    async def search_semantic(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
+    async def search_semantic(
+        self, query: str, limit: int = 10
+    ) -> list[dict[str, Any]]:
         """Search coordination history semantically via Akosha.
 
         Args:

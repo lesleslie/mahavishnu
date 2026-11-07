@@ -254,7 +254,12 @@ class TestBackendStatus:
     def test_to_dict_without_capabilities(self):
         status = BackendStatus(name="x", available=False, reason="no")
         d = status.to_dict()
-        assert d == {"name": "x", "available": False, "reason": "no", "capabilities": None}
+        assert d == {
+            "name": "x",
+            "available": False,
+            "reason": "no",
+            "capabilities": None,
+        }
 
     @pytest.mark.unit
     def test_to_dict_with_capabilities(self):
@@ -336,7 +341,9 @@ class TestCheckNativeMacOS:
     def test_native_macos_handles_import_error(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "darwin")
         # Simulate a transient import failure by raising ImportError on access
-        with patch.dict("sys.modules", {"mahavishnu.automation.backends.native_macos": None}):
+        with patch.dict(
+            "sys.modules", {"mahavishnu.automation.backends.native_macos": None}
+        ):
             d = CapabilityDetector()
             status = d._check_native_macos()
         # When the module is None, importing raises ImportError -> not installed
@@ -377,7 +384,9 @@ class TestGetBackendStatus:
         first = detector.get_backend_status("pyautogui")
         # Force the second call to return a different object if not cached
         with patch.object(
-            detector, "_check_pyautogui", return_value=BackendStatus(name="x", available=False)
+            detector,
+            "_check_pyautogui",
+            return_value=BackendStatus(name="x", available=False),
         ):
             cached = detector.get_backend_status("pyautogui")
         # Should be the same object that was first cached
@@ -418,7 +427,9 @@ class TestFindBestBackend:
             with patch.object(
                 d,
                 "_check_native_macos",
-                return_value=BackendStatus(name="native_macos", available=False, reason="no"),
+                return_value=BackendStatus(
+                    name="native_macos", available=False, reason="no"
+                ),
             ):
                 result = d.find_best_backend(preferred="pyautogui")
         assert result is not None
@@ -433,7 +444,9 @@ class TestFindBestBackend:
                 d,
                 "_check_native_macos",
                 return_value=BackendStatus(
-                    name="native_macos", available=True, capabilities=NATIVE_MACOS_CAPABILITIES
+                    name="native_macos",
+                    available=True,
+                    capabilities=NATIVE_MACOS_CAPABILITIES,
                 ),
             ):
                 # Request something the native backend can't do
@@ -453,7 +466,9 @@ class TestFindBestBackend:
                 d,
                 "_check_native_macos",
                 return_value=BackendStatus(
-                    name="native_macos", available=True, capabilities=NATIVE_MACOS_CAPABILITIES
+                    name="native_macos",
+                    available=True,
+                    capabilities=NATIVE_MACOS_CAPABILITIES,
                 ),
             ):
                 # LAUNCH_APP is supported by native but not pyautogui
@@ -471,7 +486,9 @@ class TestFindBestBackend:
             with patch.object(
                 d,
                 "_check_native_macos",
-                return_value=BackendStatus(name="native_macos", available=False, reason="no"),
+                return_value=BackendStatus(
+                    name="native_macos", available=False, reason="no"
+                ),
             ):
                 result = d.find_best_backend(preferred="auto")
         # falls through to pyautogui (only available backend)
@@ -487,7 +504,9 @@ class TestFindBestBackend:
                 d,
                 "_check_native_macos",
                 return_value=BackendStatus(
-                    name="native_macos", available=True, capabilities=NATIVE_MACOS_CAPABILITIES
+                    name="native_macos",
+                    available=True,
+                    capabilities=NATIVE_MACOS_CAPABILITIES,
                 ),
             ):
                 result = d.find_best_backend()

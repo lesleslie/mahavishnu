@@ -235,7 +235,9 @@ class CrossRepoBlockerTracker:
         # Get directly blocked tasks
         direct_deps = self.dependency_linker.get_blocked_tasks(blocker_task_id)
         directly_blocked = [
-            d.target_task_id for d in direct_deps if d.dependency_type == DependencyType.BLOCKS
+            d.target_task_id
+            for d in direct_deps
+            if d.dependency_type == DependencyType.BLOCKS
         ]
 
         # Track affected repositories
@@ -435,7 +437,9 @@ class CrossRepoBlockerTracker:
                 "ttl_seconds": int(self._cache_ttl.total_seconds()),
                 "hits": self._blocker_hits,
                 "misses": self._blocker_misses,
-                "hit_rate": self._blocker_hits / blocker_total if blocker_total > 0 else 0.0,
+                "hit_rate": self._blocker_hits / blocker_total
+                if blocker_total > 0
+                else 0.0,
             },
         }
 

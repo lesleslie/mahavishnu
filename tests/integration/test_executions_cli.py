@@ -5,6 +5,7 @@ The CLI reads from the ``execution_events`` table populated via
 ``CliRunner`` against an in-memory SQLite engine initialised by the
 ``sqlite_engine`` fixture (one engine per test, schema built in-fixture).
 """
+
 from __future__ import annotations
 
 import json
@@ -81,9 +82,7 @@ class TestExecutionsList:
             ],
         )
 
-        result = runner.invoke(
-            executions_app, ["list", "--json", "--limit", "5"]
-        )
+        result = runner.invoke(executions_app, ["list", "--json", "--limit", "5"])
         assert result.exit_code == 0
         payload = json.loads(result.stdout)
         assert "exec-list-001" in payload
@@ -116,9 +115,7 @@ class TestExecutionsList:
         sqlite_engine: AsyncEngine,
     ) -> None:
         """Unknown --status value exits 1 and prints to stderr."""
-        result = runner.invoke(
-            executions_app, ["list", "--status", "BOGUS"]
-        )
+        result = runner.invoke(executions_app, ["list", "--status", "BOGUS"])
         assert result.exit_code == 1
         assert "Unknown status" in result.output
 
@@ -150,9 +147,7 @@ class TestExecutionsShow:
         sqlite_engine: AsyncEngine,
     ) -> None:
         """Missing execution prints to stderr and exits 1."""
-        result = runner.invoke(
-            executions_app, ["show", "exec-nonexistent-999"]
-        )
+        result = runner.invoke(executions_app, ["show", "exec-nonexistent-999"])
         assert result.exit_code == 1
         assert "No events" in result.output
 
@@ -187,9 +182,7 @@ class TestExecutionsShow:
             [(TaskEventType.PENDING, "start")],
         )
 
-        result = runner.invoke(
-            executions_app, ["show", "exec-raw-001", "--raw"]
-        )
+        result = runner.invoke(executions_app, ["show", "exec-raw-001", "--raw"])
         assert result.exit_code == 0
         first_line = result.stdout.splitlines()[0]
         parsed = json.loads(first_line)
@@ -227,9 +220,7 @@ class TestExecutionsShow:
                 actor="integration-test",
             )
 
-        result = runner.invoke(
-            executions_app, ["list", "--json", "--limit", "50"]
-        )
+        result = runner.invoke(executions_app, ["list", "--json", "--limit", "50"])
         assert result.exit_code == 0
         payload = json.loads(result.stdout)
         assert len(payload) <= 50

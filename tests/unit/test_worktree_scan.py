@@ -1,4 +1,5 @@
 """Unit tests for worktree_scan module."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,9 +16,12 @@ class TestRunGitScanned:
 
     def test_subprocess_called_with_list_form_args(self):
         from mahavishnu.core.worktree_scan import _run_git_scanned
+
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
-            _run_git_scanned(Path("/tmp/repo"), "worktree", "list", "--porcelain", timeout=10)
+            _run_git_scanned(
+                Path("/tmp/repo"), "worktree", "list", "--porcelain", timeout=10
+            )
             call = mock_run.call_args
             args = call[0][0]
             assert args[0] == "git"
@@ -28,6 +32,7 @@ class TestRunGitScanned:
 
     def test_shell_false_enforced(self):
         from mahavishnu.core.worktree_scan import _run_git_scanned
+
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
             _run_git_scanned(Path("/tmp/repo"), "status", "--short")
@@ -39,16 +44,19 @@ class TestRunPs:
 
     def test_pid_validated_as_digits_only(self):
         from mahavishnu.core.worktree_scan import _run_ps
+
         with pytest.raises(ValueError, match="PID must match"):
             _run_ps("-1")  # leading dash = flag injection
 
     def test_pid_validated_as_positive_integer(self):
         from mahavishnu.core.worktree_scan import _run_ps
+
         with pytest.raises(ValueError, match="PID must match"):
             _run_ps("abc")
 
     def test_valid_pid_invokes_ps(self):
         from mahavishnu.core.worktree_scan import _run_ps
+
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             _run_ps("74005", timeout=2)
@@ -65,6 +73,7 @@ class TestClassifyWorktreeTierA:
 
     def test_clean_merged_is_tier_a_merged(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         result = classify_worktree(
             worktree_path=Path("/tmp/wt"),
             branch="feat/merged",
@@ -79,6 +88,7 @@ class TestClassifyWorktreeTierA:
 
     def test_dirty_merged_is_tier_a_merged_dirty(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         result = classify_worktree(
             worktree_path=Path("/tmp/wt"),
             branch="feat/merged",
@@ -93,6 +103,7 @@ class TestClassifyWorktreeTierA:
 
     def test_clean_not_merged_is_not_tier_a(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         result = classify_worktree(
             worktree_path=Path("/tmp/wt"),
             branch="feat/active",
@@ -112,6 +123,7 @@ class TestClassifyWorktreeTierAOrphan:
 
     def test_detached_not_in_plan_pattern_is_tier_a(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         result = classify_worktree(
             worktree_path=Path("/tmp/wt"),
             branch=None,  # detached HEAD
@@ -126,6 +138,7 @@ class TestClassifyWorktreeTierAOrphan:
 
     def test_detached_dirty_is_tier_a_orphan_detached_dirty(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         result = classify_worktree(
             worktree_path=Path("/tmp/wt"),
             branch=None,
@@ -144,6 +157,7 @@ class TestClassifyWorktreeTierX:
 
     def test_classify_worktree_returns_tier_x_for_plan_orphan_branch(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         group = {
             "2026-08-16-wave8-diagram-corrections": [
                 ("akosha", Path("/tmp/wt")),
@@ -168,9 +182,13 @@ class TestClassifyWorktreeTierBCD:
 
     def test_agent_dispatch_path_is_tier_b(self, monkeypatch):
         from mahavishnu.core import worktree_scan
+
         # Pretend get_worktree_base_path returns /Users/les/worktrees
-        monkeypatch.setattr(worktree_scan, "get_worktree_base_path",
-                            lambda: Path("/Users/les/worktrees"))
+        monkeypatch.setattr(
+            worktree_scan,
+            "get_worktree_base_path",
+            lambda: Path("/Users/les/worktrees"),
+        )
         result = worktree_scan.classify_worktree(
             worktree_path=Path("/Users/les/worktrees/agent-abc123"),
             branch="worktree-agent-abc123",
@@ -185,6 +203,7 @@ class TestClassifyWorktreeTierBCD:
 
     def test_mid_age_clean_is_tier_c(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         result = classify_worktree(
             worktree_path=Path("/tmp/wt"),
             branch="feat/active-mid",
@@ -199,6 +218,7 @@ class TestClassifyWorktreeTierBCD:
 
     def test_age_at_exactly_9_is_tier_c(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         result = classify_worktree(
             worktree_path=Path("/tmp/wt"),
             branch="feat/active-9",
@@ -213,6 +233,7 @@ class TestClassifyWorktreeTierBCD:
 
     def test_age_below_9_is_tier_d(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         result = classify_worktree(
             worktree_path=Path("/tmp/wt"),
             branch="feat/active-8",
@@ -231,13 +252,16 @@ class TestScanWorktreesDriver:
 
     def test_pipeline_returns_text_report(self, monkeypatch, tmp_path):
         from mahavishnu.core import worktree_scan
+
         # Minimal fixture: 1 repo with 1 worktree (clean, merged)
         repo_dir = tmp_path / "repo1"
         repo_dir.mkdir()
         (repo_dir / ".git").mkdir()
         # Mock git worktree list --porcelain output
-        with patch.object(worktree_scan, "_run_git_scanned") as mock_git, \
-             patch.object(worktree_scan, "_run_ps"):
+        with (
+            patch.object(worktree_scan, "_run_git_scanned") as mock_git,
+            patch.object(worktree_scan, "_run_ps"),
+        ):
             # Realistic porcelain block: one worktree with a branch line.
             mock_git.return_value = MagicMock(
                 returncode=0,
@@ -255,6 +279,7 @@ class TestScanWorktreesDriver:
         import json
 
         from mahavishnu.core import worktree_scan
+
         repo_dir = tmp_path / "repo1"
         repo_dir.mkdir()
         (repo_dir / ".git").mkdir()
@@ -280,6 +305,7 @@ class TestClassifyWorktreeTierXExclusivity:
 
     def test_merged_plan_orphan_returns_tier_a_merged(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         group = {
             "2026-08-16-wave8-diagram-corrections": [
                 ("akosha", Path("/tmp/wt")),
@@ -299,6 +325,7 @@ class TestClassifyWorktreeTierXExclusivity:
 
     def test_merged_plan_orphan_dirty_returns_tier_a_merged_dirty(self):
         from mahavishnu.core.worktree_scan import classify_worktree
+
         group = {
             "2026-08-16-wave8-diagram-corrections": [
                 ("akosha", Path("/tmp/wt")),
@@ -325,6 +352,7 @@ class TestCollectRepoFallbackForEmptyGitLog:
 
     def test_empty_git_log_sets_age_to_zero(self, tmp_path):
         from mahavishnu.core import worktree_scan
+
         repo_dir = tmp_path / "fresh_repo"
         repo_dir.mkdir()
         (repo_dir / ".git").mkdir()
@@ -359,6 +387,7 @@ class TestCollectRepoFailureTracking:
 
     def test_git_failure_returns_failure_reason(self, tmp_path):
         from mahavishnu.core import worktree_scan
+
         repo_dir = tmp_path / "broken_repo"
         repo_dir.mkdir()
         with patch.object(worktree_scan, "_run_git_scanned") as mock_git:
@@ -374,6 +403,7 @@ class TestCollectRepoFailureTracking:
 
     def test_scan_worktrees_threads_failed_repos(self, tmp_path):
         from mahavishnu.core import worktree_scan
+
         good_repo = tmp_path / "good"
         good_repo.mkdir()
         (good_repo / ".git").mkdir()
@@ -383,7 +413,9 @@ class TestCollectRepoFailureTracking:
             if args and args[0] == "worktree":
                 if "bad" in str(path):
                     return MagicMock(
-                        returncode=128, stdout="", stderr="fatal",
+                        returncode=128,
+                        stdout="",
+                        stderr="fatal",
                     )
                 return MagicMock(returncode=0, stdout="", stderr="")
             return MagicMock(returncode=0, stdout="0", stderr="")
@@ -395,6 +427,7 @@ class TestCollectRepoFailureTracking:
                 output_format="json",
             )
         import json
+
         parsed = json.loads(report_str)
         assert "scan_metadata" in parsed
         assert "failed_repos" in parsed["scan_metadata"]
@@ -412,6 +445,7 @@ class TestFormatJsonTierXShape:
         import json
 
         from mahavishnu.core import worktree_scan
+
         # Two repos, each with one worktree on the same plan_orphan branch.
         repo_a = tmp_path / "akosha"
         repo_a.mkdir()
@@ -466,6 +500,7 @@ class TestScanMetadataReposScanned:
         import json
 
         from mahavishnu.core import worktree_scan
+
         good_repo = tmp_path / "good"
         good_repo.mkdir()
         (good_repo / ".git").mkdir()
@@ -491,6 +526,7 @@ class TestScanMetadataReposScanned:
         import json
 
         from mahavishnu.core import worktree_scan
+
         repo_a = tmp_path / "a"
         repo_a.mkdir()
         (repo_a / ".git").mkdir()
@@ -514,6 +550,7 @@ class TestGroupPlanOrphans:
 
     def test_single_repo_match_is_excluded(self):
         from mahavishnu.core import worktree_scan
+
         entries = [
             {
                 "branch": "wave8-diagram-corrections-2026-08-16",
@@ -527,6 +564,7 @@ class TestGroupPlanOrphans:
 
     def test_two_repo_match_yields_one_group(self):
         from mahavishnu.core import worktree_scan
+
         entries = [
             {
                 "branch": "wave8-diagram-corrections-2026-08-16",
@@ -545,6 +583,7 @@ class TestGroupPlanOrphans:
 
     def test_branch_without_date_suffix_is_excluded(self):
         from mahavishnu.core import worktree_scan
+
         entries = [
             {
                 "branch": "wave8-diagram-corrections",
@@ -562,6 +601,7 @@ class TestGroupPlanOrphans:
 
     def test_detached_branch_is_skipped(self):
         from mahavishnu.core import worktree_scan
+
         entries = [
             {
                 "branch": None,
@@ -600,6 +640,7 @@ class TestFormatTextSections:
 
     def test_locked_live_section_renders_with_pid_and_command(self):
         from mahavishnu.core import worktree_scan
+
         cls = self._make_cls(
             is_locked=True,
             pid_liveness="alive",
@@ -614,6 +655,7 @@ class TestFormatTextSections:
 
     def test_locked_orphan_section_renders_when_pid_dead(self):
         from mahavishnu.core import worktree_scan
+
         cls = self._make_cls(
             is_locked=True,
             pid_liveness="dead",
@@ -629,6 +671,7 @@ class TestFormatTextSections:
 
     def test_locked_unknown_section_renders_when_pid_unknown(self):
         from mahavishnu.core import worktree_scan
+
         cls = self._make_cls(
             is_locked=True,
             pid_liveness="unknown",
@@ -640,13 +683,22 @@ class TestFormatTextSections:
 
     def test_dirty_section_emits_aggregate_counts(self):
         from mahavishnu.core import worktree_scan
+
         cls1 = self._make_cls(
-            is_dirty=True, modified_count=2, stash_count=1, untracked_count=3,
-            tier="A-merged-dirty", repo_nickname="r1",
+            is_dirty=True,
+            modified_count=2,
+            stash_count=1,
+            untracked_count=3,
+            tier="A-merged-dirty",
+            repo_nickname="r1",
         )
         cls2 = self._make_cls(
-            is_dirty=True, modified_count=0, stash_count=0, untracked_count=0,
-            tier="C", repo_nickname="r2",
+            is_dirty=True,
+            modified_count=0,
+            stash_count=0,
+            untracked_count=0,
+            tier="C",
+            repo_nickname="r2",
         )
         out = worktree_scan._format_text([cls1, cls2])
         assert "DIRTY (2 modified, 1 stashes, 3 untracked" in out
@@ -654,6 +706,7 @@ class TestFormatTextSections:
 
     def test_scan_failures_section_renders_failures(self):
         from mahavishnu.core import worktree_scan
+
         out = worktree_scan._format_text(
             [],
             failed_repos=[
@@ -667,6 +720,7 @@ class TestFormatTextSections:
 
     def test_footer_reports_exit_1_when_failures(self):
         from mahavishnu.core import worktree_scan
+
         out = worktree_scan._format_text(
             [], failed_repos=[{"path": "/x", "reason": "missing"}]
         )
@@ -674,12 +728,14 @@ class TestFormatTextSections:
 
     def test_footer_reports_exit_0_when_clean(self):
         from mahavishnu.core import worktree_scan
+
         out = worktree_scan._format_text([])
         assert "Scan complete: 0 candidates; 0 scan failures; exit 0." in out
 
     def test_locked_sections_emit_even_when_empty(self):
         """F20 — every section header is always emitted (possibly empty)."""
         from mahavishnu.core import worktree_scan
+
         out = worktree_scan._format_text([])
         assert "LOCKED-live (cannot remove without verification, 0):" in out
         assert "LOCKED-orphan (PID dead, can unlock+remove, 0):" in out
@@ -715,6 +771,7 @@ class TestFormatJsonLockedLiveRealValues:
         import json
 
         from mahavishnu.core import worktree_scan
+
         cls = self._make_cls(
             lock_pid=74005,
             lock_command="claude agent foo",
@@ -756,6 +813,7 @@ class TestClassifierReuse:
         import inspect
 
         from mahavishnu.core import worktree_scan
+
         source = inspect.getsource(worktree_scan)
         # Defs of classify_merge_status or classify_merged in scan.py are forbidden.
         assert "def classify_merge_status" not in source
@@ -765,6 +823,7 @@ class TestClassifierReuse:
         # The function name appears in scan.py ONLY as a callable parameter
         # or as a re-export; the implementation must come from prune_merged.
         from mahavishnu.core import worktree_scan
+
         # `scan.py` should re-export or pass through, not redefine.
         assert not hasattr(worktree_scan, "classify_merge_status") or callable(
             getattr(worktree_scan, "classify_merge_status", None)
@@ -782,17 +841,21 @@ class TestScanWorktreesObservability:
     The module-level OTel handles are no-op fallbacks when opentelemetry
     isn't installed; we still verify they're called (counters/histograms
     are duck-typed objects with .add / .record methods)."""
+
     NOQA_ATTR = "_SCANS_COUNTER_DUMMY"
 
     def test_counter_and_histogram_are_called_per_scan(self, tmp_path, caplog):
         from mahavishnu.core import worktree_scan
+
         repo = tmp_path / "r"
         repo.mkdir()
         (repo / ".git").mkdir()
-        with patch.object(worktree_scan, "_SCANS_COUNTER") as counter, \
-             patch.object(worktree_scan, "_DURATION_HISTOGRAM") as hist, \
-             patch.object(worktree_scan, "_run_git_scanned") as git, \
-             patch.object(worktree_scan, "_run_ps"):
+        with (
+            patch.object(worktree_scan, "_SCANS_COUNTER") as counter,
+            patch.object(worktree_scan, "_DURATION_HISTOGRAM") as hist,
+            patch.object(worktree_scan, "_run_git_scanned") as git,
+            patch.object(worktree_scan, "_run_ps"),
+        ):
             git.return_value = MagicMock(returncode=0, stdout="", stderr="")
             with caplog.at_level("INFO", logger="mahavishnu.core.worktree_scan"):
                 report = worktree_scan.scan_worktrees(
@@ -811,7 +874,8 @@ class TestScanWorktreesObservability:
         assert rec_arg >= 0.0
         # INFO log carries the canonical completion message and tier summary.
         matching = [
-            rec for rec in caplog.records
+            rec
+            for rec in caplog.records
             if rec.message.startswith("mahavishnu.worktree_scan.completed")
         ]
         assert matching, (
@@ -837,6 +901,7 @@ class TestNoDuplicateHelpers:
         import inspect
 
         from mahavishnu.core import worktree_scan
+
         source = inspect.getsource(worktree_scan)
         assert "def get_worktree_base_path" not in source, (
             "worktree_scan.py must import get_worktree_base_path, not redefine it"
@@ -846,6 +911,7 @@ class TestNoDuplicateHelpers:
         import inspect
 
         from mahavishnu.core import worktree_scan
+
         source = inspect.getsource(worktree_scan)
         # scan.py imports get_worktree_base_path from paths; it must not
         # also define its own path validator.

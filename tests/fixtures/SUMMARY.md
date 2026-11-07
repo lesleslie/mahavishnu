@@ -142,9 +142,7 @@ def test_workflow(sample_workflow):
 ```python
 def test_custom_workflow(workflow_fixtures):
     """Test using factory to create custom workflow."""
-    workflow = workflow_fixtures.sample_workflow(
-        workflow_id="wf_custom_123"
-    )
+    workflow = workflow_fixtures.sample_workflow(workflow_id="wf_custom_123")
     assert workflow["id"] == "wf_custom_123"
 ```
 

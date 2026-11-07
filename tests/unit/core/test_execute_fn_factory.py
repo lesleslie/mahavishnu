@@ -81,9 +81,7 @@ class TestBuildExecuteFnStubPath:
         """Non-prompt keys in the payload are preserved in metadata."""
         settings = ACPSettings()
         fn = build_execute_fn(settings)
-        result = asyncio.run(
-            fn({"prompt": "x", "user_id": "u-1", "session_id": "s-1"})
-        )
+        result = asyncio.run(fn({"prompt": "x", "user_id": "u-1", "session_id": "s-1"}))
         assert result.metadata.get("echo") == "x"
 
     def test_factory_accepts_a2a_settings(self) -> None:
@@ -109,9 +107,7 @@ class TestBuildExecuteFnAppPath:
         class _App:
             execute = staticmethod(slow_app_execute)
 
-        fn = build_execute_fn(
-            _StubSettings(app=_App(), execute_fn_timeout_seconds=0.1)
-        )
+        fn = build_execute_fn(_StubSettings(app=_App(), execute_fn_timeout_seconds=0.1))
         with pytest.raises(TimeoutError):
             asyncio.run(fn({"prompt": "x"}))
 

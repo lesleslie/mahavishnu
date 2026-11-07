@@ -309,7 +309,9 @@ class TestCoordinationModels:
         assert plan.id == "PLAN-001"
         assert plan.status == PlanStatus.DRAFT
 
-        with pytest.raises(ValueError, match="At least one repository must be specified"):
+        with pytest.raises(
+            ValueError, match="At least one repository must be specified"
+        ):
             CrossRepoPlan(
                 id="PLAN-002",
                 title="Test plan",
@@ -847,7 +849,9 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_normalize_issue_created_and_updated_from_legacy_fields(self, ecosystem_path):
+    def test_normalize_issue_created_and_updated_from_legacy_fields(
+        self, ecosystem_path
+    ):
         issue = _sample_issue_dict()
         issue.pop("created")
         issue.pop("updated")
@@ -882,7 +886,9 @@ class TestCoordinationManagerNormalization:
         finally:
             os.unlink(path)
 
-    def test_infer_todo_repo_issue_id_pool_and_default(self, ecosystem_path, monkeypatch):
+    def test_infer_todo_repo_issue_id_pool_and_default(
+        self, ecosystem_path, monkeypatch
+    ):
         from types import SimpleNamespace
 
         cm = CoordinationManager(ecosystem_path)
@@ -1026,20 +1032,30 @@ class TestCoordinationManagerNormalization:
                 raise OSError("disk full")
 
             monkeypatch.setattr("builtins.open", _boom)
-            with pytest.raises(ConfigurationError, match="Failed to write ecosystem.yaml"):
+            with pytest.raises(
+                ConfigurationError, match="Failed to write ecosystem.yaml"
+            ):
                 cm.save()
         finally:
             os.unlink(path)
 
     def test_get_ecosystem_status_healthy_and_degraded(self):
         healthy_data = _make_ecosystem_yaml(
-            issues=[_sample_issue_dict(id="ISSUE-HEALTHY", status="resolved", priority="low")],
+            issues=[
+                _sample_issue_dict(
+                    id="ISSUE-HEALTHY", status="resolved", priority="low"
+                )
+            ],
             todos=[_sample_todo_dict(id="TODO-HEALTHY", status="completed")],
             plans=[_sample_plan_dict(status="draft")],
             dependencies=[_sample_dependency_dict(status="satisfied")],
         )
         degraded_data = _make_ecosystem_yaml(
-            issues=[_sample_issue_dict(id="ISSUE-DEGRADED", status="pending", priority="high")],
+            issues=[
+                _sample_issue_dict(
+                    id="ISSUE-DEGRADED", status="pending", priority="high"
+                )
+            ],
             todos=[_sample_todo_dict(id="TODO-DEGRADED", status="pending")],
             plans=[_sample_plan_dict(status="active")],
             dependencies=[_sample_dependency_dict(status="unsatisfied")],
@@ -1059,7 +1075,9 @@ class TestCoordinationManagerNormalization:
 
     def test_get_ecosystem_status_no_active_blockers(self):
         data = _make_ecosystem_yaml(
-            issues=[_sample_issue_dict(id="ISSUE-LOW", status="pending", priority="low")],
+            issues=[
+                _sample_issue_dict(id="ISSUE-LOW", status="pending", priority="low")
+            ],
             todos=[_sample_todo_dict(id="TODO-COMPLETE", status="completed")],
             plans=[_sample_plan_dict(status="draft")],
             dependencies=[_sample_dependency_dict(status="satisfied")],
@@ -1181,7 +1199,9 @@ class TestCoordinationManagerReporting:
 
     def test_get_blocking_dependencies(self, ecosystem_path):
         deps = [
-            _sample_dependency_dict(id="D1", status="unsatisfied", consumer="mahavishnu"),
+            _sample_dependency_dict(
+                id="D1", status="unsatisfied", consumer="mahavishnu"
+            ),
             _sample_dependency_dict(id="D2", status="satisfied", consumer="mahavishnu"),
         ]
         data = _make_ecosystem_yaml(dependencies=deps)
@@ -1197,9 +1217,15 @@ class TestCoordinationManagerReporting:
     def test_get_blocking_dependencies_filters_satisfied_only(self):
         data = _make_ecosystem_yaml(
             dependencies=[
-                _sample_dependency_dict(id="D1", status="deprecated", consumer="mahavishnu"),
-                _sample_dependency_dict(id="D2", status="unknown", consumer="mahavishnu"),
-                _sample_dependency_dict(id="D3", status="satisfied", consumer="mahavishnu"),
+                _sample_dependency_dict(
+                    id="D1", status="deprecated", consumer="mahavishnu"
+                ),
+                _sample_dependency_dict(
+                    id="D2", status="unknown", consumer="mahavishnu"
+                ),
+                _sample_dependency_dict(
+                    id="D3", status="satisfied", consumer="mahavishnu"
+                ),
             ]
         )
         path = _write_ecosystem(data)
@@ -1544,7 +1570,9 @@ class TestCoordinationMemoryStoreDependencyEvent:
             updated="2026-01-15T00:00:00",
             notes="test",
         )
-        await mem.store_dependency_event("validated", dep, validation_result={"passed": True})
+        await mem.store_dependency_event(
+            "validated", dep, validation_result={"passed": True}
+        )
         mock_sb.store_memory.assert_awaited_once()
         call_kwargs = mock_sb.store_memory.call_args[1]
         assert call_kwargs["metadata"]["entity_type"] == "dependency"
@@ -2475,7 +2503,9 @@ class TestCoordinationExecutorSequential:
                 CrossRepoTodo(**cm._normalize_todo_record(t))
                 for t in cm._coordination.get("todos", [])
             ]
-            results = await executor._execute_sequential(todo_objs, "mahavishnu", "least_loaded")
+            results = await executor._execute_sequential(
+                todo_objs, "mahavishnu", "least_loaded"
+            )
             assert len(results) == 1  # Should stop after first failure
             assert results[0]["success"] is False
         finally:

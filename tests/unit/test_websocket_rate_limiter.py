@@ -507,7 +507,9 @@ class TestCleanup:
         assert "conn_1" not in limiter._rate_limit_events
 
     def test_cleanup_keeps_active_connections(self):
-        limiter = TokenBucketRateLimiter(rate=10.0, burst_size=5.0, cleanup_interval=300.0)
+        limiter = TokenBucketRateLimiter(
+            rate=10.0, burst_size=5.0, cleanup_interval=300.0
+        )
         limiter.check("conn_1")
         # Simulate a recent update
         limiter._last_update["conn_1"] = time.time()

@@ -366,7 +366,7 @@ result = await client.call_tool(
         "action": "create",
         "branch": "feature-auth",
         "create_branch": True,
-    }
+    },
 )
 
 # Get safety status
@@ -377,7 +377,7 @@ result = await client.call_tool(
         "action": "safety_status",
         "repo_nickname": "mahavishnu",
         "worktree_path": "~/worktrees/mahavishnu/feature-auth",
-    }
+    },
 )
 ```
 

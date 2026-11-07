@@ -70,7 +70,9 @@ class TestApplicationOperation:
         assert op.bundle_id == "com.apple.finder"
 
     def test_wildcard_bundle_id(self):
-        op = ApplicationOperation(operation_type=OperationType.LAUNCH_APP, bundle_id="*")
+        op = ApplicationOperation(
+            operation_type=OperationType.LAUNCH_APP, bundle_id="*"
+        )
         assert op.bundle_id == "*"
 
     def test_empty_bundle_id(self):
@@ -79,7 +81,9 @@ class TestApplicationOperation:
 
     def test_no_dot_bundle_id(self):
         with pytest.raises(ValidationError, match="reverse domain"):
-            ApplicationOperation(operation_type=OperationType.LAUNCH_APP, bundle_id="finder")
+            ApplicationOperation(
+                operation_type=OperationType.LAUNCH_APP, bundle_id="finder"
+            )
 
     def test_whitespace_stripped(self):
         op = ApplicationOperation(
@@ -111,7 +115,9 @@ class TestQuitAppOperation:
 
 class TestWindowOperation:
     def test_valid(self):
-        op = WindowOperation(operation_type=OperationType.ACTIVATE_WINDOW, window_id="123")
+        op = WindowOperation(
+            operation_type=OperationType.ACTIVATE_WINDOW, window_id="123"
+        )
         assert op.window_id == "123"
         assert op.bundle_id is None
 
@@ -205,13 +211,17 @@ class TestMenuClickOperation:
 
 class TestTypeTextOperation:
     def test_valid(self):
-        op = TypeTextOperation(operation_type=OperationType.TYPE_TEXT, text="hello world")
+        op = TypeTextOperation(
+            operation_type=OperationType.TYPE_TEXT, text="hello world"
+        )
         assert op.text == "hello world"
         assert op.interval == 0.05
 
     def test_null_bytes_rejected(self):
         with pytest.raises(ValidationError, match="null byte"):
-            TypeTextOperation(operation_type=OperationType.TYPE_TEXT, text="hello\x00world")
+            TypeTextOperation(
+                operation_type=OperationType.TYPE_TEXT, text="hello\x00world"
+            )
 
     def test_max_length(self):
         long_text = "a" * 10001

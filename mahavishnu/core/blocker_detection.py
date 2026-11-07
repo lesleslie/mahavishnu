@@ -219,8 +219,12 @@ class BlockerDetector:
                     resolution_suggestions=self._get_suggestions(keyword),
                     avg_resolution_time_hours=avg_resolution,
                     confidence=min(1.0, len(data["tasks"]) / 10),
-                    frequency=self._calculate_frequency(len(data["tasks"]), total_tasks),
-                    severity=self._determine_severity(keyword, len(data["tasks"]), avg_resolution),
+                    frequency=self._calculate_frequency(
+                        len(data["tasks"]), total_tasks
+                    ),
+                    severity=self._determine_severity(
+                        keyword, len(data["tasks"]), avg_resolution
+                    ),
                     description=f"Recurring blocker: '{keyword}' detected in {len(data['tasks'])} tasks",
                 )
                 patterns.append(pattern)
@@ -297,7 +301,9 @@ class BlockerDetector:
 
         return metrics
 
-    def _calculate_trend(self, blocked_tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _calculate_trend(
+        self, blocked_tasks: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Calculate blocker trend over time."""
         trend: list[dict[str, Any]] = []
         now = datetime.now(UTC)
@@ -435,7 +441,9 @@ class BlockerDetector:
         return datetime.fromisoformat(dt_str)
 
 
-def analyze_blockers(tasks: list[dict[str, Any]]) -> tuple[list[BlockerPattern], BlockerMetrics]:
+def analyze_blockers(
+    tasks: list[dict[str, Any]],
+) -> tuple[list[BlockerPattern], BlockerMetrics]:
     """Convenience function to analyze blockers.
 
     Args:

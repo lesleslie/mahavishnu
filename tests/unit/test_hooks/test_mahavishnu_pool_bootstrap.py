@@ -5,6 +5,7 @@ and at ~/.qwen/hooks/sessionstart/mahavishnu-pool-bootstrap.py. We test
 the importable helpers rather than the script entry point because
 the entry point is exercised by the integration test in Task 12.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -21,9 +22,13 @@ def _load_module() -> object:
     """Load the hook script as a module for direct testing."""
     path = (
         Path(__file__).parent.parent.parent.parent
-        / ".claude" / "hooks" / "mahavishnu-pool-bootstrap.py"
+        / ".claude"
+        / "hooks"
+        / "mahavishnu-pool-bootstrap.py"
     )
-    spec = importlib.util.spec_from_file_location("mahavishnu_pool_bootstrap_hook", path)
+    spec = importlib.util.spec_from_file_location(
+        "mahavishnu_pool_bootstrap_hook", path
+    )
     if spec is None or spec.loader is None:
         pytest.skip(f"hook script not found at {path}")
     module = importlib.util.module_from_spec(spec)
@@ -56,7 +61,9 @@ def test_format_result_failed() -> None:
     assert "MCP down" in rendered
 
 
-def test_invoke_bootstrap_sends_jsonrpc_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_invoke_bootstrap_sends_jsonrpc_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verify the wire shape is JSON-RPC 2.0 tools/call, NOT /tools/<name>."""
     mod = _load_module()
     captured: dict[str, object] = {}
@@ -89,7 +96,9 @@ def test_invoke_bootstrap_sends_jsonrpc_envelope(monkeypatch: pytest.MonkeyPatch
     assert body["params"]["name"] == "pool_bootstrap"
 
 
-def test_invoke_bootstrap_returns_none_on_connection_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_invoke_bootstrap_returns_none_on_connection_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """When the MCP server is unreachable, the helper returns None and the script proceeds in degraded mode."""
     mod = _load_module()
 

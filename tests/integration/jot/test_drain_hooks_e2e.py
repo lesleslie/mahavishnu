@@ -18,6 +18,7 @@ The wrappers must not require any CWD setup — the venv has ``mahavishnu``
 installed in editable mode, so the wrappers' imports resolve regardless of
 where Claude Code invokes them from.
 """
+
 from __future__ import annotations
 
 import json
@@ -208,8 +209,7 @@ class TestCapture:
             cwd=str(REPO_ROOT),
         )
         assert result.returncode == 0, (
-            f"jot-capture.py must fail-open on bad stdin; "
-            f"stderr={result.stderr!r}"
+            f"jot-capture.py must fail-open on bad stdin; stderr={result.stderr!r}"
         )
         log = isolated_home / ".mahavishnu" / "jot" / "log.jsonl"
         assert not log.exists(), "bad JSON must not produce a log entry"

@@ -231,7 +231,9 @@ class TestFindSimilar:
     ):
         # When _search_akosha raises, _search_session_buddy is called
         with (
-            patch.object(retriever, "_search_akosha", side_effect=RuntimeError("offline")),
+            patch.object(
+                retriever, "_search_akosha", side_effect=RuntimeError("offline")
+            ),
             patch.object(
                 retriever,
                 "_search_session_buddy",
@@ -285,9 +287,7 @@ class TestSearchAkosha:
     async def test_handles_content_key_fallback(self, retriever: EvidenceRetriever):
         # Production code falls back to ``content`` when ``results`` is missing.
         payload = {
-            "content": [
-                {"id": "c1", "score": 0.3, "text": "foo", "outcome": "success"}
-            ]
+            "content": [{"id": "c1", "score": 0.3, "text": "foo", "outcome": "success"}]
         }
         with patch(
             "mahavishnu.core.evidence_retriever.CommonMCPClient",
@@ -413,8 +413,12 @@ class TestClusterByPattern:
         assert out[0].cluster_id.startswith("cl_")
 
     async def test_unclassified_when_no_repo_paths(self, retriever: EvidenceRetriever):
-        e1 = LearningEvidence(session_id="s", goal="alpha beta", outcome="success", repo_paths=[])
-        e2 = LearningEvidence(session_id="s", goal="alpha beta", outcome="success", repo_paths=[])
+        e1 = LearningEvidence(
+            session_id="s", goal="alpha beta", outcome="success", repo_paths=[]
+        )
+        e2 = LearningEvidence(
+            session_id="s", goal="alpha beta", outcome="success", repo_paths=[]
+        )
         out = await retriever.cluster_by_pattern([e1, e2], min_cluster_size=2)
         assert len(out) == 1
 
@@ -436,8 +440,12 @@ class TestGetRetrievalContext:
             )
             for i in range(3)
         ]
-        with patch.object(retriever, "find_similar", AsyncMock(return_value=fake_similar)):
-            ctx = await retriever.get_retrieval_context("install pgvector index hnsw", ["/r"])
+        with patch.object(
+            retriever, "find_similar", AsyncMock(return_value=fake_similar)
+        ):
+            ctx = await retriever.get_retrieval_context(
+                "install pgvector index hnsw", ["/r"]
+            )
         assert isinstance(ctx, RetrievalContext)
         assert ctx.query == "install pgvector index hnsw"
         assert len(ctx.similar_evidence) == 3

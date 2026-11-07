@@ -37,15 +37,23 @@ def lock() -> HypothesisLock:
 
 def _hypo(claim: str = "test claim") -> Hypothesis:
     return Hypothesis(
-        claim=claim, falsification_criteria=("a",), success_criteria=("b",),
-        confidence=80, locked_at=datetime.now(UTC),
+        claim=claim,
+        falsification_criteria=("a",),
+        success_criteria=("b",),
+        confidence=80,
+        locked_at=datetime.now(UTC),
     )
 
 
 def test_hypothesis_validation_confidence_range() -> None:
     with pytest.raises(ValueError):
-        Hypothesis(claim="x", falsification_criteria=(), success_criteria=(),
-                   confidence=150, locked_at=datetime.now(UTC))
+        Hypothesis(
+            claim="x",
+            falsification_criteria=(),
+            success_criteria=(),
+            confidence=150,
+            locked_at=datetime.now(UTC),
+        )
 
 
 def test_compute_signature_is_deterministic() -> None:
@@ -70,7 +78,9 @@ async def test_duplicate_lock_raises(lock: HypothesisLock) -> None:
     h = _hypo()
     # Force two lock() calls to generate the same lock_id (so they hit the same key).
     with patch("mahavishnu.core.precommitment.uuid.uuid4") as mock_uuid:
-        mock_uuid.return_value.hex = "abcdef0123456789" * 2  # 32 hex chars; [:12] = "abcdef012345"
+        mock_uuid.return_value.hex = (
+            "abcdef0123456789" * 2
+        )  # 32 hex chars; [:12] = "abcdef012345"
         await lock.lock(h)
         # Second call: try_acquire returns None (held) → raises ValueError
         with pytest.raises(ValueError, match="duplicate lock_id"):

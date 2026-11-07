@@ -8,7 +8,13 @@ from .formatters import (
     print_skills,
 )
 from .indexer import SearchIndex, build_index, load_index, save_index
-from .search import SearchResult, exact_search, fuzzy_search, search_by_keyword, search_by_system
+from .search import (
+    SearchResult,
+    exact_search,
+    fuzzy_search,
+    search_by_keyword,
+    search_by_system,
+)
 
 __all__ = [
     "SearchIndex",

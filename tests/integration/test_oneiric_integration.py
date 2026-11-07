@@ -35,7 +35,9 @@ pytestmark = [
 def _config(timeout_sec: int = 5, cache_ttl_sec: int = 300) -> MCPAdapterRegistryConfig:
     return MCPAdapterRegistryConfig(
         enabled=True,
-        base_url=os.getenv("MAHAVISHNU_ONEIRIC_REGISTRY_URL", "http://localhost:8681/mcp"),
+        base_url=os.getenv(
+            "MAHAVISHNU_ONEIRIC_REGISTRY_URL", "http://localhost:8681/mcp"
+        ),
         timeout_sec=timeout_sec,
         cache_ttl_sec=cache_ttl_sec,
         token=os.getenv("MAHAVISHNU_ONEIRIC_TOKEN"),

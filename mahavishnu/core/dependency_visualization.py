@@ -146,7 +146,9 @@ class DependencyVisualizer:
             if depth == 0:
                 lines.append(" ".join(node_parts))
             else:
-                connector = self.SYMBOLS["last_branch"] if is_last else self.SYMBOLS["branch"]
+                connector = (
+                    self.SYMBOLS["last_branch"] if is_last else self.SYMBOLS["branch"]
+                )
                 lines.append(f"{prefix}{connector}{' '.join(node_parts)}")
 
             # Render dependencies
@@ -437,7 +439,9 @@ def visualize_dependencies(
             if not roots:
                 roots = list(graph)[:1]  # Default to first task
             if roots:
-                return "\n\n".join(viz.render_tree(graph, r, max_depth) for r in roots[:3])
+                return "\n\n".join(
+                    viz.render_tree(graph, r, max_depth) for r in roots[:3]
+                )
             return "Empty graph"
         return viz.render_tree(graph, task_id, max_depth)
 

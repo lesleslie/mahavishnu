@@ -110,7 +110,9 @@ class TestRoutingStatsCommand:
 
     def test_stats_with_both_options(self):
         """Test routing stats with both repo and limit specified."""
-        result = runner.invoke(routing_app, ["stats", "--repo", "mahavishnu", "--limit", "3"])
+        result = runner.invoke(
+            routing_app, ["stats", "--repo", "mahavishnu", "--limit", "3"]
+        )
         assert result.exit_code == 0
         assert "Repo: mahavishnu" in result.stdout
         assert "Limit: 3" in result.stdout
@@ -332,7 +334,9 @@ class TestRoutingAppRegistration:
     def test_routing_app_no_callback_default(self):
         """The Typer app should not have a default callback by default."""
         # When no default callback, the app's info.callback is None
-        assert routing_app.info.callback is None or routing_app.info.callback is not None
+        assert (
+            routing_app.info.callback is None or routing_app.info.callback is not None
+        )
 
     def test_routing_app_console_is_rich_console(self):
         """The module-level console should be a Rich Console instance."""

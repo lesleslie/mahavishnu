@@ -121,13 +121,13 @@ class TestStripAnsi:
     def test_strips_csi_color_codes(self) -> None:
         from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-        text = "\x1B[31mred\x1B[0m text"
+        text = "\x1b[31mred\x1b[0m text"
         assert tools._strip_ansi(text) == "red text"
 
     def test_strips_cursor_moves(self) -> None:
         from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-        text = "\x1B[2J\x1B[Hhello"
+        text = "\x1b[2J\x1b[Hhello"
         assert tools._strip_ansi(text) == "hello"
 
     def test_preserves_plain_text(self) -> None:
@@ -138,7 +138,7 @@ class TestStripAnsi:
     def test_strips_complex_sequence(self) -> None:
         from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-        text = "\x1B[1;36m--type\x1B[0m"
+        text = "\x1b[1;36m--type\x1b[0m"
         assert tools._strip_ansi(text) == "--type"
 
 
@@ -205,10 +205,12 @@ class TestBindingsFromPayload:
     def test_valid_bindings(self) -> None:
         from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-        bindings = tools._bindings_from_payload([
-            {"path": "a.py", "base": "old"},
-            {"path": "b.py"},
-        ])
+        bindings = tools._bindings_from_payload(
+            [
+                {"path": "a.py", "base": "old"},
+                {"path": "b.py"},
+            ]
+        )
         assert bindings[0].path == "a.py"
         assert bindings[0].base == "old"
         assert bindings[1].path == "b.py"
@@ -350,9 +352,7 @@ def test_launch_worker_with_metadata_window_name(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result())
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    asyncio.run(
-        tools.launch_worker(prompt="x", metadata={"window_name": "editor"})
-    )
+    asyncio.run(tools.launch_worker(prompt="x", metadata={"window_name": "editor"}))
     assert manager.spawn.call_args.kwargs["window_name"] == "editor"
 
 
@@ -479,7 +479,7 @@ def test_capture_output_strips_ansi_by_default(
 
     manager = _make_manager_mock()
     manager.capture_output = MagicMock(
-        return_value=_make_capture_output(text="\x1B[31mred\x1B[0m text")
+        return_value=_make_capture_output(text="\x1b[31mred\x1b[0m text")
     )
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(tools.capture_output("w-1"))
@@ -1275,9 +1275,7 @@ def test_worker_run_with_settle_invalid_bindings(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(
-        tools.worker_run_with_settle("task", bindings=["not-a-dict"])
-    )
+    out = asyncio.run(tools.worker_run_with_settle("task", bindings=["not-a-dict"]))
     assert out["state"] == "invalid_bindings"
     assert "must be a dict" in out["error"]
 
@@ -1290,9 +1288,7 @@ def test_worker_run_with_settle_binding_missing_path(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(
-        tools.worker_run_with_settle("task", bindings=[{"base": "x"}])
-    )
+    out = asyncio.run(tools.worker_run_with_settle("task", bindings=[{"base": "x"}]))
     assert out["state"] == "invalid_bindings"
 
 
@@ -1329,9 +1325,7 @@ def test_worker_run_with_settle_generates_run_ref_when_omitted(
     monkeypatch.setattr(tools, "_durable_manager", manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
-        tools.worker_run_with_settle(
-            "task", bindings=[{"path": "a.py", "base": "old"}]
-        )
+        tools.worker_run_with_settle("task", bindings=[{"path": "a.py", "base": "old"}])
     )
     assert out["run_ref"].startswith("settle-")
     assert len(out["run_ref"]) == len("settle-") + 12
@@ -1344,9 +1338,7 @@ def test_worker_run_with_settle_worker_id_change_triggers_restamp(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.spawn = MagicMock(
-        return_value=_make_spawn_result(worker_id="w-new-id")
-    )
+    manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-new-id"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
@@ -1527,13 +1519,9 @@ def test_apply_merge_clean(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         tools,
         "merge_three_way",
-        AsyncMock(
-            return_value=MergeResult(merged="merged-clean", conflict_count=0)
-        ),
+        AsyncMock(return_value=MergeResult(merged="merged-clean", conflict_count=0)),
     )
-    out = asyncio.run(
-        tools._apply_merge(record, bindings_content)
-    )
+    out = asyncio.run(tools._apply_merge(record, bindings_content))
     assert "merged" in out
     assert out["conflict_count"] == 0
     assert out["merged"]["a.py"] == "merged-clean"
@@ -1613,7 +1601,9 @@ def test_apply_merge_uses_base_as_theirs_default(
     bindings_content = {"a.py": "ours"}
     captured: dict = {}
 
-    async def fake_merge(*, base: str, ours: str, theirs: str, label: str, strategy: object | None = None):
+    async def fake_merge(
+        *, base: str, ours: str, theirs: str, label: str, strategy: object | None = None
+    ):
         # ``strategy`` kwarg added when :func:`merge_three_way` grew the
         # REQ-SM-004 per-binding ``strategy`` parameter; the captured
         # callback only checks the merge-file inputs and intentionally
@@ -1653,7 +1643,9 @@ def test_apply_merge_passes_theirs_when_provided(
     bindings_theirs = {"a.py": "theirs-content"}
     captured: dict = {}
 
-    async def fake_merge(*, base: str, ours: str, theirs: str, label: str, strategy: object | None = None):
+    async def fake_merge(
+        *, base: str, ours: str, theirs: str, label: str, strategy: object | None = None
+    ):
         # Accept-and-ignore the new ``strategy`` kwarg; this fake only
         # cares about the (base, ours, theirs) triple the test asserts on.
         captured["base"] = base
@@ -1746,9 +1738,7 @@ def test_worker_settle_apply_success_path(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(
         tools,
         "merge_three_way",
-        AsyncMock(
-            return_value=MergeResult(merged="merged-clean", conflict_count=0)
-        ),
+        AsyncMock(return_value=MergeResult(merged="merged-clean", conflict_count=0)),
     )
     out = asyncio.run(
         tools.worker_settle(

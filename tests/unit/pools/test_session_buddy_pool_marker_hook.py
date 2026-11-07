@@ -106,9 +106,7 @@ async def test_execute_task_with_working_dir_wraps_with_marker(make_pool) -> Non
     """execute_task with working_dir calls subagent_marker mark, then worker_execute, then clear."""
     pool, calls = make_pool()
 
-    await pool.execute_task(
-        {"prompt": "do work", "working_dir": "/path/to/project"}
-    )
+    await pool.execute_task({"prompt": "do work", "working_dir": "/path/to/project"})
 
     names = _tool_names(calls)
     assert names == ["subagent_marker", "execute_on_pool", "subagent_marker"], names
@@ -183,8 +181,11 @@ async def test_execute_task_marker_clear_failure_does_not_propagate(
         mock_cls.return_value = mock_client
         pool = SessionBuddyPool(
             config=PoolConfig(
-                name="x", pool_type="session-buddy",
-                min_workers=1, max_workers=1, worker_type="terminal-claude",
+                name="x",
+                pool_type="session-buddy",
+                min_workers=1,
+                max_workers=1,
+                worker_type="terminal-claude",
             )
         )
         pool._mcp = mock_client
@@ -199,8 +200,7 @@ async def test_execute_task_marker_clear_failure_does_not_propagate(
     assert result["status"] == "completed"
     # The clear failure was logged.
     assert any(
-        "subagent_marker clear failed" in record.message
-        for record in caplog.records
+        "subagent_marker clear failed" in record.message for record in caplog.records
     )
 
 
@@ -269,16 +269,17 @@ async def test_execute_batch_clears_when_batch_raises() -> None:
         mock_cls.return_value = mock_client
         pool = SessionBuddyPool(
             config=PoolConfig(
-                name="x", pool_type="session-buddy",
-                min_workers=1, max_workers=1, worker_type="terminal-claude",
+                name="x",
+                pool_type="session-buddy",
+                min_workers=1,
+                max_workers=1,
+                worker_type="terminal-claude",
             )
         )
         pool._mcp = mock_client
         pool._workers = {"w1": "worker_w1"}
 
-        result = await pool.execute_batch(
-            [{"prompt": "a", "working_dir": "/path/a"}]
-        )
+        result = await pool.execute_batch([{"prompt": "a", "working_dir": "/path/a"}])
 
     # Result reflects failure (existing behavior preserved).
     assert result["0"]["status"] == "failed"

@@ -78,7 +78,9 @@ def validate_command(command: str) -> None:
         )
 
     if len(command) > MAX_COMMAND_LENGTH:
-        raise ValueError(f"Command too long: {len(command)} > {MAX_COMMAND_LENGTH} characters")
+        raise ValueError(
+            f"Command too long: {len(command)} > {MAX_COMMAND_LENGTH} characters"
+        )
 
     command_lower = command.lower()
     for pattern in DANGEROUS_PATTERNS:

@@ -4,6 +4,7 @@ Verifies the wiring contract from docs/plans/2026-10-09-pool-bootstrap-mcp-tool.
 Commit 2: simulate the SessionStart hook calling mcp__mahavishnu__pool_bootstrap
 via JSON-RPC 2.0, confirm the registry goes from 0 pools to 1 pool.
 """
+
 from __future__ import annotations
 
 import os
@@ -36,10 +37,17 @@ def _is_mcp_reachable() -> bool:
 
 def _jsonrpc(method: str, params: dict[str, object]) -> dict[str, object]:
     """Build a JSON-RPC 2.0 request body."""
-    return {"jsonrpc": "2.0", "id": str(uuid.uuid4()), "method": method, "params": params}
+    return {
+        "jsonrpc": "2.0",
+        "id": str(uuid.uuid4()),
+        "method": method,
+        "params": params,
+    }
 
 
-def _call_tool(client: httpx.Client, name: str, arguments: dict[str, object] | None = None) -> dict[str, object]:
+def _call_tool(
+    client: httpx.Client, name: str, arguments: dict[str, object] | None = None
+) -> dict[str, object]:
     """Invoke a tool via FastMCP's JSON-RPC 2.0 tools/call endpoint.
 
     Returns the unwrapped result dict. Raises on JSON-RPC error.
@@ -65,6 +73,7 @@ def _call_tool(client: httpx.Client, name: str, arguments: dict[str, object] | N
         first = result["content"][0]
         if isinstance(first, dict) and "text" in first:
             import json as _json
+
             return _json.loads(first["text"])  # type: ignore[return-value]
     if isinstance(result, dict):
         return result
@@ -87,11 +96,15 @@ def test_pool_bootstrap_e2e_empty_registry_spawns() -> None:
 
         # 2. Verify empty
         health = _call_tool(client, "pool_health")
-        assert health.get("pools_active", -1) == 0, f"setup failed: registry not empty: {health}"
+        assert health.get("pools_active", -1) == 0, (
+            f"setup failed: registry not empty: {health}"
+        )
 
         # 3. Bootstrap
         result = _call_tool(client, "pool_bootstrap")
-        assert result["status"] in ("spawned", "warning"), f"unexpected status: {result}"
+        assert result["status"] in ("spawned", "warning"), (
+            f"unexpected status: {result}"
+        )
 
         # 4. Confirm the pool is now in the registry
         health_after = _call_tool(client, "pool_health")

@@ -145,7 +145,10 @@ async def web_fetch(
             validate_url(current_url)  # CRITICAL: re-validate every hop
             hops += 1
             continue
-        if resp.status_code in _REDIRECT_STATUSES and hops >= settings.max_redirect_hops:
+        if (
+            resp.status_code in _REDIRECT_STATUSES
+            and hops >= settings.max_redirect_hops
+        ):
             raise RuntimeError(
                 f"redirect chain exceeded max_redirect_hops={settings.max_redirect_hops}"
             )
@@ -190,7 +193,11 @@ async def web_fetch_batch(
             )
             for u in urls
         ]
-    concurrency = max_concurrent if max_concurrent is not None else settings.max_concurrent_fetches
+    concurrency = (
+        max_concurrent
+        if max_concurrent is not None
+        else settings.max_concurrent_fetches
+    )
     sem = asyncio.Semaphore(concurrency)
 
     async def fetch_one(u: str) -> BatchItem:
@@ -250,7 +257,9 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
         raw: bool = False,
     ) -> list[BatchItem]:
         """(HTTP, for pool workers and CLI) - Bounded-concurrent batch fetch."""
-        return await _web_fetch_batch_impl(urls, settings, max_length, max_concurrent, raw)
+        return await _web_fetch_batch_impl(
+            urls, settings, max_length, max_concurrent, raw
+        )
 
 
 _web_fetch_impl = web_fetch

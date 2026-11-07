@@ -40,7 +40,9 @@ def _resolve_provider(name: str | None) -> EmbeddingProvider | None:
         return EmbeddingProvider(name)
     except ValueError:
         valid = ", ".join(p.value for p in EmbeddingProvider)
-        raise typer.BadParameter(f"Unknown --provider {name!r}. Valid: {valid}") from None
+        raise typer.BadParameter(
+            f"Unknown --provider {name!r}. Valid: {valid}"
+        ) from None
 
 
 def _format_result(result: dict) -> None:
@@ -56,14 +58,18 @@ def _format_result(result: dict) -> None:
         )
         typer.secho(f"   Type: {result['content_type']}", fg=typer.colors.BLUE)
         typer.secho(f"   Chunks: {result['chunk_count']}", fg=typer.colors.BLUE)
-        typer.secho(f"   Embedding dim: {result['embedding_dimension']}", fg=typer.colors.BLUE)
+        typer.secho(
+            f"   Embedding dim: {result['embedding_dimension']}", fg=typer.colors.BLUE
+        )
         typer.secho(
             f"   Akosha: {'✓' if result['stored_in_akosha'] else '✗'}",
             fg=typer.colors.GREEN if result["stored_in_akosha"] else typer.colors.RED,
         )
         typer.secho(
             f"   Crackerjack: {'✓' if result['indexed_in_crackerjack'] else '✗'}",
-            fg=typer.colors.GREEN if result["indexed_in_crackerjack"] else typer.colors.RED,
+            fg=typer.colors.GREEN
+            if result["indexed_in_crackerjack"]
+            else typer.colors.RED,
         )
     else:
         typer.secho(f"❌ Failed to ingest: {result['source']}", fg=typer.colors.RED)
@@ -73,11 +79,15 @@ def _format_result(result: dict) -> None:
 @ingestion_app.command("url")
 def ingest_url(
     url: str = typer.Argument(..., help="URL to ingest"),
-    chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Maximum characters per chunk"),
+    chunk_size: int = typer.Option(
+        1000, "--chunk-size", "-c", help="Maximum characters per chunk"
+    ),
     chunk_overlap: int = typer.Option(
         200, "--chunk-overlap", "-o", help="Character overlap between chunks"
     ),
-    output_dir: str = typer.Option("ingested", "--output", "-d", help="Output directory"),
+    output_dir: str = typer.Option(
+        "ingested", "--output", "-d", help="Output directory"
+    ),
     provider: str | None = typer.Option(
         None,
         "--provider",
@@ -128,7 +138,9 @@ def ingest_url(
 @ingestion_app.command("file")
 def ingest_file(
     file_path: str = typer.Argument(..., help="Path to file to ingest"),
-    chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Maximum characters per chunk"),
+    chunk_size: int = typer.Option(
+        1000, "--chunk-size", "-c", help="Maximum characters per chunk"
+    ),
     chunk_overlap: int = typer.Option(
         200, "--chunk-overlap", "-o", help="Character overlap between chunks"
     ),
@@ -182,7 +194,9 @@ def ingest_file(
 @ingestion_app.command("batch")
 def ingest_batch(
     input_file: str = typer.Argument(..., help="File containing URLs (one per line)"),
-    parallel: int = typer.Option(5, "--parallel", "-n", help="Number of parallel ingestions"),
+    parallel: int = typer.Option(
+        5, "--parallel", "-n", help="Number of parallel ingestions"
+    ),
     provider: str | None = typer.Option(
         None,
         "--provider",
@@ -211,7 +225,11 @@ def ingest_batch(
         raise typer.Exit(code=1)
 
     # Read URLs
-    urls = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    urls = [
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
     if not urls:
         typer.secho(f"❌ No URLs found in: {input_file}", fg=typer.colors.RED)
@@ -258,7 +276,9 @@ def ingest_batch(
         typer.secho("\n❌ Failed URLs:", fg=typer.colors.RED)
         for result in results:
             if not result["success"]:
-                typer.secho(f"   - {result['source']}: {result['error']}", fg=typer.colors.RED)
+                typer.secho(
+                    f"   - {result['source']}: {result['error']}", fg=typer.colors.RED
+                )
 
     raise typer.Exit(code=0 if fail_count == 0 else 1)
 
@@ -313,7 +333,9 @@ def ingestion_stats(
     typer.secho(f"   Output directory: {stats['output_dir']}", fg=typer.colors.BLUE)
     typer.secho(f"   Chunk size: {stats['chunk_size']}", fg=typer.colors.BLUE)
     typer.secho(f"   Chunk overlap: {stats['chunk_overlap']}", fg=typer.colors.BLUE)
-    typer.secho(f"   Embedding provider: {stats['embedding_provider']}", fg=typer.colors.BLUE)
+    typer.secho(
+        f"   Embedding provider: {stats['embedding_provider']}", fg=typer.colors.BLUE
+    )
 
     # Check output directory exists
     output_path = Path(stats["output_dir"])

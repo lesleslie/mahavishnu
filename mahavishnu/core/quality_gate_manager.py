@@ -339,7 +339,9 @@ class QualityGateManager:
             elif passed:
                 message = f"Check passed (score: {score}%)"
             else:
-                message = f"Check failed: {', '.join(issues) if issues else 'Unknown error'}"
+                message = (
+                    f"Check failed: {', '.join(issues) if issues else 'Unknown error'}"
+                )
 
             return QualityCheckResult(
                 check_name=rule.name,
@@ -422,7 +424,9 @@ class QualityGateManager:
         if passed and not warnings:
             message = f"All quality gates passed (score: {overall_score:.1f}%)"
         elif passed:
-            message = f"Quality gates passed with warnings (score: {overall_score:.1f}%)"
+            message = (
+                f"Quality gates passed with warnings (score: {overall_score:.1f}%)"
+            )
         else:
             message = f"Quality gates failed: {', '.join(failed_required)}"
 

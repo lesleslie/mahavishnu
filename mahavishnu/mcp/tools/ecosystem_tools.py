@@ -68,7 +68,9 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
         app = get_app_from_context()
         service = EcosystemStatusService(
             section_timeout_ms=timeout_per_section_ms,
-            recovery_provider=app if app and hasattr(app, "get_recovery_summary") else None,
+            recovery_provider=app
+            if app and hasattr(app, "get_recovery_summary")
+            else None,
         )
         report = await service.generate_report()
         data = report.model_dump(mode="json")
@@ -113,7 +115,9 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
 
         app = get_app_from_context()
         service = EcosystemStatusService(
-            recovery_provider=app if app and hasattr(app, "get_recovery_summary") else None
+            recovery_provider=app
+            if app and hasattr(app, "get_recovery_summary")
+            else None
         )
         report = await service.generate_report()
         caps = report.capabilities
@@ -142,7 +146,9 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
 
         app = get_app_from_context()
         service = EcosystemStatusService(
-            recovery_provider=app if app and hasattr(app, "get_recovery_summary") else None
+            recovery_provider=app
+            if app and hasattr(app, "get_recovery_summary")
+            else None
         )
         report = await service.generate_report()
 
@@ -152,13 +158,17 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
                 "status": adapter.status.value,
                 "capabilities": adapter.capabilities,
                 "degradation_trend": (
-                    adapter.degradation_trend.value if adapter.degradation_trend else None
+                    adapter.degradation_trend.value
+                    if adapter.degradation_trend
+                    else None
                 ),
                 "preference_score": adapter.preference_score,
             }
 
         healthy = [n for n, a in available_adapters.items() if a["status"] == "ok"]
-        degraded = [n for n, a in available_adapters.items() if a["status"] == "degraded"]
+        degraded = [
+            n for n, a in available_adapters.items() if a["status"] == "degraded"
+        ]
 
         return {
             "task_class": task_class,
@@ -167,7 +177,9 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
             "healthy_count": len(healthy),
             "degraded_count": len(degraded),
             "recommendation": (
-                f"Use {healthy[0]}" if healthy else f"No healthy adapters for {task_class}"
+                f"Use {healthy[0]}"
+                if healthy
+                else f"No healthy adapters for {task_class}"
             ),
         }
 

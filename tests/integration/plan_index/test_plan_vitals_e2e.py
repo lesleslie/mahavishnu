@@ -30,9 +30,7 @@ def _record(plan_id: str, *, status: str, role: str, topic: str) -> PlanRecord:
 
 
 class TestPlanVitalsE2E:
-    async def test_vitals_returns_typed_dict_shape(
-        self, call_tool: Any
-    ) -> None:
+    async def test_vitals_returns_typed_dict_shape(self, call_tool: Any) -> None:
         """Empty substrate; required TypedDict keys are still present."""
         result = await call_tool("plan_vitals", {})
 
@@ -50,9 +48,7 @@ class TestPlanVitalsE2E:
         ):
             assert required in result, f"plan_vitals missing field: {required}"
 
-    async def test_vitals_counters_are_non_negative_ints(
-        self, call_tool: Any
-    ) -> None:
+    async def test_vitals_counters_are_non_negative_ints(self, call_tool: Any) -> None:
         """Counter invariants per spec §6."""
         result = await call_tool("plan_vitals", {})
 
@@ -69,9 +65,15 @@ class TestPlanVitalsE2E:
         self, call_tool: Any, store: Any
     ) -> None:
         """``by_status`` reflects the ``Counter`` of the seeded records."""
-        await store.upsert(_record("a" * 32, status="active", role="implementation", topic="routing"))
-        await store.upsert(_record("b" * 32, status="active", role="implementation", topic="routing"))
-        await store.upsert(_record("c" * 32, status="shipped", role="canonical", topic="indexing"))
+        await store.upsert(
+            _record("a" * 32, status="active", role="implementation", topic="routing")
+        )
+        await store.upsert(
+            _record("b" * 32, status="active", role="implementation", topic="routing")
+        )
+        await store.upsert(
+            _record("c" * 32, status="shipped", role="canonical", topic="indexing")
+        )
 
         result = await call_tool("plan_vitals", {})
 
@@ -79,9 +81,7 @@ class TestPlanVitalsE2E:
         assert result["by_status"] == {"active": 2, "shipped": 1}
         assert result["by_role"] == {"implementation": 2, "canonical": 1}
 
-    async def test_vitals_tripwire_enum_membership(
-        self, call_tool: Any
-    ) -> None:
+    async def test_vitals_tripwire_enum_membership(self, call_tool: Any) -> None:
         """``tripwire`` is one of the documented enum values (spec §6)."""
         result = await call_tool("plan_vitals", {})
 
@@ -101,7 +101,9 @@ class TestPlanVitalsE2E:
         so the round-trip yields a 2-element ``list`` rather than a
         ``tuple``. The test asserts on the serialized shape.
         """
-        await store.upsert(_record("a" * 32, status="active", role="implementation", topic="routing"))
+        await store.upsert(
+            _record("a" * 32, status="active", role="implementation", topic="routing")
+        )
 
         result = await call_tool("plan_vitals", {})
 

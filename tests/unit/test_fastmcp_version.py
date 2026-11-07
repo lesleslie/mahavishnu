@@ -73,7 +73,9 @@ class TestFastMCPVersion:
             pytest.fail(f"Unparsable fastmcp.__version__: {installed!r}")
         major = int(match.group(1))
         minor = int(match.group(2))
-        assert (major, minor) >= (3, 4), f"Installed fastmcp is {installed}; Plan 7 requires >= 3.4"
+        assert (major, minor) >= (3, 4), (
+            f"Installed fastmcp is {installed}; Plan 7 requires >= 3.4"
+        )
 
     def test_mcp_common_reexports_fastmcp_symbols(self) -> None:
         """mcp_common.fastmcp must re-export FastMCP, Context, Middleware."""

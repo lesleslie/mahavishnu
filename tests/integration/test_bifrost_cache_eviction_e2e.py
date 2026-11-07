@@ -113,7 +113,7 @@ def test_cache_sweep_dry_run_deletes_nothing() -> None:
             try:
                 if float(raw) <= now:
                     count += 1
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
         return count
 
@@ -148,11 +148,7 @@ def test_sweep_leaves_non_bifrost_keys_alone() -> None:
     except Exception:
         pytest.skip("Redis is not reachable at localhost:6379")
 
-    before = {
-        key
-        for key in client.keys("*")
-        if not key.startswith(b"Bifrost")
-    }
+    before = {key for key in client.keys("*") if not key.startswith(b"Bifrost")}
     cli = _cli()
     completed = subprocess.run(
         [str(cli), "bifrost", "cache-sweep", "--dry-run"],
@@ -162,21 +158,18 @@ def test_sweep_leaves_non_bifrost_keys_alone() -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stderr
-    after = {
-        key
-        for key in client.keys("*")
-        if not key.startswith(b"Bifrost")
-    }
+    after = {key for key in client.keys("*") if not key.startswith(b"Bifrost")}
 
     removed = before - after
-    assert not removed, (
-        "the sweep removed non-Bifrost keys: "
-        + ", ".join(sorted(key.decode("utf-8", "replace") for key in removed))
+    assert not removed, "the sweep removed non-Bifrost keys: " + ", ".join(
+        sorted(key.decode("utf-8", "replace") for key in removed)
     )
 
 
 @pytest.mark.skipif(
-    not Path.home().joinpath("Library/LaunchAgents/ai.bifrost.cache-sweep.plist").exists(),
+    not Path.home()
+    .joinpath("Library/LaunchAgents/ai.bifrost.cache-sweep.plist")
+    .exists(),
     reason="the cache-sweep launchd agent is not installed",
 )
 def test_launchd_agent_is_loaded() -> None:

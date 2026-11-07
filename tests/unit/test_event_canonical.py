@@ -195,10 +195,7 @@ def test_decode_rejects_non_object_payload() -> None:
 
 
 def test_decode_rejects_non_object_headers() -> None:
-    raw = (
-        '{"topic":"workflow.started","payload":{},'
-        '"headers":"not-a-dict"}'
-    )
+    raw = '{"topic":"workflow.started","payload":{},"headers":"not-a-dict"}'
     with pytest.raises(EventEnvelopeConversionError) as exc_info:
         decode_oneiric_envelope(raw)
     assert exc_info.value.details["reason"] == "non_object_payload_or_headers"
@@ -212,7 +209,10 @@ def test_decode_rejects_topic_source_version_event_id_required() -> None:
     )
     with pytest.raises(EventEnvelopeConversionError) as exc_info:
         decode_oneiric_envelope(raw)
-    assert exc_info.value.details["reason"] in {"missing_required_header", "invalid_topic"}
+    assert exc_info.value.details["reason"] in {
+        "missing_required_header",
+        "invalid_topic",
+    }
 
 
 def test_encoder_rejects_unsupported_nested_value() -> None:

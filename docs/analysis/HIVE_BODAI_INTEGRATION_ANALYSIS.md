@@ -80,9 +80,7 @@ class AuthenticatedSessionBuddyClient:
     def __init__(self, config: MahavishnuSettings):
         self.authenticator = MessageAuthenticator(config)
 
-    async def create_checkpoint(
-        self, session_id: str, state: dict[str, Any]
-    ) -> str:
+    async def create_checkpoint(self, session_id: str, state: dict[str, Any]) -> str:
         """Create checkpoint with HMAC authentication."""
 ```
 
@@ -131,7 +129,9 @@ class BodaiToolsSDK(Protocol):
 class BodaiMonitoringSDK(Protocol):
     """Protocol for Hive observability via existing infrastructure."""
 
-    async def record_metric(self, name: str, value: float, tags: dict[str, str]) -> None:
+    async def record_metric(
+        self, name: str, value: float, tags: dict[str, str]
+    ) -> None:
         """Record metric to Prometheus via Mahavishnu routing metrics."""
         ...
 
@@ -212,6 +212,7 @@ class BodaiSDK:
 
 
 # Concrete implementations
+
 
 class SessionBuddyMemoryAdapter(BodaiMemorySDK):
     """Session-Buddy integration for Hive agent memory."""
@@ -640,6 +641,7 @@ class HiveAgentGraph(BaseModel):
 
 # Versioning support
 
+
 class GraphVersionManager:
     """Manage graph version evolution and migrations."""
 
@@ -699,15 +701,11 @@ async def execute_workflow(
     adapter = self.adapters[adapter_name]
     return await adapter.execute(task, repos)
 
+
 # Session-Buddy: Async checkpoint creation
-async def create_checkpoint(
-    self, session_id: str, state: dict[str, Any]
-) -> str:
-    await self.opensearch.index(
-        index="session_checkpoints",
-        id=session_id,
-        body=state
-    )
+async def create_checkpoint(self, session_id: str, state: dict[str, Any]) -> str:
+    await self.opensearch.index(index="session_checkpoints", id=session_id, body=state)
+
 
 # Oneiric: Async gRPC client
 async def list_adapters(
@@ -861,22 +859,18 @@ class HiveCodeValidator:
             return result  # Can't continue if syntax is invalid
 
         # 2. Write to temp file for tool execution
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            suffix=".py",
-            delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(code)
             temp_path = Path(f.name)
 
         try:
             # 3. Run Crackerjack quality gates
             checks = checks or [
-                "ruff",      # Linting + formatting
-                "zuban",     # Type checking (fast)
-                "bandit",    # Security scanning
-                "complexipy", # Complexity analysis
-                "skylos",    # Dead code detection
+                "ruff",  # Linting + formatting
+                "zuban",  # Type checking (fast)
+                "bandit",  # Security scanning
+                "complexipy",  # Complexity analysis
+                "skylos",  # Dead code detection
             ]
 
             qc_result = await self.runner.run_async(
@@ -949,9 +943,7 @@ class HiveCodeValidator:
                     try:
                         __import__(f"{module}.{alias.name}")
                     except ImportError:
-                        issues.append(
-                            f"Cannot resolve import: {module}.{alias.name}"
-                        )
+                        issues.append(f"Cannot resolve import: {module}.{alias.name}")
 
         return issues
 

@@ -78,7 +78,10 @@ embeddings:
 
 ```python
 from mahavishnu.core.embeddings import EmbeddingProvider
-from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric, EmbeddingConfig
+from mahavishnu.core.embeddings_oneiric import (
+    get_embeddings_with_oneiric,
+    EmbeddingConfig,
+)
 
 config = EmbeddingConfig(provider=EmbeddingProvider.OPENAI)
 embeddings = await get_embeddings_with_oneiric(["hello", "world"], config)
@@ -145,10 +148,12 @@ ______________________________________________________________________
 from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric
 
 # Auto-load configuration from Oneiric
-embeddings = await get_embeddings_with_oneiric([
-    "Hello world",
-    "Mahavishnu MCP orchestrator",
-])
+embeddings = await get_embeddings_with_oneiric(
+    [
+        "Hello world",
+        "Mahavishnu MCP orchestrator",
+    ]
+)
 
 print(f"Generated {len(embeddings)} embeddings of dimension {len(embeddings[0])}")
 ```
@@ -157,7 +162,10 @@ print(f"Generated {len(embeddings)} embeddings of dimension {len(embeddings[0])}
 
 ```python
 from mahavishnu.core.embeddings import EmbeddingProvider
-from mahavishnu.core.embeddings_oneiric import EmbeddingConfig, get_embeddings_with_oneiric
+from mahavishnu.core.embeddings_oneiric import (
+    EmbeddingConfig,
+    get_embeddings_with_oneiric,
+)
 
 # Use FastEmbed for development
 config = EmbeddingConfig(
@@ -196,6 +204,7 @@ ______________________________________________________________________
 ```python
 # In mahavishnu/mcp/server_core.py
 from mahavishnu.core.embeddings_oneiric import mcp_tool_get_embeddings
+
 
 @mcp.tool()
 async def get_embeddings(
@@ -312,7 +321,7 @@ ______________________________________________________________________
 ```python
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer('all-MiniLM-L6-v2')
+model = SentenceTransformer("all-MiniLM-L6-v2")
 embeddings = model.encode(["hello", "world"])
 ```
 
@@ -327,7 +336,11 @@ embeddings = await get_embeddings_with_oneiric(["hello", "world"])
 ### After (FastEmbed)
 
 ```python
-from mahavishnu.core.embeddings_oneiric import get_embeddings_with_oneiric, EmbeddingConfig, EmbeddingProvider
+from mahavishnu.core.embeddings_oneiric import (
+    get_embeddings_with_oneiric,
+    EmbeddingConfig,
+    EmbeddingProvider,
+)
 
 config = EmbeddingConfig(provider=EmbeddingProvider.FASTEMBED)
 embeddings = await get_embeddings_with_oneiric(["hello", "world"], config)

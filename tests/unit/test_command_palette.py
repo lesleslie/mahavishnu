@@ -211,12 +211,16 @@ class TestCommandPalette:
             keywords=["test", "sample"],
         )
 
-    def test_register_command(self, palette: CommandPalette, sample_command: Command) -> None:
+    def test_register_command(
+        self, palette: CommandPalette, sample_command: Command
+    ) -> None:
         """Test registering a command."""
         palette.register(sample_command)
         assert palette.get("test.cmd") == sample_command
 
-    def test_unregister_command(self, palette: CommandPalette, sample_command: Command) -> None:
+    def test_unregister_command(
+        self, palette: CommandPalette, sample_command: Command
+    ) -> None:
         """Test unregistering a command."""
         palette.register(sample_command)
         result = palette.unregister("test.cmd")

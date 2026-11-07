@@ -102,7 +102,9 @@ class TestTTLConsistency:
 
 class TestAtomicity:
     @pytest.mark.asyncio
-    async def test_primary_failure_removes_secondaries(self, store: PlanIndexStore) -> None:
+    async def test_primary_failure_removes_secondaries(
+        self, store: PlanIndexStore
+    ) -> None:
         rec = _sample_record()
         d = store._to_dict(rec)
         fake = store._mcp
@@ -139,7 +141,9 @@ class TestCorruptedValues:
         assert records[0]["plan_id"] == good.plan_id
 
     @pytest.mark.asyncio
-    async def test_vitals_corrupted_counters_default_to_zero(self, store: PlanIndexStore) -> None:
+    async def test_vitals_corrupted_counters_default_to_zero(
+        self, store: PlanIndexStore
+    ) -> None:
         await store._mcp.put("plan_index/meta/cycles_total", "not-an-int")
         await store._mcp.put("plan_index/meta/errors_total", "oops")
         await store._mcp.put("plan_index/meta/recent_errors", "{{{")
@@ -149,7 +153,9 @@ class TestCorruptedValues:
         assert v["recent_errors"] == []
 
     @pytest.mark.asyncio
-    async def test_rebuild_status_corrupted_counters(self, store: PlanIndexStore) -> None:
+    async def test_rebuild_status_corrupted_counters(
+        self, store: PlanIndexStore
+    ) -> None:
         await store._mcp.put("plan_index/meta/cycles_total", "nope")
         await store._mcp.put("plan_index/meta/last_rebuild_ms", "nope")
         s = await store.rebuild_status()

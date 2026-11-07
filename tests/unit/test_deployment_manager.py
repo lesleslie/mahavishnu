@@ -307,8 +307,12 @@ class TestDeploymentManager:
         manager = DeploymentManager(config=sample_deployment_config)
 
         # Mock the deployment steps
-        with patch.object(manager, "_deploy_to_inactive", new_callable=AsyncMock) as mock_deploy:
-            with patch.object(manager, "_run_health_checks", new_callable=AsyncMock) as mock_health:
+        with patch.object(
+            manager, "_deploy_to_inactive", new_callable=AsyncMock
+        ) as mock_deploy:
+            with patch.object(
+                manager, "_run_health_checks", new_callable=AsyncMock
+            ) as mock_health:
                 with patch.object(
                     manager, "_switch_traffic", new_callable=AsyncMock
                 ) as mock_switch:
@@ -329,7 +333,9 @@ class TestDeploymentManager:
         """Deploy with failure."""
         manager = DeploymentManager(config=sample_deployment_config)
 
-        with patch.object(manager, "_deploy_to_inactive", new_callable=AsyncMock) as mock_deploy:
+        with patch.object(
+            manager, "_deploy_to_inactive", new_callable=AsyncMock
+        ) as mock_deploy:
             mock_deploy.return_value = False
 
             result = await manager.deploy("v2.0.0", "mahavishnu:v2.0.0")
@@ -360,7 +366,9 @@ class TestDeploymentManager:
             )
         )
 
-        with patch.object(manager, "_switch_traffic", new_callable=AsyncMock) as mock_switch:
+        with patch.object(
+            manager, "_switch_traffic", new_callable=AsyncMock
+        ) as mock_switch:
             mock_switch.return_value = True
 
             result = await manager.rollback()
@@ -396,7 +404,9 @@ class TestDeploymentManager:
         """Run health check."""
         manager = DeploymentManager(config=sample_deployment_config)
 
-        with patch.object(manager, "_make_health_request", new_callable=AsyncMock) as mock_req:
+        with patch.object(
+            manager, "_make_health_request", new_callable=AsyncMock
+        ) as mock_req:
             mock_req.return_value = HealthCheckResult(
                 healthy=True,
                 status_code=200,
@@ -495,8 +505,12 @@ class TestDeploymentManager:
             active_color="green",
         )
 
-        with patch.object(manager, "_run_health_checks", new_callable=AsyncMock) as mock_health:
-            with patch.object(manager, "_switch_traffic", new_callable=AsyncMock) as mock_switch:
+        with patch.object(
+            manager, "_run_health_checks", new_callable=AsyncMock
+        ) as mock_health:
+            with patch.object(
+                manager, "_switch_traffic", new_callable=AsyncMock
+            ) as mock_switch:
                 mock_health.return_value = HealthCheckResult(healthy=True)
                 mock_switch.return_value = True
 
@@ -513,7 +527,9 @@ class TestDeploymentManager:
         """Scale deployment replicas."""
         manager = DeploymentManager(config=sample_deployment_config)
 
-        with patch.object(manager, "_scale_replicas", new_callable=AsyncMock) as mock_scale:
+        with patch.object(
+            manager, "_scale_replicas", new_callable=AsyncMock
+        ) as mock_scale:
             mock_scale.return_value = True
 
             result = await manager.scale(replicas=5)

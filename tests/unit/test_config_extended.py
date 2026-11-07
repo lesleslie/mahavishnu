@@ -81,7 +81,9 @@ class TestAgnoMemoryConnectionString:
             connection_string="postgresql://user:strongpass@localhost:5432/agno",
         )
         assert cfg.backend == MemoryBackend.POSTGRES
-        assert cfg.connection_string == "postgresql://user:strongpass@localhost:5432/agno"
+        assert (
+            cfg.connection_string == "postgresql://user:strongpass@localhost:5432/agno"
+        )
 
     def test_non_postgres_backend_does_not_check_connection_string(self) -> None:
         """sqlite/none backends tolerate a missing connection_string."""
@@ -117,9 +119,13 @@ class TestOTelIngesterStorageType:
 
     def test_invalid_storage_type_raises(self) -> None:
         """Anything other than duckdb/postgresql must raise."""
-        with pytest.raises(ValidationError, match="storage_type must be 'duckdb' or 'postgresql'"):
+        with pytest.raises(
+            ValidationError, match="storage_type must be 'duckdb' or 'postgresql'"
+        ):
             OTelIngesterConfig(storage_type="sqlite")
-        with pytest.raises(ValidationError, match="storage_type must be 'duckdb' or 'postgresql'"):
+        with pytest.raises(
+            ValidationError, match="storage_type must be 'duckdb' or 'postgresql'"
+        ):
             OTelIngesterConfig(storage_type="")
 
     def test_postgresql_storage_type_accepted(self) -> None:

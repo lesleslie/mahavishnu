@@ -187,7 +187,8 @@ class TestTaskRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskCreate, TaskRepository
 
@@ -204,7 +205,8 @@ class TestTaskRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskRepository
 
@@ -220,7 +222,8 @@ class TestTaskRepository:
         mock_conn.fetchrow.return_value = None
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskRepository
 
@@ -236,7 +239,8 @@ class TestTaskRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskRepository
 
@@ -253,7 +257,8 @@ class TestTaskRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskRepository
             from mahavishnu.core.status import TaskStatus
@@ -270,7 +275,8 @@ class TestTaskRepository:
         mock_conn.fetchrow.return_value = None
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskRepository
             from mahavishnu.core.status import TaskStatus
@@ -287,7 +293,8 @@ class TestTaskRepository:
         mock_conn.fetch.return_value = rows
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskFilter, TaskRepository
 
@@ -303,7 +310,8 @@ class TestTaskRepository:
         mock_conn.fetch.return_value = []
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import (
                 TaskFilter,
@@ -330,7 +338,8 @@ class TestTaskRepository:
         mock_conn.execute.return_value = "DELETE 1"
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskRepository
 
@@ -345,7 +354,8 @@ class TestTaskRepository:
         mock_conn.execute.return_value = "DELETE 0"
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskRepository
 
@@ -368,9 +378,13 @@ class TestTaskRepository:
         }
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
-            from mahavishnu.core.repositories.tasks import DependencyType, TaskRepository
+            from mahavishnu.core.repositories.tasks import (
+                DependencyType,
+                TaskRepository,
+            )
 
             repo = TaskRepository()
             repo._database = db
@@ -393,7 +407,8 @@ class TestTaskRepository:
         ]
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskRepository
 
@@ -409,7 +424,8 @@ class TestTaskRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.tasks import TaskRepository, TaskUpdate
 
@@ -425,7 +441,8 @@ class TestTaskRepository:
         mock_conn.fetchrow.side_effect = Exception("Connection refused")
 
         with patch(
-            "mahavishnu.core.repositories.tasks.TaskRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.tasks.TaskRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.base import RepositoryError
             from mahavishnu.core.repositories.tasks import TaskCreate, TaskRepository
@@ -451,9 +468,13 @@ class TestTaskRunRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database",
+            return_value=db,
         ):
-            from mahavishnu.core.repositories.runs import TaskRunCreate, TaskRunRepository
+            from mahavishnu.core.repositories.runs import (
+                TaskRunCreate,
+                TaskRunRepository,
+            )
 
             repo = TaskRunRepository()
             repo._database = db
@@ -470,7 +491,8 @@ class TestTaskRunRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.runs import TaskRunRepository
 
@@ -485,7 +507,8 @@ class TestTaskRunRepository:
         mock_conn.fetchrow.return_value = None
 
         with patch(
-            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.runs import TaskRunRepository
 
@@ -503,7 +526,8 @@ class TestTaskRunRepository:
         ]
 
         with patch(
-            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.runs import TaskRunRepository
 
@@ -519,7 +543,8 @@ class TestTaskRunRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.runs import TaskRunRepository
 
@@ -534,7 +559,8 @@ class TestTaskRunRepository:
         mock_conn.fetchval.return_value = 4
 
         with patch(
-            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.runs import TaskRunRepository
 
@@ -549,7 +575,8 @@ class TestTaskRunRepository:
         mock_conn.fetchval.return_value = 1
 
         with patch(
-            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.runs import TaskRunRepository
 
@@ -565,9 +592,13 @@ class TestTaskRunRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database",
+            return_value=db,
         ):
-            from mahavishnu.core.repositories.runs import TaskRunRepository, TaskRunUpdate
+            from mahavishnu.core.repositories.runs import (
+                TaskRunRepository,
+                TaskRunUpdate,
+            )
 
             repo = TaskRunRepository()
             repo._database = db
@@ -583,9 +614,13 @@ class TestTaskRunRepository:
         mock_conn.fetch.return_value = []
 
         with patch(
-            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.runs.TaskRunRepository._get_database",
+            return_value=db,
         ):
-            from mahavishnu.core.repositories.runs import TaskRunFilter, TaskRunRepository
+            from mahavishnu.core.repositories.runs import (
+                TaskRunFilter,
+                TaskRunRepository,
+            )
 
             repo = TaskRunRepository()
             repo._database = db
@@ -610,9 +645,13 @@ class TestTaskEventRepository:
         mock_conn.fetchrow.return_value = row
 
         with patch(
-            "mahavishnu.core.repositories.events.TaskEventRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.events.TaskEventRepository._get_database",
+            return_value=db,
         ):
-            from mahavishnu.core.repositories.events import TaskEventCreate, TaskEventRepository
+            from mahavishnu.core.repositories.events import (
+                TaskEventCreate,
+                TaskEventRepository,
+            )
 
             repo = TaskEventRepository()
             repo._database = db
@@ -629,7 +668,8 @@ class TestTaskEventRepository:
         mock_conn.fetch.return_value = [_make_event_row(task_id=task_id)]
 
         with patch(
-            "mahavishnu.core.repositories.events.TaskEventRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.events.TaskEventRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.events import TaskEventRepository
 
@@ -648,7 +688,8 @@ class TestTaskEventRepository:
         ]
 
         with patch(
-            "mahavishnu.core.repositories.events.TaskEventRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.events.TaskEventRepository._get_database",
+            return_value=db,
         ):
             from mahavishnu.core.repositories.events import TaskEventRepository
 
@@ -663,9 +704,13 @@ class TestTaskEventRepository:
         mock_conn.fetch.return_value = []
 
         with patch(
-            "mahavishnu.core.repositories.events.TaskEventRepository._get_database", return_value=db
+            "mahavishnu.core.repositories.events.TaskEventRepository._get_database",
+            return_value=db,
         ):
-            from mahavishnu.core.repositories.events import TaskEventFilter, TaskEventRepository
+            from mahavishnu.core.repositories.events import (
+                TaskEventFilter,
+                TaskEventRepository,
+            )
 
             repo = TaskEventRepository()
             repo._database = db
@@ -693,7 +738,10 @@ class TestDocumentRepository:
             "mahavishnu.core.repositories.documents.DocumentRepository._get_database",
             return_value=db,
         ):
-            from mahavishnu.core.repositories.documents import DocumentCreate, DocumentRepository
+            from mahavishnu.core.repositories.documents import (
+                DocumentCreate,
+                DocumentRepository,
+            )
 
             repo = DocumentRepository()
             repo._database = db
@@ -852,7 +900,10 @@ class TestDocumentRepository:
             "mahavishnu.core.repositories.documents.DocumentRepository._get_database",
             return_value=db,
         ):
-            from mahavishnu.core.repositories.documents import DocumentRepository, DocumentUpdate
+            from mahavishnu.core.repositories.documents import (
+                DocumentRepository,
+                DocumentUpdate,
+            )
 
             repo = DocumentRepository()
             repo._database = db

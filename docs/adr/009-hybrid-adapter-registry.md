@@ -104,6 +104,7 @@ class AdapterDiscoveryEngine:
     async def discover_from_entry_points(self) -> list[AdapterMetadata]:
         """Load adapters from Python entry points."""
         import importlib.metadata as metadata
+
         eps = metadata.entry_points(group="mahavishnu.adapters")
         for ep in eps:
             if self._is_allowed(ep.value):
@@ -227,14 +228,16 @@ Entry point functions return metadata:
 
 ```python
 def prefect_adapter_entries() -> list[dict[str, Any]]:
-    return [{
-        "category": "orchestration",
-        "provider": "prefect",
-        "factory_path": "mahavishnu.engines.prefect_adapter:PrefectAdapter",
-        "capabilities": ["deploy_flows", "monitor_execution", "schedule_workflows"],
-        "priority": 90,
-        "domain": "orchestration",
-    }]
+    return [
+        {
+            "category": "orchestration",
+            "provider": "prefect",
+            "factory_path": "mahavishnu.engines.prefect_adapter:PrefectAdapter",
+            "capabilities": ["deploy_flows", "monitor_execution", "schedule_workflows"],
+            "priority": 90,
+            "domain": "orchestration",
+        }
+    ]
 ```
 
 ### Security: Allowlist Patterns
@@ -245,6 +248,7 @@ Adapter discovery uses allowlist validation:
 def _is_allowed(self, module_path: str) -> bool:
     """Check if module matches allowlist patterns."""
     import fnmatch
+
     for pattern in self.allowlist_patterns:
         if fnmatch.fnmatch(module_path, pattern):
             return True

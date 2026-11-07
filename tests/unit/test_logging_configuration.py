@@ -43,11 +43,17 @@ def test_configure_logging_restores_the_structlog_level() -> None:
     previous_level = logging.getLogger().level
     try:
         _simulate_crackerjack_downgrade()
-        assert structlog.get_config()["wrapper_class"].__name__ == "BoundLoggerFilteringAtWarning"
+        assert (
+            structlog.get_config()["wrapper_class"].__name__
+            == "BoundLoggerFilteringAtWarning"
+        )
 
         configure_logging(MahavishnuSettings())
 
-        assert structlog.get_config()["wrapper_class"].__name__ == "BoundLoggerFilteringAtInfo"
+        assert (
+            structlog.get_config()["wrapper_class"].__name__
+            == "BoundLoggerFilteringAtInfo"
+        )
     finally:
         structlog.configure(wrapper_class=previous_wrapper)
         logging.getLogger().handlers = previous_handlers
@@ -88,7 +94,10 @@ def test_the_app_restores_logging_after_its_imports() -> None:
 
         app = app_module.MahavishnuApp()
 
-        assert structlog.get_config()["wrapper_class"].__name__ == "BoundLoggerFilteringAtInfo"
+        assert (
+            structlog.get_config()["wrapper_class"].__name__
+            == "BoundLoggerFilteringAtInfo"
+        )
         assert app.config is not None
     finally:
         structlog.configure(wrapper_class=previous_wrapper)

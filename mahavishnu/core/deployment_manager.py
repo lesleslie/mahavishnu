@@ -216,7 +216,9 @@ class DeploymentManager:
         Returns:
             Previous version or None
         """
-        inactive_versions = [v for v in self.versions if v.status == DeploymentStatus.INACTIVE]
+        inactive_versions = [
+            v for v in self.versions if v.status == DeploymentStatus.INACTIVE
+        ]
         if inactive_versions:
             return inactive_versions[-1]
         return None

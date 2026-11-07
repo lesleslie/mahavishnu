@@ -74,7 +74,7 @@ def _port_listening(port: int) -> bool:
             # when something is listening. Empty stdout (header only)
             # means nothing is listening.
             return bool(result.stdout.strip().splitlines()[1:])
-        except (OSError, subprocess.TimeoutExpired):
+        except OSError, subprocess.TimeoutExpired:
             pass
     # Fallback: cheap TCP connect probe.
     try:

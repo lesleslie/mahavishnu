@@ -67,7 +67,9 @@ def test_pool_mahavishnu_preconditions_skip_claude_when_require_claude_false() -
     assert failures == []
 
 
-def test_pool_mahavishnu_preconditions_fail_when_shepherd_workspace_uninitialized() -> None:
+def test_pool_mahavishnu_preconditions_fail_when_shepherd_workspace_uninitialized() -> (
+    None
+):
     """Shepherd precondition fires when the workspace marker ``.vcscore`` is missing.
 
     Without the marker, ``MahavishnuPool.start()`` fails fail-closed with
@@ -91,7 +93,9 @@ def test_pool_mahavishnu_preconditions_fail_when_shepherd_workspace_uninitialize
     )
 
 
-def test_pool_mahavishnu_preconditions_pass_when_shepherd_workspace_initialized() -> None:
+def test_pool_mahavishnu_preconditions_pass_when_shepherd_workspace_initialized() -> (
+    None
+):
     """Shepherd precondition passes when ``.vcscore`` is reported present."""
     from mahavishnu.cli.demo_cli import _check_pool_mahavishnu_preconditions
 
@@ -148,8 +152,12 @@ def test_expected_shepherd_workspace_path_accepts_clean_name() -> None:
 
     from mahavishnu.cli.demo_cli import _expected_shepherd_workspace_path
 
-    result = _expected_shepherd_workspace_path("demo-mahavishnu", home=Path("/tmp/fake-home"))
-    assert result == Path("/tmp/fake-home/.local/state/mahavishnu/worktrees/demo-mahavishnu/workspace")
+    result = _expected_shepherd_workspace_path(
+        "demo-mahavishnu", home=Path("/tmp/fake-home")
+    )
+    assert result == Path(
+        "/tmp/fake-home/.local/state/mahavishnu/worktrees/demo-mahavishnu/workspace"
+    )
 
 
 def test_check_shepherd_workspace_resolves_symlinks_for_gate_parity() -> None:

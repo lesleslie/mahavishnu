@@ -5,6 +5,7 @@ console_script) for venv-correctness. The CLI exposes `scan` at the top
 level of the module (not nested under a `worktree` subcommand), so the
 invocation is `python -m mahavishnu.worktree_cli scan ...`.
 """
+
 from __future__ import annotations
 
 import subprocess

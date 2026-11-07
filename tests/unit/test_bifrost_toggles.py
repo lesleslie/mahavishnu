@@ -63,9 +63,7 @@ _ROUTE_LINE = f"{models.ROUTE_HEADER}: {models.ROUTE_ANTHROPIC_NATIVE}"
 #: The cache-bucket line the Claude Code harness carries. The bucket is
 #: derived from the traffic class and the credential, so it is computed the
 #: same way here rather than hard-coded.
-_CACHE_LINE = (
-    f"x-bf-cache-key: {resolve_cache_bucket(models.CACHE_TRAFFIC_CLASS_CLAUDE_CODE, 'sk-vk-TEST')}"
-)
+_CACHE_LINE = f"x-bf-cache-key: {resolve_cache_bucket(models.CACHE_TRAFFIC_CLASS_CLAUDE_CODE, 'sk-vk-TEST')}"
 
 
 def _write(path: Path, body: dict[str, Any]) -> None:
@@ -78,13 +76,17 @@ def _read(path: Path) -> dict[str, Any]:
 
 def _cache_bucket(settings: dict[str, Any]) -> str | None:
     """The cache-bucket header value in a harness's settings, if present."""
-    for line in _header_lines(settings.get("env", {}).get("ANTHROPIC_CUSTOM_HEADERS", "")):
+    for line in _header_lines(
+        settings.get("env", {}).get("ANTHROPIC_CUSTOM_HEADERS", "")
+    ):
         if line.startswith("x-bf-cache-key:"):
             return line.split(":", 1)[1].strip()
     return None
 
 
-def test_cc_writes_url_and_appends_virtual_key(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_cc_writes_url_and_appends_virtual_key(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """req: REQ-BIFROST-026 -- x-bf-vk appended, other headers preserved."""
     settings = tmp_path / "settings.json"
     _write(
@@ -105,7 +107,9 @@ def test_cc_writes_url_and_appends_virtual_key(tmp_path: Path, backup_dir: Path,
     )
 
 
-def test_cc_repeat_does_not_duplicate_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_cc_repeat_does_not_duplicate_header(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """req: REQ-BIFROST-026 -- a second apply must not double the header."""
     settings = tmp_path / "settings.json"
     _write(settings, {"env": {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8471/anthropic"}})
@@ -166,7 +170,9 @@ def test_direct_strips_a_stranded_key_from_a_hand_set_url(
     toggles.apply(harness, "direct")
 
     env = _read(settings)["env"]
-    assert env["ANTHROPIC_BASE_URL"] == "https://api.minimax.io/anthropic/", "URL is left alone"
+    assert env["ANTHROPIC_BASE_URL"] == "https://api.minimax.io/anthropic/", (
+        "URL is left alone"
+    )
     assert "ANTHROPIC_CUSTOM_HEADERS" not in env, "stranded credential must be removed"
 
 
@@ -214,11 +220,16 @@ def test_direct_leaves_a_non_bifrost_url_alone_when_no_credential(
 ) -> None:
     """No stranded key means no reason to touch the file at all."""
     settings = tmp_path / "settings.json"
-    _write(settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic/"}})
+    _write(
+        settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic/"}}
+    )
 
     toggles.apply(_harness("cc", settings), "direct")
 
-    assert _read(settings)["env"]["ANTHROPIC_BASE_URL"] == "https://api.minimax.io/anthropic/"
+    assert (
+        _read(settings)["env"]["ANTHROPIC_BASE_URL"]
+        == "https://api.minimax.io/anthropic/"
+    )
 
 
 def test_qwen_writes_model_generation_config_headers(
@@ -236,7 +247,9 @@ def test_qwen_writes_model_generation_config_headers(
     assert headers["x-bf-vk"] == "sk-vk-TEST"
 
 
-def test_backup_never_persists_the_credential(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_backup_never_persists_the_credential(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """Security: a plaintext backup must never park a secret on disk."""
     settings = tmp_path / "settings.json"
     _write(settings, {})
@@ -263,7 +276,9 @@ def test_backup_file_is_owner_only(tmp_path: Path, backup_dir: Path, vk: str) ->
     assert mode == 0o600
 
 
-def test_refuses_to_clobber_existing_credential(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_refuses_to_clobber_existing_credential(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """Security: never destroy a key we deliberately do not back up."""
     settings = tmp_path / "settings.json"
     _write(settings, {"env": {"ANTHROPIC_CUSTOM_HEADERS": "x-bf-vk: sk-vk-PRECIOUS"}})
@@ -272,10 +287,14 @@ def test_refuses_to_clobber_existing_credential(tmp_path: Path, backup_dir: Path
     with pytest.raises(typer.Exit):
         toggles.apply(harness, "bifrost")
 
-    assert _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"] == "x-bf-vk: sk-vk-PRECIOUS"
+    assert (
+        _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"] == "x-bf-vk: sk-vk-PRECIOUS"
+    )
 
 
-def test_force_overwrites_existing_credential(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_force_overwrites_existing_credential(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """Security: --force is the explicit escape hatch."""
     settings = tmp_path / "settings.json"
     _write(settings, {"env": {"ANTHROPIC_CUSTOM_HEADERS": "x-bf-vk: sk-vk-PRECIOUS"}})
@@ -309,7 +328,9 @@ def test_gate_blocks_rewrite(
     """req: REQ-BIFROST-029 -- opt-out must hold in the Python path too."""
     monkeypatch.undo()  # restore the real gate_blocks from the autouse fixture
     settings = tmp_path / "settings.json"
-    _write(settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}})
+    _write(
+        settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}}
+    )
     before = settings.read_text(encoding="utf-8")
 
     monkeypatch.setenv(toggles.GATE_ENV, "1")
@@ -362,10 +383,15 @@ def test_legacy_bare_url_backup_is_restored(tmp_path: Path, backup_dir: Path) ->
 
     toggles.apply(_harness("cc", settings), "direct")
 
-    assert _read(settings)["env"]["ANTHROPIC_BASE_URL"] == "https://legacy.example/anthropic"
+    assert (
+        _read(settings)["env"]["ANTHROPIC_BASE_URL"]
+        == "https://legacy.example/anthropic"
+    )
 
 
-def test_legacy_credential_backup_is_not_restyored(tmp_path: Path, backup_dir: Path) -> None:
+def test_legacy_credential_backup_is_not_restyored(
+    tmp_path: Path, backup_dir: Path
+) -> None:
     """Security: a pre-fix backup holding a secret must not be replayed."""
     settings = tmp_path / "settings.json"
     _write(settings, {"env": {"ANTHROPIC_BASE_URL": "http://127.0.0.1:8471/anthropic"}})
@@ -423,12 +449,18 @@ def test_key_file_supplies_virtual_key(
 # with the generic block alone, Qwen answered but Bifrost logged no row.
 
 
-def _qwen_settings(upstream: str = "https://api.minimax.io/anthropic") -> dict[str, Any]:
+def _qwen_settings(
+    upstream: str = "https://api.minimax.io/anthropic",
+) -> dict[str, Any]:
     return {
         "model": {"name": "MiniMax-M3"},
         "modelProviders": {
-            "openai": [{"name": "qwen3.6-plus", "baseUrl": "https://dashscope.aliyuncs.com"}],
-            "anthropic": [{"name": "MiniMax-M3", "baseUrl": upstream, "envKey": "MINIMAX_API_KEY"}],
+            "openai": [
+                {"name": "qwen3.6-plus", "baseUrl": "https://dashscope.aliyuncs.com"}
+            ],
+            "anthropic": [
+                {"name": "MiniMax-M3", "baseUrl": upstream, "envKey": "MINIMAX_API_KEY"}
+            ],
         },
     }
 
@@ -451,7 +483,10 @@ def test_qwen_repoints_the_matching_provider_not_the_env_var(
     assert entry["generationConfig"]["customHeaders"]["x-bf-vk"] == vk
     # The OpenAI-protocol provider is a different wire format; repointing it
     # too would be a guess about a model this harness is not using.
-    assert body["modelProviders"]["openai"][0]["baseUrl"] == "https://dashscope.aliyuncs.com"
+    assert (
+        body["modelProviders"]["openai"][0]["baseUrl"]
+        == "https://dashscope.aliyuncs.com"
+    )
     assert "OPENAI_BASE_URL" not in body.get("env", {})
 
 
@@ -464,7 +499,9 @@ def test_qwen_header_never_lands_in_the_ignored_generic_block(
     toggles.apply(_harness("qwen", settings), "bifrost")
 
     body = _read(settings)
-    assert "x-bf-vk" not in body["model"].get("generationConfig", {}).get("customHeaders", {})
+    assert "x-bf-vk" not in body["model"].get("generationConfig", {}).get(
+        "customHeaders", {}
+    )
 
 
 def test_qwen_clears_a_stranded_credential_in_the_generic_block(
@@ -534,12 +571,16 @@ def test_qwen_removes_a_stranded_credential_on_an_already_configured_host(
     toggles.apply(harness, "bifrost")
     # Put the stray back, the way an earlier version of the toggle left it.
     written = _read(settings)
-    written["model"]["generationConfig"] = {"customHeaders": {"x-bf-vk": "sk-bf-stranded"}}
+    written["model"]["generationConfig"] = {
+        "customHeaders": {"x-bf-vk": "sk-bf-stranded"}
+    }
     _write(settings, written)
 
     toggles.apply(harness, "bifrost")
 
-    generic = _read(settings)["model"].get("generationConfig", {}).get("customHeaders", {})
+    generic = (
+        _read(settings)["model"].get("generationConfig", {}).get("customHeaders", {})
+    )
     assert "x-bf-vk" not in generic
 
 
@@ -573,7 +614,9 @@ def test_qwen_without_a_provider_uses_the_generic_block(
     assert body["env"]["OPENAI_BASE_URL"].endswith("/v1")
 
 
-def test_provider_url_follows_the_wire_protocol(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_provider_url_follows_the_wire_protocol(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """The ``anthropic`` provider must not be sent to the OpenAI endpoint."""
     settings = tmp_path / "settings.json"
     _write(
@@ -581,7 +624,12 @@ def test_provider_url_follows_the_wire_protocol(tmp_path: Path, backup_dir: Path
         {
             "model": {"name": "qwen3.6-plus"},
             "modelProviders": {
-                "openai": [{"name": "qwen3.6-plus", "baseUrl": "https://dashscope.aliyuncs.com"}]
+                "openai": [
+                    {
+                        "name": "qwen3.6-plus",
+                        "baseUrl": "https://dashscope.aliyuncs.com",
+                    }
+                ]
             },
         },
     )
@@ -632,10 +680,14 @@ def test_cc_writes_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -
     toggles.apply(_harness("cc", settings), "bifrost")
 
     raw = _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"]
-    assert f"{models.ROUTE_HEADER}: {models.ROUTE_ANTHROPIC_NATIVE}" in _header_lines(raw)
+    assert f"{models.ROUTE_HEADER}: {models.ROUTE_ANTHROPIC_NATIVE}" in _header_lines(
+        raw
+    )
 
 
-def test_qwen_writes_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_qwen_writes_the_route_header(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """Qwen's active model resolves to the Anthropic provider entry.
 
     That entry is what the toggle points at the gateway's Anthropic
@@ -656,7 +708,9 @@ def test_qwen_writes_the_route_header(tmp_path: Path, backup_dir: Path, vk: str)
     assert headers[models.ROUTE_HEADER] == models.ROUTE_ANTHROPIC_NATIVE
 
 
-def test_qwen_writes_its_own_cache_bucket(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_qwen_writes_its_own_cache_bucket(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """Qwen must not land in the gateway's shared cache namespace either.
 
     Same reason as Claude Code's bucket: without one, Qwen's entries share
@@ -675,7 +729,9 @@ def test_qwen_writes_its_own_cache_bucket(tmp_path: Path, backup_dir: Path, vk: 
     assert expected != "default"
 
 
-def test_qwen_direct_removes_its_headers(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_qwen_direct_removes_its_headers(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """``direct`` takes the route header and the bucket with it."""
     settings = tmp_path / "settings.json"
     _write(settings, _qwen_settings())
@@ -690,7 +746,9 @@ def test_qwen_direct_removes_its_headers(tmp_path: Path, backup_dir: Path, vk: s
     assert models.VIRTUAL_KEY_HEADER not in headers
 
 
-def test_direct_removes_the_route_header(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_direct_removes_the_route_header(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """Restoring the direct endpoint must not leave the route behind.
 
     A stranded ``x-bf-route`` header would keep pointing at Bifrost's
@@ -721,7 +779,9 @@ def test_direct_keeps_unrelated_headers_when_stripping_the_route(
     toggles.apply(harness, "bifrost")
     toggles.apply(harness, "direct")
 
-    lines = _header_lines(_read(settings).get("env", {}).get("ANTHROPIC_CUSTOM_HEADERS"))
+    lines = _header_lines(
+        _read(settings).get("env", {}).get("ANTHROPIC_CUSTOM_HEADERS")
+    )
     assert "x-team: platform" in lines
     assert not any(line.startswith(f"{models.ROUTE_HEADER}:") for line in lines)
 
@@ -776,7 +836,9 @@ def test_route_install_does_not_overwrite_the_backup(
     )
     harness = _harness("cc", settings)
     harness.backup_path.parent.mkdir(parents=True, exist_ok=True)
-    original = json.dumps({"url": "https://api.minimax.io/anthropic", "credential_present": False})
+    original = json.dumps(
+        {"url": "https://api.minimax.io/anthropic", "credential_present": False}
+    )
     harness.backup_path.write_text(original + "\n", encoding="utf-8")
 
     toggles.apply(harness, "bifrost")
@@ -784,7 +846,9 @@ def test_route_install_does_not_overwrite_the_backup(
     assert harness.backup_path.read_text(encoding="utf-8") == original + "\n"
 
 
-def test_route_header_is_installed_without_a_virtual_key(tmp_path: Path, backup_dir: Path) -> None:
+def test_route_header_is_installed_without_a_virtual_key(
+    tmp_path: Path, backup_dir: Path
+) -> None:
     """The route header must not depend on a virtual key being available.
 
     The route header is a routing *signal*, not a credential. Writing it as
@@ -834,7 +898,10 @@ def test_force_does_not_record_the_bifrost_url_as_the_prior_endpoint(
     harness = _harness("cc", settings)
     harness.backup_path.parent.mkdir(parents=True, exist_ok=True)
     harness.backup_path.write_text(
-        json.dumps({"url": "https://api.minimax.io/anthropic", "credential_present": False}) + "\n",
+        json.dumps(
+            {"url": "https://api.minimax.io/anthropic", "credential_present": False}
+        )
+        + "\n",
         encoding="utf-8",
     )
 
@@ -891,7 +958,9 @@ def test_direct_removes_a_stranded_route_header_on_a_hand_set_url(
     assert "X-Other: keepme" in headers
 
 
-def test_the_model_sink_removes_the_route_header(tmp_path: Path, backup_dir: Path) -> None:
+def test_the_model_sink_removes_the_route_header(
+    tmp_path: Path, backup_dir: Path
+) -> None:
     """``direct`` must drop the route header from the model sink too.
 
     The env sink already dropped it; the model sink did not, so a harness
@@ -924,7 +993,9 @@ def test_the_model_sink_removes_the_route_header(tmp_path: Path, backup_dir: Pat
     assert models.VIRTUAL_KEY_HEADER not in headers
 
 
-def test_cc_writes_its_own_cache_bucket(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_cc_writes_its_own_cache_bucket(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """Claude Code must not land in the gateway's shared cache namespace.
 
     Without an ``x-bf-cache-key`` header a request falls back to the
@@ -935,7 +1006,9 @@ def test_cc_writes_its_own_cache_bucket(tmp_path: Path, backup_dir: Path, vk: st
     same instruction can be served each other's cached response.
     """
     settings = tmp_path / "settings.json"
-    _write(settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}})
+    _write(
+        settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}}
+    )
 
     toggles.apply(_harness("cc", settings), "bifrost")
 
@@ -957,7 +1030,9 @@ def test_the_cache_bucket_is_derived_from_the_credential(
     old key populated.
     """
     settings = tmp_path / "settings.json"
-    _write(settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}})
+    _write(
+        settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}}
+    )
 
     toggles.apply(_harness("cc", settings), "bifrost")
     first = _cache_bucket(_read(settings))
@@ -967,20 +1042,28 @@ def test_the_cache_bucket_is_derived_from_the_credential(
     second = _cache_bucket(_read(settings))
 
     assert first != second
-    assert second == resolve_cache_bucket(models.CACHE_TRAFFIC_CLASS_CLAUDE_CODE, "sk-vk-ROTATED")
+    assert second == resolve_cache_bucket(
+        models.CACHE_TRAFFIC_CLASS_CLAUDE_CODE, "sk-vk-ROTATED"
+    )
 
 
-def test_direct_removes_the_cache_bucket(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+def test_direct_removes_the_cache_bucket(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
     """``direct`` must take the cache bucket with it.
 
     The bucket names a namespace on the gateway; leaving it behind keeps
     pointing at a gateway the harness is no longer talking to.
     """
     settings = tmp_path / "settings.json"
-    _write(settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}})
+    _write(
+        settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}}
+    )
 
     toggles.apply(_harness("cc", settings), "bifrost")
-    assert _cache_bucket(_read(settings)), "the bucket must be there before it can be removed"
+    assert _cache_bucket(_read(settings)), (
+        "the bucket must be there before it can be removed"
+    )
 
     toggles.apply(_harness("cc", settings), "direct")
 
@@ -1016,7 +1099,9 @@ def test_status_reports_the_cache_bucket(
 ) -> None:
     """``cc-url status`` reports the bucket it finds."""
     settings = tmp_path / "settings.json"
-    _write(settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}})
+    _write(
+        settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}}
+    )
 
     toggles.apply(_harness("cc", settings), "bifrost")
     toggles.apply(_harness("cc", settings), "status")
@@ -1049,10 +1134,21 @@ def test_template_declares_the_anthropic_native_rule() -> None:
     -- but the two must not drift, or a fresh deployment routes differently
     from a live one.
     """
-    template = Path(__file__).resolve().parents[2] / "config" / "bifrost" / "config.template.json"
-    rules = json.loads(template.read_text(encoding="utf-8"))["governance"]["routing_rules"]
+    template = (
+        Path(__file__).resolve().parents[2]
+        / "config"
+        / "bifrost"
+        / "config.template.json"
+    )
+    rules = json.loads(template.read_text(encoding="utf-8"))["governance"][
+        "routing_rules"
+    ]
 
-    matches = [r for r in rules if models.ROUTE_ANTHROPIC_NATIVE in (r.get("cel_expression") or "")]
+    matches = [
+        r
+        for r in rules
+        if models.ROUTE_ANTHROPIC_NATIVE in (r.get("cel_expression") or "")
+    ]
     assert matches, f"no routing rule matches {models.ROUTE_ANTHROPIC_NATIVE!r}"
 
     rule = matches[0]

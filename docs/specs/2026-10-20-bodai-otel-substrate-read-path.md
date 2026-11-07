@@ -252,12 +252,13 @@ class SpanSummary(BaseModel):
     failure_count: int
     latency_p99_ms: float | None
 
+
 class SpanHit(BaseModel):
     span_id: str
-    trace_id: str | None   # DDL: `trace_id TEXT`, nullable — v7:134
+    trace_id: str | None  # DDL: `trace_id TEXT`, nullable — v7:134
     parent_span_id: str | None
     service_name: str
-    service_namespace: str    # DDL: `service_namespace TEXT NOT NULL` — v7:137
+    service_namespace: str  # DDL: `service_namespace TEXT NOT NULL` — v7:137
     span_name: str
     start_time_unix_nano: int
     received_at_unix_nano: int

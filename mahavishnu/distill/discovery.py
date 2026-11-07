@@ -80,7 +80,9 @@ def iter_workflow_modules(repo_root: Path) -> list[Path]:
         if QUARANTINE_DIR_NAME in path.relative_to(workflows_dir).parts:
             continue
         # Skip __pycache__ and any other excluded subdir (defense-in-depth).
-        if any(part in EXCLUDED_DIR_NAMES for part in path.relative_to(workflows_dir).parts):
+        if any(
+            part in EXCLUDED_DIR_NAMES for part in path.relative_to(workflows_dir).parts
+        ):
             continue
         # Skip __init__.py — not a workflow module.
         if path.stem == "__init__":

@@ -654,7 +654,9 @@ class TestOutputFormatter:
     # _format_plain_table
     # ------------------------------------------------------------------
 
-    def test_format_plain_table_with_title_and_row_numbers(self, mock_console: MagicMock) -> None:
+    def test_format_plain_table_with_title_and_row_numbers(
+        self, mock_console: MagicMock
+    ) -> None:
         formatter = OutputFormatter(console=mock_console)
         config = TableConfig(
             title="My Table",

@@ -51,7 +51,11 @@ def _build_stub_app(
             "pools": type(
                 "PoolsCfg",
                 (),
-                {"enabled": pools_enabled, "routing_strategy": routing_strategy, "default_type": "mahavishnu"},
+                {
+                    "enabled": pools_enabled,
+                    "routing_strategy": routing_strategy,
+                    "default_type": "mahavishnu",
+                },
             )(),
         },
     )()
@@ -61,12 +65,15 @@ def _build_stub_app(
 class TestInitPoolManagerE2E:
     """Plan v3 Phase 1m — 5 scenarios."""
 
-    def test_happy_path_returns_pool_manager(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_happy_path_returns_pool_manager(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Scenario 1 — the construction succeeds; a pool manager is returned.
 
         We patch PoolManager at the source module that ``init_pool_manager``
         imports from (per-call ``from ..pools.manager import PoolManager``).
         """
+
         class _FakePoolManager:
             """Minimal stand-in: kwarg-accepting __init__ + the one method
             init_pool_manager calls (``set_pool_selector``)."""
@@ -109,9 +116,7 @@ class TestInitPoolManagerE2E:
         assert result is None
         # WARNING (not ERROR/EXCEPTION) — recoverable per Plan v3 Phase 1m.
         warning_records = [
-            record
-            for record in caplog.records
-            if record.levelno == logging.WARNING
+            record for record in caplog.records if record.levelno == logging.WARNING
         ]
         assert any(
             "Pool manager required import missing" in record.message
@@ -119,9 +124,7 @@ class TestInitPoolManagerE2E:
         ), f"expected a warning log, got records: {caplog.records}"
         # No ERROR/EXCEPTION-level records — we do not logger.exception a recoverable.
         error_records = [
-            record
-            for record in caplog.records
-            if record.levelno >= logging.ERROR
+            record for record in caplog.records if record.levelno >= logging.ERROR
         ]
         assert not error_records, f"unexpected error records: {error_records}"
 
@@ -148,7 +151,9 @@ class TestInitPoolManagerE2E:
         propagates UP. ``PoolSelector`` is an Enum; unknown values raise.
         """
         # Use a string that's not in the PoolSelector enum.
-        app = _build_stub_app(routing_strategy="this_strategy_definitely_does_not_exist")
+        app = _build_stub_app(
+            routing_strategy="this_strategy_definitely_does_not_exist"
+        )
 
         with pytest.raises(ValueError):
             bootstrap_module.init_pool_manager(app)

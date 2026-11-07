@@ -24,7 +24,11 @@ class _FakeMCPClient:
                 "version": "1.0.0",
                 "factory_path": "mahavishnu.engines.prefect_adapter_impl:PrefectAdapter",
                 "capabilities": ["workflow"],
-                "metadata": {"category": "workflow", "project": "mahavishnu", "priority": 5},
+                "metadata": {
+                    "category": "workflow",
+                    "project": "mahavishnu",
+                    "priority": 5,
+                },
                 "created_at": "2026-01-01T00:00:00+00:00",
                 "last_health_check": "2026-01-02T00:00:00+00:00",
                 "health_status": "healthy",
@@ -37,7 +41,11 @@ class _FakeMCPClient:
             self.fail_next = False
             raise RuntimeError("down")
         if name == "oneiric_list_adapters":
-            return {"success": True, "count": len(self.adapters), "adapters": self.adapters}
+            return {
+                "success": True,
+                "count": len(self.adapters),
+                "adapters": self.adapters,
+            }
         if name == "oneiric_get_adapter":
             return {"success": True, "adapter": self.adapters[0]}
         if name == "oneiric_get_adapter_health":
@@ -55,7 +63,9 @@ def test_get_and_set_mcp_client_cache(monkeypatch: pytest.MonkeyPatch) -> None:
             created.append(base_url)
             self.base_url = base_url
 
-    monkeypatch.setattr("mahavishnu.core.mcp_adapter.MCPClient", _MCPClient, raising=False)
+    monkeypatch.setattr(
+        "mahavishnu.core.mcp_adapter.MCPClient", _MCPClient, raising=False
+    )
     oc._mcp_clients.clear()
 
     oc.set_mcp_client_base_url("http://example:9999/mcp/")
@@ -137,14 +147,23 @@ async def test_mcp_registry_client_happy_path_and_disabled(
     )
     assert len(adapters_1) == 1
     assert adapters_1 == adapters_2
-    expected_call = ("oneiric_list_adapters", {"domain": "adapter", "category": "workflow"})
+    expected_call = (
+        "oneiric_list_adapters",
+        {"domain": "adapter", "category": "workflow"},
+    )
     assert fake.calls.count(expected_call) == 1
 
     adapter = await client.get_adapter("adapter:workflow:prefect")
     assert adapter is not None
     assert await client.check_adapter_health("adapter:workflow:prefect") is True
-    assert await client.resolve_adapter("adapter", "workflow", "prefect", "mahavishnu") is not None
-    assert await client.resolve_adapter("adapter", "workflow", "missing", "mahavishnu") is None
+    assert (
+        await client.resolve_adapter("adapter", "workflow", "prefect", "mahavishnu")
+        is not None
+    )
+    assert (
+        await client.resolve_adapter("adapter", "workflow", "missing", "mahavishnu")
+        is None
+    )
     assert await client.send_heartbeat("adapter:workflow:prefect") is True
 
     health = await client.health_check()

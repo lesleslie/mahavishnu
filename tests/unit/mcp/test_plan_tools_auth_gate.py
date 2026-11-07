@@ -64,7 +64,9 @@ class TestAuthGate:
         source = _module_source()
 
         for name in TOOL_NAMES:
-            assert source.count(f"async def {name}") == 1, f"{name} not defined exactly once"
+            assert source.count(f"async def {name}") == 1, (
+                f"{name} not defined exactly once"
+            )
         assert source.count("@require_mcp_auth") >= 5
 
     def test_every_tool_function_is_discovered(self) -> None:
@@ -93,7 +95,9 @@ class TestAuthGate:
         for dec in node.decorator_list:
             if not isinstance(dec, ast.Call):
                 continue
-            if not (isinstance(dec.func, ast.Name) and dec.func.id == "require_mcp_auth"):
+            if not (
+                isinstance(dec.func, ast.Name) and dec.func.id == "require_mcp_auth"
+            ):
                 continue
             for keyword in dec.keywords:
                 if keyword.arg == "required_permission" and isinstance(

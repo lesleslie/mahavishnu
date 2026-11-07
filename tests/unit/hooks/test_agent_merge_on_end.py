@@ -19,6 +19,7 @@ Both tests exercise the helper directly rather than the end-to-end
 ``run_hook`` lifecycle (per the multi-agent review of 2026-07-20 on
 the sister hook's test suite — helpers, not lifecycle paths).
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -28,10 +29,7 @@ from pathlib import Path
 import pytest
 
 _HOOK_PATH = (
-    Path(__file__).resolve().parents[3]
-    / ".claude"
-    / "hooks"
-    / "agent-merge-on-end.py"
+    Path(__file__).resolve().parents[3] / ".claude" / "hooks" / "agent-merge-on-end.py"
 )
 _HOOKS_DIR = _HOOK_PATH.parent
 
@@ -52,9 +50,7 @@ def _add_hooks_to_syspath() -> None:
 @pytest.fixture
 def hook_module() -> object:
     """Import the hook script as a module via importlib."""
-    spec = importlib.util.spec_from_file_location(
-        "agent_merge_on_end_hook", _HOOK_PATH
-    )
+    spec = importlib.util.spec_from_file_location("agent_merge_on_end_hook", _HOOK_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

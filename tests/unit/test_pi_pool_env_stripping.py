@@ -144,7 +144,13 @@ def test_usr_bin_env_requires_npx_as_second_arg() -> None:
     # /usr/bin/env sh -c 'evil' @pkg — would spawn `sh` and bypass allowlist.
     with pytest.raises(ConfigurationError) as excinfo:
         PiPoolSettings(
-            npx_command=("/usr/bin/env", "sh", "-c", "evil", "@earendil-works/pi-coding-agent"),
+            npx_command=(
+                "/usr/bin/env",
+                "sh",
+                "-c",
+                "evil",
+                "@earendil-works/pi-coding-agent",
+            ),
         )  # type: ignore[arg-type]
     assert "must be 'npx'" in str(excinfo.value)
 

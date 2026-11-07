@@ -225,7 +225,10 @@ class TestDependencyManager:
 
         assert "task-2" in newly_unblocked
         assert manager.is_ready("task-2")
-        assert manager.get_dependency_status("task-1", "task-2") == DependencyStatus.SATISFIED
+        assert (
+            manager.get_dependency_status("task-1", "task-2")
+            == DependencyStatus.SATISFIED
+        )
 
     def test_update_status_failed(self, manager: DependencyManager) -> None:
         """Test failing a task marks dependencies as failed."""
@@ -237,7 +240,9 @@ class TestDependencyManager:
 
         # Task-2 should still be blocked (failed dependency)
         assert not manager.is_ready("task-2")
-        assert manager.get_dependency_status("task-1", "task-2") == DependencyStatus.FAILED
+        assert (
+            manager.get_dependency_status("task-1", "task-2") == DependencyStatus.FAILED
+        )
 
     def test_update_status_cancelled(self, manager: DependencyManager) -> None:
         """Test cancelling a task unblocks dependents."""
@@ -248,7 +253,10 @@ class TestDependencyManager:
         manager.update_task_status("task-1", TaskStatus.CANCELLED)
 
         # Cancelled dependencies don't block
-        assert manager.get_dependency_status("task-1", "task-2") == DependencyStatus.CANCELLED
+        assert (
+            manager.get_dependency_status("task-1", "task-2")
+            == DependencyStatus.CANCELLED
+        )
         assert manager.is_ready("task-2")
 
     def test_get_ready_tasks(self, manager: DependencyManager) -> None:

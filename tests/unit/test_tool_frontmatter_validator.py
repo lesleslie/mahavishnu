@@ -135,7 +135,9 @@ def test_parse_frontmatter_returns_none_for_file_without_frontmatter(
 # --- Bug #2: validate <file> crash on out-of-tree files ------------------
 
 
-def test_report_results_does_not_crash_on_out_of_tree_file(tmp_path: Path, capsys) -> None:
+def test_report_results_does_not_crash_on_out_of_tree_file(
+    tmp_path: Path, capsys
+) -> None:
     """The ``validate <file>`` subcommand reports on a single file.
 
     ``report_results`` must not raise when the file is outside the

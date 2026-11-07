@@ -68,7 +68,10 @@ SPEC_FIELD_NAMES: list[tuple[str, dict, type, tuple[str, ...]]] = [
         "InitializeResponse.agentCapabilities.mcpCapabilities (not mcp)",
         {
             "protocolVersion": "0.0.1",
-            "agentCapabilities": {"loadSession": False, "mcpCapabilities": {"http": False, "sse": False}},
+            "agentCapabilities": {
+                "loadSession": False,
+                "mcpCapabilities": {"http": False, "sse": False},
+            },
         },
         InitializeResponse,
         ("agentCapabilities", "mcpCapabilities"),
@@ -113,7 +116,7 @@ def test_acp_spec_field_names(
         )
         assert segment in cursor, (
             f"{label}: expected field {segment!r} missing from {sorted(cursor)} "
-            f"(path so far: {'.'.join(field_path[:field_path.index(segment)])})"
+            f"(path so far: {'.'.join(field_path[: field_path.index(segment)])})"
         )
         cursor = cursor[segment]
 
@@ -121,6 +124,7 @@ def test_acp_spec_field_names(
 # ---------------------------------------------------------------------------
 # Initialize handshake
 # ---------------------------------------------------------------------------
+
 
 class TestInitialize:
     """``initialize`` request/response round-trip + invariants."""
@@ -173,9 +177,7 @@ class TestAuthenticate:
 
     def test_method_id_must_be_bearer(self) -> None:
         with pytest.raises(ValidationError):
-            AuthenticateRequest.model_validate(
-                {"methodId": "mtls", "token": "x"}
-            )
+            AuthenticateRequest.model_validate({"methodId": "mtls", "token": "x"})
 
     def test_valid_bearer_round_trips(self) -> None:
         req = AuthenticateRequest(methodId="bearer", token="opaque-token")
@@ -186,6 +188,7 @@ class TestAuthenticate:
 # ---------------------------------------------------------------------------
 # Session lifecycle
 # ---------------------------------------------------------------------------
+
 
 class TestSessionNew:
     def test_session_id_round_trips(self) -> None:
@@ -202,6 +205,7 @@ class TestSessionNew:
 # ---------------------------------------------------------------------------
 # Session content
 # ---------------------------------------------------------------------------
+
 
 class TestSessionPrompt:
     def test_text_content_round_trip(self) -> None:
@@ -228,6 +232,7 @@ class TestSessionPrompt:
 # ---------------------------------------------------------------------------
 # Session updates — discriminator + mandatory sessionId
 # ---------------------------------------------------------------------------
+
 
 class TestSessionUpdate:
     """``SessionUpdate`` is the discriminated-union wire shape for notifications."""
@@ -303,6 +308,7 @@ class TestSessionCancel:
 # JSON-RPC 2.0 envelopes
 # ---------------------------------------------------------------------------
 
+
 class TestJsonRpcEnvelopes:
     def test_request_envelope_round_trip(self) -> None:
         req = JsonRpcRequest(
@@ -319,9 +325,7 @@ class TestJsonRpcEnvelopes:
 
     def test_request_envelope_rejects_wrong_jsonrpc_version(self) -> None:
         with pytest.raises(ValidationError):
-            JsonRpcRequest.model_validate(
-                {"jsonrpc": "1.0", "id": 1, "method": "x"}
-            )
+            JsonRpcRequest.model_validate({"jsonrpc": "1.0", "id": 1, "method": "x"})
 
     def test_response_envelope_round_trip(self) -> None:
         resp = JsonRpcResponse(jsonrpc="2.0", id=1, result={"ok": True})
@@ -361,6 +365,7 @@ class TestJsonRpcEnvelopes:
 # ---------------------------------------------------------------------------
 # Sub-shape sanity checks (catch refactors that silently break invariants)
 # ---------------------------------------------------------------------------
+
 
 class TestSubShapes:
     def test_mcp_capabilities_extra_forbid(self) -> None:

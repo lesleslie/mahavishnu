@@ -50,7 +50,9 @@ def test_cross_module_all_entry_attaches_importer_file(tmp_path: Path) -> None:
 
     refs: MutableMapping[str, set[Path]] = defaultdict(set)
     defining = _build_defining_file_map(tmp_path, excludes=[], include_tests=False)
-    _add_cross_module_all_refs(tmp_path, excludes=[], include_tests=False, defining_files=defining, refs=refs)
+    _add_cross_module_all_refs(
+        tmp_path, excludes=[], include_tests=False, defining_files=defining, refs=refs
+    )
 
     foo_path = tmp_path / "pkg_b" / "definitions.py"
     exporter_path = tmp_path / "pkg_a" / "exporter.py"
@@ -68,7 +70,9 @@ def test_same_file_all_entry_not_re_attached(tmp_path: Path) -> None:
 
     refs: MutableMapping[str, set[Path]] = defaultdict(set)
     defining = _build_defining_file_map(tmp_path, excludes=[], include_tests=False)
-    _add_cross_module_all_refs(tmp_path, excludes=[], include_tests=False, defining_files=defining, refs=refs)
+    _add_cross_module_all_refs(
+        tmp_path, excludes=[], include_tests=False, defining_files=defining, refs=refs
+    )
 
     # Cross-module resolver deliberately skips same-file entries; the main
     # walker already records them (and the cross-file filter discards them).
@@ -85,7 +89,9 @@ def test_undefined_all_entry_does_not_crash(tmp_path: Path) -> None:
 
     refs: MutableMapping[str, set[Path]] = defaultdict(set)
     defining = _build_defining_file_map(tmp_path, excludes=[], include_tests=False)
-    _add_cross_module_all_refs(tmp_path, excludes=[], include_tests=False, defining_files=defining, refs=refs)
+    _add_cross_module_all_refs(
+        tmp_path, excludes=[], include_tests=False, defining_files=defining, refs=refs
+    )
 
     assert refs == {}
 
@@ -151,7 +157,9 @@ def test_collect_references_respects_include_tests(tmp_path: Path) -> None:
     # the defining-file map omits it and the resolver skips the
     # cross-module attachment. pkg_a/exporter.py is still a reference for
     # helper via the loop-2 __all__ walker (it contains the __all__).
-    defining_no_tests = _build_defining_file_map(tmp_path, excludes=[], include_tests=False)
+    defining_no_tests = _build_defining_file_map(
+        tmp_path, excludes=[], include_tests=False
+    )
     assert "helper" not in defining_no_tests
     refs_no_tests = collect_references(tmp_path, excludes=[], include_tests=False)
     assert exporter in refs_no_tests["helper"]
@@ -159,7 +167,9 @@ def test_collect_references_respects_include_tests(tmp_path: Path) -> None:
     # With tests: the defining-file map locates helper in tests/, so the
     # resolver recognises the cross-module re-export and adds the
     # importer as a reference (which the loop-2 walker already recorded).
-    defining_with_tests = _build_defining_file_map(tmp_path, excludes=[], include_tests=True)
+    defining_with_tests = _build_defining_file_map(
+        tmp_path, excludes=[], include_tests=True
+    )
     assert defining_with_tests["helper"] == test_helper
     refs_with_tests = collect_references(tmp_path, excludes=[], include_tests=True)
     assert exporter in refs_with_tests["helper"]
@@ -223,7 +233,7 @@ def test_find_registrations_includes_pytest_fixture_with_args(tmp_path: Path) ->
         (
             "import pytest\n"
             "\n"
-            "@pytest.fixture(scope=\"module\")\n"
+            '@pytest.fixture(scope="module")\n'
             "def shared_resource():\n"
             "    return object()\n"
         ),

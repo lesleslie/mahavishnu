@@ -254,7 +254,9 @@ async def test_sweeper_skips_if_workflow_id_already_set(
     from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
 
     adapter = _FakeAdapter(entries=[_orphan_entry()])
-    sb = _FakeSB(task_payloads={"t-x": {"status": "in_progress", "workflow_id": "w-existing"}})
+    sb = _FakeSB(
+        task_payloads={"t-x": {"status": "in_progress", "workflow_id": "w-existing"}}
+    )
     sweeper = TaskOrphanSweeper(session_buddy_client=sb)
     monkeypatch.setattr(sweeper, "_adapter", adapter)
 

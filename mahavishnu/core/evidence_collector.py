@@ -66,7 +66,9 @@ class EvidenceCollector:
         *,
         source: EvidenceSource | None = None,
     ) -> None:
-        self._source = source or _SessionBuddyEvidenceSource(session_buddy_url, store_timeout)
+        self._source = source or _SessionBuddyEvidenceSource(
+            session_buddy_url, store_timeout
+        )
         self._max_per_cycle = max_per_cycle
 
     async def collect_recent_outcomes(self) -> list[LearningEvidence]:

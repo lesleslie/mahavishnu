@@ -143,7 +143,10 @@ class TestEnvUserNotInAllowlistRejected:
 
         assert decision.allowed is False
         assert decision.source is ReviewerSource.ENV_ALLOWLIST
-        assert "not in" in decision.reason.lower() and "allowlist" in decision.reason.lower()
+        assert (
+            "not in" in decision.reason.lower()
+            and "allowlist" in decision.reason.lower()
+        )
 
     def test_empty_allowlist_is_bootstrap_mode(
         self,
@@ -181,7 +184,9 @@ class TestBootstrapMode:
     ) -> None:
         """Env + no allowlist file -> bootstrap-allowed with WARNING."""
         monkeypatch.setenv("MAHAVISHNU_USER_ID", "alice")
-        monkeypatch.setenv("MAHAVISHNU_PUBLISHER_ALLOWLIST", str(missing_allowlist_path))
+        monkeypatch.setenv(
+            "MAHAVISHNU_PUBLISHER_ALLOWLIST", str(missing_allowlist_path)
+        )
 
         identity = ReviewerIdentity.from_env()
         with caplog.at_level(logging.WARNING, logger="mahavishnu.distill.reviewer"):
@@ -190,10 +195,14 @@ class TestBootstrapMode:
         assert decision.allowed is True
         assert decision.source is ReviewerSource.BOOTSTRAP
         assert decision.reviewer_id == "alice"
-        assert "bootstrap" in decision.reason.lower() or "allowlist" in decision.reason.lower()
+        assert (
+            "bootstrap" in decision.reason.lower()
+            or "allowlist" in decision.reason.lower()
+        )
 
         assert any(
-            record.levelno == logging.WARNING and "allowlist" in record.getMessage().lower()
+            record.levelno == logging.WARNING
+            and "allowlist" in record.getMessage().lower()
             for record in caplog.records
         )
 
@@ -282,7 +291,9 @@ class TestAuditLog:
     ) -> None:
         """Bootstrap-allow path emits an audit log entry tagged for review."""
         monkeypatch.setenv("MAHAVISHNU_USER_ID", "alice")
-        monkeypatch.setenv("MAHAVISHNU_PUBLISHER_ALLOWLIST", str(missing_allowlist_path))
+        monkeypatch.setenv(
+            "MAHAVISHNU_PUBLISHER_ALLOWLIST", str(missing_allowlist_path)
+        )
 
         identity = ReviewerIdentity.from_env()
         with caplog.at_level(logging.INFO, logger="mahavishnu.distill.reviewer"):

@@ -9,6 +9,7 @@ This module pins the public contract added in Task 2.5:
 - The legacy ``list_worker_types(category=...)`` signature remains
   available for back-compat testing.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -24,11 +25,19 @@ from mahavishnu.workers.registry import (
 
 
 def test_get_worker_entry_loads_from_settings() -> None:
-    s = MahavishnuSettings.model_validate({
-        "worker_registry": {"entries": [
-            {"worker_type": "terminal-shell", "name": "Bash", "command_argv": ["bash"]},
-        ]},
-    })
+    s = MahavishnuSettings.model_validate(
+        {
+            "worker_registry": {
+                "entries": [
+                    {
+                        "worker_type": "terminal-shell",
+                        "name": "Bash",
+                        "command_argv": ["bash"],
+                    },
+                ]
+            },
+        }
+    )
     entry = get_worker_entry("terminal-shell", settings=s)
     assert entry.name == "Bash"
 
@@ -57,7 +66,9 @@ def _loaded_registry_settings() -> MahavishnuSettings:
 
     repo_root = Path(__file__).resolve().parents[3]
     data = yaml.safe_load((repo_root / "settings" / "mahavishnu.yaml").read_text())
-    return MahavishnuSettings.model_validate({"worker_registry": data["worker_registry"]})
+    return MahavishnuSettings.model_validate(
+        {"worker_registry": data["worker_registry"]}
+    )
 
 
 def test_list_worker_types_returns_all_registered() -> None:
@@ -71,6 +82,7 @@ def test_list_worker_types_returns_all_registered() -> None:
 def test_legacy_list_worker_types_with_category_still_works() -> None:
     """The existing list_worker_types(category=...) signature is preserved."""
     from mahavishnu.workers.registry import list_worker_types as legacy
+
     s = MahavishnuSettings()
     types_ = legacy(settings=s, category="ai-context")  # may be empty, must not raise
     assert isinstance(types_, list)

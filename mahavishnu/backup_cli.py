@@ -175,12 +175,16 @@ def add_backup_commands(app: typer.Typer) -> None:
         _do_backup_list()
 
     @backup_app.command("restore")
-    def backup_restore(backup_id: str = typer.Argument(..., help="Backup ID to restore")) -> None:
+    def backup_restore(
+        backup_id: str = typer.Argument(..., help="Backup ID to restore"),
+    ) -> None:
         """Restore from a backup."""
         _do_backup_restore(backup_id)
 
     @backup_app.command("info")
-    def backup_info(backup_id: str = typer.Argument(..., help="Backup ID to inspect")) -> None:
+    def backup_info(
+        backup_id: str = typer.Argument(..., help="Backup ID to inspect"),
+    ) -> None:
         """Show information about a specific backup."""
         _do_backup_info(backup_id)
 

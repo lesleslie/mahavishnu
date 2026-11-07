@@ -196,7 +196,9 @@ class ToolFrontmatterValidator:
             print(f"YAML parse error in {file_path}: {e}")
             return None, body
 
-    def validate_required_fields(self, frontmatter: dict, issues: list[ValidationIssue]):
+    def validate_required_fields(
+        self, frontmatter: dict, issues: list[ValidationIssue]
+    ):
         """Validate all required fields are present"""
         for field in self.REQUIRED_FIELDS:
             if field not in frontmatter or frontmatter[field] is None:
@@ -372,7 +374,9 @@ class ToolFrontmatterValidator:
                     )
                 )
 
-    def validate_deprecated(self, frontmatter: dict, body: str, issues: list[ValidationIssue]):
+    def validate_deprecated(
+        self, frontmatter: dict, body: str, issues: list[ValidationIssue]
+    ):
         """Validate deprecated tools have migration guides"""
         if frontmatter.get("status") != "deprecated":
             return
@@ -412,7 +416,9 @@ class ToolFrontmatterValidator:
                 ValidationIssue(
                     severity="critical",
                     field="required_scripts",
-                    message=(f"required_scripts must be a list, got {type(required).__name__}"),
+                    message=(
+                        f"required_scripts must be a list, got {type(required).__name__}"
+                    ),
                     suggestion="Use YAML list format: - scripts/foo.py",
                 )
             )
@@ -455,7 +461,9 @@ class ToolFrontmatterValidator:
                     ValidationIssue(
                         severity="critical",
                         field="required_scripts",
-                        message=(f"required_scripts entry points at non-existent file: {entry}"),
+                        message=(
+                            f"required_scripts entry points at non-existent file: {entry}"
+                        ),
                         suggestion=(
                             "Either commit the script at this path or remove "
                             "the entry (per docs/decisions/removed-scripts.md)"
@@ -477,7 +485,9 @@ class ToolFrontmatterValidator:
                     suggestion="Add frontmatter block between --- delimiters",
                 )
             )
-            return ValidationResult(file_path=file_path, valid=False, issues=issues, frontmatter={})
+            return ValidationResult(
+                file_path=file_path, valid=False, issues=issues, frontmatter={}
+            )
 
         # Run all validations
         self.validate_required_fields(frontmatter, issues)
@@ -557,14 +567,20 @@ class ToolFrontmatterValidator:
             print("No tools found in the configured tools directory.\n")
             return
         valid = sum(1 for r in results if r.valid)
-        critical_count = sum(1 for r in results for i in r.issues if i.severity == "critical")
-        warning_count = sum(1 for r in results for i in r.issues if i.severity == "warning")
+        critical_count = sum(
+            1 for r in results for i in r.issues if i.severity == "critical"
+        )
+        warning_count = sum(
+            1 for r in results for i in r.issues if i.severity == "warning"
+        )
         info_count = sum(1 for r in results for i in r.issues if i.severity == "info")
 
         print(f"Total Tools: {total}")
         print(f"Valid: {valid} ({valid / total * 100:.1f}%)")
         print(f"Invalid: {total - valid} ({(total - valid) / total * 100:.1f}%)\n")
-        print(f"Issues: {critical_count} critical, {warning_count} warnings, {info_count} info\n")
+        print(
+            f"Issues: {critical_count} critical, {warning_count} warnings, {info_count} info\n"
+        )
 
     def _report_critical_issues(self, results: list[ValidationResult]) -> None:
         """Print critical issues for invalid tools"""
@@ -589,7 +605,9 @@ class ToolFrontmatterValidator:
     def _report_warnings(self, results: list[ValidationResult]) -> None:
         """Print warnings for valid tools"""
         warning_results = [
-            r for r in results if r.valid and any(i.severity == "warning" for i in r.issues)
+            r
+            for r in results
+            if r.valid and any(i.severity == "warning" for i in r.issues)
         ]
         if not warning_results:
             return
@@ -637,7 +655,9 @@ class ToolFrontmatterValidator:
 
                 # Write back to file
                 new_content = "---\n"
-                new_content += yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+                new_content += yaml.dump(
+                    frontmatter, default_flow_style=False, sort_keys=False
+                )
                 new_content += "---\n"
                 new_content += body
 
@@ -663,13 +683,15 @@ class ToolFrontmatterValidator:
                 continue
 
             try:
-                review_date = datetime.strptime(frontmatter["last_reviewed"], "%Y-%m-%d").replace(
-                    tzinfo=UTC
-                )
+                review_date = datetime.strptime(
+                    frontmatter["last_reviewed"], "%Y-%m-%d"
+                ).replace(tzinfo=UTC)
                 age_days = (today - review_date).days
 
                 if age_days > 180:
-                    stale_tools.append((md_file, age_days, frontmatter.get("status", "unknown")))
+                    stale_tools.append(
+                        (md_file, age_days, frontmatter.get("status", "unknown"))
+                    )
             except ValueError, TypeError:
                 continue
 
@@ -682,7 +704,9 @@ class ToolFrontmatterValidator:
                 rel_path = file_path.relative_to(self.tools_dir.parent)
                 age_months = age_days // 30
                 print(f"📅 {rel_path}")
-                print(f"   Age: {age_months} months ({age_days} days) | Status: {status}\n")
+                print(
+                    f"   Age: {age_months} months ({age_days} days) | Status: {status}\n"
+                )
         else:
             print("✅ No stale tools found!")
 
@@ -720,7 +744,9 @@ class ToolFrontmatterValidator:
 
             # Write back
             new_content = "---\n"
-            new_content += yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+            new_content += yaml.dump(
+                frontmatter, default_flow_style=False, sort_keys=False
+            )
             new_content += "---\n"
             new_content += body
 

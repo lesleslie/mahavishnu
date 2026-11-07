@@ -43,5 +43,9 @@ def test_extract_mermaid_blocks_finds_expected_count() -> None:
     If this fails, the extractor is silently broken (e.g., regex changed).
     """
     repo_root = Path(__file__).resolve().parent.parent
-    blocks = extract_mermaid_blocks(repo_root / "docs" / "architecture" / "MEMORY_ARCHITECTURE.md")
-    assert len(blocks) >= 1, "expected at least one mermaid block in MEMORY_ARCHITECTURE.md"
+    blocks = extract_mermaid_blocks(
+        repo_root / "docs" / "architecture" / "MEMORY_ARCHITECTURE.md"
+    )
+    assert len(blocks) >= 1, (
+        "expected at least one mermaid block in MEMORY_ARCHITECTURE.md"
+    )

@@ -274,7 +274,8 @@ async def workflow_endpoint(
 
     # Classify the task intent
     task_type = task_router.classify_intent(
-        workflow_request.task_description or f"workflow for {len(workflow_request.repos)} repos"
+        workflow_request.task_description
+        or f"workflow for {len(workflow_request.repos)} repos"
     )
 
     # Generate fallback chain

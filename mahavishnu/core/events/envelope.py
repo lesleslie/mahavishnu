@@ -50,7 +50,9 @@ class EventVersion:
     def __init__(self, version_str: str) -> None:
         parts = version_str.split(".")
         if len(parts) != 3:
-            raise ValueError(f"Invalid version format: {version_str!r} Expected MAJOR.MINOR.PATCH")
+            raise ValueError(
+                f"Invalid version format: {version_str!r} Expected MAJOR.MINOR.PATCH"
+            )
         self.major = int(parts[0])
         self.minor = int(parts[1])
         self.patch = int(parts[2])
@@ -64,7 +66,11 @@ class EventVersion:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, EventVersion):
             return NotImplemented
-        return self.major == other.major and self.minor == other.minor and self.patch == other.patch
+        return (
+            self.major == other.major
+            and self.minor == other.minor
+            and self.patch == other.patch
+        )
 
     def __hash__(self) -> int:
         return hash((self.major, self.minor, self.patch))

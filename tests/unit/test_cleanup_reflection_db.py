@@ -78,7 +78,10 @@ class TestIsProcessAlive:
 
 class TestValidateHealthUrl:
     def test_accepts_http(self) -> None:
-        assert validate_health_url("http://127.0.0.1:8678/health") == "http://127.0.0.1:8678/health"
+        assert (
+            validate_health_url("http://127.0.0.1:8678/health")
+            == "http://127.0.0.1:8678/health"
+        )
 
     def test_rejects_https(self) -> None:
         """HTTPS is intentionally disallowed — see ALLOWED_HEALTH_SCHEMES docstring.
@@ -111,7 +114,9 @@ class TestValidateHealthUrl:
         ``urllib``, etc.) and avoids surprising the operator who types
         a capitalised URL.
         """
-        assert validate_health_url("HTTP://127.0.0.1/health") == "HTTP://127.0.0.1/health"
+        assert (
+            validate_health_url("HTTP://127.0.0.1/health") == "HTTP://127.0.0.1/health"
+        )
 
     def test_allowed_schemes_constant_is_exactly_http(self) -> None:
         """Pin the policy: only http is allowed. If a future change adds
@@ -196,7 +201,9 @@ class TestShutdownSessionBuddy:
             patch("cleanup_reflection_db.os.kill") as kill,
         ):
             alive.side_effect = [True, False]  # alive before, dead after
-            assert shutdown_session_buddy(12345, timeout=5.0, log=lambda m: None) is True
+            assert (
+                shutdown_session_buddy(12345, timeout=5.0, log=lambda m: None) is True
+            )
         kill.assert_called_once_with(12345, __import__("signal").SIGTERM)
 
     def test_escalates_to_sigkill_on_timeout(self) -> None:
@@ -235,7 +242,9 @@ class TestShutdownSessionBuddy:
             patch("cleanup_reflection_db.os.kill"),
             patch("cleanup_reflection_db.time.sleep"),
         ):
-            assert shutdown_session_buddy(12345, timeout=0.01, log=lambda m: None) is False
+            assert (
+                shutdown_session_buddy(12345, timeout=0.01, log=lambda m: None) is False
+            )
 
     def test_tolerates_processlookuperror_on_signal(self) -> None:
         """If the process dies between our probe and our kill, don't error."""
@@ -243,7 +252,9 @@ class TestShutdownSessionBuddy:
             patch("cleanup_reflection_db.is_process_alive", return_value=True),
             patch("cleanup_reflection_db.os.kill", side_effect=ProcessLookupError),
         ):
-            assert shutdown_session_buddy(12345, timeout=5.0, log=lambda m: None) is True
+            assert (
+                shutdown_session_buddy(12345, timeout=5.0, log=lambda m: None) is True
+            )
 
 
 # ============================================================================
@@ -294,7 +305,9 @@ class TestRunCheckpoint:
             mock_import.return_value = mock_duckdb
             assert run_checkpoint(fake_db, log=lambda m: None) is False
 
-    def test_returns_false_on_unrecoverable_checkpoint_failure(self, tmp_path: Path) -> None:
+    def test_returns_false_on_unrecoverable_checkpoint_failure(
+        self, tmp_path: Path
+    ) -> None:
         """A non-HNSW error during CHECKPOINT propagates as failure."""
         fake_db = tmp_path / "broken.duckdb"
         with patch("cleanup_reflection_db._import_duckdb") as mock_import:
@@ -311,7 +324,9 @@ class TestRunCheckpoint:
 # ============================================================================
 
 
-def _payload_response(status: int = 200, body: str = '{"status": "ok"}') -> SimpleNamespace:
+def _payload_response(
+    status: int = 200, body: str = '{"status": "ok"}'
+) -> SimpleNamespace:
     """Build a minimal context-manager that mimics http.client response."""
     resp = SimpleNamespace(status=status)
     resp.read = lambda: body.encode("utf-8")
@@ -322,7 +337,9 @@ class TestVerifyHealth:
     def test_succeeds_on_200_with_status_ok(self) -> None:
         fake_conn = MagicMock()
         fake_conn.getresponse.return_value = _payload_response(200, '{"status": "ok"}')
-        with patch("cleanup_reflection_db._http_get_json", return_value={"status": "ok"}):
+        with patch(
+            "cleanup_reflection_db._http_get_json", return_value={"status": "ok"}
+        ):
             assert (
                 verify_health(
                     "http://127.0.0.1:8678/health",
@@ -347,7 +364,9 @@ class TestVerifyHealth:
             )
 
     def test_returns_false_on_non_ok_status(self) -> None:
-        with patch("cleanup_reflection_db._http_get_json", return_value={"status": "degraded"}):
+        with patch(
+            "cleanup_reflection_db._http_get_json", return_value={"status": "degraded"}
+        ):
             assert (
                 verify_health(
                     "http://127.0.0.1:8678/health",
@@ -374,7 +393,9 @@ class TestVerifyHealth:
 class TestForceReleaseLock:
     def test_is_noop_when_lock_is_free(self, tmp_path: Path) -> None:
         """Idempotency: if there's no lock, we do nothing and return cleanly."""
-        with patch.object(crd, "probe_lock", return_value=LockProbe(False, None, False)):
+        with patch.object(
+            crd, "probe_lock", return_value=LockProbe(False, None, False)
+        ):
             result = force_release_lock(
                 db_path=tmp_path / "x.duckdb",
                 log=lambda m: None,
@@ -491,7 +512,9 @@ class TestCLI:
     def test_dry_run_with_no_lock_exits_zero(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        with patch.object(crd, "probe_lock", return_value=LockProbe(False, None, False)):
+        with patch.object(
+            crd, "probe_lock", return_value=LockProbe(False, None, False)
+        ):
             rc = crd.main(
                 [
                     "--db-path",
@@ -526,7 +549,9 @@ class TestCLI:
         final summary alike. Operators who want a one-line exit-code
         answer for scripting should use ``--quiet``.
         """
-        with patch.object(crd, "probe_lock", return_value=LockProbe(False, None, False)):
+        with patch.object(
+            crd, "probe_lock", return_value=LockProbe(False, None, False)
+        ):
             rc = crd.main(
                 [
                     "--db-path",

@@ -57,12 +57,16 @@ def _check_feature_flags() -> None:
     """
     if not is_feature_enabled("enabled"):
         console.print("\n[yellow]Goal-Driven Teams feature is disabled.[/yellow]")
-        console.print("[dim]Enable it in settings/mahavishnu.yaml under goal_teams.enabled[/dim]")
+        console.print(
+            "[dim]Enable it in settings/mahavishnu.yaml under goal_teams.enabled[/dim]"
+        )
         raise typer.Exit(code=1)
 
     if not is_feature_enabled("cli_commands_enabled"):
         console.print("\n[yellow]Goal-Driven Teams CLI commands are disabled.[/yellow]")
-        console.print("[dim]Enable cli_commands_enabled in goal_teams.feature_flags[/dim]")
+        console.print(
+            "[dim]Enable cli_commands_enabled in goal_teams.feature_flags[/dim]"
+        )
         raise typer.Exit(code=1)
 
 
@@ -124,7 +128,9 @@ def _display_team_config(config: TeamConfig, verbose: bool = False) -> None:
     table.add_row("Mode", config.mode.value)
     table.add_row(
         "Description",
-        config.description[:100] + "..." if len(config.description) > 100 else config.description,
+        config.description[:100] + "..."
+        if len(config.description) > 100
+        else config.description,
     )
     table.add_row("Members", str(len(config.members)))
     if config.leader:
@@ -218,11 +224,20 @@ def create_team(
     goal: str = typer.Option(..., "--goal", "-g", help="Natural language goal"),
     name: str | None = typer.Option(None, "--name", "-n", help="Team name"),
     mode: str | None = typer.Option(
-        None, "--mode", "-m", help="Team mode (coordinate, route, broadcast, collaborate)"
+        None,
+        "--mode",
+        "-m",
+        help="Team mode (coordinate, route, broadcast, collaborate)",
     ),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Show configuration without creating"),
-    run: bool = typer.Option(False, "--run", help="Run team immediately after creation"),
-    task: str | None = typer.Option(None, "--task", "-t", help="Task to run (requires --run)"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show configuration without creating"
+    ),
+    run: bool = typer.Option(
+        False, "--run", help="Run team immediately after creation"
+    ),
+    task: str | None = typer.Option(
+        None, "--task", "-t", help="Task to run (requires --run)"
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed output"),
 ) -> None:
     """Create an agent team from a natural language goal.
@@ -273,7 +288,9 @@ def create_team(
                 )
                 _display_team_config_yaml(config)
                 _display_team_config(config, verbose=True)
-                console.print("\n[green]To create this team, run without --dry-run[/green]")
+                console.print(
+                    "\n[green]To create this team, run without --dry-run[/green]"
+                )
                 return
 
             # Store the team
@@ -319,7 +336,9 @@ def create_team(
 @app.command("parse")
 def parse_goal_cmd(
     goal: str = typer.Argument(..., help="Natural language goal to parse"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed analysis"),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show detailed analysis"
+    ),
 ) -> None:
     """Parse a goal to see what team would be created.
 
@@ -363,7 +382,9 @@ def parse_goal_cmd(
 
 @app.command("skills")
 def list_skills(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show full skill details"),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show full skill details"
+    ),
 ) -> None:
     """List all available skills for goal-driven team creation.
 
@@ -394,7 +415,9 @@ def list_skills(
 
         table.add_row(
             skill_name,
-            skill_config.role[:40] + "..." if len(skill_config.role) > 40 else skill_config.role,
+            skill_config.role[:40] + "..."
+            if len(skill_config.role) > 40
+            else skill_config.role,
             skill_config.model,
             tools_str or "none",
         )
@@ -424,7 +447,9 @@ def list_skills(
 
 @app.command("list")
 def list_teams(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed team info"),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show detailed team info"
+    ),
 ) -> None:
     """List all active goal-driven teams.
 
@@ -440,10 +465,14 @@ def list_teams(
 
     if not _active_teams:
         console.print("\n[yellow]No active teams found.[/yellow]")
-        console.print('[dim]Create a team with: mahavishnu team create --goal "your goal"[/dim]')
+        console.print(
+            '[dim]Create a team with: mahavishnu team create --goal "your goal"[/dim]'
+        )
         return
 
-    console.print(f"\n[bold cyan]Active Goal-Driven Teams ({len(_active_teams)})[/bold cyan]\n")
+    console.print(
+        f"\n[bold cyan]Active Goal-Driven Teams ({len(_active_teams)})[/bold cyan]\n"
+    )
 
     # Create teams table
     table = Table(show_header=True, header_style="bold magenta")
@@ -455,7 +484,9 @@ def list_teams(
 
     for team_id, config in _active_teams.items():
         desc = (
-            config.description[:50] + "..." if len(config.description) > 50 else config.description
+            config.description[:50] + "..."
+            if len(config.description) > 50
+            else config.description
         )
         table.add_row(
             team_id,
@@ -477,9 +508,13 @@ def list_teams(
 
 @app.command("learning")
 def learning_stats(
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show detailed learning stats"),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show detailed learning stats"
+    ),
     clear: bool = typer.Option(False, "--clear", help="Clear all learning data"),
-    export: bool = typer.Option(False, "--export", help="Export learning stats as JSON"),
+    export: bool = typer.Option(
+        False, "--export", help="Export learning stats as JSON"
+    ),
 ) -> None:
     """Show team learning statistics.
 
@@ -498,7 +533,9 @@ def learning_stats(
 
     if not is_feature_enabled("learning_system_enabled"):
         console.print("\n[yellow]Learning system is disabled.[/yellow]")
-        console.print("[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]")
+        console.print(
+            "[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]"
+        )
         raise typer.Exit(code=1)
 
     engine = team_learning.get_learning_engine()
@@ -604,7 +641,11 @@ def learning_stats(
         if recent:
             console.print("\n[bold]Recent Outcomes:[/bold]")
             for i, outcome in enumerate(recent, 1):
-                status = "[green]success[/green]" if outcome["success"] else "[red]failed[/red]"
+                status = (
+                    "[green]success[/green]"
+                    if outcome["success"]
+                    else "[red]failed[/red]"
+                )
                 console.print(
                     f"  {i}. {outcome['team_id']} - {status} ({outcome['latency_ms']:.0f}ms)"
                 )
@@ -635,7 +676,9 @@ def recommend_mode(
 
     if not is_feature_enabled("learning_system_enabled"):
         console.print("\n[yellow]Learning system is disabled.[/yellow]")
-        console.print("[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]")
+        console.print(
+            "[dim]Enable learning_system_enabled in goal_teams.feature_flags[/dim]"
+        )
         raise typer.Exit(code=1)
 
     engine = team_learning.get_learning_engine()
@@ -656,7 +699,9 @@ def recommend_mode(
             "analyze": "broadcast",
         }
         fallback = fallback_map.get(intent, "coordinate")
-        console.print(f"[yellow]Insufficient learning data for intent '{intent}'.[/yellow]")
+        console.print(
+            f"[yellow]Insufficient learning data for intent '{intent}'.[/yellow]"
+        )
         console.print(f"[dim]Fallback mode: {fallback}[/dim]")
         console.print(
             "[dim]Record more team executions to enable learning-based recommendations.[/dim]"

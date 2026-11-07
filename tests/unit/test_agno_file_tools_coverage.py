@@ -142,7 +142,9 @@ def test_get_allowed_base_dirs_fallback_when_settings_fails() -> None:
     # All DEFAULT entries are resolved
     assert all(isinstance(p, Path) for p in result)
     # tempfile.gettempdir() and cwd should be in there
-    assert any(Path(p).resolve() == Path(tempfile.gettempdir()).resolve() for p in result)
+    assert any(
+        Path(p).resolve() == Path(tempfile.gettempdir()).resolve() for p in result
+    )
 
 
 @pytest.mark.unit
@@ -569,7 +571,10 @@ def test_search_files_impl_skips_outside_allowed_match(
     # On the *match* path, override resolve() to return /etc/passwd.
     # We can't patch globally without breaking _validate_path. Instead,
     # subclass the resolved match to behave like it's outside.
-    with patch.object(Path, "rglob", fake_rglob), patch.object(Path, "is_file", return_value=True):
+    with (
+        patch.object(Path, "rglob", fake_rglob),
+        patch.object(Path, "is_file", return_value=True),
+    ):
         # Replace Path.resolve with a function that escapes only for the match
         original_resolve = Path.resolve
 

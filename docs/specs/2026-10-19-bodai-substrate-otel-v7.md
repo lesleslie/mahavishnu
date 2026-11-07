@@ -221,7 +221,7 @@ The DDL ships in `PR-0a` (oneiric) — bumps oneiric's minor version. Same PR ex
 # oneiric/adapters/vector/duckdb_hot_store.py (additions to DuckdbHotStore class)
 class DuckdbHotStore:
     spans_substrate_table: str = "spans_substrate"
-    conversations_table:   str = "conversations"
+    conversations_table: str = "conversations"
 
     async def initialize(self) -> None:
         # existing conversations DDL stays
@@ -340,19 +340,29 @@ The receiver lives at `akosha/observability/otlp_receiver.py`. Function signatur
 # See docs/decisions/2026-10-23-otel-substrate-spec-corrections.md
 from oneiric.core.lifecycle import LifecycleError
 
-class ReceiverError(Exception):                       ...
-class BatchRejected(ReceiverError):                  ...    # whole-batch abort
-class RowValidationError(ReceiverError):             ...    # per-row quarantine
-class DLQWriteError(ReceiverError):                  ...    # the DLQ itself failed
-class PreValidateException(ReceiverError):           ...    # validator itself raised
+
+class ReceiverError(Exception): ...
+
+
+class BatchRejected(ReceiverError): ...  # whole-batch abort
+
+
+class RowValidationError(ReceiverError): ...  # per-row quarantine
+
+
+class DLQWriteError(ReceiverError): ...  # the DLQ itself failed
+
+
+class PreValidateException(ReceiverError): ...  # validator itself raised
+
 
 @dataclass
 class BatchResult:
-    ok:        int   # inserted_count
-    deduped:   int   # RETURNING < supplied, exclusive of ok
-    rejected:  int   # per-row validation failed; in DLQ
+    ok: int  # inserted_count
+    deduped: int  # RETURNING < supplied, exclusive of ok
+    rejected: int  # per-row validation failed; in DLQ
     dlq_failed: int  # DLQ itself failed; rows logged to stderr
-    errored:   int   # whole-batch abort
+    errored: int  # whole-batch abort
 ```
 
 **As implemented (PR-A3), the exception hierarchy above is simplified.**
@@ -365,18 +375,18 @@ count above describes intent, not the shipped surface.
 
 ```python
 class OTLPReceiver:
-    MAX_BATCH_SIZE: int          = 512
-    MAX_RETRIES:    int          = 3
-    BACKOFF_BASE_SECONDS: float  = 1.0
-    BACKOFF_MAX_SECONDS:   float = 8.0
-    QUEUE_MAX_DEPTH:    int      = 2048
-    PROMETHEUS_PORT:     int      = 9464
+    MAX_BATCH_SIZE: int = 512
+    MAX_RETRIES: int = 3
+    BACKOFF_BASE_SECONDS: float = 1.0
+    BACKOFF_MAX_SECONDS: float = 8.0
+    QUEUE_MAX_DEPTH: int = 2048
+    PROMETHEUS_PORT: int = 9464
     # v7 addition (2026-10-21): bind ports were literals in start()'s docstring,
     # leaving no seam. §13.1 requires them to be operator-settable — the substrate
     # owns canonical :4317/:4318 and Alloy moves to :14317/:14318, and any later
     # port change must not be a source edit in a receiver with live producers.
-    GRPC_PORT:         int      = 4317
-    HTTP_PORT:         int      = 4318
+    GRPC_PORT: int = 4317
+    HTTP_PORT: int = 4318
 
     async def start(self) -> None:
         """Lifespan-invoked. Asserts HotStore.spans_substrate_table exists
@@ -386,7 +396,9 @@ class OTLPReceiver:
     async def stop(self) -> None:
         """Drains in-flight batches, closes listeners."""
 
-    async def _handle_batch(self, batch: ExportTraceServiceRequest) -> ExportTraceServiceResponse:
+    async def _handle_batch(
+        self, batch: ExportTraceServiceRequest
+    ) -> ExportTraceServiceResponse:
         """Per §6.1 below."""
 ```
 
@@ -404,9 +416,9 @@ async def lifespan(server: Any) -> AsyncGenerator[dict[str, Any], None]:
     #    alone (matches server.py:951 lifespan teardown pattern).
     stop_event = asyncio.Event()
     hot_store = HotStore(...)
-    await hot_store.initialize()                              # 1. substrate tables exist
+    await hot_store.initialize()  # 1. substrate tables exist
     receiver = OTLPReceiver(hot_store=hot_store)
-    await receiver.start()                                    # 2. bind listeners, fail-loud if substrate missing
+    await receiver.start()  # 2. bind listeners, fail-loud if substrate missing
     # 3. publish singletons. PR-A0b introduces `set_shared_otel_receiver`
     #    as a 1:1 mirror of `set_shared_hot_store` at server.py:282-294 —
     #    new code, not in main as of v7. PR-A0b also extends
@@ -414,7 +426,8 @@ async def lifespan(server: Any) -> AsyncGenerator[dict[str, Any], None]:
     #    module global alongside the existing two; otherwise test isolation
     #    regresses and shutdown leaks the prior singleton. Regression test in
     #    PR-A0b: `create_app()` twice → `get_shared_otel_receiver() is None`.
-    set_shared_hot_store(hot_store); set_shared_otel_receiver(receiver)
+    set_shared_hot_store(hot_store)
+    set_shared_otel_receiver(receiver)
     # 4. tools see active receiver
     await _apply_tool_profile(server, ...)
     # PR-A3: two new lifespan tasks alongside the receiver. Both run in
@@ -436,7 +449,8 @@ async def lifespan(server: Any) -> AsyncGenerator[dict[str, Any], None]:
     #    so the `await stop_event.wait(...)` inside the bridge body wakes
     #    BEFORE Task.cancel() propagates, eliminating the cancel-vs-wait race.
     stop_event.set()
-    retention_task.cancel(); canary_task.cancel()
+    retention_task.cancel()
+    canary_task.cancel()
     await asyncio.gather(canary_task, retention_task, return_exceptions=True)
     await receiver.stop()
 ```
@@ -447,7 +461,8 @@ async def lifespan(server: Any) -> AsyncGenerator[dict[str, Any], None]:
 # PR-A4 diff against the PR-A3 lifespan: only the canary_metrics_task addition
 # (between canary_task and the yield).
 canary_task = asyncio.create_task(
-    receiver.run_canary_emitter(), name="receiver_canary"   # PR-A4 swaps the stub body
+    receiver.run_canary_emitter(),
+    name="receiver_canary",  # PR-A4 swaps the stub body
 )
 retention_task = asyncio.create_task(
     receiver.run_retention_sweep(stop_event), name="spans_retention_sweep"
@@ -455,14 +470,15 @@ retention_task = asyncio.create_task(
 canary_metrics_task = asyncio.create_task(
     _canary_metrics_bridge(stop_event, receiver), name="canary_metrics_bridge"
 )  # PR-A4; bridge contract per §11.3. NB: stop_event is now an explicit
-   # positional arg, fixing the v6 "undefined stop_event" free-variable bug.
+# positional arg, fixing the v6 "undefined stop_event" free-variable bug.
 yield {"server": server, "hot_store": hot_store, "receiver": receiver}
 stop_event.set()
 canary_metrics_task.cancel()
 retention_task.cancel()
 canary_task.cancel()
-await asyncio.gather(canary_metrics_task, retention_task, canary_task,
-                    return_exceptions=True)
+await asyncio.gather(
+    canary_metrics_task, retention_task, canary_task, return_exceptions=True
+)
 await receiver.stop()
 ```
 
@@ -488,7 +504,11 @@ Each row is validated before INSERT. A bad row goes to `_dlq_rows`:
 def pre_validate(self, span: dict) -> RowValidationError | None:
     if not span.get("service_name"):
         return RowValidationError(field="service_name", reason="not_null")
-    if span.get("status_code") not in {"STATUS_CODE_UNSET", "STATUS_CODE_OK", "STATUS_CODE_ERROR"}:
+    if span.get("status_code") not in {
+        "STATUS_CODE_UNSET",
+        "STATUS_CODE_OK",
+        "STATUS_CODE_ERROR",
+    }:
         return RowValidationError(field="status_code", reason="enum")
     # ... etc.
 ```
@@ -503,7 +523,8 @@ for span in batch.spans:
         err = RowValidationError(reason="validator_threw", detail=repr(exc))
         self._metric_row_rejected.inc(reason="validator_threw")
     if err:
-        dlq.append((err, span)); rejected += 1
+        dlq.append((err, span))
+        rejected += 1
     else:
         clean.append(span)
 ```
@@ -622,26 +643,34 @@ Update to source from the same `OTelSettings.service_namespace` the bridge relea
 # akosha/observability/tracing.py — current
 def setup_telemetry(service_name: str, environment: str) -> None: ...
 
+
 # v4 — signature change
 def setup_telemetry(
     service_name: str,
     environment: str,
     *,
-    settings: OTelSettings | None = None,       # NEW — optional; default reads mcp-common OTelSettings
+    settings: OTelSettings
+    | None = None,  # NEW — optional; default reads mcp-common OTelSettings
 ) -> None:
     namespace = (settings or OTelSettings()).service_namespace
-    resource = Resource.create({
-        "service.name": service_name,
-        "service.namespace": namespace,
-        "deployment.environment": environment,
-    })
+    resource = Resource.create(
+        {
+            "service.name": service_name,
+            "service.namespace": namespace,
+            "deployment.environment": environment,
+        }
+    )
     ...
 ```
 
 The call site at `akosha/mcp/server.py:466` (and any other callers) is updated to pass the live `OTelSettings`:
 
 ```python
-setup_telemetry(service_name="akosha", environment=settings.deployment.environment, settings=settings)
+setup_telemetry(
+    service_name="akosha",
+    environment=settings.deployment.environment,
+    settings=settings,
+)
 ```
 
 PR-A0b (or whichever PR ships the bridge release) extends `setup_telemetry()`'s signature; existing call sites keep compiling because the new parameter is keyword-only with `None` default.
@@ -705,18 +734,19 @@ The gRPC servicer class is `opentelemetry.proto.collector.trace.v1.TraceServiceS
 ```python
 REQUIRED_FIELDS = {
     "service_name",
-    "service_namespace",   # v4 — was missing in v3; required because the
-                            # substrate's `service_namespace TEXT NOT NULL`
-                            # column is silent-corruption bait for
-                            # pre_validate if this is not enforced
-                            # (every selector-level projection groups by
-                            # (selector, task_class, outcome, namespace)).
+    "service_namespace",  # v4 — was missing in v3; required because the
+    # substrate's `service_namespace TEXT NOT NULL`
+    # column is silent-corruption bait for
+    # pre_validate if this is not enforced
+    # (every selector-level projection groups by
+    # (selector, task_class, outcome, namespace)).
     "span_name",
     "start_time_unix_nano",
 }
 ENUM_FIELDS = {
     "status_code": {"STATUS_CODE_UNSET", "STATUS_CODE_OK", "STATUS_CODE_ERROR"},
 }
+
 
 def pre_validate(self, span: dict) -> RowValidationError | None:
     for f in REQUIRED_FIELDS:
@@ -836,13 +866,16 @@ ARCHIVAL_TARGET_RE = re.compile(
 # pod yet" (==0) from "frozen on archival" (>0 with sweep_last_completed=0).
 _sweep_first_started_unix_nano: int = 0
 
+
 async def _spans_substrate_retention_sweep(stop_event: asyncio.Event):
     # v7 — stop_event is an explicit positional arg (was free variable in v6).
     # Set by the lifespan function (§6) before the gather teardown so all
     # sweep tasks receive the same shutdown signal.
     global _sweep_first_started_unix_nano
     while not stop_event.is_set():
-        await stop_event.wait(settings.spans_substrate.retention_sweep_interval_hours * 3600)
+        await stop_event.wait(
+            settings.spans_substrate.retention_sweep_interval_hours * 3600
+        )
         # Random jitter (interruptible: asyncio.sleep is cancelled by Task.cancel();
         # verification in §15 v6 decisions log).
         await asyncio.sleep(random.uniform(0, 60))
@@ -854,7 +887,10 @@ async def _spans_substrate_retention_sweep(stop_event: asyncio.Event):
         if _sweep_first_started_unix_nano == 0:
             _sweep_first_started_unix_nano = sweep_started_unix_nano
             self._metric_sweep_first_started_unix_nano.set(sweep_started_unix_nano)
-        cutoff_ns = sweep_started_unix_nano - int(settings.spans_substrate.retention_days) * 86_400 * 1_000_000_000
+        cutoff_ns = (
+            sweep_started_unix_nano
+            - int(settings.spans_substrate.retention_days) * 86_400 * 1_000_000_000
+        )
         deleted_count = 0
         archival_succeeded = True
         try:
@@ -864,8 +900,9 @@ async def _spans_substrate_retention_sweep(stop_event: asyncio.Event):
                 # regex-validated at settings-load; sweeping an unverified
                 # path is unreachable.
                 archival_path = settings.spans_substrate.archival_target
-                assert ARCHIVAL_TARGET_RE.match(archival_path), \
+                assert ARCHIVAL_TARGET_RE.match(archival_path), (
                     f"archival_target {archival_path!r} failed validation; check §8.2 regex"
+                )
                 copy_sql = (
                     f"COPY (SELECT * FROM spans_substrate "
                     f"WHERE received_at_unix_nano < {cutoff_ns}) "
@@ -873,12 +910,15 @@ async def _spans_substrate_retention_sweep(stop_event: asyncio.Event):
                 )
                 try:
                     await self._conn.execute(copy_sql)
-                    self._metric_archival_last_success_unix_nano.set(sweep_started_unix_nano)
+                    self._metric_archival_last_success_unix_nano.set(
+                        sweep_started_unix_nano
+                    )
                 except Exception as exc:
                     archival_succeeded = False
                     self._metric_archival_failed.labels(reason=type(exc).__name__).inc()
-                    logger.exception("archival_target_write_failed",
-                                     target=archival_path)
+                    logger.exception(
+                        "archival_target_write_failed", target=archival_path
+                    )
             if archival_succeeded:
                 # v6: result.rowcount (DuckDB Python cursor contract for DML).
                 # v5 used result.fetchone()[0] which raises TypeError on DML
@@ -899,8 +939,11 @@ async def _spans_substrate_retention_sweep(stop_event: asyncio.Event):
             self._metric_retention_sweep_failed.labels(
                 phase="delete"  # v6: only ever fires for DELETE-phase failures
             ).inc()
-            logger.exception("spans_retention_sweep_failed",
-                             cutoff_unix_nano=cutoff_ns, deleted_count=deleted_count)
+            logger.exception(
+                "spans_retention_sweep_failed",
+                cutoff_unix_nano=cutoff_ns,
+                deleted_count=deleted_count,
+            )
         finally:
             # v6: do NOT collapse "frozen on archival" into "never ran".
             # sweep_last_completed_unix_nano == 0 means the sweep's most recent
@@ -912,10 +955,12 @@ async def _spans_substrate_retention_sweep(stop_event: asyncio.Event):
             self._metric_sweep_duration_seconds.observe(
                 (time.time_ns() - sweep_started_unix_nano) / 1e9
             )
-        logger.info("spans_retention_sweep_complete",
-                    cutoff_unix_nano=cutoff_ns,
-                    deleted=deleted_count,
-                    archival_succeeded=archival_succeeded)
+        logger.info(
+            "spans_retention_sweep_complete",
+            cutoff_unix_nano=cutoff_ns,
+            deleted=deleted_count,
+            archival_succeeded=archival_succeeded,
+        )
 ```
 
 **Sweep observability** (PR-A3 — these are the gauge/histogram/counter the spec was missing in v4):
@@ -1005,7 +1050,7 @@ def normalize_attributes(self, span: dict) -> dict:
     """
     out = {}
     for k, v in span.get("attributes", {}).items():
-        out[dotted_to_underscore(k)] = v      # v4 — assignment, not .get()
+        out[dotted_to_underscore(k)] = v  # v4 — assignment, not .get()
     return out
 ```
 
@@ -1013,13 +1058,19 @@ def normalize_attributes(self, span: dict) -> dict:
 
 ```python
 def test_normalize_attributes_assigns():
-    span = {"attributes": {"task.class": "code_generation",
-                           "gen_ai.usage.input_tokens": 42,
-                           "weird.unknown.key": "kept-as-identity"}}
+    span = {
+        "attributes": {
+            "task.class": "code_generation",
+            "gen_ai.usage.input_tokens": 42,
+            "weird.unknown.key": "kept-as-identity",
+        }
+    }
     out = receiver.normalize_attributes(span)
-    assert out == {"task_class": "code_generation",
-                   "gen_ai_usage_input_tokens": 42,
-                   "weird_unknown_key": "kept-as-identity"}
+    assert out == {
+        "task_class": "code_generation",
+        "gen_ai_usage_input_tokens": 42,
+        "weird_unknown_key": "kept-as-identity",
+    }
 ```
 
 (Pin via the `feedback-line-number-pin-tests.md` rule — assert against the dict, not against specific attribute-shape assumptions; `weird.unknown.key` is identity-mapped per `dotted_to_underscore`, change the test if `dotted_to_underscore` semantics change.)
@@ -1060,9 +1111,10 @@ PR-A7's required-to-pass integration test (`tests/integration/test_service_names
 ```python
 def test_dual_label_emitted_during_bridge():
     """During bridge release, every span must carry both:
-       service.namespace='mcp-ecosystem' AND namespace.legacy_alias='bodai'.
+    service.namespace='mcp-ecosystem' AND namespace.legacy_alias='bodai'.
     """
     ...
+
 
 def test_consumer_sweep_returns_zero_pre_merge():
     """The git grep sweep returns zero — runs as part of PR-A7's CI gate."""
@@ -1348,12 +1400,16 @@ v4 adds a synthetic canary: the receiver (or, more cheaply, the lifespan) emits 
 # akosha/observability/canary_watcher.py (PR-A4)
 @dataclass
 class CanaryState:
-    last_canary_success_unix_nano: int | None = None   # server-side receive time
+    last_canary_success_unix_nano: int | None = None  # server-side receive time
     last_canary_failure_unix_nano: int | None = None
-    canary_writes_attempted_total:   int = 0
-    canary_writes_succeeded_total:   int = 0   # v6: pinned to "BatchResult(ok=1, deduped=0)" — see below
-    canary_writes_failed_total:      int = 0
-    canary_writes_rejected_total:    int = 0   # v6: UNIQUE CONSTRAINT rejected (no exception)
+    canary_writes_attempted_total: int = 0
+    canary_writes_succeeded_total: int = (
+        0  # v6: pinned to "BatchResult(ok=1, deduped=0)" — see below
+    )
+    canary_writes_failed_total: int = 0
+    canary_writes_rejected_total: int = (
+        0  # v6: UNIQUE CONSTRAINT rejected (no exception)
+    )
     # v8: no `bridge_failed_total` — there is no bridge. See the v8 note below.
 ```
 
@@ -1855,8 +1911,8 @@ Sets the allowlisted namespaces:
 
 ```python
 # akosha/observability/resource_validator.py
-ALLOWED_NAMESPACES_BRIDGE = {"mcp-ecosystem", "bodai"}             # during bridge
-ALLOWED_NAMESPACES_POST_FLIP = {"bodai"}                          # post-flip
+ALLOWED_NAMESPACES_BRIDGE = {"mcp-ecosystem", "bodai"}  # during bridge
+ALLOWED_NAMESPACES_POST_FLIP = {"bodai"}  # post-flip
 # PR-A6 ships with `ALLOWED_NAMESPACES = ALLOWED_NAMESPACES_BRIDGE` (the bridge
 # release is active at PR-A6's merge time — mcp-ecosystem producers MUST be
 # permitted, otherwise every span gets flagged as namespace drift during the
@@ -1871,9 +1927,9 @@ ALLOWED_NAMESPACES_POST_FLIP = {"bodai"}                          # post-flip
 **Drift detection — rate-based, not count-based:**
 
 ```python
-ROLLING_WINDOW_SECONDS  = 300   # 5 min
-SPIKE_THRESHOLD          = 3     # >3 in rolling window = P1 spike
-SUSTAINED_THRESHOLD_HR   = 0.5   # >0.5/hour over 24h = P2 sustained
+ROLLING_WINDOW_SECONDS = 300  # 5 min
+SPIKE_THRESHOLD = 3  # >3 in rolling window = P1 spike
+SUSTAINED_THRESHOLD_HR = 0.5  # >0.5/hour over 24h = P2 sustained
 ```
 
 Two alert tracks:
@@ -2116,13 +2172,23 @@ logger = logging.getLogger(__name__)
 
 
 class ReceiverError(Exception): ...
+
+
 class BatchRejected(ReceiverError): ...
+
+
 class RowValidationError(ReceiverError):
-    def __init__(self, field: str | None = None, reason: str = "unspecified", detail: str | None = None):
+    def __init__(
+        self,
+        field: str | None = None,
+        reason: str = "unspecified",
+        detail: str | None = None,
+    ):
         self.field = field
         self.reason = reason
         self.detail = detail
         super().__init__(f"{reason}:{field}:{detail}")
+
 
 class DLQWriteError(ReceiverError): ...
 
@@ -2137,22 +2203,26 @@ class BatchResult:
 
 
 class OTLPReceiver:
-    MAX_BATCH_SIZE         = 512
-    MAX_RETRIES            = 3
-    BACKOFF_BASE_SECONDS   = 1.0
-    BACKOFF_MAX_SECONDS    = 8.0
-    QUEUE_MAX_DEPTH         = 2048
-    PROMETHEUS_PORT         = 9464
-    GRPC_PORT               = 4317   # v7 addition — see §13.1
-    HTTP_PORT               = 4318   # v7 addition — see §13.1
+    MAX_BATCH_SIZE = 512
+    MAX_RETRIES = 3
+    BACKOFF_BASE_SECONDS = 1.0
+    BACKOFF_MAX_SECONDS = 8.0
+    QUEUE_MAX_DEPTH = 2048
+    PROMETHEUS_PORT = 9464
+    GRPC_PORT = 4317  # v7 addition — see §13.1
+    HTTP_PORT = 4318  # v7 addition — see §13.1
 
-    REQUIRED_FIELDS = frozenset({
-    "service_name",
-    "service_namespace",   # v4 — see §7.1 inline note
-    "span_name",
-    "start_time_unix_nano",
-})
-    ENUM_FIELDS = {"status_code": {"STATUS_CODE_UNSET", "STATUS_CODE_OK", "STATUS_CODE_ERROR"}}
+    REQUIRED_FIELDS = frozenset(
+        {
+            "service_name",
+            "service_namespace",  # v4 — see §7.1 inline note
+            "span_name",
+            "start_time_unix_nano",
+        }
+    )
+    ENUM_FIELDS = {
+        "status_code": {"STATUS_CODE_UNSET", "STATUS_CODE_OK", "STATUS_CODE_ERROR"}
+    }
 
     def __init__(self, hot_store: HotStore) -> None:
         self._hot_store = hot_store
@@ -2202,8 +2272,14 @@ class OTLPReceiver:
             except Exception as exc:
                 result.dlq_failed = len(dlq)
                 for err, span in dlq:
-                    logger.error("dlq_write_failed", reason=err.reason, span_id=span.get("span_id"))
-                self._metric_dlq_insert_failed.labels(reason="exception").inc(amount=result.dlq_failed)
+                    logger.error(
+                        "dlq_write_failed",
+                        reason=err.reason,
+                        span_id=span.get("span_id"),
+                    )
+                self._metric_dlq_insert_failed.labels(reason="exception").inc(
+                    amount=result.dlq_failed
+                )
 
         # Batch INSERT with retry
         for attempt in range(self.MAX_RETRIES + 1):
@@ -2214,9 +2290,16 @@ class OTLPReceiver:
             except IntegrityError as exc:
                 if attempt == self.MAX_RETRIES:
                     result.errored = len(clean)
-                    self._metric_batch_inserted.labels(outcome="err").inc(amount=result.errored)
+                    self._metric_batch_inserted.labels(outcome="err").inc(
+                        amount=result.errored
+                    )
                     return self._partial_success_response(batch, result)
-                await asyncio.sleep(min(self.BACKOFF_BASE_SECONDS * (2 ** attempt), self.BACKOFF_MAX_SECONDS))
+                await asyncio.sleep(
+                    min(
+                        self.BACKOFF_BASE_SECONDS * (2**attempt),
+                        self.BACKOFF_MAX_SECONDS,
+                    )
+                )
 
         # Emit batch outcome metric — v4: every inc() uses `.labels(...).inc(amount=N)`;
         # prometheus_client treats `n=` or `N=` as unrecognized kwargs, so v3's
@@ -2226,13 +2309,21 @@ class OTLPReceiver:
         if result.ok == len(clean):
             self._metric_batch_inserted.labels(outcome="ok").inc(amount=result.ok)
         elif result.ok == 0:
-            self._metric_batch_inserted.labels(outcome="dedup").inc(amount=result.deduped)
+            self._metric_batch_inserted.labels(outcome="dedup").inc(
+                amount=result.deduped
+            )
         else:
-            self._metric_batch_inserted.labels(outcome="partial").inc(amount=result.ok + result.deduped)
+            self._metric_batch_inserted.labels(outcome="partial").inc(
+                amount=result.ok + result.deduped
+            )
         if result.rejected:
-            self._metric_batch_inserted.labels(outcome="validation_failed").inc(amount=result.rejected)
+            self._metric_batch_inserted.labels(outcome="validation_failed").inc(
+                amount=result.rejected
+            )
         if result.dlq_failed:
-            self._metric_batch_inserted.labels(outcome="dlq_write_failed").inc(amount=result.dlq_failed)
+            self._metric_batch_inserted.labels(outcome="dlq_write_failed").inc(
+                amount=result.dlq_failed
+            )
 
         return self._success_response(batch, result)
 ```

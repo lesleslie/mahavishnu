@@ -58,7 +58,9 @@ async def test_session_buddy_5xx_then_recovery(writer: MemoryOutboxWriter) -> No
     assert await writer.pending_count() == 0
 
 
-async def test_partial_drain_failure_continues_batch(writer: MemoryOutboxWriter) -> None:
+async def test_partial_drain_failure_continues_batch(
+    writer: MemoryOutboxWriter,
+) -> None:
     """The drainer stops the batch on first sink exception to preserve ordering.
     A subsequent drain picks up where the previous one left off.
     """

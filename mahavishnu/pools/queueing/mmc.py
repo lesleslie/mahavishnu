@@ -264,7 +264,11 @@ class MmcQueue:
         arrival_rate = 1.0 / mean_arrival
         service_rate = 1.0 / mean_service
         # MmcQueue.__post_init__ validates the rate invariants.
-        return cls(arrival_rate=arrival_rate, service_rate=service_rate, num_workers=num_workers)
+        return cls(
+            arrival_rate=arrival_rate,
+            service_rate=service_rate,
+            num_workers=num_workers,
+        )
 
     def expected_wait_time(
         self,

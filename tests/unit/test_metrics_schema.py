@@ -203,10 +203,12 @@ def test_key_generation():
 
     assert generate_execution_key(exec_id) == f"exec:{exec_id}"
     assert (
-        generate_stats_key(AdapterType.PREFECT, "2025-02-11") == "stats:adapter:prefect:2025-02-11"
+        generate_stats_key(AdapterType.PREFECT, "2025-02-11")
+        == "stats:adapter:prefect:2025-02-11"
     )
     assert (
-        generate_task_stats_key(TaskType.AI_TASK, "2025-02-11") == "stats:task:ai_task:2025-02-11"
+        generate_task_stats_key(TaskType.AI_TASK, "2025-02-11")
+        == "stats:task:ai_task:2025-02-11"
     )
     assert generate_cost_key(exec_id) == f"cost:{exec_id}"
 

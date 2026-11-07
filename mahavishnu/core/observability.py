@@ -19,7 +19,9 @@ if TYPE_CHECKING:
 # Try to import OpenTelemetry components
 try:
     from opentelemetry import metrics, trace
-    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
+        OTLPMetricExporter,
+    )
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
@@ -74,7 +76,9 @@ class MockUpDownCounter:
 
 
 class MockTracer:
-    def start_as_current_span(self, name: str, attributes: dict[str, str] | None = None):
+    def start_as_current_span(
+        self, name: str, attributes: dict[str, str] | None = None
+    ):
         class MockSpan:
             def __enter__(self):
                 return self
@@ -142,7 +146,9 @@ class ObservabilityManager:
         # though traces were still wanted (akosha's receiver consumes them).
         # Both off is the only case that legitimately wants the fallback.
         obs = config.observability
-        if OTEL_AVAILABLE and (obs.metrics_enabled or getattr(obs, "tracing_enabled", True)):
+        if OTEL_AVAILABLE and (
+            obs.metrics_enabled or getattr(obs, "tracing_enabled", True)
+        ):
             self._init_otel_components()
         else:
             self._init_fallback_components()
@@ -264,7 +270,9 @@ class ObservabilityManager:
                 # receivers and one of them failing every export.
                 metrics_endpoint = self.config.observability.otlp_endpoint
                 metric_readers.append(
-                    PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=metrics_endpoint))
+                    PeriodicExportingMetricReader(
+                        OTLPMetricExporter(endpoint=metrics_endpoint)
+                    )
                 )
                 self.logger.info(
                     "OTLP metric export enabled",
@@ -277,7 +285,9 @@ class ObservabilityManager:
                     "instruments stay live and record in-process, nothing "
                     "is exported."
                 )
-            meter_provider = MeterProvider(metric_readers=metric_readers, resource=resource)
+            meter_provider = MeterProvider(
+                metric_readers=metric_readers, resource=resource
+            )
             metrics.set_meter_provider(meter_provider)
             self.meter = metrics.get_meter(__name__)
 
@@ -287,11 +297,13 @@ class ObservabilityManager:
 
             # Create common instruments
             self.workflow_counter = self.meter.create_counter(
-                "mahavishnu.workflows.executed", description="Number of workflows executed"
+                "mahavishnu.workflows.executed",
+                description="Number of workflows executed",
             )
 
             self.repo_counter = self.meter.create_counter(
-                "mahavishnu.repositories.processed", description="Number of repositories processed"
+                "mahavishnu.repositories.processed",
+                description="Number of repositories processed",
             )
 
             self.error_counter = self.meter.create_counter(
@@ -372,8 +384,12 @@ class ObservabilityManager:
         self.meter = MockMeter()
 
         # Create fallback instruments
-        self.workflow_counter = self.meter.create_counter("mahavishnu.workflows.executed")
-        self.repo_counter = self.meter.create_counter("mahavishnu.repositories.processed")
+        self.workflow_counter = self.meter.create_counter(
+            "mahavishnu.workflows.executed"
+        )
+        self.repo_counter = self.meter.create_counter(
+            "mahavishnu.repositories.processed"
+        )
         self.error_counter = self.meter.create_counter("mahavishnu.errors.count")
         self.workflow_duration_histogram = self.meter.create_histogram(
             "mahavishnu.workflow.duration"
@@ -441,31 +457,46 @@ class ObservabilityManager:
         )
 
     def log_debug(
-        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+        self,
+        message: str,
+        attributes: dict[str, Any] | None = None,
+        trace_id: str | None = None,
     ):
         """Log a debug message."""
         self.log(LogLevel.DEBUG, message, attributes, trace_id)
 
     def log_info(
-        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+        self,
+        message: str,
+        attributes: dict[str, Any] | None = None,
+        trace_id: str | None = None,
     ):
         """Log an info message."""
         self.log(LogLevel.INFO, message, attributes, trace_id)
 
     def log_warning(
-        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+        self,
+        message: str,
+        attributes: dict[str, Any] | None = None,
+        trace_id: str | None = None,
     ):
         """Log a warning message."""
         self.log(LogLevel.WARNING, message, attributes, trace_id)
 
     def log_error(
-        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+        self,
+        message: str,
+        attributes: dict[str, Any] | None = None,
+        trace_id: str | None = None,
     ):
         """Log an error message."""
         self.log(LogLevel.ERROR, message, attributes, trace_id)
 
     def log_critical(
-        self, message: str, attributes: dict[str, Any] | None = None, trace_id: str | None = None
+        self,
+        message: str,
+        attributes: dict[str, Any] | None = None,
+        trace_id: str | None = None,
     ):
         """Log a critical message."""
         self.log(LogLevel.CRITICAL, message, attributes, trace_id)
@@ -495,7 +526,9 @@ class ObservabilityManager:
     def end_workflow_trace(self, workflow_id: str, status: str = "completed"):
         """End a trace for a workflow execution."""
         if workflow_id in self.workflow_performance:
-            duration = time.time() - self.workflow_performance[workflow_id]["start_time"]
+            duration = (
+                time.time() - self.workflow_performance[workflow_id]["start_time"]
+            )
 
             # Record metrics
             self.workflow_duration_histogram.record(
@@ -503,7 +536,9 @@ class ObservabilityManager:
                 attributes={
                     "workflow.id": workflow_id,
                     "workflow.status": status,
-                    "workflow.adapter": self.workflow_performance[workflow_id]["adapter"],
+                    "workflow.adapter": self.workflow_performance[workflow_id][
+                        "adapter"
+                    ],
                 },
             )
 
@@ -520,14 +555,19 @@ class ObservabilityManager:
 
         return span
 
-    def record_repo_processing_time(self, repo_path: str, workflow_id: str, duration: float):
+    def record_repo_processing_time(
+        self, repo_path: str, workflow_id: str, duration: float
+    ):
         """Record the time taken to process a repository."""
         self.repo_processing_duration_histogram.record(
             duration, attributes={"repo.path": repo_path, "workflow.id": workflow_id}
         )
 
     def get_logs(
-        self, limit: int = 100, level: LogLevel | None = None, since: datetime | None = None
+        self,
+        limit: int = 100,
+        level: LogLevel | None = None,
+        since: datetime | None = None,
     ) -> list[LogEntry]:
         """Get logs with optional filtering."""
         filtered_logs = self.logs[-limit:]  # Get last N logs
@@ -551,7 +591,11 @@ class ObservabilityManager:
             "active_workflow_durations": active_durations,
             "total_logs": len(self.logs),
             "recent_errors": len(
-                [log for log in self.logs[-50:] if log.level in (LogLevel.ERROR, LogLevel.CRITICAL)]
+                [
+                    log
+                    for log in self.logs[-50:]
+                    if log.level in (LogLevel.ERROR, LogLevel.CRITICAL)
+                ]
             ),
         }
 
@@ -576,9 +620,13 @@ class ObservabilityManager:
             try:
                 changepoint_cfg = getattr(self.config, "changepoint", None)
                 if changepoint_cfg is not None:
-                    cadence = float(getattr(changepoint_cfg, "sampler_cadence_seconds", 60.0))
+                    cadence = float(
+                        getattr(changepoint_cfg, "sampler_cadence_seconds", 60.0)
+                    )
             except Exception:  # config block may be missing or malformed; use default cadence  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                self.logger.debug("config has no changepoint block; using default cadence")
+                self.logger.debug(
+                    "config has no changepoint block; using default cadence"
+                )
             sampler = MetricSampler(cadence_seconds=cadence)
             self._metric_sampler = sampler  # type: ignore[attr-defined]
         return sampler
@@ -718,7 +766,9 @@ class ObservabilityManager:
                 window_mean=window_mean,
                 window_std=0.0,
             )
-        window_std = math.sqrt(sum((v - window_mean) ** 2 for v in window) / (len(window) - 1))
+        window_std = math.sqrt(
+            sum((v - window_mean) ** 2 for v in window) / (len(window) - 1)
+        )
         if window_std == 0.0 or not math.isfinite(window_std):
             return AnomalyResult(
                 detected=False,
@@ -782,8 +832,12 @@ class ObservabilityManager:
             slack = float(getattr(changepoint_cfg, "slack", defaults.slack))
             threshold = float(getattr(changepoint_cfg, "threshold", defaults.threshold))
             algo = str(getattr(changepoint_cfg, "detector", defaults.detector))
-            explicit_target = float(getattr(changepoint_cfg, "target_mean", defaults.target_mean))
-            use_auto = bool(getattr(changepoint_cfg, "target_mean_auto", defaults.target_mean_auto))
+            explicit_target = float(
+                getattr(changepoint_cfg, "target_mean", defaults.target_mean)
+            )
+            use_auto = bool(
+                getattr(changepoint_cfg, "target_mean_auto", defaults.target_mean_auto)
+            )
             auto_window = int(
                 getattr(
                     changepoint_cfg,
@@ -848,20 +902,32 @@ class ObservabilityManager:
                 getattr(changepoint_cfg, "warn_threshold", defaults.warn_threshold)
             )
             confirm_threshold = float(
-                getattr(changepoint_cfg, "confirm_threshold", defaults.confirm_threshold)
+                getattr(
+                    changepoint_cfg, "confirm_threshold", defaults.confirm_threshold
+                )
             )
             confirm_window = int(
-                getattr(changepoint_cfg, "confirm_window_samples", defaults.confirm_window_samples)
+                getattr(
+                    changepoint_cfg,
+                    "confirm_window_samples",
+                    defaults.confirm_window_samples,
+                )
             )
             # The warn and confirm detectors both use the production slack
             # but different thresholds. Phase 8 may promote the warn detector
             # to PageHinkleyDetector for directional diversity; for now both
             # are CUSUM (consistent with the §7 calibration sweep).
             warn = CUSUMDetector(
-                target_mean=target_mean, slack=slack, threshold=warn_threshold, two_sided=True
+                target_mean=target_mean,
+                slack=slack,
+                threshold=warn_threshold,
+                two_sided=True,
             )
             confirm = CUSUMDetector(
-                target_mean=target_mean, slack=slack, threshold=confirm_threshold, two_sided=True
+                target_mean=target_mean,
+                slack=slack,
+                threshold=confirm_threshold,
+                two_sided=True,
             )
             from mahavishnu.observability.changepoint.two_stage import TwoStageDetector
 
@@ -872,7 +938,10 @@ class ObservabilityManager:
             )
         else:
             detector = CUSUMDetector(
-                target_mean=target_mean, slack=slack, threshold=threshold, two_sided=True
+                target_mean=target_mean,
+                slack=slack,
+                threshold=threshold,
+                two_sided=True,
             )
         self._changepoint_detector = detector  # type: ignore[attr-defined]
         return detector
@@ -936,7 +1005,9 @@ class ObservabilityManager:
         """
         # R3-M5: lowercase detector name so dashboards written against
         # the documented "cusum" / "page_hinkley" tokens work.
-        detector_name = self._canonical_detector_name(getattr(self, "_changepoint_detector", None))
+        detector_name = self._canonical_detector_name(
+            getattr(self, "_changepoint_detector", None)
+        )
         severity = self._classify_drift_severity(result.score, result.threshold)
         baseline_mean, baseline_std = self._compute_drift_baseline_stats(metric_name)
         trace_id_str = self._get_otel_trace_id()
@@ -951,7 +1022,9 @@ class ObservabilityManager:
             trace_id_str,
         )
         self._attach_two_stage_drift_attrs(span_attributes)
-        self._emit_drift_prometheus_counters(metric_name, detector_name, severity, result)
+        self._emit_drift_prometheus_counters(
+            metric_name, detector_name, severity, result
+        )
         self._reset_changepoint_detector_after_fire()
         self._emit_drift_otel_span(span_attributes)
         self._log_drift_event(
@@ -979,12 +1052,14 @@ class ObservabilityManager:
             if recent:
                 baseline_mean = sum(recent) / len(recent)
                 if len(recent) >= 2:
-                    variance = sum((v - baseline_mean) ** 2 for v in recent) / (len(recent) - 1)
+                    variance = sum((v - baseline_mean) ** 2 for v in recent) / (
+                        len(recent) - 1
+                    )
                     baseline_std = math.sqrt(variance) if variance > 0 else 0.0
-        except (
-            Exception
-        ):  # baseline stats are advisory; emit zero on failure rather than dropping the event
-            self.logger.debug("baseline stddev calculation failed; using 0.0", exc_info=True)
+        except Exception:  # baseline stats are advisory; emit zero on failure rather than dropping the event
+            self.logger.debug(
+                "baseline stddev calculation failed; using 0.0", exc_info=True
+            )
         return baseline_mean, baseline_std
 
     def _get_otel_trace_id(self) -> str:
@@ -1064,7 +1139,9 @@ class ObservabilityManager:
         """
         two_stage_result = getattr(self, "_last_two_stage_result", None)
         if two_stage_result is not None:
-            span_attributes["samples_since_warning"] = int(two_stage_result.samples_since_warning)
+            span_attributes["samples_since_warning"] = int(
+                two_stage_result.samples_since_warning
+            )
             span_attributes["confirm_detector"] = two_stage_result.detector_confirm
 
     def _emit_drift_prometheus_counters(
@@ -1279,12 +1356,14 @@ class ObservabilityManager:
             if recent:
                 baseline_mean = sum(recent) / len(recent)
                 if len(recent) >= 2:
-                    variance = sum((v - baseline_mean) ** 2 for v in recent) / (len(recent) - 1)
+                    variance = sum((v - baseline_mean) ** 2 for v in recent) / (
+                        len(recent) - 1
+                    )
                     baseline_std = math.sqrt(variance) if variance > 0 else 0.0
-        except (
-            Exception
-        ):  # baseline stats are advisory; emit zero on failure rather than dropping the event
-            self.logger.debug("baseline stddev calculation failed; using 0.0", exc_info=True)
+        except Exception:  # baseline stats are advisory; emit zero on failure rather than dropping the event
+            self.logger.debug(
+                "baseline stddev calculation failed; using 0.0", exc_info=True
+            )
 
         # Resolve the runbook URL the same way as the drift_detected path
         # so the warning span advertises the operator-handling doc.
@@ -1356,7 +1435,9 @@ class ObservabilityManager:
             socket.gethostname(),
         )
 
-    def _on_drift_detected_two_stage(self, metric_name: str, value: float, result) -> None:
+    def _on_drift_detected_two_stage(
+        self, metric_name: str, value: float, result
+    ) -> None:
         """OTel span + counter emission for a CONFIRMED drift alert.
 
         Two-stage extension of REQ-005: when the confirm detector fires
@@ -1577,7 +1658,9 @@ class ObservabilityManager:
           closed rather than awaited, so it does not emit "never
           awaited" on garbage collection.
         """
-        target = task if task is not None else getattr(self, "_change_point_tick_task", None)
+        target = (
+            task if task is not None else getattr(self, "_change_point_tick_task", None)
+        )
         if target is None:
             return
         if asyncio.iscoroutine(target):
@@ -1585,8 +1668,12 @@ class ObservabilityManager:
             return
         try:
             target.cancel()
-        except Exception:  # cancel may race with a missing/finished task; shutdown is best-effort
-            self.logger.debug("change-point tick cancel raised; ignoring", exc_info=True)
+        except (
+            Exception
+        ):  # cancel may race with a missing/finished task; shutdown is best-effort
+            self.logger.debug(
+                "change-point tick cancel raised; ignoring", exc_info=True
+            )
         try:
             await target
         except asyncio.CancelledError:

@@ -14,7 +14,11 @@ from pathlib import Path
 
 import pytest
 
-from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.adapters.base import (
+    AdapterCapabilities,
+    AdapterType,
+    OrchestratorAdapter,
+)
 import mahavishnu.core.task_router as tr
 
 

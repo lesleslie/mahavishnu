@@ -275,9 +275,7 @@ class TestMarkCompleted:
     ) -> None:
         opts = IdempotencyOptions(source="cli.dispatch", nonce="complete-1")
         event = await idem_store.get_or_create(opts, "payload-hash", actor="test")
-        await idem_store.mark_completed(
-            event, {"status": "ok", "output": "done"}
-        )
+        await idem_store.mark_completed(event, {"status": "ok", "output": "done"})
         assert event.event_type == TaskEventType.COMPLETED
         assert event.data["result"] == {"status": "ok", "output": "done"}
 

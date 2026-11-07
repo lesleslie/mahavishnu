@@ -162,7 +162,9 @@ class MemoryAggregator:
         self.session_buddy_url = session_buddy_url
         self.sync_interval = sync_interval
 
-        self._mcp_client = CommonMCPClient(base_url=self.session_buddy_url, timeout=300.0)
+        self._mcp_client = CommonMCPClient(
+            base_url=self.session_buddy_url, timeout=300.0
+        )
         self._sync_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
 
@@ -204,7 +206,9 @@ class MemoryAggregator:
         self.CACHE_TTL = timedelta(minutes=5)
         self._search_cache: dict[str, Any] = {}  # Using dict to allow cache stats
 
-    async def _collect_from_pool(self, pool: BasePool, pool_id: str) -> list[dict[str, Any]]:
+    async def _collect_from_pool(
+        self, pool: BasePool, pool_id: str
+    ) -> list[dict[str, Any]]:
         """Collect memory from a single pool (used in concurrent gather).
 
         Args:
@@ -287,7 +291,9 @@ class MemoryAggregator:
             },
         }
 
-    async def _sink_to_session_buddy(self, key: str, payload: dict[str, object]) -> None:
+    async def _sink_to_session_buddy(
+        self, key: str, payload: dict[str, object]
+    ) -> None:
         """Drainer sink: dispatch a WAL row to the right Session-Buddy MCP call.
 
         Key format is "<kind>:<id>" (e.g. "reflection:<uuid>").
@@ -309,15 +315,23 @@ class MemoryAggregator:
             if not isinstance(text, str):
                 text = str(text)
             tags_obj = payload.get("tags", [])
-            tags: list[str] = [str(t) for t in tags_obj] if isinstance(tags_obj, list) else []
-            inserted = await self._insert_batch_to_session_buddy([{"text": text, "tags": tags}])
+            tags: list[str] = (
+                [str(t) for t in tags_obj] if isinstance(tags_obj, list) else []
+            )
+            inserted = await self._insert_batch_to_session_buddy(
+                [{"text": text, "tags": tags}]
+            )
             if inserted != 1:
-                raise SinkDeliveryError(f"expected 1 row inserted for {key}, got {inserted}")
+                raise SinkDeliveryError(
+                    f"expected 1 row inserted for {key}, got {inserted}"
+                )
             return
         # Other kinds (e.g. "code_graph:*") are deferred to later phases.
         logger.debug(f"outbox_sink_skipped: kind={kind} key={key}")
 
-    async def _batch_insert_to_session_buddy(self, memory_items: list[dict[str, Any]]) -> int:
+    async def _batch_insert_to_session_buddy(
+        self, memory_items: list[dict[str, Any]]
+    ) -> int:
         """Insert memory items to Session-Buddy in batches (25x faster).
 
         Args:
@@ -395,7 +409,9 @@ class MemoryAggregator:
         # Buffer failed items for later retry
         if failures > 0:
             failed_items = [
-                item for item, result in zip(batch, results, strict=False) if result is not True
+                item
+                for item, result in zip(batch, results, strict=False)
+                if result is not True
             ]
             self._buffer_items(failed_items)
 
@@ -425,7 +441,9 @@ class MemoryAggregator:
 
                 # Sleep with shutdown check
                 try:
-                    await asyncio.wait_for(self._shutdown_event.wait(), timeout=self.sync_interval)
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(), timeout=self.sync_interval
+                    )
                     break  # Shutdown signaled
                 except TimeoutError:
                     pass  # Normal timeout, continue loop
@@ -490,7 +508,9 @@ class MemoryAggregator:
                 logger.warning(f"Pool {pool_id} not found in pool_manager")
 
         # Execute all collections concurrently (was: sequential 10-50 seconds)
-        all_memory_results = await asyncio.gather(*collection_tasks, return_exceptions=True)
+        all_memory_results = await asyncio.gather(
+            *collection_tasks, return_exceptions=True
+        )
 
         # Flatten results, filter errors
         all_memory = []
@@ -509,7 +529,9 @@ class MemoryAggregator:
         # PHASE 2: Batch insert to Session-Buddy with concurrent batching
         if all_memory:
             synced_count = await self._batch_insert_to_session_buddy(all_memory)
-            logger.info(f"Synced {synced_count}/{len(all_memory)} items to Session-Buddy")
+            logger.info(
+                f"Synced {synced_count}/{len(all_memory)} items to Session-Buddy"
+            )
 
         # PHASE 2.5: Try flushing locally buffered items from previous failures
         if self._local_buffer:
@@ -575,7 +597,9 @@ class MemoryAggregator:
             age = datetime.now(UTC) - cached_entry["cached_at"]
 
             if age < self.CACHE_TTL:
-                logger.debug(f"Cache HIT for query: {query} (age: {age.total_seconds():.1f}s)")
+                logger.debug(
+                    f"Cache HIT for query: {query} (age: {age.total_seconds():.1f}s)"
+                )
                 return cached_entry["results"][:limit]  # type: ignore[no-any-return]
             else:
                 # Cache expired - remove and continue to fetch

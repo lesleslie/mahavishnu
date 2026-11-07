@@ -93,13 +93,17 @@ class TestCircuitStateEnum:
 @pytest.mark.unit
 class TestRetryPolicy:
     def test_delay_for_attempt_no_jitter(self) -> None:
-        p = RetryPolicy(initial_delay_seconds=1.0, backoff_factor=2.0, max_delay_seconds=100.0)
+        p = RetryPolicy(
+            initial_delay_seconds=1.0, backoff_factor=2.0, max_delay_seconds=100.0
+        )
         assert p.delay_for_attempt(1) == 1.0
         assert p.delay_for_attempt(2) == 2.0
         assert p.delay_for_attempt(3) == 4.0
 
     def test_delay_for_attempt_caps_at_max(self) -> None:
-        p = RetryPolicy(initial_delay_seconds=1.0, backoff_factor=10.0, max_delay_seconds=5.0)
+        p = RetryPolicy(
+            initial_delay_seconds=1.0, backoff_factor=10.0, max_delay_seconds=5.0
+        )
         assert p.delay_for_attempt(2) == 5.0
         assert p.delay_for_attempt(5) == 5.0
 
@@ -237,7 +241,9 @@ class TestResilienceMetrics:
         m._metrics_initialized = True
         m.record_retry_attempt("dep", "op", "success", attempts=1)
         counter = m._retry_attempts_total
-        counter.labels.assert_called_once_with(dependency="dep", operation="op", outcome="success")
+        counter.labels.assert_called_once_with(
+            dependency="dep", operation="op", outcome="success"
+        )
         counter.labels.return_value.inc.assert_called_once_with(1)
 
     def test_record_retry_attempt_with_amount(self) -> None:
@@ -494,8 +500,12 @@ class TestRetryAsync:
                 raise ValueError("fail")
             return "done"
 
-        policy = RetryPolicy(max_attempts=5, initial_delay_seconds=0.0, max_delay_seconds=0.0)
-        result, attempts = await retry_async(op, policy=policy, operation="op", dependency="dep")
+        policy = RetryPolicy(
+            max_attempts=5, initial_delay_seconds=0.0, max_delay_seconds=0.0
+        )
+        result, attempts = await retry_async(
+            op, policy=policy, operation="op", dependency="dep"
+        )
         assert result == "done"
         assert attempts == 3
 
@@ -503,7 +513,9 @@ class TestRetryAsync:
         async def op():
             raise ValueError("always fails")
 
-        policy = RetryPolicy(max_attempts=3, initial_delay_seconds=0.0, max_delay_seconds=0.0)
+        policy = RetryPolicy(
+            max_attempts=3, initial_delay_seconds=0.0, max_delay_seconds=0.0
+        )
         with pytest.raises(RetryExhaustedError) as ei:
             await retry_async(op, policy=policy, operation="op", dependency="dep")
         assert ei.value.attempts == 3
@@ -604,7 +616,9 @@ class TestErrorCategory:
 @pytest.mark.unit
 class TestRecoveryAction:
     def test_defaults(self) -> None:
-        a = RecoveryAction(strategy=RecoveryStrategy.RETRY, category=ErrorCategory.TRANSIENT)
+        a = RecoveryAction(
+            strategy=RecoveryStrategy.RETRY, category=ErrorCategory.TRANSIENT
+        )
         assert a.max_attempts == 3
         assert a.backoff_factor == 2.0
         assert a.notify_on_failure is False
@@ -928,7 +942,11 @@ class TestLogOperationResult:
         app.observability = obs
         mgr = ErrorRecoveryManager(app)
         await mgr._log_operation_result(
-            workflow_id="wf1", repo_path="repo1", success=True, execution_time=0.1, result="x"
+            workflow_id="wf1",
+            repo_path="repo1",
+            success=True,
+            execution_time=0.1,
+            result="x",
         )
         obs.log_info.assert_called_once()
 
@@ -955,7 +973,11 @@ class TestLogOperationResult:
         app.opensearch_integration = oi
         mgr = ErrorRecoveryManager(app)
         await mgr._log_operation_result(
-            workflow_id="wf1", repo_path="repo1", success=True, execution_time=0.1, result="x"
+            workflow_id="wf1",
+            repo_path="repo1",
+            success=True,
+            execution_time=0.1,
+            result="x",
         )
         oi.log_workflow_update.assert_awaited_once()
 
@@ -1172,7 +1194,9 @@ class TestCheckStuckWorkflows:
     async def test_skips_workflows_with_unparseable_date(self) -> None:
         app = _make_app()
         wsm = MagicMock()
-        wsm.list_workflows = AsyncMock(return_value=[{"id": "wf1", "updated_at": "not-a-date"}])
+        wsm.list_workflows = AsyncMock(
+            return_value=[{"id": "wf1", "updated_at": "not-a-date"}]
+        )
         wsm.update = AsyncMock()
         app.workflow_state_manager = wsm
 
@@ -1194,7 +1218,9 @@ class TestCheckStuckWorkflows:
     async def test_workflow_without_id_skipped(self) -> None:
         app = _make_app()
         wsm = MagicMock()
-        wsm.list_workflows = AsyncMock(return_value=[{"updated_at": "2020-01-01T00:00:00+00:00"}])
+        wsm.list_workflows = AsyncMock(
+            return_value=[{"updated_at": "2020-01-01T00:00:00+00:00"}]
+        )
         wsm.update = AsyncMock()
         app.workflow_state_manager = wsm
 
@@ -1316,7 +1342,9 @@ class TestResiliencePatterns:
             "execute_with_resilience",
             new=AsyncMock(return_value={"success": True, "result": "x"}),
         ) as ewr:
-            result = await rp.resilient_repo_operation(op, "repo1", 1, 2, workflow_id="wf1", k=3)
+            result = await rp.resilient_repo_operation(
+                op, "repo1", 1, 2, workflow_id="wf1", k=3
+            )
         assert result["success"] is True
         kwargs = ewr.await_args.kwargs
         assert kwargs["repo_path"] == "repo1"

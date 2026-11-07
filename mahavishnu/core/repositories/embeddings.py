@@ -75,11 +75,15 @@ class EmbeddingCreate(BaseModel):
 
     document_id: UUID = Field(..., description="Document ID")
     model_name: str = Field(..., description="Embedding model name")
-    embedding_dim: int = Field(default=384, ge=128, le=1024, description="Embedding dimension")
+    embedding_dim: int = Field(
+        default=384, ge=128, le=1024, description="Embedding dimension"
+    )
     embedding: list[float] = Field(
         ..., min_length=128, max_length=1024, description="Embedding vector"
     )
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class EmbeddingRead(BaseModel):
@@ -90,7 +94,9 @@ class EmbeddingRead(BaseModel):
     embedding_dim: int = Field(..., description="Embedding dimension")
     embedding: list[float] = Field(..., description="Embedding vector")
     created_at: datetime = Field(..., description="Creation timestamp")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class EmbeddingSearchResult(BaseModel):
@@ -100,7 +106,9 @@ class EmbeddingSearchResult(BaseModel):
     model_name: str = Field(..., description="Embedding model name")
     embedding_dim: int = Field(..., description="Embedding dimension")
     score: float = Field(..., ge=0.0, le=1.0, description="Similarity score")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class EmbeddingUpdate(BaseModel):
@@ -146,7 +154,9 @@ class EmbeddingRepository(
                     )
                 return self._row_to_model(row)
         except Exception as e:  # DB driver (asyncpg + pgvector) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("store_embedding", e, {"document_id": str(data.document_id)})
+            raise self._handle_error(
+                "store_embedding", e, {"document_id": str(data.document_id)}
+            )
 
     async def get_embedding(self, document_id: UUID) -> EmbeddingRead | None:
         """Get an embedding by document ID."""
@@ -155,7 +165,9 @@ class EmbeddingRepository(
                 row = await conn.fetchrow(_SELECT_BY_DOC, document_id)
                 return self._row_to_model(row) if row is not None else None
         except Exception as e:  # DB driver (asyncpg + pgvector) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("get_embedding", e, {"document_id": str(document_id)})
+            raise self._handle_error(
+                "get_embedding", e, {"document_id": str(document_id)}
+            )
 
     async def search_similar(
         self,
@@ -191,7 +203,9 @@ class EmbeddingRepository(
                 result = await conn.execute(_DELETE_EMBEDDING, document_id)
                 return result == "DELETE 1"  # type: ignore[no-any-return]
         except Exception as e:  # DB driver (asyncpg + pgvector) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("delete_embedding", e, {"document_id": str(document_id)})
+            raise self._handle_error(
+                "delete_embedding", e, {"document_id": str(document_id)}
+            )
 
     async def list_embeddings(
         self,
@@ -214,7 +228,9 @@ class EmbeddingRepository(
         """Convert database row to EmbeddingRead model."""
         embedding = row["embedding"]
         if isinstance(embedding, str):
-            embedding = [float(x) for x in embedding.strip("[]").split(",") if x.strip()]
+            embedding = [
+                float(x) for x in embedding.strip("[]").split(",") if x.strip()
+            ]
         return EmbeddingRead(
             document_id=row["document_id"],
             model_name=row["model_name"],

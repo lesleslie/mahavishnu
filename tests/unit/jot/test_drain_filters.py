@@ -1,4 +1,5 @@
 """Task 5: _is_surface_eligible + _is_drain_eligible filters."""
+
 from __future__ import annotations
 
 from mahavishnu.jot.drain import DispatchState, _is_drain_eligible, _is_surface_eligible
@@ -31,7 +32,10 @@ def test_surface_eligible_basic_open_undispatched() -> None:
 
 def test_surface_eligible_failed_dispatch() -> None:
     """FAILED-dispatched → eligible (user can act)."""
-    assert _is_surface_eligible(_summary(dispatch_state=DispatchState.FAILED), 1000) is True
+    assert (
+        _is_surface_eligible(_summary(dispatch_state=DispatchState.FAILED), 1000)
+        is True
+    )
 
 
 def test_surface_eligible_done_jot_excluded() -> None:
@@ -43,11 +47,17 @@ def test_surface_eligible_deleted_excluded() -> None:
 
 
 def test_surface_eligible_in_flight_excluded() -> None:
-    assert _is_surface_eligible(_summary(dispatch_state=DispatchState.IN_FLIGHT), 1000) is False
+    assert (
+        _is_surface_eligible(_summary(dispatch_state=DispatchState.IN_FLIGHT), 1000)
+        is False
+    )
 
 
 def test_surface_eligible_succeeded_excluded() -> None:
-    assert _is_surface_eligible(_summary(dispatch_state=DispatchState.SUCCEEDED), 1000) is False
+    assert (
+        _is_surface_eligible(_summary(dispatch_state=DispatchState.SUCCEEDED), 1000)
+        is False
+    )
 
 
 def test_surface_eligible_deferred_future_excluded() -> None:
@@ -60,7 +70,10 @@ def test_surface_eligible_deferred_past_included() -> None:
 
 def test_drain_eligible_in_flight_included() -> None:
     """_is_drain_eligible has NO dispatch_state filter."""
-    assert _is_drain_eligible(_summary(dispatch_state=DispatchState.IN_FLIGHT), 1000) is True
+    assert (
+        _is_drain_eligible(_summary(dispatch_state=DispatchState.IN_FLIGHT), 1000)
+        is True
+    )
 
 
 def test_drain_eligible_done_excluded() -> None:

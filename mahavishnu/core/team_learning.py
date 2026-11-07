@@ -71,7 +71,9 @@ class TeamExecutionOutcome(BaseModel):
     goal: str = Field(description="Original natural language goal")
     parsed_intent: str = Field(description="Intent extracted from goal")
     parsed_domain: str = Field(description="Domain extracted from goal")
-    parsed_skills: list[str] = Field(default_factory=list, description="Skills extracted from goal")
+    parsed_skills: list[str] = Field(
+        default_factory=list, description="Skills extracted from goal"
+    )
     team_mode: str = Field(description="Team collaboration mode used")
     task: str = Field(description="The actual task that was executed")
     success: bool = Field(description="Whether the execution succeeded")
@@ -83,8 +85,12 @@ class TeamExecutionOutcome(BaseModel):
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="Execution timestamp"
     )
-    error_code: str | None = Field(default=None, description="Error code if execution failed")
-    error_message: str | None = Field(default=None, description="Error message if execution failed")
+    error_code: str | None = Field(
+        default=None, description="Error code if execution failed"
+    )
+    error_message: str | None = Field(
+        default=None, description="Error message if execution failed"
+    )
     user_feedback: str | None = Field(
         default=None, description="User feedback (positive/negative/None)"
     )
@@ -216,8 +222,12 @@ class ModeRecommendation(BaseModel):
     """
 
     mode: str = Field(description="Recommended team mode")
-    confidence: float = Field(ge=0.0, le=1.0, description="Confidence in recommendation")
-    success_rate: float = Field(ge=0.0, le=1.0, description="Success rate for this mode")
+    confidence: float = Field(
+        ge=0.0, le=1.0, description="Confidence in recommendation"
+    )
+    success_rate: float = Field(
+        ge=0.0, le=1.0, description="Success rate for this mode"
+    )
     sample_count: int = Field(ge=0, description="Number of samples used")
     reason: str = Field(description="Human-readable reason for recommendation")
 
@@ -284,7 +294,9 @@ class TeamLearningEngine:
         self._recent_outcomes: list[TeamExecutionOutcome] = []
         self._max_recent = max_recent_outcomes
 
-        logger.info(f"TeamLearningEngine initialized (max_recent={max_recent_outcomes})")
+        logger.info(
+            f"TeamLearningEngine initialized (max_recent={max_recent_outcomes})"
+        )
 
     # ========================================================================
     # Outcome Recording
@@ -299,7 +311,9 @@ class TeamLearningEngine:
             outcome: The execution outcome to record
         """
         # Update skill stats
-        skill_key = ",".join(sorted(outcome.parsed_skills)) if outcome.parsed_skills else "none"
+        skill_key = (
+            ",".join(sorted(outcome.parsed_skills)) if outcome.parsed_skills else "none"
+        )
         if skill_key not in self._skill_stats:
             self._skill_stats[skill_key] = TeamLearningStats()
         self._update_stats(self._skill_stats[skill_key], outcome)
@@ -330,7 +344,9 @@ class TeamLearningEngine:
             f"success={outcome.success}, mode={outcome.team_mode}"
         )
 
-    def _update_stats(self, stats: TeamLearningStats, outcome: TeamExecutionOutcome) -> None:
+    def _update_stats(
+        self, stats: TeamLearningStats, outcome: TeamExecutionOutcome
+    ) -> None:
         """Update statistics with an outcome.
 
         Args:
@@ -599,7 +615,9 @@ class TeamLearningEngine:
             "skill_stats": {k: v.model_dump() for k, v in self._skill_stats.items()},
             "intent_stats": {k: v.model_dump() for k, v in self._intent_stats.items()},
             "mode_stats": {k: v.model_dump() for k, v in self._mode_stats.items()},
-            "intent_mode_stats": {k: v.model_dump() for k, v in self._intent_mode_stats.items()},
+            "intent_mode_stats": {
+                k: v.model_dump() for k, v in self._intent_mode_stats.items()
+            },
             "recent_outcomes": [o.to_storage_dict() for o in self._recent_outcomes],
         }
 
@@ -619,7 +637,8 @@ class TeamLearningEngine:
             k: TeamLearningStats(**v) for k, v in data.get("mode_stats", {}).items()
         }
         self._intent_mode_stats = {
-            k: TeamLearningStats(**v) for k, v in data.get("intent_mode_stats", {}).items()
+            k: TeamLearningStats(**v)
+            for k, v in data.get("intent_mode_stats", {}).items()
         }
         # Note: Recent outcomes are not restored to avoid stale data
         logger.info(

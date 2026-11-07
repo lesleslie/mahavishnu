@@ -34,10 +34,14 @@ class TestParserWiring:
 
     def test_parser_includes_exclude_repeatable(self) -> None:
         parser = build_parser()
-        args = parser.parse_args([
-            "--exclude", "drafts/**",
-            "--exclude", "tmp/*.md",
-        ])
+        args = parser.parse_args(
+            [
+                "--exclude",
+                "drafts/**",
+                "--exclude",
+                "tmp/*.md",
+            ]
+        )
         assert args.exclude == ["drafts/**", "tmp/*.md"]
 
     def test_parser_includes_exclude_from(self) -> None:
@@ -78,16 +82,24 @@ class TestParserWiring:
         args = parser.parse_args(["--repo-root", "/tmp/x"])
         assert args.repo_root == Path("/tmp/x")
 
-    def test_parser_help_lists_all_flags(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_parser_help_lists_all_flags(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         parser = build_parser()
         with pytest.raises(SystemExit) as exc:
             parser.parse_args(["--help"])
         assert exc.value.code == 0
         out = capsys.readouterr().out
         for flag in (
-            "--dry-run", "--check", "--skip-render",
-            "--rebuild-from", "--exclude", "--exclude-from",
-            "--preflight-mode", "--render-to", "--mcp-url",
+            "--dry-run",
+            "--check",
+            "--skip-render",
+            "--rebuild-from",
+            "--exclude",
+            "--exclude-from",
+            "--preflight-mode",
+            "--render-to",
+            "--mcp-url",
             "--repo-root",
         ):
             assert flag in out, f"--help output missing {flag}"
@@ -97,11 +109,17 @@ class TestHelpFlagRenders:
     def test_help_flag_renders(self) -> None:
         result = subprocess.run(
             [sys.executable, "scripts/regenerate_plan_index.py", "--help"],
-            capture_output=True, text=True, cwd=str(REPO_ROOT), check=False,
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            check=False,
         )
         # --help exits 0 and prints usage to stdout.
         assert result.returncode == 0
-        assert "usage:" in result.stdout.lower() or "regenerate_plan_index" in result.stdout
+        assert (
+            "usage:" in result.stdout.lower()
+            or "regenerate_plan_index" in result.stdout
+        )
 
 
 class TestCheckFlag:
@@ -110,9 +128,17 @@ class TestCheckFlag:
         (existing doesn't exist), so the orchestrator exits 1 with the drift
         message on stderr. The brief allows either exit code, so accept both."""
         result = subprocess.run(
-            [sys.executable, "scripts/regenerate_plan_index.py", "--check",
-             "--repo-root", str(tmp_path)],
-            capture_output=True, text=True, cwd=str(REPO_ROOT), check=False,
+            [
+                sys.executable,
+                "scripts/regenerate_plan_index.py",
+                "--check",
+                "--repo-root",
+                str(tmp_path),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            check=False,
         )
         # Either exit 0 (no PLAN_INDEX.md yet → empty == empty) or 1 (drift).
         assert result.returncode in (0, 1)
@@ -124,9 +150,17 @@ class TestDryRun:
         target = tmp_path / "PLAN_INDEX.md"
         assert not target.exists()
         result = subprocess.run(
-            [sys.executable, "scripts/regenerate_plan_index.py",
-             "--dry-run", "--repo-root", str(tmp_path)],
-            capture_output=True, text=True, cwd=str(REPO_ROOT), check=False,
+            [
+                sys.executable,
+                "scripts/regenerate_plan_index.py",
+                "--dry-run",
+                "--repo-root",
+                str(tmp_path),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            check=False,
         )
         assert result.returncode == 0
         # Stdout should contain the index header.
@@ -140,10 +174,19 @@ class TestSkipRender:
         """--skip-render: scan runs, but PLAN_INDEX.md is NOT written."""
         target = tmp_path / "PLAN_INDEX.md"
         result = subprocess.run(
-            [sys.executable, "scripts/regenerate_plan_index.py",
-             "--skip-render", "--repo-root", str(tmp_path),
-             "--out", str(target)],
-            capture_output=True, text=True, cwd=str(REPO_ROOT), check=False,
+            [
+                sys.executable,
+                "scripts/regenerate_plan_index.py",
+                "--skip-render",
+                "--repo-root",
+                str(tmp_path),
+                "--out",
+                str(target),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            check=False,
         )
         assert result.returncode == 0
         assert not target.exists()
@@ -173,12 +216,21 @@ class TestExclude:
         # store; force the store explicitly via --stores so the small
         # fixture still gets picked up.
         result = subprocess.run(
-            [sys.executable, "scripts/regenerate_plan_index.py",
-             "--dry-run",
-             "--repo-root", str(tmp_path),
-             "--stores", "drafts/,docs/plans/",
-             "--exclude", "drafts/**"],
-            capture_output=True, text=True, cwd=str(REPO_ROOT), check=False,
+            [
+                sys.executable,
+                "scripts/regenerate_plan_index.py",
+                "--dry-run",
+                "--repo-root",
+                str(tmp_path),
+                "--stores",
+                "drafts/,docs/plans/",
+                "--exclude",
+                "drafts/**",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            check=False,
         )
         assert result.returncode == 0
         # drafts/bar.md was excluded; only foo.md should appear.
@@ -205,12 +257,21 @@ class TestExcludeFrom:
         excludes.write_text("# drop the skip doc\nskip.md\n")
 
         result = subprocess.run(
-            [sys.executable, "scripts/regenerate_plan_index.py",
-             "--dry-run",
-             "--repo-root", str(tmp_path),
-             "--stores", "docs/plans/",
-             "--exclude-from", str(excludes)],
-            capture_output=True, text=True, cwd=str(REPO_ROOT), check=False,
+            [
+                sys.executable,
+                "scripts/regenerate_plan_index.py",
+                "--dry-run",
+                "--repo-root",
+                str(tmp_path),
+                "--stores",
+                "docs/plans/",
+                "--exclude-from",
+                str(excludes),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            check=False,
         )
         assert result.returncode == 0
         assert "keep.md" in result.stdout
@@ -285,7 +346,8 @@ class TestDiscoverRecords14Fields:
         assert isinstance(rec.updated_at_ms, int) and rec.updated_at_ms > 0
 
     def test_discover_records_applies_role_default_when_missing(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         from mahavishnu.plan_index.cron_core import discover_records
 

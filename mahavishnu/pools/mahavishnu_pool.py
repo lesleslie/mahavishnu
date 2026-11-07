@@ -214,13 +214,17 @@ class MahavishnuPool(BasePool):
             try:
                 from platformdirs import user_data_dir
 
-                base = Path(user_data_dir("mahavishnu", "BodaiEcosystem", roaming=False))
+                base = Path(
+                    user_data_dir("mahavishnu", "BodaiEcosystem", roaming=False)
+                )
                 candidates.append(base / "pools" / config.name / "workspace")
             except ImportError, OSError:
                 logger.exception(
                     "platformdirs unavailable or user_data_dir failed; skipping platform candidate"
                 )
-            candidates.append(Path("/tmp") / "mahavishnu-ephemeral" / config.name / "workspace")
+            candidates.append(
+                Path("/tmp") / "mahavishnu-ephemeral" / config.name / "workspace"
+            )
 
             chosen: Path | None = None
             for candidate in candidates:
@@ -434,7 +438,9 @@ class MahavishnuPool(BasePool):
 
         result = results.get(worker_id)
         if result is None:
-            raise RuntimeError(f"Pool {self.pool_id!r}: worker {worker_id} produced no result")
+            raise RuntimeError(
+                f"Pool {self.pool_id!r}: worker {worker_id} produced no result"
+            )
 
         duration = time.time() - start_time
         if result.status.value == "completed":
@@ -452,7 +458,9 @@ class MahavishnuPool(BasePool):
             "duration": duration,
         }
 
-    async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    async def execute_batch(
+        self, tasks: list[dict[str, Any]]
+    ) -> dict[str, dict[str, Any]]:
         """Execute tasks across all workers.
 
         Args:
@@ -467,7 +475,9 @@ class MahavishnuPool(BasePool):
         worker_ids = list(self._workers.keys())
 
         # Round-robin task assignment
-        worker_tasks = [(worker_ids[i % len(worker_ids)], task) for i, task in enumerate(tasks)]
+        worker_tasks = [
+            (worker_ids[i % len(worker_ids)], task) for i, task in enumerate(tasks)
+        ]
 
         start_time = time.time()
         results = await self.worker_manager.execute_batch(
@@ -486,7 +496,9 @@ class MahavishnuPool(BasePool):
 
         # Map task IDs to results
         task_results: dict[str, dict[str, Any]] = {}
-        for task_id, (_, result) in enumerate(zip(tasks, results.values(), strict=False)):
+        for task_id, (_, result) in enumerate(
+            zip(tasks, results.values(), strict=False)
+        ):
             task_results[str(task_id)] = {
                 "pool_id": self.pool_id,
                 "worker_id": result.worker_id,
@@ -509,7 +521,9 @@ class MahavishnuPool(BasePool):
         Raises:
             ValueError: If target outside [min_workers, max_workers]
         """
-        if not (self.config.min_workers <= target_worker_count <= self.config.max_workers):
+        if not (
+            self.config.min_workers <= target_worker_count <= self.config.max_workers
+        ):
             raise ValueError(
                 f"Target {target_worker_count} outside range "
                 f"[{self.config.min_workers}, {self.config.max_workers}]"
@@ -553,7 +567,10 @@ class MahavishnuPool(BasePool):
         health = await self.worker_manager.health_check()
 
         # Determine overall health
-        if health.get("status") == "healthy" and len(self._workers) >= self.config.min_workers:
+        if (
+            health.get("status") == "healthy"
+            and len(self._workers) >= self.config.min_workers
+        ):
             pool_status = "healthy"
         elif len(self._workers) > 0:
             pool_status = "degraded"
@@ -580,7 +597,9 @@ class MahavishnuPool(BasePool):
 
         # Calculate average task duration
         avg_duration = (
-            sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
+            sum(self._task_durations) / len(self._task_durations)
+            if self._task_durations
+            else 0.0
         )
 
         return PoolMetrics(
@@ -622,7 +641,9 @@ class MahavishnuPool(BasePool):
                 }
             )
 
-        logger.info(f"Collected {len(memory_items)} memory items from pool {self.pool_id}")
+        logger.info(
+            f"Collected {len(memory_items)} memory items from pool {self.pool_id}"
+        )
 
         return memory_items
 

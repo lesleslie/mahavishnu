@@ -125,7 +125,13 @@ class TestProbeContract:
         # The probe must always return a concrete ``backend`` string,
         # even when the host cannot host a jail. ``auto`` is the
         # contract Mahavishnu advertises; ``jail`` is opt-in.
-        assert result.backend in {"seatbelt", "clonefile", "landlock", "fuse-overlay", "unsupported"}
+        assert result.backend in {
+            "seatbelt",
+            "clonefile",
+            "landlock",
+            "fuse-overlay",
+            "unsupported",
+        }
         if sys.platform == "win32":
             assert result.available is False
 
@@ -199,9 +205,8 @@ class TestSubstrateRoundTrip:
         # namespace isn't on that path — skip with a clear message
         # instead of treating the runner's substrate refusal as a
         # contract regression.
-        if (
-            result.status.value == "failed"
-            and "ModuleNotFoundError" in (result.error or "")
+        if result.status.value == "failed" and "ModuleNotFoundError" in (
+            result.error or ""
         ):
             pytest.skip(
                 "Shepherd confined execution refused to import the "
@@ -240,9 +245,8 @@ class TestSubstrateRoundTrip:
                 "target": outside,
             }
         )
-        if (
-            result.status.value == "failed"
-            and "ModuleNotFoundError" in (result.error or "")
+        if result.status.value == "failed" and "ModuleNotFoundError" in (
+            result.error or ""
         ):
             pytest.skip(
                 "Shepherd confined execution refused to import the "
@@ -260,7 +264,6 @@ class TestSubstrateRoundTrip:
 # Async-test helper: ``asyncio_mode = "auto"`` already wraps coroutine
 # tests, but the helpers below keep the substrate body explicit.
 # ---------------------------------------------------------------------------
-
 
 
 async def _noop_async() -> None:

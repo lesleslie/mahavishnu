@@ -61,7 +61,9 @@ class AgentVersionManager:
 
     def write_agent_file(self, agent_file: Path, frontmatter: dict, body: str) -> None:
         """Write agent file with updated frontmatter"""
-        frontmatter_text = yaml.dump(frontmatter, default_flow_style=False, sort_keys=False)
+        frontmatter_text = yaml.dump(
+            frontmatter, default_flow_style=False, sort_keys=False
+        )
 
         content = f"---\n{frontmatter_text}---\n{body}"
         agent_file.write_text(content)
@@ -200,7 +202,10 @@ def add_version_cmd(agent_file: Path, version: str, changes: tuple, breaking: bo
     manager = AgentVersionManager()
 
     if not manager.validate_version_format(version):
-        click.echo(f"Error: Invalid version format '{version}'. Use X.Y.Z (e.g., 1.2.0)", err=True)
+        click.echo(
+            f"Error: Invalid version format '{version}'. Use X.Y.Z (e.g., 1.2.0)",
+            err=True,
+        )
         return
 
     manager.add_version(agent_file, version, list(changes), breaking)
@@ -218,7 +223,9 @@ def list_versions_cmd(agent_file: Path):
         click.echo(f"No version information found for {agent_file.name}")
         return
 
-    click.echo(f"\n{version_info.name} - Current Version: {version_info.current_version}\n")
+    click.echo(
+        f"\n{version_info.name} - Current Version: {version_info.current_version}\n"
+    )
 
     for entry in version_info.changelog:
         breaking_marker = " [BREAKING]" if entry.breaking else ""
@@ -281,7 +288,9 @@ def validate_all_cmd():
         for file in results["missing_changelog"]:
             click.echo(f"  - {file}")
 
-    coverage = (results["versioned"] / results["total"] * 100) if results["total"] > 0 else 0
+    coverage = (
+        (results["versioned"] / results["total"] * 100) if results["total"] > 0 else 0
+    )
     click.echo(f"\nVersion Coverage: {coverage:.1f}%")
 
 
@@ -314,7 +323,9 @@ def init_version_cmd(agent_file: Path, version: str):
         click.echo(f"Agent already versioned at {version_info.current_version}")
         return
 
-    manager.add_version(agent_file, version, ["Initial version with comprehensive capabilities"])
+    manager.add_version(
+        agent_file, version, ["Initial version with comprehensive capabilities"]
+    )
 
     click.echo(f"✓ Initialized {agent_file.name} at version {version}")
 

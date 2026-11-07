@@ -53,6 +53,7 @@ Usage
         result = call_tool(client, url, "pool_bootstrap", sid)
         # result is the unwrapped tool return (dict/list) or None
 """
+
 from __future__ import annotations
 
 import json
@@ -76,18 +77,18 @@ def parse_sse_or_json(body: str) -> object | None:
         return None
     try:
         return json.loads(body)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         pass
     for line in body.splitlines():
         line = line.strip()
         if not line.startswith("data:"):
             continue
-        payload = line[len("data:"):].strip()
+        payload = line[len("data:") :].strip()
         if not payload or payload == "[DONE]":
             continue
         try:
             return json.loads(payload)
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             continue
     return None
 
@@ -118,7 +119,9 @@ def init_session(client, url: str) -> str | None:
                 "Accept": "application/json, text/event-stream",
             },
         )
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except (
+        Exception  # noqa: BLE001  # hook handler — broad catch is the documented contract
+    ) as exc:
         sys.stderr.write(f"Hook output: initialize failed for {url}: {exc!r}\n")
         sys.stderr.flush()
         return None
@@ -171,7 +174,9 @@ def call_tool(
                 "mcp-session-id": session_id,
             },
         )
-    except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001
+    except (
+        Exception  # noqa: BLE001  # hook handler — broad catch is the documented contract
+    ) as exc:
         sys.stderr.write(f"Hook output: {tool_name} call failed: {exc!r}\n")
         sys.stderr.flush()
         return None

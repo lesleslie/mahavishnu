@@ -333,9 +333,13 @@ class TestQualityGateManager:
 
         rules = [
             QualityGateRule("lint", CheckType.LINT, CheckSeverity.REQUIRED, "Lint"),
-            QualityGateRule("type", CheckType.TYPE_CHECK, CheckSeverity.REQUIRED, "Type"),
+            QualityGateRule(
+                "type", CheckType.TYPE_CHECK, CheckSeverity.REQUIRED, "Type"
+            ),
             QualityGateRule("test", CheckType.TEST, CheckSeverity.REQUIRED, "Test"),
-            QualityGateRule("security", CheckType.SECURITY, CheckSeverity.WARNING, "Sec"),
+            QualityGateRule(
+                "security", CheckType.SECURITY, CheckSeverity.WARNING, "Sec"
+            ),
         ]
 
         manager = QualityGateManager(
@@ -363,7 +367,9 @@ class TestQualityGateManager:
 
         rules = [
             QualityGateRule("lint", CheckType.LINT, CheckSeverity.REQUIRED, "Lint"),
-            QualityGateRule("security", CheckType.SECURITY, CheckSeverity.WARNING, "Sec"),
+            QualityGateRule(
+                "security", CheckType.SECURITY, CheckSeverity.WARNING, "Sec"
+            ),
         ]
 
         manager = QualityGateManager(
@@ -586,9 +592,13 @@ class TestQualityGateManager:
 
         rules = [
             QualityGateRule("lint", CheckType.LINT, CheckSeverity.REQUIRED, "Lint"),
-            QualityGateRule("type", CheckType.TYPE_CHECK, CheckSeverity.REQUIRED, "Type"),
+            QualityGateRule(
+                "type", CheckType.TYPE_CHECK, CheckSeverity.REQUIRED, "Type"
+            ),
             QualityGateRule("test", CheckType.TEST, CheckSeverity.REQUIRED, "Test"),
-            QualityGateRule("security", CheckType.SECURITY, CheckSeverity.WARNING, "Sec"),
+            QualityGateRule(
+                "security", CheckType.SECURITY, CheckSeverity.WARNING, "Sec"
+            ),
         ]
 
         manager = QualityGateManager(
@@ -646,7 +656,9 @@ class TestQualityGateManager:
 
         # Without Crackerjack client, should return pass (disabled mode)
         assert result.passed is True
-        assert "disabled" in result.message.lower() or "skipped" in result.message.lower()
+        assert (
+            "disabled" in result.message.lower() or "skipped" in result.message.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_run_checks_for_multiple_repos(

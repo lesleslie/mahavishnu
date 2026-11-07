@@ -9,7 +9,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.adapters.base import (
+    AdapterCapabilities,
+    AdapterType,
+    OrchestratorAdapter,
+)
 from mahavishnu.core.status import WorkflowStatus
 import mahavishnu.core.task_router as tr
 
@@ -40,7 +44,9 @@ class _AvailableAdapter(OrchestratorAdapter):
     def capabilities(self) -> AdapterCapabilities:
         return self._caps
 
-    async def execute(self, task: dict[str, object], repos: list[str]) -> dict[str, object]:
+    async def execute(
+        self, task: dict[str, object], repos: list[str]
+    ) -> dict[str, object]:
         return {"execution_id": "01" + "B" * 24}
 
     async def get_health(self) -> dict[str, object]:
@@ -51,7 +57,9 @@ class _AvailableAdapter(OrchestratorAdapter):
 
 
 class _NoHealthAdapter(_AvailableAdapter):
-    async def get_health(self) -> dict[str, object]:  # pragma: no cover - intentionally shadowed
+    async def get_health(
+        self,
+    ) -> dict[str, object]:  # pragma: no cover - intentionally shadowed
         raise RuntimeError("should not be called")
 
 
@@ -109,13 +117,17 @@ async def test_task_router_analyze_route_and_health_paths() -> None:
     await manager.register_adapter(
         AdapterType.PREFECT, _AvailableAdapter(AdapterType.PREFECT, True)
     )
-    await manager.register_adapter(AdapterType.AGNO, _AvailableAdapter(AdapterType.AGNO, True))
+    await manager.register_adapter(
+        AdapterType.AGNO, _AvailableAdapter(AdapterType.AGNO, True)
+    )
     await manager.register_adapter(
         AdapterType.LLAMAINDEX, _AvailableAdapter(AdapterType.LLAMAINDEX, True)
     )
     router = tr.TaskRouter(adapter_registry=manager, state_manager=tr.StateManager())
 
-    analysis = await router.analyze_task({"task_type": "workflow", "needs_monitoring": True})
+    analysis = await router.analyze_task(
+        {"task_type": "workflow", "needs_monitoring": True}
+    )
     assert analysis["task_type"] == "workflow"
     assert analysis["recommended_adapter"] == AdapterType.PREFECT
     assert analysis["routing_mode"] == router.router_mode.value
@@ -135,7 +147,9 @@ async def test_task_router_analyze_route_and_health_paths() -> None:
     custom_router = tr.TaskRouter(
         adapter_registry=tr.AdapterManager(), state_manager=tr.StateManager()
     )
-    failed = await custom_router.route({"task_type": "workflow"}, preference_order=["agno"])
+    failed = await custom_router.route(
+        {"task_type": "workflow"}, preference_order=["agno"]
+    )
     assert failed["success"] is False
     assert "No adapter available" in failed["error"]
 
@@ -214,7 +228,9 @@ async def test_capability_router_success_without_capability_models(
             ]
 
     router = tr.CapabilityRouter(registry=_Registry())
-    result = await router.route(tr.TaskType.RAG_QUERY, additional_capabilities=["custom"])
+    result = await router.route(
+        tr.TaskType.RAG_QUERY, additional_capabilities=["custom"]
+    )
     assert result["success"] is True
     assert result["adapter"] == "high"
     assert "custom" in result["matched_capabilities"]
@@ -294,8 +310,12 @@ async def test_capability_router_no_matching_adapter_branch(
 @pytest.mark.asyncio
 async def test_task_router_normalization_and_analysis_branches() -> None:
     manager = tr.AdapterManager()
-    await manager.register_adapter(AdapterType.PREFECT, _AvailableAdapter(AdapterType.PREFECT))
-    await manager.register_adapter(AdapterType.AGNO, _AvailableAdapter(AdapterType.AGNO))
+    await manager.register_adapter(
+        AdapterType.PREFECT, _AvailableAdapter(AdapterType.PREFECT)
+    )
+    await manager.register_adapter(
+        AdapterType.AGNO, _AvailableAdapter(AdapterType.AGNO)
+    )
     await manager.register_adapter(
         AdapterType.LLAMAINDEX, _AvailableAdapter(AdapterType.LLAMAINDEX)
     )
@@ -318,7 +338,9 @@ async def test_task_router_normalization_and_analysis_branches() -> None:
 
 
 @pytest.mark.asyncio
-async def test_execute_with_fallback_edge_branches(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_execute_with_fallback_edge_branches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     manager = tr.AdapterManager()
     router = tr.TaskRouter(adapter_registry=manager, state_manager=tr.StateManager())
 
@@ -333,10 +355,14 @@ async def test_execute_with_fallback_edge_branches(monkeypatch: pytest.MonkeyPat
 
     # branch: adapter returns unsuccessful dict -> RuntimeError path
     class _BadResultAdapter(_AvailableAdapter):
-        async def execute(self, task: dict[str, object], repos: list[str]) -> dict[str, object]:
+        async def execute(
+            self, task: dict[str, object], repos: list[str]
+        ) -> dict[str, object]:
             return {"success": False, "error": "adapter failed"}
 
-    await manager.register_adapter(AdapterType.PREFECT, _BadResultAdapter(AdapterType.PREFECT))
+    await manager.register_adapter(
+        AdapterType.PREFECT, _BadResultAdapter(AdapterType.PREFECT)
+    )
     result2 = await router.execute_with_fallback(
         {"task_type": "workflow"},
         preference_order=[AdapterType.PREFECT],
@@ -410,7 +436,10 @@ async def test_state_manager_persistence_and_router_default_branches(
     state_mgr = tr.StateManager(state_dir=state_dir)
 
     assert state_mgr._workflows == {}
-    assert state_mgr._normalize_status(WorkflowStatus.RUNNING) == WorkflowStatus.RUNNING.value
+    assert (
+        state_mgr._normalize_status(WorkflowStatus.RUNNING)
+        == WorkflowStatus.RUNNING.value
+    )
 
     record = state_mgr._ensure_record("wf-1")
     assert record["workflow_id"] == "wf-1"
@@ -456,9 +485,13 @@ async def test_state_manager_persistence_and_router_default_branches(
             return False
 
     unknown = _UnknownTaskKey()
-    router = tr.TaskRouter(adapter_registry=tr.AdapterManager(), state_manager=state_mgr)
+    router = tr.TaskRouter(
+        adapter_registry=tr.AdapterManager(), state_manager=state_mgr
+    )
     assert router is not None
-    assert router._default_preference_order(unknown) == list(tr.TaskRouter.DEFAULT_PREFERENCE_ORDER)
+    assert router._default_preference_order(unknown) == list(
+        tr.TaskRouter.DEFAULT_PREFERENCE_ORDER
+    )
     assert router._normalize_task_type("anything-else") == tr.TaskType.WORKFLOW
     assert router._coerce_adapter_type("prefect") == AdapterType.PREFECT
     assert router._coerce_adapter_type(None) is None
@@ -492,7 +525,9 @@ def test_state_manager_load_and_persist_error_branches(
     assert loaded._workflows == {}
 
 
-def test_capability_routing_import_success_branch(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_capability_routing_import_success_branch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake = types.ModuleType("mahavishnu.core.task_requirements")
 
     class _ResolutionCache:
@@ -530,11 +565,15 @@ async def test_execute_with_fallback_success_retry_exhausted_and_stats(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _ExecAdapter(_AvailableAdapter):
-        async def execute(self, task: dict[str, object], repos: list[str]) -> dict[str, object]:
+        async def execute(
+            self, task: dict[str, object], repos: list[str]
+        ) -> dict[str, object]:
             return {"execution_id": "exec-1", "latency_ms": 12, "success": True}
 
     manager = tr.AdapterManager()
-    await manager.register_adapter(AdapterType.PREFECT, _ExecAdapter(AdapterType.PREFECT))
+    await manager.register_adapter(
+        AdapterType.PREFECT, _ExecAdapter(AdapterType.PREFECT)
+    )
     router = tr.TaskRouter(adapter_registry=manager, state_manager=tr.StateManager())
 
     async def _retry_success(fn, policy, operation, dependency):

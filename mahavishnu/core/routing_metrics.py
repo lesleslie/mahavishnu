@@ -20,7 +20,14 @@ if TYPE_CHECKING:
 
 # Lazy import - only import if actually used
 try:
-    from prometheus_client import REGISTRY, Counter, Gauge, Histogram, Summary, start_http_server
+    from prometheus_client import (
+        REGISTRY,
+        Counter,
+        Gauge,
+        Histogram,
+        Summary,
+        start_http_server,
+    )
 
     PROMETHEUS_AVAILABLE = True
 except ImportError:
@@ -166,7 +173,9 @@ class RoutingMetrics:
                 ["server", "adapter", "task_type"],
             )
         except ValueError:
-            logger.debug(f"Reusing existing routing decision counter: {self.server_name}")
+            logger.debug(
+                f"Reusing existing routing decision counter: {self.server_name}"
+            )
 
         # Create adapter execution counter
         try:
@@ -176,7 +185,9 @@ class RoutingMetrics:
                 ["server", "adapter", "status"],
             )
         except ValueError:
-            logger.debug(f"Reusing existing adapter execution counter: {self.server_name}")
+            logger.debug(
+                f"Reusing existing adapter execution counter: {self.server_name}"
+            )
 
         # Create fallback counter
         try:
@@ -229,7 +240,9 @@ class RoutingMetrics:
                 ["server", "model"],
             )
         except ValueError:
-            logger.debug(f"Reusing existing rate limit rejected counter: {self.server_name}")
+            logger.debug(
+                f"Reusing existing rate limit rejected counter: {self.server_name}"
+            )
 
         # Create current cost gauge
         try:
@@ -247,7 +260,9 @@ class RoutingMetrics:
                 "mahavishnu_ab_tests_active", "Number of active A/B tests", ["server"]
             )
         except ValueError:
-            logger.debug(f"Reusing existing active experiments gauge: {self.server_name}")
+            logger.debug(
+                f"Reusing existing active experiments gauge: {self.server_name}"
+            )
 
         # Create routing latency histogram
         try:
@@ -255,10 +270,25 @@ class RoutingMetrics:
                 "mahavishnu_routing_latency_seconds",
                 "Time taken to make routing decisions",
                 ["server"],
-                buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+                buckets=(
+                    0.001,
+                    0.005,
+                    0.01,
+                    0.025,
+                    0.05,
+                    0.1,
+                    0.25,
+                    0.5,
+                    1.0,
+                    2.5,
+                    5.0,
+                    10.0,
+                ),
             )
         except ValueError:
-            logger.debug(f"Reusing existing routing latency histogram: {self.server_name}")
+            logger.debug(
+                f"Reusing existing routing latency histogram: {self.server_name}"
+            )
 
         # Create fallback chain histogram
         try:
@@ -269,7 +299,9 @@ class RoutingMetrics:
                 buckets=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
             )
         except ValueError:
-            logger.debug(f"Reusing existing fallback chain histogram: {self.server_name}")
+            logger.debug(
+                f"Reusing existing fallback chain histogram: {self.server_name}"
+            )
 
         # Create cost distribution histogram
         try:
@@ -277,10 +309,25 @@ class RoutingMetrics:
                 "mahavishnu_routing_cost_usd_distribution",
                 "Distribution of routing costs in USD",
                 ["server", "adapter"],
-                buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+                buckets=(
+                    0.001,
+                    0.005,
+                    0.01,
+                    0.025,
+                    0.05,
+                    0.1,
+                    0.25,
+                    0.5,
+                    1.0,
+                    2.5,
+                    5.0,
+                    10.0,
+                ),
             )
         except ValueError:
-            logger.debug(f"Reusing existing cost distribution histogram: {self.server_name}")
+            logger.debug(
+                f"Reusing existing cost distribution histogram: {self.server_name}"
+            )
 
         # Create adapter latency histogram (SINGLE histogram for all adapters with 'adapter' label)
         try:
@@ -288,13 +335,30 @@ class RoutingMetrics:
                 "mahavishnu_adapter_latency_seconds",
                 "Adapter execution latency",
                 ["server", "adapter"],
-                buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0),
+                buckets=(
+                    0.01,
+                    0.05,
+                    0.1,
+                    0.25,
+                    0.5,
+                    1.0,
+                    2.5,
+                    5.0,
+                    10.0,
+                    30.0,
+                    60.0,
+                    120.0,
+                ),
             )
         except ValueError:
-            logger.debug(f"Reusing existing adapter latency histogram: {self.server_name}")
+            logger.debug(
+                f"Reusing existing adapter latency histogram: {self.server_name}"
+            )
 
         self._metrics_initialized = True
-        logger.info(f"Initialized Prometheus routing metrics for server: {self.server_name}")
+        logger.info(
+            f"Initialized Prometheus routing metrics for server: {self.server_name}"
+        )
 
     def _ensure_enabled(self) -> None:
         """Check if metrics are enabled and initialize if needed."""
@@ -376,7 +440,9 @@ class RoutingMetrics:
                 f"_ensure_enabled() should have created it. "
                 f"Server: {self.server_name}"
             )
-        counter.labels(server=self.server_name, adapter=adapter.value, status=status).inc()
+        counter.labels(
+            server=self.server_name, adapter=adapter.value, status=status
+        ).inc()
 
         # Record latency
         histogram = self._get_adapter_latency_histogram()
@@ -384,7 +450,9 @@ class RoutingMetrics:
             latency_ms / 1000.0
         )
 
-        logger.debug(f"Recorded adapter execution: {adapter.value} - {status} ({latency_ms}ms)")
+        logger.debug(
+            f"Recorded adapter execution: {adapter.value} - {status} ({latency_ms}ms)"
+        )
 
     def record_fallback(
         self,
@@ -410,7 +478,9 @@ class RoutingMetrics:
             original_adapter=original_adapter,
             fallback_adapter=fallback_adapter.value,
         ).inc()
-        logger.info(f"Recorded fallback: {original_adapter.value} -> {fallback_adapter.value}")
+        logger.info(
+            f"Recorded fallback: {original_adapter.value} -> {fallback_adapter.value}"
+        )
 
     def record_fallback_chain_length(self, chain_length: int) -> None:
         """Record fallback chain length.
@@ -420,7 +490,9 @@ class RoutingMetrics:
         """
         self._ensure_enabled()
         if self._fallback_chain_histogram:
-            self._fallback_chain_histogram.labels(server=self.server_name).observe(chain_length)
+            self._fallback_chain_histogram.labels(server=self.server_name).observe(
+                chain_length
+            )
             logger.debug(f"Recorded fallback chain length: {chain_length}")
 
     def record_cost(
@@ -468,9 +540,9 @@ class RoutingMetrics:
         """
         self._ensure_enabled()
         if self._current_cost_gauge:
-            self._current_cost_gauge.labels(server=self.server_name, budget_type=budget_type).set(
-                cost_usd
-            )
+            self._current_cost_gauge.labels(
+                server=self.server_name, budget_type=budget_type
+            ).set(cost_usd)
             logger.debug(f"Set current cost for {budget_type}: ${cost_usd:.2f}")
 
     def trigger_budget_alert(
@@ -539,7 +611,9 @@ class RoutingMetrics:
         """
         self._ensure_enabled()
         if self._rate_limit_rejected_counter:
-            self._rate_limit_rejected_counter.labels(server=self.server_name, model=model).inc()
+            self._rate_limit_rejected_counter.labels(
+                server=self.server_name, model=model
+            ).inc()
             logger.debug("Rate limit rejected: model=%s", model)
 
     def get_metrics_summary(self) -> dict[str, Any]:

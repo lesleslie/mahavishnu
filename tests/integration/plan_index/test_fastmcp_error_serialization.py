@@ -25,11 +25,16 @@ class TestSubclassSerialization:
 
     def test_plan_index_unavailable_error_carries_code(self) -> None:
         err = PlanIndexUnavailableError("connection timeout")
-        assert hasattr(err, "code") or err.__class__.__name__ == "PlanIndexUnavailableError"
+        assert (
+            hasattr(err, "code")
+            or err.__class__.__name__ == "PlanIndexUnavailableError"
+        )
 
     def test_plan_rebuild_locked_error_carries_code(self) -> None:
         err = PlanRebuildLockedError("deadbeef/1234", 5000)
-        assert hasattr(err, "code") or err.__class__.__name__ == "PlanRebuildLockedError"
+        assert (
+            hasattr(err, "code") or err.__class__.__name__ == "PlanRebuildLockedError"
+        )
 
     def test_subclass_names_distinct(self) -> None:
         """Each subclass must have a unique discriminator string."""

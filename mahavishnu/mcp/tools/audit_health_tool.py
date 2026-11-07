@@ -313,12 +313,15 @@ async def audit_health_async(
     silent_degraded_count = sum(1 for r in results if r.get("silent_degraded"))
     skipped_count = sum(1 for r in results if r.get("skipped"))
     healthy_count = sum(
-        1 for r in results if r.get("http_code") == 200 and r.get("body_status") in HEALTHY_STATUSES
+        1
+        for r in results
+        if r.get("http_code") == 200 and r.get("body_status") in HEALTHY_STATUSES
     )
     degraded_count = sum(
         1
         for r in results
-        if r.get("http_code") == 200 and r.get("body_status") in SILENT_DEGRADED_STATUSES
+        if r.get("http_code") == 200
+        and r.get("body_status") in SILENT_DEGRADED_STATUSES
     )
 
     return {

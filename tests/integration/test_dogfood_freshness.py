@@ -107,8 +107,7 @@ def test_no_expectation_is_contained_in_its_own_question() -> None:
         if case["expected"].lower() in case["input"].lower()
     ]
     assert not self_contained, (
-        "these cases grade a phrase their own question contains: "
-        f"{self_contained}"
+        f"these cases grade a phrase their own question contains: {self_contained}"
     )
 
 

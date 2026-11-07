@@ -93,7 +93,9 @@ class HybridSearchConfig:
                 f"lexical_weight must be between 0.0 and 1.0, got {self.lexical_weight}"
             )
         if not 0.0 <= self.min_score <= 1.0:
-            raise ValueError(f"min_score must be between 0.0 and 1.0, got {self.min_score}")
+            raise ValueError(
+                f"min_score must be between 0.0 and 1.0, got {self.min_score}"
+            )
 
         # Normalize weights to sum to 1.0
         total_weight = self.semantic_weight + self.lexical_weight
@@ -125,10 +127,18 @@ class HybridSearchResult(BaseModel):
     source_type: str = Field(..., description="Source type (task, run, document, etc.)")
     title: str | None = Field(None, description="Document title")
     content: str = Field(..., description="Document content")
-    semantic_score: float = Field(..., ge=0.0, le=1.0, description="Semantic similarity score")
-    lexical_score: float = Field(..., ge=0.0, le=1.0, description="Lexical search score")
-    combined_score: float = Field(..., ge=0.0, le=1.0, description="Combined weighted score")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    semantic_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Semantic similarity score"
+    )
+    lexical_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Lexical search score"
+    )
+    combined_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Combined weighted score"
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
     repository: str | None = Field(None, description="Repository name")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
@@ -323,17 +333,23 @@ class HybridSearchEngine:
 
             if query_embedding is not None:
                 # Full hybrid search with semantic + lexical
-                results = await self._hybrid_search(query, query_embedding, repository, limit)
+                results = await self._hybrid_search(
+                    query, query_embedding, repository, limit
+                )
             elif self.config.enable_lexical_fallback:
                 # Fallback to lexical-only search
-                logger.info("Falling back to lexical-only search (no embedding available)")
+                logger.info(
+                    "Falling back to lexical-only search (no embedding available)"
+                )
                 results = await self._lexical_only_search(query, repository, limit)
             else:
                 logger.warning("No embedding available and lexical fallback disabled")
                 return []
 
             # Filter by minimum score
-            filtered_results = [r for r in results if r.combined_score >= self.config.min_score]
+            filtered_results = [
+                r for r in results if r.combined_score >= self.config.min_score
+            ]
 
             logger.info(
                 "Hybrid search completed",
@@ -674,7 +690,9 @@ class HybridSearchEngine:
                 if deleted:
                     logger.info("Document deleted", extra={"doc_id": str(doc_id)})
                 else:
-                    logger.warning("Document not found for deletion", extra={"doc_id": str(doc_id)})
+                    logger.warning(
+                        "Document not found for deletion", extra={"doc_id": str(doc_id)}
+                    )
 
                 return deleted  # type: ignore[no-any-return]
 

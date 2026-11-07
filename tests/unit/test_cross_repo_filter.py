@@ -37,7 +37,9 @@ def mock_repo_manager() -> MagicMock:
     manager.get_repos_by_tag = MagicMock(
         side_effect=lambda tag: (
             [
-                make_mock_repo("mahavishnu", ["orchestrator", "python"], "orchestrator"),
+                make_mock_repo(
+                    "mahavishnu", ["orchestrator", "python"], "orchestrator"
+                ),
                 make_mock_repo("crackerjack", ["qc", "testing", "python"], "inspector"),
             ]
             if tag in ["python", "orchestrator"]

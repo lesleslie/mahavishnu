@@ -11,6 +11,7 @@ The subprocess env is a strict whitelist (HOME + PATH + PYTHONPATH) so
 host-set vars like MAHAVISHNU_LOG_PATH / XDG_CONFIG_HOME cannot mask the
 HOME redirect.
 """
+
 from __future__ import annotations
 
 import os
@@ -35,9 +36,12 @@ def _seed(log: Path, events: list[JotEvent]) -> None:
 
 def _capture(event_id: str, text: str, wall_ms: int) -> JotEvent:
     return JotEvent(
-        id=event_id.ljust(32, "0"), op="capture",
+        id=event_id.ljust(32, "0"),
+        op="capture",
         hlc=HLC(wall_ms=wall_ms, ctr=0, node="a" * 8),
-        text=text, ctx={}, created_ms=wall_ms,
+        text=text,
+        ctx={},
+        created_ms=wall_ms,
     )
 
 
@@ -60,7 +64,9 @@ def _run_jot_cli(args: list[str], home: Path) -> subprocess.CompletedProcess:
     """Invoke `python -m mahavishnu jot <args>` with HOME pointed at `home`."""
     return subprocess.run(
         [sys.executable, "-m", "mahavishnu", "jot", *args],
-        check=False, capture_output=True, text=True,
+        check=False,
+        capture_output=True,
+        text=True,
         cwd=str(REPO_ROOT),
         env=_subprocess_env(home),
         timeout=30,
@@ -84,7 +90,8 @@ def _assert_resolved_log(home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_capture_then_cli_list_round_trip(
-    isolated_home: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The pipeline: capture -> fold -> CLI list."""
     _assert_resolved_log(isolated_home, monkeypatch)
@@ -96,15 +103,19 @@ def test_capture_then_cli_list_round_trip(
 
 
 def test_cli_vitals_returns_counts(
-    isolated_home: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Vitals surfaces total/open/done counts from the fold."""
     _assert_resolved_log(isolated_home, monkeypatch)
     log = isolated_home / ".mahavishnu" / "jot" / "log.jsonl"
-    _seed(log, [
-        _capture("a" * 32, "open", wall_ms=1),
-        _capture("b" * 32, "done", wall_ms=2),
-    ])
+    _seed(
+        log,
+        [
+            _capture("a" * 32, "open", wall_ms=1),
+            _capture("b" * 32, "done", wall_ms=2),
+        ],
+    )
     result = _run_jot_cli(["vitals"], isolated_home)
     assert result.returncode == 0, result.stderr
     assert "Total:   2" in result.stdout
@@ -121,16 +132,21 @@ def test_mcp_tool_call_via_subprocess() -> None:
     pytest.skip("manual smoke — verify via mcp__mahavishnu__jot_list after server boot")
 
 
-@pytest.mark.parametrize("fixture", ["capture_event", "edit_event", "done_event", "reopen_event"])
+@pytest.mark.parametrize(
+    "fixture", ["capture_event", "edit_event", "done_event", "reopen_event"]
+)
 def test_event_round_trip(fixture: str) -> None:
     """All 4 event types serialize/deserialize cleanly."""
     op = fixture.replace("_event", "")
     ev = JotEvent(
-        id="a" * 32, op=op,
+        id="a" * 32,
+        op=op,
         hlc=HLC(wall_ms=1, ctr=0, node="a" * 8),
         text="" if op in ("done", "reopen") else "x",
-        ctx={}, created_ms=1,
+        ctx={},
+        created_ms=1,
     )
     from mahavishnu.jot.events import deserialize
+
     round_tripped = deserialize(serialize(ev))
     assert round_tripped == ev

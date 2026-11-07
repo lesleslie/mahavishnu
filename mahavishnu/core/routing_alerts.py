@@ -174,7 +174,9 @@ class WebhookAlertHandler(AlertHandler):
                 ) as response,
             ):
                 if response.status >= 200 and response.status < 300:
-                    self.logger.info(f"Alert sent successfully: {alert.alert_type.value}")
+                    self.logger.info(
+                        f"Alert sent successfully: {alert.alert_type.value}"
+                    )
                 else:
                     self.logger.error(f"Failed to send alert: HTTP {response.status}")
         except (
@@ -261,7 +263,11 @@ class RoutingAlertManager:
 
             # Check success rate threshold
             if success_rate < self.success_rate_threshold:
-                severity = AlertSeverity.CRITICAL if success_rate < 0.8 else AlertSeverity.WARNING
+                severity = (
+                    AlertSeverity.CRITICAL
+                    if success_rate < 0.8
+                    else AlertSeverity.WARNING
+                )
                 alerts.append(
                     Alert(
                         alert_type=AlertType.ADAPTER_DEGRADATION,
@@ -361,7 +367,9 @@ class RoutingAlertManager:
         fallback_rate = fallback_count / total_executions
 
         if fallback_rate > self.fallback_rate_threshold:
-            severity = AlertSeverity.CRITICAL if fallback_rate > 0.3 else AlertSeverity.WARNING
+            severity = (
+                AlertSeverity.CRITICAL if fallback_rate > 0.3 else AlertSeverity.WARNING
+            )
             alerts.append(
                 Alert(
                     alert_type=AlertType.EXCESSIVE_FALLBACKS,
@@ -419,10 +427,14 @@ class RoutingAlertManager:
                         try:
                             await handler.send_alert(alert)
                         except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                            self.logger.error(f"Handler {handler.__class__.__name__} failed: {e}")
+                            self.logger.error(
+                                f"Handler {handler.__class__.__name__} failed: {e}"
+                            )
 
                 if all_alerts:
-                    self.logger.warning(f"Generated {len(all_alerts)} alerts in evaluation cycle")
+                    self.logger.warning(
+                        f"Generated {len(all_alerts)} alerts in evaluation cycle"
+                    )
                 else:
                     self.logger.debug("No alerts generated in this cycle")
 
@@ -431,7 +443,9 @@ class RoutingAlertManager:
             except asyncio.CancelledError:
                 self.logger.info("Alert evaluation loop cancelled")
                 break
-            except Exception:  # background task — broad catch is the documented contract
+            except (
+                Exception
+            ):  # background task — broad catch is the documented contract
                 self.logger.exception("Alert evaluation error")
 
     async def start(self) -> None:
@@ -480,7 +494,9 @@ class RoutingAlertManager:
             "evaluation_interval_seconds": self.evaluation_interval_seconds,
             "handlers_count": len(self.handlers),
             "running": self._alert_task is not None and not self._alert_task.done(),
-            "last_evaluation": self._last_evaluation.isoformat() if self._last_evaluation else None,
+            "last_evaluation": self._last_evaluation.isoformat()
+            if self._last_evaluation
+            else None,
         }
 
 

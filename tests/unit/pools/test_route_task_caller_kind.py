@@ -102,7 +102,9 @@ class TestRouteTaskPersistsCallerKind:
 class TestRouteTaskEnforcesQuotaAtEntry:
     """Saturated callers never produce MCP writes — quota gate is first."""
 
-    async def test_route_task_enforces_quota_at_entry(self, pool_mgr: PoolManager) -> None:
+    async def test_route_task_enforces_quota_at_entry(
+        self, pool_mgr: PoolManager
+    ) -> None:
         # Pre-saturate the bucket anchored at the *current* time so the
         # window is not yet expired when route_task runs.
         now = datetime.now(UTC)

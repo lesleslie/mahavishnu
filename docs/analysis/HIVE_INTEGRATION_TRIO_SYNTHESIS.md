@@ -75,6 +75,7 @@ ______________________________________________________________________
 ```python
 # mahavishnu/engines/goal_team_factory.py
 
+
 class GoalDrivenTeamFactory:
     """Converts natural language goals to team configurations.
 

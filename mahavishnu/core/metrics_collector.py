@@ -82,7 +82,9 @@ class ExecutionMetrics:
     last_aggregate_ts: float = field(default_factory=lambda: time.time())
     """Timestamp of last aggregation to PostgreSQL."""
 
-    def get_success_rate(self, adapter: AdapterType, min_samples: int = 10) -> float | None:
+    def get_success_rate(
+        self, adapter: AdapterType, min_samples: int = 10
+    ) -> float | None:
         """Calculate success rate for adapter.
 
         Args:
@@ -245,7 +247,9 @@ class ExecutionTracker:
         active = self._metrics.active_executions.pop(execution_id, None)
 
         if active is None:
-            logger.debug(f"Execution {execution_id} not found in active (may not be sampled)")
+            logger.debug(
+                f"Execution {execution_id} not found in active (may not be sampled)"
+            )
             return
 
         # Calculate latency if not provided
@@ -362,7 +366,9 @@ class ExecutionTracker:
 
                             adapter_stats = AdapterStats(
                                 adapter=AdapterType(adapter_name),
-                                date=stats.get("date", datetime.now(UTC).strftime("%Y-%m-%d")),
+                                date=stats.get(
+                                    "date", datetime.now(UTC).strftime("%Y-%m-%d")
+                                ),
                                 success_rate=stats["success_rate"],
                                 total_executions=stats["total_executions"],
                                 avg_latency_ms=stats.get("avg_latency_ms"),
@@ -378,7 +384,9 @@ class ExecutionTracker:
             except asyncio.CancelledError:
                 logger.info("Aggregation loop cancelled")
                 break
-            except Exception:  # background task — broad catch is the documented contract
+            except (
+                Exception
+            ):  # background task — broad catch is the documented contract
                 logger.exception("Aggregation error")
 
     async def _calculate_aggregates(self) -> dict[str, Any]:
@@ -400,7 +408,8 @@ class ExecutionTracker:
                 attempts = self._metrics.adapter_attempts.get(adapter.value, {})
                 aggregates["adapter_stats"][adapter.value] = {  # type: ignore[invalid-index]
                     "success_rate": success_rate,
-                    "total_executions": attempts.get("success", 0) + attempts.get("failure", 0),
+                    "total_executions": attempts.get("success", 0)
+                    + attempts.get("failure", 0),
                     "last_updated": datetime.now(UTC).isoformat(),
                 }
 

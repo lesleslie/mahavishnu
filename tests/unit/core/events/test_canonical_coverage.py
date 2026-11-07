@@ -62,7 +62,12 @@ def test_validate_oneiric_envelope_rejects_non_dict_headers() -> None:
     envelope = OneiricEventEnvelope(
         topic="workflow.started",
         payload={"x": 1},
-        headers={"event_id": "abc", "source": "mahavishnu", "version": "1.0.0", "timestamp": "2026-07-14T12:30:00+00:00"},
+        headers={
+            "event_id": "abc",
+            "source": "mahavishnu",
+            "version": "1.0.0",
+            "timestamp": "2026-07-14T12:30:00+00:00",
+        },
     )
     object.__setattr__(envelope, "headers", "not-a-dict")
     with pytest.raises(EventEnvelopeConversionError) as exc_info:
@@ -75,7 +80,12 @@ def test_validate_oneiric_envelope_rejects_non_dict_payload() -> None:
     envelope = OneiricEventEnvelope(
         topic="workflow.started",
         payload={"x": 1},
-        headers={"event_id": "abc", "source": "mahavishnu", "version": "1.0.0", "timestamp": "2026-07-14T12:30:00+00:00"},
+        headers={
+            "event_id": "abc",
+            "source": "mahavishnu",
+            "version": "1.0.0",
+            "timestamp": "2026-07-14T12:30:00+00:00",
+        },
     )
     object.__setattr__(envelope, "payload", "not-a-dict")
     with pytest.raises(EventEnvelopeConversionError) as exc_info:

@@ -37,7 +37,9 @@ def _load_guard():
     """Load the CI guard module from scripts/ci/ without a package."""
     import sys as _sys
 
-    spec = importlib.util.spec_from_file_location("check_workflow_quarantine", GUARD_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "check_workflow_quarantine", GUARD_PATH
+    )
     assert spec is not None and spec.loader is not None, f"Cannot load {GUARD_PATH}"
     module = importlib.util.module_from_spec(spec)
     # The dataclass machinery in the loaded module needs to find the module
@@ -62,7 +64,9 @@ def fake_repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _write_with_headers(path: Path, body: str, *, approved: bool = True, wid: bool = True) -> None:
+def _write_with_headers(
+    path: Path, body: str, *, approved: bool = True, wid: bool = True
+) -> None:
     """Write a file with the required header comments prepended."""
     headers: list[str] = []
     if approved:
@@ -134,7 +138,9 @@ class TestCheckRepo:
 
         path = fake_repo / "mahavishnu" / "workflows" / "no_approver.py"
         # approved=False, wid=True
-        _write_with_headers(path, "async def no_approver():\n    return 'x'\n", approved=False)
+        _write_with_headers(
+            path, "async def no_approver():\n    return 'x'\n", approved=False
+        )
         result = check_repo(fake_repo)
         assert not result.passed
         codes = {v.code for v in result.violations}
@@ -168,7 +174,9 @@ class TestCheckRepo:
         """__init__.py is not a workflow and must not be checked."""
         check_repo = _GUARD.check_repo
 
-        (fake_repo / "mahavishnu" / "workflows" / "__init__.py").write_text("# nothing here\n")
+        (fake_repo / "mahavishnu" / "workflows" / "__init__.py").write_text(
+            "# nothing here\n"
+        )
         result = check_repo(fake_repo)
         assert result.passed
 
@@ -211,7 +219,9 @@ class TestCheckRepoCLI:
             check=False,
             cwd=Path("/Users/les/Projects/mahavishnu"),
         )
-        assert result.returncode == 0, f"stdout={result.stdout!r} stderr={result.stderr!r}"
+        assert result.returncode == 0, (
+            f"stdout={result.stdout!r} stderr={result.stderr!r}"
+        )
 
     def test_cli_fail_exits_nonzero(self, fake_repo: Path) -> None:
         """Repo with bad file: exit code 1."""

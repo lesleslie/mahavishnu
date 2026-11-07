@@ -138,9 +138,7 @@ class CoordinationExecutor:
                                     "actual_hours": round(actual_hours, 2),
                                 },
                             )
-                        except (
-                            Exception
-                        ):  # memory persistence is best-effort; todo state already updated
+                        except Exception:  # memory persistence is best-effort; todo state already updated
                             logger.debug(
                                 "Skipping todo completion memory event for %s",
                                 todo_id,

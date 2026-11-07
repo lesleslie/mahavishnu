@@ -73,7 +73,9 @@ def resolve_projects_root(repo_root: Path | None = None) -> Path:
     if override:
         return Path(override).expanduser()
 
-    base = repo_root if repo_root is not None else Path(__file__).resolve().parent.parent
+    base = (
+        repo_root if repo_root is not None else Path(__file__).resolve().parent.parent
+    )
     if base.name == REPO_DIRNAME and _is_primary_checkout(base):
         return base.parent
 

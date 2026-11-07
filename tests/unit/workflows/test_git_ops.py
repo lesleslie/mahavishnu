@@ -34,11 +34,13 @@ def git_repo(tmp_path: Path) -> Path:
     subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
     subprocess.run(
         ["git", "-C", str(tmp_path), "config", "user.email", "test@example.com"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "-C", str(tmp_path), "config", "user.name", "Test"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     return tmp_path
 
@@ -68,7 +70,9 @@ class TestGitApply:
         assert isinstance(exc_info.value.diff_offset, int)
         assert exc_info.value.conflict_marker  # non-empty
 
-    async def test_git_apply_via_stdin_not_argv(self, git_repo: Path, monkeypatch) -> None:
+    async def test_git_apply_via_stdin_not_argv(
+        self, git_repo: Path, monkeypatch
+    ) -> None:
         # Verify diff is passed via stdin, not argv (REQ security note in spec §6.2)
         import asyncio
 
@@ -123,7 +127,9 @@ class TestGitCommit:
         assert len(sha) == 40
         assert all(c in "0123456789abcdef" for c in sha)
 
-    async def test_git_commit_transient_index_lock(self, git_repo: Path, monkeypatch) -> None:
+    async def test_git_commit_transient_index_lock(
+        self, git_repo: Path, monkeypatch
+    ) -> None:
         # Simulate the exact stderr pattern that triggers Transient
         import asyncio
 
@@ -132,7 +138,10 @@ class TestGitCommit:
                 returncode = 1
 
                 async def communicate(self, input=None):
-                    return b"", b"fatal: Unable to create .git/index.lock: File exists.\n"
+                    return (
+                        b"",
+                        b"fatal: Unable to create .git/index.lock: File exists.\n",
+                    )
 
                 async def wait(self):
                     return 1
@@ -144,7 +153,9 @@ class TestGitCommit:
             await git_commit(git_repo, "x")
         assert "index.lock" in exc_info.value.reason
 
-    async def test_git_commit_permanent_default(self, git_repo: Path, monkeypatch) -> None:
+    async def test_git_commit_permanent_default(
+        self, git_repo: Path, monkeypatch
+    ) -> None:
         import asyncio
 
         async def fake_subprocess_exec(*args, stdin=None, **kwargs):
@@ -194,12 +205,16 @@ class TestCurrentHeadSha:
     async def test_returns_latest_sha(self, git_repo: Path) -> None:
         (git_repo / "a").write_text("1")
         subprocess.run(["git", "-C", str(git_repo), "add", "."], check=True)
-        subprocess.run(["git", "-C", str(git_repo), "commit", "-m", "first"], check=True)
+        subprocess.run(
+            ["git", "-C", str(git_repo), "commit", "-m", "first"], check=True
+        )
         first_sha = await current_head_sha(git_repo)
 
         (git_repo / "b").write_text("2")
         subprocess.run(["git", "-C", str(git_repo), "add", "."], check=True)
-        subprocess.run(["git", "-C", str(git_repo), "commit", "-m", "second"], check=True)
+        subprocess.run(
+            ["git", "-C", str(git_repo), "commit", "-m", "second"], check=True
+        )
         second_sha = await current_head_sha(git_repo)
 
         assert first_sha != second_sha
@@ -238,7 +253,10 @@ class TestStashWrap:
                 returncode = 0
 
                 async def communicate(self, input=None):
-                    return b"Saved working directory and index state WIP on main: abc\n", b""
+                    return (
+                        b"Saved working directory and index state WIP on main: abc\n",
+                        b"",
+                    )
 
                 async def wait(self):
                     return 0
@@ -248,7 +266,9 @@ class TestStashWrap:
         monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_subprocess_exec)
         await stash_push(git_repo)
         # Find the stash call
-        stash_calls = [a for a in captured_args if "stash" in a and isinstance(a, tuple)]
+        stash_calls = [
+            a for a in captured_args if "stash" in a and isinstance(a, tuple)
+        ]
         assert any("--keep-index" not in a for a in stash_calls), (
             f"stash_push must NOT use --keep-index; got args: {captured_args}"
         )

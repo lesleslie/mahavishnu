@@ -117,8 +117,12 @@ def _stub_diagnostic(
     }
 
     monkeypatch.setattr(status_cli, "_load_settings", lambda: state["settings"])
-    monkeypatch.setattr(status_cli, "_yaml_adapter_value", lambda path=None: state["yaml_value"])
-    monkeypatch.setattr(status_cli, "_env_adapter_value", lambda env_key=None: state["env_value"])
+    monkeypatch.setattr(
+        status_cli, "_yaml_adapter_value", lambda path=None: state["yaml_value"]
+    )
+    monkeypatch.setattr(
+        status_cli, "_env_adapter_value", lambda env_key=None: state["env_value"]
+    )
     monkeypatch.setattr(status_cli, "_worker_record_store", lambda: state["store"])
 
     # Rebuild the rows inside ``_collect_diagnostic`` using the injected
@@ -158,8 +162,7 @@ def test_reports_yaml_and_effective(
 
     # The YAML-declared row is present (formatted as repr()).
     assert "'tmux'" in combined, (
-        "expected YAML-declared value 'tmux' in status output; "
-        f"got: {combined!r}"
+        f"expected YAML-declared value 'tmux' in status output; got: {combined!r}"
     )
     assert "YAML declared adapter_preference" in combined
     # The effective-resolved row is present.
@@ -198,8 +201,7 @@ def test_marks_disagreement(
     result = _invoke_status()
 
     assert result.exit_code == 0, (
-        f"expected clean exit, got {result.exit_code}\n"
-        f"output={result.output!r}"
+        f"expected clean exit, got {result.exit_code}\noutput={result.output!r}"
     )
     combined = (result.output or "") + (getattr(result, "stderr", "") or "")
 
@@ -213,7 +215,11 @@ def test_marks_disagreement(
     # Walk the rows so a stray ``[warn]`` on a different row cannot
     # satisfy the assertion by coincidence.
     effective_line = next(
-        (line for line in combined.splitlines() if "Effective adapter_preference" in line),
+        (
+            line
+            for line in combined.splitlines()
+            if "Effective adapter_preference" in line
+        ),
         None,
     )
     assert effective_line is not None, (

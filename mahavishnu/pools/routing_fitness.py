@@ -116,7 +116,9 @@ class RoutingFitnessReader:
                     try:
                         signals[selector] = FitnessSignal.from_dict(value)
                     except Exception as exc:  # best-effort read from MCP storage — broad catch returns safe default on transient failures  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                        logger.debug("Failed to parse fitness signal at %r: %s", key, exc)
+                        logger.debug(
+                            "Failed to parse fitness signal at %r: %s", key, exc
+                        )
 
         return signals
 

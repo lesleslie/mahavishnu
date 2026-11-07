@@ -72,7 +72,9 @@ async def test_learning_pipeline_lifecycle() -> None:
 
 @pytest.mark.asyncio
 async def test_learning_pipeline_noops_for_running_or_missing_pipeline() -> None:
-    running_pipeline = SimpleNamespace(is_running=True, start=AsyncMock(), stop=AsyncMock())
+    running_pipeline = SimpleNamespace(
+        is_running=True, start=AsyncMock(), stop=AsyncMock()
+    )
     running_app = SimpleNamespace(_learning_pipeline=running_pipeline)
     missing_app = SimpleNamespace(_learning_pipeline=None)
 
@@ -86,7 +88,9 @@ async def test_learning_pipeline_noops_for_running_or_missing_pipeline() -> None
 @pytest.mark.asyncio
 async def test_initialize_worktree_coordinator_exception_is_swallowed() -> None:
     """Exception during init is caught and logged — worktree_coordinator stays None (lines 57-58)."""
-    repo_manager = SimpleNamespace(load=AsyncMock(side_effect=RuntimeError("load failed")))
+    repo_manager = SimpleNamespace(
+        load=AsyncMock(side_effect=RuntimeError("load failed"))
+    )
     app = SimpleNamespace(
         worktree_coordinator=None,
         repository_manager=repo_manager,
@@ -113,7 +117,9 @@ async def test_initialize_worktree_coordinator_noops_when_already_initialized() 
 
 
 @pytest.mark.asyncio
-async def test_initialize_worktree_coordinator_noops_without_repository_manager() -> None:
+async def test_initialize_worktree_coordinator_noops_without_repository_manager() -> (
+    None
+):
     app = SimpleNamespace(worktree_coordinator=None, coordination_manager=object())
 
     await initialize_worktree_coordinator(app)

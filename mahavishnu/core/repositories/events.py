@@ -32,13 +32,9 @@ _INSERT_EVENT = (
     " RETURNING *"
 )
 
-_SELECT_BY_TASK = (
-    "SELECT * FROM audit.task_events WHERE task_id = $1 ORDER BY event_time DESC LIMIT $2 OFFSET $3"
-)
+_SELECT_BY_TASK = "SELECT * FROM audit.task_events WHERE task_id = $1 ORDER BY event_time DESC LIMIT $2 OFFSET $3"
 
-_SELECT_BY_TASK_AND_RUN = (
-    "SELECT * FROM audit.task_events WHERE task_id = $1 AND run_id = $2 ORDER BY event_time DESC"
-)
+_SELECT_BY_TASK_AND_RUN = "SELECT * FROM audit.task_events WHERE task_id = $1 AND run_id = $2 ORDER BY event_time DESC"
 
 # list_events: all 16 combinations of optional filters {task_id, run_id, event_type, actor}.
 # Filter fields are always ordered: task_id → run_id → event_type → actor.
@@ -50,7 +46,9 @@ _A = "actor"
 
 _LIST_QUERIES: dict[frozenset[str], str] = {
     # 0 filters
-    frozenset(): ("SELECT * FROM audit.task_events ORDER BY event_time DESC LIMIT $1 OFFSET $2"),
+    frozenset(): (
+        "SELECT * FROM audit.task_events ORDER BY event_time DESC LIMIT $1 OFFSET $2"
+    ),
     # 1 filter
     frozenset({_T}): (
         "SELECT * FROM audit.task_events"
@@ -162,7 +160,9 @@ class TaskEventRead(BaseModel):
     event_time: datetime = Field(..., description="Event timestamp")
     actor: str | None = Field(None, description="Actor identifier")
     payload: dict[str, Any] = Field(default_factory=dict, description="Event payload")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class TaskEventUpdate(BaseModel):
@@ -188,7 +188,9 @@ class TaskEventFilter(BaseModel):
 # =============================================================================
 
 
-class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEventUpdate]):
+class TaskEventRepository(
+    BaseRepository[TaskEventCreate, TaskEventRead, TaskEventUpdate]
+):
     """Repository for audit.task_events table operations."""
 
     async def create(self, data: TaskEventCreate) -> TaskEventRead:
@@ -231,9 +233,13 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
                 rows = await conn.fetch(_SELECT_BY_TASK, task_id, limit, offset)
                 return [self._row_to_model(row) for row in rows]
         except Exception as e:  # translate any DB/driver error into RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("get_events_for_task", e, {"task_id": str(task_id)})
+            raise self._handle_error(
+                "get_events_for_task", e, {"task_id": str(task_id)}
+            )
 
-    async def get_events_for_run(self, task_id: UUID, run_id: UUID) -> list[TaskEventRead]:
+    async def get_events_for_run(
+        self, task_id: UUID, run_id: UUID
+    ) -> list[TaskEventRead]:
         """Get events for a run (filtered by both task and run IDs)."""
         try:
             async with self.connection() as conn:
@@ -241,14 +247,20 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
                 return [self._row_to_model(row) for row in rows]
         except Exception as e:  # translate any DB/driver error into RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             raise self._handle_error(
-                "get_events_for_run", e, {"task_id": str(task_id), "run_id": str(run_id)}
+                "get_events_for_run",
+                e,
+                {"task_id": str(task_id), "run_id": str(run_id)},
             )
 
     async def list_events(self, filters: TaskEventFilter) -> list[TaskEventRead]:
         """List events with optional filters."""
-        active = frozenset(f for f in _LIST_FILTER_ORDER if getattr(filters, f, None) is not None)
+        active = frozenset(
+            f for f in _LIST_FILTER_ORDER if getattr(filters, f, None) is not None
+        )
         query = _LIST_QUERIES[active]
-        params: list[Any] = [getattr(filters, f) for f in _LIST_FILTER_ORDER if f in active]
+        params: list[Any] = [
+            getattr(filters, f) for f in _LIST_FILTER_ORDER if f in active
+        ]
         params.extend([filters.limit, filters.offset])
 
         try:
@@ -256,7 +268,9 @@ class TaskEventRepository(BaseRepository[TaskEventCreate, TaskEventRead, TaskEve
                 rows = await conn.fetch(query, *params)
                 return [self._row_to_model(row) for row in rows]
         except Exception as e:  # translate any DB/driver error into RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            raise self._handle_error("list_events", e, {"filters": filters.model_dump()})
+            raise self._handle_error(
+                "list_events", e, {"filters": filters.model_dump()}
+            )
 
     def _row_to_model(self, row: Any) -> TaskEventRead:
         """Convert database row to TaskEventRead model."""

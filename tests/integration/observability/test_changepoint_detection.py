@@ -5,6 +5,7 @@ Asserts the CUSUM detector fires within 30 samples (median) on a
 
 Req: REQ-004, REQ-005, REQ-006, REQ-009 (verification).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -36,7 +37,9 @@ class TestChangePointIntegration:
                 detected_at = r.samples_since_reset
                 break
         assert detected_at is not None
-        assert detected_at < 30, f"CUSUM took {detected_at} samples to detect 0.5-σ shift"
+        assert detected_at < 30, (
+            f"CUSUM took {detected_at} samples to detect 0.5-σ shift"
+        )
 
     def test_three_sigma_misses_0_5_sigma_shift(self) -> None:
         """The 3-sigma reference detector should MISS a 0.5-σ shift."""
@@ -46,7 +49,9 @@ class TestChangePointIntegration:
         rng = random.Random(2026_09_11)
         window = [rng.gauss(0.0, 1.0) for _ in range(60)]
         window_mean = sum(window) / len(window)
-        window_std = math.sqrt(sum((v - window_mean) ** 2 for v in window) / (len(window) - 1))
+        window_std = math.sqrt(
+            sum((v - window_mean) ** 2 for v in window) / (len(window) - 1)
+        )
         shifted_value = 0.5
         z_score = (shifted_value - window_mean) / window_std
         assert abs(z_score) < 1.0, f"3-sigma test setup error: |z|={z_score:.3f}"
@@ -88,7 +93,9 @@ class TestChangePointIntegration:
         import random
 
         rng = random.Random(42)
-        cusum = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True)
+        cusum = CUSUMDetector(
+            target_mean=0.0, slack=0.25, threshold=8.0, two_sided=True
+        )
         ph = PageHinkleyDetector(target_mean=0.0, slack=0.05, threshold=5.0, delta=0.0)
         for _ in range(200):
             x = rng.gauss(0.0, 1.0)

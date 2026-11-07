@@ -55,7 +55,9 @@ def _build_mock_worker_manager(
         health: Return value for health_check(). Defaults to "healthy".
     """
     mock = MagicMock()
-    mock.spawn_workers = AsyncMock(return_value=spawn_workers or ["worker-1", "worker-2"])
+    mock.spawn_workers = AsyncMock(
+        return_value=spawn_workers or ["worker-1", "worker-2"]
+    )
     mock.execute_task = AsyncMock()
     mock.execute_batch = AsyncMock(return_value={})
     mock.submit_workers = AsyncMock(return_value=["worker-1"])
@@ -309,7 +311,9 @@ async def test_execute_batch_round_robin_assignment(
     pool = _make_pool(pool_config, mock_terminal_manager, mock_wm)
     _seed_workers(pool, ["worker-1", "worker-2"])
 
-    results = await pool.execute_batch([{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}])
+    results = await pool.execute_batch(
+        [{"prompt": "a"}, {"prompt": "b"}, {"prompt": "c"}]
+    )
 
     assert set(results.keys()) == {"0", "1", "2"}
     assert pool._tasks_completed == 2

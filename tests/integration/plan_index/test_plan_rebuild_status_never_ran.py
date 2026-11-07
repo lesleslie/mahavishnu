@@ -43,9 +43,7 @@ class TestPlanRebuildStatusNeverRan:
         import time
 
         recent_ms = int(time.time() * 1000) - 60 * 1000  # 60s ago
-        await store._mcp.put(
-            "plan_index/meta/last_rebuild_ms", str(recent_ms)
-        )
+        await store._mcp.put("plan_index/meta/last_rebuild_ms", str(recent_ms))
 
         result = await call_tool("plan_rebuild_status", {})
 

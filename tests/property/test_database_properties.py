@@ -373,7 +373,8 @@ class TestDataIntegrity:
             conn = await db._pool.get_connection()
             try:
                 result = conn.execute(
-                    "SELECT COUNT(*) FROM executions WHERE task_id = ?", [str(record.task_id)]
+                    "SELECT COUNT(*) FROM executions WHERE task_id = ?",
+                    [str(record.task_id)],
                 ).fetchone()
 
                 # Should have exactly one record with this UUID

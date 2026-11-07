@@ -174,8 +174,8 @@ class HandoffResult(BaseModel):
     workflow_id: str
     adapter: Literal["prefect", "llamaindex", "agno"]
     started_at: datetime
-    status: str            # queued | running | completed | failed  (from trigger_workflow)
-    repos_processed: int   # from trigger_workflow
+    status: str  # queued | running | completed | failed  (from trigger_workflow)
+    repos_processed: int  # from trigger_workflow
 ```
 
 `pool_name` is **dropped**: a durable workflow has no pool. It is replaced by `status`

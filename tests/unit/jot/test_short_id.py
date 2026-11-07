@@ -1,4 +1,5 @@
 """UD5: short_id is the LAST 6 hex chars of the UUID v4 ID."""
+
 from __future__ import annotations
 
 from mahavishnu.jot.short_id import short_id

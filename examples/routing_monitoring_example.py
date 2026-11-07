@@ -207,7 +207,9 @@ async def simulate_routing_operations(
     # Simulate 4: Budget exceeded
     logger.info("\n4. Simulating budget exceeded")
     metrics.trigger_budget_alert("daily", "critical")
-    logger.critical("   ⛔ Daily budget $50 exceeded - would trigger BUDGET_EXCEEDED alert!")
+    logger.critical(
+        "   ⛔ Daily budget $50 exceeded - would trigger BUDGET_EXCEEDED alert!"
+    )
 
     await asyncio.sleep(0.5)
 

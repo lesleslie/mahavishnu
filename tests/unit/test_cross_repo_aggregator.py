@@ -39,7 +39,9 @@ def mock_repo_manager() -> MagicMock:
     )
     manager.list_repos = MagicMock(
         return_value=[
-            MagicMock(name="mahavishnu", tags=["orchestrator", "python"], role="orchestrator"),
+            MagicMock(
+                name="mahavishnu", tags=["orchestrator", "python"], role="orchestrator"
+            ),
             MagicMock(name="crackerjack", tags=["qc", "testing"], role="inspector"),
             MagicMock(name="session-buddy", tags=["session", "memory"], role="manager"),
         ]

@@ -33,7 +33,14 @@ import time
 
 # Lazy import - only import if actually used
 try:
-    from prometheus_client import REGISTRY, Counter, Gauge, Histogram, Info, start_http_server
+    from prometheus_client import (
+        REGISTRY,
+        Counter,
+        Gauge,
+        Histogram,
+        Info,
+        start_http_server,
+    )
 
     PROMETHEUS_AVAILABLE = True
 except ImportError:
@@ -151,7 +158,9 @@ class GoalTeamMetrics:
             server_name: Name of server (default: "mahavishnu")
         """
         if not PROMETHEUS_AVAILABLE:
-            logger.warning("Prometheus client not available, goal team metrics disabled")
+            logger.warning(
+                "Prometheus client not available, goal team metrics disabled"
+            )
             self._enabled = False
         else:
             self._enabled = True
@@ -256,7 +265,9 @@ class GoalTeamMetrics:
                 buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0),
             )
         except ValueError:
-            logger.debug(f"Reusing existing team creation histogram: {self.server_name}")
+            logger.debug(
+                f"Reusing existing team creation histogram: {self.server_name}"
+            )
 
         # Create parsing confidence histogram
         try:
@@ -267,7 +278,9 @@ class GoalTeamMetrics:
                 buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0),
             )
         except ValueError:
-            logger.debug(f"Reusing existing parsing confidence histogram: {self.server_name}")
+            logger.debug(
+                f"Reusing existing parsing confidence histogram: {self.server_name}"
+            )
 
         # Create team info metric
         try:
@@ -291,7 +304,9 @@ class GoalTeamMetrics:
                 ["server", "success", "mode"],
             )
         except ValueError:
-            logger.debug(f"Reusing existing learning outcomes counter: {self.server_name}")
+            logger.debug(
+                f"Reusing existing learning outcomes counter: {self.server_name}"
+            )
 
         # Create learning recommendations counter
         try:
@@ -301,7 +316,9 @@ class GoalTeamMetrics:
                 ["server", "intent", "mode", "used"],
             )
         except ValueError:
-            logger.debug(f"Reusing existing learning recommendations counter: {self.server_name}")
+            logger.debug(
+                f"Reusing existing learning recommendations counter: {self.server_name}"
+            )
 
         # Create learning feedback counter
         try:
@@ -311,7 +328,9 @@ class GoalTeamMetrics:
                 ["server", "feedback_type"],
             )
         except ValueError:
-            logger.debug(f"Reusing existing learning feedback counter: {self.server_name}")
+            logger.debug(
+                f"Reusing existing learning feedback counter: {self.server_name}"
+            )
 
         # Create learning success rate gauge
         try:
@@ -321,7 +340,9 @@ class GoalTeamMetrics:
                 ["server"],
             )
         except ValueError:
-            logger.debug(f"Reusing existing learning success rate gauge: {self.server_name}")
+            logger.debug(
+                f"Reusing existing learning success rate gauge: {self.server_name}"
+            )
 
         # Create learning latency histogram
         try:
@@ -332,10 +353,14 @@ class GoalTeamMetrics:
                 buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0),
             )
         except ValueError:
-            logger.debug(f"Reusing existing learning latency histogram: {self.server_name}")
+            logger.debug(
+                f"Reusing existing learning latency histogram: {self.server_name}"
+            )
 
         self._metrics_initialized = True
-        logger.info(f"Initialized Prometheus goal team metrics for server: {self.server_name}")
+        logger.info(
+            f"Initialized Prometheus goal team metrics for server: {self.server_name}"
+        )
 
     def _ensure_enabled(self) -> None:
         """Check if metrics are enabled and initialize if needed."""
@@ -402,7 +427,9 @@ class GoalTeamMetrics:
                     server=self.server_name,
                     mode=mode,
                 ).observe(duration)
-                logger.debug(f"Recorded team creation duration: {duration:.3f}s for mode={mode}")
+                logger.debug(
+                    f"Recorded team creation duration: {duration:.3f}s for mode={mode}"
+                )
 
     # ========================================================================
     # Goal Parsing Metrics
@@ -666,9 +693,11 @@ class GoalTeamMetrics:
             "duration_tracking": self._team_creation_histogram is not None,
             "confidence_tracking": self._parsing_confidence_histogram is not None,
             "learning_outcomes_tracking": self._learning_outcomes_counter is not None,
-            "learning_recommendations_tracking": self._learning_recommendations_counter is not None,
+            "learning_recommendations_tracking": self._learning_recommendations_counter
+            is not None,
             "learning_feedback_tracking": self._learning_feedback_counter is not None,
-            "learning_success_rate_tracking": self._learning_success_rate_gauge is not None,
+            "learning_success_rate_tracking": self._learning_success_rate_gauge
+            is not None,
             "learning_latency_tracking": self._learning_latency_histogram is not None,
         }
 

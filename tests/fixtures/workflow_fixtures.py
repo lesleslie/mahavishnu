@@ -173,7 +173,9 @@ class WorkflowFixtures:
                     "repo": "/Users/les/Projects/session-buddy",
                     "error": "SyntaxError in session_manager.py line 42",
                     "type": "SyntaxError",
-                    "timestamp": (created_at + timedelta(minutes=2, seconds=30)).isoformat(),
+                    "timestamp": (
+                        created_at + timedelta(minutes=2, seconds=30)
+                    ).isoformat(),
                 },
             ],
             "execution_time_seconds": 180.0,
@@ -399,7 +401,9 @@ def mock_workflow_state_manager():
     manager.create = AsyncMock(return_value={"id": "wf_test_123", "status": "pending"})
     manager.get = AsyncMock(return_value=WorkflowFixtures.sample_workflow())
     manager.update = AsyncMock()
-    manager.list_workflows = AsyncMock(return_value=WorkflowFixtures.multiple_workflows())
+    manager.list_workflows = AsyncMock(
+        return_value=WorkflowFixtures.multiple_workflows()
+    )
     manager.delete = AsyncMock()
     manager.update_progress = AsyncMock()
     manager.get_completed_count = AsyncMock(return_value=1)

@@ -167,7 +167,9 @@ async def write_canonical_symbol(
     stash_popped = False
     try:
         await _git_ops.git_apply(repo_path, extraction_diff)
-        await _stage_all(repo_path)  # git_commit requires staged changes (Task 4 contract)
+        await _stage_all(
+            repo_path
+        )  # git_commit requires staged changes (Task 4 contract)
         msg = commit_message(refactor_job_id, target_repo, extracted_symbol)
         sha = await _git_ops.git_commit(repo_path, msg)
         # C3 fix: stash_pop runs HERE so a failure propagates as StashPopFailedError
@@ -188,7 +190,9 @@ async def write_canonical_symbol(
         try:
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
-            return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
+            return replace(
+                base, files_touched=tuple(files), working_tree_clean_after_commit=clean
+            )
         except Exception as meta_exc:  # metadata is best-effort; commit already landed  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "write_canonical_symbol: post-commit metadata failed (%s); continuing",
@@ -247,7 +251,9 @@ async def write_replacement_diff(
     stash_popped = False
     try:
         await _git_ops.git_apply(repo_path, consuming_diff)
-        await _stage_all(repo_path)  # git_commit requires staged changes (Task 4 contract)
+        await _stage_all(
+            repo_path
+        )  # git_commit requires staged changes (Task 4 contract)
         msg = commit_message(refactor_job_id, consumer_repo, "consuming-diff")
         sha = await _git_ops.git_commit(repo_path, msg)
         # C3 fix: stash_pop runs HERE so a failure propagates with the
@@ -266,7 +272,9 @@ async def write_replacement_diff(
         try:
             files = await _git_ops.diff_files(repo_path)
             clean = await _git_ops.is_working_tree_clean(repo_path)
-            return replace(base, files_touched=tuple(files), working_tree_clean_after_commit=clean)
+            return replace(
+                base, files_touched=tuple(files), working_tree_clean_after_commit=clean
+            )
         except Exception as meta_exc:  # metadata is best-effort; commit already landed  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "write_replacement_diff: post-commit metadata failed (%s); continuing",
@@ -447,8 +455,13 @@ async def run_clone_refactor_dag(
     """
     # SF-M5: re-entry guard
     existing_state = await mcp_backend.get(mcp_backend.dag_key(refactor_job_id))
-    if existing_state is not None and existing_state.get("status") in ("queued", "running"):
-        raise DAGAlreadyRunningError(existing_status=existing_state.get("status", "unknown"))
+    if existing_state is not None and existing_state.get("status") in (
+        "queued",
+        "running",
+    ):
+        raise DAGAlreadyRunningError(
+            existing_status=existing_state.get("status", "unknown")
+        )
 
     consumer_commits: tuple[RepoCommit, ...] = ()
     target_commit: RepoCommit | None = None
@@ -456,7 +469,9 @@ async def run_clone_refactor_dag(
     try:
         # Phase 1: detect
         hits = await detect_cluster_members(cluster_id, [target_repo, *consumer_repos])
-        await _write_step_outcome(mcp_backend, refactor_job_id, "detect", {"hits": len(hits)})
+        await _write_step_outcome(
+            mcp_backend, refactor_job_id, "detect", {"hits": len(hits)}
+        )
 
         # Phase 2: propose (target)
         target_commit = await write_canonical_symbol(
@@ -466,7 +481,10 @@ async def run_clone_refactor_dag(
             mcp_backend,
             refactor_job_id,
             "propose",
-            {"target_sha": target_commit.sha, "files_touched": target_commit.files_touched},
+            {
+                "target_sha": target_commit.sha,
+                "files_touched": target_commit.files_touched,
+            },
         )
 
         # Phase 3: consume (parallel) — collect success/failure per repo
@@ -495,7 +513,9 @@ async def run_clone_refactor_dag(
                 )
 
         # TD-m4: consumer_commits is a tuple (RepoCommit is frozen)
-        consumer_commits = tuple(await asyncio.gather(*(_run_consumer(r) for r in consumer_repos)))
+        consumer_commits = tuple(
+            await asyncio.gather(*(_run_consumer(r) for r in consumer_repos))
+        )
         await _write_step_outcome(
             mcp_backend,
             refactor_job_id,
@@ -521,9 +541,13 @@ async def run_clone_refactor_dag(
                 status=status,
                 dag_completed_at=datetime.now(UTC).isoformat(),
                 target_commit=target_commit.sha if target_commit else None,
-                target_commit_files_touched=target_commit.files_touched if target_commit else (),
+                target_commit_files_touched=target_commit.files_touched
+                if target_commit
+                else (),
                 consumer_commits=consumer_commits,
-                failed_consumers=tuple(c.repo for c in consumer_commits if c.status == "failed"),
+                failed_consumers=tuple(
+                    c.repo for c in consumer_commits if c.status == "failed"
+                ),
             ),
         )
         return final

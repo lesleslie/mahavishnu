@@ -47,7 +47,7 @@ import duckdb
 from fastembed import TextEmbedding
 
 # Setup
-conn = duckdb.connect('data/learning.db')
+conn = duckdb.connect("data/learning.db")
 conn.execute("INSTALL vss")
 conn.execute("LOAD vss")
 

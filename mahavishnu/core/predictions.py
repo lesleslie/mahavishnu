@@ -141,9 +141,15 @@ class BlockerPredictor:
 
         # Calculate confidence interval
         sample_size = len(
-            [t for t in historical_tasks if t.get("repository") == task.get("repository")]
+            [
+                t
+                for t in historical_tasks
+                if t.get("repository") == task.get("repository")
+            ]
         )
-        confidence_interval = self._calculate_confidence_interval(blocker_probability, sample_size)
+        confidence_interval = self._calculate_confidence_interval(
+            blocker_probability, sample_size
+        )
 
         # Identify potential blockers
         potential_blockers = self._identify_potential_blockers(task, blocker_patterns)
@@ -363,7 +369,9 @@ class DurationEstimator:
 
         # Calculate confidence interval
         all_durations = [d for d, _ in matching_durations] + historical_durations
-        confidence_interval = self._calculate_duration_interval(estimated_hours, all_durations)
+        confidence_interval = self._calculate_duration_interval(
+            estimated_hours, all_durations
+        )
 
         # Identify factors affecting estimate
         factors = self._identify_factors(task, duration_patterns)
@@ -380,7 +388,9 @@ class DurationEstimator:
             factors=factors,
         )
 
-    def _calculate_pattern_match(self, task: dict[str, Any], pattern: TaskDurationPattern) -> float:
+    def _calculate_pattern_match(
+        self, task: dict[str, Any], pattern: TaskDurationPattern
+    ) -> float:
         """Calculate how well a task matches a duration pattern."""
         weight = 0.0
 
@@ -436,10 +446,14 @@ class DurationEstimator:
         if created and completed:
             try:
                 created_dt = (
-                    datetime.fromisoformat(created) if isinstance(created, str) else created
+                    datetime.fromisoformat(created)
+                    if isinstance(created, str)
+                    else created
                 )
                 completed_dt = (
-                    datetime.fromisoformat(completed) if isinstance(completed, str) else completed
+                    datetime.fromisoformat(completed)
+                    if isinstance(completed, str)
+                    else completed
                 )
                 return (completed_dt - created_dt).total_seconds() / 3600
             except ValueError, TypeError:
@@ -479,9 +493,13 @@ class DurationEstimator:
         durations = [d for d, _ in all_estimates]
 
         if len(durations) > 1:
-            variance = sum((d - estimated_hours) ** 2 for d in durations) / len(durations)
+            variance = sum((d - estimated_hours) ** 2 for d in durations) / len(
+                durations
+            )
             std_dev = math.sqrt(variance)
-            coefficient_of_variation = std_dev / estimated_hours if estimated_hours > 0 else 1.0
+            coefficient_of_variation = (
+                std_dev / estimated_hours if estimated_hours > 0 else 1.0
+            )
 
             # Higher consistency = higher confidence
             consistency_score = max(0.0, 1.0 - coefficient_of_variation)

@@ -95,7 +95,9 @@ class TestValidatePattern:
         issues = validate_pattern(p, lib)
         assert any("Duplicate" in i for i in issues)
 
-    def test_slot_outside_declared_dirs(self, library_with_project: PatternLibrary) -> None:
+    def test_slot_outside_declared_dirs(
+        self, library_with_project: PatternLibrary
+    ) -> None:
         """A slot path that is outside all declared dirs should be flagged."""
         p = Pattern(
             id="test/orphan-slot",
@@ -112,18 +114,24 @@ class TestValidatePattern:
         issues = validate_pattern(p, library_with_project)
         assert any("outside all pattern dirs" in i for i in issues)
 
-    def test_slot_path_within_declared_dir(self, library_with_project: PatternLibrary) -> None:
+    def test_slot_path_within_declared_dir(
+        self, library_with_project: PatternLibrary
+    ) -> None:
         """A slot whose path lives under a declared dir should NOT be flagged."""
         p = Pattern(
             id="test/nested-slot",
             name="Nested Slot",
             structure={"dirs": [{"path": "settings/", "required": True}]},
-            slots={"ok": {"name": "ok", "path": "settings/app.yaml", "type": "file-merge"}},
+            slots={
+                "ok": {"name": "ok", "path": "settings/app.yaml", "type": "file-merge"}
+            },
         )
         issues = validate_pattern(p, library_with_project)
         assert not any("outside all pattern dirs" in i for i in issues)
 
-    def test_circular_dependency_detected(self, library_with_project: PatternLibrary) -> None:
+    def test_circular_dependency_detected(
+        self, library_with_project: PatternLibrary
+    ) -> None:
         """Circular dependencies (A -> B -> A) should be detected."""
 
         # Build a fake library that has two patterns A and B with mutual deps.
@@ -148,7 +156,9 @@ class TestValidatePattern:
         issues = validate_pattern(a, lib)
         assert any("Circular dependency" in i for i in issues)
 
-    def test_dependency_chain_no_cycle(self, library_with_project: PatternLibrary) -> None:
+    def test_dependency_chain_no_cycle(
+        self, library_with_project: PatternLibrary
+    ) -> None:
         """Linear (non-circular) dependency chain should NOT report a cycle."""
 
         class FakeLib:
@@ -199,7 +209,9 @@ class TestValidatePattern:
         issues = validate_pattern(a, lib)
         assert not any("Circular dependency" in i for i in issues)
 
-    def test_slot_path_exact_match_with_dir(self, library_with_project: PatternLibrary) -> None:
+    def test_slot_path_exact_match_with_dir(
+        self, library_with_project: PatternLibrary
+    ) -> None:
         """A slot whose path is exactly a declared dir name should NOT be flagged."""
         p = Pattern(
             id="test/exact-slot",

@@ -75,7 +75,9 @@ async def run_async(coro: Any) -> Any:
 @app.command("launch-app")
 def launch_app(
     bundle_id: Annotated[str, typer.Argument(help="Application bundle identifier")],
-    dry_run: Annotated[bool, typer.Option("--dry-run", help="Simulate without executing")] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Simulate without executing")
+    ] = False,
     json_output: Annotated[bool, typer.Option("--json", help="Output as JSON")] = False,
 ) -> None:
     """Launch an application by bundle identifier.
@@ -95,7 +97,9 @@ def launch_app(
         if result.status == "success":
             if not json_output:
                 data = result.data or {}  # type: ignore[var-annotated]
-                console.print(f"[green]✓[/green] Launched: {data.get('name', bundle_id)}")
+                console.print(
+                    f"[green]✓[/green] Launched: {data.get('name', bundle_id)}"
+                )
             else:
                 format_result(result, "json")
         else:
@@ -303,7 +307,9 @@ def type_text(
     try:
         result = asyncio.run(_run())
         if result.status == "success":
-            console.print(f"[green]✓[/green] Typed: {text[:50]}{'...' if len(text) > 50 else ''}")
+            console.print(
+                f"[green]✓[/green] Typed: {text[:50]}{'...' if len(text) > 50 else ''}"
+            )
         else:
             console.print(f"[red]✗[/red] {result.error}")
             raise typer.Exit(1)
@@ -316,7 +322,8 @@ def type_text(
 def press_key(
     key: Annotated[str, typer.Argument(help="Key to press")],
     modifiers: Annotated[
-        str | None, typer.Option("--modifiers", "-m", help="Modifiers (comma-separated)")
+        str | None,
+        typer.Option("--modifiers", "-m", help="Modifiers (comma-separated)"),
     ] = None,
 ) -> None:
     """Press a key with optional modifiers.
@@ -392,7 +399,9 @@ def click(
 @app.command("click-menu")
 def click_menu(
     bundle_id: Annotated[str, typer.Argument(help="Application bundle identifier")],
-    menu_path: Annotated[str, typer.Argument(help="Menu path (comma-separated, e.g., File,Save)")],
+    menu_path: Annotated[
+        str, typer.Argument(help="Menu path (comma-separated, e.g., File,Save)")
+    ],
 ) -> None:
     """Click a menu item.
 
@@ -426,7 +435,9 @@ def click_menu(
 
 @app.command("screenshot")
 def screenshot(
-    output: Annotated[Path | None, typer.Option("--output", "-o", help="Output file path")] = None,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Output file path")
+    ] = None,
     region: Annotated[
         str | None, typer.Option("--region", "-r", help="Region (x,y,width,height)")
     ] = None,
@@ -571,7 +582,9 @@ def status(
         console.print(
             f"[cyan]Operations:[/cyan] {result.get('stats', {}).get('operations_total', 0)}"
         )
-        console.print(f"[cyan]Capabilities:[/cyan] {len(result.get('capabilities', []))}")
+        console.print(
+            f"[cyan]Capabilities:[/cyan] {len(result.get('capabilities', []))}"
+        )
     except AutomationError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)

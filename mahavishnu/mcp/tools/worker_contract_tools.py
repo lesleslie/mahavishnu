@@ -152,7 +152,9 @@ async def _broadcast_settle_transition(
             merge=merge,
         )
     except Exception:  # broadcast failure is non-fatal — settle is the source of truth
-        logger.exception("settle broadcast failed run_ref=%s action=%s", run_ref, action)
+        logger.exception(
+            "settle broadcast failed run_ref=%s action=%s", run_ref, action
+        )
 
 
 def _latest_transition(record: Any) -> dict[str, str]:
@@ -166,13 +168,21 @@ def _latest_transition(record: Any) -> dict[str, str]:
     """
     transitions = getattr(record, "transitions", ()) or ()
     if not transitions:
-        return {"from_state": "unknown", "to_state": _state_value(getattr(record, "state", None))}
+        return {
+            "from_state": "unknown",
+            "to_state": _state_value(getattr(record, "state", None)),
+        }
     last = transitions[-1]
     if not isinstance(last, dict):
-        return {"from_state": "unknown", "to_state": _state_value(getattr(record, "state", None))}
+        return {
+            "from_state": "unknown",
+            "to_state": _state_value(getattr(record, "state", None)),
+        }
     return {
         "from_state": str(last.get("from_state", "unknown")),
-        "to_state": str(last.get("to_state", _state_value(getattr(record, "state", None)))),
+        "to_state": str(
+            last.get("to_state", _state_value(getattr(record, "state", None)))
+        ),
     }
 
 
@@ -233,7 +243,9 @@ async def launch_worker(
         }
 
     effective_command = command or ["claude"]
-    window_name = metadata.get("window_name", "main") if isinstance(metadata, dict) else "main"
+    window_name = (
+        metadata.get("window_name", "main") if isinstance(metadata, dict) else "main"
+    )
     result = _durable_manager.spawn(
         worker_type=worker_type,
         backend=backend,
@@ -324,7 +336,9 @@ async def worker_status(worker_id: str) -> dict:
         delta = record.last_seen_at - record.created_at
         uptime_seconds = int(delta.total_seconds())
         last_activity = getattr(record, "last_seen_at", None)
-        last_activity_iso = last_activity.isoformat() if last_activity is not None else None
+        last_activity_iso = (
+            last_activity.isoformat() if last_activity is not None else None
+        )
     except AttributeError, TypeError, ValueError:
         uptime_seconds = 0
         last_activity_iso = None
@@ -364,7 +378,11 @@ async def wait_for_state(
     """
     _metrics.record("wait_for_state")
     if _durable_manager is None:
-        return {"worker_id": worker_id, "state": "manager_unconfigured", "elapsed_ms": 0}
+        return {
+            "worker_id": worker_id,
+            "state": "manager_unconfigured",
+            "elapsed_ms": 0,
+        }
 
     from mahavishnu.workers.contract.state import WorkerLifecycleState
 
@@ -404,7 +422,9 @@ async def wait_for_state(
     }
 
 
-async def cancel_worker(worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000) -> dict:
+async def cancel_worker(
+    worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000
+) -> dict:
     """Cancel a worker gracefully. ``signal="SIGKILL"`` escalates after grace.
 
     The response always carries ``exit_code`` (F10) so callers can
@@ -611,7 +631,10 @@ async def worker_run_with_settle(
         metadata=metadata,
     )
     # Re-stamp the record with the actual worker_id if it changed during launch.
-    if launch_result.get("worker_id") and launch_result["worker_id"] != record.worker_id:
+    if (
+        launch_result.get("worker_id")
+        and launch_result["worker_id"] != record.worker_id
+    ):
         restamped = SettleRunRecord(
             run_ref=record.run_ref,
             worker_id=str(launch_result["worker_id"]),
@@ -713,7 +736,9 @@ async def worker_settle(
                 "state": "missing_bindings_content",
                 "error": "apply requires bindings_content={path: ours}",
             }
-        merge_payload = await _apply_merge(record, bindings_content, theirs=bindings_theirs)
+        merge_payload = await _apply_merge(
+            record, bindings_content, theirs=bindings_theirs
+        )
         if isinstance(merge_payload, dict) and merge_payload.get("error"):
             return {
                 "run_ref": run_ref,
@@ -811,7 +836,9 @@ async def _apply_merge(
         # because ``StrEnum`` values ARE plain strings — the constructor
         # just confirms the value is a known enum member.
         binding_strategy = (
-            MergeStrategy(binding.merge_strategy) if binding.merge_strategy is not None else None
+            MergeStrategy(binding.merge_strategy)
+            if binding.merge_strategy is not None
+            else None
         )
         try:
             result: MergeResult = await merge_three_way(
@@ -845,7 +872,9 @@ async def _apply_merge(
                 }
             )
         except MergeFailureError as exc:
-            fatal.append({"path": binding.path, "error": "merge_failure", "detail": str(exc)})
+            fatal.append(
+                {"path": binding.path, "error": "merge_failure", "detail": str(exc)}
+            )
         else:
             merged_results.append({"path": binding.path, "merged": result.merged})
 

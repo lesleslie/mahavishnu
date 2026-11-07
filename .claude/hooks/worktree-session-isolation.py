@@ -35,6 +35,7 @@ stderr (visible in Claude Code's hook output panel). Never raises.
 Reference: plan ``/Users/les/.claude/plans/cheerful-marinating-fountain.md``
             and followup ``docs/followups/2026-07-16-session-WORKTREE_ISOLATION.md``.
 """
+
 from __future__ import annotations
 
 import json
@@ -126,14 +127,19 @@ def _worktree_base_path() -> Path:
     that is the convention documented in the user-level and per-repo
     ``CLAUDE.md`` files.
     """
-    from platformdirs import PlatformDirs  # already a runtime dep; lazy to keep module-load cost low
+    from platformdirs import (
+        PlatformDirs,
+    )  # already a runtime dep; lazy to keep module-load cost low
+
     explicit = os.environ.get("MAHAVISHNU_WORKTREE_BASE_PATH")
     if explicit:
         return Path(explicit).expanduser().resolve()
     legacy = os.environ.get(ROOT_ENV)
     if legacy:
         return Path(legacy).expanduser().resolve()
-    _state_dir = Path(PlatformDirs(appname="mahavishnu", version="0.3.0").user_state_dir)
+    _state_dir = Path(
+        PlatformDirs(appname="mahavishnu", version="0.3.0").user_state_dir
+    )
     return (_state_dir / "worktrees").resolve()
 
 
@@ -177,7 +183,7 @@ def _cwd_is_inside_worktree(cwd: str) -> bool:
             check=True,
             timeout=5,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+    except subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError:
         return False
     git_dir = result.stdout.strip()
     # For a main repo, ``--git-dir`` returns ``.git`` (no ``/worktrees/``);
@@ -235,10 +241,12 @@ def _git_worktree_add_argv(
     """
     return [
         "git",
-        "-C", cwd,
+        "-C",
+        cwd,
         "worktree",
         "add",
-        "-B", branch,
+        "-B",
+        branch,
         "--",
         target_path,
         branch_base,
@@ -260,7 +268,7 @@ def _git_current_branch(cwd: str) -> str | None:
             check=True,
             timeout=5,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+    except subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError:
         return None
     branch = result.stdout.strip()
     if not branch or branch == "HEAD":
@@ -313,9 +321,7 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
         if existing is None:
             # Infer the worktree info from cwd + git.
             repo_path = str(Path(cwd).resolve())
-            while repo_path != "/" and not (
-                Path(repo_path) / ".git"
-            ).exists():
+            while repo_path != "/" and not (Path(repo_path) / ".git").exists():
                 repo_path = str(Path(repo_path).parent)
             branch = f"worktree-agent-{short}"
             wt_path = str(Path(cwd).resolve())
@@ -417,8 +423,7 @@ def _run_session_start(session_id_full: str, cwd: str) -> int:
         target_path.relative_to(root)
     except ValueError:
         _log(
-            f"worktree_path {target_path} is not under root {root}; "
-            f"SECURITY REJECTION"
+            f"worktree_path {target_path} is not under root {root}; SECURITY REJECTION"
         )
         # Best-effort cleanup: prune the worktree we just created.
         subprocess.run(  # nosec B603 — argv-list

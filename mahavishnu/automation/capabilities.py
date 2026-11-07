@@ -362,7 +362,9 @@ class CapabilityDetector:
 
         # Find best available backend
         available = [
-            s for s in self.get_available_backends() if s.available and s.capabilities is not None
+            s
+            for s in self.get_available_backends()
+            if s.available and s.capabilities is not None
         ]
 
         # Filter by required capabilities
@@ -377,7 +379,9 @@ class CapabilityDetector:
             return None
 
         # Sort by priority (highest first)
-        available.sort(key=lambda s: s.capabilities.priority if s.capabilities else 0, reverse=True)
+        available.sort(
+            key=lambda s: s.capabilities.priority if s.capabilities else 0, reverse=True
+        )
 
         return available[0]
 

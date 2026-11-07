@@ -47,9 +47,7 @@ class EvalSettings(BaseModel):
     enabled: bool = False
     default_storage: str = "mahavishnu.sqlite"
     default_dataset_loader: str = "mahavishnu.jsonl"
-    default_scorers: list[str] = Field(
-        default_factory=lambda: ["mahavishnu.contains"]
-    )
+    default_scorers: list[str] = Field(default_factory=lambda: ["mahavishnu.contains"])
     default_model_backend: str = "mahavishnu.mock"
     cost_budget_per_run: float = 5.0
     db_path: str = "~/.local/state/mahavishnu/eval/runs.sqlite"

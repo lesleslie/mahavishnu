@@ -272,7 +272,9 @@ class TestFilenameSanitization:
         # Should not be empty
         assert len(result) > 0
         # Should only contain safe characters
-        allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+        allowed_chars = set(
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
+        )
         assert all(c in allowed_chars for c in result)
 
     @given(st.text(min_size=200, max_size=500))
@@ -430,7 +432,7 @@ class TestTOCTOUPrevention:
                 )
                 # Should resolve to actual target
                 assert result.exists()
-            except (OSError, NotImplementedError):
+            except OSError, NotImplementedError:
                 # Symlinks may not be supported on this system
                 pass
 
@@ -465,7 +467,10 @@ class TestEdgeCases:
     @settings(max_examples=100)
     def test_empty_filename_rejected(self, filename):
         """Empty filenames should be rejected by sanitize_filename."""
-        assume(filename == "" or all(c in ["\x00", "\n", "\r", "\t", " "] for c in filename))
+        assume(
+            filename == ""
+            or all(c in ["\x00", "\n", "\r", "\t", " "] for c in filename)
+        )
         with pytest.raises(PathValidationError):
             sanitize_filename(filename)
 

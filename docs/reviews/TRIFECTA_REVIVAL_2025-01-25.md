@@ -106,6 +106,7 @@ ______________________________________________________________________
 class Priority(str, Literal["low", "normal", "high", "urgent"]):  # ❌ WRONG
     """Message priority levels"""
 
+
 # Error on import:
 # TypeError: Cannot subclass typing.Literal['low', 'normal', 'high', 'urgent']
 ```
@@ -122,17 +123,20 @@ class Priority(str, Literal["low", "normal", "high", "urgent"]):  # ❌ WRONG
 ```python
 from enum import Enum
 
+
 class Priority(str, Enum):
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
     URGENT = "urgent"
 
+
 class MessageType(str, Enum):
     REQUEST = "request"
     RESPONSE = "response"
     NOTIFICATION = "notification"
     UPDATE = "update"
+
 
 class MessageStatus(str, Enum):
     UNREAD = "unread"

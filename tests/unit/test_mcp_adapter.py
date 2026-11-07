@@ -44,7 +44,9 @@ def _envelope(
     ``MCPClient.call_tool`` seam, so the fakes must hand it a real one.
     """
     content = [] if text is None else [TextContent(type="text", text=text)]
-    return CallToolResult(content=content, structured_content=structured, is_error=is_error)
+    return CallToolResult(
+        content=content, structured_content=structured, is_error=is_error
+    )
 
 
 class TestMCPClientInit:
@@ -81,7 +83,9 @@ class TestMCPClientCallTool:
     async def test_call_tool_returns_result(self):
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(return_value=_envelope(structured={"key": "value"}))
+        client._mcp.call_tool = AsyncMock(
+            return_value=_envelope(structured={"key": "value"})
+        )
 
         result = await client.call_tool("get", {"key": "test"})
         assert result == {"key": "value"}
@@ -91,7 +95,9 @@ class TestMCPClientCallTool:
         """The wrapper passes the tool's payload through unchanged."""
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(return_value=_envelope(structured={"data": [1, 2, 3]}))
+        client._mcp.call_tool = AsyncMock(
+            return_value=_envelope(structured={"data": [1, 2, 3]})
+        )
 
         result = await client.call_tool("list", {})
         assert result == {"data": [1, 2, 3]}
@@ -100,7 +106,9 @@ class TestMCPClientCallTool:
         """String returns land in ``content[0].text`` and get JSON-decoded."""
         client = MCPClient("http://localhost")
         client._mcp = MagicMock()
-        client._mcp.call_tool = AsyncMock(return_value=_envelope(text='{"key": "value"}'))
+        client._mcp.call_tool = AsyncMock(
+            return_value=_envelope(text='{"key": "value"}')
+        )
 
         result = await client.call_tool("get", {"key": "test"})
         assert result == {"key": "value"}

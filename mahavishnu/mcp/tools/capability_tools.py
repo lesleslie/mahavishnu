@@ -213,7 +213,8 @@ def register_capability_tools(
     """
 
     @server.tool(
-        name="list_capabilities", description="List every registered engine and its provides."
+        name="list_capabilities",
+        description="List every registered engine and its provides.",
     )
     async def list_capabilities() -> dict[str, object]:
         """Ungated introspection tool: enumerate every engine + worker registration."""

@@ -137,7 +137,9 @@ class TestCodeIntelTools:
         that it does not error out on the missing ``.app`` attribute.
         """
         stub = _StubMCP(app=None)
-        register_session_buddy_tools(stub, session_manager=MagicMock(), mcp_client=MagicMock())
+        register_session_buddy_tools(
+            stub, session_manager=MagicMock(), mcp_client=MagicMock()
+        )
         tool = stub.tools["index_code_graph"]
         result = _run(tool(user_id="test-user", project_path="/tmp/repo"))
         # The legacy guard string must not appear in the result. Any
@@ -149,28 +151,40 @@ class TestCodeIntelTools:
 
     def test_get_function_context_without_app(self):
         stub = _StubMCP(app=None)
-        register_session_buddy_tools(stub, session_manager=MagicMock(), mcp_client=MagicMock())
+        register_session_buddy_tools(
+            stub, session_manager=MagicMock(), mcp_client=MagicMock()
+        )
         tool = stub.tools["get_function_context"]
-        result = _run(tool(user_id="test-user", project_path="/tmp/repo", function_name="foo"))
+        result = _run(
+            tool(user_id="test-user", project_path="/tmp/repo", function_name="foo")
+        )
         assert result["status"] == "error"
 
     def test_find_related_code_without_app(self):
         stub = _StubMCP(app=None)
-        register_session_buddy_tools(stub, session_manager=MagicMock(), mcp_client=MagicMock())
+        register_session_buddy_tools(
+            stub, session_manager=MagicMock(), mcp_client=MagicMock()
+        )
         tool = stub.tools["find_related_code"]
-        result = _run(tool(user_id="test-user", project_path="/tmp/repo", file_path="foo.py"))
+        result = _run(
+            tool(user_id="test-user", project_path="/tmp/repo", file_path="foo.py")
+        )
         assert result["status"] == "error"
 
     def test_index_documentation_without_app(self):
         stub = _StubMCP(app=None)
-        register_session_buddy_tools(stub, session_manager=MagicMock(), mcp_client=MagicMock())
+        register_session_buddy_tools(
+            stub, session_manager=MagicMock(), mcp_client=MagicMock()
+        )
         tool = stub.tools["index_documentation"]
         result = _run(tool(user_id="test-user", project_path="/tmp/repo"))
         assert result["status"] == "error"
 
     def test_search_documentation_without_app(self):
         stub = _StubMCP(app=None)
-        register_session_buddy_tools(stub, session_manager=MagicMock(), mcp_client=MagicMock())
+        register_session_buddy_tools(
+            stub, session_manager=MagicMock(), mcp_client=MagicMock()
+        )
         tool = stub.tools["search_documentation"]
         result = _run(tool(user_id="test-user", query="find me docs"))
         assert result["status"] == "error"
@@ -283,7 +297,9 @@ class TestTrackChannelSession:
         payload = fake_mcp_client.call_tool.await_args.args[1]
         assert len(payload["message_preview"]) == 200
 
-    def test_upstream_exception_returns_error_with_event_id(self, registered, fake_mcp_client):
+    def test_upstream_exception_returns_error_with_event_id(
+        self, registered, fake_mcp_client
+    ):
         """If the upstream Session-Buddy call raises, the tool returns an error and still echoes event_id."""
         fake_mcp_client.call_tool = AsyncMock(side_effect=RuntimeError("upstream down"))
         tool = registered.tools["track_channel_session"]
@@ -388,7 +404,9 @@ class TestSendProjectMessage:
         ``if not app`` check, so we only assert the documented contract.
         """
         stub = _StubMCP(app=None)
-        register_session_buddy_tools(stub, session_manager=MagicMock(), mcp_client=MagicMock())
+        register_session_buddy_tools(
+            stub, session_manager=MagicMock(), mcp_client=MagicMock()
+        )
         tool = stub.tools["send_project_message"]
         result = _run(
             tool(
@@ -412,7 +430,9 @@ class TestListProjectMessages:
 
     def test_returns_error_without_app(self):
         stub = _StubMCP(app=None)
-        register_session_buddy_tools(stub, session_manager=MagicMock(), mcp_client=MagicMock())
+        register_session_buddy_tools(
+            stub, session_manager=MagicMock(), mcp_client=MagicMock()
+        )
         tool = stub.tools["list_project_messages"]
         result = _run(tool(user_id="test-user", project="myproj"))
         assert result["status"] == "error"

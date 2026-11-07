@@ -301,9 +301,7 @@ tracer = trace.get_tracer(__name__)
 
 # Create OTel storage exporter
 exporter = OTelStorageAdapter(otel_settings)
-trace.get_tracer_provider().add_span_processor(
-    SimpleSpanProcessor(exporter)
-)
+trace.get_tracer_provider().add_span_processor(SimpleSpanProcessor(exporter))
 
 # Create spans (automatically stored with semantic embeddings)
 with tracer.start_as_current_span("example_operation") as span:
@@ -317,9 +315,7 @@ with tracer.start_as_current_span("example_operation") as span:
 ```python
 # Search for traces by meaning
 results = await adapter.search_traces(
-    query="database connection timeout errors",
-    limit=10,
-    threshold=0.85
+    query="database connection timeout errors", limit=10, threshold=0.85
 )
 
 for result in results:
@@ -404,9 +400,7 @@ from opentelemetry.sdk.trace import ReadableSpan
 
 # Create span manually
 span_context = SpanContext(
-    trace_id=0x1234567890abcdef,
-    span_id=0xabcdef1234567890,
-    is_remote=False
+    trace_id=0x1234567890ABCDEF, span_id=0xABCDEF1234567890, is_remote=False
 )
 
 # Store trace with custom summary
@@ -417,7 +411,7 @@ await adapter.store_trace(
     start_time=datetime.now(timezone.utc),
     end_time=datetime.now(timezone.utc),
     attributes={"key": "value"},
-    summary="Custom operation summary for semantic search"
+    summary="Custom operation summary for semantic search",
 )
 ```
 
@@ -437,7 +431,7 @@ for trace in traces["data"]:
     await adapter.store_trace(
         trace_id=trace["traceID"],
         spans=[convert_jaeger_span(span) for span in trace["spans"]],
-        summary=generate_summary(trace)
+        summary=generate_summary(trace),
     )
 ```
 
@@ -448,11 +442,10 @@ for trace in traces["data"]:
 import requests
 
 tempo_url = "http://localhost:3100"
-response = requests.get(f"{tempo_url}/api/search", params={
-    "min": 0,
-    "max": time.time(),
-    "query": "{service.name='my-service'}"
-})
+response = requests.get(
+    f"{tempo_url}/api/search",
+    params={"min": 0, "max": time.time(), "query": "{service.name='my-service'}"},
+)
 
 # Migrate traces
 for trace in response.json()["traces"]:

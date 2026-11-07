@@ -156,7 +156,9 @@ def test_top_skills_and_recent_window_and_clear() -> None:
 
 def test_export_import_and_context_singleton() -> None:
     engine = tl.TeamLearningEngine()
-    engine.record_outcome(_outcome(intent="build", mode="broadcast", success=True, quality=88))
+    engine.record_outcome(
+        _outcome(intent="build", mode="broadcast", success=True, quality=88)
+    )
     exported = engine.export_stats()
     assert "skill_stats" in exported
     assert "intent_stats" in exported

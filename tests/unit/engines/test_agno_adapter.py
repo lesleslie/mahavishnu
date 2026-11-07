@@ -528,7 +528,9 @@ class TestMCPToolsRegistry:
         assert registry._initialized is False
 
     @pytest.mark.asyncio
-    async def test_initialize_mcp_tools(self, agno_tools_config: AgnoToolsConfig) -> None:
+    async def test_initialize_mcp_tools(
+        self, agno_tools_config: AgnoToolsConfig
+    ) -> None:
         """Test MCP tools initialization."""
         registry = MCPToolsRegistry(agno_tools_config)
 
@@ -546,7 +548,9 @@ class TestMCPToolsRegistry:
             assert registry._mcp_tools == mock_tools
 
     @pytest.mark.asyncio
-    async def test_initialize_failure_graceful(self, agno_tools_config: AgnoToolsConfig) -> None:
+    async def test_initialize_failure_graceful(
+        self, agno_tools_config: AgnoToolsConfig
+    ) -> None:
         """Test that MCP init failure is handled gracefully."""
         registry = MCPToolsRegistry(agno_tools_config)
 
@@ -627,7 +631,9 @@ class TestAgnoAdapter:
         assert adapter.agno_config.llm.provider == mock_settings.agno.llm.provider
         assert adapter.agno_config.llm.model_id == mock_settings.agno.llm.model_id
 
-    def test_config_extraction_direct(self, agno_adapter_config: AgnoAdapterConfig) -> None:
+    def test_config_extraction_direct(
+        self, agno_adapter_config: AgnoAdapterConfig
+    ) -> None:
         """Test config extraction when passed directly."""
         adapter = AgnoAdapter(agno_adapter_config)
         # Check key fields match instead of object identity

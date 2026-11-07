@@ -21,7 +21,9 @@ def parse_agent_file(file_path: str) -> dict:
 
     # Extract frontmatter
     name = re.search(r"^name:\s*(.+)$", content, re.MULTILINE)
-    desc = re.search(r"^description:\s*(.+?)(?=\nmodel:)", content, re.DOTALL | re.MULTILINE)
+    desc = re.search(
+        r"^description:\s*(.+?)(?=\nmodel:)", content, re.DOTALL | re.MULTILINE
+    )
     model = re.search(r"^model:\s*(.+)$", content, re.MULTILINE)
     color = re.search(r"^color:\s*(.+)$", content, re.MULTILINE)
     tags = re.search(r"^tags:\s*\n((?:^-\s*.+$\n?)+)", content, re.MULTILINE)
@@ -121,7 +123,9 @@ def print_agent(agent: dict, score: float = None):
     }
 
     emoji = color_emoji.get(agent["color"], "⚪")
-    model_emoji = {"opus": "💎", "sonnet": "🎵", "haiku-4.5": "⚡"}.get(agent["model"], "🤖")
+    model_emoji = {"opus": "💎", "sonnet": "🎵", "haiku-4.5": "⚡"}.get(
+        agent["model"], "🤖"
+    )
 
     print(f"\n{emoji} {agent['name']}")
     if score:

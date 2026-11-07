@@ -249,7 +249,9 @@ class TestDatabaseURLRedaction:
         redacted = redactor.redact_string(conn_str)
 
         assert "secret123" not in redacted
-        assert "[REDACTED:CONNECTION_STRING]" in redacted or "***REDACTED***" in redacted
+        assert (
+            "[REDACTED:CONNECTION_STRING]" in redacted or "***REDACTED***" in redacted
+        )
 
 
 # =============================================================================
@@ -272,7 +274,10 @@ MIIDXTCCAkWgAwIBAgIJAKL0UG+mRKqzMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV
         assert "-----BEGIN" not in redacted
         assert "CERTIFICATE" not in redacted
         assert "***REDACTED***" in redacted
-        assert "MIIDXTCCAkWgAwIBAgIJAKL0UG+mRKqzMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV" not in redacted
+        assert (
+            "MIIDXTCCAkWgAwIBAgIJAKL0UG+mRKqzMA0GCSqGSIb3DQEBCwUAMEUxCzAJBgNV"
+            not in redacted
+        )
 
 
 # =============================================================================

@@ -60,9 +60,7 @@ class _FakeRBAC:
         self.allow = allow
         self.calls: list[tuple[str, str, Any]] = []
 
-    async def check_permission(
-        self, user_id: str, repo: str, permission: Any
-    ) -> bool:
+    async def check_permission(self, user_id: str, repo: str, permission: Any) -> bool:
         self.calls.append((user_id, repo, permission))
         return self.allow
 
@@ -463,9 +461,7 @@ class TestBootstrapWiring:
             "_register_git_analytics_tools",  # line 910
         ],
     )
-    def test_bootstrap_callsite_threads_rbac_manager(
-        self, call_line: str
-    ) -> None:
+    def test_bootstrap_callsite_threads_rbac_manager(self, call_line: str) -> None:
         """Each callsite must include ``rbac_manager=getattr(server.app, ...)``."""
         import inspect
 

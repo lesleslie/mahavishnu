@@ -21,7 +21,9 @@ from mahavishnu.core.approval_manager import (
 
 
 @pytest.fixture
-def manager_with_pending_request() -> tuple[ApprovalManager, MagicMock, ApprovalRequest]:
+def manager_with_pending_request() -> tuple[
+    ApprovalManager, MagicMock, ApprovalRequest
+]:
     """ApprovalManager wired to a mock MCP backend with one pending request."""
     mock_mcp = MagicMock()
     mock_mcp.schedule_put = MagicMock()
@@ -131,7 +133,9 @@ def test_respond_still_deletes_when_flag_disabled(
 
     monkeypatch.setenv("APPROVAL_LOG_V1_ENABLED", "false")
 
-    with patch("mahavishnu.core.approval_manager.record_approval_decision") as mock_writer:
+    with patch(
+        "mahavishnu.core.approval_manager.record_approval_decision"
+    ) as mock_writer:
         manager.respond(request.id, approved=True)
 
     mock_mcp.schedule_delete.assert_called_once_with(f"approval/v1/{request.id}")
@@ -156,7 +160,9 @@ def test_respond_on_expired_request_still_deletes_when_flag_disabled(
 
     monkeypatch.setenv("APPROVAL_LOG_V1_ENABLED", "false")
 
-    with patch("mahavishnu.core.approval_manager.record_approval_decision") as mock_writer:
+    with patch(
+        "mahavishnu.core.approval_manager.record_approval_decision"
+    ) as mock_writer:
         with pytest.raises(ValueError, match="expired"):
             manager.respond(expired.id, approved=True)
 

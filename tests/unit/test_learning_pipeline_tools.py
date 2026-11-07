@@ -41,7 +41,9 @@ class _FakePipelineService:
     last_result: _FakePipelineResult | None = _FakePipelineResult()
 
     async def run_once(self) -> _FakePipelineResult:
-        return _FakePipelineResult(cycle_id="manual-trigger", drafts_evaluated=7, skills_promoted=2)
+        return _FakePipelineResult(
+            cycle_id="manual-trigger", drafts_evaluated=7, skills_promoted=2
+        )
 
 
 @dataclass
@@ -198,7 +200,9 @@ async def test_list_evidence_not_available() -> None:
 
 @pytest.mark.asyncio
 async def test_list_evidence_respects_limit() -> None:
-    evidence_store = _FakeEvidenceStore([_FakeEvidence(evidence_id=f"ev-{i}") for i in range(5)])
+    evidence_store = _FakeEvidenceStore(
+        [_FakeEvidence(evidence_id=f"ev-{i}") for i in range(5)]
+    )
     tools = _register(evidence=evidence_store)
     result = await tools["list_evidence"]("", limit=2)
     assert result["count"] == 2
@@ -292,7 +296,9 @@ async def test_list_pending_drafts_body_truncated() -> None:
     long_body = "x" * 1000
     registry = _FakeSkillRegistry(
         active=[
-            _FakeSkillRecord(skill_id="long-skill", version="1.0", state="draft", body=long_body)
+            _FakeSkillRecord(
+                skill_id="long-skill", version="1.0", state="draft", body=long_body
+            )
         ]
     )
     tools = _register(registry=registry)

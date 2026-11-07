@@ -116,6 +116,7 @@ ______________________________________________________________________
 ```python
 class CSRFMiddleware(BaseHTTPMiddleware):
     """Middleware to enforce CSRF protection on state-changing requests."""
+
     # Full implementation with cookie_name, secret_key, etc.
 ```
 
@@ -208,7 +209,7 @@ loader = AsyncFileSystemLoader(template_dir)
 env = AsyncEnvironment(
     loader=loader,
     autoescape=False,
-    enable_async=True  # CRITICAL for async rendering
+    enable_async=True,  # CRITICAL for async rendering
 )
 
 # Template inheritance works correctly
@@ -270,7 +271,7 @@ encrypted = enc.encrypt("sensitive session content")
 session_data = {
     "content": "User conversation",
     "api_key": "sk_live_12345",
-    "timestamp": "2026-02-02T12:00:00Z"
+    "timestamp": "2026-02-02T12:00:00Z",
 }
 encrypted_session = enc.encrypt_dict(session_data)
 
@@ -315,11 +316,13 @@ ______________________________________________________________________
 ```python
 from akosha.security import require_auth, AuthenticationMiddleware
 
+
 # Protect aggregation tools with @require_auth decorator
 @require_auth
 async def search_all_systems(query: str, limit: int = 10) -> dict[str, Any]:
     """Search across all system memories - REQUIRES AUTHENTICATION"""
     ...
+
 
 # Environment variable configuration
 # AKOSHA_API_TOKEN - required for authentication

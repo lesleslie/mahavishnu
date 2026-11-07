@@ -46,7 +46,9 @@ from typing import Any
 try:
     import yaml
 except ImportError:
-    print("ERROR: PyYAML required. Install with: uv pip install pyyaml", file=sys.stderr)
+    print(
+        "ERROR: PyYAML required. Install with: uv pip install pyyaml", file=sys.stderr
+    )
     sys.exit(2)
 
 
@@ -168,7 +170,10 @@ def resolve_section(name: str, role: str) -> str:
 SECTION_ORDER: list[tuple[str, str]] = [
     ("core", "Core 6 (in-scope for streaming tar Phase 3)"),
     ("web_framework", "Web / framework libraries"),
-    ("mcp_server", "Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`)"),
+    (
+        "mcp_server",
+        "Bodai MCP servers (standalone; per `bodai-mcp-servers-not-mycelium-core.md`)",
+    ),
     ("extensions", "Extensions"),
     ("desktop", "Desktop / GUI"),
     ("meta", "Meta"),
@@ -245,7 +250,11 @@ def filter_active(repos: list[dict], excluded: Collection[str] = ()) -> list[dic
     section at the same time.
     """
     excluded_names = set(excluded)
-    return [r for r in repos if r.get("status") == "active" and r["name"] not in excluded_names]
+    return [
+        r
+        for r in repos
+        if r.get("status") == "active" and r["name"] not in excluded_names
+    ]
 
 
 def render_repo_row(repo: dict, overlay: dict, root: Path | None) -> str:
@@ -293,7 +302,9 @@ def bucket_repos(repos: list[dict]) -> dict[str, list[dict]]:
     return bucketed
 
 
-def render_core_section(core_repos: list[dict], overlay: dict, root: Path | None) -> str:
+def render_core_section(
+    core_repos: list[dict], overlay: dict, root: Path | None
+) -> str:
     out = [
         "### Core 6 (in-scope for streaming tar Phase 3)\n",
         "| Repo | Path | Current `requires-python` | Notes |",
@@ -305,7 +316,9 @@ def render_core_section(core_repos: list[dict], overlay: dict, root: Path | None
     return "\n".join(out)
 
 
-def render_section(title: str, repos: list[dict], overlay: dict, root: Path | None) -> str:
+def render_section(
+    title: str, repos: list[dict], overlay: dict, root: Path | None
+) -> str:
     out = [
         f"### {title}\n",
         "| Repo | Path | Current `requires-python` | Notes |",
@@ -327,7 +340,9 @@ def render_archived_section(archived: dict, root: Path | None) -> str:
         info = archived[name]
         archive_path = info.get("archive_path")
         rendered = render_repo_path(archive_path, root) if archive_path else "n/a"
-        out.append(f"| {name} | {rendered} | n/a (archived) | {info.get('exclusion_reason', '')} |")
+        out.append(
+            f"| {name} | {rendered} | n/a (archived) | {info.get('exclusion_reason', '')} |"
+        )
     out.append("")
     return "\n".join(out)
 
@@ -354,7 +369,9 @@ def render_summary(bucketed: dict[str, list[dict]], overlay: dict) -> str:
     The counts come from the same buckets the renderer uses, so the summary
     can never disagree with the tables above it.
     """
-    counts: dict[str, int] = {sec: len(bucketed.get(sec, [])) for sec, _ in SECTION_ORDER}
+    counts: dict[str, int] = {
+        sec: len(bucketed.get(sec, [])) for sec, _ in SECTION_ORDER
+    }
     counts["archived"] = len(overlay.get("archived_repos", {}))
     total_active = sum(counts[s] for s, _ in SECTION_ORDER)
     out = ["## Summary counts\n"]
@@ -472,7 +489,9 @@ def generate(
         if sec == "core":
             continue
         if bucketed[sec]:
-            final.append(render_section(title, bucketed[sec], overlay.get("repos", {}), root))
+            final.append(
+                render_section(title, bucketed[sec], overlay.get("repos", {}), root)
+            )
     archived = overlay.get("archived_repos", {})
     if archived:
         final.append(render_archived_section(archived, root))
@@ -503,7 +522,9 @@ def main() -> int:
         help="Path to per-machine registry overlay (gitignored). Skipped if absent.",
     )
     parser.add_argument(
-        "--output", default="BODAI_REPO_REGISTRY.md", help="Path to write generated registry doc"
+        "--output",
+        default="BODAI_REPO_REGISTRY.md",
+        help="Path to write generated registry doc",
     )
     args = parser.parse_args()
 
@@ -526,7 +547,9 @@ def main() -> int:
             )
             eco = example
         else:
-            print(f"ERROR: {eco} not found (and no {example} template)", file=sys.stderr)
+            print(
+                f"ERROR: {eco} not found (and no {example} template)", file=sys.stderr
+            )
             return 2
     if not overlay.is_file():
         print(f"ERROR: {overlay} not found", file=sys.stderr)
@@ -538,7 +561,9 @@ def main() -> int:
         if out.is_file() and out.read_text() == content:
             print(f"OK: {out} matches generated content")
             return 0
-        print(f"DRIFT: {out} differs from generated content; run without --check to regenerate")
+        print(
+            f"DRIFT: {out} differs from generated content; run without --check to regenerate"
+        )
         return 1
 
     out.write_text(content)

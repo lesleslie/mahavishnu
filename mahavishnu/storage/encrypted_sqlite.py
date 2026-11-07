@@ -179,7 +179,9 @@ class EncryptedSQLite:
             logger.debug("Database decrypted successfully")
             return True
 
-        except Exception as e:  # Storage helper translates any failure into EncryptionKeyError
+        except (
+            Exception
+        ) as e:  # Storage helper translates any failure into EncryptionKeyError
             logger.error(f"Decryption failed: {e}")
             # Re-raise to signal decryption failure to caller
             raise EncryptionKeyError(
@@ -245,7 +247,9 @@ class EncryptedSQLite:
                 if self.enc_path.exists():
                     self._decrypt_database()  # Will raise EncryptionKeyError if wrong key
                 else:
-                    logger.debug(f"No encrypted database found at {self.enc_path}, creating new")
+                    logger.debug(
+                        f"No encrypted database found at {self.enc_path}, creating new"
+                    )
 
             # Connect to (decrypted) database
             self._conn = sqlite3.connect(str(self.db_path))
@@ -291,7 +295,11 @@ class EncryptedSQLite:
             self._conn = None
 
         # Encrypt database on close
-        if self._using_encryption and self.db_path.exists() and self._encrypt_database():
+        if (
+            self._using_encryption
+            and self.db_path.exists()
+            and self._encrypt_database()
+        ):
             # Delete plaintext database after successful encryption
             self.db_path.unlink()
             logger.debug("Plaintext database removed after encryption")
@@ -316,7 +324,9 @@ class EncryptedSQLite:
 
         return self._conn.execute(sql, parameters)
 
-    def executemany(self, sql: str, parameters: list[tuple[Any, ...]]) -> sqlite3.Cursor:
+    def executemany(
+        self, sql: str, parameters: list[tuple[Any, ...]]
+    ) -> sqlite3.Cursor:
         """Execute multiple SQL statements with parameters.
 
         Args:
@@ -632,7 +642,9 @@ async def migrate_plaintext_to_encrypted(
     if not plaintext_db.exists():
         raise FileNotFoundError(f"Plaintext database not found: {plaintext_db}")
 
-    logger.info(f"Migrating plaintext database to encrypted: {plaintext_db} → {encrypted_db}")
+    logger.info(
+        f"Migrating plaintext database to encrypted: {plaintext_db} → {encrypted_db}"
+    )
 
     # Create encrypted database
     conn_enc = EncryptedSQLite(encrypted_db, encryption_key)

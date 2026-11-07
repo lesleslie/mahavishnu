@@ -91,12 +91,18 @@ class TestGpuHandlerPoolExecution:
 
         req = _fake_run_request(
             status_value="COMPLETED",
-            output_value={"category": "vision", "result": "described", "model": "test-model"},
+            output_value={
+                "category": "vision",
+                "result": "described",
+                "model": "test-model",
+            },
         )
         endpoint_mock = MagicMock(run=MagicMock(return_value=req))
         pool._endpoint = endpoint_mock
 
-        result = await pool.execute_task({"category": "vision", "image_url": "http://x/img.jpg"})
+        result = await pool.execute_task(
+            {"category": "vision", "image_url": "http://x/img.jpg"}
+        )
 
         assert result["status"] == "completed"
         assert result["output"]["category"] == "vision"
@@ -108,12 +114,18 @@ class TestGpuHandlerPoolExecution:
 
         req = _fake_run_request(
             status_value="COMPLETED",
-            output_value={"category": "ml_inference", "result": "predicted", "model": "test-model"},
+            output_value={
+                "category": "ml_inference",
+                "result": "predicted",
+                "model": "test-model",
+            },
         )
         endpoint_mock = MagicMock(run=MagicMock(return_value=req))
         pool._endpoint = endpoint_mock
 
-        result = await pool.execute_task({"category": "ml_inference", "prompt": "classify this"})
+        result = await pool.execute_task(
+            {"category": "ml_inference", "prompt": "classify this"}
+        )
 
         assert result["status"] == "completed"
         assert result["output"]["category"] == "ml_inference"
@@ -125,7 +137,9 @@ class TestGpuHandlerPoolExecution:
         endpoint_mock = MagicMock(run=MagicMock())
         pool._endpoint = endpoint_mock
 
-        result = await pool.execute_task({"category": "code_generation", "prompt": "write code"})
+        result = await pool.execute_task(
+            {"category": "code_generation", "prompt": "write code"}
+        )
 
         assert result["status"] == "rejected"
         assert "GpuHandlerPool only handles" in result["error"]

@@ -65,7 +65,9 @@ class CallerKind(StrEnum):
     CLAUDE_CODE = "claude_code"
     WORKFLOW = "workflow"
     CLI = "cli"
-    UNKNOWN = "unknown"  # Coerced target for any unrecognized value at the MCP wire boundary
+    UNKNOWN = (
+        "unknown"  # Coerced target for any unrecognized value at the MCP wire boundary
+    )
 
 
 def coerce_caller_kind(value: Any) -> CallerKind:
@@ -221,9 +223,13 @@ class PoolManager:
         # ``settings/mahavishnu.yaml``.
         self._caller_quota: dict[CallerKind, _QuotaState] = {}
 
-        logger.info("PoolManager initialized with O(log n) heap routing and concurrent collection")
+        logger.info(
+            "PoolManager initialized with O(log n) heap routing and concurrent collection"
+        )
 
-    async def _persist_pool_state(self, pool_id: str, pool: BasePool, status: str) -> None:
+    async def _persist_pool_state(
+        self, pool_id: str, pool: BasePool, status: str
+    ) -> None:
         if self._mcp_state is None:
             return
         try:
@@ -294,7 +300,9 @@ class PoolManager:
         worker_counts: dict[str, int] = {}
         for pool in self._pools.values():
             pool_type = pool.config.pool_type
-            worker_counts[pool_type] = worker_counts.get(pool_type, 0) + len(pool._workers)
+            worker_counts[pool_type] = worker_counts.get(pool_type, 0) + len(
+                pool._workers
+            )
 
         active_pool_types = set(self._pool_worker_counts.keys())
         for pool_id in active_pool_types:
@@ -304,7 +312,9 @@ class PoolManager:
 
         known_types = set(list_pool_types()) | set(worker_counts.keys())
         for pool_type in known_types:
-            pool_workers_active.labels(pool_type=pool_type).set(worker_counts.get(pool_type, 0))
+            pool_workers_active.labels(pool_type=pool_type).set(
+                worker_counts.get(pool_type, 0)
+            )
 
     @staticmethod
     def _resolve_auto_spawn_defaults() -> dict[str, Any]:
@@ -455,7 +465,9 @@ class PoolManager:
 
             return pool_id
 
-        except Exception as e:  # CLI/MCP entry point — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # CLI/MCP entry point — broad catch is the documented contract
             logger.error(f"Failed to spawn pool: {e}")
             raise
 
@@ -776,9 +788,13 @@ class PoolManager:
         selector = await self._apply_fitness_aware_routing(selector, task_class)
 
         if selector == PoolSelector.AFFINITY:
-            pool_id, reason = await self._route_by_affinity(pool_affinity, caller_pool_allowlist)
+            pool_id, reason = await self._route_by_affinity(
+                pool_affinity, caller_pool_allowlist
+            )
         elif selector == PoolSelector.PEER_AFFINITY:
-            pool_id, reason = await self._route_by_peer_affinity(task, caller_pool_allowlist)
+            pool_id, reason = await self._route_by_peer_affinity(
+                task, caller_pool_allowlist
+            )
         elif selector == PoolSelector.LEAST_LOADED:
             pool_id = await self._get_least_loaded_pool()
             if pool_id is None:
@@ -876,7 +892,9 @@ class PoolManager:
                 return  # feature off; no buffer needed
             buffer = QueueingObservationBuffer(
                 pool_id=pool_id,
-                min_observations=int(settings.get("queueing_warmup_min_observations", 100)),
+                min_observations=int(
+                    settings.get("queueing_warmup_min_observations", 100)
+                ),
                 min_seconds=float(settings.get("queueing_warmup_min_seconds", 600.0)),
             )
             self._queueing_buffers[pool_id] = buffer
@@ -949,7 +967,10 @@ class PoolManager:
         # future refactor of those inner selectors could silently
         # bypass the allowlist.
         if selector in (PoolSelector.AFFINITY, PoolSelector.PEER_AFFINITY):
-            if caller_pool_allowlist is not None and inner_pool_id not in caller_pool_allowlist:
+            if (
+                caller_pool_allowlist is not None
+                and inner_pool_id not in caller_pool_allowlist
+            ):
                 raise RuntimeError(
                     f"Queueing fallback would route to pool "
                     f"{inner_pool_id!r} which is not in caller_pool_allowlist "
@@ -981,7 +1002,10 @@ class PoolManager:
         # review): if caller_pool_allowlist is set and the inner pick
         # isn't in it, raise rather than silently bypass the allowlist.
         if not predicted_waits:
-            if caller_pool_allowlist is not None and inner_pool_id not in caller_pool_allowlist:
+            if (
+                caller_pool_allowlist is not None
+                and inner_pool_id not in caller_pool_allowlist
+            ):
                 raise RuntimeError(
                     f"Queueing fallback would route to pool "
                     f"{inner_pool_id!r} which is not in caller_pool_allowlist "
@@ -1044,7 +1068,9 @@ class PoolManager:
             snapshot[pid] = float(count)
         return snapshot
 
-    def pool_queueing_observations(self, pool_id: str, window_seconds: int = 600) -> dict[str, Any]:
+    def pool_queueing_observations(
+        self, pool_id: str, window_seconds: int = 600
+    ) -> dict[str, Any]:
         """Return the per-pool queueing observation buffer for ops/debugging.
 
         Implements the underlying method for the
@@ -1142,9 +1168,13 @@ class PoolManager:
                 pool_affinity,
                 sorted(caller_pool_allowlist),
             )
-            pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
+            pool_id = await self._select_least_loaded_in_allowlist(
+                caller_pool_allowlist
+            )
             if pool_id is None:
-                raise RuntimeError("No pools available for routing within caller_pool_allowlist")
+                raise RuntimeError(
+                    "No pools available for routing within caller_pool_allowlist"
+                )
             return pool_id, "affinity_allowlist_filtered_fallback"
         return pool_affinity, "affinity"
 
@@ -1205,9 +1235,13 @@ class PoolManager:
                 peer_id,
                 project_id,
             )
-            pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
+            pool_id = await self._select_least_loaded_in_allowlist(
+                caller_pool_allowlist
+            )
             if pool_id is None:
-                raise RuntimeError("No pools available for routing within caller_pool_allowlist")
+                raise RuntimeError(
+                    "No pools available for routing within caller_pool_allowlist"
+                )
             return pool_id, "peer_affinity_fallback_least_loaded"
         if resolved_pool_id not in self._pools:
             # Normal during pool respawns — log and fall back rather than crash.
@@ -1217,9 +1251,13 @@ class PoolManager:
                 peer_id,
                 resolved_pool_id,
             )
-            pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
+            pool_id = await self._select_least_loaded_in_allowlist(
+                caller_pool_allowlist
+            )
             if pool_id is None:
-                raise RuntimeError("No pools available for routing within caller_pool_allowlist")
+                raise RuntimeError(
+                    "No pools available for routing within caller_pool_allowlist"
+                )
             return pool_id, "peer_affinity_pool_unknown_fallback"
         if not self._is_pool_in_allowlist(resolved_pool_id, caller_pool_allowlist):
             # Allowlist is authoritative — discard the hint and fall back within it.
@@ -1230,9 +1268,13 @@ class PoolManager:
                 resolved_pool_id,
                 sorted(caller_pool_allowlist),
             )
-            pool_id = await self._select_least_loaded_in_allowlist(caller_pool_allowlist)
+            pool_id = await self._select_least_loaded_in_allowlist(
+                caller_pool_allowlist
+            )
             if pool_id is None:
-                raise RuntimeError("No pools available for routing within caller_pool_allowlist")
+                raise RuntimeError(
+                    "No pools available for routing within caller_pool_allowlist"
+                )
             return pool_id, "peer_affinity_allowlist_filtered_fallback"
         return resolved_pool_id, "peer_affinity"
 
@@ -1493,7 +1535,11 @@ class PoolManager:
         pools_info = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Filter out exceptions and return valid results
-        return [cast("dict[str, Any]", p) for p in pools_info if not isinstance(p, Exception)]
+        return [
+            cast("dict[str, Any]", p)
+            for p in pools_info
+            if not isinstance(p, Exception)
+        ]
 
     async def health_check(self) -> dict[str, Any]:
         """Get health status of all pools.
@@ -1511,11 +1557,15 @@ class PoolManager:
         pools_info = await self.list_pools()
 
         # Check if any pool is unhealthy
-        unhealthy_pools = [p for p in pools_info if p["status"] in ("failed", "unhealthy")]
+        unhealthy_pools = [
+            p for p in pools_info if p["status"] in ("failed", "unhealthy")
+        ]
 
         overall_status = "healthy"
         if unhealthy_pools:
-            overall_status = "degraded" if len(unhealthy_pools) < len(pools_info) else "unhealthy"
+            overall_status = (
+                "degraded" if len(unhealthy_pools) < len(pools_info) else "unhealthy"
+            )
 
         return {
             "status": overall_status,

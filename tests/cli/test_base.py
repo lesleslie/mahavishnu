@@ -4,6 +4,7 @@ Phase 3 Task 4.6 — BodaiCLIBase adoption for mahavishnu. These tests guard
 that the subclass wires up version/doctor/health correctly and that the
 override hooks return real data (not ``{}`` or ``UNAVAILABLE`` stubs).
 """
+
 from __future__ import annotations
 
 import json

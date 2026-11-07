@@ -1,4 +1,5 @@
 """Smoke test: drain sub-plan Op values are in the literal."""
+
 from __future__ import annotations
 
 import pytest
@@ -8,8 +9,14 @@ from mahavishnu.jot.events import Op
 
 @pytest.mark.parametrize(
     "op_value",
-    ["dispatch", "dispatch_done", "dispatch_failed",
-     "defer", "defer_expired", "delete"],
+    [
+        "dispatch",
+        "dispatch_done",
+        "dispatch_failed",
+        "defer",
+        "defer_expired",
+        "delete",
+    ],
 )
 def test_op_literal_includes_drain_value(op_value: str) -> None:
     """The Op literal type accepts all 6 new drain values."""

@@ -33,14 +33,18 @@ def _no_gate(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.delenv(toggles.GATE_ENV, raising=False)
     _RECORDED.clear()
-    monkeypatch.setattr(lifecycle, "apply", lambda _harness, action: _RECORDED.append(action))
+    monkeypatch.setattr(
+        lifecycle, "apply", lambda _harness, action: _RECORDED.append(action)
+    )
 
 
 @pytest.fixture(autouse=True)
 def _no_launchd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Never touch the real launchd domain, plist, port, or config directory."""
     monkeypatch.setattr(lifecycle, "GUI_DOMAIN", f"gui/test-{tmp_path.name}")
-    monkeypatch.setattr(lifecycle, "TARGET_PLIST", tmp_path / "ai.bifrost.gateway.plist")
+    monkeypatch.setattr(
+        lifecycle, "TARGET_PLIST", tmp_path / "ai.bifrost.gateway.plist"
+    )
     monkeypatch.setattr(lifecycle, "SOURCE_PLIST", tmp_path / "source.plist")
     monkeypatch.setattr(lifecycle, "READY_FILE", tmp_path / "bifrost.ready")
     monkeypatch.setattr(lifecycle, "PORT", 18471)
@@ -114,7 +118,9 @@ def test_start_leaves_harness_untouched_when_port_is_dead(
     assert _calls() == []
 
 
-def test_start_retracts_a_stale_ready_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_start_retracts_a_stale_ready_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """The ready file is retracted before the relaunch, not after it.
 
     ``gateway.launch_bifrost`` unlinks the file inside the child, which
@@ -167,7 +173,9 @@ def test_stop_restores_before_teardown(monkeypatch: pytest.MonkeyPatch) -> None:
     """req: REQ-BIFROST-033 -- clients are restored before the gateway dies."""
     order: list[str] = []
 
-    monkeypatch.setattr(lifecycle, "repoint_harnesses", lambda a: order.append(f"harness:{a}"))
+    monkeypatch.setattr(
+        lifecycle, "repoint_harnesses", lambda a: order.append(f"harness:{a}")
+    )
     monkeypatch.setattr(lifecycle, "bootout", lambda: order.append("bootout"))
 
     lifecycle.stop()
@@ -175,7 +183,9 @@ def test_stop_restores_before_teardown(monkeypatch: pytest.MonkeyPatch) -> None:
     assert order == ["harness:direct", "bootout"]
 
 
-def test_stop_clears_ready_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_stop_clears_ready_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """The ready file is the readiness contract; stop must retract it."""
     ready = tmp_path / "bifrost.ready"
     ready.touch()
@@ -196,7 +206,9 @@ def test_restart_and_rebootstrap_repoint(monkeypatch: pytest.MonkeyPatch) -> Non
     assert _calls() == ["bifrost", "bifrost"]
 
 
-def test_sync_config_keeps_the_config_store(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sync_config_keeps_the_config_store(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """req: REQ-BIFROST-034 -- re-seeding config.json must not drop config.db.
 
     Regression for live data loss. With ``config_store`` enabled the SQLite DB
@@ -231,9 +243,9 @@ def test_sync_config_keeps_the_config_store(tmp_path, monkeypatch: pytest.Monkey
     backups = list((config_dir / ".bak").glob("*-presync/config.db"))
     assert backups, "config store must be backed up before any re-seed"
     with sqlite3.connect(f"file:{backups[0]}?mode=ro", uri=True) as con:
-        assert con.execute("SELECT value FROM governance_virtual_keys").fetchone()[0] == (
-            "sk-bf-secret"
-        ), "the snapshot must carry the store's contents"
+        assert con.execute("SELECT value FROM governance_virtual_keys").fetchone()[
+            0
+        ] == ("sk-bf-secret"), "the snapshot must carry the store's contents"
 
 
 def test_sync_config_drops_the_store_only_when_asked(
@@ -258,7 +270,9 @@ def test_sync_config_drops_the_store_only_when_asked(
     assert list((config_dir / ".bak").glob("*-presync/config.db"))
 
 
-def test_backup_is_owner_only_and_consistent(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_backup_is_owner_only_and_consistent(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """req: REQ-BIFROST-034 -- the snapshot is private and actually opens.
 
     The backup holds provider key material and virtual-key values, so both the
@@ -277,7 +291,9 @@ def test_backup_is_owner_only_and_consistent(tmp_path, monkeypatch: pytest.Monke
     source = config_dir / "config.db"
     with sqlite3.connect(source) as con:
         con.execute("CREATE TABLE governance_virtual_keys (name TEXT, value TEXT)")
-        con.execute("INSERT INTO governance_virtual_keys VALUES ('bodai-pi-pool', 'sk-bf-secret')")
+        con.execute(
+            "INSERT INTO governance_virtual_keys VALUES ('bodai-pi-pool', 'sk-bf-secret')"
+        )
         con.commit()
     source.chmod(0o644)
 
@@ -297,10 +313,15 @@ def test_backup_is_owner_only_and_consistent(tmp_path, monkeypatch: pytest.Monke
 
     # A private backup is useless if it cannot be opened.
     with sqlite3.connect(f"file:{snapshot}?mode=ro", uri=True) as con:
-        assert con.execute("SELECT count(*) FROM governance_virtual_keys").fetchone()[0] == 1
+        assert (
+            con.execute("SELECT count(*) FROM governance_virtual_keys").fetchone()[0]
+            == 1
+        )
 
 
-def test_backup_survives_a_rough_umask(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_backup_survives_a_rough_umask(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A permissive umask must not widen the backup's permissions.
 
     ``mkdir(mode=0o700)`` is masked by the umask, so the explicit ``chmod``
@@ -331,7 +352,9 @@ def test_backup_survives_a_rough_umask(tmp_path, monkeypatch: pytest.MonkeyPatch
     assert (backup_dir / "config.db").stat().st_mode & 0o777 == 0o600
 
 
-def test_rebootstrap_does_not_double_delete(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_rebootstrap_does_not_double_delete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
     """``rebootstrap`` seeds once, not twice.
 
     The Typer command used to call ``sync_config()`` and then
@@ -363,13 +386,17 @@ def test_status_reports_not_loaded(monkeypatch: pytest.MonkeyPatch, capsys) -> N
     monkeypatch.setattr(
         lifecycle,
         "_run",
-        lambda _cmd: lifecycle.subprocess.CompletedProcess([], 1, "", "no such service"),
+        lambda _cmd: lifecycle.subprocess.CompletedProcess(
+            [], 1, "", "no such service"
+        ),
     )
     lifecycle.status()
     assert "service not loaded" in capsys.readouterr().out
 
 
-def test_gateway_wrap_adds_stdbuf_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_gateway_wrap_adds_stdbuf_when_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Node block-buffering delays log emission; stdbuf prevents it."""
     monkeypatch.setattr(gateway.shutil, "which", lambda _n: "/usr/bin/stdbuf")
     assert gateway.wrap_with_line_buffering(["node", "b.js"])[:3] == [

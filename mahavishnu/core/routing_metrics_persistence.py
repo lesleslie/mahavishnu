@@ -127,7 +127,9 @@ class RoutingMetricsPersistence:
                     await self._flush_all_pending()
             except asyncio.CancelledError:
                 break
-            except Exception:  # background task — broad catch is the documented contract
+            except (
+                Exception
+            ):  # background task — broad catch is the documented contract
                 logger.exception("Periodic flush error")
 
     async def _flush_all_pending(self) -> None:
@@ -208,7 +210,9 @@ class RoutingMetricsPersistence:
                             r.latency_ms,
                             r.error_type,
                             r.error_message,
-                            Decimal(str(r.cost_usd)) if r.cost_usd is not None else None,
+                            Decimal(str(r.cost_usd))
+                            if r.cost_usd is not None
+                            else None,
                             r.metadata,
                         )
                         for r in records
@@ -301,7 +305,9 @@ class RoutingMetricsPersistence:
             adapter=AdapterType(row["adapter"]),
             task_type=TaskType(row["task_type"]),
             start_timestamp=row["start_timestamp"].timestamp(),
-            end_timestamp=row["end_timestamp"].timestamp() if row["end_timestamp"] else None,
+            end_timestamp=row["end_timestamp"].timestamp()
+            if row["end_timestamp"]
+            else None,
             status=ExecutionStatus(row["status"]),
             latency_ms=row["latency_ms"],
             error_type=row["error_type"],
@@ -352,18 +358,32 @@ class RoutingMetricsPersistence:
                     else stats.date,
                     Decimal(str(stats.success_rate)),
                     stats.total_executions,
-                    Decimal(str(stats.avg_latency_ms)) if stats.avg_latency_ms else None,
-                    Decimal(str(stats.p50_latency_ms)) if stats.p50_latency_ms else None,
-                    Decimal(str(stats.p95_latency_ms)) if stats.p95_latency_ms else None,
-                    Decimal(str(stats.p99_latency_ms)) if stats.p99_latency_ms else None,
+                    Decimal(str(stats.avg_latency_ms))
+                    if stats.avg_latency_ms
+                    else None,
+                    Decimal(str(stats.p50_latency_ms))
+                    if stats.p50_latency_ms
+                    else None,
+                    Decimal(str(stats.p95_latency_ms))
+                    if stats.p95_latency_ms
+                    else None,
+                    Decimal(str(stats.p99_latency_ms))
+                    if stats.p99_latency_ms
+                    else None,
                     stats.error_counts,
-                    Decimal(str(stats.cost_total_usd)) if stats.cost_total_usd else None,
+                    Decimal(str(stats.cost_total_usd))
+                    if stats.cost_total_usd
+                    else None,
                     stats.uptime_percentage,
                     stats.sample_size,
-                    Decimal(str(stats.confidence_interval)) if stats.confidence_interval else None,
+                    Decimal(str(stats.confidence_interval))
+                    if stats.confidence_interval
+                    else None,
                 )
 
-            logger.debug(f"Wrote adapter stats for {stats.adapter.value} on {stats.date}")
+            logger.debug(
+                f"Wrote adapter stats for {stats.adapter.value} on {stats.date}"
+            )
 
         except Exception as e:  # persistence write — broad catch to log error and continue  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.error(f"Failed to write adapter stats: {e}")
@@ -410,13 +430,25 @@ class RoutingMetricsPersistence:
             date=str(row["stat_date"]),
             success_rate=float(row["success_rate"]),
             total_executions=row["total_executions"],
-            avg_latency_ms=float(row["avg_latency_ms"]) if row["avg_latency_ms"] else None,
-            p50_latency_ms=float(row["p50_latency_ms"]) if row["p50_latency_ms"] else None,
-            p95_latency_ms=float(row["p95_latency_ms"]) if row["p95_latency_ms"] else None,
-            p99_latency_ms=float(row["p99_latency_ms"]) if row["p99_latency_ms"] else None,
+            avg_latency_ms=float(row["avg_latency_ms"])
+            if row["avg_latency_ms"]
+            else None,
+            p50_latency_ms=float(row["p50_latency_ms"])
+            if row["p50_latency_ms"]
+            else None,
+            p95_latency_ms=float(row["p95_latency_ms"])
+            if row["p95_latency_ms"]
+            else None,
+            p99_latency_ms=float(row["p99_latency_ms"])
+            if row["p99_latency_ms"]
+            else None,
             error_counts=dict(row["error_counts"]) if row["error_counts"] else {},
-            cost_total_usd=float(row["cost_total_usd"]) if row["cost_total_usd"] else None,
-            uptime_percentage=float(row["uptime_percentage"]) if row["uptime_percentage"] else None,
+            cost_total_usd=float(row["cost_total_usd"])
+            if row["cost_total_usd"]
+            else None,
+            uptime_percentage=float(row["uptime_percentage"])
+            if row["uptime_percentage"]
+            else None,
             sample_size=row["sample_size"],
             confidence_interval=float(row["confidence_interval"])
             if row["confidence_interval"]
@@ -519,7 +551,9 @@ class RoutingMetricsPersistence:
                             c.task_type.value,
                             Decimal(str(c.cost_usd)),
                             c.budget_type,
-                            Decimal(str(c.budget_limit_usd)) if c.budget_limit_usd else None,
+                            Decimal(str(c.budget_limit_usd))
+                            if c.budget_limit_usd
+                            else None,
                         )
                         for c in costs
                     ],

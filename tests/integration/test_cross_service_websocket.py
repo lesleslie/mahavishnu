@@ -209,7 +209,9 @@ class TestServiceDiscovery:
         # Arrange
         mahavishnu_config = WEBSOCKET_SERVERS["mahavishnu"]
         other_services = {
-            name: config for name, config in WEBSOCKET_SERVERS.items() if name != "mahavishnu"
+            name: config
+            for name, config in WEBSOCKET_SERVERS.items()
+            if name != "mahavishnu"
         }
 
         # Act & Assert
@@ -382,7 +384,9 @@ class TestCrossServiceCommunication:
         # Assert
         assert "fastblocks:component789" in event_recorder
         assert len(event_recorder["fastblocks:component789"]) == 1
-        assert event_recorder["fastblocks:component789"][0]["event"] == "component.updated"
+        assert (
+            event_recorder["fastblocks:component789"][0]["event"] == "component.updated"
+        )
 
     @pytest.mark.asyncio
     async def test_message_propagation_between_services(self):
@@ -429,8 +433,13 @@ class TestCrossServiceCommunication:
         # Assert
         assert "mahavishnu:workflow1" in event_recorder
         assert len(event_recorder["mahavishnu:workflow1"]) == 1
-        assert event_recorder["mahavishnu:workflow1"][0]["event"] == "workflow.completed"
-        assert event_recorder["mahavishnu:workflow1"][0]["data"]["workflow_id"] == "workflow1"
+        assert (
+            event_recorder["mahavishnu:workflow1"][0]["event"] == "workflow.completed"
+        )
+        assert (
+            event_recorder["mahavishnu:workflow1"][0]["data"]["workflow_id"]
+            == "workflow1"
+        )
 
 
 # =============================================================================
@@ -479,7 +488,9 @@ class TestMessageRouting:
         """Test broadcasting to service-specific rooms."""
         # Arrange
         mcp_client = create_mock_websocket(event_recorder, "conn1", ["mcp:events"])
-        excalidraw_client = create_mock_websocket(event_recorder, "conn2", ["excalidraw:events"])
+        excalidraw_client = create_mock_websocket(
+            event_recorder, "conn2", ["excalidraw:events"]
+        )
 
         mahavishnu_server.connections["conn1"] = mcp_client
         mahavishnu_server.connections["conn2"] = excalidraw_client
@@ -579,7 +590,9 @@ class TestEventCorrelation:
         assert "pool:pool_local" in event_recorder
         events = event_recorder["pool:pool_local"]
         assert len(events) >= 1
-        pool_event = next((e for e in events if e["event"] == "pool.status_changed"), None)
+        pool_event = next(
+            (e for e in events if e["event"] == "pool.status_changed"), None
+        )
         assert pool_event is not None
         assert pool_event["data"]["pool_id"] == "pool_local"
 
@@ -618,7 +631,9 @@ class TestEventCorrelation:
         assert "workflow:workflow_abc123" in event_recorder
         events = event_recorder["workflow:workflow_abc123"]
         assert len(events) >= 1
-        completion_event = next((e for e in events if e["event"] == "workflow.completed"), None)
+        completion_event = next(
+            (e for e in events if e["event"] == "workflow.completed"), None
+        )
         assert completion_event is not None
         assert completion_event["data"]["workflow_id"] == "workflow_abc123"
 

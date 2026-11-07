@@ -56,7 +56,9 @@ class EvolutionTrigger:
         if entry.occurrences < self.threshold:
             return EvolutionTriggerDecision(
                 propose=False,
-                reason=(f"occurrences={entry.occurrences} below threshold={self.threshold}"),
+                reason=(
+                    f"occurrences={entry.occurrences} below threshold={self.threshold}"
+                ),
             )
         suggestion = self._build_suggestion(entry)
         return EvolutionTriggerDecision(

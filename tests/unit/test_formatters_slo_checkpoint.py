@@ -159,7 +159,11 @@ class TestLogFormatter:
         fmt = _make_log_formatter()
         fmt.format_logs(
             [
-                {"timestamp": "2026-01-01T12:00:00", "level": "ERROR", "message": "DB down"},
+                {
+                    "timestamp": "2026-01-01T12:00:00",
+                    "level": "ERROR",
+                    "message": "DB down",
+                },
             ]
         )
         output = capsys.readouterr().out
@@ -183,9 +187,24 @@ class TestLogFormatter:
         fmt = _make_log_formatter()
         fmt.format_logs(
             [
-                {"timestamp": "t1", "level": "INFO", "message": "a", "workflow_id": "wf-1"},
-                {"timestamp": "t2", "level": "INFO", "message": "b", "workflow_id": "wf-2"},
-                {"timestamp": "t3", "level": "ERROR", "message": "c", "workflow_id": "wf-1"},
+                {
+                    "timestamp": "t1",
+                    "level": "INFO",
+                    "message": "a",
+                    "workflow_id": "wf-1",
+                },
+                {
+                    "timestamp": "t2",
+                    "level": "INFO",
+                    "message": "b",
+                    "workflow_id": "wf-2",
+                },
+                {
+                    "timestamp": "t3",
+                    "level": "ERROR",
+                    "message": "c",
+                    "workflow_id": "wf-1",
+                },
             ],
             workflow_id="wf-1",
         )
@@ -197,7 +216,10 @@ class TestLogFormatter:
     def test_tail_limit(self, capsys):
         fmt = _make_log_formatter()
         fmt.format_logs(
-            [{"timestamp": f"t{i}", "level": "INFO", "message": f"msg-{i}"} for i in range(10)],
+            [
+                {"timestamp": f"t{i}", "level": "INFO", "message": f"msg-{i}"}
+                for i in range(10)
+            ],
             tail=3,
         )
         output = capsys.readouterr().out
@@ -227,7 +249,11 @@ class TestRepoFormatter:
         fmt = _make_repo_formatter()
         fmt.format_repos(
             [
-                {"path": "/tmp/repo-a", "description": "Test repo A", "tags": ["python"]},
+                {
+                    "path": "/tmp/repo-a",
+                    "description": "Test repo A",
+                    "tags": ["python"],
+                },
             ]
         )
         output = capsys.readouterr().out
@@ -484,7 +510,9 @@ class TestGenerateSLOReport:
     def test_violations(self, mock_dt):
         mock_dt.now.return_value = NOW
         fresh = SLOCalculator.freshness_slo({"repo-a": NOW - timedelta(minutes=30)})
-        poll = SLOCalculator.polling_success_slo({"repo-b": {"success": 90, "failure": 10}})
+        poll = SLOCalculator.polling_success_slo(
+            {"repo-b": {"success": 90, "failure": 10}}
+        )
         # Create availability violation
         avail = SLOCalculator.availability_slo(
             [
@@ -585,7 +613,9 @@ class TestSessionBuddy:
     async def test_create_checkpoint_enabled(self):
         sb = SessionBuddy(_mock_config(enabled=True))
         # Mock the MCP call so the test doesn't reach out to a real server.
-        with patch.object(sb._mcp, "call_tool", AsyncMock(return_value={"result": "ok"})):
+        with patch.object(
+            sb._mcp, "call_tool", AsyncMock(return_value={"result": "ok"})
+        ):
             cid = await sb.create_checkpoint("sess-2", {"key": "val"})
         assert len(cid) == 36  # UUID format
 
@@ -626,7 +656,9 @@ class TestSessionBuddy:
         """Completed checkpoints can't be restored."""
         sb = SessionBuddy(_mock_config(enabled=True))
         # get_checkpoint returns status "running" by default; override
-        with patch.object(sb, "get_checkpoint", return_value={"status": "completed", "state": {}}):
+        with patch.object(
+            sb, "get_checkpoint", return_value={"status": "completed", "state": {}}
+        ):
             result = await sb.restore_from_checkpoint("cp-5")
         assert result is None
 

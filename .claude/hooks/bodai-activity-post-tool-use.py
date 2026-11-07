@@ -32,6 +32,7 @@ Configuration via environment variables (defaults shown):
 The script exits 0 on all paths. Failures are logged to stderr so they
 are visible to Claude Code but never block tool execution.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -106,7 +107,7 @@ def _read_state() -> dict[str, Any]:
     try:
         with path.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return {"last_message_id": None}
     if not isinstance(data, dict):
         return {"last_message_id": None}
@@ -177,7 +178,7 @@ def _format_summary(envelope: dict[str, Any]) -> str:
         else:
             try:
                 parts.append(f"{key}={json.dumps(value, sort_keys=True)}")
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 parts.append(f"{key}={value!s}")
     return " ".join(parts)
 
@@ -229,7 +230,9 @@ def _post_tool_use() -> int:
     try:
         envelopes = asyncio.run(
             _read_new_envelopes(
-                last_message_id=last_message_id if isinstance(last_message_id, str) else None,
+                last_message_id=last_message_id
+                if isinstance(last_message_id, str)
+                else None,
                 redis_url=_redis_url(),
             )
         )
@@ -304,6 +307,7 @@ def main(argv: list[str] | None = None) -> int:
         if _CLAUDE_PROJECT_DIR:
             sys.path.insert(0, _CLAUDE_PROJECT_DIR)
         from mahavishnu.bodai_hook_bridge import handle
+
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
     except Exception as exc:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         sys.stderr.write(
@@ -316,7 +320,9 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100  # hook handler — broad catch is the documented contract
+    ):
         sys.stderr.write("Hook output: bodai-activity-post-tool-use: unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

@@ -204,7 +204,9 @@ class CredentialRedactor:
                 flags=re.IGNORECASE | re.DOTALL | re.MULTILINE,
             )
             if match:
-                return text[: match.start()] + self.redaction_string + text[match.end() :]
+                return (
+                    text[: match.start()] + self.redaction_string + text[match.end() :]
+                )
         return text
 
     def _redact_certificate(self, text: str, pattern: str) -> str:
@@ -217,7 +219,9 @@ class CredentialRedactor:
                 flags=re.IGNORECASE | re.DOTALL | re.MULTILINE,
             )
             if match:
-                return text[: match.start()] + self.redaction_string + text[match.end() :]
+                return (
+                    text[: match.start()] + self.redaction_string + text[match.end() :]
+                )
         return text
 
     def _replacement_for_type(self, cred_type: str) -> str:
@@ -312,7 +316,9 @@ class CredentialRedactor:
 
         return redacted
 
-    def redact_log_message(self, message: str, **kwargs: Any) -> tuple[str, dict[str, Any]]:
+    def redact_log_message(
+        self, message: str, **kwargs: Any
+    ) -> tuple[str, dict[str, Any]]:
         """Redact credentials from log message and context.
 
         Args:
@@ -358,7 +364,9 @@ class SecureLogger:
 
             # Add file handler
             handler = logging.FileHandler(log_path)
-            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
 
@@ -373,11 +381,15 @@ class SecureLogger:
             message: Log message
             **kwargs: Additional context
         """
-        redacted_message, redacted_context = self.redactor.redact_log_message(message, **kwargs)
+        redacted_message, redacted_context = self.redactor.redact_log_message(
+            message, **kwargs
+        )
 
         # Format context if present
         if redacted_context:
-            log_message = f"{redacted_message} | Context: {json.dumps(redacted_context)}"
+            log_message = (
+                f"{redacted_message} | Context: {json.dumps(redacted_context)}"
+            )
         else:
             log_message = redacted_message
 
@@ -405,10 +417,14 @@ class SecureLogger:
 
     def exception(self, message: str, **kwargs) -> None:
         """Log exception with credential redaction."""
-        redacted_message, redacted_context = self.redactor.redact_log_message(message, **kwargs)
+        redacted_message, redacted_context = self.redactor.redact_log_message(
+            message, **kwargs
+        )
 
         if redacted_context:
-            log_message = f"{redacted_message} | Context: {json.dumps(redacted_context)}"
+            log_message = (
+                f"{redacted_message} | Context: {json.dumps(redacted_context)}"
+            )
         else:
             log_message = redacted_message
 

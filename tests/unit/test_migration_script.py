@@ -61,7 +61,9 @@ def _make_dest(tmp_path: Path) -> Path:
     dest = tmp_path / "mahavishnu"
     dest.mkdir()
     (dest / ".claude").mkdir()
-    (dest / ".claude" / "settings.local.json").write_text(json.dumps({"additionalDirectories": []}))
+    (dest / ".claude" / "settings.local.json").write_text(
+        json.dumps({"additionalDirectories": []})
+    )
     return dest
 
 
@@ -89,7 +91,9 @@ def test_full_migration_copies_agents(fake_home, tmp_path):
     dest_claude = dest / ".claude"
     dest_claude.mkdir()
     (dest_claude / "settings.local.json").write_text(
-        json.dumps({"additionalDirectories": [str(fake_home / ".claude"), "/other/path"]})
+        json.dumps(
+            {"additionalDirectories": [str(fake_home / ".claude"), "/other/path"]}
+        )
     )
 
     from migrate_config_to_project import MigrationRunner
@@ -204,7 +208,9 @@ def test_existing_skill_not_overwritten(fake_home, tmp_path):
     )
     runner.run()
 
-    assert (dest / ".claude" / "skills" / "manage-pools" / "SKILL.md").read_text() == "# Original\n"
+    assert (
+        dest / ".claude" / "skills" / "manage-pools" / "SKILL.md"
+    ).read_text() == "# Original\n"
 
 
 def test_mcp_json_has_all_servers(fake_home, tmp_path):

@@ -158,7 +158,9 @@ class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
         Raises:
             NotImplementedError: If not overridden by subclass
         """
-        raise NotImplementedError("Subclasses must implement get() or a domain-specific variant")
+        raise NotImplementedError(
+            "Subclasses must implement get() or a domain-specific variant"
+        )
 
     async def update(self, id: str, data: UpdateModel) -> ReadModel | None:
         """Update an existing record.
@@ -166,7 +168,9 @@ class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
         Raises:
             NotImplementedError: If not overridden by subclass
         """
-        raise NotImplementedError("Subclasses must implement update() or a domain-specific variant")
+        raise NotImplementedError(
+            "Subclasses must implement update() or a domain-specific variant"
+        )
 
     async def delete(self, id: str) -> bool:
         """Delete a record by ID.
@@ -174,7 +178,9 @@ class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
         Raises:
             NotImplementedError: If not overridden by subclass
         """
-        raise NotImplementedError("Subclasses must implement delete() or a domain-specific variant")
+        raise NotImplementedError(
+            "Subclasses must implement delete() or a domain-specific variant"
+        )
 
     async def list(
         self,
@@ -187,7 +193,9 @@ class BaseRepository[CreateModel, ReadModel, UpdateModel](ABC):
         Raises:
             NotImplementedError: If not overridden by subclass
         """
-        raise NotImplementedError("Subclasses must implement list() or a domain-specific variant")
+        raise NotImplementedError(
+            "Subclasses must implement list() or a domain-specific variant"
+        )
 
     # Utility methods
 

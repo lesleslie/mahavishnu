@@ -52,7 +52,6 @@ class CircuitBreakerError(Exception):
     """Raised when circuit breaker is open and request is rejected."""
 
 
-
 class CircuitBreaker:
     """Circuit breaker to prevent cascading failures.
 
@@ -244,7 +243,9 @@ class BackoffStrategy:
         return lambda attempt: delay
 
     @staticmethod
-    def linear(base_delay: float = 1.0, increment: float = 1.0) -> Callable[[int], float]:
+    def linear(
+        base_delay: float = 1.0, increment: float = 1.0
+    ) -> Callable[[int], float]:
         """Linearly increasing delay.
 
         Args:
@@ -285,7 +286,9 @@ class BackoffStrategy:
 class MaxRetriesExceededError(Exception):
     """Raised when max retry attempts are exceeded."""
 
-    def __init__(self, func_name: str, attempts: int, last_exception: Exception | None = None):
+    def __init__(
+        self, func_name: str, attempts: int, last_exception: Exception | None = None
+    ):
         super().__init__(f"Function '{func_name}' failed after {attempts} attempts")
         self.func_name = func_name
         self.attempts = attempts
@@ -375,7 +378,9 @@ class Retry:
                     await asyncio.sleep(delay)
                 else:
                     # Last attempt failed
-                    logger.error(f"All {self.max_attempts} attempts failed for {func.__name__}")
+                    logger.error(
+                        f"All {self.max_attempts} attempts failed for {func.__name__}"
+                    )
                     raise MaxRetriesExceededError(
                         func.__name__, self.max_attempts, last_exception
                     ) from e
@@ -587,7 +592,9 @@ def with_fallback[**P, R](
             try:
                 return await func(*args, **kwargs)
             except on_exception as e:
-                logger.warning(f"Primary function {func.__name__} failed: {e}. Using fallback.")
+                logger.warning(
+                    f"Primary function {func.__name__} failed: {e}. Using fallback."
+                )
                 # Call fallback function (can be sync or async)
                 if asyncio.iscoroutinefunction(fallback_func):
                     return await fallback_func(*args, **kwargs)

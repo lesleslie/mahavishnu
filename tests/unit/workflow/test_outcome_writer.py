@@ -100,7 +100,9 @@ def test_producer_reports_a_failed_write_as_skipped(
     """
     import mahavishnu.core.workflow.outcome_writer as ow_mod
 
-    monkeypatch.setattr(ow_mod, "substrate", SimpleNamespace(put=lambda *_a, **_k: False))
+    monkeypatch.setattr(
+        ow_mod, "substrate", SimpleNamespace(put=lambda *_a, **_k: False)
+    )
 
     attempted_before = COUNTERS.attempted.labels(producer=_PRODUCER)._value.get()
     succeeded_before = COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get()
@@ -114,10 +116,21 @@ def test_producer_reports_a_failed_write_as_skipped(
             finished_at=datetime(2026, 8, 10, 12, 5, 0, tzinfo=UTC),
         )
 
-    assert COUNTERS.attempted.labels(producer=_PRODUCER)._value.get() == attempted_before + 1
-    assert COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get() == succeeded_before
-    assert COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before + 1
-    skipped = [entry for entry in logs if entry["event"] == "workflow_outcome_persistence_skipped"]
+    assert (
+        COUNTERS.attempted.labels(producer=_PRODUCER)._value.get()
+        == attempted_before + 1
+    )
+    assert (
+        COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get() == succeeded_before
+    )
+    assert (
+        COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before + 1
+    )
+    skipped = [
+        entry
+        for entry in logs
+        if entry["event"] == "workflow_outcome_persistence_skipped"
+    ]
     assert len(skipped) == 1, logs
     assert skipped[0]["extra"]["reason"] == "substrate_write_failed"
     assert _stored("workflow-results/wf-write-fail/") is None
@@ -147,12 +160,20 @@ def test_producer_persists_and_counts_success_when_substrate_bound() -> None:
     assert isinstance(record, WorkflowOutcome)
     assert record.workflow_id == "wf-bound"
     assert _stored("workflow-results/wf-bound/") is not None
-    assert COUNTERS.attempted.labels(producer=_PRODUCER)._value.get() == attempted_before + 1
-    assert COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get() == succeeded_before + 1
+    assert (
+        COUNTERS.attempted.labels(producer=_PRODUCER)._value.get()
+        == attempted_before + 1
+    )
+    assert (
+        COUNTERS.succeeded.labels(producer=_PRODUCER)._value.get()
+        == succeeded_before + 1
+    )
     assert COUNTERS.skipped.labels(producer=_PRODUCER)._value.get() == skipped_before
     # The "substrate unbound" branch is gone — no skip event is emitted.
     assert [
-        entry for entry in logs if entry["event"] == "workflow_outcome_persistence_skipped"
+        entry
+        for entry in logs
+        if entry["event"] == "workflow_outcome_persistence_skipped"
     ] == []
 
 

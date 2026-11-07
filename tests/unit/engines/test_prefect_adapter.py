@@ -108,7 +108,9 @@ class TestPrefectConfig:
 
     def test_cloud_config_requires_api_key(self):
         """Test that workspace requires api_key."""
-        with pytest.raises(ValueError, match="api_key must be set when workspace is specified"):
+        with pytest.raises(
+            ValueError, match="api_key must be set when workspace is specified"
+        ):
             PrefectConfig(
                 api_url="https://api.prefect.cloud",
                 workspace="test/test",
@@ -185,7 +187,8 @@ class TestLifecycleManagement:
             adapter,
             "_get_client_context",
             return_value=AsyncMock(
-                __aenter__=AsyncMock(return_value=mock_prefect_client), __aexit__=AsyncMock()
+                __aenter__=AsyncMock(return_value=mock_prefect_client),
+                __aexit__=AsyncMock(),
             ),
         ):
             await adapter.initialize()
@@ -271,7 +274,9 @@ class TestHealthCheck:
         adapter = PrefectAdapter(prefect_config)
 
         context_manager = AsyncMock()
-        context_manager.__aenter__ = AsyncMock(side_effect=Exception("Connection refused"))
+        context_manager.__aenter__ = AsyncMock(
+            side_effect=Exception("Connection refused")
+        )
         context_manager.__aexit__ = AsyncMock()
 
         with patch.object(adapter, "_get_client_context", return_value=context_manager):
@@ -282,7 +287,9 @@ class TestHealthCheck:
         assert "error" in health["details"]
 
     @pytest.mark.asyncio
-    async def test_health_check_includes_api_url(self, prefect_config, mock_prefect_client):
+    async def test_health_check_includes_api_url(
+        self, prefect_config, mock_prefect_client
+    ):
         """Test that health check includes configured API URL."""
         adapter = PrefectAdapter(prefect_config)
 
@@ -357,7 +364,9 @@ class TestExceptionMapping:
 
         request = MagicMock()
         response = MagicMock(status_code=500)
-        exc = PrefectHTTPStatusError("Internal server error", request=request, response=response)
+        exc = PrefectHTTPStatusError(
+            "Internal server error", request=request, response=response
+        )
         error = _map_prefect_exception(exc, "api_call")
 
         assert isinstance(error, PrefectError)
@@ -435,7 +444,9 @@ class TestExecute:
         await adapter.shutdown()
 
     @pytest.mark.asyncio
-    async def test_execute_returns_flow_run_info(self, prefect_config, mock_prefect_client):
+    async def test_execute_returns_flow_run_info(
+        self, prefect_config, mock_prefect_client
+    ):
         """Test that execute returns flow run ID and URL."""
         adapter = PrefectAdapter(prefect_config)
         adapter._initialized = True
@@ -518,7 +529,9 @@ class TestPrefectTasks:
     @pytest.mark.asyncio
     async def test_process_repository_default(self):
         """Test process_repository with default task type."""
-        result = await process_repository.fn("/test/repo", {"type": "default", "id": "test-1"})
+        result = await process_repository.fn(
+            "/test/repo", {"type": "default", "id": "test-1"}
+        )
 
         assert result["repo"] == "/test/repo"
         assert result["status"] == "completed"

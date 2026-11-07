@@ -609,11 +609,7 @@ def test_the_complexity_policy_only_ever_downgrades() -> None:
     being classified and reverts to the caller's model, so the policy can
     never cost more than it does today.
     """
-    tiered = [
-        rule
-        for rule in _rules()
-        if _tiers_in(rule)
-    ]
+    tiered = [rule for rule in _rules() if _tiers_in(rule)]
     assert tiered, "no rule references complexity_tier; the router never fires"
 
     for rule in tiered:
@@ -720,8 +716,7 @@ def test_the_complexity_rule_fallback_can_serve_the_anthropic_route() -> None:
         provider_id = fallback.split("/", 1)[0]
         provider = providers.get(provider_id)
         assert provider is not None, (
-            f"fallback {fallback!r} names a provider the template does not "
-            f"configure"
+            f"fallback {fallback!r} names a provider the template does not configure"
         )
         allowed = (provider.get("custom_provider_config") or {}).get(
             "allowed_requests"

@@ -28,7 +28,11 @@ def _build_sample_envelopes() -> list[EventEnvelope]:
             event_type="code.graph.indexed",
             version="1.0.0",
             source="ci-check",
-            payload={"repo_path": "/tmp/repo", "nodes_count": 42, "commit_hash": "abc123"},
+            payload={
+                "repo_path": "/tmp/repo",
+                "nodes_count": 42,
+                "commit_hash": "abc123",
+            },
         ),
         EventEnvelope(
             event_type="worker.started",

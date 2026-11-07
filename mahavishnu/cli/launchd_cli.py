@@ -68,7 +68,9 @@ PLIST_TEMPLATE_PATH = Path(
     "/Users/les/Projects/mahavishnu/config/launchd/com.mcp.mahavishnu.prefect.plist"
 )
 # Where the live plist lands.
-LIVE_PLIST_DEST = Path("~/Library/LaunchAgents/com.mcp.mahavishnu.prefect.plist").expanduser()
+LIVE_PLIST_DEST = Path(
+    "~/Library/LaunchAgents/com.mcp.mahavishnu.prefect.plist"
+).expanduser()
 # Path of the wrapper script that the plist invokes.
 WRAPPER_PATH = Path("/Users/les/.local/state/mcp/scripts/launch_with_healthcheck.sh")
 # Health URL for the wrapper to poll. Hit after ``prefect server start``.
@@ -158,7 +160,10 @@ def install_prefect() -> None:
     _launchctl("bootout", f"gui/{os.getuid()}/{PLIST_LABEL}")
     load = _launchctl("load", "-w", str(LIVE_PLIST_DEST))
     if load.returncode != 0:
-        typer.echo(f"launchctl load failed: {load.stderr.strip() or load.stdout.strip()}", err=True)
+        typer.echo(
+            f"launchctl load failed: {load.stderr.strip() or load.stdout.strip()}",
+            err=True,
+        )
         raise typer.Exit(code=load.returncode or 1)
 
     typer.echo(f"Wrote: {LIVE_PLIST_DEST}")
@@ -207,7 +212,9 @@ def status_prefect() -> None:
 
     try:
         resp = httpx.get(PREFECT_HEALTH_URL, timeout=5.0)
-        typer.echo(f"Health probe  : HTTP {resp.status_code} — body={resp.text.strip()!r}")
+        typer.echo(
+            f"Health probe  : HTTP {resp.status_code} — body={resp.text.strip()!r}"
+        )
     except (  # CLI entry point — broad catch is the documented contract
         Exception  # noqa: BLE001, RUF100
     ) as exc:

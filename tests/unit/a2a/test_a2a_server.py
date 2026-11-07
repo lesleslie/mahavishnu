@@ -27,7 +27,9 @@ def _make_app(worker_result: WorkerResult) -> TestClient:
 
 @pytest.mark.unit
 def test_agent_card_returns_valid_json() -> None:
-    client = _make_app(WorkerResult(worker_id="x", status=WorkerStatus.COMPLETED, output=""))
+    client = _make_app(
+        WorkerResult(worker_id="x", status=WorkerStatus.COMPLETED, output="")
+    )
     resp = client.get("/.well-known/agent.json")
     assert resp.status_code == 200
     data = resp.json()
@@ -77,7 +79,10 @@ def test_tasks_send_subscribe_streams_sse() -> None:
         "/tasks/sendSubscribe",
         json={
             "id": "t2",
-            "message": {"role": "user", "parts": [{"type": "text", "text": "stream me"}]},
+            "message": {
+                "role": "user",
+                "parts": [{"type": "text", "text": "stream me"}],
+            },
         },
     ) as resp:
         assert resp.status_code == 200
@@ -105,7 +110,10 @@ def test_tasks_send_worker_failure() -> None:
         "/tasks/send",
         json={
             "id": "t3",
-            "message": {"role": "user", "parts": [{"type": "text", "text": "risky task"}]},
+            "message": {
+                "role": "user",
+                "parts": [{"type": "text", "text": "risky task"}],
+            },
         },
     )
     assert resp.status_code == 200

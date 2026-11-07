@@ -43,8 +43,12 @@ def test_audit_requirements_reports_clean_state() -> None:
     payload = json.loads(result.stdout)
     assert "summary" in payload
     summary = payload["summary"]
-    assert summary["orphan_count"] == 0, f"orphan requirements found: {payload['orphans']}"
-    assert summary["phantom_count"] == 0, f"phantom requirements found: {payload['phantoms']}"
+    assert summary["orphan_count"] == 0, (
+        f"orphan requirements found: {payload['orphans']}"
+    )
+    assert summary["phantom_count"] == 0, (
+        f"phantom requirements found: {payload['phantoms']}"
+    )
 
 
 @pytest.mark.integration

@@ -10,6 +10,7 @@ The companion test ``test_profiles_registration.py`` asserts the full set of
 14 jot_* entries; this file focuses on the 6 new names plus the count
 delta so a future regression that drops a single drain tool surfaces here.
 """
+
 from __future__ import annotations
 
 
@@ -33,17 +34,13 @@ def test_all_six_drain_tools_in_full_registrations() -> None:
     """Each of the 6 new drain tool names appears in FULL_REGISTRATIONS."""
     full_set = set(FULL_REGISTRATIONS)
     missing = [name for name in DRAIN_TOOLS if name not in full_set]
-    assert missing == [], (
-        f"drain tools missing from FULL_REGISTRATIONS: {missing!r}"
-    )
+    assert missing == [], f"drain tools missing from FULL_REGISTRATIONS: {missing!r}"
 
 
 def test_all_six_drain_tools_in_registration_map() -> None:
     """Each of the 6 new drain tool names maps to a callable in REGISTRATION_MAP."""
     for name in DRAIN_TOOLS:
-        assert name in REGISTRATION_MAP, (
-            f"{name!r} missing from REGISTRATION_MAP"
-        )
+        assert name in REGISTRATION_MAP, f"{name!r} missing from REGISTRATION_MAP"
         target: Callable[..., object] = REGISTRATION_MAP[name]
         assert callable(target), (
             f"REGISTRATION_MAP[{name!r}] is not callable: {target!r}"
@@ -77,10 +74,14 @@ def test_registration_map_grew_by_exactly_six() -> None:
 def test_drain_entries_are_distinct_from_pre_drain() -> None:
     """The 6 new names do not collide with any existing ``jot_*`` key."""
     pre_drain = {
-        "jot_list", "jot_show", "jot_add", "jot_edit",
-        "jot_done", "jot_reopen", "jot_vitals", "jot_search",
+        "jot_list",
+        "jot_show",
+        "jot_add",
+        "jot_edit",
+        "jot_done",
+        "jot_reopen",
+        "jot_vitals",
+        "jot_search",
     }
     overlap = set(DRAIN_TOOLS) & pre_drain
-    assert overlap == set(), (
-        f"drain tool names collide with pre-drain set: {overlap!r}"
-    )
+    assert overlap == set(), f"drain tool names collide with pre-drain set: {overlap!r}"

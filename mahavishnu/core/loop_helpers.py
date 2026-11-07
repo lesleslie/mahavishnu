@@ -174,11 +174,17 @@ async def detect_until_dry(
             exception = exc
             logger.exception("detect_until_dry: timeout on iteration %d", iterations)
             break
-        except Exception as exc:  # background task — loop boundary records error and stops
+        except (
+            Exception
+        ) as exc:  # background task — loop boundary records error and stops
             stopped_reason = "error"
-            error = f"scan_fn raised on iteration {iterations}: {type(exc).__name__}: {exc}"
+            error = (
+                f"scan_fn raised on iteration {iterations}: {type(exc).__name__}: {exc}"
+            )
             exception = exc
-            logger.exception("detect_until_dry: scan_fn raised on iteration %d", iterations)
+            logger.exception(
+                "detect_until_dry: scan_fn raised on iteration %d", iterations
+            )
             break
 
         # Inline per-finding key extraction so every ``dedup_key`` call is
@@ -213,7 +219,9 @@ async def detect_until_dry(
                 f"{type(dedup_error).__name__}: {dedup_error}"
             )
             exception = dedup_error
-            logger.exception("detect_until_dry: dedup_key raised on iteration %d", iterations)
+            logger.exception(
+                "detect_until_dry: dedup_key raised on iteration %d", iterations
+            )
             break
 
         if not new_findings:

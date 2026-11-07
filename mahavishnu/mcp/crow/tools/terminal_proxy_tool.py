@@ -137,7 +137,9 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
             return {"output": output}
 
     @deco()
-    async def crow_terminal_read(session_id: str, limit_lines: int | None = None) -> dict[str, Any]:
+    async def crow_terminal_read(
+        session_id: str, limit_lines: int | None = None
+    ) -> dict[str, Any]:
         """Read recent output from the session's PTY.
 
         Returns the most recently captured output (from the last

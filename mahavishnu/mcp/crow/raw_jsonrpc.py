@@ -113,7 +113,10 @@ class _RawJsonRpcClient:
             "params": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "mahavishnu-crow-raw-jsonrpc", "version": "0.0.0"},
+                "clientInfo": {
+                    "name": "mahavishnu-crow-raw-jsonrpc",
+                    "version": "0.0.0",
+                },
             },
         }
         self._next_id += 1
@@ -157,7 +160,9 @@ class _RawJsonRpcClient:
                 try:
                     msg = json.loads(text)
                 except json.JSONDecodeError as exc:
-                    logger.warning("crow-mcp: malformed JSON-RPC frame: %s (%s)", text, exc)
+                    logger.warning(
+                        "crow-mcp: malformed JSON-RPC frame: %s (%s)", text, exc
+                    )
                     continue
                 msg_id = msg.get("id")
                 if msg_id is None:
@@ -185,7 +190,9 @@ class _RawJsonRpcClient:
         except Exception as exc:  # MCP substrate reader loop — broad catch to log loop crash without teardown (CancelledError re-raised above)  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning("crow-mcp reader loop crashed: %s", exc)
 
-    async def _round_trip(self, request: dict[str, Any], timeout: float) -> dict[str, Any]:
+    async def _round_trip(
+        self, request: dict[str, Any], timeout: float
+    ) -> dict[str, Any]:
         """Send ``request``, await the matching response, return it."""
         if self._process is None or self._process.stdin is None:
             raise RuntimeError("raw_jsonrpc client not started")
@@ -206,7 +213,9 @@ class _RawJsonRpcClient:
             return await asyncio.wait_for(asyncio.shield(fut), timeout=timeout)
         except TimeoutError as exc:
             self._pending.pop(request["id"], None)
-            raise RuntimeError(f"crow-mcp call_tool timed out after {timeout}s") from exc
+            raise RuntimeError(
+                f"crow-mcp call_tool timed out after {timeout}s"
+            ) from exc
 
     async def _send_notification(self, notification: dict[str, Any]) -> None:
         """Send a notification (no response expected)."""

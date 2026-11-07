@@ -41,7 +41,9 @@ class _StubMCP:
         return decorator
 
 
-def _adapter(name: str, status_value: str, *, has_trend: bool = True) -> SimpleNamespace:
+def _adapter(
+    name: str, status_value: str, *, has_trend: bool = True
+) -> SimpleNamespace:
     return SimpleNamespace(
         status=SimpleNamespace(value=status_value),
         capabilities={"code_generation": "ok"},
@@ -75,9 +77,12 @@ def _make_report(
             "generated_at": "2026-01-01T00:00:00Z",
             "duration_ms": 12.0,
             "services": {"session_buddy": {"status": "ok"}},
-            "adapters": {n: {"status": a.status.value} for n, a in (adapters or {}).items()},
+            "adapters": {
+                n: {"status": a.status.value} for n, a in (adapters or {}).items()
+            },
             "capabilities": {
-                n: {"name": n, "status": c.status.value} for n, c in (capabilities or {}).items()
+                n: {"name": n, "status": c.status.value}
+                for n, c in (capabilities or {}).items()
             },
             "workflows": {"active": 0},
             "recovery": {"mcp_available": False},
@@ -119,7 +124,9 @@ def _patch_service(
     service_instance.generate_report = AsyncMock(return_value=report)
     service_cls = MagicMock(return_value=service_instance)
     monkeypatch.setattr("mahavishnu.core.context.get_app_from_context", lambda: app)
-    monkeypatch.setattr("mahavishnu.core.ecosystem_status.EcosystemStatusService", service_cls)
+    monkeypatch.setattr(
+        "mahavishnu.core.ecosystem_status.EcosystemStatusService", service_cls
+    )
     return service_cls
 
 

@@ -95,7 +95,9 @@ class MCPClient:
                     "Refusing to send the internal self-call credential to a non-loopback URL: %s",
                     self.base_url,
                 )
-        self._mcp = CommonMCPClient(base_url=self.base_url, timeout=timeout, token=token)
+        self._mcp = CommonMCPClient(
+            base_url=self.base_url, timeout=timeout, token=token
+        )
 
     @property
     def tools_url(self) -> str:
@@ -158,7 +160,9 @@ class MCPClient:
 
         arguments: dict[str, Any] = {
             "key": key,
-            "value": value if isinstance(value, str) else json.dumps(value, separators=(",", ":")),
+            "value": value
+            if isinstance(value, str)
+            else json.dumps(value, separators=(",", ":")),
             "user_id": INTERNAL_SERVICE_USER_ID,
         }
         if ttl is not None:

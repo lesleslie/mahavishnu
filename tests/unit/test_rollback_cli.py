@@ -91,7 +91,8 @@ class TestBodaiCrowRollback:
         # The handler should have received the sha
         _, kwargs = mock_handler.call_args
         assert kwargs.get("to_version") == "abc1234" or (
-            len(mock_handler.call_args.args) > 0 and mock_handler.call_args.args[0] == "abc1234"
+            len(mock_handler.call_args.args) > 0
+            and mock_handler.call_args.args[0] == "abc1234"
         )
 
     def test_bodai_crow_subcommand_help_describes_to_version(self) -> None:
@@ -121,7 +122,9 @@ class TestDistilledWorkflowRollback:
     def test_distilled_workflow_handler_called_with_ulid(self) -> None:
         """`--id <ulid>` is forwarded to rollback_distilled_workflow."""
         runner = CliRunner()
-        with patch("mahavishnu.cli.rollback_cli.rollback_distilled_workflow") as mock_handler:
+        with patch(
+            "mahavishnu.cli.rollback_cli.rollback_distilled_workflow"
+        ) as mock_handler:
             result = runner.invoke(
                 app,
                 [

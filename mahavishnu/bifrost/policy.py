@@ -39,7 +39,9 @@ class PolicyReport:
         if not self.binds:
             return "gateway not running"
         if self.reachable_off_host and not self.credential_configured:
-            return "routable bind AND no virtual key configured -- unauthenticated spend"
+            return (
+                "routable bind AND no virtual key configured -- unauthenticated spend"
+            )
         if self.reachable_off_host:
             return "routable bind; virtual key configured -- acceptable"
         return "loopback bind -- local only"

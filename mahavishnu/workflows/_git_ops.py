@@ -120,7 +120,9 @@ def _classify_commit_failure(stderr: str, exit_code: int) -> GitCommitFailedErro
     for reason_label, pattern in _TRANSIENT_PATTERNS:
         if pattern.search(stderr):
             return GitCommitTransientError(reason=reason_label, stderr=stderr)
-    return GitCommitPermanentError(reason="see_stderr", stderr=stderr, exit_code=exit_code)
+    return GitCommitPermanentError(
+        reason="see_stderr", stderr=stderr, exit_code=exit_code
+    )
 
 
 # ---- Subprocess helpers ---------------------------------------------------
@@ -188,7 +190,9 @@ async def git_apply(repo_path: Path, diff: str) -> None:
 
     # First: `git apply --check` to detect conflicts cleanly
     try:
-        await _run_git(repo_path, "apply", "--check", stdin_data=diff, timeout_seconds=30.0)
+        await _run_git(
+            repo_path, "apply", "--check", stdin_data=diff, timeout_seconds=30.0
+        )
     except RuntimeError as exc:
         msg = str(exc)
         # Extract diff_offset and conflict_marker from stderr
@@ -257,7 +261,9 @@ async def stash_push(repo_path: Path) -> str | None:
     fails with "stash@{0} is not a valid reference").
     """
     repo_path = repo_path.resolve()
-    stdout, _, _ = await _run_git(repo_path, "stash", "push", "-m", "clone-refactor-WIP")
+    stdout, _, _ = await _run_git(
+        repo_path, "stash", "push", "-m", "clone-refactor-WIP"
+    )
     if "No local changes to save" in stdout:
         return None
     return "stash@{0}"  # canonical reference for most-recent stash
@@ -271,7 +277,9 @@ async def stash_pop(repo_path: Path, stash_ref: str = "stash@{0}") -> None:
     Implements: REQ-CLONE-011
     """
     repo_path = repo_path.resolve()
-    _, stderr, exit_code = await _run_git(repo_path, "stash", "pop", stash_ref, check=False)
+    _, stderr, exit_code = await _run_git(
+        repo_path, "stash", "pop", stash_ref, check=False
+    )
     if exit_code != 0:
         raise StashPopFailedError(stderr=stderr, exit_code=exit_code)
 

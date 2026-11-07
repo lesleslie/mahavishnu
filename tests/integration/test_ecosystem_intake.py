@@ -3,6 +3,7 @@
 Per round-4 simplification: 4 happy/sad path tests + 1 unit test for
 ``DataSanitizeAction`` shape.
 """
+
 from __future__ import annotations
 
 import json
@@ -16,7 +17,9 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def ecosystem_intake_test_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def ecosystem_intake_test_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[TestClient]:
     """Yield a FastAPI TestClient over the durable receiver app.
 
     The ecosystem_intake router is mounted inside the receiver's FastAPI
@@ -31,9 +34,7 @@ def ecosystem_intake_test_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[Te
 
     settings = get_settings()
     monkeypatch.setattr(settings.webhook_intake, "enabled", True)
-    monkeypatch.setattr(
-        settings.webhook_intake, "max_payload_size_bytes", 1_048_576
-    )
+    monkeypatch.setattr(settings.webhook_intake, "max_payload_size_bytes", 1_048_576)
     monkeypatch.setattr(settings.webhook_intake, "allowed_sources", frozenset())
     monkeypatch.setattr(publisher_mod, "_capture_singleton", [])
 
@@ -61,12 +62,14 @@ def safe_publisher_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
         try:
             captured.append(envelope.to_dict())  # type: ignore[attr-defined]
         except AttributeError:
-            captured.append({
-                "event_type": getattr(envelope, "event_type", None),
-                "source": getattr(envelope, "source", None),
-                "payload": getattr(envelope, "payload", {}),
-                "metadata": getattr(envelope, "metadata", {}),
-            })
+            captured.append(
+                {
+                    "event_type": getattr(envelope, "event_type", None),
+                    "source": getattr(envelope, "source", None),
+                    "payload": getattr(envelope, "payload", {}),
+                    "metadata": getattr(envelope, "metadata", {}),
+                }
+            )
         return True
 
     monkeypatch.setattr(ecosystem_intake, "safe_publish", _fake_publish)
@@ -113,9 +116,7 @@ class TestOversizedPayload413:
         from mahavishnu.core.config import get_settings
 
         settings = get_settings()
-        monkeypatch.setattr(
-            settings.webhook_intake, "max_payload_size_bytes", 100
-        )
+        monkeypatch.setattr(settings.webhook_intake, "max_payload_size_bytes", 100)
         response = ecosystem_intake_test_client.post(
             "/webhooks/ecosystem/git-monitor",
             content=b"x" * 200,
@@ -183,14 +184,16 @@ class TestDataSanitizeActionUnit:
         """
         from oneiric.actions.data import DataSanitizeAction
 
-        result = await DataSanitizeAction().execute({
-            "data": {
-                "Authorization": "Bearer ABC",
-                "key": "xyz",
-                "harmless": "keep-me",
-            },
-            "mask_fields": ["Authorization", "key"],
-        })
+        result = await DataSanitizeAction().execute(
+            {
+                "data": {
+                    "Authorization": "Bearer ABC",
+                    "key": "xyz",
+                    "harmless": "keep-me",
+                },
+                "mask_fields": ["Authorization", "key"],
+            }
+        )
         assert result["status"] == "sanitized"
         assert "data" in result
         # Masked fields are replaced; the bearer token must not survive.

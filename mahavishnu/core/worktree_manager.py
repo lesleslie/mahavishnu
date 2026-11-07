@@ -113,7 +113,9 @@ class WorktreeError(MahavishnuError):
     REQ-011 — no competing subclass for ``WorktreeLockedError``).
     """
 
-    def __init__(self, message: str, error_code: ErrorCode = ErrorCode.INTERNAL_ERROR) -> None:
+    def __init__(
+        self, message: str, error_code: ErrorCode = ErrorCode.INTERNAL_ERROR
+    ) -> None:
         super().__init__(message, error_code)
 
 
@@ -328,7 +330,9 @@ class WorktreeManager:
                 await asyncio.to_thread(_git_merge)
                 merge_outcome = True
             except subprocess.CalledProcessError as exc:
-                stderr = (exc.stderr or "").strip() if hasattr(exc, "stderr") else str(exc)
+                stderr = (
+                    (exc.stderr or "").strip() if hasattr(exc, "stderr") else str(exc)
+                )
                 raise WorktreeError(f"git merge failed: {stderr}") from exc
 
         info.diff = diff_text

@@ -67,7 +67,9 @@ class HNSWConfig:
                 f"HNSW ef_construction must be between 16 and 256, got {self.ef_construction}"
             )
         if not 10 <= self.ef_search <= 200:
-            raise ValueError(f"HNSW ef_search must be between 10 and 200, got {self.ef_search}")
+            raise ValueError(
+                f"HNSW ef_search must be between 10 and 200, got {self.ef_search}"
+            )
 
 
 @dataclass
@@ -92,7 +94,9 @@ class PgvectorSettings(pydantic.BaseModel):  # type: ignore[misc]
     This extends Oneiric's settings with HNSW support.
     """
 
-    dsn: str | None = Field(default=None, description="PostgreSQL DSN (overrides other fields)")
+    dsn: str | None = Field(
+        default=None, description="PostgreSQL DSN (overrides other fields)"
+    )
     host: str = Field(default="localhost", description="PostgreSQL host")
     port: int = Field(default=5432, description="PostgreSQL port")
     user: str = Field(default="postgres", description="PostgreSQL user")
@@ -102,24 +106,37 @@ class PgvectorSettings(pydantic.BaseModel):  # type: ignore[misc]
     collection_prefix: str = Field(default="vectors_", description="Table name prefix")
 
     # Connection settings
-    min_connections: int = Field(default=1, ge=1, description="Minimum pool connections")
-    max_connections: int = Field(default=10, ge=1, description="Maximum pool connections")
-    statement_timeout_ms: int | None = Field(default=None, ge=1, description="Statement timeout")
+    min_connections: int = Field(
+        default=1, ge=1, description="Minimum pool connections"
+    )
+    max_connections: int = Field(
+        default=10, ge=1, description="Maximum pool connections"
+    )
+    statement_timeout_ms: int | None = Field(
+        default=None, ge=1, description="Statement timeout"
+    )
     ssl: bool = Field(default=False, description="Enable SSL/TLS")
 
     # Extension settings
-    ensure_extension: bool = Field(default=True, description="Create vector extension if missing")
+    ensure_extension: bool = Field(
+        default=True, description="Create vector extension if missing"
+    )
 
     # Index configuration
-    index_type: IndexType = Field(default=IndexType.HNSW, description="Vector index type")
-    hnsw_config: HNSWConfig = Field(default_factory=HNSWConfig, description="HNSW settings")
+    index_type: IndexType = Field(
+        default=IndexType.HNSW, description="Vector index type"
+    )
+    hnsw_config: HNSWConfig = Field(
+        default_factory=HNSWConfig, description="HNSW settings"
+    )
     ivfflat_config: IVFFlatConfig = Field(
         default_factory=IVFFlatConfig, description="IVFFlat settings"
     )
 
     # Default distance metric
     default_distance_metric: str = Field(
-        default="cosine", description="Default distance metric (cosine, euclidean, dot_product)"
+        default="cosine",
+        description="Default distance metric (cosine, euclidean, dot_product)",
     )
 
 
@@ -221,7 +238,9 @@ class PgvectorAdapter:
                 await conn.execute("SET LOCAL hnsw.ef_search = $1", ef_search)
 
         # Build query
-        select_fields = f"id, metadata, {'embedding' if include_vectors else 'NULL'} AS embedding, "
+        select_fields = (
+            f"id, metadata, {'embedding' if include_vectors else 'NULL'} AS embedding, "
+        )
         select_fields += f"embedding {operator} $1::vector AS distance"
 
         sql_parts = [f"SELECT {select_fields} FROM {table}"]
@@ -398,7 +417,11 @@ class PgvectorAdapter:
                 config = self._settings.hnsw_config
                 await conn.execute(
                     self._sql_create_hnsw_index(
-                        table_name, qualified, operator_class, config.m, config.ef_construction
+                        table_name,
+                        qualified,
+                        operator_class,
+                        config.m,
+                        config.ef_construction,
                     )
                 )
             else:  # IVFFlat
@@ -442,7 +465,9 @@ class PgvectorAdapter:
             # SQL built by helper with validated identifier.
             await conn.execute(self._sql_drop_table(qualified))
 
-        self._logger.info("pgvector-collection-deleted", extra={"collection_name": name})
+        self._logger.info(
+            "pgvector-collection-deleted", extra={"collection_name": name}
+        )
         return True
 
     async def list_collections(self) -> list[str]:
@@ -599,7 +624,12 @@ class PgvectorAdapter:
 
     # nosemgrep: python.lang.security.audit.formatted-sql-query, python.lang.security.audit.sql-string-concatenation
     def _sql_create_hnsw_index(
-        self, table_name: str, qualified: str, operator_class: str, m: int, ef_construction: int
+        self,
+        table_name: str,
+        qualified: str,
+        operator_class: str,
+        m: int,
+        ef_construction: int,
     ) -> str:
         return f"""
             CREATE INDEX IF NOT EXISTS {table_name}_embedding_hnsw_idx

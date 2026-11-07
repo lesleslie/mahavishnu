@@ -25,9 +25,7 @@ if TYPE_CHECKING:
 class TestGoldenFirstRun:
     def test_first_run_creates_golden(self) -> None:
         """First invocation creates the golden file; doesn't fail."""
-        golden_path = (
-            Path(__file__).parent / "fixtures" / "PLAN_INDEX.golden.md"
-        )
+        golden_path = Path(__file__).parent / "fixtures" / "PLAN_INDEX.golden.md"
         if golden_path.exists():
             pytest.skip("Golden already exists; nothing to do on first run")
 

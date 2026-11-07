@@ -28,7 +28,12 @@ def test_orchestrator_adapter_requires_lifecycle_and_execution_contract() -> Non
 
 def test_concrete_adapters_conform_to_lifecycle_contract() -> None:
     """Concrete adapters should fully implement the lifecycle contract."""
-    adapters = [PrefectAdapter, AgnoAdapter, LlamaIndexAdapter, WorkerOrchestratorAdapter]
+    adapters = [
+        PrefectAdapter,
+        AgnoAdapter,
+        LlamaIndexAdapter,
+        WorkerOrchestratorAdapter,
+    ]
 
     for adapter_cls in adapters:
         assert not adapter_cls.__abstractmethods__

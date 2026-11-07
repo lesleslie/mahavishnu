@@ -385,7 +385,9 @@ def record_bundle_integrity_failure(
     _bundle_integrity_failure_counter.add(1, attributes=labels)
 
 
-def record_lock_wait(repo: str, branch: str, wait_seconds: float, acquired: bool) -> None:
+def record_lock_wait(
+    repo: str, branch: str, wait_seconds: float, acquired: bool
+) -> None:
     """Record a worktree distributed-lock acquisition wait."""
     labels = {
         "repo": _short_label(repo),
@@ -396,7 +398,9 @@ def record_lock_wait(repo: str, branch: str, wait_seconds: float, acquired: bool
     _worktree_lock_wait_histogram.record(wait_seconds, attributes=labels)
 
 
-def record_lock_held(repo: str, branch: str, principal: str | None, held_seconds: float) -> None:
+def record_lock_held(
+    repo: str, branch: str, principal: str | None, held_seconds: float
+) -> None:
     """Record a worktree distributed-lock held duration on release."""
     labels = {
         "repo": _short_label(repo),

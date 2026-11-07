@@ -145,10 +145,14 @@ class MCPSkillPipeline:
         )
 
     def history(self) -> list[SkillTransition]:
-        raise NotImplementedError("MCPSkillPipeline.history() pending Workstream B substrate.")
+        raise NotImplementedError(
+            "MCPSkillPipeline.history() pending Workstream B substrate."
+        )
 
     def history_for(self, skill_name: str) -> list[SkillTransition]:
-        raise NotImplementedError("MCPSkillPipeline.history_for() pending Workstream B substrate.")
+        raise NotImplementedError(
+            "MCPSkillPipeline.history_for() pending Workstream B substrate."
+        )
 
 
 # ---------------------------------------------------------------------------

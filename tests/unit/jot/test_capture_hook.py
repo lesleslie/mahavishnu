@@ -94,7 +94,9 @@ class TestBuildCaptureCtx:
 
 
 class TestPassthrough:
-    def test_passthrough_no_comma_comma(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_passthrough_no_comma_comma(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         stdin_payload = {"prompt": "hello world", "session_id": "s1"}
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(stdin_payload)))
@@ -106,7 +108,9 @@ class TestPassthrough:
         assert json.loads(captured_stdout.getvalue()) == stdin_payload
         assert not (tmp_path / ".mahavishnu" / "jot" / "log.jsonl").exists()
 
-    def test_passthrough_empty_body(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_passthrough_empty_body(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         stdin_payload = {"prompt": ",,", "session_id": "s1"}
         monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(stdin_payload)))
@@ -186,7 +190,9 @@ class TestCapture:
             jot_capture._do_hook()
 
         log = tmp_path / ".mahavishnu" / "jot" / "log.jsonl"
-        lines = [deserialize(line) for line in log.read_text().split("\n") if line.strip()]
+        lines = [
+            deserialize(line) for line in log.read_text().split("\n") if line.strip()
+        ]
         assert len(lines) == 3
         for prev, curr in zip(lines, lines[1:]):
             assert (curr.hlc.wall_ms, curr.hlc.ctr) > (prev.hlc.wall_ms, prev.hlc.ctr)
@@ -345,7 +351,9 @@ class TestFailureModes:
 
 
 class TestFailOpen:
-    def test_invalid_json_stdin_passthrough(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_invalid_json_stdin_passthrough(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setattr(sys, "stdin", io.StringIO("not valid json"))
 
@@ -398,7 +406,9 @@ class TestFailOpen:
 
 
 class TestMain:
-    def test_main_calls_do_hook_and_returns_exit_code(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_main_calls_do_hook_and_returns_exit_code(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """main() invokes _do_hook() and returns its exit code as int.
 
         The `if __name__ == "__main__"` block at module level calls sys.exit(main()).
@@ -407,6 +417,8 @@ class TestMain:
         monkeypatch.setattr(jot_capture, "_do_hook", lambda: 2)
         assert jot_capture.main() == 2
 
-    def test_main_returns_0_for_passthrough(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_main_returns_0_for_passthrough(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(jot_capture, "_do_hook", lambda: 0)
         assert jot_capture.main() == 0

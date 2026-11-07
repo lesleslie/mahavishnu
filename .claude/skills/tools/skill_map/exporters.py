@@ -50,7 +50,12 @@ def export_graphviz(graph: SkillGraph) -> str:
     Returns:
         Graphviz DOT string
     """
-    lines = ["digraph SkillGraph {", "  rankdir=TD;", "  node [shape=box, style=rounded];", ""]
+    lines = [
+        "digraph SkillGraph {",
+        "  rankdir=TD;",
+        "  node [shape=box, style=rounded];",
+        "",
+    ]
 
     # Add nodes
     for skill_name, skill in graph.skills.items():

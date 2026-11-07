@@ -60,16 +60,12 @@ async def test_legacy_silent_fallback_increments_in_memory_metric(
 
     # The metric recorded the fallback.
     assert (
-        metrics.dlq_fallback_total.labels(
-            outcome="in_memory"
-        )._value.get()  # type: ignore[attr-defined]
+        metrics.dlq_fallback_total.labels(outcome="in_memory")._value.get()  # type: ignore[attr-defined]
         == in_memory_before + 1
     )
     # And the persisted counter did NOT increment.
     assert (
-        metrics.dlq_fallback_total.labels(
-            outcome="persisted"
-        )._value.get()  # type: ignore[attr-defined]
+        metrics.dlq_fallback_total.labels(outcome="persisted")._value.get()  # type: ignore[attr-defined]
         == persisted_before
     )
 
@@ -94,9 +90,7 @@ async def test_fail_closed_runtime_write_failure_increments_rejected_metric(
     )
     metrics = get_dlq_metrics()
 
-    rejected_before = metrics.dlq_fallback_total.labels(
-        outcome="rejected"
-    )._value.get()  # type: ignore[attr-defined]
+    rejected_before = metrics.dlq_fallback_total.labels(outcome="rejected")._value.get()  # type: ignore[attr-defined]
     persisted_before = metrics.dlq_fallback_total.labels(
         outcome="persisted"
     )._value.get()  # type: ignore[attr-defined]
@@ -115,16 +109,12 @@ async def test_fail_closed_runtime_write_failure_increments_rejected_metric(
 
     # The metric recorded the rejection.
     assert (
-        metrics.dlq_fallback_total.labels(
-            outcome="rejected"
-        )._value.get()  # type: ignore[attr-defined]
+        metrics.dlq_fallback_total.labels(outcome="rejected")._value.get()  # type: ignore[attr-defined]
         == rejected_before + 1
     )
     # And nothing was counted as persisted or in_memory.
     assert (
-        metrics.dlq_fallback_total.labels(
-            outcome="persisted"
-        )._value.get()  # type: ignore[attr-defined]
+        metrics.dlq_fallback_total.labels(outcome="persisted")._value.get()  # type: ignore[attr-defined]
         == persisted_before
     )
     mock_client.index.assert_called_once()

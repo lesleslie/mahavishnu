@@ -12,9 +12,15 @@ class SearchIndex:
     """Search index for fast skill discovery."""
 
     skills: dict[str, SkillMetadata] = field(default_factory=dict)
-    keyword_index: dict[str, list[str]] = field(default_factory=dict)  # keyword -> skill names
-    system_index: dict[str, list[str]] = field(default_factory=dict)  # system -> skill names
-    symptom_index: dict[str, list[str]] = field(default_factory=dict)  # symptom -> skill names
+    keyword_index: dict[str, list[str]] = field(
+        default_factory=dict
+    )  # keyword -> skill names
+    system_index: dict[str, list[str]] = field(
+        default_factory=dict
+    )  # system -> skill names
+    symptom_index: dict[str, list[str]] = field(
+        default_factory=dict
+    )  # symptom -> skill names
 
     def to_dict(self) -> dict:
         """Serialize to dictionary for JSON export."""

@@ -1,4 +1,5 @@
 """Tests for mahavishnu.observability.changepoint (REQ-004, REQ-006)."""
+
 from __future__ import annotations
 
 import math
@@ -78,7 +79,9 @@ class TestCUSUMUpdate:
                 fired = True
                 assert r.direction == "up"
                 break
-        assert fired, "CUSUM should detect 1-sigma shift within 500 samples at slack=0.5 threshold=5"
+        assert fired, (
+            "CUSUM should detect 1-sigma shift within 500 samples at slack=0.5 threshold=5"
+        )
 
     def test_persistent_downward_shift_fires(self) -> None:
         d = CUSUMDetector(target_mean=0.0, slack=0.5, threshold=5.0, two_sided=True)
@@ -250,14 +253,26 @@ class TestCUSUMPlantedShift:
 @pytest.mark.property
 class TestCUSUMHypothesis:
     @given(
-        target=st.floats(min_value=-5.0, max_value=5.0, allow_nan=False, allow_infinity=False),
-        slack=st.floats(min_value=0.1, max_value=1.0, allow_nan=False, allow_infinity=False),
-        threshold=st.floats(min_value=1.0, max_value=20.0, allow_nan=False, allow_infinity=False),
-        observation=st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        target=st.floats(
+            min_value=-5.0, max_value=5.0, allow_nan=False, allow_infinity=False
+        ),
+        slack=st.floats(
+            min_value=0.1, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
+        threshold=st.floats(
+            min_value=1.0, max_value=20.0, allow_nan=False, allow_infinity=False
+        ),
+        observation=st.floats(
+            min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @settings(max_examples=200, deadline=None)
     def test_update_returns_finite_result(
-        self, target: float, slack: float, threshold: float, observation: float,
+        self,
+        target: float,
+        slack: float,
+        threshold: float,
+        observation: float,
     ) -> None:
         d = CUSUMDetector(target_mean=target, slack=slack, threshold=threshold)
         r = d.update(observation)
@@ -268,7 +283,9 @@ class TestCUSUMHypothesis:
         assert r.samples_since_reset == 1
 
     @given(
-        observation=st.floats(min_value=-5.0, max_value=5.0, allow_nan=False, allow_infinity=False),
+        observation=st.floats(
+            min_value=-5.0, max_value=5.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @settings(max_examples=100, deadline=None)
     def test_score_never_negative(self, observation: float) -> None:
@@ -368,7 +385,13 @@ class TestPageHinkley:
 @pytest.mark.unit
 class TestAnomalyResult:
     def test_construct(self) -> None:
-        r = AnomalyResult(detected=True, z_score=3.5, current_value=10.0, window_mean=5.0, window_std=1.0)
+        r = AnomalyResult(
+            detected=True,
+            z_score=3.5,
+            current_value=10.0,
+            window_mean=5.0,
+            window_std=1.0,
+        )
         assert r.detected is True
         assert r.z_score == 3.5
         assert r.current_value == 10.0
@@ -376,7 +399,13 @@ class TestAnomalyResult:
         assert r.window_std == 1.0
 
     def test_is_frozen(self) -> None:
-        r = AnomalyResult(detected=False, z_score=0.0, current_value=0.0, window_mean=0.0, window_std=1.0)
+        r = AnomalyResult(
+            detected=False,
+            z_score=0.0,
+            current_value=0.0,
+            window_mean=0.0,
+            window_std=1.0,
+        )
         with pytest.raises((AttributeError, Exception)):
             r.z_score = 99.0  # type: ignore[misc]
 

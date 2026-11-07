@@ -25,7 +25,9 @@ from mahavishnu.cli.help_cli import (
 class TestGeneralHelp:
     """Test general help display."""
 
-    def test_show_general_help_displays_categories(self, capsys: pytest.CaptureFixture) -> None:
+    def test_show_general_help_displays_categories(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test general help shows all categories."""
         show_general_help()
 
@@ -55,7 +57,9 @@ class TestGeneralHelp:
         assert "Create a task" in output
         assert "List tasks" in output
 
-    def test_show_general_help_displays_shorthands(self, capsys: pytest.CaptureFixture) -> None:
+    def test_show_general_help_displays_shorthands(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test general help shows shorthand commands."""
         show_general_help()
 
@@ -92,7 +96,9 @@ class TestCommandHelp:
         assert "List tasks" in output
         assert "-r, --repository" in output
 
-    def test_show_command_help_includes_shorthand(self, capsys: pytest.CaptureFixture) -> None:
+    def test_show_command_help_includes_shorthand(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test command help includes shorthand when available."""
         show_command_help("task create")
 
@@ -102,7 +108,9 @@ class TestCommandHelp:
         assert "Shorthand:" in output
         assert "mhv tc" in output
 
-    def test_show_command_help_unknown_command(self, capsys: pytest.CaptureFixture) -> None:
+    def test_show_command_help_unknown_command(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test help for unknown command shows error."""
         show_command_help("nonexistent-command")
 
@@ -125,7 +133,9 @@ class TestCommandHelp:
 class TestAllHelp:
     """Test complete reference display."""
 
-    def test_show_all_help_displays_all_categories(self, capsys: pytest.CaptureFixture) -> None:
+    def test_show_all_help_displays_all_categories(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test --all shows all categories."""
         show_all_help()
 
@@ -135,7 +145,9 @@ class TestAllHelp:
         for category in COMMAND_CATEGORIES:
             assert category in output
 
-    def test_show_all_help_displays_all_commands(self, capsys: pytest.CaptureFixture) -> None:
+    def test_show_all_help_displays_all_commands(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test --all shows all commands."""
         show_all_help()
 
@@ -150,7 +162,9 @@ class TestAllHelp:
 class TestCategoryHelp:
     """Test category-specific help."""
 
-    def test_show_category_help_task_management(self, capsys: pytest.CaptureFixture) -> None:
+    def test_show_category_help_task_management(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test help for task management category."""
         _show_category_help("Task Management")
 
@@ -162,7 +176,9 @@ class TestCategoryHelp:
         assert "task list" in output
         assert "task update" in output
 
-    def test_show_category_help_repository_management(self, capsys: pytest.CaptureFixture) -> None:
+    def test_show_category_help_repository_management(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
         """Test help for repository management category."""
         _show_category_help("Repository Management")
 

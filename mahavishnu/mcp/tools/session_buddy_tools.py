@@ -100,7 +100,10 @@ def register_session_buddy_tools(
 
             app = getattr(server, "app", None)
             if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
+                return {
+                    "status": "error",
+                    "error": "App instance not available in server context",
+                }
 
             integration = SessionBuddyIntegration(app)
             result = await integration.get_function_context(project_path, function_name)
@@ -125,7 +128,10 @@ def register_session_buddy_tools(
 
             app = getattr(server, "app", None)
             if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
+                return {
+                    "status": "error",
+                    "error": "App instance not available in server context",
+                }
 
             integration = SessionBuddyIntegration(app)
             result = await integration.get_related_code(project_path, file_path)
@@ -140,7 +146,9 @@ def register_session_buddy_tools(
         required_permission=MCPPermission.READ,
         require_repo_param="project_path",
     )
-    async def index_documentation(project_path: str, user_id: str | None = None) -> dict[str, Any]:
+    async def index_documentation(
+        project_path: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Extract docstrings and index for semantic search in Session Buddy."""
         _warn_code_intel_deprecation("index_documentation", "code_index.index_repo")
         try:
@@ -148,7 +156,10 @@ def register_session_buddy_tools(
 
             app = getattr(server, "app", None)
             if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
+                return {
+                    "status": "error",
+                    "error": "App instance not available in server context",
+                }
 
             integration = SessionBuddyIntegration(app)
             result = await integration.index_documentation(project_path)
@@ -162,15 +173,22 @@ def register_session_buddy_tools(
         rbac_manager=rbac_manager,
         required_permission=MCPPermission.READ,
     )  # No repo permission needed for search
-    async def search_documentation(query: str, user_id: str | None = None) -> dict[str, Any]:
+    async def search_documentation(
+        query: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Search through indexed documentation in Session Buddy."""
-        _warn_code_intel_deprecation("search_documentation", "search_tools.hybrid_search")
+        _warn_code_intel_deprecation(
+            "search_documentation", "search_tools.hybrid_search"
+        )
         try:
             from ...session_buddy.integration import SessionBuddyIntegration
 
             app = getattr(server, "app", None)
             if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
+                return {
+                    "status": "error",
+                    "error": "App instance not available in server context",
+                }
 
             integration = SessionBuddyIntegration(app)
             result = await integration.search_documentation(query)
@@ -198,7 +216,10 @@ def register_session_buddy_tools(
 
             app = getattr(server, "app", None)
             if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
+                return {
+                    "status": "error",
+                    "error": "App instance not available in server context",
+                }
 
             # Convert priority string to enum
             try:
@@ -223,14 +244,19 @@ def register_session_buddy_tools(
         rbac_manager=rbac_manager,
         required_permission=MCPPermission.READ,
     )
-    async def list_project_messages(project: str, user_id: str | None = None) -> dict[str, Any]:
+    async def list_project_messages(
+        project: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """List messages for a project in Session Buddy."""
         try:
             from ...session_buddy.integration import SessionBuddyIntegration
 
             app = getattr(server, "app", None)
             if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
+                return {
+                    "status": "error",
+                    "error": "App instance not available in server context",
+                }
 
             integration = SessionBuddyIntegration(app)
             result = await integration.list_project_messages(project)
@@ -299,7 +325,11 @@ def register_session_buddy_tools(
 
         try:
             result = await mcp_client.call_tool(_CHANNEL_SESSION_TOOL, payload)
-            return {"status": "success", "event_id": payload["event_id"], "result": result}
+            return {
+                "status": "success",
+                "event_id": payload["event_id"],
+                "result": result,
+            }
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             return {
                 "status": "error",
@@ -348,4 +378,6 @@ def register_session_buddy_tools(
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             return {"status": "error", "error": f"Session-Buddy query failed: {e}"}
 
-    print("✅ Registered 9 Session Buddy integration tools with MCP server (with authorization)")
+    print(
+        "✅ Registered 9 Session Buddy integration tools with MCP server (with authorization)"
+    )

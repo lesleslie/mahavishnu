@@ -62,12 +62,22 @@ class TestErrorsLogRedaction:
         )
 
         # repo_root value is deliberately /Users/.../docs/... so any leak is visible.
-        await run_rebuild_cycle(store, rebuilder, repo_root=Path("/Users/fake/docs/plan"))
+        await run_rebuild_cycle(
+            store, rebuilder, repo_root=Path("/Users/fake/docs/plan")
+        )
 
         log = errors_log_path().read_text()
-        forbidden_substrings = ("/Users/", "/docs/", "github.com/", "http://", "https://")
+        forbidden_substrings = (
+            "/Users/",
+            "/docs/",
+            "github.com/",
+            "http://",
+            "https://",
+        )
         for needle in forbidden_substrings:
-            assert needle not in log, f"errors.log contains forbidden substring: {needle!r}"
+            assert needle not in log, (
+                f"errors.log contains forbidden substring: {needle!r}"
+            )
 
     @pytest.mark.asyncio
     async def test_errors_log_lines_use_path_hash_only(
@@ -107,7 +117,9 @@ class TestErrorsLogRedaction:
             )
         )
 
-        await run_rebuild_cycle(store, rebuilder, repo_root=Path("/Users/fake/docs/plan"))
+        await run_rebuild_cycle(
+            store, rebuilder, repo_root=Path("/Users/fake/docs/plan")
+        )
 
         log = errors_log_path().read_text()
         # Pull out every "err": {...} payload dict and validate its schema.

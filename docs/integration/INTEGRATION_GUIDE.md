@@ -31,7 +31,9 @@ result = await mcp_client.call_tool("get_tool_versions", {})
 # Returns: {"versions": {"list_repos": "1.0.0", ...}, "total_tools": 187}
 
 # Check specific tool
-result = await mcp_client.call_tool("get_tool_versions", {"tool_name": "trigger_workflow"})
+result = await mcp_client.call_tool(
+    "get_tool_versions", {"tool_name": "trigger_workflow"}
+)
 # Returns: {"version": "1.1.0", "tool_name": "trigger_workflow"}
 ```
 
@@ -81,11 +83,13 @@ agent = get_mahavishnu_agent()
 
 # Sweep repos with adaptive routing
 from mahavishnu.agents.mahavishnu_agent import SweepReposRequest
+
 result = await agent.sweep_repos(SweepReposRequest(tag="backend"))
 print(result.success, result.workflow_id)
 
 # Route task by natural language intent
 from mahavishnu.agents.mahavishnu_agent import RouteTaskRequest
+
 result = await agent.route_task(
     RouteTaskRequest(intent="security scan backend repos", strategy="success_rate")
 )
@@ -116,6 +120,7 @@ agent = MahavishnuAgent(config=MahavishnuSettings())
 
 # Reset singleton for testing
 from mahavishnu.agents.mahavishnu_agent import reset_agent
+
 reset_agent()
 ```
 
@@ -126,12 +131,14 @@ from pydantic_ai import Agent
 from mahavishnu.agents import get_mahavishnu_agent
 
 orchestrator = get_mahavishnu_agent()
-ai_agent = Agent('claude:opus-4-6')
+ai_agent = Agent("claude:opus-4-6")
+
 
 @ai_agent.tool
 async def sweep_backend_repos(ctx) -> str:
     """Sweep all backend repositories."""
     from mahavishnu.agents.mahavishnu_agent import SweepReposRequest
+
     result = await orchestrator.sweep_repos(SweepReposRequest(tag="backend"))
     return f"Sweep {'succeeded' if result.success else 'failed'}: {result.error or result.workflow_id}"
 ```

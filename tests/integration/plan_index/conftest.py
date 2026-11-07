@@ -164,7 +164,7 @@ async def _call_tool(
             text = result.content[0].text
             try:
                 return json.loads(text)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 return text
         return result
 

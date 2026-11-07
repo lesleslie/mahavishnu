@@ -149,7 +149,9 @@ class ProcessPoolTaskExecutor:
             Exception: Re-raised from function execution
         """
         if self._executor is None:
-            raise RuntimeError("ProcessPoolTaskExecutor not started. Call start() first.")
+            raise RuntimeError(
+                "ProcessPoolTaskExecutor not started. Call start() first."
+            )
 
         if self._shutdown:
             raise RuntimeError("ProcessPoolTaskExecutor is shut down")

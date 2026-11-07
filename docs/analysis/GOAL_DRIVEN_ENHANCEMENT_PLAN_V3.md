@@ -255,27 +255,30 @@ class TestGoalDrivenTeamFactoryInit:
 class TestIntentMatching:
     """Tests for intent pattern matching."""
 
-    @pytest.mark.parametrize("goal,expected_intent", [
-        ("Review this code for issues", "review"),
-        ("Analyze the codebase", "review"),
-        ("Check for bugs", "review"),
-        ("Audit the security", "review"),
-        ("Build a REST API", "build"),
-        ("Create a new feature", "build"),
-        ("Implement user auth", "build"),
-        ("Write unit tests", "test"),
-        ("Test the auth module", "test"),
-        ("Add test coverage", "test"),
-        ("Fix the login bug", "fix"),
-        ("Debug the error", "fix"),
-        ("Resolve the issue", "fix"),
-        ("Refactor the database layer", "refactor"),
-        ("Clean up the code", "refactor"),
-        ("Improve performance", "refactor"),
-        ("Document this function", "document"),
-        ("Add docstrings", "document"),
-        ("Write README", "document"),
-    ])
+    @pytest.mark.parametrize(
+        "goal,expected_intent",
+        [
+            ("Review this code for issues", "review"),
+            ("Analyze the codebase", "review"),
+            ("Check for bugs", "review"),
+            ("Audit the security", "review"),
+            ("Build a REST API", "build"),
+            ("Create a new feature", "build"),
+            ("Implement user auth", "build"),
+            ("Write unit tests", "test"),
+            ("Test the auth module", "test"),
+            ("Add test coverage", "test"),
+            ("Fix the login bug", "fix"),
+            ("Debug the error", "fix"),
+            ("Resolve the issue", "fix"),
+            ("Refactor the database layer", "refactor"),
+            ("Clean up the code", "refactor"),
+            ("Improve performance", "refactor"),
+            ("Document this function", "document"),
+            ("Add docstrings", "document"),
+            ("Write README", "document"),
+        ],
+    )
     def test_intent_matching_various_goals(self, goal, expected_intent):
         """Test intent matching for various goal types."""
         factory = GoalDrivenTeamFactory()
@@ -295,7 +298,9 @@ class TestSkillExtraction:
     def test_security_skill_extraction(self):
         """Test security skills extracted from goal."""
         factory = GoalDrivenTeamFactory()
-        skills = factory._extract_skills("review this code for security vulnerabilities")
+        skills = factory._extract_skills(
+            "review this code for security vulnerabilities"
+        )
         assert "security" in skills
 
     def test_performance_skill_extraction(self):
@@ -415,9 +420,7 @@ class TestCreateTeamFromGoal:
     async def test_create_team_basic(self):
         """Test basic team creation."""
         factory = GoalDrivenTeamFactory()
-        config = await factory.create_team_from_goal(
-            "Review code for security issues"
-        )
+        config = await factory.create_team_from_goal("Review code for security issues")
 
         assert config.name is not None
         assert config.mode in TeamMode
@@ -427,9 +430,7 @@ class TestCreateTeamFromGoal:
     async def test_create_team_coordinate_mode_has_leader(self):
         """Test coordinate mode creates leader."""
         factory = GoalDrivenTeamFactory()
-        config = await factory.create_team_from_goal(
-            "Review code for security issues"
-        )
+        config = await factory.create_team_from_goal("Review code for security issues")
 
         # Review intent defaults to coordinate mode
         if config.mode == TeamMode.COORDINATE:
@@ -566,11 +567,16 @@ class TestTeamCreateCommand:
         """Test successful team creation."""
         mock_get_llm.return_value = MagicMock()
 
-        result = runner.invoke(app, [
-            "create",
-            "--goal", "Review code for security issues",
-            "--name", "test_team",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "create",
+                "--goal",
+                "Review code for security issues",
+                "--name",
+                "test_team",
+            ],
+        )
 
         assert result.exit_code == 0
         assert "Parsed Goal" in result.output
@@ -580,22 +586,31 @@ class TestTeamCreateCommand:
         """Test dry run shows config without creating."""
         mock_get_llm.return_value = MagicMock()
 
-        result = runner.invoke(app, [
-            "create",
-            "--goal", "Review code for security issues",
-            "--dry-run",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "create",
+                "--goal",
+                "Review code for security issues",
+                "--dry-run",
+            ],
+        )
 
         assert result.exit_code == 0
         assert "Dry run" in result.output
 
     def test_create_team_invalid_mode(self):
         """Test error for invalid mode."""
-        result = runner.invoke(app, [
-            "create",
-            "--goal", "Review code",
-            "--mode", "invalid_mode",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "create",
+                "--goal",
+                "Review code",
+                "--mode",
+                "invalid_mode",
+            ],
+        )
 
         assert result.exit_code == 1
         assert "Invalid mode" in result.output
@@ -605,11 +620,15 @@ class TestTeamCreateCommand:
         """Test error when --run without --task."""
         mock_get_llm.return_value = MagicMock()
 
-        result = runner.invoke(app, [
-            "create",
-            "--goal", "Review code",
-            "--run",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "create",
+                "--goal",
+                "Review code",
+                "--run",
+            ],
+        )
 
         assert result.exit_code == 1
 
@@ -618,11 +637,15 @@ class TestTeamCreateCommand:
         """Test verbose output shows more details."""
         mock_get_llm.return_value = MagicMock()
 
-        result = runner.invoke(app, [
-            "create",
-            "--goal", "Review code for security issues",
-            "--verbose",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "create",
+                "--goal",
+                "Review code for security issues",
+                "--verbose",
+            ],
+        )
 
         assert result.exit_code == 0
         assert "Member Details" in result.output
@@ -649,7 +672,9 @@ class TestTeamListCommand:
         mock_adapter = MagicMock()
         mock_adapter.list_teams = AsyncMock(return_value=["team_1", "team_2"])
         mock_adapter.get_team_config = AsyncMock(
-            return_value=MagicMock(name="Test Team", mode=MagicMock(value="coordinate"), members=[])
+            return_value=MagicMock(
+                name="Test Team", mode=MagicMock(value="coordinate"), members=[]
+            )
         )
         mock_get_adapter.return_value = mock_adapter
 
@@ -667,10 +692,13 @@ class TestTeamParseCommand:
         """Test successful goal parsing."""
         mock_get_llm.return_value = MagicMock()
 
-        result = runner.invoke(app, [
-            "parse",
-            "Review code for security issues",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "parse",
+                "Review code for security issues",
+            ],
+        )
 
         assert result.exit_code == 0
         assert "Intent" in result.output

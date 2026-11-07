@@ -69,7 +69,9 @@ class AgentInvocation:
 class AgentMetricsStore:
     """JSON-based metrics storage"""
 
-    def __init__(self, store_path: Path = Path.home() / ".claude" / "agent_metrics.json"):
+    def __init__(
+        self, store_path: Path = Path.home() / ".claude" / "agent_metrics.json"
+    ):
         self.store_path = store_path
         self.store_path.parent.mkdir(parents=True, exist_ok=True)
         self.metrics = self._load()
@@ -95,13 +97,17 @@ class AgentMetricsStore:
         record["timestamp"] = invocation.timestamp.isoformat()
         self.metrics.append(record)
 
-    def get_metrics(self, agent_name: str | None = None, days: int | None = None) -> list[dict]:
+    def get_metrics(
+        self, agent_name: str | None = None, days: int | None = None
+    ) -> list[dict]:
         """Get filtered metrics"""
         filtered = self.metrics
 
         if days is not None:
             cutoff = datetime.now(UTC) - timedelta(days=days)
-            filtered = [m for m in filtered if datetime.fromisoformat(m["timestamp"]) >= cutoff]
+            filtered = [
+                m for m in filtered if datetime.fromisoformat(m["timestamp"]) >= cutoff
+            ]
 
         if agent_name:
             filtered = [m for m in filtered if m["agent_name"] == agent_name]
@@ -264,12 +270,19 @@ class MetricsAnalyzer:
             agent_stats[agent] = {
                 "invocations": stats["invocations"],
                 "total_tokens": stats["total_tokens"],
-                "avg_tokens_per_invocation": stats["total_tokens"] / stats["invocations"],
+                "avg_tokens_per_invocation": stats["total_tokens"]
+                / stats["invocations"],
                 "total_cost_usd": round(stats["total_cost"], 4),
-                "avg_cost_per_invocation": round(stats["total_cost"] / stats["invocations"], 4),
+                "avg_cost_per_invocation": round(
+                    stats["total_cost"] / stats["invocations"], 4
+                ),
                 "unique_tasks": len(stats["tasks"]),
-                "first_used": stats["first_used"].isoformat() if stats["first_used"] else None,
-                "last_used": stats["last_used"].isoformat() if stats["last_used"] else None,
+                "first_used": stats["first_used"].isoformat()
+                if stats["first_used"]
+                else None,
+                "last_used": stats["last_used"].isoformat()
+                if stats["last_used"]
+                else None,
             }
 
         return {
@@ -282,7 +295,9 @@ class MetricsAnalyzer:
             "generated_at": datetime.now(UTC).isoformat(),
         }
 
-    def get_top_agents(self, limit: int = 10, metric: str = "invocations") -> list[tuple]:
+    def get_top_agents(
+        self, limit: int = 10, metric: str = "invocations"
+    ) -> list[tuple]:
         """Get top N agents by specified metric"""
         summary = self.generate_summary(days=30)
 
@@ -290,7 +305,9 @@ class MetricsAnalyzer:
             return []
 
         agents = summary["agents"]
-        sorted_agents = sorted(agents.items(), key=lambda x: x[1].get(metric, 0), reverse=True)
+        sorted_agents = sorted(
+            agents.items(), key=lambda x: x[1].get(metric, 0), reverse=True
+        )
 
         return sorted_agents[:limit]
 
@@ -310,8 +327,12 @@ class MetricsAnalyzer:
             by_model[model] += cost
 
         return {
-            "by_agent": dict(sorted(by_agent.items(), key=lambda x: x[1], reverse=True)),
-            "by_model": dict(sorted(by_model.items(), key=lambda x: x[1], reverse=True)),
+            "by_agent": dict(
+                sorted(by_agent.items(), key=lambda x: x[1], reverse=True)
+            ),
+            "by_model": dict(
+                sorted(by_model.items(), key=lambda x: x[1], reverse=True)
+            ),
             "total_cost_usd": round(sum(by_agent.values()), 2),
         }
 
@@ -406,7 +427,9 @@ def main():
             print(f"\n{agent_name} - {len(metrics)} invocations in last {days} days")
             for m in metrics[:10]:
                 ts = datetime.fromisoformat(m["timestamp"])
-                print(f"  {ts.strftime('%Y-%m-%d %H:%M')}: {m['task_description'][:60]}")
+                print(
+                    f"  {ts.strftime('%Y-%m-%d %H:%M')}: {m['task_description'][:60]}"
+                )
         else:
             summary = analyzer.generate_summary(days=days)
             print_report(summary)

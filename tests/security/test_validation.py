@@ -66,7 +66,10 @@ class TestTaskCreateRequest:
         with pytest.raises(ValidationError) as exc_info:
             TaskCreateRequest(title="", repository="test-repo")
         # Pydantic v2 returns "at least 1 character" error for min_length
-        assert "1 character" in str(exc_info.value) or "empty" in str(exc_info.value).lower()
+        assert (
+            "1 character" in str(exc_info.value)
+            or "empty" in str(exc_info.value).lower()
+        )
 
     def test_null_byte_in_title_removed(self):
         """Test that null bytes in title are removed."""

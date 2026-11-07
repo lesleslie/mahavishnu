@@ -259,8 +259,12 @@ class TestHelpPanel:
     def test_get_bindings_by_mode(self) -> None:
         """Get bindings filtered by mode."""
         panel = HelpPanel()
-        panel.add_binding(KeyBinding("i", "insert", "Insert mode", modes=[DashboardState.NORMAL]))
-        panel.add_binding(KeyBinding("esc", "cancel", "Cancel", modes=[DashboardState.INSERT]))
+        panel.add_binding(
+            KeyBinding("i", "insert", "Insert mode", modes=[DashboardState.NORMAL])
+        )
+        panel.add_binding(
+            KeyBinding("esc", "cancel", "Cancel", modes=[DashboardState.INSERT])
+        )
 
         normal_bindings = panel.get_bindings_for_mode(DashboardState.NORMAL)
         insert_bindings = panel.get_bindings_for_mode(DashboardState.INSERT)

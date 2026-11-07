@@ -81,7 +81,9 @@ class CoordinationManager:
             ConfigurationError: If ecosystem.yaml cannot be loaded or parsed
         """
         if ecosystem_path is None:
-            ecosystem_path = os.getenv("MAHAVISHNU_ECOSYSTEM_PATH", "settings/ecosystem.yaml")
+            ecosystem_path = os.getenv(
+                "MAHAVISHNU_ECOSYSTEM_PATH", "settings/ecosystem.yaml"
+            )
 
         self.ecosystem_path = Path(ecosystem_path)
         self._ecosystem: dict[str, Any] = {}
@@ -123,7 +125,9 @@ class CoordinationManager:
                 normalized["repos"] = inferred_repos
 
         if "created" not in normalized:
-            normalized["created"] = normalized.get("created_at") or normalized.get("created") or ""
+            normalized["created"] = (
+                normalized.get("created_at") or normalized.get("created") or ""
+            )
         if "updated" not in normalized:
             normalized["updated"] = (
                 normalized.get("updated_at")
@@ -136,7 +140,9 @@ class CoordinationManager:
         normalized["updated"] = self._stringify_datetime(normalized.get("updated"))
 
         normalized["status"] = self._normalize_issue_status(normalized.get("status"))
-        normalized["priority"] = self._normalize_issue_priority(normalized.get("priority"))
+        normalized["priority"] = self._normalize_issue_priority(
+            normalized.get("priority")
+        )
 
         if "labels" not in normalized and "tags" in normalized:
             tags = normalized.get("tags")
@@ -162,7 +168,9 @@ class CoordinationManager:
             normalized["repo"] = self._infer_todo_repo(normalized)
 
         if "created" not in normalized:
-            normalized["created"] = normalized.get("created_at") or normalized.get("created") or ""
+            normalized["created"] = (
+                normalized.get("created_at") or normalized.get("created") or ""
+            )
         if "updated" not in normalized:
             normalized["updated"] = (
                 normalized.get("updated_at")
@@ -182,7 +190,9 @@ class CoordinationManager:
         normalized["estimated_hours"] = estimated_hours
 
         normalized["status"] = self._normalize_todo_status(normalized.get("status"))
-        normalized["priority"] = self._normalize_issue_priority(normalized.get("priority"))
+        normalized["priority"] = self._normalize_issue_priority(
+            normalized.get("priority")
+        )
 
         if "labels" not in normalized and "tags" in normalized:
             tags = normalized.get("tags")
@@ -362,7 +372,8 @@ class CoordinationManager:
 
         try:
             issues = [
-                CrossRepoIssue(**self._normalize_issue_record(issue)) for issue in issues_data
+                CrossRepoIssue(**self._normalize_issue_record(issue))
+                for issue in issues_data
             ]
         except ValidationError as e:
             raise ConfigurationError(
@@ -531,7 +542,10 @@ class CoordinationManager:
         todos_data = self._coordination.get("todos", [])
 
         try:
-            todos = [CrossRepoTodo(**self._normalize_todo_record(todo)) for todo in todos_data]
+            todos = [
+                CrossRepoTodo(**self._normalize_todo_record(todo))
+                for todo in todos_data
+            ]
         except ValidationError as e:
             raise ConfigurationError(
                 f"Invalid todo data in ecosystem.yaml: {e}",
@@ -703,7 +717,11 @@ class CoordinationManager:
             List of issues that affect the repository and are not resolved
         """
         issues = self.list_issues(repo=repo)
-        return [i for i in issues if i.status not in [IssueStatus.RESOLVED, IssueStatus.CLOSED]]
+        return [
+            i
+            for i in issues
+            if i.status not in [IssueStatus.RESOLVED, IssueStatus.CLOSED]
+        ]
 
     def get_repo_status(self, repo: str) -> dict[str, Any]:
         """
@@ -777,7 +795,9 @@ class CoordinationManager:
         ]
 
         dep_check = self.check_dependencies()
-        unsatisfied = [d for d in dep_check["dependencies"] if d["status"] != "satisfied"]
+        unsatisfied = [
+            d for d in dep_check["dependencies"] if d["status"] != "satisfied"
+        ]
 
         pending_todos = self.list_todos(status=TodoStatus.PENDING)
         in_progress_todos = self.list_todos(status=TodoStatus.IN_PROGRESS)
@@ -801,7 +821,12 @@ class CoordinationManager:
             ],
             "critical_blockers": len(open_blockers),
             "blockers": [
-                {"id": i.id, "title": i.title, "priority": i.priority.value, "repos": i.repos}
+                {
+                    "id": i.id,
+                    "title": i.title,
+                    "priority": i.priority.value,
+                    "repos": i.repos,
+                }
                 for i in open_blockers
             ],
             "degraded_dependencies": len(unsatisfied),

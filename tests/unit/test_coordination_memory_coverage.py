@@ -123,7 +123,9 @@ class TestSessionBuddyMemoryClient:
         client = SessionBuddyMemoryClient(base_url="http://x")
         mock_response = {"id": "abc"}
 
-        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            client._client, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             result = await client.store_memory("c1", "hello", {"k": "v"})
         assert result == {"id": "abc"}
 
@@ -132,7 +134,9 @@ class TestSessionBuddyMemoryClient:
         client = SessionBuddyMemoryClient(base_url="http://x")
         mock_response = ["raw", "payload"]
 
-        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            client._client, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             result = await client.store_memory("c1", "hello", {})
         assert result == ["raw", "payload"]
 
@@ -153,7 +157,9 @@ class TestSessionBuddyMemoryClient:
         client = SessionBuddyMemoryClient(base_url="http://x")
         mock_response = [{"id": "x"}, {"id": "y"}]
 
-        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            client._client, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             results = await client.search("query", filters={"a": 1}, limit=5)
         assert results == [{"id": "x"}, {"id": "y"}]
 
@@ -162,7 +168,9 @@ class TestSessionBuddyMemoryClient:
         client = SessionBuddyMemoryClient(base_url="http://x")
         mock_response = {"results": [{"id": "a"}]}
 
-        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            client._client, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             results = await client.search("q", filters={}, limit=10)
         assert results == [{"id": "a"}]
 
@@ -171,7 +179,9 @@ class TestSessionBuddyMemoryClient:
         client = SessionBuddyMemoryClient(base_url="http://x")
         mock_response = {"items": [{"id": "a"}]}
 
-        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            client._client, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             results = await client.search("q", filters={}, limit=10)
         assert results == [{"id": "a"}]
 
@@ -180,7 +190,9 @@ class TestSessionBuddyMemoryClient:
         client = SessionBuddyMemoryClient(base_url="http://x")
         mock_response = {"conversations": [{"id": "c"}]}
 
-        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            client._client, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             results = await client.search("q", filters={}, limit=10)
         assert results == [{"id": "c"}]
 
@@ -189,7 +201,9 @@ class TestSessionBuddyMemoryClient:
         client = SessionBuddyMemoryClient(base_url="http://x")
         mock_response = {"unknown_key": "stuff"}
 
-        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            client._client, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             results = await client.search("q", filters={}, limit=10)
         assert results == []
 
@@ -198,7 +212,9 @@ class TestSessionBuddyMemoryClient:
         client = SessionBuddyMemoryClient(base_url="http://x")
         mock_response = "string payload"
 
-        with patch.object(client._client, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            client._client, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             results = await client.search("q", filters={}, limit=10)
         assert results == []
 
@@ -524,7 +540,9 @@ class TestCoordinationMemorySearch:
         sb.search = AsyncMock(return_value=[])
         mem = CoordinationMemory(session_buddy_client=sb)
 
-        await mem.search_coordination_history("foo", entity_type="todo", repo="x", limit=5)
+        await mem.search_coordination_history(
+            "foo", entity_type="todo", repo="x", limit=5
+        )
         kwargs = sb.search.await_args.kwargs
         assert kwargs["limit"] == 5
         assert kwargs["filters"]["entity_type"] == "todo"
@@ -598,14 +616,18 @@ class TestCoordinationMemoryAkoshaPush:
     @pytest.mark.asyncio
     async def test_push_to_akosha_http_error_logged(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("x"))):
+        with patch.object(
+            mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("x"))
+        ):
             # Should not raise
             await mem._push_to_akosha("c", {})
 
     @pytest.mark.asyncio
     async def test_push_to_akosha_httperror_logged(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("bad"))):
+        with patch.object(
+            mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("bad"))
+        ):
             await mem._push_to_akosha("c", {})
 
     @pytest.mark.asyncio
@@ -639,7 +661,9 @@ class TestCoordinationMemorySearchSemantic:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
         mock_response = {"results": [{"id": "a"}]}
 
-        with patch.object(mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             results = await mem.search_semantic("q", limit=3)
 
         assert results == [{"id": "a"}]
@@ -649,7 +673,9 @@ class TestCoordinationMemorySearchSemantic:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
         mock_response = [{"id": "b"}]
 
-        with patch.object(mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             results = await mem.search_semantic("q", limit=3)
 
         assert results == [{"id": "b"}]
@@ -659,7 +685,9 @@ class TestCoordinationMemorySearchSemantic:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
         mock_response = {"results": []}
 
-        with patch.object(mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             assert await mem.search_semantic("q") == []
 
     @pytest.mark.asyncio
@@ -667,13 +695,17 @@ class TestCoordinationMemorySearchSemantic:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
         mock_response = {"results": "not a list"}
 
-        with patch.object(mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            mem._mcp, "call_tool", new=AsyncMock(return_value=mock_response)
+        ):
             assert await mem.search_semantic("q") == []
 
     @pytest.mark.asyncio
     async def test_search_semantic_http_error_returns_empty(self) -> None:
         mem = CoordinationMemory(akosha_url="http://akosha:8682/mcp")
-        with patch.object(mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("bad"))):
+        with patch.object(
+            mem._mcp, "call_tool", new=AsyncMock(side_effect=MCPServerError("bad"))
+        ):
             assert await mem.search_semantic("q") == []
 
     @pytest.mark.asyncio
@@ -728,13 +760,17 @@ class TestCoordinationManagerWithMemoryDelegation:
 
     def test_list_issues_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(mgr._coordination_mgr, "list_issues", return_value=["i"]) as mock_method:
+        with patch.object(
+            mgr._coordination_mgr, "list_issues", return_value=["i"]
+        ) as mock_method:
             assert mgr.list_issues("a", key="v") == ["i"]
         mock_method.assert_called_once_with("a", key="v")
 
     def test_get_issue_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(mgr._coordination_mgr, "get_issue", return_value="got") as mock_method:
+        with patch.object(
+            mgr._coordination_mgr, "get_issue", return_value="got"
+        ) as mock_method:
             assert mgr.get_issue("X") == "got"
         mock_method.assert_called_once_with("X")
 
@@ -788,25 +824,33 @@ class TestCoordinationManagerWithMemoryDelegation:
 
     def test_list_dependencies_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(mgr._coordination_mgr, "list_dependencies", return_value=[]) as m:
+        with patch.object(
+            mgr._coordination_mgr, "list_dependencies", return_value=[]
+        ) as m:
             assert mgr.list_dependencies() == []
         m.assert_called_once_with()
 
     def test_check_dependencies_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(mgr._coordination_mgr, "check_dependencies", return_value={}) as m:
+        with patch.object(
+            mgr._coordination_mgr, "check_dependencies", return_value={}
+        ) as m:
             assert mgr.check_dependencies() == {}
         m.assert_called_once_with()
 
     def test_get_blocking_issues_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(mgr._coordination_mgr, "get_blocking_issues", return_value=[]) as m:
+        with patch.object(
+            mgr._coordination_mgr, "get_blocking_issues", return_value=[]
+        ) as m:
             assert mgr.get_blocking_issues() == []
         m.assert_called_once_with()
 
     def test_get_repo_status_delegates(self) -> None:
         mgr = self._make_manager()
-        with patch.object(mgr._coordination_mgr, "get_repo_status", return_value={"a": 1}) as m:
+        with patch.object(
+            mgr._coordination_mgr, "get_repo_status", return_value={"a": 1}
+        ) as m:
             assert mgr.get_repo_status() == {"a": 1}
         m.assert_called_once_with()
 
@@ -823,7 +867,9 @@ class TestCoordinationManagerWithMemoryIssueMethods:
 
         with (
             patch.object(mgr, "create_issue") as mock_create,
-            patch.object(mgr.memory, "store_issue_event", new=AsyncMock()) as mock_store,
+            patch.object(
+                mgr.memory, "store_issue_event", new=AsyncMock()
+            ) as mock_store,
         ):
             await mgr.create_issue_with_memory(issue)
 
@@ -841,7 +887,9 @@ class TestCoordinationManagerWithMemoryIssueMethods:
         with (
             patch.object(mgr, "get_issue", return_value=issue) as mock_get,
             patch.object(mgr, "update_issue") as mock_update,
-            patch.object(mgr.memory, "store_issue_event", new=AsyncMock()) as mock_store,
+            patch.object(
+                mgr.memory, "store_issue_event", new=AsyncMock()
+            ) as mock_store,
         ):
             await mgr.update_issue_with_memory("ISSUE-001", {"status": "closed"})
 
@@ -866,7 +914,9 @@ class TestCoordinationManagerWithMemoryIssueMethods:
         with (
             patch.object(mgr, "get_issue", return_value=issue),
             patch.object(mgr, "update_issue") as mock_update,
-            patch.object(mgr.memory, "store_issue_event", new=AsyncMock()) as mock_store,
+            patch.object(
+                mgr.memory, "store_issue_event", new=AsyncMock()
+            ) as mock_store,
         ):
             await mgr.close_issue_with_memory("ISSUE-001")
 
@@ -891,7 +941,9 @@ class TestCoordinationManagerWithMemoryTodoMethods:
         ):
             await mgr.create_todo_with_memory(todo)
 
-        assert mgr._coordination_mgr._coordination["todos"] == [todo.model_dump(mode="json")]
+        assert mgr._coordination_mgr._coordination["todos"] == [
+            todo.model_dump(mode="json")
+        ]
         mock_save.assert_called_once_with()
         mock_store.assert_awaited_once_with("created", todo)
 
@@ -956,7 +1008,9 @@ class TestCoordinationManagerWithMemoryCheckDependencies:
                 "check_dependencies",
                 return_value=check_result,
             ),
-            patch.object(mgr.memory, "store_dependency_event", new=AsyncMock()) as mock_store,
+            patch.object(
+                mgr.memory, "store_dependency_event", new=AsyncMock()
+            ) as mock_store,
         ):
             result = await mgr.check_dependencies_with_memory()
 
@@ -995,13 +1049,17 @@ class TestCoordinationManagerWithMemoryCheckDependencies:
                 "check_dependencies",
                 return_value=check_result,
             ),
-            patch.object(mgr.memory, "store_dependency_event", new=AsyncMock()) as mock_store,
+            patch.object(
+                mgr.memory, "store_dependency_event", new=AsyncMock()
+            ) as mock_store,
         ):
             await mgr.check_dependencies_with_memory(consumer="x")
 
         kwargs = mock_store.await_args.kwargs
         # validation_result absent in dep_info -> not passed
-        assert "validation_result" not in kwargs or kwargs.get("validation_result") is None
+        assert (
+            "validation_result" not in kwargs or kwargs.get("validation_result") is None
+        )
 
     @pytest.mark.asyncio
     async def test_check_dependencies_with_memory_consumer_passed_through(self) -> None:

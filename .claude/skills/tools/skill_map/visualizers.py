@@ -18,8 +18,12 @@ def analyze_connectivity(graph: SkillGraph) -> dict[str, any]:
         "total_edges": graph.graph.number_of_edges(),
         "density": nx.density(graph.graph),
         "is_connected": nx.is_weakly_connected(graph.graph),
-        "weakly_connected_components": nx.number_weakly_connected_components(graph.graph),
-        "strongly_connected_components": nx.number_strongly_connected_components(graph.graph),
+        "weakly_connected_components": nx.number_weakly_connected_components(
+            graph.graph
+        ),
+        "strongly_connected_components": nx.number_strongly_connected_components(
+            graph.graph
+        ),
     }
 
 

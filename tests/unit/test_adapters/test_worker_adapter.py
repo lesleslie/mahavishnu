@@ -7,12 +7,18 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from mahavishnu.core.adapters.base import AdapterCapabilities, AdapterType, OrchestratorAdapter
+from mahavishnu.core.adapters.base import (
+    AdapterCapabilities,
+    AdapterType,
+    OrchestratorAdapter,
+)
 import mahavishnu.core.adapters.worker as wa
 
 
 class _Result:
-    def __init__(self, status: str, output: str | None, duration: float, ok: bool) -> None:
+    def __init__(
+        self, status: str, output: str | None, duration: float, ok: bool
+    ) -> None:
         self.status = SimpleNamespace(value=status)
         self.output = output
         self.duration_seconds = duration
@@ -47,7 +53,9 @@ class _Manager:
             raise RuntimeError("spawn failed")
         return [f"w{i}" for i in range(len(prompts))]
 
-    async def execute_batch(self, worker_ids: list[str], tasks: list[dict]) -> dict[str, _Result]:
+    async def execute_batch(
+        self, worker_ids: list[str], tasks: list[dict]
+    ) -> dict[str, _Result]:
         self.exec_calls.append((worker_ids, tasks))
         if self.raise_exec:
             raise RuntimeError("exec failed")
@@ -80,7 +88,9 @@ class _AdapterStub(OrchestratorAdapter):
     def capabilities(self) -> AdapterCapabilities:
         return AdapterCapabilities()
 
-    async def execute(self, task: dict[str, object], repos: list[str]) -> dict[str, object]:
+    async def execute(
+        self, task: dict[str, object], repos: list[str]
+    ) -> dict[str, object]:
         return {"task": task, "repos": repos}
 
     async def get_health(self) -> dict[str, object]:
@@ -106,14 +116,18 @@ def test_adapter_properties_and_init_variants(monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.mark.asyncio
-async def test_execute_validation_and_success_and_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_execute_validation_and_success_and_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     mgr = _Manager()
     adapter = wa.WorkerOrchestratorAdapter(worker_manager=mgr)
     requested_worker_types: list[str] = []
     monkeypatch.setattr(
         wa,
         "resolve_worker_type",
-        lambda req, task_type, prompt: requested_worker_types.append(req) or "terminal-qwen",
+        lambda req, task_type, prompt: (
+            requested_worker_types.append(req) or "terminal-qwen"
+        ),
     )
 
     with pytest.raises(ValueError):
@@ -122,7 +136,12 @@ async def test_execute_validation_and_success_and_fallback(monkeypatch: pytest.M
         await adapter.execute({"prompt": "x", "count": 0}, ["/repo"])
 
     out = await adapter.execute(
-        {"worker_type": "terminal-qwen", "prompt": "do thing", "count": 2, "task_type": "general"},
+        {
+            "worker_type": "terminal-qwen",
+            "prompt": "do thing",
+            "count": 2,
+            "task_type": "general",
+        },
         ["/repo1", "/repo2"],
     )
     assert out["worker_count"] == 2
@@ -177,7 +196,9 @@ def test_worker_adapter_entries_shape() -> None:
     assert e.to_candidate().domain == "adapter"
 
 
-def test_init_with_config_branch_uses_terminal_and_context(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_with_config_branch_uses_terminal_and_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     captured: dict = {}
 
     class _WM:
@@ -224,7 +245,9 @@ def test_the_manager_is_given_the_settings(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 @pytest.mark.asyncio
-async def test_init_lazy_path_and_ensure_builds_manager(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_init_lazy_path_and_ensure_builds_manager(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class _Loop:
         def is_running(self) -> bool:
             return True

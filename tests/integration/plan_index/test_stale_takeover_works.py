@@ -42,7 +42,9 @@ class TestStaleTakeoverWorks:
         five_min_ago_ms = int(time.time() * 1000) - 5 * 60 * 1000
         stale_holder = "deadhost/1111"
         await mcp.put("plan_index/meta/rebuild_lock/holder", stale_holder)
-        await mcp.put("plan_index/meta/rebuild_lock/acquired_at_ms", str(five_min_ago_ms))
+        await mcp.put(
+            "plan_index/meta/rebuild_lock/acquired_at_ms", str(five_min_ago_ms)
+        )
 
         # Cycle B takes over.
         result = await run_rebuild_cycle(store, rebuilder)
@@ -68,16 +70,18 @@ class TestStaleTakeoverWorks:
         history_key, history_value = history_entries[0]
         assert history_key.startswith(REBUILD_LOCK_HISTORY_KEY_PREFIX)
         # The key suffix is a uuid4 hex (32 chars).
-        suffix = history_key[len(REBUILD_LOCK_HISTORY_KEY_PREFIX):]
+        suffix = history_key[len(REBUILD_LOCK_HISTORY_KEY_PREFIX) :]
         assert re.fullmatch(r"[0-9a-f]{32}", suffix), (
             f"history key suffix {suffix!r} must be a uuid4 hex string"
         )
 
         payload = json.loads(history_value)
         assert payload["previous_holder"] == stale_holder
-        assert payload["took_over_at_ms"] == five_min_ago_ms + (
-            result.last_rebuild_ms - five_min_ago_ms
-        ) or payload["took_over_at_ms"] >= five_min_ago_ms
+        assert (
+            payload["took_over_at_ms"]
+            == five_min_ago_ms + (result.last_rebuild_ms - five_min_ago_ms)
+            or payload["took_over_at_ms"] >= five_min_ago_ms
+        )
         # The new holder must match the redaction regex.
         new_holder = payload["took_over_by"]
         assert re.match(r"^[a-f0-9]{8}/\d+$", new_holder), (

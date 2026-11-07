@@ -65,7 +65,9 @@ def _strip_docstrings(source: str) -> str:
     """
     tree = ast.parse(source)
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+        if not isinstance(
+            node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+        ):
             continue
         body = node.body
         if not body:
@@ -123,7 +125,9 @@ def _is_legacy_path(text: str) -> bool:
     )
 
 
-@pytest.mark.parametrize("path", list(_python_files()), ids=lambda p: str(p.relative_to(REPO_ROOT)))
+@pytest.mark.parametrize(
+    "path", list(_python_files()), ids=lambda p: str(p.relative_to(REPO_ROOT))
+)
 def test_no_hardcoded_legacy_data_path(path: Path) -> None:
     """Code may not reintroduce the legacy ``~/.claude/data`` location."""
     source = path.read_text(encoding="utf-8")
@@ -179,7 +183,9 @@ def test_resolvers_fall_back_to_xdg_defaults(monkeypatch: pytest.MonkeyPatch) ->
     assert config_dir() == Path("/tmp/fake-home/.config/session-buddy")
 
 
-def test_empty_xdg_variable_falls_back_to_default(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_empty_xdg_variable_falls_back_to_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The XDG spec treats an empty variable the same as an unset one."""
     monkeypatch.setenv("XDG_DATA_HOME", "")
     monkeypatch.setenv("HOME", "/tmp/fake-home")

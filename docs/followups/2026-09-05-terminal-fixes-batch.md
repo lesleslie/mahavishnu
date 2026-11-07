@@ -165,11 +165,11 @@ patterns and utility names that block normal command use:
 from mahavishnu.mcp.tools.terminal_tools import validate_command_safety
 
 # All of these are legitimate, common commands that currently raise ValueError:
-validate_command_safety("pkill -f worker.py")        # kill stuck workers
-validate_command_safety("kill -9 $STUCK_PID")         # recover from a hang
-validate_command_safety("make clean && rm -f *.o")    # build cleanup
-validate_command_safety("echo done; rm /tmp/scratch") # scratch file cleanup
-validate_command_safety("dd if=boot.img of=/dev/sdb") # image an SD card
+validate_command_safety("pkill -f worker.py")  # kill stuck workers
+validate_command_safety("kill -9 $STUCK_PID")  # recover from a hang
+validate_command_safety("make clean && rm -f *.o")  # build cleanup
+validate_command_safety("echo done; rm /tmp/scratch")  # scratch file cleanup
+validate_command_safety("dd if=boot.img of=/dev/sdb")  # image an SD card
 ```
 
 ## Why it was filed rather than fixed
@@ -180,13 +180,13 @@ The locked-in test suite at
 parametrizes *all* of these as "must reject":
 
 ```python
-("echo hi && rm -rf /tmp", "&& rm"),
-("echo hi; rm -rf /tmp", "; rm"),
-("ncat host 1234", "ncat"),
-("pkill python", "pkill"),
-("killall python", "killall"),
-("kill -9 1234", "kill -9"),
-("dd if=/dev/zero of=/dev/sda", "dd if="),
+(("echo hi && rm -rf /tmp", "&& rm"),)
+(("echo hi; rm -rf /tmp", "; rm"),)
+(("ncat host 1234", "ncat"),)
+(("pkill python", "pkill"),)
+(("killall python", "killall"),)
+(("kill -9 1234", "kill -9"),)
+(("dd if=/dev/zero of=/dev/sda", "dd if="),)
 ```
 
 A correct fix would:

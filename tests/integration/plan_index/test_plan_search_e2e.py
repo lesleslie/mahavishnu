@@ -83,9 +83,7 @@ class TestPlanSearchE2E:
         self, call_tool: Any
     ) -> None:
         """REQ-PLAN-010: missing ``user_id`` returns envelope, not raise."""
-        result = await call_tool(
-            "plan_search", {"query": "routing"}, user_id=None
-        )
+        result = await call_tool("plan_search", {"query": "routing"}, user_id=None)
 
         assert isinstance(result, dict)
         assert result["status"] == "error"

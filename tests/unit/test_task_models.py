@@ -149,20 +149,28 @@ class TestTaskCreateRequestTags:
     """Tag validation and deduplication."""
 
     def test_valid_tags(self):
-        req = TaskCreateRequest(title="T", repository="repo", tags=["backend", "python-3"])
+        req = TaskCreateRequest(
+            title="T", repository="repo", tags=["backend", "python-3"]
+        )
         assert req.tags == ["backend", "python-3"]
 
     def test_tags_lowered(self):
-        req = TaskCreateRequest(title="T", repository="repo", tags=["Backend", "PYTHON"])
+        req = TaskCreateRequest(
+            title="T", repository="repo", tags=["Backend", "PYTHON"]
+        )
         assert req.tags == ["backend", "python"]
 
     def test_duplicate_tags_deduplicated(self):
-        req = TaskCreateRequest(title="T", repository="repo", tags=["tag", "Tag", "TAG"])
+        req = TaskCreateRequest(
+            title="T", repository="repo", tags=["tag", "Tag", "TAG"]
+        )
         assert req.tags == ["tag"]
 
     def test_too_many_tags(self):
         with pytest.raises(ValidationError):
-            TaskCreateRequest(title="T", repository="repo", tags=[f"t{i}" for i in range(11)])
+            TaskCreateRequest(
+                title="T", repository="repo", tags=[f"t{i}" for i in range(11)]
+            )
 
     def test_tag_starts_with_hyphen_rejected(self):
         with pytest.raises(ValidationError, match="Invalid tag"):

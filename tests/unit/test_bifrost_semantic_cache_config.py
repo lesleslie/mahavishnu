@@ -66,7 +66,9 @@ import pytest
 # integration selector can skip them in fast feedback runs.
 pytestmark = pytest.mark.unit
 
-TEMPLATE = Path(__file__).resolve().parents[2] / "config" / "bifrost" / "config.template.json"
+TEMPLATE = (
+    Path(__file__).resolve().parents[2] / "config" / "bifrost" / "config.template.json"
+)
 
 #: Native output dimensionality of the embedding models Bifrost is
 #: configured with. The Redis Stack vector index is created with a
@@ -102,7 +104,9 @@ def plugin_config(template: dict[str, Any]) -> dict[str, Any]:
     for plugin in template.get("plugins", []):
         if plugin.get("name") == "semantic_cache":
             config = plugin.get("config")
-            assert isinstance(config, dict), "semantic_cache plugin must carry a config object"
+            assert isinstance(config, dict), (
+                "semantic_cache plugin must carry a config object"
+            )
             return config
     pytest.skip("semantic_cache plugin is not present in the Bifrost config template")
 
@@ -120,14 +124,20 @@ def provider_keys(template: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
 
 def test_semantic_cache_plugin_is_enabled(template: dict[str, Any]) -> None:
     """The ``semantic_cache`` plugin must be registered and enabled."""
-    plugins = {p.get("name"): p for p in template.get("plugins", []) if isinstance(p, dict)}
-    assert "semantic_cache" in plugins, "semantic_cache plugin missing from the Bifrost config"
+    plugins = {
+        p.get("name"): p for p in template.get("plugins", []) if isinstance(p, dict)
+    }
+    assert "semantic_cache" in plugins, (
+        "semantic_cache plugin missing from the Bifrost config"
+    )
     assert plugins["semantic_cache"].get("enabled") is True, (
         "semantic_cache plugin is present but disabled -- the cache would be inert"
     )
 
 
-def test_semantic_cache_is_not_in_direct_hash_mode(plugin_config: dict[str, Any]) -> None:
+def test_semantic_cache_is_not_in_direct_hash_mode(
+    plugin_config: dict[str, Any],
+) -> None:
     """``dimension`` must be > 1; ``1`` means direct-hash mode.
 
     Bifrost's schema states the semantic cache plugin's ``dimension``
@@ -224,11 +234,17 @@ def test_embedding_dimension_matches_model(plugin_config: dict[str, Any]) -> Non
     )
 
 
-def test_semantic_cache_threshold_is_a_valid_cosine(plugin_config: dict[str, Any]) -> None:
+def test_semantic_cache_threshold_is_a_valid_cosine(
+    plugin_config: dict[str, Any],
+) -> None:
     """The similarity threshold must be a cosine value in ``(0, 1]``."""
     threshold = plugin_config.get("threshold")
-    assert isinstance(threshold, (int, float)), f"threshold must be numeric, got {threshold!r}"
-    assert 0 < threshold <= 1, f"threshold {threshold} is outside the cosine range (0, 1]"
+    assert isinstance(threshold, (int, float)), (
+        f"threshold must be numeric, got {threshold!r}"
+    )
+    assert 0 < threshold <= 1, (
+        f"threshold {threshold} is outside the cosine range (0, 1]"
+    )
 
 
 def test_semantic_cache_has_no_default_cache_key(plugin_config: dict[str, Any]) -> None:
@@ -257,7 +273,9 @@ def test_semantic_cache_has_no_default_cache_key(plugin_config: dict[str, Any]) 
     )
 
 
-def test_semantic_cache_keeps_the_system_prompt_in_the_key(plugin_config: dict[str, Any]) -> None:
+def test_semantic_cache_keeps_the_system_prompt_in_the_key(
+    plugin_config: dict[str, Any],
+) -> None:
     """The system prompt must stay in the cache key.
 
     Bifrost's upstream default for ``exclude_system_prompt`` is

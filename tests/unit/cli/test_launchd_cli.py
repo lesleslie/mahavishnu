@@ -148,7 +148,11 @@ def test_program_arguments_match_wrapper_signature() -> None:
     start = text.index("<array>")
     end = text.index("</array>", start)
     arg_block = text[start:end]
-    args = [line.strip() for line in arg_block.splitlines() if line.strip().startswith("<string>")]
+    args = [
+        line.strip()
+        for line in arg_block.splitlines()
+        if line.strip().startswith("<string>")
+    ]
     args = [a.replace("<string>", "").replace("</string>", "") for a in args]
     assert args[0] == str(launchd_cli.WRAPPER_PATH), (
         f"first argv element must be the wrapper script, got {args[0]!r}"
@@ -179,10 +183,15 @@ def test_program_arguments_match_wrapper_signature() -> None:
 
 def test_install_fails_when_wrapper_missing(monkeypatch) -> None:
     """No wrapper script → exit 1 with explicit failure message."""
-    monkeypatch.setattr(launchd_cli, "WRAPPER_PATH", Path("/nonexistent/healthcheck.sh"))
+    monkeypatch.setattr(
+        launchd_cli, "WRAPPER_PATH", Path("/nonexistent/healthcheck.sh")
+    )
     result = runner.invoke(launchd_app, ["prefect", "install"])
     assert result.exit_code == 1
-    assert "missing wrapper script" in result.output or "missing wrapper script" in result.stderr
+    assert (
+        "missing wrapper script" in result.output
+        or "missing wrapper script" in result.stderr
+    )
 
 
 def test_install_writes_plist_and_calls_launchctl_load(monkeypatch, tmp_path) -> None:
@@ -200,13 +209,16 @@ def test_install_writes_plist_and_calls_launchctl_load(monkeypatch, tmp_path) ->
     src_template = tmp_path / "plist_template.xml"
     src_template.write_text(
         '<?xml version="1.0"?><plist version="1.0"><dict>'
-        '<key>Label</key><string>com.mcp.mahavishnu.prefect</string>'
-        '</dict></plist>'
+        "<key>Label</key><string>com.mcp.mahavishnu.prefect</string>"
+        "</dict></plist>"
     )
     monkeypatch.setattr(launchd_cli, "PLIST_TEMPLATE_PATH", src_template)
     # Avoid actually waiting — return success immediately.
-    monkeypatch.setattr(launchd_cli, "_launchctl",
-                         MagicMock(return_value=MagicMock(returncode=0, stdout="", stderr="")))
+    monkeypatch.setattr(
+        launchd_cli,
+        "_launchctl",
+        MagicMock(return_value=MagicMock(returncode=0, stdout="", stderr="")),
+    )
     monkeypatch.setattr(os, "getuid", lambda: 501)
 
     runner.invoke(launchd_app, ["prefect", "install"])
@@ -225,11 +237,19 @@ def test_install_writes_plist_and_calls_launchctl_load(monkeypatch, tmp_path) ->
 def test_status_reports_launchd_and_health(monkeypatch) -> None:
     """Status runs ``launchctl list`` AND probes ``/api/health`` and prints both."""
     monkeypatch.setattr(
-        launchd_cli, "_launchctl",
-        MagicMock(return_value=MagicMock(returncode=0, stdout="99999\t0\tcom.mcp.mahavishnu.prefect", stderr="")),
+        launchd_cli,
+        "_launchctl",
+        MagicMock(
+            return_value=MagicMock(
+                returncode=0, stdout="99999\t0\tcom.mcp.mahavishnu.prefect", stderr=""
+            )
+        ),
     )
-    monkeypatch.setattr(launchd_cli.httpx, "get",
-                        MagicMock(return_value=MagicMock(status_code=200, text="true")))
+    monkeypatch.setattr(
+        launchd_cli.httpx,
+        "get",
+        MagicMock(return_value=MagicMock(status_code=200, text="true")),
+    )
     result = runner.invoke(launchd_app, ["prefect", "status"])
     assert result.exit_code == 0
     out = result.output
@@ -242,7 +262,8 @@ def test_status_reports_launchd_and_health(monkeypatch) -> None:
 def test_status_handles_health_probe_failure(monkeypatch) -> None:
     """If the health probe raises, status reports it without exiting nonzero."""
     monkeypatch.setattr(
-        launchd_cli, "_launchctl",
+        launchd_cli,
+        "_launchctl",
         MagicMock(return_value=MagicMock(returncode=0, stdout="", stderr="")),
     )
 

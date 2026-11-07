@@ -242,19 +242,18 @@ import asyncio
 import json
 import websockets
 
+
 async def monitor_team_events():
     uri = "ws://localhost:8690"
     async with websockets.connect(uri) as ws:
         # Subscribe to all team events
-        await ws.send(json.dumps({
-            "action": "subscribe",
-            "channel": "team_events"
-        }))
+        await ws.send(json.dumps({"action": "subscribe", "channel": "team_events"}))
 
         async for message in ws:
             event = json.loads(message)
             print(f"Event: {event['event']}")
             print(f"Data: {json.dumps(event, indent=2)}")
+
 
 asyncio.run(monitor_team_events())
 ```
@@ -411,12 +410,15 @@ mahavishnu team create -g "Write tests" --verbose
 
 ```python
 # Via MCP tool
-result = await mcp.call_tool("team_from_goal", {
-    "goal": "Review code for security vulnerabilities",
-    "name": "security_review",
-    "mode": "coordinate",
-    "auto_run": False
-})
+result = await mcp.call_tool(
+    "team_from_goal",
+    {
+        "goal": "Review code for security vulnerabilities",
+        "name": "security_review",
+        "mode": "coordinate",
+        "auto_run": False,
+    },
+)
 
 print(f"Team ID: {result['team_id']}")
 print(f"Members: {[m['name'] for m in result['config']['members']]}")

@@ -89,7 +89,9 @@ async def main():
             print("  Sample adapters:")
             for adapter in adapters[:5]:  # Show first 5
                 print(f"    - {adapter.adapter_id}")
-                print(f"      Category: {adapter.category}, Provider: {adapter.provider}")
+                print(
+                    f"      Category: {adapter.category}, Provider: {adapter.provider}"
+                )
             if len(adapters) > 5:
                 print(f"    ... and {len(adapters) - 5} more")
         else:

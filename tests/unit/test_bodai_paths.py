@@ -43,7 +43,9 @@ def _clear_projects_root_env(monkeypatch: pytest.MonkeyPatch) -> None:
 class TestResolveProjectsRoot:
     """The chain: env var, then the repo's own location, then ~/Projects."""
 
-    def test_env_var_wins(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_env_var_wins(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``$BODAI_PROJECTS_ROOT`` beats every other candidate."""
         monkeypatch.setenv(PROJECTS_ROOT_ENV_VAR, str(tmp_path))
 
@@ -78,7 +80,9 @@ class TestResolveProjectsRoot:
         repo_root.mkdir()
         (repo_root / ".git").write_text("gitdir: /elsewhere/.git/worktrees/x\n")
 
-        assert resolve_projects_root(repo_root) == Path.home() / DEFAULT_PROJECTS_DIRNAME
+        assert (
+            resolve_projects_root(repo_root) == Path.home() / DEFAULT_PROJECTS_DIRNAME
+        )
 
     def test_a_directory_that_is_not_a_checkout_is_not_a_projects_root(
         self, tmp_path: Path
@@ -87,13 +91,17 @@ class TestResolveProjectsRoot:
         repo_root = tmp_path / REPO_DIRNAME
         repo_root.mkdir()
 
-        assert resolve_projects_root(repo_root) == Path.home() / DEFAULT_PROJECTS_DIRNAME
+        assert (
+            resolve_projects_root(repo_root) == Path.home() / DEFAULT_PROJECTS_DIRNAME
+        )
 
     def test_falls_back_to_the_home_layout(self, tmp_path: Path) -> None:
         """A checkout that is not named ``mahavishnu`` has no known root."""
         repo_root = tmp_path / "some-other-checkout"
 
-        assert resolve_projects_root(repo_root) == Path.home() / DEFAULT_PROJECTS_DIRNAME
+        assert (
+            resolve_projects_root(repo_root) == Path.home() / DEFAULT_PROJECTS_DIRNAME
+        )
 
     def test_falls_back_to_the_cwd_without_a_home(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -116,7 +124,9 @@ class TestRenderRepoPath:
 
     def test_renders_a_nested_path(self, tmp_path: Path) -> None:
         """A repo in a subdirectory keeps that subdirectory."""
-        assert render_repo_path(str(tmp_path / "group" / "oneiric"), tmp_path) == ("group/oneiric/")
+        assert render_repo_path(str(tmp_path / "group" / "oneiric"), tmp_path) == (
+            "group/oneiric/"
+        )
 
     def test_falls_back_to_the_directory_name(self, tmp_path: Path) -> None:
         """A repo outside the root leaks nothing but its name."""
@@ -141,7 +151,9 @@ def _raise_runtime_error() -> Path:
 
 def _load_generator() -> ModuleType:
     """Import the registry generator by path."""
-    spec = importlib.util.spec_from_file_location("regen_bodai_registry", GENERATOR_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "regen_bodai_registry", GENERATOR_PATH
+    )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

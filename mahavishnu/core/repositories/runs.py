@@ -60,7 +60,9 @@ class TaskRunCreate(BaseModel):
     task_id: UUID = Field(..., description="Parent task ID")
     run_number: int = Field(..., ge=1, description="Sequential run number")
     pool_name: str | None = Field(None, max_length=100, description="Pool name")
-    worker_id: str | None = Field(None, max_length=100, description="Worker instance ID")
+    worker_id: str | None = Field(
+        None, max_length=100, description="Worker instance ID"
+    )
     worker_type: str | None = Field(None, max_length=100, description="Worker type")
     engine: str | None = Field(None, max_length=50, description="Execution engine")
     status: str = Field(default=RunStatus.PENDING, description="Run status")
@@ -120,11 +122,17 @@ class TaskRunUpdate(BaseModel):
     """
 
     status: str | None = Field(None, description="Run status")
-    worker_id: str | None = Field(None, max_length=100, description="Worker instance ID")
+    worker_id: str | None = Field(
+        None, max_length=100, description="Worker instance ID"
+    )
     finished_at: datetime | None = Field(None, description="Finish timestamp")
     exit_code: int | None = Field(None, description="Process exit code")
-    error_message: str | None = Field(None, max_length=5000, description="Error message")
-    result_summary: str | None = Field(None, max_length=5000, description="Result summary")
+    error_message: str | None = Field(
+        None, max_length=5000, description="Error message"
+    )
+    result_summary: str | None = Field(
+        None, max_length=5000, description="Result summary"
+    )
     metrics: dict[str, Any] | None = Field(None, description="Metrics updates")
     metadata: dict[str, Any] | None = Field(None, description="Metadata updates")
 
@@ -146,8 +154,12 @@ class TaskRunFilter(BaseModel):
 
     task_id: UUID | None = Field(None, description="Filter by parent task")
     status: str | None = Field(None, description="Filter by status")
-    pool_name: str | None = Field(None, max_length=100, description="Filter by pool name")
-    worker_id: str | None = Field(None, max_length=100, description="Filter by worker ID")
+    pool_name: str | None = Field(
+        None, max_length=100, description="Filter by pool name"
+    )
+    worker_id: str | None = Field(
+        None, max_length=100, description="Filter by worker ID"
+    )
     engine: str | None = Field(None, max_length=50, description="Filter by engine")
     started_after: datetime | None = Field(None, description="Filter started after")
     started_before: datetime | None = Field(None, description="Filter started before")

@@ -234,7 +234,9 @@ class ConfigValidator:
                         valid=False,
                         message=f"Missing required field: {field_name}",
                         path=path,
-                        suggestions=[f"Add '{field_name}: <value>' to this repository entry"],
+                        suggestions=[
+                            f"Add '{field_name}: <value>' to this repository entry"
+                        ],
                     )
                 )
 
@@ -297,14 +299,18 @@ class ConfigValidator:
         nicknames = repo.get("nicknames")
         if nicknames is not None and (
             not isinstance(nicknames, list)
-            or not all(isinstance(nickname, str) and nickname.strip() for nickname in nicknames)
+            or not all(
+                isinstance(nickname, str) and nickname.strip() for nickname in nicknames
+            )
         ):
             self.report.add_result(
                 ValidationResult(
                     valid=False,
                     message="'nicknames' must be a list of non-empty strings",
                     path=f"{path}:nicknames",
-                    suggestions=["Use YAML list syntax, e.g. nicknames: [primary, alias]"],
+                    suggestions=[
+                        "Use YAML list syntax, e.g. nicknames: [primary, alias]"
+                    ],
                 )
             )
 
@@ -333,7 +339,9 @@ class ConfigValidator:
         pattern = r"^[a-z][a-z0-9-]*$"
         return bool(re.match(pattern, name))
 
-    def validate_settings_yaml(self, settings_path: str | Path) -> ConfigValidationReport:
+    def validate_settings_yaml(
+        self, settings_path: str | Path
+    ) -> ConfigValidationReport:
         """Validate settings.yaml file.
 
         Args:

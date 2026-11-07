@@ -198,7 +198,9 @@ def test_fuzzy_score_is_capped_at_zero_point_six() -> None:
 
 
 @pytest.mark.unit
-def test_fuzzy_score_normalization_handles_underscores_and_dashes_as_word_separators() -> None:
+def test_fuzzy_score_normalization_handles_underscores_and_dashes_as_word_separators() -> (
+    None
+):
     # "ct" against "create-task" — both 'c' and 't' land on word starts, so we
     # expect bonuses; result must still be <= 0.6 and > 0.
     score = FuzzyMatcher._fuzzy_score("ct", "create-task")
@@ -399,7 +401,9 @@ def test_palette_search_keyword_match_uses_match_type_keyword() -> None:
 
 
 @pytest.mark.unit
-def test_palette_search_description_match_uses_match_type_description_with_multiplier() -> None:
+def test_palette_search_description_match_uses_match_type_description_with_multiplier() -> (
+    None
+):
     palette = CommandPalette()
     palette.register(
         _cmd("a", name="ZZZ", description="create task something"),
@@ -765,7 +769,9 @@ def test_command_provider_run_callback_executes_command(
 
 
 @pytest.mark.unit
-def test_get_command_palette_returns_same_instance(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_command_palette_returns_same_instance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(cp_module, "_default_palette", None)
     first = get_command_palette()
     second = get_command_palette()

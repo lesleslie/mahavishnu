@@ -134,7 +134,9 @@ async def _dispatch_with_envelope(
             error=str(exc),
         )
 
-    status = response.get("status", "failed") if isinstance(response, dict) else "failed"
+    status = (
+        response.get("status", "failed") if isinstance(response, dict) else "failed"
+    )
     raw_results = response.get("results", []) if isinstance(response, dict) else []
     if not isinstance(raw_results, list):
         raw_results = []
@@ -251,7 +253,9 @@ async def emit_hatchet_node(spec: NodeSpec, mcp: MCPClient) -> NodeHandle:
     # Strip the "engine:" prefix from the capability id so the engine receives
     # the bare workflow name (matches the Hatchet engine's existing convention).
     workflow_name = (
-        spec.capability_id.split(":", 1)[1] if ":" in spec.capability_id else "agent-loop"
+        spec.capability_id.split(":", 1)[1]
+        if ":" in spec.capability_id
+        else "agent-loop"
     )
     task = {
         "prompt": spec.prompt,

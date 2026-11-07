@@ -38,7 +38,9 @@ from mahavishnu.mcp.internal_auth import (
 class _AlwaysAllow:
     """Permissive RBAC stand-in — the credential check is what's under test."""
 
-    async def check_permission(self, user_id: str, repo: str, permission: Permission) -> bool:
+    async def check_permission(
+        self, user_id: str, repo: str, permission: Permission
+    ) -> bool:
         return True
 
 
@@ -103,14 +105,18 @@ class TestInternalPrincipalIsNotClaimable:
     """The name alone must not be enough."""
 
     @pytest.mark.asyncio
-    async def test_claiming_the_name_is_denied(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_claiming_the_name_is_denied(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """A caller that supplies the principal's name gets nothing.
 
         The RBAC check would happily resolve ``mahavishnu-internal``, so
         the gate must refuse on the credential, not on the permission.
         """
         monkeypatch.setattr(
-            "mahavishnu.mcp.auth.internal_principal_verified", _async_false, raising=True
+            "mahavishnu.mcp.auth.internal_principal_verified",
+            _async_false,
+            raising=True,
         )
 
         result = await _gated_tool()(key="k", user_id=INTERNAL_SERVICE_USER_ID)
@@ -120,7 +126,9 @@ class TestInternalPrincipalIsNotClaimable:
         assert "verified credential" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_a_verified_credential_is_allowed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_a_verified_credential_is_allowed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(
             "mahavishnu.mcp.auth.internal_principal_verified", _async_true, raising=True
         )
@@ -130,10 +138,14 @@ class TestInternalPrincipalIsNotClaimable:
         assert result == {"status": "success", "key": "k"}
 
     @pytest.mark.asyncio
-    async def test_other_users_are_unaffected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_other_users_are_unaffected(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Only the internal principal needs the credential."""
         monkeypatch.setattr(
-            "mahavishnu.mcp.auth.internal_principal_verified", _async_false, raising=True
+            "mahavishnu.mcp.auth.internal_principal_verified",
+            _async_false,
+            raising=True,
         )
 
         result = await _gated_tool()(key="k", user_id="alice")
@@ -187,7 +199,9 @@ class TestMiddlewareMapsCredentialToPrincipal:
         ctx = _FakeMiddlewareContext({"key": "k"})
         await ac.AuthContextMiddleware().on_call_tool(ctx, lambda _c: _noop())
 
-        assert ctx.fastmcp_context.state["mahavishnu.user_id"] == INTERNAL_SERVICE_USER_ID
+        assert (
+            ctx.fastmcp_context.state["mahavishnu.user_id"] == INTERNAL_SERVICE_USER_ID
+        )
         assert ctx.fastmcp_context.state[INTERNAL_PRINCIPAL_STATE_KEY] is True
 
     @pytest.mark.asyncio
@@ -202,7 +216,9 @@ class TestMiddlewareMapsCredentialToPrincipal:
         ctx = _FakeMiddlewareContext({"key": "k", "user_id": INTERNAL_SERVICE_USER_ID})
         await ac.AuthContextMiddleware().on_call_tool(ctx, lambda _c: _noop())
 
-        assert ctx.fastmcp_context.state["mahavishnu.user_id"] == INTERNAL_SERVICE_USER_ID
+        assert (
+            ctx.fastmcp_context.state["mahavishnu.user_id"] == INTERNAL_SERVICE_USER_ID
+        )
         assert ctx.fastmcp_context.state[INTERNAL_PRINCIPAL_STATE_KEY] is False
 
     @pytest.mark.asyncio
@@ -212,14 +228,18 @@ class TestMiddlewareMapsCredentialToPrincipal:
         from mahavishnu.mcp.middleware import auth_context as ac
 
         monkeypatch.setattr(
-            ac, "request_headers", lambda: {"authorization": "Bearer definitely-not-the-token"}
+            ac,
+            "request_headers",
+            lambda: {"authorization": "Bearer definitely-not-the-token"},
         )
 
         ctx = _FakeMiddlewareContext({"key": "k"})
         await ac.AuthContextMiddleware().on_call_tool(ctx, lambda _c: _noop())
 
         assert ctx.fastmcp_context.state[INTERNAL_PRINCIPAL_STATE_KEY] is False
-        assert ctx.fastmcp_context.state["mahavishnu.user_id"] != INTERNAL_SERVICE_USER_ID
+        assert (
+            ctx.fastmcp_context.state["mahavishnu.user_id"] != INTERNAL_SERVICE_USER_ID
+        )
 
 
 async def _noop() -> Any:
@@ -301,4 +321,6 @@ class TestInternalServiceRole:
         manager = RBACManager(SimpleNamespace())
         admin = manager.roles["admin"]
 
-        assert set(manager.roles["internal_service"].permissions) != set(admin.permissions)
+        assert set(manager.roles["internal_service"].permissions) != set(
+            admin.permissions
+        )

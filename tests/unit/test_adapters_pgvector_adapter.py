@@ -52,7 +52,9 @@ def mock_conn() -> AsyncMock:
 
 
 @pytest.fixture
-def adapter_with_mock_conn(settings: PgvectorSettings, mock_conn: AsyncMock) -> PgvectorAdapter:
+def adapter_with_mock_conn(
+    settings: PgvectorSettings, mock_conn: AsyncMock
+) -> PgvectorAdapter:
     """Adapter whose `_connection()` context yields `mock_conn`."""
     adapter = PgvectorAdapter(settings)
 
@@ -196,7 +198,9 @@ class TestIdentifierSanitization:
         with pytest.raises(ValueError, match="Invalid identifier"):
             adapter._sanitize_identifier("")
 
-    def test_sanitize_identifier_replaces_unsafe_chars(self, settings: PgvectorSettings):
+    def test_sanitize_identifier_replaces_unsafe_chars(
+        self, settings: PgvectorSettings
+    ):
         adapter = PgvectorAdapter(settings)
         # Hyphens get replaced by underscores → still valid identifier
         assert adapter._sanitize_identifier("foo-bar") == "foo_bar"
@@ -315,7 +319,9 @@ class TestPublicAPI:
         mock_conn.fetch.return_value = [
             {"id": "x", "metadata": {}, "embedding": [0.1, 0.2], "distance": 0.0}
         ]
-        out = await adapter_with_mock_conn.search("c", [0.1], limit=1, include_vectors=True)
+        out = await adapter_with_mock_conn.search(
+            "c", [0.1], limit=1, include_vectors=True
+        )
         assert out[0]["vector"] == [0.1, 0.2]
 
     async def test_insert_returns_ids(
@@ -331,7 +337,9 @@ class TestPublicAPI:
         self, adapter_with_mock_conn: PgvectorAdapter, mock_conn: AsyncMock
     ):
         mock_conn.fetchrow.return_value = {"id": "auto-generated"}
-        ids = await adapter_with_mock_conn.insert("traces", [{"vector": [0.1], "metadata": {}}])
+        ids = await adapter_with_mock_conn.insert(
+            "traces", [{"vector": [0.1], "metadata": {}}]
+        )
         assert ids == ["auto-generated"]
         # Verify the SQL invocation passed something for id
         assert mock_conn.fetchrow.call_args[0][1]  # doc_id arg is non-empty
@@ -374,7 +382,9 @@ class TestPublicAPI:
         assert "DELETE" in sql
         assert ids == ["a", "b"]
 
-    async def test_get_empty_returns_empty_list(self, adapter_with_mock_conn: PgvectorAdapter):
+    async def test_get_empty_returns_empty_list(
+        self, adapter_with_mock_conn: PgvectorAdapter
+    ):
         assert await adapter_with_mock_conn.get("c", []) == []
 
     async def test_get_returns_formatted_docs(
@@ -468,7 +478,9 @@ class TestEnsurePool:
         adapter._pool = sentinel
         assert await adapter._ensure_pool() is sentinel
 
-    async def test_missing_dependency_raises_runtime_error(self, settings: PgvectorSettings):
+    async def test_missing_dependency_raises_runtime_error(
+        self, settings: PgvectorSettings
+    ):
         adapter = PgvectorAdapter(settings)
 
         # Patch the import inside _ensure_pool by removing both modules

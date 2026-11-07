@@ -253,7 +253,9 @@ def discover_python_tests(project: Path, test_type: str) -> list[Path]:
             found.update(candidate.rglob("test_*.py"))
     # Filter out the buckets we never want to count
     return sorted(
-        tf for tf in found if not any(part in _UNCATEGORIZED_TEST_SUBDIRS for part in tf.parts)
+        tf
+        for tf in found
+        if not any(part in _UNCATEGORIZED_TEST_SUBDIRS for part in tf.parts)
     )
 
 
@@ -310,7 +312,9 @@ def discover_node_tests(project: Path, test_type: str) -> list[Path]:
     return sorted(
         p
         for p in found
-        if not any(part in {"node_modules", ".next", "dist", "build"} for part in p.parts)
+        if not any(
+            part in {"node_modules", ".next", "dist", "build"} for part in p.parts
+        )
     )
 
 
@@ -414,7 +418,11 @@ def assemble_node_matrix(
     cells: dict[str, dict[str, ComponentCoverage]] = {}
     for component in components:
         comp_name = component.split("/", 1)[-1]
-        matched = [p.relative_to(project).as_posix() for p in test_files if comp_name in p.parts]
+        matched = [
+            p.relative_to(project).as_posix()
+            for p in test_files
+            if comp_name in p.parts
+        ]
         cells[component] = {}
         # Replicate the same `files` list across all test types so
         # downstream consumers don't see empty lists for non-first types.
@@ -438,7 +446,11 @@ def assemble_go_matrix(
     cells: dict[str, dict[str, ComponentCoverage]] = {}
     for component in components:
         comp_name = component.split("/", 1)[-1]
-        matched = [p.relative_to(project).as_posix() for p in test_files if comp_name in p.parts]
+        matched = [
+            p.relative_to(project).as_posix()
+            for p in test_files
+            if comp_name in p.parts
+        ]
         cells[component] = {}
         # Replicate the same `files` list across all test types so
         # downstream consumers don't see empty lists for non-first types.
@@ -467,10 +479,14 @@ def build_summary(
     """Compute the summary block of the JSON output."""
     total_components = len(components)
     total_cells = total_components * len(test_types)
-    covered_cells = sum(1 for comp in components for t in test_types if cells[comp][t].covered)
+    covered_cells = sum(
+        1 for comp in components for t in test_types if cells[comp][t].covered
+    )
     coverage_pct = round((covered_cells / total_cells) * 100, 1) if total_cells else 0.0
     below_target = [
-        comp for comp in components if not all(cells[comp][t].covered for t in test_types)
+        comp
+        for comp in components
+        if not all(cells[comp][t].covered for t in test_types)
     ]
     # Components with NO tests of ANY requested type. This is a subset of
     # ``below_target``; the two should not be conflated. Computed here
@@ -538,7 +554,9 @@ def render_markdown(
         avg = summary.get("avg_line_coverage_pct")
         if avg is not None:
             meets = "yes" if summary.get("meets_line_coverage_target") else "no"
-            lines.append(f"- **Line coverage (from coverage.xml)**: {avg}% (target met: {meets})")
+            lines.append(
+                f"- **Line coverage (from coverage.xml)**: {avg}% (target met: {meets})"
+            )
     if summary["below_target"]:
         lines.append("- **Components below target**:")
         for comp in summary["below_target"]:
@@ -585,7 +603,9 @@ _VALID_STACKS = ("python", "node", "go", "mixed")
 _VALID_TYPES = ("unit", "integration", "e2e", "property", "chaos")
 
 
-def _validate_output_path(label: str, candidate: Path, project_root: Path) -> Path | None:
+def _validate_output_path(
+    label: str, candidate: Path, project_root: Path
+) -> Path | None:
     """Resolve ``candidate`` and confirm it lives strictly inside ``project_root``.
 
     Two guards enforced:
@@ -760,17 +780,28 @@ def main(argv: list[str] | None = None) -> int:
     if args.stack in ("node", "mixed") and (
         "node" in forced_stacks or (project / "package.json").is_file()
     ):
-        for entry in sorted((project / "src").iterdir()) if (project / "src").is_dir() else []:
+        for entry in (
+            sorted((project / "src").iterdir()) if (project / "src").is_dir() else []
+        ):
             if entry.is_dir():
                 components.append(f"src/{entry.name}")
         for entry in sorted(project.iterdir()):
             if entry.is_dir() and entry.name.startswith("packages"):
                 components.append(entry.name)
-    if args.stack in ("go", "mixed") and ("go" in forced_stacks or (project / "go.mod").is_file()):
+    if args.stack in ("go", "mixed") and (
+        "go" in forced_stacks or (project / "go.mod").is_file()
+    ):
         for entry in sorted(project.iterdir()):
             if entry.is_dir() and not entry.name.startswith("."):
                 # Cheap: top-level dirs that aren't obviously meta
-                if entry.name not in {"docs", "scripts", "test", "tests", ".git", ".github"}:
+                if entry.name not in {
+                    "docs",
+                    "scripts",
+                    "test",
+                    "tests",
+                    ".git",
+                    ".github",
+                }:
                     components.append(entry.name)
     components = sorted(set(components))
     if not components:
@@ -805,7 +836,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.stack in ("python", "mixed"):
         coverage_data = parse_coverage_xml(project)
 
-    summary = build_summary(cells, components, requested, args.coverage_target, coverage_data)
+    summary = build_summary(
+        cells, components, requested, args.coverage_target, coverage_data
+    )
 
     output: dict[str, Any] = {
         "project": str(project),
@@ -813,7 +846,10 @@ def main(argv: list[str] | None = None) -> int:
         "types": requested,
         "coverage_target": args.coverage_target,
         "components": components,
-        "cells": {comp: {t: cells[comp][t].to_dict() for t in requested} for comp in components},
+        "cells": {
+            comp: {t: cells[comp][t].to_dict() for t in requested}
+            for comp in components
+        },
         "summary": summary,
     }
 
@@ -825,7 +861,9 @@ def main(argv: list[str] | None = None) -> int:
     # differently now that an ancestor exists).
     if _validate_output_path("--out", out_path, project_root) is None:
         return 1
-    out_path.write_text(json.dumps(output, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+    out_path.write_text(
+        json.dumps(output, indent=2, sort_keys=False) + "\n", encoding="utf-8"
+    )
 
     if args.out_md is not None:
         md = render_markdown(

@@ -51,7 +51,9 @@ def fake_manager():
     mgr.quit_application = AsyncMock(return_value=_FakeResult("quit"))
     mgr.activate_application = AsyncMock(return_value=_FakeResult("activated"))
     mgr.list_applications = AsyncMock(return_value=_FakeResult("ok", data=[]))
-    mgr.get_active_application = AsyncMock(return_value=_FakeResult("ok", data={"name": "X"}))
+    mgr.get_active_application = AsyncMock(
+        return_value=_FakeResult("ok", data={"name": "X"})
+    )
     mgr.get_windows = AsyncMock(return_value=_FakeResult("ok", data=[]))
     mgr.resize_window = AsyncMock(return_value=_FakeResult("resized"))
     mgr.move_window = AsyncMock(return_value=_FakeResult("moved"))
@@ -81,7 +83,9 @@ def mcp_server(fake_manager, monkeypatch):
         lambda: fake_manager,
     )
     # Also reset the cached _manager so close() test works deterministically
-    monkeypatch.setattr("mahavishnu.mcp.tools.desktop_automation_tools._manager", fake_manager)
+    monkeypatch.setattr(
+        "mahavishnu.mcp.tools.desktop_automation_tools._manager", fake_manager
+    )
     return server
 
 
@@ -147,13 +151,19 @@ class TestApplicationTools:
     @pytest.mark.asyncio
     async def test_launch_app(self, mcp_server, fake_manager):
         """launch_app should forward bundle_id and dry_run."""
-        await _invoke(mcp_server, "automation_launch_app", bundle_id="com.test", dry_run=True)
-        fake_manager.launch_application.assert_awaited_once_with("com.test", dry_run=True)
+        await _invoke(
+            mcp_server, "automation_launch_app", bundle_id="com.test", dry_run=True
+        )
+        fake_manager.launch_application.assert_awaited_once_with(
+            "com.test", dry_run=True
+        )
 
     @pytest.mark.asyncio
     async def test_quit_app(self, mcp_server, fake_manager):
         """quit_app should forward bundle_id and force flag."""
-        await _invoke(mcp_server, "automation_quit_app", bundle_id="com.test", force=True)
+        await _invoke(
+            mcp_server, "automation_quit_app", bundle_id="com.test", force=True
+        )
         fake_manager.quit_application.assert_awaited_once_with("com.test", force=True)
 
     @pytest.mark.asyncio
@@ -233,7 +243,9 @@ class TestMenuAndInputTools:
             bundle_id="com.test",
             menu_path=["File", "Save"],
         )
-        fake_manager.click_menu_item.assert_awaited_once_with("com.test", ["File", "Save"])
+        fake_manager.click_menu_item.assert_awaited_once_with(
+            "com.test", ["File", "Save"]
+        )
 
     @pytest.mark.asyncio
     async def test_list_menus(self, mcp_server, fake_manager):
@@ -251,7 +263,9 @@ class TestMenuAndInputTools:
             interval=0.1,
             dry_run=True,
         )
-        fake_manager.type_text.assert_awaited_once_with("hello", interval=0.1, dry_run=True)
+        fake_manager.type_text.assert_awaited_once_with(
+            "hello", interval=0.1, dry_run=True
+        )
 
     @pytest.mark.asyncio
     async def test_press_key_with_modifiers(self, mcp_server, fake_manager):
@@ -267,7 +281,9 @@ class TestMenuAndInputTools:
     @pytest.mark.asyncio
     async def test_click(self, mcp_server, fake_manager):
         """click should forward x, y, button, clicks."""
-        await _invoke(mcp_server, "automation_click", x=10, y=20, button="right", clicks=2)
+        await _invoke(
+            mcp_server, "automation_click", x=10, y=20, button="right", clicks=2
+        )
         fake_manager.click.assert_awaited_once_with(10, 20, button="right", clicks=2)
 
     @pytest.mark.asyncio
@@ -337,7 +353,9 @@ class TestUIAndSecurityTools:
             bundle_id="com.test",
             window_id="w1",
         )
-        fake_manager.get_ui_elements.assert_awaited_once_with("com.test", window_id="w1")
+        fake_manager.get_ui_elements.assert_awaited_once_with(
+            "com.test", window_id="w1"
+        )
 
     @pytest.mark.asyncio
     async def test_get_security_config_uninit(self, mcp_server):

@@ -103,7 +103,9 @@ def distilled_workflow_health(
         )
 
     bucket_order = {"stale": 0, "under_utilized": 1, "fresh": 2, "cold": 3}
-    results.sort(key=lambda r: (bucket_order.get(r["status"], 99), -float(r["importance_score"])))
+    results.sort(
+        key=lambda r: (bucket_order.get(r["status"], 99), -float(r["importance_score"]))
+    )
 
     return results
 

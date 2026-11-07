@@ -82,6 +82,7 @@ Following Oneiric patterns, configuration loads in this order (later overrides e
 ```python
 from mcp_common.cli import MCPServerSettings
 
+
 class MahavishnuSettings(MCPServerSettings):
     """Mahavishnu configuration extending MCPServerSettings."""
 
@@ -89,6 +90,7 @@ class MahavishnuSettings(MCPServerSettings):
     qc_enabled: bool = Field(default=True)
     session_enabled: bool = Field(default=True)
     # ... additional fields
+
 
 # Load configuration
 settings = MahavishnuSettings.load("mahavishnu")
@@ -99,6 +101,7 @@ settings = MahavishnuSettings.load("mahavishnu")
 ```python
 import structlog
 from opentelemetry import trace
+
 
 def setup_logging(settings: MahavishnuSettings) -> None:
     """Setup structured logging with OpenTelemetry integration."""
@@ -115,6 +118,7 @@ def setup_logging(settings: MahavishnuSettings) -> None:
         processors=processors,
         wrapper_class=structlog.make_filtering_bound_logger(settings.log_level),
     )
+
 
 def _add_correlation_id(logger, method_name, event_dict):
     """Add OpenTelemetry trace correlation."""

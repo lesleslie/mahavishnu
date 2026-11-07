@@ -50,6 +50,7 @@ def _patch_call_tool(memory: CoordinationMemory, side_effect_or_return: Any) -> 
         else AsyncMock(return_value=side_effect_or_return),
     )
 
+
 # ---------------------------------------------------------------------------
 # Helpers (mirrors test_coordination.py pattern)
 # ---------------------------------------------------------------------------

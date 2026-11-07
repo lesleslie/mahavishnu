@@ -61,7 +61,9 @@ class _StubSubstrate:
         self.get = AsyncMock(return_value=payload)
 
 
-def _stub_substrate(monkeypatch: pytest.MonkeyPatch, payload: Any = None) -> _StubSubstrate:
+def _stub_substrate(
+    monkeypatch: pytest.MonkeyPatch, payload: Any = None
+) -> _StubSubstrate:
     """Substitute the reader's substrate with a recording stub.
 
     Patches the module attribute on ``workflow_tools``, so the stub
@@ -160,7 +162,9 @@ async def test_workflow_get_outcome_emits_no_unbound_warning() -> None:
         result = await workflow_get_outcome("wf-no-warning")
 
     assert result is None
-    assert [entry for entry in logs if entry["event"] == "workflow_outcome_read_skipped"] == []
+    assert [
+        entry for entry in logs if entry["event"] == "workflow_outcome_read_skipped"
+    ] == []
 
 
 @pytest.mark.asyncio
@@ -185,7 +189,9 @@ async def test_registered_tool_delegates_to_module_function() -> None:
 
     mcp = FastMCP(name="test-workflow-tools")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
+    tool = next(
+        t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool"
+    )
     result = await tool.fn(workflow_id="wf-e2e", user_id="viewer-1")
     assert isinstance(result, WorkflowOutcome)
     assert result.workflow_id == "wf-e2e"
@@ -235,7 +241,9 @@ async def test_registered_tool_rejects_path_traversal(
 
     mcp = FastMCP(name="test-workflow-tools-traversal")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
+    tool = next(
+        t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool"
+    )
 
     result = await tool.fn(workflow_id="../../etc/passwd", user_id="viewer-1")
 
@@ -262,7 +270,9 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(
 
     mcp = FastMCP(name="test-workflow-tools-auth")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
+    tool = next(
+        t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool"
+    )
 
     result = await tool.fn(workflow_id="wf-1")
 
@@ -289,7 +299,9 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(
 
     mcp = FastMCP(name="test-workflow-tools-auth-ok")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool")
+    tool = next(
+        t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool"
+    )
 
     result = await tool.fn(workflow_id="wf-ok", user_id="viewer-1")
 

@@ -50,7 +50,9 @@ def test_check_detects_multiple_violations(sop_with_bans: Path):
     assert len(violations) == 2
 
 
-def test_check_uses_default_when_no_repo_sop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_check_uses_default_when_no_repo_sop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     # No repo SOP — uses packaged default.
     (tmp_path / "no_sop.py").write_text("")
     monkeypatch.chdir(tmp_path)

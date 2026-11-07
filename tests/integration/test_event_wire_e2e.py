@@ -16,6 +16,7 @@ server-side Redis pending-entry behavior.
 
 Marker: ``integration`` per ``CLAUDE.md`` Test conventions.
 """
+
 from __future__ import annotations
 
 import asyncio

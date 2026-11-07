@@ -23,6 +23,7 @@ auto-skips the test on machines where ``127.0.0.1:6379`` is not
 reachable, so CI without a Redis sidecar still collects the file
 without a hard failure.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -49,9 +50,7 @@ class _FakeSB:
     async def tasks_get(self, task_id: str) -> dict[str, Any]:
         return {"id": task_id, "status": "in_progress"}
 
-    async def tasks_update(
-        self, task_id: str, **kw: Any
-    ) -> dict[str, Any]:
+    async def tasks_update(self, task_id: str, **kw: Any) -> dict[str, Any]:
         self.updates.append((task_id, kw))
         return {"id": task_id, **kw}
 
@@ -103,9 +102,7 @@ async def test_sweeper_xreadgroup_recovers_orphan(redis_client: Any) -> None:
         await sweeper._run_once()
 
         # Step 3a — recovery side effect: tasks_update was called.
-        assert len(sb.updates) == 1, (
-            f"expected one tasks_update, got {len(sb.updates)}"
-        )
+        assert len(sb.updates) == 1, f"expected one tasks_update, got {len(sb.updates)}"
         task_id, update_kw = sb.updates[0]
         assert task_id == "t-x"
         assert update_kw["metadata"]["workflow_id"] == "w-z"

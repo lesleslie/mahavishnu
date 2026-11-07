@@ -56,7 +56,11 @@ def disabled_config() -> MahavishnuSettings:
 
 def _ok_response(payload: Any | None = None) -> dict[str, Any]:
     """Build a successful MCP tool return payload."""
-    return payload if payload is not None else {"result": {"active_sessions": 1, "total_sessions": 2}}
+    return (
+        payload
+        if payload is not None
+        else {"result": {"active_sessions": 1, "total_sessions": 2}}
+    )
 
 
 class TestSessionBuddyPoller:
@@ -94,7 +98,9 @@ class TestSessionBuddyPoller:
         assert poller.metrics_to_collect == SessionBuddyPoller.MCP_TOOLS
 
     @pytest.mark.asyncio
-    async def test_poll_once_records_bridge_metrics(self, poller_config: MahavishnuSettings):
+    async def test_poll_once_records_bridge_metrics(
+        self, poller_config: MahavishnuSettings
+    ):
         """Successful polls should emit bridge metrics on the shared registry."""
         poller = SessionBuddyPoller(config=poller_config)
         poller._mcp = MagicMock()
@@ -122,7 +128,9 @@ class TestPollerLifecycle:
     """Lifecycle tests for start/stop and config gating."""
 
     @pytest.mark.asyncio
-    async def test_start_when_disabled_is_noop(self, disabled_config: MahavishnuSettings) -> None:
+    async def test_start_when_disabled_is_noop(
+        self, disabled_config: MahavishnuSettings
+    ) -> None:
         """start() should refuse to spawn a task when polling is disabled."""
         poller = SessionBuddyPoller(config=disabled_config)
 
@@ -134,7 +142,9 @@ class TestPollerLifecycle:
         assert poller._poll_task is None
 
     @pytest.mark.asyncio
-    async def test_stop_when_not_started_is_noop(self, poller_config: MahavishnuSettings) -> None:
+    async def test_stop_when_not_started_is_noop(
+        self, poller_config: MahavishnuSettings
+    ) -> None:
         """stop() should be safe to call when the poller never started."""
         poller = SessionBuddyPoller(config=poller_config)
 
@@ -145,7 +155,9 @@ class TestPollerLifecycle:
         assert status.running is False
 
     @pytest.mark.asyncio
-    async def test_start_twice_does_not_respawn(self, poller_config: MahavishnuSettings) -> None:
+    async def test_start_twice_does_not_respawn(
+        self, poller_config: MahavishnuSettings
+    ) -> None:
         """Calling start() while running should log a warning and not spawn again."""
         poller = SessionBuddyPoller(config=poller_config)
         poller._mcp = MagicMock()
@@ -164,7 +176,9 @@ class TestPollerLifecycle:
             await first_task
 
     @pytest.mark.asyncio
-    async def test_stop_closes_mcp_client(self, poller_config: MahavishnuSettings) -> None:
+    async def test_stop_closes_mcp_client(
+        self, poller_config: MahavishnuSettings
+    ) -> None:
         """stop() should close the active MCP client and clear the task."""
         poller = SessionBuddyPoller(config=poller_config)
         poller._running = True
@@ -190,7 +204,9 @@ class TestPollerStatus:
     """Status reporting tests."""
 
     @pytest.mark.asyncio
-    async def test_status_reflects_state(self, poller_config: MahavishnuSettings) -> None:
+    async def test_status_reflects_state(
+        self, poller_config: MahavishnuSettings
+    ) -> None:
         """get_status() should return a PollerStatus matching internal state."""
         poller = SessionBuddyPoller(config=poller_config)
         poller._poll_cycles = 7
@@ -228,7 +244,9 @@ class TestPollOnceErrorPaths:
         """A persistent HTTP failure should record errors and not crash the cycle."""
         poller = SessionBuddyPoller(config=poller_config)
         poller._mcp = MagicMock()
-        poller._mcp.call_tool = AsyncMock(side_effect=MCPServerError("connection refused"))
+        poller._mcp.call_tool = AsyncMock(
+            side_effect=MCPServerError("connection refused")
+        )
 
         result = await poller.poll_once()
 
@@ -285,7 +303,9 @@ class TestPollOnceErrorPaths:
         assert value is not None
 
     @pytest.mark.asyncio
-    async def test_poll_once_skips_unknown_tool(self, poller_config: MahavishnuSettings) -> None:
+    async def test_poll_once_skips_unknown_tool(
+        self, poller_config: MahavishnuSettings
+    ) -> None:
         """An unknown tool name in metrics_to_collect should be skipped silently."""
         config = MahavishnuSettings(
             session_buddy_polling={
@@ -298,7 +318,9 @@ class TestPollOnceErrorPaths:
         )
         poller = SessionBuddyPoller(config=config)
         poller._mcp = MagicMock()
-        poller._mcp.call_tool = AsyncMock(return_value={"result": {"active_sessions": 1, "total_sessions": 1}})
+        poller._mcp.call_tool = AsyncMock(
+            return_value={"result": {"active_sessions": 1, "total_sessions": 1}}
+        )
 
         result = await poller.poll_once()
 
@@ -318,13 +340,15 @@ class TestPollOnceErrorPaths:
         )
         poller = SessionBuddyPoller(config=config)
         poller._mcp = MagicMock()
-        poller._mcp.call_tool = AsyncMock(return_value={
+        poller._mcp.call_tool = AsyncMock(
+            return_value={
                 "result": {
                     "workflows_completed": 4,
                     "workflows_failed": 1,
                     "avg_duration": 12.5,
                 }
-            })
+            }
+        )
 
         result = await poller.poll_once()
 
@@ -344,13 +368,15 @@ class TestPollOnceErrorPaths:
         )
         poller = SessionBuddyPoller(config=config)
         poller._mcp = MagicMock()
-        poller._mcp.call_tool = AsyncMock(return_value={
+        poller._mcp.call_tool = AsyncMock(
+            return_value={
                 "result": {
                     "total_checkpoints": 9,
                     "avg_checkpoint_size": 64.0,
                     "avg_session_duration": 600.0,
                 }
-            })
+            }
+        )
 
         result = await poller.poll_once()
 
@@ -370,13 +396,15 @@ class TestPollOnceErrorPaths:
         )
         poller = SessionBuddyPoller(config=config)
         poller._mcp = MagicMock()
-        poller._mcp.call_tool = AsyncMock(return_value={
+        poller._mcp.call_tool = AsyncMock(
+            return_value={
                 "result": {
                     "cpu_usage": 23.5,
                     "memory_usage": 1024.0,
                     "response_time": 250.0,
                 }
-            })
+            }
+        )
 
         result = await poller.poll_once()
 
@@ -440,7 +468,9 @@ class TestPollOnceErrorPaths:
             await poller._call_mcp_tool("get_activity_summary")
 
     @pytest.mark.asyncio
-    async def test_call_mcp_tool_retries_on_5xx(self, poller_config: MahavishnuSettings) -> None:
+    async def test_call_mcp_tool_retries_on_5xx(
+        self, poller_config: MahavishnuSettings
+    ) -> None:
         """A 500 response should be retried and ultimately surface as RetryExhausted."""
         from mahavishnu.core.resilience import RetryExhaustedError
 
@@ -458,7 +488,9 @@ class TestPollOnceErrorPaths:
         """A successful poll should observe the poll_duration_seconds histogram."""
         poller = SessionBuddyPoller(config=poller_config)
         poller._mcp = MagicMock()
-        poller._mcp.call_tool = AsyncMock(return_value={"result": {"active_sessions": 1, "total_sessions": 1}})
+        poller._mcp.call_tool = AsyncMock(
+            return_value={"result": {"active_sessions": 1, "total_sessions": 1}}
+        )
 
         # The histogram has no _value.get(); it has internal samples. We just
         # verify no error is raised while observing.
@@ -506,7 +538,8 @@ class TestCircuitBreaker:
 
         with (
             patch(
-                "mahavishnu.integrations.session_buddy_poller.asyncio.sleep", side_effect=fake_sleep
+                "mahavishnu.integrations.session_buddy_poller.asyncio.sleep",
+                side_effect=fake_sleep,
             ),
             patch.object(poller, "poll_once", new=AsyncMock()) as mock_poll,
         ):
@@ -566,7 +599,9 @@ class TestCircuitBreaker:
 class TestRecordError:
     """Tests for the internal _record_error helper."""
 
-    def test_record_error_increments_counters(self, poller_config: MahavishnuSettings) -> None:
+    def test_record_error_increments_counters(
+        self, poller_config: MahavishnuSettings
+    ) -> None:
         """_record_error should bump _errors, _consecutive_failures, _last_error."""
         poller = SessionBuddyPoller(config=poller_config)
         assert poller._errors == 0
@@ -726,7 +761,9 @@ class TestPollingLoop:
 class TestConvertToOtel:
     """Tests for _convert_to_otel and its dispatch."""
 
-    def test_convert_to_otel_handles_unknown_tool(self, poller_config: MahavishnuSettings) -> None:
+    def test_convert_to_otel_handles_unknown_tool(
+        self, poller_config: MahavishnuSettings
+    ) -> None:
         """An unknown tool name should return an empty metric list with a warning."""
         poller = SessionBuddyPoller(config=poller_config)
 
@@ -767,7 +804,8 @@ class TestStartStopIntegration:
 
         with (
             patch(
-                "mahavishnu.integrations.session_buddy_poller.asyncio.sleep", side_effect=fake_sleep
+                "mahavishnu.integrations.session_buddy_poller.asyncio.sleep",
+                side_effect=fake_sleep,
             ),
             patch.object(poller, "poll_once", new=AsyncMock()) as mock_poll,
         ):

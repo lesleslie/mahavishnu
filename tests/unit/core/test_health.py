@@ -554,7 +554,9 @@ class TestHealthEndpoint:
             response = await endpoint.readiness(dependencies)
 
             assert not response.ready
-            assert response.dependencies["session_buddy"].status == HealthStatus.UNHEALTHY
+            assert (
+                response.dependencies["session_buddy"].status == HealthStatus.UNHEALTHY
+            )
             assert "boom" in response.dependencies["session_buddy"].error
 
 

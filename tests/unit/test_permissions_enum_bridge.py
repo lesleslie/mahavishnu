@@ -76,7 +76,9 @@ async def test_admin_check_passes_mcp_common_read_string() -> None:
     class _MCPRead:
         value = "read"
 
-    result = await rbac.check_permission("les", "/Users/les/Projects/mahavishnu", _MCPRead())
+    result = await rbac.check_permission(
+        "les", "/Users/les/Projects/mahavishnu", _MCPRead()
+    )
     assert result is True, (
         "admin role must pass mcp_common 'read' check via string-value bridge"
     )
@@ -127,9 +129,7 @@ async def test_viewer_role_denies_mcp_common_write() -> None:
     result = await rbac.check_permission(
         "alice", "/Users/les/Projects/mahavishnu", "write"
     )
-    assert result is False, (
-        "viewer role must NOT pass mcp_common 'write' check"
-    )
+    assert result is False, "viewer role must NOT pass mcp_common 'write' check"
 
 
 @pytest.mark.asyncio

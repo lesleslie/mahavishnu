@@ -80,7 +80,9 @@ def stub_shepherd(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         ``retained`` run kept being reported as a failure.
         """
 
-        def __init__(self, status: str = "retained", body_status: str = "completed") -> None:
+        def __init__(
+            self, status: str = "retained", body_status: str = "completed"
+        ) -> None:
             self.record = _FakeRecord(status, body_status)
             self.run_ref = "ref-1"
 
@@ -93,8 +95,12 @@ def stub_shepherd(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
     class _FakeShepherdWorkspace:
         @classmethod
-        def discover(cls, cwd: Any, *, activate: bool, backend: Any) -> _FakeShepherdWorkspace:
-            calls["discover"].append({"cwd": str(cwd), "activate": activate, "backend": backend})
+        def discover(
+            cls, cwd: Any, *, activate: bool, backend: Any
+        ) -> _FakeShepherdWorkspace:
+            calls["discover"].append(
+                {"cwd": str(cwd), "activate": activate, "backend": backend}
+            )
             return cls()
 
         def run(self, task_ref: Any, **kwargs: Any) -> _FakeWorkspaceRun:
@@ -103,7 +109,15 @@ def stub_shepherd(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
         def git_repo(self) -> _FakeGitRepo:
             calls.setdefault("git_repo", []).append({})
-            return _FakeGitRepo(binding="writable", basis={"world_oid": "fake", "store_id": "fake", "resource_id": "fake", "head": "0" * 40})
+            return _FakeGitRepo(
+                binding="writable",
+                basis={
+                    "world_oid": "fake",
+                    "store_id": "fake",
+                    "resource_id": "fake",
+                    "head": "0" * 40,
+                },
+            )
 
         def close(self) -> None:
             return None
@@ -120,9 +134,14 @@ def stub_shepherd(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         return fn
 
     monkeypatch.setattr(shepherd_backend, "GitRepo", _FakeGitRepo, raising=False)
-    monkeypatch.setattr(shepherd_backend, "ShepherdWorkspace", _FakeShepherdWorkspace, raising=False)
     monkeypatch.setattr(
-        shepherd_backend, "AmbientWorldAccessRefused", _FakeAmbientWorldAccessRefused, raising=False
+        shepherd_backend, "ShepherdWorkspace", _FakeShepherdWorkspace, raising=False
+    )
+    monkeypatch.setattr(
+        shepherd_backend,
+        "AmbientWorldAccessRefused",
+        _FakeAmbientWorldAccessRefused,
+        raising=False,
     )
     monkeypatch.setattr(
         shepherd_backend, "EffectNotPermitted", _FakeEffectNotPermitted, raising=False
@@ -186,7 +205,9 @@ class TestHostCapabilityProbe:
         with pytest.raises(ValueError, match="placement"):
             sb.probe_host_capability(placement="nope")  # type: ignore[arg-type]
 
-    def test_macos_jail_resolves_to_seatbelt(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_macos_jail_resolves_to_seatbelt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(sys, "platform", "darwin")
         sb = _import_worker_class()
         # platform.machine is read inside probe_host_capability via the
@@ -198,7 +219,9 @@ class TestHostCapabilityProbe:
         assert result.available is True
         assert result.backend == "seatbelt"
 
-    def test_macos_auto_falls_back_to_clonefile(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_macos_auto_falls_back_to_clonefile(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(sys, "platform", "darwin")
         sb = _import_worker_class()
         import platform as _platform
@@ -207,7 +230,9 @@ class TestHostCapabilityProbe:
         result = sb.probe_host_capability(placement="auto")
         assert result.backend == "clonefile"
 
-    def test_linux_jail_resolves_to_landlock(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_linux_jail_resolves_to_landlock(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(sys, "platform", "linux")
         sb = _import_worker_class()
         import platform as _platform
@@ -217,7 +242,9 @@ class TestHostCapabilityProbe:
         assert result.available is True
         assert result.backend == "landlock"
 
-    def test_unsupported_host_returns_unavailable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_unsupported_host_returns_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(sys, "platform", "win32")
         sb = _import_worker_class()
         result = sb.probe_host_capability(placement="jail")
@@ -231,12 +258,16 @@ class TestHostCapabilityProbe:
 
 
 class TestFailClosedStartup:
-    def test_construct_requires_writable_root(self, stub_shepherd: dict[str, Any]) -> None:
+    def test_construct_requires_writable_root(
+        self, stub_shepherd: dict[str, Any]
+    ) -> None:
         sb = _import_worker_class()
         with pytest.raises(TypeError):
             sb.ShepherdBackendWorker()  # type: ignore[call-arg]
 
-    def test_construct_raises_when_sdk_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_construct_raises_when_sdk_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         sb = _import_worker_class()
         monkeypatch.setattr(sb, "ShepherdWorkspace", None)
         with pytest.raises(RuntimeError, match="shepherd-ai"):
@@ -248,7 +279,9 @@ class TestFailClosedStartup:
         monkeypatch.setattr(sys, "platform", "win32")
         sb = _import_worker_class()
         with pytest.raises(sb.ShepherdJailUnavailableError) as excinfo:
-            sb.ShepherdBackendWorker(writable_root="/tmp/shepherd-test", placement="jail")
+            sb.ShepherdBackendWorker(
+                writable_root="/tmp/shepherd-test", placement="jail"
+            )
         assert excinfo.value.details["placement"] == "jail"
         assert excinfo.value.details["backend"] == "unsupported"
         assert "fail-closed" in excinfo.value.message.lower()
@@ -257,9 +290,7 @@ class TestFailClosedStartup:
         self, stub_shepherd: dict[str, Any], tmp_path: Any
     ) -> None:
         sb = _import_worker_class()
-        worker = sb.ShepherdBackendWorker(
-            writable_root=str(tmp_path), placement="auto"
-        )
+        worker = sb.ShepherdBackendWorker(writable_root=str(tmp_path), placement="auto")
         wid = await worker.start()
         assert wid.startswith("shepherd-")
         assert stub_shepherd["discover"], "ShepherdWorkspace.discover was not invoked"
@@ -268,7 +299,10 @@ class TestFailClosedStartup:
         assert discover_call["backend"] is None  # substrate picks the carrier
 
     async def test_start_propagates_substrate_failure(
-        self, stub_shepherd: dict[str, Any], tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_shepherd: dict[str, Any],
+        tmp_path: Any,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         sb = _import_worker_class()
 
@@ -276,7 +310,9 @@ class TestFailClosedStartup:
             raise RuntimeError("substrate boom")
 
         monkeypatch.setattr(
-            sb.ShepherdWorkspace, "discover", classmethod(lambda cls, *a, **kw: _raise(*a, **kw))
+            sb.ShepherdWorkspace,
+            "discover",
+            classmethod(lambda cls, *a, **kw: _raise(*a, **kw)),
         )
         worker = sb.ShepherdBackendWorker(writable_root=str(tmp_path))
         with pytest.raises(sb.ShepherdJailUnavailableError) as excinfo:
@@ -295,9 +331,7 @@ class TestExecuteContract:
         self, stub_shepherd: dict[str, Any], tmp_path: Any
     ) -> None:
         sb = _import_worker_class()
-        worker = sb.ShepherdBackendWorker(
-            writable_root=str(tmp_path), placement="auto"
-        )
+        worker = sb.ShepherdBackendWorker(writable_root=str(tmp_path), placement="auto")
         await worker.start()
         result = await worker.execute({"command": "ls"})
         assert result.status.value == "completed"
@@ -353,9 +387,7 @@ class TestExecuteContract:
     ) -> None:
         """Writes inside the granted root must route through the worker."""
         sb = _import_worker_class()
-        worker = sb.ShepherdBackendWorker(
-            writable_root=str(tmp_path), placement="jail"
-        )
+        worker = sb.ShepherdBackendWorker(writable_root=str(tmp_path), placement="jail")
         await worker.start()
         # A bare shell ``touch`` is on the allowlist; the substrate stub
         # records the call so we can prove the worker emitted it. The
@@ -367,7 +399,10 @@ class TestExecuteContract:
         assert result.metadata["placement"] == "jail"
 
     async def test_execute_refuses_outside_root_at_substrate(
-        self, stub_shepherd: dict[str, Any], tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+        self,
+        stub_shepherd: dict[str, Any],
+        tmp_path: Any,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """When the substrate reports a refused effect, the wrapper MUST
         surface the failure rather than fabricate a success."""
@@ -381,9 +416,7 @@ class TestExecuteContract:
             "run",
             lambda self, *a, **kw: _refuse(*a, **kw),
         )
-        worker = sb.ShepherdBackendWorker(
-            writable_root=str(tmp_path), placement="jail"
-        )
+        worker = sb.ShepherdBackendWorker(writable_root=str(tmp_path), placement="jail")
         await worker.start()
         result = await worker.execute({"command": "ls"})
         assert result.status.value == "failed"

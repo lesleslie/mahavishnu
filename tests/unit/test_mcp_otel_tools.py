@@ -239,7 +239,9 @@ class TestIngestOtelTracesMixed:
         ingester = MagicMock()
         ingester.initialize = AsyncMock()
         ingester.close = AsyncMock()
-        ingester.ingest_batch = AsyncMock(side_effect=RuntimeError("file ingest failed"))
+        ingester.ingest_batch = AsyncMock(
+            side_effect=RuntimeError("file ingest failed")
+        )
         with patch(
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
@@ -431,13 +433,17 @@ class TestQueryLocalTracesValidation:
     @pytest.mark.asyncio
     async def test_zero_limit_returns_empty_list(self) -> None:
         tools = _register()
-        result = await tools["query_local_traces"](task_class="code_generation", limit=0)
+        result = await tools["query_local_traces"](
+            task_class="code_generation", limit=0
+        )
         assert result == []
 
     @pytest.mark.asyncio
     async def test_too_large_limit_returns_empty_list(self) -> None:
         tools = _register()
-        result = await tools["query_local_traces"](task_class="code_generation", limit=1001)
+        result = await tools["query_local_traces"](
+            task_class="code_generation", limit=1001
+        )
         assert result == []
 
 

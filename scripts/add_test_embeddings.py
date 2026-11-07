@@ -101,7 +101,9 @@ result = conn.execute("SELECT COUNT(*) FROM executions").fetchone()
 print(f"Total records in database: {result[0]}")
 
 # Check embeddings
-result = conn.execute("SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL").fetchone()
+result = conn.execute(
+    "SELECT COUNT(*) FROM executions WHERE embedding IS NOT NULL"
+).fetchone()
 print(f"Records with embeddings: {result[0]}")
 
 conn.close()

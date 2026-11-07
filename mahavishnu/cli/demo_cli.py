@@ -184,9 +184,7 @@ async def _run_tmux_demo(
         for sid in session_ids:
             output = await adapter.capture_output(sid)
             typer.echo(f"[{sid}]\n{output}")
-    except (
-        Exception
-    ):  # CLI entry point — demo flow must reap orphan panes on any failure before re-raising
+    except Exception:  # CLI entry point — demo flow must reap orphan panes on any failure before re-raising
         await _best_effort_reap(adapter, session_ids)
         raise
 
@@ -205,7 +203,9 @@ def demo_tmux(
     workers: int = typer.Option(
         3, "--workers", "-n", min=1, max=50, help="Number of tmux workers to spawn."
     ),
-    cmd: str | None = typer.Option(None, "--cmd", "-c", help="Command to run inside each pane."),
+    cmd: str | None = typer.Option(
+        None, "--cmd", "-c", help="Command to run inside each pane."
+    ),
     keep: bool = typer.Option(False, "--keep", help="Leave workers up after the demo."),
 ) -> None:
     """Spawn N tmux workers, capture panes, ACK, then reap (unless --keep).
@@ -288,13 +288,17 @@ def _check_prefect_preconditions(
     try:
         resp = http_probe(health_url, timeout=timeout)
         if resp.status_code != 200:
-            failures.append(f"Prefect server returned HTTP {resp.status_code} at {health_url}")
+            failures.append(
+                f"Prefect server returned HTTP {resp.status_code} at {health_url}"
+            )
     except Exception as exc:  # CLI entry point — HTTP probe failure surfaces as a precondition failure, not a stack trace  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
         failures.append(f"Prefect server unreachable at {health_url}: {exc}")
 
     work_pool = getattr(prefect_cfg, "work_pool", None)
     if not work_pool:
-        failures.append("prefect.work_pool is unset (set MAHAVISHNU_PREFECT__WORK_POOL)")
+        failures.append(
+            "prefect.work_pool is unset (set MAHAVISHNU_PREFECT__WORK_POOL)"
+        )
         return failures
 
     # A work pool with no worker polling it accepts the deployment but
@@ -324,7 +328,9 @@ def _check_prefect_work_pool(
             timeout=timeout,
         )
     except Exception as exc:  # CLI entry point — HTTP probe failure surfaces as a precondition failure, not a stack trace  # noqa: BLE001, RUF100
-        return [f"Prefect work-pool lookup failed at {api_url}/work_pools/filter: {exc}"]
+        return [
+            f"Prefect work-pool lookup failed at {api_url}/work_pools/filter: {exc}"
+        ]
     if resp.status_code >= 400:
         return [
             (
@@ -449,7 +455,13 @@ def _pi_scratch_workspace(pool_name: str) -> Generator[Path]:
         The scratch directory the agent runs in.
     """
     workspace = (
-        Path.home() / ".local" / "state" / "mahavishnu" / "worktrees" / pool_name / "pi-workspace"
+        Path.home()
+        / ".local"
+        / "state"
+        / "mahavishnu"
+        / "worktrees"
+        / pool_name
+        / "pi-workspace"
     )
     workspace.mkdir(parents=True, exist_ok=True)
     previous = Path.cwd()
@@ -557,7 +569,9 @@ async def _run_prefect_demo(
     flow_module = importlib.import_module(module_dotted)
     flow_func = getattr(flow_module, attr_name, None)
     if flow_func is None:
-        raise ValueError(f"--flow resolves to {module_dotted!r} but no {attr_name!r} attribute")
+        raise ValueError(
+            f"--flow resolves to {module_dotted!r} but no {attr_name!r} attribute"
+        )
 
     settings = _default_settings_getter()
     prefect_cfg = settings.prefect  # type: ignore[attr-defined]
@@ -670,7 +684,9 @@ async def _run_prefect_demo(
             ) from exc
 
         async with get_client():
-            polled_run = await wait_for_flow_run(flow_run_id, timeout=prefect_cfg.timeout_seconds)
+            polled_run = await wait_for_flow_run(
+                flow_run_id, timeout=prefect_cfg.timeout_seconds
+            )
             state = polled_run.state
             is_completed = bool(state and state.is_completed())
             results: list[Any] = await _collect_flow_results(state, is_completed)
@@ -699,7 +715,9 @@ def demo_prefect(
         help="Dotted path 'pkg.module:func' to a @flow-decorated function.",
     ),
     keep: bool = typer.Option(False, "--keep", help="Leave any deployment running."),
-    timeout: int = typer.Option(120, "--timeout", help="Max seconds to wait for the flow run."),
+    timeout: int = typer.Option(
+        120, "--timeout", help="Max seconds to wait for the flow run."
+    ),
 ) -> None:
     """Run a Prefect flow end-to-end against the live API server.
 
@@ -720,7 +738,9 @@ def demo_prefect(
         )
         raise typer.Exit(code=1)
     effective_repos = list(repos) or _default_demo_repos()
-    typer.echo(f"Dispatching to work_pool: {_default_settings_getter().prefect.work_pool}")
+    typer.echo(
+        f"Dispatching to work_pool: {_default_settings_getter().prefect.work_pool}"
+    )
     typer.echo(f"Flow: {flow_dotted}")
     typer.echo(f"Repos: {effective_repos}")
 
@@ -1002,7 +1022,9 @@ def demo_agno(
     try:
         result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
     except TimeoutError:
-        typer.echo(f"Timed out after {timeout}s waiting for AgnoAdapter.execute", err=True)
+        typer.echo(
+            f"Timed out after {timeout}s waiting for AgnoAdapter.execute", err=True
+        )
         raise typer.Exit(code=2) from None
 
     typer.echo("\nAgno demo result:")
@@ -1094,7 +1116,9 @@ async def _run_llamaindex_demo(
     task = {
         "id": f"demo-llamaindex-{int(time.time())}",
         "type": task_type,
-        "params": {"query": query} if task_type in {"query", "ingest_and_query"} else {},
+        "params": {"query": query}
+        if task_type in {"query", "ingest_and_query"}
+        else {},
     }
 
     adapter = LlamaIndexAdapter(config=settings)
@@ -1155,7 +1179,9 @@ def demo_llamaindex(
         help="Focus query passed to the retrieval step (used for 'query' and 'ingest_and_query').",
     ),
     keep: bool = typer.Option(
-        False, "--keep", help="Leave the adapter initialized after the demo (mainly for debugging)."
+        False,
+        "--keep",
+        help="Leave the adapter initialized after the demo (mainly for debugging).",
     ),
     timeout: int = typer.Option(
         900,
@@ -1277,7 +1303,9 @@ def _check_pydantic_ai_preconditions(
         failures.append(f"could not load settings: {exc}")
         return failures
 
-    enabled = bool(getattr(getattr(settings, "integrations", None), "pydantic_ai_enabled", False))
+    enabled = bool(
+        getattr(getattr(settings, "integrations", None), "pydantic_ai_enabled", False)
+    )
     if not enabled:
         failures.append(
             "settings.integrations.pydantic_ai_enabled is False "
@@ -1314,7 +1342,8 @@ def _check_pydantic_ai_preconditions(
         provider_key_envs = sorted(
             env_name
             for env_name in (
-                _PYDANTIC_AI_PROVIDER_KEY_ENV[p] for p in ("anthropic", "minimax", "openai")
+                _PYDANTIC_AI_PROVIDER_KEY_ENV[p]
+                for p in ("anthropic", "minimax", "openai")
             )
             if env_name is not None
         )
@@ -1444,7 +1473,10 @@ def _resolve_demo_pydantic_ai_model_config() -> tuple[Any, dict[str, str]]:
     llama_server; cloud providers rely on whatever the user already
     exported).
     """
-    from mahavishnu.adapters.ai.pydantic_ai_adapter import ModelConfig, PydanticAIAdapterError
+    from mahavishnu.adapters.ai.pydantic_ai_adapter import (
+        ModelConfig,
+        PydanticAIAdapterError,
+    )
 
     if os.getenv("MINIMAX_API_KEY"):
         # minimax uses an OpenAI-compatible endpoint but pydantic-ai
@@ -1718,9 +1750,9 @@ class _CrowMCPClient:
                     f"crow-mcp initialize HTTP {init_resp.status_code}: {init_resp.text[:200]}"
                 )
             # Header name is server-defined; case-insensitive lookup covers both.
-            session_id = init_resp.headers.get("Mcp-Session-Id") or init_resp.headers.get(
-                "mcp-session-id"
-            )
+            session_id = init_resp.headers.get(
+                "Mcp-Session-Id"
+            ) or init_resp.headers.get("mcp-session-id")
             if not session_id:
                 raise RuntimeError(
                     "crow-mcp did not return Mcp-Session-Id on initialize "
@@ -1751,7 +1783,9 @@ class _CrowMCPClient:
                 )
         self._initialized = True
 
-    async def call_tool(self, name: str, params: dict[str, object]) -> dict[str, object]:
+    async def call_tool(
+        self, name: str, params: dict[str, object]
+    ) -> dict[str, object]:
         await self._ensure_initialized()
         self._request_id += 1
         payload = {
@@ -1890,9 +1924,7 @@ async def _run_crow_demo(
         await adapter.send_command(session_id, ack_command)
         post_ack = await adapter.capture_output(session_id)
         typer.echo(f"\n--- post-ACK output ---\n{post_ack}")
-    except (
-        Exception
-    ):  # cleanup is best-effort on failure — never mask the original error  # noqa: BLE001, RUF100
+    except Exception:  # cleanup is best-effort on failure — never mask the original error  # noqa: BLE001, RUF100
         await _best_effort_crow_close(adapter, session_ids)
         raise
 
@@ -1946,7 +1978,9 @@ def demo_crow(
         False, "--keep", help="Leave the crow-mcp session open after the demo."
     ),
     timeout: int = typer.Option(
-        60, "--timeout", help="Max seconds for the whole crow demo (preconditions + run)."
+        60,
+        "--timeout",
+        help="Max seconds for the whole crow demo (preconditions + run).",
     ),
 ) -> None:
     """Run the crow terminal adapter end-to-end against a live crow-mcp.
@@ -2105,7 +2139,9 @@ def _check_hatchet_preconditions(
         failures.append(f"could not load settings: {exc}")
         return failures
 
-    enabled = bool(getattr(getattr(settings, "adapters", None), "hatchet_enabled", False))
+    enabled = bool(
+        getattr(getattr(settings, "adapters", None), "hatchet_enabled", False)
+    )
     if not enabled:
         failures.append(
             "settings.adapters.hatchet_enabled is False "
@@ -2349,7 +2385,9 @@ DEFAULT_POOL_DEMO_COMMAND = "echo hello from {pool_type} pool"
 #: Default prompt for the RunPod *public* endpoint demo. Unlike the other
 #: pool demos -- which dispatch a shell command to a worker -- a public
 #: endpoint is a hosted model, so the demo sends natural language.
-DEFAULT_RUNPOD_PUBLIC_PROMPT = "Reply with one short sentence confirming you received this."
+DEFAULT_RUNPOD_PUBLIC_PROMPT = (
+    "Reply with one short sentence confirming you received this."
+)
 
 #: Default RunPod *public* endpoint id. RunPod hosts a catalog of pay-per-use
 #: models behind stable slugs (see ``mcp__runpod__list-public-endpoints``);
@@ -2501,13 +2539,21 @@ def _expected_shepherd_workspace_path(
     runtime on the same path.
     """
     if not pool_name or pool_name != pool_name.strip():
-        raise ValueError(f"invalid pool_name {pool_name!r}: must be non-empty and stripped")
+        raise ValueError(
+            f"invalid pool_name {pool_name!r}: must be non-empty and stripped"
+        )
     if ".." in Path(pool_name).parts or Path(pool_name).is_absolute():
-        raise ValueError(f"invalid pool_name {pool_name!r}: must not contain '..' or be absolute")
+        raise ValueError(
+            f"invalid pool_name {pool_name!r}: must not contain '..' or be absolute"
+        )
     if any(sep in pool_name for sep in (os.sep, "/", "\\")):
-        raise ValueError(f"invalid pool_name {pool_name!r}: must not contain path separators")
+        raise ValueError(
+            f"invalid pool_name {pool_name!r}: must not contain path separators"
+        )
     base = home or Path.home()
-    return base / ".local" / "state" / "mahavishnu" / "worktrees" / pool_name / "workspace"
+    return (
+        base / ".local" / "state" / "mahavishnu" / "worktrees" / pool_name / "workspace"
+    )
 
 
 def _check_shepherd_workspace(
@@ -2563,7 +2609,9 @@ def demo_pool_mahavishnu(
     keep: bool = typer.Option(
         False, "--keep", help="Leave the pool running after the demo (for debugging)."
     ),
-    timeout: int = typer.Option(60, "--timeout", help="Max seconds for start + execute + stop."),
+    timeout: int = typer.Option(
+        60, "--timeout", help="Max seconds for start + execute + stop."
+    ),
 ) -> None:
     """Run the in-process MahavishnuPool (WorkerManager + tmux) end-to-end.
 
@@ -2583,7 +2631,9 @@ def demo_pool_mahavishnu(
             typer.echo(f"  - {failure}", err=True)
         raise typer.Exit(code=1)
 
-    typer.echo(f"Pool: {pool_name} (type=mahavishnu, {min_workers}..{max_workers} workers)")
+    typer.echo(
+        f"Pool: {pool_name} (type=mahavishnu, {min_workers}..{max_workers} workers)"
+    )
     typer.echo(f"Command: {command}")
 
     try:
@@ -2707,7 +2757,9 @@ def demo_pool_session_buddy(
         "-p",
         help="Prompt dispatched to one Session-Buddy worker.",
     ),
-    keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave the pool running after the demo."
+    ),
     timeout: int = typer.Option(
         60, "--timeout", help="Max seconds for probe + start + execute + stop."
     ),
@@ -2724,7 +2776,9 @@ def demo_pool_session_buddy(
     ``--keep`` to leave the pool up — useful for follow-up
     ``mahavishnu pool execute pool_<id>`` calls.
     """
-    failures = _check_pool_session_buddy_preconditions(url=url, probe_timeout_s=probe_timeout_s)
+    failures = _check_pool_session_buddy_preconditions(
+        url=url, probe_timeout_s=probe_timeout_s
+    )
     if failures:
         typer.echo("Precondition failure(s):", err=True)
         for failure in failures:
@@ -2920,7 +2974,9 @@ async def _run_pool_runpod_public_demo(
     pool = RunPodPublicEndpointPool(config=config)
     pool_id = await pool.start()
     try:
-        result = await pool.execute_task({"messages": [{"role": "user", "content": prompt}]})
+        result = await pool.execute_task(
+            {"messages": [{"role": "user", "content": prompt}]}
+        )
     finally:
         if not keep:
             await pool.stop()
@@ -2956,7 +3012,9 @@ def demo_pool_runpod_public(
         help="Prompt dispatched to the public endpoint (sent as the content "
         "of a single user message).",
     ),
-    keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave the pool running after the demo."
+    ),
     timeout: int = typer.Option(
         120,
         "--timeout",
@@ -3024,7 +3082,9 @@ def demo_pool_runpod(
         "-p",
         help="Prompt dispatched to the RunPod serverless endpoint.",
     ),
-    keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave the pool running after the demo."
+    ),
     timeout: int = typer.Option(
         120,
         "--timeout",
@@ -3148,7 +3208,9 @@ async def _run_pool_pi_demo(
     with _pi_scratch_workspace(pool_name):
         pool_id = await pool.start()
         try:
-            result = await pool.execute_task({"prompt": prompt, "timeout": PI_TASK_TIMEOUT_SECONDS})
+            result = await pool.execute_task(
+                {"prompt": prompt, "timeout": PI_TASK_TIMEOUT_SECONDS}
+            )
         finally:
             if not keep:
                 await pool.stop()
@@ -3175,8 +3237,12 @@ def demo_pool_pi(
         "-p",
         help="Prompt dispatched to a fresh pi-coding-agent subprocess.",
     ),
-    keep: bool = typer.Option(False, "--keep", help="Leave the pool running after the demo."),
-    timeout: int = typer.Option(60, "--timeout", help="Max seconds for start + execute + stop."),
+    keep: bool = typer.Option(
+        False, "--keep", help="Leave the pool running after the demo."
+    ),
+    timeout: int = typer.Option(
+        60, "--timeout", help="Max seconds for start + execute + stop."
+    ),
 ) -> None:
     """Run the PiPool end-to-end (one-shot npx pi-coding-agent CLI).
 
@@ -3317,7 +3383,9 @@ def _check_workflow_pool_worker_terminal_preconditions(
     if adapter not in ("mock", "tmux"):
         failures.append(f"unsupported adapter: {adapter!r}. Supported: 'mock', 'tmux'.")
     if adapter == "tmux" and not tmux_lookup("tmux"):
-        failures.append("tmux binary not on PATH (required for the tmux terminal adapter)")
+        failures.append(
+            "tmux binary not on PATH (required for the tmux terminal adapter)"
+        )
     workspace = _expected_shepherd_workspace_path(pool_name, home=home)
     failures.extend(_check_shepherd_workspace(workspace, exists=exists))
     return failures
@@ -3375,7 +3443,9 @@ async def _run_workflow_pool_worker_terminal_demo(
     from mahavishnu.terminal.manager import TerminalManager
 
     total_stages = 3
-    _emit_workflow_stage(1, total_stages, f"initializing pool + {adapter} terminal adapter")
+    _emit_workflow_stage(
+        1, total_stages, f"initializing pool + {adapter} terminal adapter"
+    )
     pool_config = PoolConfig(
         name="demo-workflow-pwt",
         pool_type="mahavishnu",
@@ -3503,7 +3573,9 @@ def _check_workflow_multi_pool_handoff_preconditions(
                 )
         elif pool == "mahavishnu":
             if not tmux_lookup("tmux"):
-                failures.append(f"{label} pool 'mahavishnu' requires tmux binary (not on PATH)")
+                failures.append(
+                    f"{label} pool 'mahavishnu' requires tmux binary (not on PATH)"
+                )
         elif pool == "pi":
             if not shutil.which("npx"):
                 failures.append(f"{label} pool 'pi' requires npx binary (not on PATH)")
@@ -3541,11 +3613,17 @@ async def _run_workflow_multi_pool_handoff_demo(
         # pool" before any task is actually dispatched.
         await source_pool_obj.start()
         await target_pool_obj.start()
-        typer.echo(f"  ✓ source pool ({source_pool}) started: {source_pool_obj.pool_id}")
-        source_result = await source_pool_obj.execute_task(_task_payload(source_pool, prompt))
+        typer.echo(
+            f"  ✓ source pool ({source_pool}) started: {source_pool_obj.pool_id}"
+        )
+        source_result = await source_pool_obj.execute_task(
+            _task_payload(source_pool, prompt)
+        )
         typer.echo(f"  ✓ source task complete: status={source_result.get('status')}")
         followup = f"echo 'received from {source_pool}: ' {shlex.quote(str(source_result.get('output', '')))}"
-        target_result = await target_pool_obj.execute_task(_task_payload(target_pool, followup))
+        target_result = await target_pool_obj.execute_task(
+            _task_payload(target_pool, followup)
+        )
         typer.echo(
             f"  ✓ target pool ({target_pool}) task complete: status={target_result.get('status')}"
         )
@@ -3593,13 +3671,17 @@ async def _spawn_pool_by_type(pool_type: str, *, name: str) -> Any:
         from mahavishnu.terminal.manager import TerminalManager
 
         return MahavishnuPool(
-            config=PoolConfig(name=name, pool_type="mahavishnu", min_workers=1, max_workers=1),
+            config=PoolConfig(
+                name=name, pool_type="mahavishnu", min_workers=1, max_workers=1
+            ),
             terminal_manager=TerminalManager(adapter=_build_tmux_adapter()),
         )
     if pool_type == "pi":
         from mahavishnu.pools.pi_pool import PiPool
 
-        return PiPool(config=PoolConfig(name=name, pool_type="pi", min_workers=1, max_workers=1))
+        return PiPool(
+            config=PoolConfig(name=name, pool_type="pi", min_workers=1, max_workers=1)
+        )
     raise ValueError(f"unsupported pool_type for workflow demo: {pool_type!r}")
 
 
@@ -3706,9 +3788,13 @@ def _check_workflow_adapter_swap_preconditions(
     failures: list[str] = []
     for label, name in (("adapter-a", adapter_a), ("adapter-b", adapter_b)):
         if name not in ("mock", "tmux"):
-            failures.append(f"{label}={name!r} is not supported. Supported: 'mock', 'tmux'.")
+            failures.append(
+                f"{label}={name!r} is not supported. Supported: 'mock', 'tmux'."
+            )
     if (adapter_a == "tmux" or adapter_b == "tmux") and not tmux_lookup("tmux"):
-        failures.append("tmux binary not on PATH (required when either adapter is 'tmux')")
+        failures.append(
+            "tmux binary not on PATH (required when either adapter is 'tmux')"
+        )
     if adapter_a == adapter_b:
         failures.append(
             f"adapter-a and adapter-b are both {adapter_a!r} — "
@@ -3910,9 +3996,7 @@ async def _run_workflow_pi_cascade_demo(
                 {"prompt": prompt, "timeout": PI_TASK_TIMEOUT_SECONDS}
             )
             typer.echo(f"  ✓ turn 1 complete: status={turn1_result.get('status')}")
-            cascade_prompt = (
-                f"received from previous turn: {turn1_result.get('output', '')}\n\n{followup}"
-            )
+            cascade_prompt = f"received from previous turn: {turn1_result.get('output', '')}\n\n{followup}"
             turn2_result = await pool.execute_task(
                 {"prompt": cascade_prompt, "timeout": PI_TASK_TIMEOUT_SECONDS}
             )
@@ -3956,7 +4040,9 @@ def demo_workflow_pi_cascade(
         help="Second-turn prompt. Turn-1 result is prepended as context.",
     ),
     keep: bool = typer.Option(
-        False, "--keep", help="Leave the pi pool running after the demo (for debugging)."
+        False,
+        "--keep",
+        help="Leave the pi pool running after the demo (for debugging).",
     ),
     timeout: int = typer.Option(
         180,
@@ -4095,9 +4181,7 @@ async def _run_workflow_pi_then_local_demo(
     )
     local_pool_id = await local_pool.start()
     try:
-        followup_prompt = (
-            f"received from pi pool: {pi_result.get('output', '')}\n\ntask: {local_prompt}"
-        )
+        followup_prompt = f"received from pi pool: {pi_result.get('output', '')}\n\ntask: {local_prompt}"
         # The local pool is a MahavishnuPool (Shepherd backend), whose
         # contract is a shell *command*, not free text. The handoff text
         # is natural language, so it is wrapped in ``echo`` -- the only
@@ -4105,7 +4189,9 @@ async def _run_workflow_pi_then_local_demo(
         # and the payload key follows the pool type (see
         # ``_task_payload``).
         followup_command = f"echo {shlex.quote(followup_prompt)}"
-        local_result = await local_pool.execute_task(_task_payload("mahavishnu", followup_command))
+        local_result = await local_pool.execute_task(
+            _task_payload("mahavishnu", followup_command)
+        )
         typer.echo(f"  ✓ local task complete: status={local_result.get('status')}")
     finally:
         if not keep:
@@ -4309,7 +4395,9 @@ VERDICT_PARTIAL = "PARTIAL"
 VERDICT_STUB = "STUB"
 
 #: Statuses a demo's own JSON result may carry that count as success.
-_SUCCESS_STATUSES = frozenset({"success", "ok", "completed", "completed_successfully", "healthy"})
+_SUCCESS_STATUSES = frozenset(
+    {"success", "ok", "completed", "completed_successfully", "healthy"}
+)
 
 #: Terminal states that count as success for the Prefect demo, which
 #: reports its verdict under ``state`` rather than ``status``.
@@ -4418,7 +4506,10 @@ def _classify_sweep_output(output: str, returncode: int) -> str:
         # The Prefect demo reports its verdict as ``state`` rather than
         # ``status`` ("COMPLETED" / "CRASHED" / "FAILED").
         prefect_state = payload.get("state")
-        if isinstance(prefect_state, str) and prefect_state.upper() not in _SUCCESS_STATES:
+        if (
+            isinstance(prefect_state, str)
+            and prefect_state.upper() not in _SUCCESS_STATES
+        ):
             return VERDICT_ERROR
         statuses = _collect_statuses(payload)
         if any(status not in _SUCCESS_STATUSES for status in statuses):
@@ -4483,7 +4574,9 @@ def _write_sweep_log(path: Path, content: str) -> None:
     follow a symlink and leaves a window between the write and the
     permission change.
     """
-    fd, tmp_name = tempfile.mkstemp(prefix=".mahavishnu-demo-log-", dir=str(path.parent))
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=".mahavishnu-demo-log-", dir=str(path.parent)
+    )
     try:
         os.fchmod(fd, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -4538,7 +4631,9 @@ def _run_sweep_demo(
     log_path = log_dir / f"{spec.name}.log"
     _write_sweep_log(log_path, output)
 
-    verdict = VERDICT_TIMEOUT if timed_out else _classify_sweep_output(output, returncode)
+    verdict = (
+        VERDICT_TIMEOUT if timed_out else _classify_sweep_output(output, returncode)
+    )
     return {
         "name": spec.name,
         "verdict": verdict,
@@ -4582,7 +4677,9 @@ def _print_sweep_summary(rows: Sequence[dict[str, Any]]) -> None:
             f"  {row['name']:<{width}}  {row['verdict']:<13} "
             f"exit={row['exit_code']:<3} {row['duration_s']:>7}s"
         )
-    failures = [row for row in rows if row["verdict"] not in (VERDICT_PASS, VERDICT_STUB)]
+    failures = [
+        row for row in rows if row["verdict"] not in (VERDICT_PASS, VERDICT_STUB)
+    ]
     typer.echo("")
     typer.echo(f"{len(rows) - len(failures)}/{len(rows)} passed")
     if failures:
@@ -4666,7 +4763,9 @@ def demo_all(
     else:
         _print_sweep_summary(rows)
 
-    failures = [row for row in rows if row["verdict"] not in (VERDICT_PASS, VERDICT_STUB)]
+    failures = [
+        row for row in rows if row["verdict"] not in (VERDICT_PASS, VERDICT_STUB)
+    ]
     raise typer.Exit(code=1 if failures else 0)
 
 

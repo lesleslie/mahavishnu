@@ -230,7 +230,9 @@ async def example_pool_monitoring():
             event_type = data.get("event")
             if event_type == "worker.status_changed":
                 worker_data = data["data"]
-                logger.info(f"Worker {worker_data['worker_id']} status: {worker_data['status']}")
+                logger.info(
+                    f"Worker {worker_data['worker_id']} status: {worker_data['status']}"
+                )
             elif event_type == "pool.status_changed":
                 pool_data = data["data"]
                 logger.info(f"Pool {pool_data['pool_id']} status updated")

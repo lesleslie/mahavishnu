@@ -14,6 +14,7 @@ Fixtures used (``tests/conftest.py``):
   * ``isolated_log`` (local) — points ``mahavishnu.jot.paths.log_path`` at
     a tmp_path file so the test never touches the real ``~/.mahavishnu/jot/``.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,7 +41,9 @@ from mahavishnu.jot.fold import build_states, parse_events
 # ---------------------------------------------------------------------------
 
 
-def _capture_event(jot_id: str, text: str, *, wall_ms: int = 1_700_000_000_000) -> JotEvent:
+def _capture_event(
+    jot_id: str, text: str, *, wall_ms: int = 1_700_000_000_000
+) -> JotEvent:
     return JotEvent(
         id=jot_id,
         op="capture",
@@ -103,7 +106,9 @@ _JOT_TEXT = st.text(
 
 
 @st.composite
-def _jot_ids_and_texts(draw, min_size: int = 0, max_size: int = 5) -> list[tuple[str, str]]:
+def _jot_ids_and_texts(
+    draw, min_size: int = 0, max_size: int = 5
+) -> list[tuple[str, str]]:
     n = draw(st.integers(min_value=min_size, max_value=max_size))
     out: list[tuple[str, str]] = []
     seen: set[str] = set()
@@ -128,7 +133,9 @@ class TestDrainPlanIdempotence:
     """``drain_plan`` should produce the same candidate set on repeated calls."""
 
     @given(jots=_jot_ids_and_texts(max_size=5))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_candidate_set_stable_under_repeat_calls(
         self,
         isolated_log: Path,
@@ -159,7 +166,9 @@ class TestDrainPlanIdempotence:
                 assert a.dispatch_state == b.dispatch_state
 
     @given(jots=_jot_ids_and_texts(max_size=5))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_candidate_set_stable_after_done_event(
         self,
         isolated_log: Path,
@@ -189,7 +198,9 @@ class TestDrainPlanIdempotence:
             assert set(second_open_ids).issubset(set(first_open_ids))
 
     @given(jots=_jot_ids_and_texts(max_size=3))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_candidate_set_stable_after_delete_event(
         self,
         isolated_log: Path,
@@ -226,7 +237,9 @@ class TestDispatchDeterminism:
     """``dispatch_jot`` is deterministic given an isolated log."""
 
     @given(jot_text=_JOT_TEXT)
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_first_dispatch_returns_wf_1(
         self,
         isolated_log: Path,
@@ -235,7 +248,7 @@ class TestDispatchDeterminism:
     ) -> None:
         """First dispatch on a fresh jot always yields ``wf-1``."""
         # Stable 32-hex id so handle resolution works on subsequent calls.
-        jid = f"{abs(hash(jot_text)) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(jot_text)) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         _write_log(isolated_log, [_capture_event(jid, jot_text)])
         # Snapshot the substrate's call count BEFORE this example runs.
         # (fake_workflow_substrate persists across @given examples.)
@@ -249,7 +262,9 @@ class TestDispatchDeterminism:
         assert len(fake_workflow_substrate["trigger"]) == calls_before + 1
 
     @given(jot_text=_JOT_TEXT)
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_second_dispatch_fails_closed_when_in_flight(
         self,
         isolated_log: Path,
@@ -260,7 +275,7 @@ class TestDispatchDeterminism:
 
         This is the "fails closed if already in flight" branch.
         """
-        jid = f"{abs(hash(jot_text + 'X')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(jot_text + 'X')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         _write_log(isolated_log, [_capture_event(jid, jot_text)])
         calls_before = len(fake_workflow_substrate["trigger"])
         first = asyncio.run(dispatch_jot(jid[:6], dispatched_from="mcp"))
@@ -274,7 +289,9 @@ class TestDispatchDeterminism:
         assert len(fake_workflow_substrate["trigger"]) == calls_before + 1
 
     @given(jot_text=_JOT_TEXT)
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_consecutive_dispatches_after_reset_assign_sequential_ids(
         self,
         isolated_log: Path,
@@ -287,7 +304,7 @@ class TestDispatchDeterminism:
         substrate call advances the counter by exactly one, regardless of
         the dispatch_jot caller.
         """
-        jid = f"{abs(hash(jot_text + 'Y')) & 0xffffffffffffffff:016x}" * 2
+        jid = f"{abs(hash(jot_text + 'Y')) & 0xFFFFFFFFFFFFFFFF:016x}" * 2
         _write_log(
             isolated_log,
             [
@@ -312,7 +329,9 @@ class TestLogRoundTripIdempotence:
     """Re-reading the log via ``parse_events`` + ``build_states`` is stable."""
 
     @given(jots=_jot_ids_and_texts(max_size=4))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_parse_build_repeatable(
         self,
         isolated_log: Path,
@@ -340,7 +359,9 @@ class TestLogRoundTripIdempotence:
             assert a.dispatch_workflow_id == b.dispatch_workflow_id
 
     @given(jots=_jot_ids_and_texts(max_size=4))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_raw_log_bytes_stable_under_repeat_writes(
         self,
         isolated_log: Path,
@@ -358,7 +379,9 @@ class TestLogRoundTripIdempotence:
         assert before == after, "log byte-for-byte drift after re-write"
 
     @given(jots=_jot_ids_and_texts(max_size=4))
-    @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_event_json_roundtrip_preserves_candidate_set(
         self,
         isolated_log: Path,
@@ -374,7 +397,8 @@ class TestLogRoundTripIdempotence:
         lines = isolated_log.read_text().splitlines()
         rewritten = [json.loads(line) for line in lines if line.strip()]
         isolated_log.write_text(
-            "\n".join(json.dumps(rec, separators=(",", ":")) for rec in rewritten) + "\n"
+            "\n".join(json.dumps(rec, separators=(",", ":")) for rec in rewritten)
+            + "\n"
         )
         states = build_states(parse_events(isolated_log), enrich=False).states
         ids = sorted(s.id for s in states)

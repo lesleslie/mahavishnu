@@ -29,7 +29,9 @@ def _make_pool(
         min_workers=1,
         max_workers=max_workers,
     )
-    return SessionBuddyPool(config=config, session_buddy_url=url, max_workers=max_workers)
+    return SessionBuddyPool(
+        config=config, session_buddy_url=url, max_workers=max_workers
+    )
 
 
 def _stub_mcp(pool: SessionBuddyPool) -> None:
@@ -129,7 +131,9 @@ class TestStart:
     @pytest.mark.asyncio
     async def test_start_server_error_sets_failed_status(self) -> None:
         pool = _make_pool()
-        pool._call_mcp_tool = AsyncMock(side_effect=MCPServerError("connection refused"))
+        pool._call_mcp_tool = AsyncMock(
+            side_effect=MCPServerError("connection refused")
+        )
 
         with pytest.raises(MCPServerError):
             await pool.start()
@@ -204,7 +208,9 @@ class TestExecuteBatch:
         pool = _make_pool()
         pool._workers = {"w0": "worker_w0", "w1": "worker_w1"}
         pool._call_mcp_tool = AsyncMock(
-            return_value={"result": {"t0": {"status": "completed"}, "t1": {"status": "error"}}}
+            return_value={
+                "result": {"t0": {"status": "completed"}, "t1": {"status": "error"}}
+            }
         )
 
         results = await pool.execute_batch([{"prompt": "a"}, {"prompt": "b"}])
@@ -266,7 +272,9 @@ class TestHealthCheck:
     @pytest.mark.asyncio
     async def test_server_error_returns_unhealthy(self) -> None:
         pool = _make_pool()
-        pool._call_mcp_tool = AsyncMock(side_effect=MCPServerError("health check failed"))
+        pool._call_mcp_tool = AsyncMock(
+            side_effect=MCPServerError("health check failed")
+        )
 
         result = await pool.health_check()
         assert result["status"] == "unhealthy"
@@ -310,7 +318,9 @@ class TestCollectMemory:
     async def test_success_returns_conversations(self) -> None:
         pool = _make_pool()
         pool._call_mcp_tool = AsyncMock(
-            return_value={"result": {"conversations": [{"id": "conv1"}, {"id": "conv2"}]}}
+            return_value={
+                "result": {"conversations": [{"id": "conv1"}, {"id": "conv2"}]}
+            }
         )
 
         result = await pool.collect_memory()

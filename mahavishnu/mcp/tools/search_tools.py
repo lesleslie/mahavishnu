@@ -92,7 +92,9 @@ def register_search_tools(mcp: FastMCP) -> None:
             # Convert to dict for JSON serialization
             return [result.model_dump() for result in results]
 
-        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "hybrid_search tool failed",
                 extra={
@@ -142,7 +144,9 @@ def register_search_tools(mcp: FastMCP) -> None:
                 extra={"doc_id": doc_id, "error": str(e)},
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
-        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "index_document tool failed",
                 extra={
@@ -170,7 +174,9 @@ def register_search_tools(mcp: FastMCP) -> None:
                 "success": True,
                 "doc_id": doc_id,
                 "deleted": deleted,
-                "message": "Document deleted successfully" if deleted else "Document not found",
+                "message": "Document deleted successfully"
+                if deleted
+                else "Document not found",
             }
 
         except ValueError as e:
@@ -179,7 +185,9 @@ def register_search_tools(mcp: FastMCP) -> None:
                 extra={"doc_id": doc_id, "error": str(e)},
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
-        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "delete_document tool failed",
                 extra={"doc_id": doc_id, "error": str(e)},
@@ -197,7 +205,9 @@ def register_search_tools(mcp: FastMCP) -> None:
             engine = await get_search_engine()
 
             # If query is empty, do a broad search (effectively recent docs)
-            search_query = query if query.strip() else "a"  # Minimal query to get results
+            search_query = (
+                query if query.strip() else "a"
+            )  # Minimal query to get results
 
             results = await engine.search(
                 query=search_query,
@@ -207,7 +217,9 @@ def register_search_tools(mcp: FastMCP) -> None:
 
             return [result.model_dump() for result in results]
 
-        except Exception as e:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "search_by_repository tool failed",
                 extra={
@@ -260,13 +272,15 @@ def register_search_tools(mcp: FastMCP) -> None:
         if not (1 <= limit <= 100):
             raise ValueError(f"limit must be 1-100; got {limit}")
 
-        query_hash = hashlib.sha256(f"{scope}::{query}::{repo_filter or ''}".encode()).hexdigest()[
-            :16
-        ]
+        query_hash = hashlib.sha256(
+            f"{scope}::{query}::{repo_filter or ''}".encode()
+        ).hexdigest()[:16]
 
         settings = _get_settings()
         akosha_url = getattr(settings, "akosha_url", "http://localhost:8682/mcp")
-        session_buddy_url = getattr(settings, "session_buddy_url", "http://localhost:8678/mcp")
+        session_buddy_url = getattr(
+            settings, "session_buddy_url", "http://localhost:8678/mcp"
+        )
 
         sources: list[dict[str, Any]] = []
         combined: list[dict[str, Any]] = []
@@ -290,9 +304,9 @@ def register_search_tools(mcp: FastMCP) -> None:
                         # CommonMCPClient unwraps the JSON-RPC envelope, so
                         # the payload may be the bare dict OR a wrapper
                         # ``{"result": {"results": [...]}}``. Handle both.
-                        akosha_results = akosha_payload.get("results", []) or akosha_payload.get(
-                            "result", {}
-                        ).get("results", [])
+                        akosha_results = akosha_payload.get(
+                            "results", []
+                        ) or akosha_payload.get("result", {}).get("results", [])
                     elif isinstance(akosha_payload, list):
                         akosha_results = akosha_payload
                     else:
@@ -364,7 +378,9 @@ def register_search_tools(mcp: FastMCP) -> None:
                     except _json.JSONDecodeError:
                         sb_result = {}
                 sb_components = (
-                    sb_result.get("components", []) if isinstance(sb_result, dict) else []
+                    sb_result.get("components", [])
+                    if isinstance(sb_result, dict)
+                    else []
                 )
                 sources.append(
                     {

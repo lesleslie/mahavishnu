@@ -142,7 +142,8 @@ def _register_tools_with_mocks(
     patches = {
         "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled": feature_enabled_side_effect,
         "mahavishnu.mcp.tools.goal_team_tools.get_websocket_server": ws_server,
-        "mahavishnu.mcp.tools.goal_team_tools.get_goal_team_metrics": metrics or MagicMock(),
+        "mahavishnu.mcp.tools.goal_team_tools.get_goal_team_metrics": metrics
+        or MagicMock(),
         "mahavishnu.mcp.tools.goal_team_tools.is_context_initialized": context_initialized,
         "mahavishnu.mcp.tools.goal_team_tools.get_llm_factory": llm_factory,
         "mahavishnu.mcp.tools.goal_team_tools.get_agno_adapter": agno_adapter,
@@ -150,7 +151,9 @@ def _register_tools_with_mocks(
 
     context_managers = []
     for target, return_val in patches.items():
-        if callable(return_val) and not isinstance(return_val, (bool, MagicMock, AsyncMock)):
+        if callable(return_val) and not isinstance(
+            return_val, (bool, MagicMock, AsyncMock)
+        ):
             cm = patch(target, side_effect=return_val)
         else:
             cm = patch(target, return_value=return_val)
@@ -300,7 +303,9 @@ class TestParseGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             side_effect=lambda name: name != "enabled",
         ):
-            result = await _call_tool(mcp, "parse_goal", {"goal": "a valid goal text here"})
+            result = await _call_tool(
+                mcp, "parse_goal", {"goal": "a valid goal text here"}
+            )
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.FEATURE_DISABLED.value
 
@@ -312,7 +317,9 @@ class TestParseGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             side_effect=lambda name: name == "enabled",
         ):
-            result = await _call_tool(mcp, "parse_goal", {"goal": "a valid goal text here"})
+            result = await _call_tool(
+                mcp, "parse_goal", {"goal": "a valid goal text here"}
+            )
         assert result["success"] is False
 
     @pytest.mark.asyncio
@@ -390,7 +397,9 @@ class TestParseGoal:
             result = await _call_tool(
                 mcp,
                 "parse_goal",
-                {"goal": "Review the authentication module for security vulnerabilities"},
+                {
+                    "goal": "Review the authentication module for security vulnerabilities"
+                },
             )
 
         assert result["success"] is True
@@ -429,7 +438,9 @@ class TestParseGoal:
             result = await _call_tool(
                 mcp,
                 "parse_goal",
-                {"goal": "Review the authentication module for security vulnerabilities"},
+                {
+                    "goal": "Review the authentication module for security vulnerabilities"
+                },
             )
 
         assert result["suggested_team"]["has_leader"] is False
@@ -666,7 +677,10 @@ class TestParseGoal:
         assert result["success"] is True
         mock_ws.broadcast_team_parsed.assert_called_once()
         call_kwargs = mock_ws.broadcast_team_parsed.call_args[1]
-        assert call_kwargs["goal"] == "Review the authentication module for security issues"
+        assert (
+            call_kwargs["goal"]
+            == "Review the authentication module for security issues"
+        )
         assert call_kwargs["user_id"] == "user42"
 
     @pytest.mark.asyncio
@@ -992,7 +1006,9 @@ class TestTeamFromGoal:
         assert "Invalid mode" in result["error"]["message"]
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("mode", ["coordinate", "route", "broadcast", "collaborate"])
+    @pytest.mark.parametrize(
+        "mode", ["coordinate", "route", "broadcast", "collaborate"]
+    )
     async def test_valid_modes(self, mode):
         """All four valid mode strings are accepted."""
         fake_parsed = FakeParsedGoal()
@@ -1266,7 +1282,9 @@ class TestTeamFromGoal:
 
         assert result["success"] is True
         mock_metrics.record_goal_parsed.assert_called_once()
-        mock_metrics.record_skills_usage.assert_called_once_with(["security", "quality"])
+        mock_metrics.record_skills_usage.assert_called_once_with(
+            ["security", "quality"]
+        )
         mock_metrics.record_team_created.assert_called_once_with(
             mode="coordinate",
             skill_count=2,

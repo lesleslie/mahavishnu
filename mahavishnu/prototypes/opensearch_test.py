@@ -34,7 +34,9 @@ async def test_opensearch_connection():
 
         # Create sample documents
         documents = [
-            Document(text=f"This is test document {i}", metadata={"id": i, "source": "test"})
+            Document(
+                text=f"This is test document {i}", metadata={"id": i, "source": "test"}
+            )
             for i in range(100)
         ]
 
@@ -51,7 +53,9 @@ async def test_opensearch_connection():
         end_time = time.time()
 
         ingestion_time = end_time - start_time
-        print(f"✓ Successfully ingested {len(documents)} documents in {ingestion_time:.2f} seconds")
+        print(
+            f"✓ Successfully ingested {len(documents)} documents in {ingestion_time:.2f} seconds"
+        )
 
         # Verify we can query
         query_engine = index.as_query_engine()
@@ -71,7 +75,9 @@ async def test_opensearch_connection():
         print("   1. Install OpenSearch: brew install opensearch")
         print("   2. Start service: brew services start opensearch")
         print("   3. Verify: curl http://localhost:9200")
-        print("   4. Install Python deps: uv pip install 'llama-index-vector-stores-opensearch'")
+        print(
+            "   4. Install Python deps: uv pip install 'llama-index-vector-stores-opensearch'"
+        )
         return False
 
 

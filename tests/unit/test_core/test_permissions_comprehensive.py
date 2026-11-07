@@ -58,14 +58,18 @@ class TestRole:
     def test_role_with_allowed_repos(self):
         """Test role creation with allowed repos."""
         role = Role(
-            name="test_role", permissions=[Permission.READ_REPO], allowed_repos=["repo1", "repo2"]
+            name="test_role",
+            permissions=[Permission.READ_REPO],
+            allowed_repos=["repo1", "repo2"],
         )
 
         assert role.allowed_repos == ["repo1", "repo2"]
 
     def test_role_with_empty_allowed_repos(self):
         """Test role with empty allowed repos list."""
-        role = Role(name="test_role", permissions=[Permission.READ_REPO], allowed_repos=[])
+        role = Role(
+            name="test_role", permissions=[Permission.READ_REPO], allowed_repos=[]
+        )
 
         assert role.allowed_repos == []
 
@@ -87,7 +91,9 @@ class TestRole:
 
     def test_role_copy(self):
         """Test that role can be copied."""
-        role = Role(name="original", permissions=[Permission.READ_REPO], allowed_repos=["repo1"])
+        role = Role(
+            name="original", permissions=[Permission.READ_REPO], allowed_repos=["repo1"]
+        )
 
         copied = role.copy()
         assert copied.name == "original"
@@ -112,7 +118,9 @@ class TestUser:
         """Test user creation with all fields."""
         role = Role(name="admin", permissions=[Permission.READ_REPO])
 
-        user = User(user_id="user123", roles=[role], email="user@example.com", name="Test User")
+        user = User(
+            user_id="user123", roles=[role], email="user@example.com", name="Test User"
+        )
 
         assert user.email == "user@example.com"
         assert user.name == "Test User"
@@ -251,7 +259,9 @@ class TestRBACManager:
     async def test_create_user_with_mixed_roles(self, rbac_manager):
         """Test creating user with mix of existing and non-existing roles."""
         user = await rbac_manager.create_user(
-            user_id="user123", roles=["viewer", "nonexistent", "developer"], allowed_repos=["repo1"]
+            user_id="user123",
+            roles=["viewer", "nonexistent", "developer"],
+            allowed_repos=["repo1"],
         )
 
         # Should only have the 2 valid roles
@@ -319,28 +329,38 @@ class TestRBACManagerPermissionChecking:
     @pytest.mark.asyncio
     async def test_check_permission_admin_has_all(self, rbac_manager):
         """Test check_permission for admin user."""
-        has_perm = await rbac_manager.check_permission("admin_user", "repo1", Permission.WRITE_REPO)
+        has_perm = await rbac_manager.check_permission(
+            "admin_user", "repo1", Permission.WRITE_REPO
+        )
         assert has_perm is True
 
     @pytest.mark.asyncio
     async def test_check_permission_developer_restricted(self, rbac_manager):
         """Test check_permission for developer user."""
         # Developer should have read on repo1
-        has_perm = await rbac_manager.check_permission("dev_user", "repo1", Permission.READ_REPO)
+        has_perm = await rbac_manager.check_permission(
+            "dev_user", "repo1", Permission.READ_REPO
+        )
         assert has_perm is True
 
         # But not write
-        has_perm = await rbac_manager.check_permission("dev_user", "repo1", Permission.WRITE_REPO)
+        has_perm = await rbac_manager.check_permission(
+            "dev_user", "repo1", Permission.WRITE_REPO
+        )
         assert has_perm is False
 
         # And not on repo3 (not in allowed_repos)
-        has_perm = await rbac_manager.check_permission("dev_user", "repo3", Permission.READ_REPO)
+        has_perm = await rbac_manager.check_permission(
+            "dev_user", "repo3", Permission.READ_REPO
+        )
         assert has_perm is False
 
     @pytest.mark.asyncio
     async def test_check_permission_nonexistent_user(self, rbac_manager):
         """Test check_permission for nonexistent user."""
-        has_perm = await rbac_manager.check_permission("nonexistent", "repo1", Permission.READ_REPO)
+        has_perm = await rbac_manager.check_permission(
+            "nonexistent", "repo1", Permission.READ_REPO
+        )
         assert has_perm is False
 
     @pytest.mark.asyncio
@@ -361,7 +381,9 @@ class TestRBACManagerPermissionChecking:
     @pytest.mark.asyncio
     async def test_filter_repos_by_permission(self, rbac_manager):
         """Test filter_repos_by_permission method."""
-        repos = await rbac_manager.filter_repos_by_permission("dev_user", Permission.READ_REPO)
+        repos = await rbac_manager.filter_repos_by_permission(
+            "dev_user", Permission.READ_REPO
+        )
 
         assert "repo1" in repos
         assert "repo2" in repos
@@ -369,7 +391,9 @@ class TestRBACManagerPermissionChecking:
     @pytest.mark.asyncio
     async def test_filter_repos_nonexistent_user(self, rbac_manager):
         """Test filter_repos_by_permission for nonexistent user."""
-        repos = await rbac_manager.filter_repos_by_permission("nonexistent", Permission.READ_REPO)
+        repos = await rbac_manager.filter_repos_by_permission(
+            "nonexistent", Permission.READ_REPO
+        )
         assert repos == []
 
 

@@ -208,7 +208,9 @@ class WorktreeCoordinator:
             raise ConfigurationError(f"Repository not found: {repo_nickname}")
 
         # Check dependencies
-        blocking_deps = self.coordination_manager._get_blocking_dependencies(repo_nickname)
+        blocking_deps = self.coordination_manager._get_blocking_dependencies(
+            repo_nickname
+        )
         if blocking_deps:
             logger.warning(
                 "Repo %s has %d blocking dependencies: %s",
@@ -220,13 +222,19 @@ class WorktreeCoordinator:
         # Generate safe worktree path
         if worktree_name:
             # Use custom worktree name
-            worktree_path = self.path_validator.get_safe_worktree_path(repo_nickname, worktree_name)
+            worktree_path = self.path_validator.get_safe_worktree_path(
+                repo_nickname, worktree_name
+            )
         else:
             # Generate from branch name
-            worktree_path = self.path_validator.get_safe_worktree_path(repo_nickname, branch)
+            worktree_path = self.path_validator.get_safe_worktree_path(
+                repo_nickname, branch
+            )
 
         # Validate worktree path (SECURITY-002: defense in depth)
-        is_valid, error = self.path_validator.validate_worktree_path(str(worktree_path), user_id)
+        is_valid, error = self.path_validator.validate_worktree_path(
+            str(worktree_path), user_id
+        )
         if not is_valid:
             self.audit_logger.log_security_rejection(
                 user_id=user_id,
@@ -314,7 +322,9 @@ class WorktreeCoordinator:
             raise ConfigurationError(f"Repository not found: {repo_nickname}")
 
         # Validate worktree path BEFORE any operations (SECURITY-002)
-        is_valid, error = self.path_validator.validate_worktree_path(worktree_path, user_id)
+        is_valid, error = self.path_validator.validate_worktree_path(
+            worktree_path, user_id
+        )
         if not is_valid:
             self.audit_logger.log_security_rejection(
                 user_id=user_id,
@@ -337,7 +347,11 @@ class WorktreeCoordinator:
 
         # Run preflight safety checks (uncommitted, dependents, verify).
         # Returns (error_dict_or_None, has_uncommitted, backup_path_or_None).
-        safety_error, has_uncommitted, backup_path = await self._evaluate_removal_safety(
+        (
+            safety_error,
+            has_uncommitted,
+            backup_path,
+        ) = await self._evaluate_removal_safety(
             repo_nickname=repo_nickname,
             worktree_path=worktree_path,
             force=force,
@@ -435,7 +449,8 @@ class WorktreeCoordinator:
                     "error_code": "no_capable_provider",
                     "provider": provider_name,
                     "tool_not_available_chain": [
-                        p.provider_name() for p in self.provider_registry.all_providers()
+                        p.provider_name()
+                        for p in self.provider_registry.all_providers()
                     ],
                 }
             # Unhealthy providers across the board
@@ -646,10 +661,14 @@ class WorktreeCoordinator:
                 for repo in repos:
                     try:
                         provider = await self.provider_registry.get_available_provider()
-                        result = await provider.list_worktrees(repository_path=Path(repo.path))
+                        result = await provider.list_worktrees(
+                            repository_path=Path(repo.path)
+                        )
                         all_worktrees.extend(result.get("worktrees", []))
                     except Exception as e:  # worktree coordination — broad catch logs the per-repo failure and continues the loop  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                        logger.warning(f"Failed to list worktrees for {repo.nickname}: {e}")
+                        logger.warning(
+                            f"Failed to list worktrees for {repo.nickname}: {e}"
+                        )
                         continue
 
                 return {
@@ -658,9 +677,7 @@ class WorktreeCoordinator:
                     "total_count": len(all_worktrees),
                 }
 
-        except (
-            Exception
-        ):  # worktree coordination — broad catch logs full traceback before re-raising the failure
+        except Exception:  # worktree coordination — broad catch logs full traceback before re-raising the failure
             logger.exception("Failed to list worktrees")
             raise
 
@@ -721,9 +738,7 @@ class WorktreeCoordinator:
                 "pruned_count": pruned_count,
             }
 
-        except (
-            Exception
-        ):  # worktree coordination — broad catch logs full traceback before re-raising the failure
+        except Exception:  # worktree coordination — broad catch logs full traceback before re-raising the failure
             logger.exception("Failed to prune worktrees")
             raise
 
@@ -1030,13 +1045,17 @@ class WorktreeCoordinator:
     async def _check_uncommitted_changes(self, worktree_path: str) -> bool:
         """Check if worktree has uncommitted changes."""
         try:
-            result = await self._execute_git_command(worktree_path, ["status", "--porcelain"])
+            result = await self._execute_git_command(
+                worktree_path, ["status", "--porcelain"]
+            )
             return bool(result.strip())
         except Exception as e:  # worktree coordination — broad catch wraps git status subprocess failures into False  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Failed to check uncommitted changes: {e}")
             return False
 
-    def _get_worktree_dependents(self, repo_nickname: str, worktree_path: str) -> list[str]:
+    def _get_worktree_dependents(
+        self, repo_nickname: str, worktree_path: str
+    ) -> list[str]:
         """
         Get repositories that depend on this worktree (ARCH-002 fix).
 
@@ -1073,7 +1092,9 @@ class WorktreeCoordinator:
     async def _branch_exists(self, repo_path: str, branch: str) -> bool:
         """Check if branch exists in repository."""
         try:
-            result = await self._execute_git_command(repo_path, ["branch", "--list", branch])
+            result = await self._execute_git_command(
+                repo_path, ["branch", "--list", branch]
+            )
             return bool(result.strip())
         except Exception as e:  # worktree coordination — broad catch wraps git branch subprocess failures into False  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Failed to check branch existence: {e}")
@@ -1082,7 +1103,9 @@ class WorktreeCoordinator:
     async def _get_worktree_branch(self, worktree_path: str) -> str:
         """Get current branch for worktree."""
         try:
-            result = await self._execute_git_command(worktree_path, ["branch", "--show-current"])
+            result = await self._execute_git_command(
+                worktree_path, ["branch", "--show-current"]
+            )
             return result.strip()
         except Exception as e:  # worktree coordination — broad catch wraps git branch subprocess failures into "unknown"  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Failed to get worktree branch: {e}")
@@ -1164,7 +1187,9 @@ class WorktreeCoordinator:
 
         provider = await self.provider_registry.get_available_provider()
         if not hasattr(provider, "fetch"):
-            raise WorktreeError(f"Provider {provider.provider_name()} does not support v4 fetch")
+            raise WorktreeError(
+                f"Provider {provider.provider_name()} does not support v4 fetch"
+            )
         # hasattr check above guarantees the v4 method exists; cast to
         # Any so ty doesn't reject the call against the v1 base class.
         v4_provider: Any = provider
@@ -1212,7 +1237,9 @@ class WorktreeCoordinator:
         # hasattr check above guarantees the v4 method exists; cast to
         # Any so ty doesn't reject the call against the v1 base class.
         v4_provider: Any = provider
-        return await v4_provider.list_handles(principal=principal, repo=repo, caller=caller)
+        return await v4_provider.list_handles(
+            principal=principal, repo=repo, caller=caller
+        )
 
     def _legacy_create_worktree_response(self, handle: Any) -> dict[str, Any]:
         """Adapter: convert a v4 ``WorktreeHandle`` to the legacy

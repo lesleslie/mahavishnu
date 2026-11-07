@@ -65,7 +65,9 @@ def _select_targets(
     for record in store.list_all():
         if not include_all and record.state != WorkerLifecycleState.REAPED:
             continue
-        state_value = record.state.value if hasattr(record.state, "value") else str(record.state)
+        state_value = (
+            record.state.value if hasattr(record.state, "value") else str(record.state)
+        )
         session_name = record.tmux.session if record.tmux else None
         socket_path = record.tmux.socket if record.tmux else None
         rows.append(

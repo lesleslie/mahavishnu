@@ -129,18 +129,17 @@ Session-Buddy exposes monitoring via **MCP tools** (not OTel):
 ```python
 @mcp.tool()
 async def get_workflow_metrics(
-    project_path: str | None = None,
-    days_back: int = 30
+    project_path: str | None = None, days_back: int = 30
 ) -> dict[str, Any]:
     """Get comprehensive workflow metrics."""
     # Returns: total_sessions, avg_session_duration_minutes,
     #          avg_checkpoints_per_session, avg_commits_per_session,
     #          avg_quality_score, quality_trend, etc.
 
+
 @mcp.tool()
 async def get_session_analytics(
-    limit: int = 20,
-    sort_by: str = "duration"
+    limit: int = 20, sort_by: str = "duration"
 ) -> dict[str, Any]:
     """Get detailed session-level analytics."""
 ```
@@ -156,13 +155,16 @@ async def get_session_analytics(
 async def start_app_monitoring(project_paths: list[str] | None = None) -> str:
     """Start monitoring IDE activity and browser documentation."""
 
+
 @mcp.tool()
 async def get_activity_summary(hours: int = 2) -> str:
     """Get activity summary for specified hours."""
 
+
 @mcp.tool()
 async def get_context_insights(hours: int = 1) -> str:
     """Get contextual insights from recent activity."""
+
 
 @mcp.tool()
 async def get_active_files(minutes: int = 60) -> str:
@@ -240,9 +242,15 @@ class ObservabilityManager:
     def __init__(self, config: MahavishnuSettings):
         # OpenTelemetry imports with fallback
         from opentelemetry import metrics, trace
-        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-        from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor
+        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
+            OTLPMetricExporter,
+        )
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
+        from opentelemetry.instrumentation.system_metrics import (
+            SystemMetricsInstrumentor,
+        )
         from opentelemetry.sdk.metrics import MeterProvider
         from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
         from opentelemetry.sdk.resources import Resource
@@ -254,30 +262,27 @@ class ObservabilityManager:
 
 ```python
 self.workflow_counter = self.meter.create_counter(
-    "mahavishnu.workflows.executed",
-    description="Number of workflows executed"
+    "mahavishnu.workflows.executed", description="Number of workflows executed"
 )
 
 self.repo_counter = self.meter.create_counter(
-    "mahavishnu.repositories.processed",
-    description="Number of repositories processed"
+    "mahavishnu.repositories.processed", description="Number of repositories processed"
 )
 
 self.error_counter = self.meter.create_counter(
-    "mahavishnu.errors.count",
-    description="Number of errors occurred"
+    "mahavishnu.errors.count", description="Number of errors occurred"
 )
 
 self.workflow_duration_histogram = self.meter.create_histogram(
     "mahavishnu.workflow.duration",
     description="Duration of workflow execution in seconds",
-    unit="s"
+    unit="s",
 )
 
 self.repo_processing_duration_histogram = self.meter.create_histogram(
     "mahavishnu.repo.processing.duration",
     description="Duration of repository processing in seconds",
-    unit="s"
+    unit="s",
 )
 ```
 
@@ -290,20 +295,19 @@ def start_workflow_trace(self, workflow_id: str, adapter: str, task_type: str):
         "workflow.id": workflow_id,
         "workflow.adapter": adapter,
         "workflow.task_type": task_type,
-        "workflow.start_time": datetime.now(tz=UTC).isoformat()
+        "workflow.start_time": datetime.now(tz=UTC).isoformat(),
     }
     span = self.tracer.start_as_current_span(
-        f"workflow.{workflow_id}",
-        attributes=span_attributes
+        f"workflow.{workflow_id}", attributes=span_attributes
     )
     return span
+
 
 def start_repo_trace(self, repo_path: str, workflow_id: str):
     """Start a trace for repository processing."""
     span_attributes = {"repo.path": repo_path, "workflow.id": workflow_id}
     span = self.tracer.start_as_current_span(
-        f"repo.process.{repo_path.split('/')[-1]}",
-        attributes=span_attributes
+        f"repo.process.{repo_path.split('/')[-1]}", attributes=span_attributes
     )
     return span
 ```
@@ -462,13 +466,16 @@ Mahavishnu has Session-Buddy integration tools:
 async def index_code_graph(project_path: str) -> dict[str, Any]:
     """Index codebase structure for better context in Session Buddy."""
 
+
 @mcp.tool()
 async def get_function_context(project_path: str, function_name: str) -> dict[str, Any]:
     """Get caller/callee context for a function for Session Buddy."""
 
+
 @mcp.tool()
 async def search_documentation(query: str) -> dict[str, Any]:
     """Search through indexed documentation in Session Buddy."""
+
 
 @mcp.tool()
 async def send_project_message(
@@ -476,7 +483,7 @@ async def send_project_message(
     to_project: str,
     subject: str,
     message: str,
-    priority: str = "NORMAL"
+    priority: str = "NORMAL",
 ) -> dict[str, Any]:
     """Send message between projects for Session Buddy."""
 ```
@@ -543,12 +550,12 @@ from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 
+
 def init_otel(otlp_endpoint: str = "http://localhost:4317"):
     """Initialize OpenTelemetry for Session-Buddy."""
-    resource = Resource.create({
-        "service.name": "session-buddy",
-        "service.version": "0.13.0"
-    })
+    resource = Resource.create(
+        {"service.name": "session-buddy", "service.version": "0.13.0"}
+    )
 
     # Metrics
     metric_reader = PeriodicExportingMetricReader(
@@ -559,9 +566,7 @@ def init_otel(otlp_endpoint: str = "http://localhost:4317"):
 
     # Traces
     trace_provider = TracerProvider(resource=resource)
-    processor = BatchSpanProcessor(
-        OTLPSpanExporter(endpoint=otlp_endpoint)
-    )
+    processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_endpoint))
     trace_provider.add_span_processor(processor)
     trace.set_tracer_provider(trace_provider)
 
@@ -574,6 +579,7 @@ def init_otel(otlp_endpoint: str = "http://localhost:4317"):
 # session_buddy/observability/metrics_bridge.py
 from opentelemetry import metrics
 
+
 class WorkflowMetricsBridge:
     """Bridge workflow metrics to OpenTelemetry."""
 
@@ -582,21 +588,20 @@ class WorkflowMetricsBridge:
 
         # Create OTel instruments
         self.session_counter = meter.create_counter(
-            "session_buddy.sessions.total",
-            description="Total number of sessions"
+            "session_buddy.sessions.total", description="Total number of sessions"
         )
         self.session_duration = meter.create_histogram(
             "session_buddy.session.duration_seconds",
             description="Session duration in seconds",
-            unit="s"
+            unit="s",
         )
         self.quality_score = meter.create_gauge(
             "session_buddy.session.quality_score",
-            description="Current session quality score"
+            description="Current session quality score",
         )
         self.commit_counter = meter.create_counter(
             "session_buddy.session.commits",
-            description="Number of git commits per session"
+            description="Number of git commits per session",
         )
 
     def record_session_metrics(self, session_metrics: SessionMetrics):
@@ -605,23 +610,29 @@ class WorkflowMetricsBridge:
         duration_seconds = session_metrics.duration_minutes * 60
 
         # Record metrics
-        self.session_counter.add(1, {
-            "project_path": session_metrics.project_path,
-            "time_of_day": session_metrics.time_of_day
-        })
+        self.session_counter.add(
+            1,
+            {
+                "project_path": session_metrics.project_path,
+                "time_of_day": session_metrics.time_of_day,
+            },
+        )
 
-        self.session_duration.record(duration_seconds, {
-            "project_path": session_metrics.project_path
-        })
+        self.session_duration.record(
+            duration_seconds, {"project_path": session_metrics.project_path}
+        )
 
-        self.quality_score.record(session_metrics.avg_quality, {
-            "session_id": session_metrics.session_id,
-            "project_path": session_metrics.project_path
-        })
+        self.quality_score.record(
+            session_metrics.avg_quality,
+            {
+                "session_id": session_metrics.session_id,
+                "project_path": session_metrics.project_path,
+            },
+        )
 
-        self.commit_counter.add(session_metrics.commit_count, {
-            "session_id": session_metrics.session_id
-        })
+        self.commit_counter.add(
+            session_metrics.commit_count, {"session_id": session_metrics.session_id}
+        )
 ```
 
 4. **Configuration** (`settings/session-buddy.yaml`):
@@ -670,6 +681,7 @@ Mahavishnu → MCP Client → Session-Buddy MCP Server → Metrics
 from opentelemetry import metrics
 import httpx
 
+
 class SessionBuddyMetricsPoller:
     """Poll Session-Buddy MCP for metrics and publish to OTel."""
 
@@ -688,10 +700,7 @@ class SessionBuddyMetricsPoller:
             # Call Session-Buddy MCP tool
             response = await client.post(
                 f"{self.mcp_url}/tools/call",
-                json={
-                    "name": "get_workflow_metrics",
-                    "arguments": {"days_back": 7}
-                }
+                json={"name": "get_workflow_metrics", "arguments": {"days_back": 7}},
             )
 
             metrics_data = response.json()
@@ -699,10 +708,7 @@ class SessionBuddyMetricsPoller:
             # Convert to OTel metrics
             self.workflow_counter.add(
                 metrics_data["total_sessions"],
-                {
-                    "source": "session_buddy",
-                    "period_days": 7
-                }
+                {"source": "session_buddy", "period_days": 7},
             )
 ```
 
@@ -742,6 +748,7 @@ Mahavishnu → DuckDB Reader → Session-Buddy DuckDB → Metrics
 import duckdb
 from opentelemetry import metrics
 
+
 class SessionBuddyDBReader:
     """Read Session-Buddy DuckDB and publish to OTel."""
 
@@ -776,7 +783,7 @@ class SessionBuddyDBReader:
             for _ in range(count):
                 self.session_duration.record(
                     avg_duration,
-                    {"project_path": project_path, "source": "session_buddy_db"}
+                    {"project_path": project_path, "source": "session_buddy_db"},
                 )
 ```
 
@@ -1067,6 +1074,7 @@ session_buddy.activity.context_switches_total:
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
+
 def start_session_trace(session_id: str, project_path: str):
     """Start a distributed trace for session."""
     tracer = trace.get_tracer(__name__)
@@ -1076,11 +1084,12 @@ def start_session_trace(session_id: str, project_path: str):
         attributes={
             "session.id": session_id,
             "session.project_path": project_path,
-            "session.start_time": datetime.now().isoformat()
-        }
+            "session.start_time": datetime.now().isoformat(),
+        },
     ) as span:
         # This span will be parent for all operations
         return span
+
 
 # Mahavishnu can continue the trace
 def continue_session_trace(session_id: str, operation: str):
@@ -1089,16 +1098,13 @@ def continue_session_trace(session_id: str, operation: str):
 
     with tracer.start_as_current_span(
         f"mahavishnu.{operation}",
-        attributes={
-            "linked.session_id": session_id,
-            "mahavishnu.operation": operation
-        }
+        attributes={"linked.session_id": session_id, "mahavishnu.operation": operation},
     ) as span:
         # Add link to Session-Buddy span
         span.add_link(
             context=TraceContext(
                 trace_id=extract_trace_id(session_id),
-                span_id=extract_span_id(session_id)
+                span_id=extract_span_id(session_id),
             )
         )
         return span
@@ -1286,6 +1292,7 @@ ______________________________________________________________________
 # session_buddy/__init__.py
 from .observability.otel import init_otel
 
+
 def initialize_session_buddy():
     """Initialize Session-Buddy with OpenTelemetry."""
     from session_buddy.settings import get_settings
@@ -1298,7 +1305,7 @@ def initialize_session_buddy():
             otlp_endpoint=settings.otlp_endpoint,
             service_name=settings.otel_service_name,
             metrics_enabled=settings.otel_metrics_enabled,
-            traces_enabled=settings.otel_traces_enabled
+            traces_enabled=settings.otel_traces_enabled,
         )
 
     # ... rest of initialization
@@ -1311,6 +1318,7 @@ def initialize_session_buddy():
 from opentelemetry import metrics
 from .workflow_metrics import SessionMetrics
 
+
 class WorkflowMetricsBridge:
     """Bridge workflow metrics to OpenTelemetry."""
 
@@ -1319,24 +1327,23 @@ class WorkflowMetricsBridge:
 
         # Create instruments
         self.session_counter = self.meter.create_counter(
-            "session_buddy.sessions.total",
-            description="Total number of sessions"
+            "session_buddy.sessions.total", description="Total number of sessions"
         )
 
         self.session_duration = self.meter.create_histogram(
             "session_buddy.session.duration_seconds",
             unit="s",
-            description="Session duration in seconds"
+            description="Session duration in seconds",
         )
 
         self.quality_gauge = self.meter.create_gauge(
             "session_buddy.session.quality_score",
-            description="Session quality score (0-100)"
+            description="Session quality score (0-100)",
         )
 
         self.commit_counter = self.meter.create_counter(
             "session_buddy.session.commits",
-            description="Number of git commits per session"
+            description="Number of git commits per session",
         )
 
     def record_session(self, session: SessionMetrics):
@@ -1345,14 +1352,16 @@ class WorkflowMetricsBridge:
             "session.id": session.session_id,
             "session.project_path": session.project_path,
             "session.time_of_day": session.time_of_day,
-            "session.primary_language": session.primary_language or "unknown"
+            "session.primary_language": session.primary_language or "unknown",
         }
 
         # Count session
         self.session_counter.add(1, attributes)
 
         # Record duration (convert to seconds)
-        duration_seconds = session.duration_minutes * 60 if session.duration_minutes else 0
+        duration_seconds = (
+            session.duration_minutes * 60 if session.duration_minutes else 0
+        )
         self.session_duration.record(duration_seconds, attributes)
 
         # Record quality
@@ -1370,6 +1379,7 @@ import asyncio
 import httpx
 from opentelemetry import metrics
 
+
 class SessionBuddyMetricsPoller:
     """Poll Session-Buddy MCP for metrics."""
 
@@ -1381,7 +1391,7 @@ class SessionBuddyMetricsPoller:
         # Create OTel instruments
         self.sb_session_counter = self.meter.create_counter(
             "mahavishnu.session_buddy.sessions.total",
-            description="Sessions from Session-Buddy"
+            description="Sessions from Session-Buddy",
         )
 
     async def start(self):
@@ -1399,19 +1409,15 @@ class SessionBuddyMetricsPoller:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.mcp_url}/tools/call",
-                json={
-                    "name": "get_workflow_metrics",
-                    "arguments": {"days_back": 1}
-                },
-                timeout=10.0
+                json={"name": "get_workflow_metrics", "arguments": {"days_back": 1}},
+                timeout=10.0,
             )
 
             data = response.json()
 
             if data.get("success"):
                 self.sb_session_counter.add(
-                    data["total_sessions"],
-                    {"source": "mcp_poll"}
+                    data["total_sessions"], {"source": "mcp_poll"}
                 )
 ```
 

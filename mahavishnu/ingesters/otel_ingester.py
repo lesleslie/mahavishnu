@@ -22,7 +22,9 @@ from mcp_common.clients.common_mcp_client import CommonMCPClient
 # Feature detection for embedding backends
 # Try sentence-transformers first (best quality), then fastembed (cross-platform)
 try:
-    from sentence_transformers import SentenceTransformer  # ty: ignore[import-not-found]
+    from sentence_transformers import (
+        SentenceTransformer,  # ty: ignore[import-not-found]
+    )
 
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
@@ -38,10 +40,15 @@ except ImportError:
     TextEmbedding: type[Any] | None = None  # type: ignore[no-redef]
 
 if TYPE_CHECKING:
-    from oneiric.adapters.vector.hot_store import HotStore  # substrate Protocol (ADR 017)
+    from oneiric.adapters.vector.hot_store import (
+        HotStore,
+    )  # substrate Protocol (ADR 017)
 
 from mahavishnu.core.errors import ValidationError
-from mahavishnu.ingesters.turboquant_compressor import TQPackedVector, TurboQuantCompressor
+from mahavishnu.ingesters.turboquant_compressor import (
+    TQPackedVector,
+    TurboQuantCompressor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -437,7 +444,9 @@ class OtelIngester:
         self._pgvector_dsn = pgvector_dsn
         self._pgvector_collection = pgvector_collection
         self._akosha_url = akosha_url  # Akosha MCP URL for centralized embeddings
-        self._duckdb_path = duckdb_path  # Path for DuckDB storage (":memory:" or file path)
+        self._duckdb_path = (
+            duckdb_path  # Path for DuckDB storage (":memory:" or file path)
+        )
         self._hot_store = hot_store  # Only used for DuckDB
         self._pgvector_adapter: Any = None  # PgvectorAdapter, lazy loaded
 
@@ -495,7 +504,9 @@ class OtelIngester:
             ImportError: If selected backend is unavailable
         """
         if self._backend == EmbeddingBackend.AKOSHA:
-            logger.info(f"Using Akosha centralized embedding service: {self._akosha_url}")
+            logger.info(
+                f"Using Akosha centralized embedding service: {self._akosha_url}"
+            )
             return AkoshaEmbedder(akosha_url=self._akosha_url)
 
         elif self._backend == EmbeddingBackend.SENTENCE_TRANSFORMERS:
@@ -504,12 +515,16 @@ class OtelIngester:
                     "sentence-transformers is not available. "
                     "Install with: pip install sentence-transformers"
                 )
-            logger.info(f"Loading sentence-transformers model: {self._embedding_model_name}")
+            logger.info(
+                f"Loading sentence-transformers model: {self._embedding_model_name}"
+            )
             return SentenceTransformersWrapper(self._embedding_model_name)
 
         elif self._backend == EmbeddingBackend.FASTEMBED:
             if not FASTEMBED_AVAILABLE:
-                raise ImportError("fastembed is not available. Install with: pip install fastembed")
+                raise ImportError(
+                    "fastembed is not available. Install with: pip install fastembed"
+                )
             # Map sentence-transformers model names to fastembed equivalents
             fastembed_model = self._map_to_fastembed_model(self._embedding_model_name)
             logger.info(f"Loading fastembed model: {fastembed_model}")
@@ -571,7 +586,9 @@ class OtelIngester:
                     self._embedder = self._try_fallback_backends()
                     if self._embedder is not None:
                         self._embedding_dimension = self._embedder.dimension
-                        logger.info(f"Using fallback embedding backend: {self._backend.value}")
+                        logger.info(
+                            f"Using fallback embedding backend: {self._backend.value}"
+                        )
 
             # Initialize TurboQuant cache compressor if requested
             if self._turboquant_bits is not None and self._compressor is None:
@@ -593,11 +610,11 @@ class OtelIngester:
                         "Install with: uv pip install turboquant-pro"
                     )
 
-            logger.info(f"OTel ingester initialized (storage={self._storage_type.value})")
+            logger.info(
+                f"OTel ingester initialized (storage={self._storage_type.value})"
+            )
 
-        except (
-            Exception
-        ) as e:  # init wraps backend/storage setup; reraise as RuntimeError to surface real cause
+        except Exception as e:  # init wraps backend/storage setup; reraise as RuntimeError to surface real cause
             logger.error(f"Failed to initialize OTel ingester: {e}")
             raise RuntimeError(f"OTel ingester initialization failed: {e}") from e
 
@@ -618,7 +635,10 @@ class OtelIngester:
                 "Set the MAHAVISHNU_OTEL_STORAGE__CONNECTION_STRING environment variable."
             )
 
-        from mahavishnu.adapters.pgvector_adapter import PgvectorAdapter, PgvectorSettings
+        from mahavishnu.adapters.pgvector_adapter import (
+            PgvectorAdapter,
+            PgvectorSettings,
+        )
 
         settings = PgvectorSettings(
             dsn=self._pgvector_dsn,
@@ -656,7 +676,9 @@ class OtelIngester:
             try:
                 self._backend = backend
                 embedder = self._create_embedder()
-                logger.info(f"Successfully initialized fallback backend: {backend.value}")
+                logger.info(
+                    f"Successfully initialized fallback backend: {backend.value}"
+                )
                 return embedder
             except Exception as e:  # backend factory may raise any error during init; try next fallback  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.debug(f"Fallback backend {backend.value} unavailable: {e}")
@@ -750,13 +772,17 @@ class OtelIngester:
         except ValidationError:
             raise
         except Exception as e:  # per-trace soft-fail so one bad trace doesn't abort batch  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.error(f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}")
+            logger.error(
+                f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}"
+            )
             # Don't fail - log and continue for other traces
 
     async def _ingest_trace_pgvector(self, trace_data: dict[str, Any]) -> None:
         """Ingest trace into PostgreSQL + pgvector."""
         if not self._pgvector_adapter:
-            raise RuntimeError("pgvector adapter not initialized. Call initialize() first.")
+            raise RuntimeError(
+                "pgvector adapter not initialized. Call initialize() first."
+            )
 
         try:
             # Validate required fields
@@ -802,12 +828,16 @@ class OtelIngester:
                     }
                 ],
             )
-            logger.debug(f"Ingested trace {trace_id} with {len(spans)} spans into pgvector")
+            logger.debug(
+                f"Ingested trace {trace_id} with {len(spans)} spans into pgvector"
+            )
 
         except ValidationError:
             raise
         except Exception as e:  # per-trace soft-fail so one bad trace doesn't abort batch  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.error(f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}")
+            logger.error(
+                f"Failed to ingest trace {trace_data.get('trace_id', 'unknown')}: {e}"
+            )
 
     async def ingest_batch(self, traces: list[dict[str, Any]]) -> dict[str, Any]:
         """Ingest multiple OTel traces in batch.
@@ -837,7 +867,9 @@ class OtelIngester:
                 errors.append(error_msg)
                 logger.warning(error_msg)
 
-        logger.info(f"Batch ingestion complete: {success_count} success, {error_count} errors")
+        logger.info(
+            f"Batch ingestion complete: {success_count} success, {error_count} errors"
+        )
 
         return {
             "success_count": success_count,
@@ -882,9 +914,13 @@ class OtelIngester:
 
             # Route to appropriate storage backend
             if self._storage_type == StorageType.POSTGRESQL:
-                results = await self._search_pgvector(query_embedding, limit, system_id, threshold)
+                results = await self._search_pgvector(
+                    query_embedding, limit, system_id, threshold
+                )
             else:
-                results = await self._search_duckdb(query_embedding, limit, system_id, threshold)
+                results = await self._search_duckdb(
+                    query_embedding, limit, system_id, threshold
+                )
 
             logger.info(f"Search for '{query}' returned {len(results)} results")
             return results
@@ -920,7 +956,9 @@ class OtelIngester:
     ) -> list[dict[str, Any]]:
         """Search PostgreSQL + pgvector backend."""
         if not self._pgvector_adapter:
-            raise RuntimeError("pgvector adapter not initialized. Call initialize() first.")
+            raise RuntimeError(
+                "pgvector adapter not initialized. Call initialize() first."
+            )
 
         # Build filter expression
         filter_expr = None
@@ -1019,7 +1057,9 @@ class OtelIngester:
     async def _get_trace_pgvector(self, trace_id: str) -> dict[str, Any] | None:
         """Get trace from PostgreSQL + pgvector backend."""
         if not self._pgvector_adapter:
-            raise RuntimeError("pgvector adapter not initialized. Call initialize() first.")
+            raise RuntimeError(
+                "pgvector adapter not initialized. Call initialize() first."
+            )
 
         try:
             results = await self._pgvector_adapter.get(
@@ -1117,7 +1157,9 @@ class OtelIngester:
         # Store compressed when TurboQuant is active, raw otherwise
         if self._compressor and self._compressor.available:
             try:
-                self._embedding_cache[content] = self._compressor.compress_batch([embedding])[0]
+                self._embedding_cache[content] = self._compressor.compress_batch(
+                    [embedding]
+                )[0]
             except Exception as e:  # TurboQuant compress can fail on edge vectors; cache raw as fallback  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning(f"turboquant_compress_failed, caching raw: {e}")
                 self._embedding_cache[content] = embedding
@@ -1324,7 +1366,9 @@ async def create_otel_ingester(
         _settings = get_settings()
         _settings_pg_url = _settings.otel_ingester.pg_url
         _settings_storage_type = _settings.otel_ingester.storage_type
-    except Exception:  # settings load may fail at import/test time; fall back to env-var path
+    except (
+        Exception
+    ):  # settings load may fail at import/test time; fall back to env-var path
         # Settings unavailable (early import, test setup without fixtures, etc.)
         # — fall through to env-var path; factory still works.
         logger.exception("settings_unavailable_falling_back_to_env")
@@ -1362,7 +1406,9 @@ async def create_otel_ingester(
     if hot_store_path is None:
         import platformdirs
 
-        _resolved_path = str(platformdirs.user_data_path("mahavishnu") / "mahavishnu_otel.duckdb")
+        _resolved_path = str(
+            platformdirs.user_data_path("mahavishnu") / "mahavishnu_otel.duckdb"
+        )
     elif hot_store_path == ":memory:":
         _resolved_path = ":memory:"
     else:

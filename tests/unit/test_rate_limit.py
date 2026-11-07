@@ -424,7 +424,12 @@ class TestRateLimitDecorator:
         def custom_key(request: Request) -> str:
             return f"user:{request.client.host}"
 
-        @rate_limit(requests_per_minute=5, requests_per_hour=10, burst_size=5, key_func=custom_key)
+        @rate_limit(
+            requests_per_minute=5,
+            requests_per_hour=10,
+            burst_size=5,
+            key_func=custom_key,
+        )
         async def test_function(request: Request):
             return "ok"
 

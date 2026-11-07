@@ -19,31 +19,45 @@ class TestAppStructure:
         assert cli_module.app.info.name == "mahavishnu"
 
     def test_worktree_subapp_registered(self):
-        registered_names = [tp.name for tp in cli_module.app.registered_groups if tp.typer_instance]
+        registered_names = [
+            tp.name for tp in cli_module.app.registered_groups if tp.typer_instance
+        ]
         assert "worktree" in registered_names
 
     def test_mcp_subapp_registered(self):
-        registered_names = [tp.name for tp in cli_module.app.registered_groups if tp.typer_instance]
+        registered_names = [
+            tp.name for tp in cli_module.app.registered_groups if tp.typer_instance
+        ]
         assert "mcp" in registered_names
 
     def test_workflow_subapp_registered(self):
-        registered_names = [tp.name for tp in cli_module.app.registered_groups if tp.typer_instance]
+        registered_names = [
+            tp.name for tp in cli_module.app.registered_groups if tp.typer_instance
+        ]
         assert "workflow" in registered_names
 
     def test_pool_subapp_registered(self):
-        registered_names = [tp.name for tp in cli_module.app.registered_groups if tp.typer_instance]
+        registered_names = [
+            tp.name for tp in cli_module.app.registered_groups if tp.typer_instance
+        ]
         assert "pool" in registered_names
 
     def test_workers_subapp_registered(self):
-        registered_names = [tp.name for tp in cli_module.app.registered_groups if tp.typer_instance]
+        registered_names = [
+            tp.name for tp in cli_module.app.registered_groups if tp.typer_instance
+        ]
         assert "workers" in registered_names
 
     def test_terminal_subapp_registered(self):
-        registered_names = [tp.name for tp in cli_module.app.registered_groups if tp.typer_instance]
+        registered_names = [
+            tp.name for tp in cli_module.app.registered_groups if tp.typer_instance
+        ]
         assert "terminal" in registered_names
 
     def test_ecosystem_subapp_registered(self):
-        registered_names = [tp.name for tp in cli_module.app.registered_groups if tp.typer_instance]
+        registered_names = [
+            tp.name for tp in cli_module.app.registered_groups if tp.typer_instance
+        ]
         assert "ecosystem" in registered_names
 
 

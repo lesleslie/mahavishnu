@@ -41,7 +41,10 @@ def test_openhands_run_input_rejects_timeout_out_of_range() -> None:
 @pytest.mark.unit
 async def test_openhands_run_returns_quality_score_none_path(tmp_path: Path) -> None:
     """When Crackerjack returns quality_score=None, result must still succeed."""
-    from mahavishnu.mcp.tools.openhands_tools import OpenHandsRunInput, run_openhands_task
+    from mahavishnu.mcp.tools.openhands_tools import (
+        OpenHandsRunInput,
+        run_openhands_task,
+    )
 
     inp = OpenHandsRunInput(prompt="Write tests", timeout=60, run_quality_check=True)
     mock_worker_result = MagicMock()

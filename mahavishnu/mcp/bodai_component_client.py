@@ -50,7 +50,9 @@ class BodaiComponentMCPClient:
 
         parsed = urlparse(base_url)
         if not parsed.scheme or not parsed.netloc:
-            raise ValueError(f"Invalid URL: {base_url!r} — must include scheme and host")
+            raise ValueError(
+                f"Invalid URL: {base_url!r} — must include scheme and host"
+            )
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self._token = token

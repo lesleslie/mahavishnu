@@ -59,7 +59,10 @@ def _build_demo_resolver() -> Resolver:
         provider="sqlite",
         factory="mahavishnu.adapters.storage.sqlite:SQLiteAdapter",
         priority=5,
-        metadata={"path": "/tmp/mahavishnu-demo.sqlite", "capabilities": ["read", "write"]},
+        metadata={
+            "path": "/tmp/mahavishnu-demo.sqlite",
+            "capabilities": ["read", "write"],
+        },
     )
     in_mem = Candidate(
         domain="adapter",
@@ -139,7 +142,9 @@ async def example_2_resolve_with_fallback() -> DemoRunResult:
         logger.error("No storage adapter available")
         return DemoRunResult(name="resolve_fallback")
 
-    logger.info(f"Selected: {selected.provider}/{selected.key}  factory={selected.factory}")
+    logger.info(
+        f"Selected: {selected.provider}/{selected.key}  factory={selected.factory}"
+    )
     return DemoRunResult(name="resolve_fallback", selected=selected)
 
 
@@ -228,7 +233,9 @@ async def main() -> None:
         try:
             result = await func()
             logger.info(f"✓ {name} completed")
-        except Exception as e:  # each example is wrapped so one failure doesn't halt the sweep
+        except (
+            Exception
+        ) as e:  # each example is wrapped so one failure doesn't halt the sweep
             failures += 1
             logger.error(f"✗ {name} failed: {e}")
 

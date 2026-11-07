@@ -1,4 +1,5 @@
 """Integration tests for the markdown board parser / exporter / watcher."""
+
 from __future__ import annotations
 
 import asyncio
@@ -37,10 +38,7 @@ class TestParseRenderRoundtrip:
         assert [c["status"] for c in cards] == [c["status"] for c in cards_2]
 
     async def test_section_to_status_substring(self) -> None:
-        content = (
-            "## In Progress\n"
-            "- [ ] c1 | p | t\n"
-        )
+        content = "## In Progress\n- [ ] c1 | p | t\n"
         cards = await parse_board(content)
         assert cards and cards[0]["status"] == "in_progress"
 
@@ -106,9 +104,7 @@ class TestWatcherDispatch:
         """
         board = tmp_path / "board.md"
         state = tmp_path / "state.json"
-        board.write_text(
-            "# Board\n\n## Backlog\n- [ ] c1 | pool | prompt\n"
-        )
+        board.write_text("# Board\n\n## Backlog\n- [ ] c1 | pool | prompt\n")
 
         dispatch_calls: list[str] = []
 
@@ -165,9 +161,7 @@ class TestWatcherDispatch:
 
         board = tmp_path / "board.md"
         state = tmp_path / "state.json"
-        board.write_text(
-            "# Board\n\n## Done\n- [x] done-1 | pool | prompt\n"
-        )
+        board.write_text("# Board\n\n## Done\n- [x] done-1 | pool | prompt\n")
         calls: list[str] = []
 
         async def record(card: dict) -> None:
@@ -243,7 +237,10 @@ class TestWatcherLoop:
             task.cancel()
             try:
                 await task
-            except (asyncio.CancelledError, Exception):  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
+            except (
+                asyncio.CancelledError,
+                Exception,  # noqa: BLE001, RUF100  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract
+            ):
                 pass
 
         await asyncio.wait_for(run_briefly(), timeout=3.0)

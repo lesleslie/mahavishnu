@@ -253,14 +253,18 @@ Closes L2 BLOCKER B1's input-side concern by pinning the contract for what the h
 ```python
 from pydantic import BaseModel, ConfigDict
 
+
 class EnrichmentMetadata(BaseModel):
     """Returned by EnrichmentHook.enrich_batch(). Forbid extras so a future
     scapy-mcp schema addition cannot silently widen the wire-format surface.
     """
+
     model_config = ConfigDict(extra="forbid")
-    top_n_rank: int | None = None      # edge's rank in the top-N hosts by bytes_in_window
+    top_n_rank: int | None = None  # edge's rank in the top-N hosts by bytes_in_window
     threat_score: float | None = None  # 0.0-1.0 scapy-mcp threat heuristic
-    confidence_boost: float | None = None  # -1.0 to +1.0; heuristic detector applies this
+    confidence_boost: float | None = (
+        None  # -1.0 to +1.0; heuristic detector applies this
+    )
 ```
 
 The `extra="forbid"` setting is a structural guard against the wire-format regression class (CB-5 / L5 U-Op3): if scapy-mcp adds a new field to its response, Pydantic raises a validation error rather than silently merging it into `FlowEdge`. The runtime guard (regex-based field-name filter, deferred to v3) provides a second layer.
@@ -279,12 +283,14 @@ The following items remain open after the v3 revision. They are tracked in `docs
 ```python
 from pydantic import BaseModel, ConfigDict, Field
 
+
 class GraphEdge(BaseModel):
     """v1 wire-format edge after the enrich_batch() merge step.
     Field-for-field compatibility with proto/flowscape.proto.GraphEdge (Phase 0b).
     extra='forbid' prevents future-maintainer drift that would silently widen
     the wire-format surface.
     """
+
     model_config = ConfigDict(extra="forbid")
     id: str  # 5-tuple hash (src:port, dst:port, proto)
     src: str  # HostNode.id (privacy-pseudonymous, see Phase 0b)
@@ -296,29 +302,38 @@ class GraphEdge(BaseModel):
     tcp_flags: int  # uint32; header fields, NOT payload
     first_seen_ns: int  # uint64 epoch ns
     last_seen_ns: int  # uint64 epoch ns
-    payload_sha256_prefix: bytes  # length MUST == 32 (the only payload-derived field allowed)
-    enrichment: "GraphEdgeEnrichment | None" = None  # new in v1; see ADR 0016 §Architecture
+    payload_sha256_prefix: (
+        bytes  # length MUST == 32 (the only payload-derived field allowed)
+    )
+    enrichment: "GraphEdgeEnrichment | None" = (
+        None  # new in v1; see ADR 0016 §Architecture
+    )
+
 
 class GraphEdgeEnrichment(BaseModel):
     """enrich_batch() merge payload for a single edge. Field allow-list is
     exhaustive; new fields require a Pydantic model revision + ADR update.
     """
+
     model_config = ConfigDict(extra="forbid")
     top_n_rank: int | None = None  # 1-indexed; lower = more bytes
     threat_score: float | None = Field(default=None, ge=0.0, le=1.0)
     confidence_boost: float | None = Field(default=None, ge=-1.0, le=1.0)
     provider_name: str | None = None  # which EnrichmentProvider filled this; for audit
 
+
 class HeuristicEvent(BaseModel):
     """Input to BoostConfidence. Field-for-field compatibility with
     proto/flowscape.proto.HeuristicEvent (Phase 0b).
     """
+
     model_config = ConfigDict(extra="forbid")
     kind: str  # enum: beaconing, port_scan, top_n_churn
     edge: GraphEdge  # the edge that triggered the heuristic
     detail: "BeaconingDetail | PortScanDetail | TopNChurnDetail"
     first_seen_ns: int
     last_seen_ns: int
+
 
 class BeaconingDetail(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -327,6 +342,7 @@ class BeaconingDetail(BaseModel):
     jitter_pct: float  # observed jitter (typically ≤20% per settings)
     sample_count: int  # how many samples fed the periodicity estimate
 
+
 class PortScanDetail(BaseModel):
     model_config = ConfigDict(extra="forbid")
     syn_packets_per_second: float
@@ -334,6 +350,7 @@ class PortScanDetail(BaseModel):
     distinct_dst_ips: int
     window_seconds: float
     scan_direction: str  # enum: vertical, horizontal
+
 
 class TopNChurnDetail(BaseModel):
     model_config = ConfigDict(extra="forbid")

@@ -99,7 +99,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--index-path",
         type=Path,
         default=None,
-        help=("Path to PLAN_INDEX.md relative to repo-root (default: docs/plans/PLAN_INDEX.md)."),
+        help=(
+            "Path to PLAN_INDEX.md relative to repo-root (default: docs/plans/PLAN_INDEX.md)."
+        ),
     )
     parser.add_argument(
         "--keep-last",
@@ -129,7 +131,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             plan_index = index_path
     if not plan_index.exists():
-        sys.stderr.write(f"PLAN_INDEX.md not found at {plan_index}; nothing to back up\n")
+        sys.stderr.write(
+            f"PLAN_INDEX.md not found at {plan_index}; nothing to back up\n"
+        )
         return 0
     try:
         target = backup(plan_index)
@@ -137,7 +141,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stderr.write(f"backup failed: {exc}\n")
         return 1
     if target is None:
-        sys.stderr.write(f"PLAN_INDEX.md not found at {plan_index}; nothing to back up\n")
+        sys.stderr.write(
+            f"PLAN_INDEX.md not found at {plan_index}; nothing to back up\n"
+        )
         return 0
     print(str(target))
     if args.keep_last > 0:

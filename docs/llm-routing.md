@@ -18,8 +18,10 @@ site can do it without rediscovering the contract.
 ```python
 from oneiric.adapters.llm.bifrost import get_router, LLMProvider
 
-base_url = get_router().resolve(LLMProvider.OPENAI)       # → "http://127.0.0.1:8471/v1"
-anthropic_url = get_router().resolve(LLMProvider.ANTHROPIC) # → "http://127.0.0.1:8471/anthropic"
+base_url = get_router().resolve(LLMProvider.OPENAI)  # → "http://127.0.0.1:8471/v1"
+anthropic_url = get_router().resolve(
+    LLMProvider.ANTHROPIC
+)  # → "http://127.0.0.1:8471/anthropic"
 ```
 
 `resolve()` returns `str(settings.base_url)` (or the

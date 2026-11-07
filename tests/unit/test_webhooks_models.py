@@ -254,16 +254,16 @@ class TestWorkflowRequestConstruction:
     def test_absolute_path_rejected_explicitly(self):
         with pytest.raises(ValidationError) as ei:
             OpenClawWorkflowRequest(repos=["/etc/passwd"])
-        assert "Absolute paths not allowed" in str(ei.value) or "Invalid repository path" in str(
+        assert "Absolute paths not allowed" in str(
             ei.value
-        )
+        ) or "Invalid repository path" in str(ei.value)
 
     def test_tilde_home_path_rejected(self):
         with pytest.raises(ValidationError) as ei:
             OpenClawWorkflowRequest(repos=["~/sneaky"])
-        assert "Absolute paths not allowed" in str(ei.value) or "Invalid repository path" in str(
+        assert "Absolute paths not allowed" in str(
             ei.value
-        )
+        ) or "Invalid repository path" in str(ei.value)
 
     @pytest.mark.parametrize("timeout", [60, 300, 3600])
     def test_timeout_within_bounds_accepted(self, timeout):

@@ -110,6 +110,7 @@ Phase 4: Cleanup (1 week)
 from mahavishnu.core.storage import DatabaseAdapter
 from mahavishnu.core.migration import MigrationStatus
 
+
 class DualWriteDatabaseAdapter(DatabaseAdapter):
     """
     Dual-write adapter for migration Phase 1.
@@ -139,10 +140,12 @@ class DualWriteDatabaseAdapter(DatabaseAdapter):
         # Write to PostgreSQL (secondary, best-effort)
         try:
             await self.postgresql.create_task(task_data)
-            dual_write_success_total.inc(phase='dual_write', operation='create_task')
+            dual_write_success_total.inc(phase="dual_write", operation="create_task")
         except Exception as e:
             logger.error(f"PostgreSQL write failed during dual-write: {e}")
-            dual_write_errors_total.inc(phase='dual_write', operation='create_task', error_type=type(e).__name__)
+            dual_write_errors_total.inc(
+                phase="dual_write", operation="create_task", error_type=type(e).__name__
+            )
 
             # Check if error rate is too high (rollback trigger)
             if await self._is_error_rate_too_high():
@@ -183,9 +186,11 @@ async def validate_dual_write_phase() -> MigrationValidationResult:
     4. No critical errors in logs
     """
     # Check 1: Write success rate
-    total_writes = dual_write_success_total.get(phase='dual_write')._value.get()
-    failed_writes = dual_write_errors_total.get(phase='dual-write')._value.get()
-    success_rate = (total_writes - failed_writes) / total_writes if total_writes > 0 else 0
+    total_writes = dual_write_success_total.get(phase="dual_write")._value.get()
+    failed_writes = dual_write_errors_total.get(phase="dual-write")._value.get()
+    success_rate = (
+        (total_writes - failed_writes) / total_writes if total_writes > 0 else 0
+    )
 
     if success_rate < 0.99:
         return MigrationValidationResult(
@@ -246,18 +251,22 @@ class DualReadDatabaseAdapter(DatabaseAdapter):
         """
         try:
             task = await self.postgresql.get_task(task_id)
-            dual_read_success_total.inc(phase='dual_read', operation='get_task')
+            dual_read_success_total.inc(phase="dual_read", operation="get_task")
             return task
         except Exception as e:
             logger.warning(f"PostgreSQL read failed, falling back to SQLite: {e}")
-            dual_read_fallbacks_total.inc(phase='dual_read', operation='get_task', error_type=type(e).__name__)
+            dual_read_fallbacks_total.inc(
+                phase="dual_read", operation="get_task", error_type=type(e).__name__
+            )
 
             # Fallback to SQLite
             task = await self.sqlite.get_task(task_id)
 
             # Check if fallback rate is too high (rollback trigger)
             if await self._is_fallback_rate_too_high():
-                logger.critical("Dual-read fallback rate too high, may need to rollback")
+                logger.critical(
+                    "Dual-read fallback rate too high, may need to rollback"
+                )
                 await self._alert_ops_team("Dual-read fallback rate critical")
 
             return task
@@ -287,8 +296,8 @@ async def validate_dual_read_phase() -> MigrationValidationResult:
     5. No performance regression
     """
     # Check 1: Read success rate
-    total_reads = dual_read_success_total.get(phase='dual_read')._value.get()
-    fallbacks = dual_read_fallbacks_total.get(phase='dual_read')._value.get()
+    total_reads = dual_read_success_total.get(phase="dual_read")._value.get()
+    fallbacks = dual_read_fallbacks_total.get(phase="dual_read")._value.get()
     success_rate = (total_reads - fallbacks) / total_reads if total_reads > 0 else 0
 
     if success_rate < 0.999:
@@ -583,48 +592,44 @@ from prometheus_client import Counter, Histogram, Gauge
 
 # Migration phase tracking
 migration_phase = Gauge(
-    'migration_phase',
-    'Current migration phase',
-    ['phase']  # dual_write, dual_read, cutover
+    "migration_phase",
+    "Current migration phase",
+    ["phase"],  # dual_write, dual_read, cutover
 )
 
 # Dual-write metrics
 dual_write_success_total = Counter(
-    'dual_write_success_total',
-    'Total successful dual-writes',
-    ['phase', 'operation']
+    "dual_write_success_total", "Total successful dual-writes", ["phase", "operation"]
 )
 
 dual_write_errors_total = Counter(
-    'dual_write_errors_total',
-    'Total dual-write errors',
-    ['phase', 'operation', 'error_type']
+    "dual_write_errors_total",
+    "Total dual-write errors",
+    ["phase", "operation", "error_type"],
 )
 
 # Dual-read metrics
 dual_read_success_total = Counter(
-    'dual_read_success_total',
-    'Total successful dual-reads',
-    ['phase', 'operation']
+    "dual_read_success_total", "Total successful dual-reads", ["phase", "operation"]
 )
 
 dual_read_fallbacks_total = Counter(
-    'dual_read_fallbacks_total',
-    'Total dual-read fallbacks to SQLite',
-    ['phase', 'operation', 'error_type']
+    "dual_read_fallbacks_total",
+    "Total dual-read fallbacks to SQLite",
+    ["phase", "operation", "error_type"],
 )
 
 # Performance comparison
 postgresql_write_duration_seconds = Histogram(
-    'postgresql_write_duration_seconds',
-    'PostgreSQL write latency',
-    buckets=[0.01, 0.05, 0.1, 0.5, 1.0]
+    "postgresql_write_duration_seconds",
+    "PostgreSQL write latency",
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0],
 )
 
 sqlite_write_duration_seconds = Histogram(
-    'sqlite_write_duration_seconds',
-    'SQLite write latency',
-    buckets=[0.01, 0.05, 0.1, 0.5, 1.0]
+    "sqlite_write_duration_seconds",
+    "SQLite write latency",
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0],
 )
 ```
 

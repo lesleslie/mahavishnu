@@ -17,7 +17,9 @@ probe_service = _MODULE.probe_service
 
 def test_is_prometheus_text_accepts_openmetrics_content():
     """Prometheus exposition markers should be accepted for valid content types."""
-    assert is_prometheus_text("text/plain; version=0.0.4", "# HELP foo\n# TYPE foo counter\n")
+    assert is_prometheus_text(
+        "text/plain; version=0.0.4", "# HELP foo\n# TYPE foo counter\n"
+    )
     assert is_prometheus_text(
         "application/openmetrics-text; version=1.0.0",
         "# HELP foo\n# TYPE foo counter\n",

@@ -38,14 +38,18 @@ def list_cmd(
 
 @app.command()
 def show(
-    handle: str = typer.Argument(..., help="Full ID, short_id, or unambiguous substring"),
+    handle: str = typer.Argument(
+        ..., help="Full ID, short_id, or unambiguous substring"
+    ),
 ) -> None:
     """Show one jot by handle."""
     cmd_show(handle=handle)
 
 
 @app.command(name="add")
-def add(text: str = typer.Argument(..., help="Jot text (quote for multi-word)")) -> None:
+def add(
+    text: str = typer.Argument(..., help="Jot text (quote for multi-word)"),
+) -> None:
     """Manually create a jot."""
     cmd_add(text=text)
 

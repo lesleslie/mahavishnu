@@ -42,6 +42,7 @@ def _force_mock_terminal_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(TerminalManager, "create", classmethod(_fake_create))
     yield
 
+
 # Every subcommand registered by add_backup_commands. Order is preserved
 # for deterministic help-text traversal in the parametrized tests below.
 EXPECTED_SUBCOMMANDS: list[str] = [
@@ -88,7 +89,9 @@ def _patch_heavy_modules(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_drm = MagicMock(name="DisasterRecoveryManager")
     monkeypatch.setattr("mahavishnu.core.app.MahavishnuApp", fake_app)
     monkeypatch.setattr("mahavishnu.core.backup_recovery.BackupManager", fake_bm)
-    monkeypatch.setattr("mahavishnu.core.backup_recovery.DisasterRecoveryManager", fake_drm)
+    monkeypatch.setattr(
+        "mahavishnu.core.backup_recovery.DisasterRecoveryManager", fake_drm
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +131,9 @@ def test_every_subcommand_help_runs(runner: CliRunner, app: typer.Typer) -> None
         assert result.exit_code == 0, f"backup {sub} --help exited {result.exit_code}"
 
 
-def test_every_subcommand_help_has_usage_block(runner: CliRunner, app: typer.Typer) -> None:
+def test_every_subcommand_help_has_usage_block(
+    runner: CliRunner, app: typer.Typer
+) -> None:
     """Each --help output must include a Typer-generated 'Usage:' line."""
     for sub in EXPECTED_SUBCOMMANDS:
         result = runner.invoke(app, ["backup", sub, "--help"])
@@ -144,7 +149,9 @@ def test_every_subcommand_help_is_nonempty(runner: CliRunner, app: typer.Typer) 
         assert len(result.stdout.strip()) > 0, f"backup {sub} --help is empty"
 
 
-def test_top_level_help_lists_all_subcommands(runner: CliRunner, app: typer.Typer) -> None:
+def test_top_level_help_lists_all_subcommands(
+    runner: CliRunner, app: typer.Typer
+) -> None:
     """'backup --help' should list every subcommand name in its output."""
     result = runner.invoke(app, ["backup", "--help"])
     assert result.exit_code == 0
@@ -184,7 +191,9 @@ def test_create_accepts_type_with_help(runner: CliRunner, app: typer.Typer) -> N
     assert "--type" in result.stdout
 
 
-def test_restore_advertises_backup_id_argument(runner: CliRunner, app: typer.Typer) -> None:
+def test_restore_advertises_backup_id_argument(
+    runner: CliRunner, app: typer.Typer
+) -> None:
     """'restore' must declare a backup_id argument in its help text."""
     result = runner.invoke(app, ["backup", "restore", "--help"])
     assert result.exit_code == 0
@@ -193,7 +202,9 @@ def test_restore_advertises_backup_id_argument(runner: CliRunner, app: typer.Typ
     assert "backup_id" in result.output
 
 
-def test_info_advertises_backup_id_argument(runner: CliRunner, app: typer.Typer) -> None:
+def test_info_advertises_backup_id_argument(
+    runner: CliRunner, app: typer.Typer
+) -> None:
     """'info' must declare a backup_id argument in its help text."""
     result = runner.invoke(app, ["backup", "info", "--help"])
     assert result.exit_code == 0
@@ -212,9 +223,13 @@ def test_info_missing_argument_fails(runner: CliRunner, app: typer.Typer) -> Non
     assert result.exit_code != 0
 
 
-def test_no_arg_subcommands_have_no_positional(runner: CliRunner, app: typer.Typer) -> None:
+def test_no_arg_subcommands_have_no_positional(
+    runner: CliRunner, app: typer.Typer
+) -> None:
     """'list', 'check', 'procedures' take no positional BACKUP_ID."""
     for sub in ("list", "check", "procedures"):
         result = runner.invoke(app, ["backup", sub, "--help"])
         assert result.exit_code == 0
-        assert "BACKUP_ID" not in result.stdout, f"backup {sub} unexpectedly requires BACKUP_ID"
+        assert "BACKUP_ID" not in result.stdout, (
+            f"backup {sub} unexpectedly requires BACKUP_ID"
+        )

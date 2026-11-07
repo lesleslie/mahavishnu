@@ -118,7 +118,9 @@ def test_disabled_branch_warns(caplog: pytest.LogCaptureFixture) -> None:
         with patch.object(gtm_module, "PROMETHEUS_AVAILABLE", False):
             metrics = GoalTeamMetrics(server_name="disabled-srv")
     assert metrics._enabled is False
-    assert any("Prometheus client not available" in rec.message for rec in caplog.records)
+    assert any(
+        "Prometheus client not available" in rec.message for rec in caplog.records
+    )
 
 
 def test_disabled_metrics_no_op(
@@ -157,9 +159,13 @@ def test_record_team_created(fresh_metrics: GoalTeamMetrics) -> None:
     fresh_metrics._initialize_metrics()
     counter = fresh_metrics._teams_created_counter
     assert counter is not None
-    before = counter.labels(server="test-server", mode="coordinate", skill_count="3")._value.get()
+    before = counter.labels(
+        server="test-server", mode="coordinate", skill_count="3"
+    )._value.get()
     fresh_metrics.record_team_created(mode="coordinate", skill_count=3)
-    after = counter.labels(server="test-server", mode="coordinate", skill_count="3")._value.get()
+    after = counter.labels(
+        server="test-server", mode="coordinate", skill_count="3"
+    )._value.get()
     assert after == before + 1
 
 
@@ -307,9 +313,13 @@ def test_record_learning_outcome_without_latency(
     fresh_metrics._initialize_metrics()
     counter = fresh_metrics._learning_outcomes_counter
     assert counter is not None
-    before = counter.labels(server="test-server", success="true", mode="coordinate")._value.get()
+    before = counter.labels(
+        server="test-server", success="true", mode="coordinate"
+    )._value.get()
     fresh_metrics.record_learning_outcome(success=True, mode="coordinate")
-    after = counter.labels(server="test-server", success="true", mode="coordinate")._value.get()
+    after = counter.labels(
+        server="test-server", success="true", mode="coordinate"
+    )._value.get()
     assert after == before + 1
 
 
@@ -319,7 +329,9 @@ def test_record_learning_outcome_with_latency(
     fresh_metrics._initialize_metrics()
     histogram = fresh_metrics._learning_latency_histogram
     assert histogram is not None
-    fresh_metrics.record_learning_outcome(success=False, mode="broadcast", latency_ms=1500.0)
+    fresh_metrics.record_learning_outcome(
+        success=False, mode="broadcast", latency_ms=1500.0
+    )
     # No assertion on bucket values, but the call must not raise
     samples = list(histogram.collect())[0].samples
     assert any(s.labels.get("mode") == "broadcast" for s in samples)
@@ -337,7 +349,9 @@ def test_record_mode_recommendation_used_true(
         mode="coordinate",
         used="true",
     )._value.get()
-    fresh_metrics.record_mode_recommendation(intent="review", mode="coordinate", confidence=0.88)
+    fresh_metrics.record_mode_recommendation(
+        intent="review", mode="coordinate", confidence=0.88
+    )
     after = counter.labels(
         server="test-server",
         intent="review",
@@ -488,10 +502,15 @@ def test_start_metrics_server_calls_start_http_server() -> None:
 
 def test_start_metrics_server_handles_oserror(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.ERROR, logger="mahavishnu.core.goal_team_metrics"):
-        with patch.object(gtm_module, "start_http_server", side_effect=OSError("in use")):
+        with patch.object(
+            gtm_module, "start_http_server", side_effect=OSError("in use")
+        ):
             result = start_metrics_server(port=9093)
     assert result is None
-    assert any("Failed to start Prometheus metrics server" in rec.message for rec in caplog.records)
+    assert any(
+        "Failed to start Prometheus metrics server" in rec.message
+        for rec in caplog.records
+    )
 
 
 def test_start_metrics_server_unavailable_returns_none() -> None:

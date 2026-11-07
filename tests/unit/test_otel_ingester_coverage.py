@@ -85,10 +85,14 @@ def _make_ingester(**kwargs: Any) -> OtelIngester:
     return OtelIngester(**kwargs)
 
 
-def _attach_embedder(ingester: OtelIngester, embedding: list[float] | None = None) -> MagicMock:
+def _attach_embedder(
+    ingester: OtelIngester, embedding: list[float] | None = None
+) -> MagicMock:
     """Attach a mock embedder to an ingester."""
     mock_embedder = MagicMock(spec=EmbeddingModel)
-    mock_embedder.encode.return_value = embedding if embedding is not None else _fake_embedding()
+    mock_embedder.encode.return_value = (
+        embedding if embedding is not None else _fake_embedding()
+    )
     mock_embedder.dimension = 384
     ingester._embedder = mock_embedder
     ingester._embedding_dimension = mock_embedder.dimension
@@ -207,7 +211,9 @@ class TestSentenceTransformersWrapper:
 
 class TestFastEmbedWrapper:
     def test_raises_when_unavailable(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", False)
+        monkeypatch.setattr(
+            "mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", False
+        )
         with pytest.raises(ImportError, match="fastembed not available"):
             FastEmbedWrapper()
 
@@ -218,7 +224,9 @@ class TestFastEmbedWrapper:
         fake_model = MagicMock()
         fake_model.embed.return_value = iter([fake_array])
 
-        monkeypatch.setattr("mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", True)
+        monkeypatch.setattr(
+            "mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", True
+        )
         monkeypatch.setattr(
             "mahavishnu.ingesters.otel_ingester.TextEmbedding",
             MagicMock(return_value=fake_model),
@@ -396,7 +404,9 @@ class TestAkoshaEmbedder:
 
 class TestOtelIngesterConstructor:
     def test_string_storage_type_coerced(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         assert ingester.storage_type is StorageType.POSTGRESQL
 
     def test_invalid_storage_type_raises(self) -> None:
@@ -456,7 +466,9 @@ class TestCreateEmbedder:
         embedder = ingester._create_embedder()
         assert isinstance(embedder, TextOnlyEmbedder)
 
-    def test_sentence_transformers_unavailable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_sentence_transformers_unavailable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr(
             "mahavishnu.ingesters.otel_ingester.SENTENCE_TRANSFORMERS_AVAILABLE", False
         )
@@ -465,7 +477,9 @@ class TestCreateEmbedder:
             ingester._create_embedder()
 
     def test_fastembed_unavailable(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", False)
+        monkeypatch.setattr(
+            "mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", False
+        )
         ingester = _make_ingester(preferred_backend="fastembed")
         with pytest.raises(ImportError, match="fastembed is not available"):
             ingester._create_embedder()
@@ -476,7 +490,9 @@ class TestCreateEmbedder:
         fake_array.tolist.return_value = _fake_embedding()
         fake_model.embed.return_value = iter([fake_array])
 
-        monkeypatch.setattr("mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", True)
+        monkeypatch.setattr(
+            "mahavishnu.ingesters.otel_ingester.FASTEMBED_AVAILABLE", True
+        )
         monkeypatch.setattr(
             "mahavishnu.ingesters.otel_ingester.TextEmbedding",
             MagicMock(return_value=fake_model),
@@ -488,7 +504,9 @@ class TestCreateEmbedder:
         embedder = ingester._create_embedder()
         assert isinstance(embedder, FastEmbedWrapper)
 
-    def test_sentence_transformers_available(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_sentence_transformers_available(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         fake_model = MagicMock()
         fake_array = MagicMock()
         fake_array.tolist.return_value = _fake_embedding()
@@ -510,10 +528,17 @@ class TestCreateEmbedder:
 class TestMapToFastEmbedModel:
     def test_known_mappings(self) -> None:
         ingester = _make_ingester()
-        assert ingester._map_to_fastembed_model("all-MiniLM-L6-v2") == "BAAI/bge-small-en-v1.5"
-        assert ingester._map_to_fastembed_model("all-mpnet-base-v2") == "BAAI/bge-base-en-v1.5"
         assert (
-            ingester._map_to_fastembed_model("paraphrase-MiniLM-L6-v2") == "BAAI/bge-small-en-v1.5"
+            ingester._map_to_fastembed_model("all-MiniLM-L6-v2")
+            == "BAAI/bge-small-en-v1.5"
+        )
+        assert (
+            ingester._map_to_fastembed_model("all-mpnet-base-v2")
+            == "BAAI/bge-base-en-v1.5"
+        )
+        assert (
+            ingester._map_to_fastembed_model("paraphrase-MiniLM-L6-v2")
+            == "BAAI/bge-small-en-v1.5"
         )
 
     def test_unknown_mapping(self) -> None:
@@ -530,7 +555,8 @@ class TestInitialize:
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         with patch(
-            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore",
+            return_value=mock_hot,
         ):
             await ingester.initialize()
         assert ingester._hot_store is mock_hot
@@ -551,7 +577,9 @@ class TestInitialize:
             await ingester.initialize()
 
     async def test_initialize_pgvector_with_dsn(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://localhost/db")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://localhost/db"
+        )
         fake_adapter = AsyncMock()
         fake_adapter.init = AsyncMock()
         fake_adapter.create_collection = AsyncMock()
@@ -573,7 +601,11 @@ class TestInitialize:
     async def test_initialize_runtime_error(self) -> None:
         ingester = _make_ingester()
         with (
-            patch.object(ingester, "_initialize_duckdb", AsyncMock(side_effect=ValueError("boom"))),
+            patch.object(
+                ingester,
+                "_initialize_duckdb",
+                AsyncMock(side_effect=ValueError("boom")),
+            ),
             pytest.raises(RuntimeError, match="OTel ingester initialization failed"),
         ):
             await ingester.initialize()
@@ -652,7 +684,9 @@ class TestTryFallbackBackends:
     def test_falls_back_to_text_only(self, monkeypatch: pytest.MonkeyPatch) -> None:
         ingester = _make_ingester(preferred_backend="akosha")
         # Make every embedder creation fail
-        with patch.object(ingester, "_create_embedder", side_effect=ImportError("nope")):
+        with patch.object(
+            ingester, "_create_embedder", side_effect=ImportError("nope")
+        ):
             result = ingester._try_fallback_backends()
         assert isinstance(result, TextOnlyEmbedder)
         assert ingester.backend is EmbeddingBackend.TEXT_ONLY
@@ -663,7 +697,9 @@ class TestTryFallbackBackends:
         success = MagicMock()
         success.dimension = 256
         with patch.object(
-            ingester, "_create_embedder", side_effect=[ImportError("a"), ImportError("b"), success]
+            ingester,
+            "_create_embedder",
+            side_effect=[ImportError("a"), ImportError("b"), success],
         ):
             result = ingester._try_fallback_backends()
         assert result is success
@@ -717,7 +753,9 @@ class TestIngestTraceDuckdb:
 
 class TestIngestTracePgvector:
     async def test_ingest_valid_trace(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.upsert = AsyncMock()
         ingester._pgvector_adapter = adapter
@@ -730,19 +768,25 @@ class TestIngestTracePgvector:
         assert call.kwargs["documents"][0]["id"] == "trace-1"
 
     async def test_ingest_uninitialized_raises(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         with pytest.raises(RuntimeError, match="pgvector adapter not initialized"):
             await ingester._ingest_trace_pgvector(_sample_trace())
 
     async def test_ingest_missing_trace_id_raises(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         ingester._pgvector_adapter = adapter
         with pytest.raises(ValidationError, match="trace_id"):
             await ingester._ingest_trace_pgvector({"spans": []})
 
     async def test_ingest_no_spans_skipped(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.upsert = AsyncMock()
         ingester._pgvector_adapter = adapter
@@ -750,7 +794,9 @@ class TestIngestTracePgvector:
         adapter.upsert.assert_not_called()
 
     async def test_ingest_error_logged(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.upsert = AsyncMock(side_effect=RuntimeError("pg down"))
         ingester._pgvector_adapter = adapter
@@ -771,7 +817,9 @@ class TestIngestBatch:
         broken = {"spans": []}  # no trace_id
         # Make broken hit the validation path so it raises
         with patch.object(
-            ingester, "_ingest_trace_duckdb", new=AsyncMock(side_effect=ValidationError("trace_id"))
+            ingester,
+            "_ingest_trace_duckdb",
+            new=AsyncMock(side_effect=ValidationError("trace_id")),
         ):
             stats = await ingester.ingest_batch([valid, broken])
         assert stats["error_count"] >= 1
@@ -824,7 +872,9 @@ class TestSearchTracesDuckdb:
 
 class TestSearchTracesPgvector:
     async def test_search_with_system_filter(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.search = AsyncMock(
             return_value=[
@@ -846,7 +896,9 @@ class TestSearchTracesPgvector:
         assert call.kwargs["filter_expr"] == {"system_id": "claude"}
 
     async def test_search_below_threshold_filtered(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.search = AsyncMock(
             return_value=[
@@ -863,12 +915,16 @@ class TestSearchTracesPgvector:
         assert results == []
 
     async def test_search_pgvector_uninitialized(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         with pytest.raises(RuntimeError, match="pgvector adapter not initialized"):
             await ingester._search_pgvector([0.1] * 4, 5, None, 0.5)
 
     async def test_search_pgvector_exception(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.search = AsyncMock(side_effect=RuntimeError("pg down"))
         ingester._pgvector_adapter = adapter
@@ -929,7 +985,9 @@ class TestGetTraceById:
         assert result is None
 
     async def test_get_pgvector_found(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.get = AsyncMock(
             return_value=[
@@ -946,7 +1004,9 @@ class TestGetTraceById:
         assert result["content"] == "c"
 
     async def test_get_pgvector_json_metadata_string(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.get = AsyncMock(
             return_value=[
@@ -961,7 +1021,9 @@ class TestGetTraceById:
         assert result["metadata"] == {"content": "c", "timestamp": "ts"}
 
     async def test_get_pgvector_not_found(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.get = AsyncMock(return_value=[])
         ingester._pgvector_adapter = adapter
@@ -969,12 +1031,16 @@ class TestGetTraceById:
         assert result is None
 
     async def test_get_pgvector_uninitialized(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         with pytest.raises(RuntimeError, match="pgvector adapter not initialized"):
             await ingester._get_trace_pgvector("t1")
 
     async def test_get_pgvector_error(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.get = AsyncMock(side_effect=RuntimeError("pg down"))
         ingester._pgvector_adapter = adapter
@@ -997,7 +1063,9 @@ class TestClose:
         assert ingester._embedding_cache == {}
 
     async def test_close_pgvector(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.cleanup = AsyncMock()
         ingester._pgvector_adapter = adapter
@@ -1019,7 +1087,9 @@ class TestClose:
         await ingester.close()
 
     async def test_close_pgvector_error_swallowed(self) -> None:
-        ingester = _make_ingester(storage_type="postgresql", pgvector_dsn="postgres://x")
+        ingester = _make_ingester(
+            storage_type="postgresql", pgvector_dsn="postgres://x"
+        )
         adapter = AsyncMock()
         adapter.cleanup = AsyncMock(side_effect=RuntimeError("cleanup failed"))
         ingester._pgvector_adapter = adapter
@@ -1173,7 +1243,8 @@ class TestCreateOtelIngester:
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
         with patch(
-            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore",
+            return_value=mock_hot,
         ):
             ingester = await create_otel_ingester(
                 preferred_backend="text_only",
@@ -1191,7 +1262,8 @@ class TestCreateOtelIngester:
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
         with patch(
-            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore",
+            return_value=mock_hot,
         ):
             ingester = await create_otel_ingester(
                 storage_type="duckdb",
@@ -1203,14 +1275,17 @@ class TestCreateOtelIngester:
         finally:
             await ingester.close()
 
-    async def test_env_var_storage_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_env_var_storage_override(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Env var MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE overrides default."""
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
         monkeypatch.setenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE", "duckdb")
         with patch(
-            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore",
+            return_value=mock_hot,
         ):
             ingester = await create_otel_ingester(
                 storage_type="duckdb",
@@ -1227,9 +1302,12 @@ class TestCreateOtelIngester:
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
-        monkeypatch.setenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL", "postgres://env-host/db")
+        monkeypatch.setenv(
+            "MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL", "postgres://env-host/db"
+        )
         with patch(
-            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore",
+            return_value=mock_hot,
         ):
             ingester = await create_otel_ingester(
                 storage_type="duckdb",
@@ -1255,13 +1333,15 @@ class TestCreateOtelIngester:
         monkeypatch.delenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE", raising=False)
         monkeypatch.delenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__PG_URL", raising=False)
         from mahavishnu.core.config import reset_settings as _rs
+
         _rs()
 
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
         with patch(
-            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore",
+            return_value=mock_hot,
         ) as cls:
             ingester = await create_otel_ingester(
                 preferred_backend="text_only",
@@ -1273,13 +1353,16 @@ class TestCreateOtelIngester:
         finally:
             await ingester.close()
 
-    async def test_tilde_path_expansion(self, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_tilde_path_expansion(
+        self, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Tilde in hot_store_path is expanded in _duckdb_path."""
         mock_hot = AsyncMock()
         mock_hot.initialize = AsyncMock()
         mock_hot.close = AsyncMock()
         with patch(
-            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore", return_value=mock_hot
+            "oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore",
+            return_value=mock_hot,
         ):
             ingester = await create_otel_ingester(
                 preferred_backend="text_only",

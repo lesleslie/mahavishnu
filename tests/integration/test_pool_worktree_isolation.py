@@ -245,9 +245,7 @@ class TestCompleteWorktreePopulates:
 @pytest.mark.req(["REQ-010"])
 class TestPoolRouteExecuteWorktree:
     @pytest.mark.asyncio
-    async def test_worktree_creation_emits_event(
-        self, tmp_git_repo: Path
-    ) -> None:
+    async def test_worktree_creation_emits_event(self, tmp_git_repo: Path) -> None:
         """``pool_route_execute(worktree=...)`` returns ``result["worktree"]`` dict."""
         pool_route_execute = _capture_pool_route_execute(MagicMock())
         opts = WorktreeOptions(isolation="worktree", base_branch="main")
@@ -255,18 +253,23 @@ class TestPoolRouteExecuteWorktree:
         async def _fake_dispatch(**kwargs: object) -> dict[str, object]:
             return {"status": "success", "result": "ok"}
 
-        with patch(
-            "mahavishnu.mcp.tools.pool_tools._repo_has_git",
-            new=AsyncMock(return_value=True),
-        ), patch(
-            "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
-            new=_fake_dispatch,
-        ), patch(
-            "mahavishnu.mcp.tools.pool_tools._resolve_repo_nickname",
-            new=AsyncMock(return_value=tmp_git_repo.name),
-        ), patch(
-            "mahavishnu.mcp.tools.pool_tools._resolve_repo_path",
-            return_value=tmp_git_repo,
+        with (
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._repo_has_git",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+                new=_fake_dispatch,
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_nickname",
+                new=AsyncMock(return_value=tmp_git_repo.name),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_path",
+                return_value=tmp_git_repo,
+            ),
         ):
             result = await pool_route_execute(  # type: ignore[arg-type]
                 prompt=f"edit {tmp_git_repo.name}",
@@ -302,6 +305,7 @@ class TestPoolRouteExecuteWorktree:
         def _create_side_effect(*args: object, **kwargs: object):
             call_count["n"] += 1
             if call_count["n"] == 1:
+
                 async def _ok() -> WorktreeInfo:
                     return mock_wt
 
@@ -312,22 +316,28 @@ class TestPoolRouteExecuteWorktree:
             return {"status": "success", "result": "ok"}
 
         opts = WorktreeOptions(isolation="worktree")
-        with patch(
-            "mahavishnu.mcp.tools.pool_tools._repo_has_git",
-            new=AsyncMock(return_value=True),
-        ), patch.object(
-            WorktreeManager,
-            "create_worktree",
-            side_effect=_create_side_effect,
-        ), patch(
-            "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
-            new=_fake_dispatch,
-        ), patch(
-            "mahavishnu.mcp.tools.pool_tools._resolve_repo_nickname",
-            new=AsyncMock(return_value="test-repo"),
-        ), patch(
-            "mahavishnu.mcp.tools.pool_tools._resolve_repo_path",
-            return_value=Path("/tmp/test-repo"),
+        with (
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._repo_has_git",
+                new=AsyncMock(return_value=True),
+            ),
+            patch.object(
+                WorktreeManager,
+                "create_worktree",
+                side_effect=_create_side_effect,
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+                new=_fake_dispatch,
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_nickname",
+                new=AsyncMock(return_value="test-repo"),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_path",
+                return_value=Path("/tmp/test-repo"),
+            ),
         ):
             results = await asyncio.gather(
                 pool_route_execute(  # type: ignore[arg-type]
@@ -363,20 +373,25 @@ class TestPoolRouteExecuteWorktree:
             created_at=datetime.now(UTC),
             ttl_seconds=3600,
         )
-        with patch.object(
-            WorktreeManager,
-            "create_worktree",
-            new=AsyncMock(return_value=mock_worktree_info),
-        ), patch.object(
-            WorktreeManager,
-            "cleanup_worktree",
-            new=AsyncMock(),
-        ) as mock_cleanup, patch(
-            "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
-            new=AsyncMock(side_effect=RuntimeError("dispatch failed")),
-        ), patch(
-            "mahavishnu.mcp.tools.pool_tools._repo_has_git",
-            new=AsyncMock(return_value=True),  # FIX round-8: activate worktree path
+        with (
+            patch.object(
+                WorktreeManager,
+                "create_worktree",
+                new=AsyncMock(return_value=mock_worktree_info),
+            ),
+            patch.object(
+                WorktreeManager,
+                "cleanup_worktree",
+                new=AsyncMock(),
+            ) as mock_cleanup,
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+                new=AsyncMock(side_effect=RuntimeError("dispatch failed")),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._repo_has_git",
+                new=AsyncMock(return_value=True),  # FIX round-8: activate worktree path
+            ),
         ):
             with pytest.raises(RuntimeError, match="dispatch failed"):
                 await pool_route_execute(  # type: ignore[arg-type]
@@ -394,13 +409,16 @@ class TestPoolRouteExecuteWorktree:
         async def _fake_dispatch(**kwargs: object) -> dict[str, object]:
             return {"status": "success", "result": "ok"}
 
-        with patch(
-            "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
-            new=_fake_dispatch,
-        ), patch.object(
-            WorktreeManager,
-            "create_worktree",
-        ) as mock_create:
+        with (
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+                new=_fake_dispatch,
+            ),
+            patch.object(
+                WorktreeManager,
+                "create_worktree",
+            ) as mock_create,
+        ):
             result = await pool_route_execute(  # type: ignore[arg-type]
                 prompt="hello",
                 pool_selector="least_loaded",

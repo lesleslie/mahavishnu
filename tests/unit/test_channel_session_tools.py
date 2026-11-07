@@ -163,7 +163,9 @@ class TestTrackChannelSession:
     @pytest.mark.asyncio
     async def test_mcp_client_error_returns_error_status(self, tools_and_client):
         tools, client = tools_and_client
-        client.call_tool = AsyncMock(side_effect=RuntimeError("Session-Buddy unreachable"))
+        client.call_tool = AsyncMock(
+            side_effect=RuntimeError("Session-Buddy unreachable")
+        )
         fn = tools["track_channel_session"]
 
         result = await fn(

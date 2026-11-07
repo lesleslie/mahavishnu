@@ -176,7 +176,9 @@ class TestBlockerPredictor:
             "priority": "high",
         }
 
-        prediction = predictor.predict_blockers(task, blocker_patterns, historical_tasks)
+        prediction = predictor.predict_blockers(
+            task, blocker_patterns, historical_tasks
+        )
 
         assert prediction.task_id == "new-task"
         assert prediction.blocker_probability >= 0.0
@@ -197,7 +199,9 @@ class TestBlockerPredictor:
             "priority": "critical",
         }
 
-        prediction = predictor.predict_blockers(task, blocker_patterns, historical_tasks)
+        prediction = predictor.predict_blockers(
+            task, blocker_patterns, historical_tasks
+        )
 
         # Should have identified risk factors
         assert len(prediction.risk_factors) > 0
@@ -326,7 +330,9 @@ class TestDurationEstimator:
             "priority": "high",
         }
 
-        prediction = estimator.estimate_duration(task, duration_patterns, historical_tasks)
+        prediction = estimator.estimate_duration(
+            task, duration_patterns, historical_tasks
+        )
 
         assert prediction.task_id == "new-task"
         assert prediction.estimated_hours > 0

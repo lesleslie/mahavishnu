@@ -101,8 +101,9 @@ def test_install_is_idempotent_without_force(temp_git_repo: Path) -> None:
 
     second = _run_script(temp_git_repo)  # no --force
     assert second.returncode == 0
-    assert first_marker in first_post.read_text(), \
+    assert first_marker in first_post.read_text(), (
         "second run without --force must not overwrite existing wrapper"
+    )
 
 
 def test_force_flag_overwrites_existing(temp_git_repo: Path) -> None:
@@ -135,8 +136,9 @@ def test_other_hooks_are_bare_one_liner_exec(temp_git_repo: Path) -> None:
     hooks_dir = temp_git_repo / ".git" / "hooks"
     for hook in ("post-commit", "post-merge", "post-rewrite"):
         content = (hooks_dir / hook).read_text()
-        assert "audit_no_secrets_in_mcp.py" not in content, \
+        assert "audit_no_secrets_in_mcp.py" not in content, (
             f"{hook} should not contain secrets audit guard"
+        )
         assert "mahavishnu git-hook" in content
 
 
@@ -154,8 +156,7 @@ def test_uninstall_removes_only_our_wrappers(temp_git_repo: Path) -> None:
     assert result.returncode == 0, result.stderr
 
     for hook in EXPECTED_HOOKS:
-        assert not (hooks_dir / hook).exists(), \
-            f"uninstall should have removed {hook}"
+        assert not (hooks_dir / hook).exists(), f"uninstall should have removed {hook}"
     assert foreign.exists(), "foreign wrapper must be preserved"
 
 

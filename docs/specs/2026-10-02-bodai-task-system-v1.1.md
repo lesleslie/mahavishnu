@@ -313,6 +313,7 @@ _ENVELOPE_BY_EVENT_TYPE: dict[str, type[BaseModel]] = {
     "task.handoff_orphan": TaskHandoffOrphanPayload,
 }
 
+
 async def publish_task_event_raw(
     event_type: str,
     payload: Mapping[str, Any],
@@ -336,7 +337,9 @@ async def publish_task_event_raw(
         await publisher.publish(event_type, envelope)
     except Exception as exc:  # noqa: BLE001 - publisher is best-effort
         logger.warning(
-            "bodai_events: raw publish %s failed: %s", event_type, exc,
+            "bodai_events: raw publish %s failed: %s",
+            event_type,
+            exc,
         )
 ```
 
@@ -542,7 +545,8 @@ class TaskOrphanSweeper:
             self.cycles_total += 1
             try:
                 entries = await self._adapter.read(
-                    count=self.count, block_ms=self.block_ms,
+                    count=self.count,
+                    block_ms=self.block_ms,
                 )
                 self._consecutive_read_failures = 0
             except Exception as exc:
@@ -550,7 +554,8 @@ class TaskOrphanSweeper:
                 self._consecutive_read_failures += 1
                 logger.warning(
                     "task_orphan_sweeper: read failed (consecutive=%d): %s",
-                    self._consecutive_read_failures, exc,
+                    self._consecutive_read_failures,
+                    exc,
                 )
                 await asyncio.sleep(self._backoff_seconds())
                 continue
@@ -668,10 +673,7 @@ drop v1.1 task events. Add a third branch:
 if "envelope" not in record and "topic" not in record:
     channel = record.get("channel", "unknown")
     headers = json.loads(record.get("headers", "{}")) if record.get("headers") else {}
-    payload = {
-        k: v for k, v in record.items()
-        if k not in {"channel", "headers"}
-    }
+    payload = {k: v for k, v in record.items() if k not in {"channel", "headers"}}
     return create_oneiric_envelope(
         topic=channel,
         payload=payload,

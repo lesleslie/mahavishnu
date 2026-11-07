@@ -134,6 +134,7 @@ mahavishnu ingest stats
 import asyncio
 from mahavishnu.ingesters.content_ingester import ContentIngester
 
+
 async def main():
     # Create ingester
     ingester = ContentIngester()
@@ -148,6 +149,7 @@ async def main():
         else:
             print(f"Failed: {result.error}")
 
+
 asyncio.run(main())
 ```
 
@@ -156,6 +158,7 @@ asyncio.run(main())
 ```python
 import asyncio
 from mahavishnu.ingesters.content_ingester import ContentIngester
+
 
 async def main():
     urls = [
@@ -176,6 +179,7 @@ async def main():
                 print(f"✅ {result.title}")
             else:
                 print(f"❌ {result.source}: {result.error}")
+
 
 asyncio.run(main())
 ```
@@ -350,20 +354,19 @@ Once ingested, content is searchable through:
 
 ```python
 # Via MCP tool
-results = await mcp.call_tool("mcp__akosha__search_all_systems", {
-    "query": "machine learning best practices"
-})
+results = await mcp.call_tool(
+    "mcp__akosha__search_all_systems", {"query": "machine learning best practices"}
+)
 ```
 
 ### Crackerjack File Search
 
 ```python
 # Via MCP tool
-results = await mcp.call_tool("mcp__crackerjack__search_semantic", {
-    "query": "RAG pipeline architecture",
-    "max_results": 10,
-    "min_similarity": 0.7
-})
+results = await mcp.call_tool(
+    "mcp__crackerjack__search_semantic",
+    {"query": "RAG pipeline architecture", "max_results": 10, "min_similarity": 0.7},
+)
 ```
 
 ## Configuration

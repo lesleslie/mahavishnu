@@ -120,11 +120,12 @@ app = FastAPI()
 tracer = setup_telemetry(
     service_name="my-mcp-server",
     otlp_endpoint="http://localhost:4317",
-    environment="production"
+    environment="production",
 )
 
 # Auto-instrument
 auto_instrument(app, "my-mcp-server")
+
 
 # Add metrics endpoint
 @app.get("/metrics")

@@ -15,6 +15,7 @@ the relevant fields are:
 - ``cwd`` (str | None) — current working directory of the session
 - ``tool_name`` (str | None) — for PostToolUse hooks
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

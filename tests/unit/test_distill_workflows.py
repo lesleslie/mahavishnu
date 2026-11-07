@@ -132,7 +132,9 @@ def seeded_conn() -> Callable[..., duckdb.DuckDBPyConnection]:
             """
         )
         for sid, n in workflow_sessions or []:
-            _seed_workflow_session(c, session_id=sid, source_type="mahavishnu_workflow", n_rows=n)
+            _seed_workflow_session(
+                c, session_id=sid, source_type="mahavishnu_workflow", n_rows=n
+            )
         for sid, n in other_sessions or []:
             _seed_workflow_session(c, session_id=sid, source_type="manual", n_rows=n)
         return c

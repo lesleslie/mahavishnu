@@ -77,7 +77,9 @@ class TestDistillWorkflowsProvenanceGate:
         inserted = distill_workflows(conn)
         assert inserted == []
         # INSERT must NOT have been called — no row reached distilled_workflows
-        insert_calls = [e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]]
+        insert_calls = [
+            e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]
+        ]
         assert insert_calls == []
 
     def test_unattributed_mahavishnu_workflow_is_skipped(self) -> None:
@@ -88,7 +90,9 @@ class TestDistillWorkflowsProvenanceGate:
 
         inserted = distill_workflows(conn)
         assert inserted == []
-        insert_calls = [e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]]
+        insert_calls = [
+            e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]
+        ]
         assert insert_calls == []
 
     def test_unlisted_reviewer_is_skipped_when_allowlist_configured(self) -> None:
@@ -102,7 +106,9 @@ class TestDistillWorkflowsProvenanceGate:
             reviewer_allowlist=frozenset({"alice", "bob"}),
         )
         assert inserted == []
-        insert_calls = [e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]]
+        insert_calls = [
+            e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]
+        ]
         assert insert_calls == []
 
     def test_allowlisted_reviewer_passes_through(self) -> None:
@@ -119,7 +125,9 @@ class TestDistillWorkflowsProvenanceGate:
         )
         assert len(inserted) == 1
         # An INSERT happened with workflow_id, session_id, etc.
-        insert_calls = [e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]]
+        insert_calls = [
+            e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]
+        ]
         assert len(insert_calls) == 1
 
     def test_bootstrap_mode_accepts_any_reviewer_for_trusted_source(self) -> None:
@@ -144,7 +152,9 @@ class TestDistillWorkflowsProvenanceGate:
         )
         # Per-candidate run records (queued in order)
         conn.queue([("r06", "01HEXSESS06", "external", None)])  # rejected
-        conn.queue([("r07", "01HEXSESS07", "mahavishnu_workflow", "mallory")])  # rejected
+        conn.queue(
+            [("r07", "01HEXSESS07", "mahavishnu_workflow", "mallory")]
+        )  # rejected
         conn.queue([("r08", "01HEXSESS08", "mahavishnu_workflow", "alice")])  # accepted
         # _synthesize_candidate for the one accepted
         conn.queue([(5, "mahavishnu")])
@@ -155,7 +165,9 @@ class TestDistillWorkflowsProvenanceGate:
         )
         assert inserted == [pytest.approx(inserted[0])] or len(inserted) == 1
         assert len(inserted) == 1
-        insert_calls = [e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]]
+        insert_calls = [
+            e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]
+        ]
         assert len(insert_calls) == 1
 
     def test_missing_run_record_is_treated_as_unattributed(self) -> None:
@@ -172,5 +184,7 @@ class TestDistillWorkflowsProvenanceGate:
 
         inserted = distill_workflows(conn)
         assert inserted == []
-        insert_calls = [e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]]
+        insert_calls = [
+            e for e in conn.executions if "INSERT INTO distilled_workflows" in e[0]
+        ]
         assert insert_calls == []

@@ -350,7 +350,9 @@ class TestQueryAnalyzer:
         """Analyze an INSERT query."""
         analyzer = QueryAnalyzer()
 
-        result = analyzer.analyze("INSERT INTO tasks (id, title) VALUES ('task-1', 'Test')")
+        result = analyzer.analyze(
+            "INSERT INTO tasks (id, title) VALUES ('task-1', 'Test')"
+        )
 
         assert result.query_type == QueryType.INSERT
         assert result.tables == ["tasks"]
@@ -359,7 +361,9 @@ class TestQueryAnalyzer:
         """Analyze an UPDATE query."""
         analyzer = QueryAnalyzer()
 
-        result = analyzer.analyze("UPDATE tasks SET status = 'done' WHERE id = 'task-1'")
+        result = analyzer.analyze(
+            "UPDATE tasks SET status = 'done' WHERE id = 'task-1'"
+        )
 
         assert result.query_type == QueryType.UPDATE
         assert result.tables == ["tasks"]

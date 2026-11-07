@@ -33,7 +33,13 @@ import logging
 import re
 from typing import Any
 
-from mahavishnu.core.task_store import Task, TaskListFilter, TaskPriority, TaskStatus, TaskStore
+from mahavishnu.core.task_store import (
+    Task,
+    TaskListFilter,
+    TaskPriority,
+    TaskStatus,
+    TaskStore,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +204,9 @@ class CrossRepoFilter:
     async def _resolve_effective_repos(
         self, criteria: FilterCriteria
     ) -> tuple[list[str] | None, dict[str, Any]]:
-        effective_repo_names = list(criteria.repo_names) if criteria.repo_names else None
+        effective_repo_names = (
+            list(criteria.repo_names) if criteria.repo_names else None
+        )
         applied_filters: dict[str, Any] = {}
         if criteria.repo_roles:
             resolved = await self._resolve_repos_by_roles(criteria.repo_roles)
@@ -227,10 +235,14 @@ class CrossRepoFilter:
         Returns:
             FilterResult with matching tasks
         """
-        effective_repo_names, applied_filters = await self._resolve_effective_repos(criteria)
+        effective_repo_names, applied_filters = await self._resolve_effective_repos(
+            criteria
+        )
 
         status_filter = (
-            criteria.statuses[0] if criteria.statuses and len(criteria.statuses) == 1 else None
+            criteria.statuses[0]
+            if criteria.statuses and len(criteria.statuses) == 1
+            else None
         )
         priority_filter = (
             criteria.priorities[0]
@@ -272,11 +284,15 @@ class CrossRepoFilter:
             applied_filters["exclude_completed"] = True
 
         # Sort
-        sorted_tasks = self._sort_tasks(filtered_tasks, criteria.sort_by, criteria.sort_order)
+        sorted_tasks = self._sort_tasks(
+            filtered_tasks, criteria.sort_by, criteria.sort_order
+        )
 
         # Calculate pagination
         total_count = len(sorted_tasks)
-        total_pages = max(1, (total_count + criteria.page_size - 1) // criteria.page_size)
+        total_pages = max(
+            1, (total_count + criteria.page_size - 1) // criteria.page_size
+        )
 
         # Apply pagination
         start_idx = (criteria.page - 1) * criteria.page_size
@@ -322,17 +338,26 @@ class CrossRepoFilter:
         return repo_names
 
     @staticmethod
-    def _matches_text_search(task: Task, pattern: re.Pattern, fields: list[str]) -> bool:
-        return any((value := getattr(task, f, None)) and pattern.search(str(value)) for f in fields)
+    def _matches_text_search(
+        task: Task, pattern: re.Pattern, fields: list[str]
+    ) -> bool:
+        return any(
+            (value := getattr(task, f, None)) and pattern.search(str(value))
+            for f in fields
+        )
 
-    def _apply_text_filter(self, tasks: list[Task], criteria: FilterCriteria) -> list[Task]:
+    def _apply_text_filter(
+        self, tasks: list[Task], criteria: FilterCriteria
+    ) -> list[Task]:
         if not criteria.text_search:
             return tasks
         fields = criteria.search_fields or ["title", "description"]
         pattern = re.compile(re.escape(criteria.text_search), re.IGNORECASE)
         return [t for t in tasks if self._matches_text_search(t, pattern, fields)]
 
-    def _apply_date_filter(self, tasks: list[Task], criteria: FilterCriteria) -> list[Task]:
+    def _apply_date_filter(
+        self, tasks: list[Task], criteria: FilterCriteria
+    ) -> list[Task]:
         if not criteria.date_range:
             return tasks
         start, end = criteria.date_range.get_date_range()
@@ -405,16 +430,22 @@ class CrossRepoFilter:
                 }
                 return status_order.get(task.status, 99)
             elif sort_by == "created_at":
-                return task.created_at or datetime.min.replace(tzinfo=UTC).replace(tzinfo=UTC)
+                return task.created_at or datetime.min.replace(tzinfo=UTC).replace(
+                    tzinfo=UTC
+                )
             elif sort_by == "updated_at":
-                return task.updated_at or datetime.min.replace(tzinfo=UTC).replace(tzinfo=UTC)
+                return task.updated_at or datetime.min.replace(tzinfo=UTC).replace(
+                    tzinfo=UTC
+                )
             elif sort_by == "title":
                 return task.title.lower()
             elif sort_by == "repository":
                 return task.repository.lower()
             else:
                 # Default to created_at
-                return task.created_at or datetime.min.replace(tzinfo=UTC).replace(tzinfo=UTC)
+                return task.created_at or datetime.min.replace(tzinfo=UTC).replace(
+                    tzinfo=UTC
+                )
 
         return sorted(tasks, key=sort_key, reverse=reverse)
 

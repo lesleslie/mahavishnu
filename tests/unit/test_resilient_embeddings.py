@@ -244,7 +244,9 @@ class TestResilientEmbeddingClientAkosha:
         with patch.object(
             client,
             "_get_client",
-            MagicMock(return_value=MagicMock(call_tool=AsyncMock(return_value=payload))),
+            MagicMock(
+                return_value=MagicMock(call_tool=AsyncMock(return_value=payload))
+            ),
         ):
             result = await client.generate_embedding("hello", use_cache=True)
 
@@ -282,7 +284,9 @@ class TestResilientEmbeddingClientAkosha:
         with patch.object(
             client,
             "_get_client",
-            MagicMock(return_value=MagicMock(call_tool=AsyncMock(return_value=payload))),
+            MagicMock(
+                return_value=MagicMock(call_tool=AsyncMock(return_value=payload))
+            ),
         ):
             result = await client.generate_embedding("hi", use_cache=False)
 
@@ -303,7 +307,9 @@ class TestResilientEmbeddingClientAkosha:
         with patch.object(
             client,
             "_get_client",
-            MagicMock(return_value=MagicMock(call_tool=AsyncMock(return_value=payload))),
+            MagicMock(
+                return_value=MagicMock(call_tool=AsyncMock(return_value=payload))
+            ),
         ):
             result = await client.generate_embedding("hi", use_cache=False)
 
@@ -340,7 +346,9 @@ class TestResilientEmbeddingClientAkosha:
     @pytest.mark.asyncio
     async def test_try_local_service_wrong_dim_returns_none(self) -> None:
         """Local service returning wrong dim should be rejected."""
-        client = ResilientEmbeddingClient(standard_dimension=STANDARD_EMBEDDING_DIMENSION)
+        client = ResilientEmbeddingClient(
+            standard_dimension=STANDARD_EMBEDDING_DIMENSION
+        )
         service = MagicMock(spec=EmbeddingService)
         service.embed = AsyncMock(
             return_value=EmbeddingResult(
@@ -376,7 +384,9 @@ class TestResilientEmbeddingClientAkosha:
     @pytest.mark.asyncio
     async def test_try_cache_returns_embedding_on_hit(self) -> None:
         """Cache hit should return the stored embedding."""
-        client = ResilientEmbeddingClient(standard_dimension=STANDARD_EMBEDDING_DIMENSION)
+        client = ResilientEmbeddingClient(
+            standard_dimension=STANDARD_EMBEDDING_DIMENSION
+        )
         cache = EmbeddingCache()
         emb = [0.1] * STANDARD_EMBEDDING_DIMENSION
         await cache.set("text", emb)
@@ -388,7 +398,9 @@ class TestResilientEmbeddingClientAkosha:
     @pytest.mark.asyncio
     async def test_try_cache_wrong_dim_returns_none(self) -> None:
         """Cached value with wrong dim is rejected."""
-        client = ResilientEmbeddingClient(standard_dimension=STANDARD_EMBEDDING_DIMENSION)
+        client = ResilientEmbeddingClient(
+            standard_dimension=STANDARD_EMBEDDING_DIMENSION
+        )
         cache = EmbeddingCache()
         # Set with correct dim but client expects different dim
         client._standard_dimension = 999
@@ -447,7 +459,9 @@ class TestResilientEmbeddingClientAkosha:
         # No _akosha or _local_service should be hit
         with (
             patch.object(
-                client, "_try_akosha", AsyncMock(side_effect=AssertionError("should not call"))
+                client,
+                "_try_akosha",
+                AsyncMock(side_effect=AssertionError("should not call")),
             ) as akosha_mock,
             patch.object(
                 client,
@@ -474,7 +488,9 @@ class TestResilientEmbeddingClientAkosha:
 
         # With use_cache=False, should not consult cache
         with patch.object(
-            client, "_try_cache", AsyncMock(side_effect=AssertionError("should not call"))
+            client,
+            "_try_cache",
+            AsyncMock(side_effect=AssertionError("should not call")),
         ) as cache_mock:
             result = await client.generate_embedding("text", use_cache=False)
 

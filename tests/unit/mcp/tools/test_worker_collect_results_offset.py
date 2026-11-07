@@ -27,7 +27,9 @@ def test_worker_collect_results_returns_envelope_with_offset(
     from mahavishnu.mcp.tools import worker_tools
 
     manager = MagicMock()
-    captured = CapturedOutput(text="hello", next_offset=5, truncated=False, pane_alive=True)
+    captured = CapturedOutput(
+        text="hello", next_offset=5, truncated=False, pane_alive=True
+    )
     manager.capture_output = MagicMock(return_value=captured)
     monkeypatch.setattr(worker_tools, "_durable_manager", manager)
     monkeypatch.setattr(worker_tools, "_worker_manager", None)
@@ -68,12 +70,16 @@ def test_worker_collect_results_passes_since_offset_through(
     from mahavishnu.mcp.tools import worker_tools
 
     manager = MagicMock()
-    captured = CapturedOutput(text="more", next_offset=2048, truncated=True, pane_alive=True)
+    captured = CapturedOutput(
+        text="more", next_offset=2048, truncated=True, pane_alive=True
+    )
     manager.capture_output = MagicMock(return_value=captured)
     monkeypatch.setattr(worker_tools, "_durable_manager", manager)
     monkeypatch.setattr(worker_tools, "_worker_manager", None)
 
-    out = asyncio.run(worker_tools.worker_collect_results(["w-1", "w-2"], since_offset=1024))
+    out = asyncio.run(
+        worker_tools.worker_collect_results(["w-1", "w-2"], since_offset=1024)
+    )
     assert set(out["workers"]) == {"w-1", "w-2"}
     assert manager.capture_output.call_count == 2
     for call in manager.capture_output.call_args_list:

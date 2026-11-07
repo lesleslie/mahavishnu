@@ -34,7 +34,12 @@ from mahavishnu.core.health import HealthCheckResult, HealthStatus
 class TestRuntimeValidationCheck:
     def test_to_dict(self):
         check = RuntimeValidationCheck(
-            name="test", valid=True, message="ok", path="p", target="t", details={"k": "v"}
+            name="test",
+            valid=True,
+            message="ok",
+            path="p",
+            target="t",
+            details={"k": "v"},
         )
         d = check.to_dict()
         assert d == {
@@ -285,8 +290,13 @@ class TestValidateRuntimeSettings:
         settings.adapters.agno_enabled = False
         settings.adapters.llamaindex_enabled = False
         with (
-            patch("mahavishnu.cli.config_validator._validate_pool_config", return_value=[]),
-            patch("mahavishnu.cli.config_validator._validate_adapter_config", return_value=[]),
+            patch(
+                "mahavishnu.cli.config_validator._validate_pool_config", return_value=[]
+            ),
+            patch(
+                "mahavishnu.cli.config_validator._validate_adapter_config",
+                return_value=[],
+            ),
         ):
             results = _validate_runtime_settings(settings)
         assert len(results) >= 1  # repos_path check
@@ -314,10 +324,15 @@ class TestDependencyHealthUrl:
 
 class TestMcpHealthUrl:
     def test_mcp_endpoint(self):
-        assert _mcp_health_url("http://localhost:8678/mcp") == "http://localhost:8678/health"
+        assert (
+            _mcp_health_url("http://localhost:8678/mcp")
+            == "http://localhost:8678/health"
+        )
 
     def test_root_endpoint(self):
-        assert _mcp_health_url("http://localhost:8678/") == "http://localhost:8678/health"
+        assert (
+            _mcp_health_url("http://localhost:8678/") == "http://localhost:8678/health"
+        )
 
     def test_subpath_endpoint(self):
         assert (
@@ -326,10 +341,15 @@ class TestMcpHealthUrl:
         )
 
     def test_bare_host(self):
-        assert _mcp_health_url("http://localhost:8678") == "http://localhost:8678/health"
+        assert (
+            _mcp_health_url("http://localhost:8678") == "http://localhost:8678/health"
+        )
 
     def test_strips_trailing_slash(self):
-        assert _mcp_health_url("http://localhost:8678/mcp/") == "http://localhost:8678/health"
+        assert (
+            _mcp_health_url("http://localhost:8678/mcp/")
+            == "http://localhost:8678/health"
+        )
 
     def test_preserves_query_and_fragment(self):
         url = _mcp_health_url("http://host:80/path?foo=bar#frag")
@@ -361,11 +381,15 @@ class TestValidateRuntimeConnectivity:
         settings.session_buddy_polling.enabled = False
         settings.agno.enabled = False
 
-        result = HealthCheckResult(service_name="test", status=HealthStatus.OK, latency_ms=10.0)
+        result = HealthCheckResult(
+            service_name="test", status=HealthStatus.OK, latency_ms=10.0
+        )
         mock_checker = AsyncMock()
         mock_checker.check = AsyncMock(return_value=result)
 
-        with patch("mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker):
+        with patch(
+            "mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker
+        ):
             checks = await _validate_runtime_connectivity(settings)
 
         assert len(checks) == 1
@@ -383,12 +407,17 @@ class TestValidateRuntimeConnectivity:
         settings.agno.enabled = False
 
         result = HealthCheckResult(
-            service_name="dead", status=HealthStatus.UNHEALTHY, latency_ms=100.0, error="refused"
+            service_name="dead",
+            status=HealthStatus.UNHEALTHY,
+            latency_ms=100.0,
+            error="refused",
         )
         mock_checker = AsyncMock()
         mock_checker.check = AsyncMock(return_value=result)
 
-        with patch("mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker):
+        with patch(
+            "mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker
+        ):
             checks = await _validate_runtime_connectivity(settings)
 
         assert len(checks) == 1
@@ -399,19 +428,28 @@ class TestValidateRuntimeConnectivity:
     async def test_unhealthy_optional_dependency(self):
         settings = MagicMock()
         dep = MagicMock(
-            use_tls=False, host="localhost", port=9999, required=False, timeout_seconds=5
+            use_tls=False,
+            host="localhost",
+            port=9999,
+            required=False,
+            timeout_seconds=5,
         )
         settings.health.dependencies = {"optional": dep}
         settings.session_buddy_polling.enabled = False
         settings.agno.enabled = False
 
         result = HealthCheckResult(
-            service_name="optional", status=HealthStatus.UNHEALTHY, latency_ms=50.0, error="timeout"
+            service_name="optional",
+            status=HealthStatus.UNHEALTHY,
+            latency_ms=50.0,
+            error="timeout",
         )
         mock_checker = AsyncMock()
         mock_checker.check = AsyncMock(return_value=result)
 
-        with patch("mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker):
+        with patch(
+            "mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker
+        ):
             checks = await _validate_runtime_connectivity(settings)
 
         assert len(checks) == 1
@@ -421,7 +459,9 @@ class TestValidateRuntimeConnectivity:
     @pytest.mark.asyncio
     async def test_exception_during_check(self):
         settings = MagicMock()
-        dep = MagicMock(use_tls=False, host="bad", port=1, required=True, timeout_seconds=1)
+        dep = MagicMock(
+            use_tls=False, host="bad", port=1, required=True, timeout_seconds=1
+        )
         settings.health.dependencies = {"err": dep}
         settings.session_buddy_polling.enabled = False
         settings.agno.enabled = False
@@ -429,7 +469,9 @@ class TestValidateRuntimeConnectivity:
         mock_checker = AsyncMock()
         mock_checker.check = AsyncMock(side_effect=ConnectionRefusedError("refused"))
 
-        with patch("mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker):
+        with patch(
+            "mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker
+        ):
             checks = await _validate_runtime_connectivity(settings)
 
         assert len(checks) == 1
@@ -445,11 +487,15 @@ class TestValidateRuntimeConnectivity:
         settings.session_buddy_polling.timeout_seconds = 5
         settings.agno.enabled = False
 
-        result = HealthCheckResult(service_name="sb", status=HealthStatus.OK, latency_ms=5.0)
+        result = HealthCheckResult(
+            service_name="sb", status=HealthStatus.OK, latency_ms=5.0
+        )
         mock_checker = AsyncMock()
         mock_checker.check = AsyncMock(return_value=result)
 
-        with patch("mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker):
+        with patch(
+            "mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker
+        ):
             checks = await _validate_runtime_connectivity(settings)
 
         assert len(checks) == 1
@@ -470,7 +516,9 @@ class TestValidateRuntimeConnectivity:
         mock_checker = AsyncMock()
         mock_checker.check = AsyncMock(return_value=result)
 
-        with patch("mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker):
+        with patch(
+            "mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker
+        ):
             checks = await _validate_runtime_connectivity(settings)
 
         assert len(checks) == 1
@@ -479,18 +527,26 @@ class TestValidateRuntimeConnectivity:
     @pytest.mark.asyncio
     async def test_multiple_dependencies_gathered(self):
         settings = MagicMock()
-        d1 = MagicMock(use_tls=False, host="h1", port=1, required=True, timeout_seconds=5)
-        d2 = MagicMock(use_tls=False, host="h2", port=2, required=False, timeout_seconds=5)
+        d1 = MagicMock(
+            use_tls=False, host="h1", port=1, required=True, timeout_seconds=5
+        )
+        d2 = MagicMock(
+            use_tls=False, host="h2", port=2, required=False, timeout_seconds=5
+        )
         settings.health.dependencies = {"a": d1, "b": d2}
         settings.session_buddy_polling.enabled = False
         settings.agno.enabled = False
 
         mock_checker = AsyncMock()
         mock_checker.check = AsyncMock(
-            return_value=HealthCheckResult(service_name="x", status=HealthStatus.OK, latency_ms=1.0)
+            return_value=HealthCheckResult(
+                service_name="x", status=HealthStatus.OK, latency_ms=1.0
+            )
         )
 
-        with patch("mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker):
+        with patch(
+            "mahavishnu.cli.config_validator.HealthChecker", return_value=mock_checker
+        ):
             checks = await _validate_runtime_connectivity(settings)
 
         assert len(checks) == 2
@@ -636,7 +692,9 @@ class TestRunValidation:
         mock_report.get_errors.return_value = []
         mock_report.warnings = []
 
-        with patch("mahavishnu.cli.config_validator.validate_config", return_value=mock_report):
+        with patch(
+            "mahavishnu.cli.config_validator.validate_config", return_value=mock_report
+        ):
             result = await run_validation(config_dir="/tmp/nonexistent")
 
         assert result["valid"] is False
@@ -653,9 +711,18 @@ class TestRunValidation:
         mock_settings.repos_path = str(Path(__file__).parent)
 
         with (
-            patch("mahavishnu.cli.config_validator.validate_config", return_value=mock_report),
-            patch("mahavishnu.cli.config_validator.MahavishnuSettings", return_value=mock_settings),
-            patch("mahavishnu.cli.config_validator._validate_runtime_settings", return_value=[]),
+            patch(
+                "mahavishnu.cli.config_validator.validate_config",
+                return_value=mock_report,
+            ),
+            patch(
+                "mahavishnu.cli.config_validator.MahavishnuSettings",
+                return_value=mock_settings,
+            ),
+            patch(
+                "mahavishnu.cli.config_validator._validate_runtime_settings",
+                return_value=[],
+            ),
             patch(
                 "mahavishnu.cli.config_validator._validate_runtime_connectivity",
                 new_callable=AsyncMock,
@@ -675,7 +742,10 @@ class TestRunValidation:
         mock_report.warnings = []
 
         with (
-            patch("mahavishnu.cli.config_validator.validate_config", return_value=mock_report),
+            patch(
+                "mahavishnu.cli.config_validator.validate_config",
+                return_value=mock_report,
+            ),
             patch(
                 "mahavishnu.cli.config_validator.MahavishnuSettings",
                 side_effect=Exception("load error"),
@@ -688,7 +758,9 @@ class TestRunValidation:
             result = await run_validation(config_dir="/some/path")
 
         assert result["valid"] is False
-        assert any("Failed to load" in r["message"] for r in result["runtime_validations"])
+        assert any(
+            "Failed to load" in r["message"] for r in result["runtime_validations"]
+        )
 
     @pytest.mark.asyncio
     async def test_runtime_errors_make_invalid(self):
@@ -700,10 +772,18 @@ class TestRunValidation:
         mock_settings = MagicMock()
         mock_settings.repos_path = str(Path(__file__).parent)
 
-        bad_validation = ValidationResult(valid=False, message="repos missing", path="repos_path")
+        bad_validation = ValidationResult(
+            valid=False, message="repos missing", path="repos_path"
+        )
         with (
-            patch("mahavishnu.cli.config_validator.validate_config", return_value=mock_report),
-            patch("mahavishnu.cli.config_validator.MahavishnuSettings", return_value=mock_settings),
+            patch(
+                "mahavishnu.cli.config_validator.validate_config",
+                return_value=mock_report,
+            ),
+            patch(
+                "mahavishnu.cli.config_validator.MahavishnuSettings",
+                return_value=mock_settings,
+            ),
             patch(
                 "mahavishnu.cli.config_validator._validate_runtime_settings",
                 return_value=[bad_validation],
@@ -727,9 +807,18 @@ class TestRunValidation:
         Path("settings").resolve()
 
         with (
-            patch("mahavishnu.cli.config_validator.validate_config", return_value=mock_report),
-            patch("mahavishnu.cli.config_validator.MahavishnuSettings", return_value=mock_settings),
-            patch("mahavishnu.cli.config_validator._validate_runtime_settings", return_value=[]),
+            patch(
+                "mahavishnu.cli.config_validator.validate_config",
+                return_value=mock_report,
+            ),
+            patch(
+                "mahavishnu.cli.config_validator.MahavishnuSettings",
+                return_value=mock_settings,
+            ),
+            patch(
+                "mahavishnu.cli.config_validator._validate_runtime_settings",
+                return_value=[],
+            ),
         ):
             result = await run_validation(config_dir="settings")
 

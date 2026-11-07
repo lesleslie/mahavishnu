@@ -168,9 +168,7 @@ class TaskRunner:
         self.workers = []
 
     async def start(self):
-        self.workers = await self.worker_mgr.spawn_workers(
-            "terminal-qwen", count=3
-        )
+        self.workers = await self.worker_mgr.spawn_workers("terminal-qwen", count=3)
 
     async def execute(self, prompt: str):
         return await self.worker_mgr.execute_task(
@@ -200,9 +198,7 @@ class TaskRunner:
             min_workers=3,
             max_workers=10,
         )
-        self.pool_id = await self.pool_mgr.spawn_pool(
-            "mahavishnu", config
-        )
+        self.pool_id = await self.pool_mgr.spawn_pool("mahavishnu", config)
 
     async def execute(self, prompt: str):
         return await self.pool_mgr.execute_on_pool(
@@ -390,10 +386,9 @@ for i, worker_id in enumerate(workers):
     start_idx = i * tasks_per_worker
     end_idx = start_idx + tasks_per_worker
     worker_tasks = tasks[start_idx:end_idx]
-    results.extend([
-        await worker_mgr.execute_task(worker_id, task)
-        for task in worker_tasks
-    ])
+    results.extend(
+        [await worker_mgr.execute_task(worker_id, task) for task in worker_tasks]
+    )
 ```
 
 **After**:
@@ -423,7 +418,7 @@ for worker_id in worker_ids:
 health = await pool_mgr.health_check()
 print(f"Status: {health['status']}")
 print(f"Active pools: {health['pools_active']}")
-for pool in health['pools']:
+for pool in health["pools"]:
     print(f"  {pool['pool_id']}: {pool['status']}")
 ```
 
@@ -433,39 +428,54 @@ for pool in health['pools']:
 
 ```python
 # Old worker tools
-await mcp.call_tool("worker_spawn", {
-    "worker_type": "terminal-qwen",
-    "count": 3,
-})
+await mcp.call_tool(
+    "worker_spawn",
+    {
+        "worker_type": "terminal-qwen",
+        "count": 3,
+    },
+)
 
-await mcp.call_tool("worker_execute", {
-    "worker_id": "worker_abc",
-    "prompt": "Write code",
-})
+await mcp.call_tool(
+    "worker_execute",
+    {
+        "worker_id": "worker_abc",
+        "prompt": "Write code",
+    },
+)
 ```
 
 ### New MCP Tools (Pool-based)
 
 ```python
 # New pool tools
-await mcp.call_tool("pool_spawn", {
-    "pool_type": "mahavishnu",
-    "name": "local",
-    "min_workers": 3,
-    "max_workers": 10,
-})
+await mcp.call_tool(
+    "pool_spawn",
+    {
+        "pool_type": "mahavishnu",
+        "name": "local",
+        "min_workers": 3,
+        "max_workers": 10,
+    },
+)
 
 # Direct execution
-await mcp.call_tool("pool_execute", {
-    "pool_id": "pool_abc",
-    "prompt": "Write code",
-})
+await mcp.call_tool(
+    "pool_execute",
+    {
+        "pool_id": "pool_abc",
+        "prompt": "Write code",
+    },
+)
 
 # Auto-routed execution
-await mcp.call_tool("pool_route_execute", {
-    "prompt": "Write code",
-    "pool_selector": "least_loaded",
-})
+await mcp.call_tool(
+    "pool_route_execute",
+    {
+        "prompt": "Write code",
+        "pool_selector": "least_loaded",
+    },
+)
 ```
 
 ## CLI Migration

@@ -45,7 +45,9 @@ logger = logging.getLogger(__name__)
 
 
 # Completion support functions
-def complete_repository(ctx: click.Context, args: list[str], incomplete: str) -> list[str]:
+def complete_repository(
+    ctx: click.Context, args: list[str], incomplete: str
+) -> list[str]:
     """Provide repository name completions.
 
     Reads from repos.yaml or environment.
@@ -58,7 +60,13 @@ def complete_repository(ctx: click.Context, args: list[str], incomplete: str) ->
         repositories.extend(repos_env.split(","))
 
     # Add common repositories
-    common_repos = ["mahavishnu", "session-buddy", "crackerjack", "akosha", "mcp-common"]
+    common_repos = [
+        "mahavishnu",
+        "session-buddy",
+        "crackerjack",
+        "akosha",
+        "mcp-common",
+    ]
     for repo in common_repos:
         if repo not in repositories:
             repositories.append(repo)
@@ -73,7 +81,9 @@ def complete_status(ctx: click.Context, args: list[str], incomplete: str) -> lis
     return [s for s in statuses if s.startswith(incomplete)]
 
 
-def complete_priority(ctx: click.Context, args: list[str], incomplete: str) -> list[str]:
+def complete_priority(
+    ctx: click.Context, args: list[str], incomplete: str
+) -> list[str]:
     """Provide priority completions."""
     priorities = ["low", "medium", "high", "critical"]
     return [p for p in priorities if p.startswith(incomplete)]
@@ -186,7 +196,12 @@ def task_create(
         mahavishnu task create "Fix login bug" -r session-buddy -p high -t bug -t urgent
     """
     from mahavishnu.core.database import get_database
-    from mahavishnu.core.task_store import TaskCreate, TaskPriority, TaskStatus, TaskStore
+    from mahavishnu.core.task_store import (
+        TaskCreate,
+        TaskPriority,
+        TaskStatus,
+        TaskStore,
+    )
 
     async def _create() -> None:
         db = await get_database()
@@ -240,7 +255,9 @@ def task_create(
 @click.option(
     "-s",
     "--status",
-    type=click.Choice(["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]),
+    type=click.Choice(
+        ["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]
+    ),
     help="Filter by status",
     shell_complete=complete_status,
 )
@@ -295,7 +312,12 @@ def task_list(
         mahavishnu task list -r mahavishnu -s in_progress -p high
     """
     from mahavishnu.core.database import get_database
-    from mahavishnu.core.task_store import TaskListFilter, TaskPriority, TaskStatus, TaskStore
+    from mahavishnu.core.task_store import (
+        TaskListFilter,
+        TaskPriority,
+        TaskStatus,
+        TaskStore,
+    )
 
     async def _list() -> None:
         db = await get_database()
@@ -373,7 +395,9 @@ def task_list(
 @click.option(
     "-s",
     "--status",
-    type=click.Choice(["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]),
+    type=click.Choice(
+        ["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]
+    ),
     help="New status",
     shell_complete=complete_status,
 )
@@ -410,7 +434,12 @@ def task_update(
         mahavishnu task update task-123 -s completed -p high
     """
     from mahavishnu.core.database import get_database
-    from mahavishnu.core.task_store import TaskPriority, TaskStatus, TaskStore, TaskUpdate
+    from mahavishnu.core.task_store import (
+        TaskPriority,
+        TaskStatus,
+        TaskStore,
+        TaskUpdate,
+    )
 
     async def _update() -> None:
         db = await get_database()
@@ -480,7 +509,9 @@ def task_delete(task_id: str, force: bool) -> None:
 @click.argument("task_id", required=True, shell_complete=complete_task_id)
 @click.argument(
     "status",
-    type=click.Choice(["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]),
+    type=click.Choice(
+        ["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]
+    ),
     shell_complete=complete_status,
 )
 def task_status(task_id: str, status: str) -> None:
@@ -534,9 +565,13 @@ def parse_due_date(due: str) -> datetime | None:
             amount = int(match.group(1))
             unit = match.group(2)
             if unit in ("day", "days"):
-                return (now + timedelta(days=amount)).replace(hour=23, minute=59, second=59)
+                return (now + timedelta(days=amount)).replace(
+                    hour=23, minute=59, second=59
+                )
             else:
-                return (now + timedelta(weeks=amount)).replace(hour=23, minute=59, second=59)
+                return (now + timedelta(weeks=amount)).replace(
+                    hour=23, minute=59, second=59
+                )
     else:
         # Try ISO format
         try:

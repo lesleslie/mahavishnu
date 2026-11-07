@@ -450,6 +450,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
           # ... existing list (unchanged) ...
       ]
       from .llm.bifrost import BifrostLLMRouter  # lazy import
+
       adapters.append(BifrostLLMRouter.metadata)
       return adapters
   ```

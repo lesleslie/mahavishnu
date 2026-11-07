@@ -10,14 +10,14 @@ Check current verbose mode status:
 import json
 from pathlib import Path
 
-settings_file = Path.cwd() / '.claude' / 'settings.local.json'
+settings_file = Path.cwd() / ".claude" / "settings.local.json"
 
 if settings_file.exists():
     with open(settings_file) as f:
         data = json.load(f)
 
-    verbose = data.get('verbose', False)
-    debug = data.get('debug', False)
+    verbose = data.get("verbose", False)
+    debug = data.get("debug", False)
 
     print("📊 Verbose Mode Status:")
     print(f"   Verbose: {'✅ ON' if verbose else '⚪ OFF'}")

@@ -197,10 +197,18 @@ class QueryComplexityAnalyzer:
             self.reasoning_patterns.extend(reasoning_patterns)
 
         # Compile patterns for efficiency
-        self._domain_regex = [re.compile(p, re.IGNORECASE) for p in self.domain_patterns]
-        self._reasoning_regex = [re.compile(p, re.IGNORECASE) for p in self.reasoning_patterns]
-        self._temporal_regex = [re.compile(p, re.IGNORECASE) for p in self.TEMPORAL_PATTERNS]
-        self._structure_regex = [re.compile(p, re.IGNORECASE) for p in self.STRUCTURE_PATTERNS]
+        self._domain_regex = [
+            re.compile(p, re.IGNORECASE) for p in self.domain_patterns
+        ]
+        self._reasoning_regex = [
+            re.compile(p, re.IGNORECASE) for p in self.reasoning_patterns
+        ]
+        self._temporal_regex = [
+            re.compile(p, re.IGNORECASE) for p in self.TEMPORAL_PATTERNS
+        ]
+        self._structure_regex = [
+            re.compile(p, re.IGNORECASE) for p in self.STRUCTURE_PATTERNS
+        ]
 
     def analyze(self, query: str) -> ComplexityScore:
         """Analyze query complexity.
@@ -355,9 +363,13 @@ class AdaptiveRAGRouter:
         self._embedding_cache = embedding_cache
 
         # Strategy statistics
-        self._strategy_counts: dict[RAGStrategyType, int] = dict.fromkeys(RAGStrategyType, 0)
+        self._strategy_counts: dict[RAGStrategyType, int] = dict.fromkeys(
+            RAGStrategyType, 0
+        )
 
-    def select_strategy(self, complexity: ComplexityScore) -> tuple[RAGStrategyType, str]:
+    def select_strategy(
+        self, complexity: ComplexityScore
+    ) -> tuple[RAGStrategyType, str]:
         """Select RAG strategy based on complexity score.
 
         Args:
@@ -379,9 +391,7 @@ class AdaptiveRAGRouter:
             reason = f"Medium complexity ({score:.2f}): Hybrid vector + cache + full-text search"
         elif score < self.GRAPH_THRESHOLD:
             strategy = RAGStrategyType.GRAPH
-            reason = (
-                f"High complexity ({score:.2f}): Knowledge graph traversal for multi-hop reasoning"
-            )
+            reason = f"High complexity ({score:.2f}): Knowledge graph traversal for multi-hop reasoning"
         else:
             strategy = RAGStrategyType.AGENTIC
             reason = (
@@ -459,7 +469,8 @@ class AdaptiveRAGRouter:
 
         if total > 0:
             stats["strategy_percentages"] = {
-                s.value: round(c / total * 100, 1) for s, c in self._strategy_counts.items()
+                s.value: round(c / total * 100, 1)
+                for s, c in self._strategy_counts.items()
             }
 
         return stats

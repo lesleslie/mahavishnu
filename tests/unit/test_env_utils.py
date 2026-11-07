@@ -4,6 +4,7 @@ Extracted from ``mahavishnu.core.events.bodai_subscriber._accept_legacy_wire``
 and ``.claude.hooks.bodai-activity-post-tool-use._debug_enabled``.
 Pins the truthy-string contract so all callers stay consistent.
 """
+
 from __future__ import annotations
 
 import pytest

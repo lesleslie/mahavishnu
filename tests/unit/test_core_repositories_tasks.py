@@ -59,7 +59,9 @@ def make_repo_row(**overrides):
 class _FakeConn:
     """Async context-manager-friendly fake connection."""
 
-    def __init__(self, fetchrow_result=None, fetch_results=None, execute_result="INSERT 0 1"):
+    def __init__(
+        self, fetchrow_result=None, fetch_results=None, execute_result="INSERT 0 1"
+    ):
         self._fetchrow_result = fetchrow_result
         self._fetch_results = fetch_results or []
         self._execute_result = execute_result
@@ -353,7 +355,9 @@ class TestUpdateTaskStatus:
         patch_repo_connection(repo, conn)
         explicit = datetime(2025, 1, 1, tzinfo=UTC)
 
-        await repo.update_task_status(task_id, TaskStatus.IN_PROGRESS, started_at=explicit)
+        await repo.update_task_status(
+            task_id, TaskStatus.IN_PROGRESS, started_at=explicit
+        )
         assert conn.last_params[3] == explicit
 
     async def test_status_not_found_returns_none(self, repo):

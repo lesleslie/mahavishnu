@@ -76,17 +76,17 @@ The MCP server exposes tools for repository management and workflow execution:
 ```python
 from mcp.client import Client
 
+
 async def example():
     async with Client("ws://localhost:3000") as client:
         # List repositories
         repos = await client.call("tools/list_repos", {"tag": "python"})
 
         # Trigger workflow
-        result = await client.call("tools/trigger_workflow", {
-            "adapter": "langgraph",
-            "task_type": "code_sweep",
-            "tag": "agent"
-        })
+        result = await client.call(
+            "tools/trigger_workflow",
+            {"adapter": "langgraph", "task_type": "code_sweep", "tag": "agent"},
+        )
 ```
 
 ## Parallel Execution

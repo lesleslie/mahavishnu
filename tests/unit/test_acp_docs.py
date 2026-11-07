@@ -68,7 +68,11 @@ class TestToadConfigBlock:
             # ``{"agent": {"mahavishnu": ...}}`` structure. Handle both.
             if "agent.mahavishnu" in parsed:
                 section = parsed["agent.mahavishnu"]
-            elif "agent" in parsed and isinstance(parsed["agent"], dict) and "mahavishnu" in parsed["agent"]:
+            elif (
+                "agent" in parsed
+                and isinstance(parsed["agent"], dict)
+                and "mahavishnu" in parsed["agent"]
+            ):
                 section = parsed["agent"]["mahavishnu"]
             else:
                 pytest.fail(
@@ -78,9 +82,7 @@ class TestToadConfigBlock:
             assert section.get("type") == "acp", (
                 f"TOML block #{i} missing type='acp' on the agent section"
             )
-            assert "command" in section, (
-                f"TOML block #{i} missing 'command' field"
-            )
+            assert "command" in section, f"TOML block #{i} missing 'command' field"
 
 
 class TestCLIExamplesMatchHelp:
@@ -161,11 +163,17 @@ class TestDocReferencesResolveToCode:
 
     def test_plan_file_exists(self) -> None:
         plan_path = REPO_ROOT / "docs" / "plans" / "2026-07-26-mahavishnu-acp-server.md"
-        assert plan_path.exists(), f"doc references plan {plan_path} but it doesn't exist"
+        assert plan_path.exists(), (
+            f"doc references plan {plan_path} but it doesn't exist"
+        )
 
     def test_spec_file_exists(self) -> None:
         spec_path = (
-            REPO_ROOT / "docs" / "superpowers" / "specs" / "2026-07-15-mahavishnu-acp-server-design.md"
+            REPO_ROOT
+            / "docs"
+            / "superpowers"
+            / "specs"
+            / "2026-07-15-mahavishnu-acp-server-design.md"
         )
         # The spec may not exist yet (it's a separate deliverable);
         # skip if so.
@@ -179,9 +187,7 @@ class TestDocReferencesResolveToCode:
 
     def test_protocol_module_exists(self) -> None:
         proto_path = REPO_ROOT / "mahavishnu" / "acp" / "protocol.py"
-        assert proto_path.exists(), (
-            f"doc references {proto_path} but it doesn't exist"
-        )
+        assert proto_path.exists(), f"doc references {proto_path} but it doesn't exist"
 
     def test_server_module_exists(self) -> None:
         server_path = REPO_ROOT / "mahavishnu" / "acp" / "server.py"
@@ -212,6 +218,6 @@ class TestDocMentionsKnownLimitations:
 
     def test_doc_mentions_env_pop(self) -> None:
         text = _read_usage_doc()
-        assert (
-            "pop" in text.lower() or "inherit" in text.lower()
-        ), "doc must explain that child processes don't inherit the bearer"
+        assert "pop" in text.lower() or "inherit" in text.lower(), (
+            "doc must explain that child processes don't inherit the bearer"
+        )

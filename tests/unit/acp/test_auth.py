@@ -30,6 +30,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.acp, pytest.mark.acp_stdio]
 # verify_token — constant-time comparison
 # ---------------------------------------------------------------------------
 
+
 class TestVerifyToken:
     """``verify_token`` uses ``secrets.compare_digest``; plain ``==``/``!=`` forbidden."""
 
@@ -73,6 +74,7 @@ class TestVerifyToken:
 # acquire_bearer — env-var + file modes, mutually exclusive, env-pop
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _isolate_bearer_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Wipe the bearer env vars before AND after each test in this class.
@@ -90,9 +92,7 @@ def _isolate_bearer_env(monkeypatch: pytest.MonkeyPatch) -> None:
 class TestAcquireBearerEnvVar:
     """``acquire_bearer`` reads the env var and pops it from the environment."""
 
-    def test_returns_token_from_env_var(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_returns_token_from_env_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
         token = "x" * 40  # 40-byte bearer, meets minimum
         monkeypatch.setenv(ENV_BEARER_TOKEN, token)
         assert acquire_bearer() == token
@@ -141,7 +141,9 @@ class TestAcquireBearerFile:
         monkeypatch.setenv(ENV_BEARER_TOKEN_FILE, str(path))
         assert acquire_bearer() == token
 
-    def test_file_mode_0600_required(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_file_mode_0600_required(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """A file with permissive mode must be rejected."""
         path = tmp_path / "bearer-bad"
         path.write_text("x" * 40)
@@ -193,6 +195,7 @@ class TestAcquireBearerMutuallyExclusive:
 # validate_token_strength
 # ---------------------------------------------------------------------------
 
+
 class TestValidateTokenStrength:
     """Tokens shorter than the minimum length are rejected."""
 
@@ -212,6 +215,7 @@ class TestValidateTokenStrength:
 # ---------------------------------------------------------------------------
 # BearerRedactionFilter
 # ---------------------------------------------------------------------------
+
 
 class TestBearerRedactionFilter:
     """The redactor replaces bearer values in log records before the handler."""

@@ -137,7 +137,9 @@ def build_contract_app() -> Any:
     app.opensearch_integration.search_workflows = AsyncMock(return_value=[])
     app.opensearch_integration.get_workflow_stats = AsyncMock(return_value={})
     app.opensearch_integration.get_log_stats = AsyncMock(return_value={})
-    app.opensearch_integration.health_check = AsyncMock(return_value={"status": "healthy"})
+    app.opensearch_integration.health_check = AsyncMock(
+        return_value={"status": "healthy"}
+    )
     app.error_recovery_manager = Mock()
     app.error_recovery_manager.get_recovery_metrics = AsyncMock(return_value={})
     app.error_recovery_manager.monitor_and_heal_workflows = AsyncMock()
@@ -145,7 +147,9 @@ def build_contract_app() -> Any:
     app.monitoring_service.get_dashboard_data = AsyncMock(return_value={})
     app.monitoring_service.alert_manager = Mock()
     app.monitoring_service.alert_manager.get_active_alerts = AsyncMock(return_value=[])
-    app.monitoring_service.alert_manager.trigger_alert = AsyncMock(return_value=Mock(id="a1"))
+    app.monitoring_service.alert_manager.trigger_alert = AsyncMock(
+        return_value=Mock(id="a1")
+    )
     app.monitoring_service.acknowledge_alert = AsyncMock(return_value=True)
     app.adapters = {
         "prefect": Mock(),
@@ -321,7 +325,9 @@ def render_contract_report(report: dict[str, Any]) -> str:
         status = "PASS" if check["passed"] else "FAIL"
         lines.append(f"- {status} **{check['name']}** ({check['component']})")
         if check.get("details"):
-            lines.append(f"  - Details: `{json.dumps(check['details'], sort_keys=True)}`")
+            lines.append(
+                f"  - Details: `{json.dumps(check['details'], sort_keys=True)}`"
+            )
     return "\n".join(lines) + "\n"
 
 

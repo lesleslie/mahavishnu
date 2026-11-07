@@ -6,6 +6,7 @@ and ``akosha/tests/integration/test_oneiric_transport_roundtrip.py``.
 Exercises the full ``publish_workflow_* -> EventBridgePublisher ->
 emit`` path against a real ``oneiric.domains.events.EventBridge``.
 """
+
 from __future__ import annotations
 
 import inspect

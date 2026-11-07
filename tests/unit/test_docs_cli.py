@@ -134,7 +134,9 @@ def fake_module(fake_report):
     def _render_text(summaries, *, catalog=None, catalog_issues=None):
         return f"TEXT-RENDER: {len(summaries)} summaries"
 
-    def _render_markdown(summaries, *, include_files=False, catalog=None, catalog_issues=None):
+    def _render_markdown(
+        summaries, *, include_files=False, catalog=None, catalog_issues=None
+    ):
         return f"MARKDOWN-RENDER: {len(summaries)} summaries"
 
     mod.build_audit_report = _build_audit_report
@@ -210,7 +212,9 @@ def test_audit_invalid_output_format_exits_1(
     assert "Invalid output format" in (result.output + result.stderr)
 
 
-def test_audit_missing_module_exits_1(runner: CliRunner, app: typer.Typer, tmp_path: Path) -> None:
+def test_audit_missing_module_exits_1(
+    runner: CliRunner, app: typer.Typer, tmp_path: Path
+) -> None:
     """When audit_ecosystem_docs is not importable, the command should
     still produce a clean error instead of a traceback."""
     eco = tmp_path / "ecosystem.yaml"

@@ -67,7 +67,7 @@ worker-pool dispatch path.
 
 ```python
 def load_module(module_name: str) -> ModuleType:
-    working_directory = os.getcwd()       # <-- wrong
+    working_directory = os.getcwd()  # <-- wrong
     sys.path.insert(0, working_directory)
     return importlib.import_module(module_name)
 ```
@@ -87,6 +87,7 @@ Option A — **worker-level pull_step** that chdirs before the entrypoint load:
 
 ```python
 from prefect.deployments import run_deployment
+
 flow.afrom_source(...).adeploy(
     name=...,
     work_pool_name=...,

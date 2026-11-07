@@ -324,15 +324,17 @@ def test_qwen_only_event_publishes_to_qwen_channel(event_name: str) -> None:
     """
     expected_channel = "bodai.hooks." + event_name.replace(
         "PostToolUse", "post-tool-use"
-    ).lower().replace("session", "session-").replace("stopfailure", "stop-failure").replace(
-        "precompact", "pre-compact"
-    ).replace("postcompact", "post-compact").replace("messagedisplay", "message-display").replace(
+    ).lower().replace("session", "session-").replace(
+        "stopfailure", "stop-failure"
+    ).replace("precompact", "pre-compact").replace(
+        "postcompact", "post-compact"
+    ).replace("messagedisplay", "message-display").replace(
         "permissionrequest", "permission-request"
     ).replace("permissiondenied", "permission-denied").replace(
         "todocreated", "todo-created"
-    ).replace("todocompleted", "todo-completed").replace("subagentstart", "subagent-start").replace(
-        "sessiondelete", "session-delete"
-    )
+    ).replace("todocompleted", "todo-completed").replace(
+        "subagentstart", "subagent-start"
+    ).replace("sessiondelete", "session-delete")
     # The above munging is for readability; use the real ``_channel_for``
     # helper for ground truth instead.
     from mahavishnu.bodai_hook_bridge import _channel_for

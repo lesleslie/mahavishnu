@@ -202,7 +202,11 @@ async def worker_close(
         }
     # Legacy fallback (unchanged shape)
     if _worker_manager is None:
-        return {"success": False, "worker_id": worker_id, "error": "worker_manager_unconfigured"}
+        return {
+            "success": False,
+            "worker_id": worker_id,
+            "error": "worker_manager_unconfigured",
+        }
     try:
         await _worker_manager.close_worker(worker_id)
         return {"success": True, "worker_id": worker_id}
@@ -223,7 +227,10 @@ async def worker_close_all() -> dict:
         closed: list[str] = []
         for record in _durable_manager.store.list_all():
             # Cancel only in-flight states; skip terminal ones.
-            if record.state in {WorkerLifecycleState.RUNNING, WorkerLifecycleState.READY}:
+            if record.state in {
+                WorkerLifecycleState.RUNNING,
+                WorkerLifecycleState.READY,
+            }:
                 _durable_manager.cancel(record.worker_id, signal="soft", grace_ms=5_000)
                 closed.append(record.worker_id)
         return {"closed": closed}

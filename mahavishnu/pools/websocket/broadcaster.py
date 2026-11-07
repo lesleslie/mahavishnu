@@ -330,7 +330,9 @@ class WebSocketBroadcaster:
             True if broadcast successful, False otherwise
         """
         if self.server is None:
-            logger.debug(f"WebSocket server not configured, skipping broadcast: {event}")
+            logger.debug(
+                f"WebSocket server not configured, skipping broadcast: {event}"
+            )
             if self._buffer_enabled:
                 self._buffer_event(event, event_data, room)
             return False
@@ -387,7 +389,9 @@ class WebSocketBroadcaster:
         }
 
         self._event_buffer.append(buffered_event)
-        logger.debug(f"Buffered event: {event} (buffer size: {len(self._event_buffer)})")
+        logger.debug(
+            f"Buffered event: {event} (buffer size: {len(self._event_buffer)})"
+        )
 
     # Symbiotic Ecosystem Events
 

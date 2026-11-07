@@ -27,7 +27,9 @@ class FakeMCPClient:
         self._sql_log: list[tuple[str, dict[str, Any]]] = []
         self._schema_ready: bool = False
 
-    async def execute(self, sql: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def execute(
+        self, sql: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         self._sql_log.append((sql, params or {}))
         sql_normalized = " ".join(sql.split()).lower()
 
@@ -77,14 +79,18 @@ class FakeMCPClient:
             self._idx_repo.setdefault(p["repo"], set()).add(p["handle_id"])
             return {"rowcount": 1, "status": "ok"}
 
-        if sql_normalized.startswith("insert or replace into mahavishnu_worktree_registry"):
+        if sql_normalized.startswith(
+            "insert or replace into mahavishnu_worktree_registry"
+        ):
             p = params or {}
             self._registry[p["handle_id"]] = dict(p)
             return {"rowcount": 1, "status": "ok"}
 
         raise ValueError(f"Unhandled SQL in fake: {sql[:80]}")
 
-    async def query(self, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    async def query(
+        self, sql: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         sql_normalized = " ".join(sql.split()).lower()
 
         if sql_normalized.startswith("select r.* from mahavishnu_worktree_registry r"):
@@ -102,12 +108,16 @@ class FakeMCPClient:
         # repo] FROM mahavishnu_worktree_registry — accepts any combination
         # of (principal, principal_uid, repo) columns so the production
         # SELECT shape can evolve without breaking the fake.
-        if sql_normalized.startswith(
-            "select principal, principal_uid from mahavishnu_worktree_registry"
-        ) or sql_normalized.startswith(
-            "select principal, principal_uid, repo from mahavishnu_worktree_registry"
-        ) or sql_normalized.startswith(
-            "select principal, repo from mahavishnu_worktree_registry"
+        if (
+            sql_normalized.startswith(
+                "select principal, principal_uid from mahavishnu_worktree_registry"
+            )
+            or sql_normalized.startswith(
+                "select principal, principal_uid, repo from mahavishnu_worktree_registry"
+            )
+            or sql_normalized.startswith(
+                "select principal, repo from mahavishnu_worktree_registry"
+            )
         ):
             if params and "handle_id" in params:
                 row = self._registry.get(params["handle_id"])
@@ -136,7 +146,9 @@ def _make_handle(name: str = "h-1", repo: str = "mahavishnu") -> Any:
     )
 
 
-def _caller_with_scope(*scopes: str, uid: int = 1000, name: str = "uid:1000") -> Principal:
+def _caller_with_scope(
+    *scopes: str, uid: int = 1000, name: str = "uid:1000"
+) -> Principal:
     """A caller Principal with the given scopes (fresh-frozen=True by default)."""
     from dataclasses import replace
 
@@ -176,7 +188,9 @@ def test_register_handles_creates_schema_then_inserts() -> None:
             client._sql_log[4][0]
             .strip()
             .lower()
-            .startswith("insert or replace into mahavishnu_worktree_registry_idx_principal")
+            .startswith(
+                "insert or replace into mahavishnu_worktree_registry_idx_principal"
+            )
         )
         assert (
             client._sql_log[5][0]
@@ -206,7 +220,9 @@ def test_register_handles_inserts_principal_index() -> None:
         client = FakeMCPClient()
         await _ensure_schema(client)
         handle = _make_handle("h-1")
-        await register_handles(client, [handle], caller=_caller_with_scope("worktree:register"))
+        await register_handles(
+            client, [handle], caller=_caller_with_scope("worktree:register")
+        )
         assert "uid:1000" in client._idx_principal
         assert handle.handle_id in client._idx_principal["uid:1000"]
 
@@ -218,7 +234,9 @@ def test_register_handles_inserts_repo_index() -> None:
         client = FakeMCPClient()
         await _ensure_schema(client)
         handle = _make_handle("h-1")
-        await register_handles(client, [handle], caller=_caller_with_scope("worktree:register"))
+        await register_handles(
+            client, [handle], caller=_caller_with_scope("worktree:register")
+        )
         assert "mahavishnu" in client._idx_repo
         assert handle.handle_id in client._idx_repo["mahavishnu"]
 
@@ -348,8 +366,12 @@ def test_list_handles_filter_by_principal() -> None:
         await register_handles(client, [h_uid1000_a, h_uid1000_b], caller=caller_uid1k)
         await register_handles(client, [h_uid2000], caller=caller_admin)
 
-        uid1000_handles = await list_handles(client, principal="uid:1000", caller=caller_uid1k)
-        uid2000_handles = await list_handles(client, principal="uid:2000", caller=caller_list_all)
+        uid1000_handles = await list_handles(
+            client, principal="uid:1000", caller=caller_uid1k
+        )
+        uid2000_handles = await list_handles(
+            client, principal="uid:2000", caller=caller_list_all
+        )
         return uid1000_handles, uid2000_handles, h_uid1000_a, h_uid1000_b, h_uid2000
 
     uid1000, uid2000, h_a, h_b, _h_2k = asyncio.run(run())
@@ -494,7 +516,9 @@ def test_register_then_list_roundtrip() -> None:
         caller = _caller_with_scope("worktree:register")
         await register_handles(client, [original], caller=caller)
         admin = _caller_with_scope("worktree:list-all")
-        loaded = (await list_handles(client, principal=original.principal.name, caller=admin))[0]
+        loaded = (
+            await list_handles(client, principal=original.principal.name, caller=admin)
+        )[0]
         return original, loaded
 
     original, loaded = asyncio.run(run())
@@ -651,9 +675,13 @@ def test_remote_worktree_ref_preserves_backend_kind() -> None:
     async def run() -> None:
         client = FakeMCPClient()
         await _ensure_schema(client)
-        await register_handles(client, [h_remote], caller=_caller_with_scope("worktree:register"))
+        await register_handles(
+            client, [h_remote], caller=_caller_with_scope("worktree:register")
+        )
         admin = _caller_with_scope("worktree:list-all")
-        loaded = (await list_handles(client, principal=h_remote.principal.name, caller=admin))[0]
+        loaded = (
+            await list_handles(client, principal=h_remote.principal.name, caller=admin)
+        )[0]
         assert loaded.storage_ref.backend_kind == "s3"
         assert isinstance(loaded.storage_ref, RemoteWorktreeRef)
         assert loaded.storage_ref.bucket == "my-bucket"
@@ -698,9 +726,13 @@ def test_remote_worktree_ref_round_trip_all_backends(backend: str) -> None:
     async def run() -> str:
         client = FakeMCPClient()
         await _ensure_schema(client)
-        await register_handles(client, [h], caller=_caller_with_scope("worktree:register"))
+        await register_handles(
+            client, [h], caller=_caller_with_scope("worktree:register")
+        )
         admin = _caller_with_scope("worktree:list-all")
-        loaded = (await list_handles(client, principal=h.principal.name, caller=admin))[0]
+        loaded = (await list_handles(client, principal=h.principal.name, caller=admin))[
+            0
+        ]
         return loaded.storage_ref.backend_kind
 
     assert asyncio.run(run()) == backend
@@ -718,7 +750,11 @@ async def test_remove_handle_owner_can_delete() -> None:
 
     client = FakeMCPClient()
     await _ensure_schema(client)
-    owner = Principal(uid=1000, name="uid:1000", scopes=frozenset({"worktree:register", "worktree:remove"}))
+    owner = Principal(
+        uid=1000,
+        name="uid:1000",
+        scopes=frozenset({"worktree:register", "worktree:remove"}),
+    )
     handle = _make_handle()
     await register_handles(client, [handle], caller=owner)
     removed = await remove_handle(client, handle.handle_id, caller=owner)
@@ -744,7 +780,11 @@ async def test_remove_handle_non_owner_raises_permission_error() -> None:
 
     client = FakeMCPClient()
     await _ensure_schema(client)
-    owner = Principal(uid=1000, name="uid:1000", scopes=frozenset({"worktree:register", "worktree:remove"}))
+    owner = Principal(
+        uid=1000,
+        name="uid:1000",
+        scopes=frozenset({"worktree:register", "worktree:remove"}),
+    )
     handle = _make_handle()
     await register_handles(client, [handle], caller=owner)
 
@@ -765,7 +805,9 @@ async def test_remove_handle_admin_can_delete_any() -> None:
     await _ensure_schema(client)
     # Admin registers (worktree:register-any → admin override) AND removes
     # (worktree:register-any → admin override of ownership check).
-    admin = Principal(uid=9999, name="uid:9999", scopes=frozenset({"worktree:register-any"}))
+    admin = Principal(
+        uid=9999, name="uid:9999", scopes=frozenset({"worktree:register-any"})
+    )
     handle = _make_handle()
     await register_handles(client, [handle], caller=admin)
     removed = await remove_handle(client, handle.handle_id, caller=admin)

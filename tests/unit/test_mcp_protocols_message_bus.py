@@ -115,7 +115,9 @@ class TestPublishToTarget:
     """Tests for direct queue delivery via publish()."""
 
     @pytest.mark.asyncio
-    async def test_publish_to_specific_target_creates_queue(self, bus: MessageBus) -> None:
+    async def test_publish_to_specific_target_creates_queue(
+        self, bus: MessageBus
+    ) -> None:
         """Publishing to a target lazily creates its queue and stores the message."""
         await bus.publish(
             {
@@ -147,7 +149,9 @@ class TestPublishToTarget:
         assert msg.payload == {"state": "running"}
 
     @pytest.mark.asyncio
-    async def test_publish_without_target_does_not_create_queue(self, bus: MessageBus) -> None:
+    async def test_publish_without_target_does_not_create_queue(
+        self, bus: MessageBus
+    ) -> None:
         """Broadcast (no target) messages do not create a queue."""
         await bus.publish(
             {
@@ -160,7 +164,9 @@ class TestPublishToTarget:
         assert bus.get_stats()["pools_with_queues"] == 0
 
     @pytest.mark.asyncio
-    async def test_queue_full_silently_drops_message(self, small_bus: MessageBus) -> None:
+    async def test_queue_full_silently_drops_message(
+        self, small_bus: MessageBus
+    ) -> None:
         """A QueueFull does NOT raise — the message is logged and dropped."""
         # Fill the tiny queue (size 1)
         await small_bus.publish(
@@ -215,7 +221,9 @@ class TestPublishSubscribers:
         assert received[0].payload == {"x": 1}
 
     @pytest.mark.asyncio
-    async def test_subscriber_not_invoked_for_other_types(self, bus: MessageBus) -> None:
+    async def test_subscriber_not_invoked_for_other_types(
+        self, bus: MessageBus
+    ) -> None:
         """Subscribers only fire for their registered message type."""
         received: list[Message] = []
 
@@ -295,7 +303,9 @@ class TestReceive:
         assert sorted(payloads) == [0, 1, 2]
 
     @pytest.mark.asyncio
-    async def test_receive_batch_returns_fewer_when_queue_drains(self, bus: MessageBus) -> None:
+    async def test_receive_batch_returns_fewer_when_queue_drains(
+        self, bus: MessageBus
+    ) -> None:
         """receive_batch() exits early when the queue empties."""
         await bus.publish(
             {
@@ -320,7 +330,9 @@ class TestStatsAndClear:
         assert bus.get_queue_size("nope") == 0
 
     @pytest.mark.asyncio
-    async def test_get_stats_reports_queues_and_subscribers(self, bus: MessageBus) -> None:
+    async def test_get_stats_reports_queues_and_subscribers(
+        self, bus: MessageBus
+    ) -> None:
         """get_stats returns queue sizes, subscriber counts, and max_queue_size."""
         bus.subscribe(MessageType.HEARTBEAT, lambda m: None)
         bus.subscribe(MessageType.HEARTBEAT, lambda m: None)
@@ -432,7 +444,9 @@ class TestPublishEdgeCases:
     """Edge cases around unknown message types and defaulting behavior."""
 
     @pytest.mark.asyncio
-    async def test_unknown_message_type_defaults_to_status_update(self, bus: MessageBus) -> None:
+    async def test_unknown_message_type_defaults_to_status_update(
+        self, bus: MessageBus
+    ) -> None:
         """An unknown message type string falls back to STATUS_UPDATE."""
         await bus.publish(
             {
@@ -446,7 +460,9 @@ class TestPublishEdgeCases:
         assert msg.type is MessageType.STATUS_UPDATE
 
     @pytest.mark.asyncio
-    async def test_publish_missing_type_field_uses_unknown(self, bus: MessageBus) -> None:
+    async def test_publish_missing_type_field_uses_unknown(
+        self, bus: MessageBus
+    ) -> None:
         """A message without a 'type' field is treated as UNKNOWN and falls back."""
         await bus.publish({"target_pool_id": "p", "payload": {}})
         msg = await bus.receive("p", timeout=0.1)

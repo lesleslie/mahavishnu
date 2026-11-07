@@ -5,6 +5,7 @@ Verifies that the reconciler fires auto-retry as background tasks
 30s RETRY_BACKOFF_SECONDS — even with multiple FAILED-but-retriable
 jots to process.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,13 +29,17 @@ def _make_summary(**overrides):  # type: ignore[no-untyped-def]
     from mahavishnu.jot.fold import JotSummary
 
     defaults = dict(
-        id="e1", short_id="123456", text="hello",
-        status="open", last_modified_ms=0,
+        id="e1",
+        short_id="123456",
+        text="hello",
+        status="open",
+        last_modified_ms=0,
         dispatch_state=DispatchState.IN_FLIGHT,
         dispatch_workflow_id="wf-1",
         current_attempt=1,
         dispatch_started_at_ms=int(time.time() * 1000) - 700_000,  # past Tier-2 timeout
-        deferred_until=None, deleted=False,
+        deferred_until=None,
+        deleted=False,
     )
     defaults.update(overrides)
     return JotSummary(**defaults)  # type: ignore[arg-type]
@@ -42,8 +47,10 @@ def _make_summary(**overrides):  # type: ignore[no-untyped-def]
 
 @pytest.mark.asyncio
 async def test_reconciler_does_not_block_on_auto_retry(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-    fake_workflow_substrate: dict, fast_backoff: None,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_workflow_substrate: dict,
+    fast_backoff: None,
 ) -> None:
     """Adversarial: reconciler picks up FAILED dispatch, schedules
     auto-retry via _retry_waiters, and moves on to next jot WITHOUT

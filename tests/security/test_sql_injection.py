@@ -10,7 +10,11 @@ Run: pytest tests/security/test_sql_injection.py -v
 
 import pytest
 
-from mahavishnu.core.task_models import FTSSearchQuery, TaskCreateRequest, TaskUpdateRequest
+from mahavishnu.core.task_models import (
+    FTSSearchQuery,
+    TaskCreateRequest,
+    TaskUpdateRequest,
+)
 
 
 class TestSQLInjectionInTaskCreate:
@@ -170,7 +174,9 @@ class TestSQLInjectionInUpdate:
             "repo$(whoami)",
         ],
     )
-    def test_sql_injection_in_update_repository_rejected(self, malicious_repo: str) -> None:
+    def test_sql_injection_in_update_repository_rejected(
+        self, malicious_repo: str
+    ) -> None:
         """Test that SQL injection in update repository is rejected."""
         # TaskUpdateRequest doesn't have repository field
         # Just verify the update model works

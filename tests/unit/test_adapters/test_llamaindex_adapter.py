@@ -305,14 +305,21 @@ def test_truncate_query(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_ingest_repository_success(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_ingest_repository_success(
+    mock_config, sample_repo_path, mock_code_graph_analyzer
+):
     """Test successful repository ingestion."""
     adapter = LlamaIndexAdapter(config=mock_config)
 
     # Mock SimpleDirectoryReader and VectorStoreIndex
     mock_reader = MagicMock()
     mock_docs = [
-        MagicMock(metadata={"file_name": "test.py", "file_path": sample_repo_path + "/test.py"})
+        MagicMock(
+            metadata={
+                "file_name": "test.py",
+                "file_path": sample_repo_path + "/test.py",
+            }
+        )
     ]
     mock_reader.load_data.return_value = mock_docs
 
@@ -359,7 +366,9 @@ async def test_ingest_repository_nonexistent_path(mock_config):
 
 
 @pytest.mark.asyncio
-async def test_ingest_repository_no_documents(mock_config, tmp_path, mock_code_graph_analyzer):
+async def test_ingest_repository_no_documents(
+    mock_config, tmp_path, mock_code_graph_analyzer
+):
     """Test ingestion when no documents are found."""
     adapter = LlamaIndexAdapter(config=mock_config)
 
@@ -401,7 +410,10 @@ async def test_ingest_repository_with_code_graph_enrichment(
 
     # Create mock documents with file_path metadata
     mock_doc = MagicMock()
-    mock_doc.metadata = {"file_name": "test.py", "file_path": f"{sample_repo_path}/test.py"}
+    mock_doc.metadata = {
+        "file_name": "test.py",
+        "file_path": f"{sample_repo_path}/test.py",
+    }
 
     mock_reader = MagicMock()
     mock_reader.load_data.return_value = [mock_doc]
@@ -578,7 +590,10 @@ async def test_execute_query_task(mock_config):
     )
 
     result = await adapter.execute(
-        task={"type": "query", "params": {"query": "test query", "id": "test_exec_query"}},
+        task={
+            "type": "query",
+            "params": {"query": "test query", "id": "test_exec_query"},
+        },
         repos=["/test/repo"],
     )
 
@@ -822,7 +837,9 @@ async def test_execute_with_missing_task_id(mock_config, sample_repo_path):
 
 
 @pytest.mark.asyncio
-async def test_full_rag_workflow(mock_config, sample_repo_path, mock_code_graph_analyzer):
+async def test_full_rag_workflow(
+    mock_config, sample_repo_path, mock_code_graph_analyzer
+):
     """Test complete RAG workflow from ingestion to query."""
     adapter = LlamaIndexAdapter(config=mock_config)
 

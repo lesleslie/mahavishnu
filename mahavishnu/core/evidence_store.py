@@ -60,7 +60,9 @@ class EvidenceStore:
                 logger.debug("evidence_stored: id=%s", evidence.evidence_id)
                 return True
             except MCPServerError as exc:
-                logger.warning("evidence_store_failed: id=%s err=%s", evidence.evidence_id, exc)
+                logger.warning(
+                    "evidence_store_failed: id=%s err=%s", evidence.evidence_id, exc
+                )
                 return False
             except Exception:
                 logger.exception("evidence_store_error: id=%s", evidence.evidence_id)
@@ -81,11 +83,17 @@ class EvidenceStore:
                 stored += 1
             else:
                 failed += 1
-                msg = str(result) if isinstance(result, Exception) else "store returned False"
+                msg = (
+                    str(result)
+                    if isinstance(result, Exception)
+                    else "store returned False"
+                )
                 errors.append(f"{ev.evidence_id}: {msg}")
         return StoreBatchResult(stored_count=stored, failed_count=failed, errors=errors)
 
-    async def query_evidence(self, query: str, limit: int = 20) -> list[LearningEvidence]:
+    async def query_evidence(
+        self, query: str, limit: int = 20
+    ) -> list[LearningEvidence]:
         client = CommonMCPClient(base_url=self._url, timeout=self._timeout)
         try:
             try:

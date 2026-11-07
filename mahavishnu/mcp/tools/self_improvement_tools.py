@@ -157,7 +157,9 @@ class SelfImprovementTools:
             print(f"Auto-fixed {result['auto_fixed']} issues")
             ```
         """
-        logger.info(f"Running review with scope={scope}, auto_fix={auto_fix}, dry_run={dry_run}")
+        logger.info(
+            f"Running review with scope={scope}, auto_fix={auto_fix}, dry_run={dry_run}"
+        )
 
         # Run review agents based on scope
         findings = await self._run_review(scope)
@@ -193,7 +195,9 @@ class SelfImprovementTools:
                     )
                     issues_created += 1
             except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.warning(f"Failed to create issue for finding {finding.get('id')}: {e}")
+                logger.warning(
+                    f"Failed to create issue for finding {finding.get('id')}: {e}"
+                )
 
         result["issues_created"] = issues_created
 
@@ -431,7 +435,11 @@ class SelfImprovementTools:
         # Map scope to review types
         scope_to_review_types: dict[ReviewScope, list[str]] = {
             ReviewScope.CRITICAL: ["security-critical", "error-handling"],
-            ReviewScope.SECURITY: ["security-audit", "dependency-scan", "secrets-check"],
+            ReviewScope.SECURITY: [
+                "security-audit",
+                "dependency-scan",
+                "secrets-check",
+            ],
             ReviewScope.PERFORMANCE: ["performance-profile", "memory-analysis"],
             ReviewScope.QUALITY: ["code-quality", "test-coverage", "documentation"],
             ReviewScope.ALL: [
@@ -474,7 +482,9 @@ class SelfImprovementTools:
         )
         try:
             mcp_url = getattr(
-                getattr(self.app, "settings", None), "mcp_url", DEFAULT_SUBSTRATE_MCP_URL
+                getattr(self.app, "settings", None),
+                "mcp_url",
+                DEFAULT_SUBSTRATE_MCP_URL,
             )
             from mahavishnu.core.mcp_adapter import MCPAdapter
 
@@ -493,7 +503,9 @@ class SelfImprovementTools:
                 "patterns": patterns,
                 "time_window_days": time_window_days,
             }
-        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as exc:  # MCP tool error handler — broad catch is the documented contract
             logger.exception("self_improvement_analyze_failures failed")
             return {"error": str(exc), "patterns": []}
 
@@ -526,7 +538,9 @@ class SelfImprovementTools:
         logger.info("self_improvement_generate: fingerprint=%s", fingerprint[:16])
         try:
             mcp_url = getattr(
-                getattr(self.app, "settings", None), "mcp_url", DEFAULT_SUBSTRATE_MCP_URL
+                getattr(self.app, "settings", None),
+                "mcp_url",
+                DEFAULT_SUBSTRATE_MCP_URL,
             )
             from mahavishnu.core.mcp_adapter import MCPAdapter
 
@@ -595,7 +609,9 @@ class SelfImprovementTools:
                 "fingerprint": fingerprint,
                 "verification": verification_payload,
             }
-        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as exc:  # MCP tool error handler — broad catch is the documented contract
             logger.exception("self_improvement_generate failed")
             return {"error": str(exc), "status": "failed"}
 
@@ -614,7 +630,9 @@ class SelfImprovementTools:
         logger.info("self_improvement_status: limit=%d", limit)
         try:
             mcp_url = getattr(
-                getattr(self.app, "settings", None), "mcp_url", DEFAULT_SUBSTRATE_MCP_URL
+                getattr(self.app, "settings", None),
+                "mcp_url",
+                DEFAULT_SUBSTRATE_MCP_URL,
             )
             from mahavishnu.core.mcp_adapter import MCPAdapter
 
@@ -629,7 +647,9 @@ class SelfImprovementTools:
                 "total": len(records),
                 "improvements": records,
             }
-        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as exc:  # MCP tool error handler — broad catch is the documented contract
             logger.exception("self_improvement_status failed")
             return {"error": str(exc), "improvements": [], "total": 0}
 
@@ -692,7 +712,9 @@ class SelfImprovementTools:
             "ruff_check_validate": verify_result,
         }
         if verify_result["returncode"] != 0:
-            result["message"] = "Ruff autofix ran, but validation still found remaining issues."
+            result["message"] = (
+                "Ruff autofix ran, but validation still found remaining issues."
+            )
 
         return [result]
 

@@ -76,7 +76,9 @@ def _dead_letter_load(run_ref: str) -> SettleRunRecord | None:
     try:
         payload = json.loads(path.read_text())
     except json.JSONDecodeError, OSError:
-        logger.exception("settle_persistence: dead-letter read FAILED run_ref=%s", run_ref)
+        logger.exception(
+            "settle_persistence: dead-letter read FAILED run_ref=%s", run_ref
+        )
         return None
     if not isinstance(payload, dict):
         return None
@@ -192,5 +194,7 @@ def load_record_sync(
     if mcp is not None:
         # MCPStateBackend.get is async — for sync callers, fall straight
         # to the dead-letter. This is OK because CLI is operator-only.
-        logger.debug("settle_persistence: sync load skipping MCP for run_ref=%s", run_ref)
+        logger.debug(
+            "settle_persistence: sync load skipping MCP for run_ref=%s", run_ref
+        )
     return _dead_letter_load(run_ref)

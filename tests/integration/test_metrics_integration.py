@@ -59,7 +59,9 @@ class TestStatisticalRouterMetrics:
             async def get_recent_executions(self, limit=100):
                 # Return mock executions with latency data
                 return [
-                    SimpleNamespace(adapter=adapter, task_type=task_type, latency_ms=100)
+                    SimpleNamespace(
+                        adapter=adapter, task_type=task_type, latency_ms=100
+                    )
                     for _ in range(50)
                 ]
 
@@ -213,14 +215,20 @@ class TestCostOptimizerMetrics:
         optimizer_health = await optimizer.get_health()
 
         # Verify metrics_enabled is reported
-        assert "metrics_enabled" in router_health, "Router health should include metrics_enabled"
-        assert router_health["metrics_enabled"] is True, "Router metrics should be enabled"
+        assert "metrics_enabled" in router_health, (
+            "Router health should include metrics_enabled"
+        )
+        assert router_health["metrics_enabled"] is True, (
+            "Router metrics should be enabled"
+        )
 
         # Verify optimizer health
         assert "metrics_enabled" in optimizer_health, (
             "Optimizer health should include metrics_enabled"
         )
-        assert optimizer_health["metrics_enabled"] is True, "Optimizer metrics should be enabled"
+        assert optimizer_health["metrics_enabled"] is True, (
+            "Optimizer metrics should be enabled"
+        )
 
 
 class TestTaskRouterMetrics:
@@ -271,7 +279,9 @@ class TestTaskRouterMetrics:
         # (Can't directly verify without accessing internal RoutingMetrics state)
 
     @pytest.mark.asyncio
-    async def test_execute_with_fallback_records_execution_and_fallback(self, reset_metrics):
+    async def test_execute_with_fallback_records_execution_and_fallback(
+        self, reset_metrics
+    ):
         """Test that execute_with_fallback() records executions and fallbacks."""
         from mahavishnu.core.task_router import TaskRouter
 
@@ -289,7 +299,9 @@ class TestTaskRouterMetrics:
             async def get_health(self):
                 return {"status": "healthy"}
 
-        await router.adapter_registry.register_adapter(AdapterType.PREFECT, FailingAdapter())
+        await router.adapter_registry.register_adapter(
+            AdapterType.PREFECT, FailingAdapter()
+        )
 
         # Create mock task that will fail first adapter then succeed.
         # Explicit preference_order ensures PREFECT (failing) runs before AGNO (succeeding),
@@ -306,10 +318,16 @@ class TestTaskRouterMetrics:
 
         # Verify execution was recorded
         assert result["success"] is True, "Should eventually succeed"
-        assert result["adapter"] in [AdapterType.PREFECT, AdapterType.AGNO], "One should succeed"
+        assert result["adapter"] in [AdapterType.PREFECT, AdapterType.AGNO], (
+            "One should succeed"
+        )
         assert result["total_attempts"] > 1, "Should have multiple attempts"
-        assert result["fallback_chain"][0] == AdapterType.PREFECT, "First adapter should be Prefect"
-        assert result["fallback_chain"][1] == AdapterType.AGNO, "Should fallback to Agno"
+        assert result["fallback_chain"][0] == AdapterType.PREFECT, (
+            "First adapter should be Prefect"
+        )
+        assert result["fallback_chain"][1] == AdapterType.AGNO, (
+            "Should fallback to Agno"
+        )
 
         # Verify metrics were recorded
         # (Can't directly verify without accessing internal RoutingMetrics state)

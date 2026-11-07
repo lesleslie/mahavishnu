@@ -76,7 +76,8 @@ class TestNativeMacOSBackend:
 
         backend = NativeMacOSBackend()
         monkeypatch.setattr(
-            "mahavishnu.automation.backends.native_macos._async_run_sync", fake_osascript_runner
+            "mahavishnu.automation.backends.native_macos._async_run_sync",
+            fake_osascript_runner,
         )
         result = await backend.launch_application("com.apple.fake")
         assert isinstance(result, ApplicationInfo)

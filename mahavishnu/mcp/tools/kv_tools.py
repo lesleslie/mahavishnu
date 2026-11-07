@@ -109,7 +109,9 @@ def _is_write_protected(key: str) -> bool:
     for those namespaces, and a *read* permission must never authorise
     a mutation.
     """
-    return any(key.startswith(namespace) for namespace, _ in _NAMESPACE_READ_PERMISSIONS)
+    return any(
+        key.startswith(namespace) for namespace, _ in _NAMESPACE_READ_PERMISSIONS
+    )
 
 
 async def _authorize_namespaces(
@@ -169,7 +171,9 @@ async def _readable_items(
     principal = await resolved_user_id(user_id)
     if not principal:
         return []
-    needed = {permission for key, _value in items if (permission := _owning_permission(key))}
+    needed = {
+        permission for key, _value in items if (permission := _owning_permission(key))
+    }
     if not needed:
         return items
     granted = {
@@ -268,7 +272,9 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_ECOSYSTEM_STATE
     )
-    async def mahavishnu_kv_list(prefix: str, user_id: str | None = None) -> dict[str, Any]:
+    async def mahavishnu_kv_list(
+        prefix: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """List (key, value) pairs whose key starts with ``prefix``.
 
         Returns ``{"ok": True, "items": [{"key", "value"}, ...]}``.
@@ -283,10 +289,14 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
         """
         implicated = _implicated_read_permissions(prefix)
         if implicated:
-            denial = await _authorize_namespaces(rbac_manager, user_id, prefix, implicated)
+            denial = await _authorize_namespaces(
+                rbac_manager, user_id, prefix, implicated
+            )
             if denial is not None:
                 return denial
-        pairs = await _readable_items(rbac_manager, user_id, kv_store.list_prefix(prefix))
+        pairs = await _readable_items(
+            rbac_manager, user_id, kv_store.list_prefix(prefix)
+        )
         items = [{"key": k, "value": v} for k, v in pairs]
         return {"ok": True, "items": items, "count": len(items)}
 
@@ -294,7 +304,9 @@ def register_kv_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.WRITE_ECOSYSTEM_STATE
     )
-    async def mahavishnu_kv_delete(key: str, user_id: str | None = None) -> dict[str, Any]:
+    async def mahavishnu_kv_delete(
+        key: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Delete a string-shape KV record by ``key`` (no-op if absent).
 
         The domain-owned namespaces (an approval history, a webhook

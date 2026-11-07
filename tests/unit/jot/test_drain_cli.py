@@ -29,7 +29,8 @@ from mahavishnu.jot.paths import log_path as default_log_path
 
 
 def _redirect_to_tmp(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> Path:
     """Redirect Path.home() to tmp_path, seed a fixed node ID, return jot_dir."""
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -42,9 +43,11 @@ def _redirect_to_tmp(
 
 def _capture(event_id: str, text: str, wall_ms: int) -> JotEvent:
     return JotEvent(
-        id=event_id.ljust(32, "0"), op="capture",
+        id=event_id.ljust(32, "0"),
+        op="capture",
         hlc=HLC(wall_ms=wall_ms, ctr=0, node="a" * 8),
-        text=text, ctx={"cwd": "/x", "session_id": "s"},
+        text=text,
+        ctx={"cwd": "/x", "session_id": "s"},
         created_ms=wall_ms,
     )
 

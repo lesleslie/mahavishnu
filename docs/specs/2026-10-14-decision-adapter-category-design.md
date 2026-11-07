@@ -85,6 +85,7 @@ from pydantic_settings import SettingsConfigDict
 
 # ---- Pointwise (Jev / Decision 3.0 style) ----
 
+
 class NoulQuestion(BaseModel):
     type: Literal["noul"] = "noul"
     name: str
@@ -95,14 +96,18 @@ class ChoiceQuestion(BaseModel):
     type: Literal["choice"] = "choice"
     name: str
     instructions: str
-    options: dict[str, str] = Field(..., description="option_name -> option description")
+    options: dict[str, str] = Field(
+        ..., description="option_name -> option description"
+    )
 
 
 class ScoreQuestion(BaseModel):
     type: Literal["score"] = "score"
     name: str
     instructions: str
-    levels: list[str] = Field(..., min_length=2, description="Ordered low-to-high levels.")
+    levels: list[str] = Field(
+        ..., min_length=2, description="Ordered low-to-high levels."
+    )
 
 
 Question = Annotated[
@@ -141,6 +146,7 @@ class PointwiseResponse(BaseModel):
 
 # ---- Rank (Cohere / Jina / BGE-TEI style) ----
 
+
 class RankRequest(BaseModel):
     query: str
     documents: list[str] = Field(..., min_length=1)
@@ -162,11 +168,16 @@ class RankResponse(BaseModel):
 
 # ---- Settings base + per-adapter settings ----
 
+
 class DecisionBaseSettings(BaseModel):
     model_config = SettingsConfigDict(env_prefix="ONEIRIC_", extra="forbid")
-    base_url: str | None = Field(default=None, description="Override the adapter's default API URL.")
+    base_url: str | None = Field(
+        default=None, description="Override the adapter's default API URL."
+    )
     model: str = Field(..., description="Concrete model id.")
-    api_key_env: str = Field(..., description="Env-var name holding the secret. Never embed.")
+    api_key_env: str = Field(
+        ..., description="Env-var name holding the secret. Never embed."
+    )
     timeout_seconds: float = Field(default=30.0, gt=0)
     max_retries: int = Field(default=0, ge=0)
     caller_namespace: str = Field(default="public", description="Per REQ-OSUB-B-004.")
@@ -175,6 +186,7 @@ class DecisionBaseSettings(BaseModel):
     @property
     def api_key(self) -> SecretStr | None:
         import os
+
         raw = os.environ.get(self.api_key_env)
         return SecretStr(raw) if raw else None
 
@@ -201,10 +213,20 @@ class Decision3Settings(DecisionBaseSettings):
     d3-flash (8.39B), d3 (27B). For quantized variants, pin a HuggingFace
     repo suffix like `vllm-sr/d3-mini-AWQ` and set `quantization` accordingly.
     """
+
     model: str = Field(default="vllm-sr/d3-mini")
-    base_url: str = Field(default="http://localhost:8899", description="vllm-sr Engine mode default endpoint.")
-    api_key_env: str | None = Field(default=None, description="vllm-sr local Engine mode is auth-less; kept for substrate parity but ignored when None.")
-    quantization: str | None = Field(default=None, description="Optional. Maps to vllm-sr's --quantization flag. Common: 'awq', 'gptq', 'fp8'. Default None = let vllm-sr pick.")
+    base_url: str = Field(
+        default="http://localhost:8899",
+        description="vllm-sr Engine mode default endpoint.",
+    )
+    api_key_env: str | None = Field(
+        default=None,
+        description="vllm-sr local Engine mode is auth-less; kept for substrate parity but ignored when None.",
+    )
+    quantization: str | None = Field(
+        default=None,
+        description="Optional. Maps to vllm-sr's --quantization flag. Common: 'awq', 'gptq', 'fp8'. Default None = let vllm-sr pick.",
+    )
 
 
 __all__ = [
@@ -243,7 +265,13 @@ from pydantic_settings import SettingsConfigDict
 
 from oneiric.adapters.metadata import AdapterMetadata
 
-from .types import NoulQuestion, PointwiseRequest, PointwiseResponse, RankRequest, RankResponse
+from .types import (
+    NoulQuestion,
+    PointwiseRequest,
+    PointwiseResponse,
+    RankRequest,
+    RankResponse,
+)
 
 SettingsT = TypeVar("SettingsT", bound="DecisionBaseSettings")
 
@@ -261,6 +289,7 @@ class DecisionBaseSettings(BaseModel):
     @property
     def api_key(self) -> SecretStr | None:
         import os
+
         raw = os.environ.get(self.api_key_env)
         return SecretStr(raw) if raw else None
 
@@ -268,7 +297,7 @@ class DecisionBaseSettings(BaseModel):
 class DecisionBase(BaseModel, Generic[SettingsT]):
     """Typed base for decision adapters. Mirrors VectorBase[T] / LLMBase."""
 
-    metadata: ClassVar[AdapterMetadata]   # concrete subclasses override
+    metadata: ClassVar[AdapterMetadata]  # concrete subclasses override
 
     def __init__(self, settings: SettingsT) -> None:
         self._settings = settings
@@ -292,11 +321,16 @@ class DecisionBase(BaseModel, Generic[SettingsT]):
         if self._client is None:
             return False
         try:
-            await self.decide(PointwiseRequest(
-                state="health probe",
-                questions=[NoulQuestion(name="ok", instructions="the service is reachable")]))
+            await self.decide(
+                PointwiseRequest(
+                    state="health probe",
+                    questions=[
+                        NoulQuestion(name="ok", instructions="the service is reachable")
+                    ],
+                )
+            )
             return True
-        except Exception:                                # noqa: BLE001
+        except Exception:  # noqa: BLE001
             return False
 
     def has_capability(self, capability: str) -> bool:
@@ -314,8 +348,15 @@ class JevAdapter(DecisionBase[JevSettings]):
         category="decision",
         provider="typesafe_jev",
         factory="oneiric.adapters.decision.jev: JevAdapter",
-        capabilities=["noul", "choice", "score", "calibrated_probability", "typed_decision"],
-        stack_level=30, priority=400,
+        capabilities=[
+            "noul",
+            "choice",
+            "score",
+            "calibrated_probability",
+            "typed_decision",
+        ],
+        stack_level=30,
+        priority=400,
         source=CandidateSource.LOCAL_PKG,
         owner="Decision Substrate",
         requires_secrets=True,
@@ -333,11 +374,17 @@ class Decision3Adapter(DecisionBase[Decision3Settings]):
         provider="vllm_sr_d3",
         factory="oneiric.adapters.decision.decision_3: Decision3Adapter",
         capabilities=[
-            "noul", "choice", "score",
-            "calibrated_probability", "typed_decision",
-            "multimodal", "self_hostable", "open_source",
+            "noul",
+            "choice",
+            "score",
+            "calibrated_probability",
+            "typed_decision",
+            "multimodal",
+            "self_hostable",
+            "open_source",
         ],
-        stack_level=30, priority=380,
+        stack_level=30,
+        priority=380,
         source=CandidateSource.LOCAL_PKG,
         owner="Decision Substrate",
         requires_secrets=False,
@@ -355,8 +402,15 @@ class BgeTeiRerankAdapter(DecisionBase[BgeTeiSettings]):
         category="decision",
         provider="bge_tei_rerank",
         factory="oneiric.adapters.decision.bge_tei_rerank: BgeTeiRerankAdapter",
-        capabilities=["rank", "relevance_score", "self_hostable", "open_source", "multilingual"],
-        stack_level=30, priority=370,
+        capabilities=[
+            "rank",
+            "relevance_score",
+            "self_hostable",
+            "open_source",
+            "multilingual",
+        ],
+        stack_level=30,
+        priority=370,
         source=CandidateSource.LOCAL_PKG,
         owner="Decision Substrate",
         requires_secrets=False,
@@ -371,6 +425,7 @@ class BgeTeiRerankAdapter(DecisionBase[BgeTeiSettings]):
 ```python
 # oneiric/adapters/bootstrap.py — additions only
 from .decision import BgeTeiRerankAdapter, Decision3Adapter, JevAdapter
+
 
 def builtin_adapter_metadata() -> list[AdapterMetadata]:
     return [
@@ -408,15 +463,21 @@ class DecisionRouter:
 
     async def resolve_decision(self, *, capabilities: list[str]) -> DecisionBase:
         handle = await self._bridge.use(
-            "decision", capabilities=capabilities, require_all=True,
+            "decision",
+            capabilities=capabilities,
+            require_all=True,
         )
         return handle.instance
 
-    async def decide(self, request: PointwiseRequest, *, capabilities: list[str]) -> PointwiseResponse:
+    async def decide(
+        self, request: PointwiseRequest, *, capabilities: list[str]
+    ) -> PointwiseResponse:
         adapter = await self.resolve_decision(capabilities=capabilities)
         return await adapter.decide(request)
 
-    async def rank(self, request: RankRequest, *, capabilities: list[str]) -> RankResponse:
+    async def rank(
+        self, request: RankRequest, *, capabilities: list[str]
+    ) -> RankResponse:
         adapter = await self.resolve_decision(capabilities=capabilities)
         return await adapter.rank(request)
 ```

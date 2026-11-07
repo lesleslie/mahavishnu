@@ -5,6 +5,7 @@ because Hypothesis was replaying an example with a whitespace id from an
 older run; the formatter remains this file's guard against future
 regressions via ``test_roundtrip_handles_canonical_payload``.
 """
+
 from __future__ import annotations
 
 import asyncio

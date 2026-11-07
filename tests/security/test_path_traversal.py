@@ -95,7 +95,9 @@ class TestRepositoryPathTraversal:
         # Unicode has various slash-like characters
         # Our pattern only allows ASCII alphanumeric, -, _
         with pytest.raises(Exception):
-            TaskCreateRequest(title="Test", repository="repo\u2215path")  # Division slash
+            TaskCreateRequest(
+                title="Test", repository="repo\u2215path"
+            )  # Division slash
 
     def test_unicode_parent_directory_rejected(self):
         """Test that unicode .. variants are rejected."""

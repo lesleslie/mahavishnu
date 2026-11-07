@@ -62,7 +62,9 @@ async def test_webhook_round_trip_struct_equality(client: TestClient) -> None:
     assert response.status_code == 202, response.text
 
     # Producer side: the record landed under the producer's key.
-    assert [k for k, _ in kv_store.list_prefix("")] == ["webhook-ingress/evt-roundtrip/"]
+    assert [k for k, _ in kv_store.list_prefix("")] == [
+        "webhook-ingress/evt-roundtrip/"
+    ]
 
     # Consumer side: read it back via the persistence key. Pass a
     # JWT-shaped token so the leaf's RBAC gate (rejects missing/non-JWT
@@ -81,7 +83,9 @@ async def test_webhook_round_trip_struct_equality(client: TestClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_webhook_round_trip_uses_matching_persistence_keys(client: TestClient) -> None:
+async def test_webhook_round_trip_uses_matching_persistence_keys(
+    client: TestClient,
+) -> None:
     """Producer write key and consumer read key MUST match (contract).
 
     Locks the producer/consumer contract: any drift between the two
@@ -102,7 +106,9 @@ async def test_webhook_round_trip_uses_matching_persistence_keys(client: TestCli
 
 
 @pytest.mark.asyncio
-async def test_webhook_round_trip_with_distinct_ids_isolates_records(client: TestClient) -> None:
+async def test_webhook_round_trip_with_distinct_ids_isolates_records(
+    client: TestClient,
+) -> None:
     """Two distinct webhook IDs produce two distinct substrate keys.
 
     Mirrors the approval-log round-trip's

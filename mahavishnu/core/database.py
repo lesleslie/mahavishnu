@@ -92,7 +92,9 @@ class DatabaseConfig:
         Returns:
             PostgreSQL connection string
         """
-        password_part = f":{self.password}" if include_password and self.password else ""
+        password_part = (
+            f":{self.password}" if include_password and self.password else ""
+        )
         return f"postgresql://{self.user}{password_part}@{self.host}:{self.port}/{self.database}"
 
 
@@ -184,7 +186,9 @@ class Database:
                 return
 
             self._status = DatabaseStatus.CONNECTING
-            logger.info(f"Connecting to database: {self.config.host}:{self.config.port}")
+            logger.info(
+                f"Connecting to database: {self.config.host}:{self.config.port}"
+            )
 
             try:
                 # Build SSL configuration

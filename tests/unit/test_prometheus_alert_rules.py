@@ -38,11 +38,15 @@ pytestmark = pytest.mark.unit
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _RULES_FILE = _REPO_ROOT / "config" / "prometheus" / "health_aggregator_alerts.yml"
-_RULE_TESTS = _REPO_ROOT / "config" / "prometheus" / "tests" / "heartbeat_rules.test.yml"
+_RULE_TESTS = (
+    _REPO_ROOT / "config" / "prometheus" / "tests" / "heartbeat_rules.test.yml"
+)
 _RUNBOOK = _REPO_ROOT / "docs" / "runbooks" / "OTEL_HEARTBEAT.md"
 
 _PROMTOOL = shutil.which("promtool")
-_requires_promtool = pytest.mark.skipif(_PROMTOOL is None, reason="promtool is not installed")
+_requires_promtool = pytest.mark.skipif(
+    _PROMTOOL is None, reason="promtool is not installed"
+)
 
 
 def _promtool(*args: str) -> subprocess.CompletedProcess[str]:
@@ -97,7 +101,9 @@ class TestTheLabelTrap:
 
     def test_the_trap_is_documented_where_someone_would_hit_it(self) -> None:
         group = self._heartbeat_group()
-        assert "exported_service" in group, "the label trap must be explained in the file"
+        assert "exported_service" in group, (
+            "the label trap must be explained in the file"
+        )
 
     def test_the_scrape_config_is_the_reason(self) -> None:
         """The guard is only meaningful while the scrape config does this."""
@@ -145,7 +151,9 @@ class TestTheRunbookIsReal:
 
     def test_every_heartbeat_alert_points_at_the_runbook(self) -> None:
         urls = self._heartbeat_urls()
-        assert len(urls) == 3, f"expected one runbook_url per heartbeat rule, found {len(urls)}"
+        assert len(urls) == 3, (
+            f"expected one runbook_url per heartbeat rule, found {len(urls)}"
+        )
         for url in urls:
             assert "docs/runbooks/OTEL_HEARTBEAT.md" in url, (
                 f"the heartbeat rules must point at the runbook, not at a spec: {url}"
@@ -156,7 +164,9 @@ class TestTheRunbookIsReal:
         assert _RUNBOOK.is_file()
         headings = [
             _github_anchor(match.group(1))
-            for match in re.finditer(r"^#{1,6}\s+(.*)$", _RUNBOOK.read_text(encoding="utf-8"), re.M)
+            for match in re.finditer(
+                r"^#{1,6}\s+(.*)$", _RUNBOOK.read_text(encoding="utf-8"), re.M
+            )
         ]
         for url in self._heartbeat_urls():
             fragment = url.rsplit("#", 1)[-1]

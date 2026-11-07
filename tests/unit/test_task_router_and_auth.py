@@ -72,30 +72,46 @@ class TestClassifyTask:
         assert classify_task(None) == TaskCategory.GENERAL
 
     def test_code_generation(self):
-        assert classify_task("Write a function to parse JSON") == TaskCategory.CODE_GENERATION
+        assert (
+            classify_task("Write a function to parse JSON")
+            == TaskCategory.CODE_GENERATION
+        )
 
     def test_code_generation_create(self):
-        assert classify_task("Create a new API endpoint for users") == TaskCategory.CODE_GENERATION
+        assert (
+            classify_task("Create a new API endpoint for users")
+            == TaskCategory.CODE_GENERATION
+        )
 
     def test_code_generation_build(self):
         assert (
-            classify_task("Build a class for database connections") == TaskCategory.CODE_GENERATION
+            classify_task("Build a class for database connections")
+            == TaskCategory.CODE_GENERATION
         )
 
     def test_code_generation_script(self):
         assert (
-            classify_task("Write a script to automate deployment") == TaskCategory.CODE_GENERATION
+            classify_task("Write a script to automate deployment")
+            == TaskCategory.CODE_GENERATION
         )
 
     def test_code_review(self):
         # "code review" must appear as a phrase to beat CODE_GENERATION
-        assert classify_task("code review the implementation") == TaskCategory.CODE_REVIEW
+        assert (
+            classify_task("code review the implementation") == TaskCategory.CODE_REVIEW
+        )
 
     def test_code_review_pr(self):
-        assert classify_task("Check this pull request for issues") == TaskCategory.CODE_REVIEW
+        assert (
+            classify_task("Check this pull request for issues")
+            == TaskCategory.CODE_REVIEW
+        )
 
     def test_debugging(self):
-        assert classify_task("Fix the bug in the authentication module") == TaskCategory.DEBUGGING
+        assert (
+            classify_task("Fix the bug in the authentication module")
+            == TaskCategory.DEBUGGING
+        )
 
     def test_debugging_error(self):
         assert (
@@ -104,7 +120,10 @@ class TestClassifyTask:
         )
 
     def test_debugging_traceback(self):
-        assert classify_task("Here's the traceback from the crash") == TaskCategory.DEBUGGING
+        assert (
+            classify_task("Here's the traceback from the crash")
+            == TaskCategory.DEBUGGING
+        )
 
     def test_debugging_failing(self):
         assert classify_task("The tests are failing") == TaskCategory.DEBUGGING
@@ -117,12 +136,18 @@ class TestClassifyTask:
 
     def test_refactoring_simplify(self):
         # "Simplify" alone might not score high enough vs other categories
-        assert classify_task("Refactor and simplify the payment module") == TaskCategory.REFACTORING
+        assert (
+            classify_task("Refactor and simplify the payment module")
+            == TaskCategory.REFACTORING
+        )
 
     def test_documentation(self):
         # Need a prompt that scores documentation higher than code_generation
         # "document" scores 1 for docs, "comment" scores 1 for docs = 2
-        assert classify_task("Document and comment the API endpoints") == TaskCategory.DOCUMENTATION
+        assert (
+            classify_task("Document and comment the API endpoints")
+            == TaskCategory.DOCUMENTATION
+        )
 
     def test_documentation_readme(self):
         assert (
@@ -132,13 +157,22 @@ class TestClassifyTask:
 
     def test_testing(self):
         # Use pytest to uniquely identify testing without triggering code_generation
-        assert classify_task("Run pytest and add mocks for coverage") == TaskCategory.TESTING
+        assert (
+            classify_task("Run pytest and add mocks for coverage")
+            == TaskCategory.TESTING
+        )
 
     def test_testing_coverage(self):
-        assert classify_task("Increase test coverage for auth module") == TaskCategory.TESTING
+        assert (
+            classify_task("Increase test coverage for auth module")
+            == TaskCategory.TESTING
+        )
 
     def test_testing_pytest(self):
-        assert classify_task("Add pytest fixtures for database tests") == TaskCategory.TESTING
+        assert (
+            classify_task("Add pytest fixtures for database tests")
+            == TaskCategory.TESTING
+        )
 
     def test_reasoning(self):
         assert (
@@ -148,7 +182,8 @@ class TestClassifyTask:
 
     def test_creative(self):
         assert (
-            classify_task("Brainstorm ideas for the new dashboard design") == TaskCategory.CREATIVE
+            classify_task("Brainstorm ideas for the new dashboard design")
+            == TaskCategory.CREATIVE
         )
 
     def test_analysis(self):
@@ -158,21 +193,34 @@ class TestClassifyTask:
         )
 
     def test_vision_context(self):
-        assert classify_task("describe this", context={"has_image": True}) == TaskCategory.VISION
+        assert (
+            classify_task("describe this", context={"has_image": True})
+            == TaskCategory.VISION
+        )
 
     def test_vision_file_type(self):
         assert (
-            classify_task("what is this", context={"file_type": "image/png"}) == TaskCategory.VISION
+            classify_task("what is this", context={"file_type": "image/png"})
+            == TaskCategory.VISION
         )
 
     def test_embedding_context(self):
-        assert classify_task("process this", context={"embedding": True}) == TaskCategory.EMBEDDING
+        assert (
+            classify_task("process this", context={"embedding": True})
+            == TaskCategory.EMBEDDING
+        )
 
     def test_vector_context(self):
-        assert classify_task("handle this data", context={"vector": True}) == TaskCategory.EMBEDDING
+        assert (
+            classify_task("handle this data", context={"vector": True})
+            == TaskCategory.EMBEDDING
+        )
 
     def test_swarm(self):
-        assert classify_task("Run batch processing across multiple workers") == TaskCategory.SWARM
+        assert (
+            classify_task("Run batch processing across multiple workers")
+            == TaskCategory.SWARM
+        )
 
     def test_quick(self):
         # "Quick" alone might score on other categories too — "quick summary" is unique

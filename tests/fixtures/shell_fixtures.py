@@ -259,7 +259,13 @@ class ShellFixtures:
                 {
                     "name": "orchestrator",
                     "description": "Coordinates workflows and manages cross-repository operations",
-                    "capabilities": ["sweep", "schedule", "monitor", "route", "coordinate"],
+                    "capabilities": [
+                        "sweep",
+                        "schedule",
+                        "monitor",
+                        "route",
+                        "coordinate",
+                    ],
                     "duties": [
                         "Execute workflows across repos",
                         "Manage task queues",
@@ -272,7 +278,11 @@ class ShellFixtures:
                     "name": "resolver",
                     "description": "Resolves components, dependencies, and lifecycle management",
                     "capabilities": ["resolve", "activate", "swap", "explain", "watch"],
-                    "duties": ["Load configurations", "Resolve dependencies", "Manage lifecycle"],
+                    "duties": [
+                        "Load configurations",
+                        "Resolve dependencies",
+                        "Manage lifecycle",
+                    ],
                     "tags": ["backend", "python", "configuration"],
                     "example_repos": ["oneiric"],
                 },
@@ -337,8 +347,14 @@ class ShellFixtures:
             "timestamp": "2026-02-09T22:30:00",
             "components": {
                 "adapters": {
-                    "prefect": {"status": "healthy", "last_check": "2026-02-09T22:29:55"},
-                    "llamaindex": {"status": "healthy", "last_check": "2026-02-09T22:29:56"},
+                    "prefect": {
+                        "status": "healthy",
+                        "last_check": "2026-02-09T22:29:55",
+                    },
+                    "llamaindex": {
+                        "status": "healthy",
+                        "last_check": "2026-02-09T22:29:56",
+                    },
                     "agno": {"status": "degraded", "last_check": "2026-02-09T22:29:57"},
                 },
                 "opensearch": {

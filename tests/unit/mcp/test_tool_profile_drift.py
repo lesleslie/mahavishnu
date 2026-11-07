@@ -62,9 +62,15 @@ def _src_path(*parts: str) -> Path:
     return Path(__file__).resolve().parents[3].joinpath(*parts)
 
 
-BOOTSTRAP_SRC = _src_path("mahavishnu", "mcp", "bootstrap.py").read_text(encoding="utf-8")
-LIFECYCLE_SRC = _src_path("mahavishnu", "mcp", "lifecycle.py").read_text(encoding="utf-8")
-SERVER_CORE_SRC = _src_path("mahavishnu", "mcp", "server_core.py").read_text(encoding="utf-8")
+BOOTSTRAP_SRC = _src_path("mahavishnu", "mcp", "bootstrap.py").read_text(
+    encoding="utf-8"
+)
+LIFECYCLE_SRC = _src_path("mahavishnu", "mcp", "lifecycle.py").read_text(
+    encoding="utf-8"
+)
+SERVER_CORE_SRC = _src_path("mahavishnu", "mcp", "server_core.py").read_text(
+    encoding="utf-8"
+)
 
 
 # -- Dispatch-site extractors -------------------------------------------------
@@ -232,7 +238,9 @@ def test_profile_application_present() -> None:
     assert re.search(
         r"PROFILE_REGISTRATIONS\s*\[",
         LIFECYCLE_SRC,
-    ), "lifecycle.py never indexes PROFILE_REGISTRATIONS[...] -- registration cannot dispatch."
+    ), (
+        "lifecycle.py never indexes PROFILE_REGISTRATIONS[...] -- registration cannot dispatch."
+    )
 
     # And discover_tools (server_core) must surface profile state.
     # This guards against the discover_tools response shape drifting away

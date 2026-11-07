@@ -53,7 +53,9 @@ def hook_module(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Any:
 
 
 @pytest.fixture
-def fake_bus_read(monkeypatch: pytest.MonkeyPatch) -> list[list[tuple[str, dict[str, Any]]]]:
+def fake_bus_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[list[tuple[str, dict[str, Any]]]]:
     """Replace the lazy ``read_bodai_events_since`` import target.
 
     Returns the list of envelope batches the mock will produce. Each
@@ -61,7 +63,9 @@ def fake_bus_read(monkeypatch: pytest.MonkeyPatch) -> list[list[tuple[str, dict[
     """
     batches: list[list[tuple[str, dict[str, Any]]]] = []
 
-    async def fake_read(*_args: Any, **_kwargs: Any) -> list[tuple[str, dict[str, Any]]]:
+    async def fake_read(
+        *_args: Any, **_kwargs: Any
+    ) -> list[tuple[str, dict[str, Any]]]:
         if not batches:
             return []
         return batches.pop(0)
@@ -227,9 +231,7 @@ def test_post_tool_use_unknown_source_skipped_but_cursor_advances(
 # ---------------------------------------------------------------------------
 
 
-def test_state_migrates_legacy_last_read_at(
-    hook_module: Any, tmp_path: Path
-) -> None:
+def test_state_migrates_legacy_last_read_at(hook_module: Any, tmp_path: Path) -> None:
     """A state file with only ``last_read_at`` (legacy schema) migrates
     cleanly to the new ``last_message_id`` schema without losing the
     hook's behaviour."""
@@ -249,9 +251,7 @@ def test_state_handles_missing_file(hook_module: Any) -> None:
     assert state == {"last_message_id": None}
 
 
-def test_state_handles_corrupt_file(
-    hook_module: Any, tmp_path: Path
-) -> None:
+def test_state_handles_corrupt_file(hook_module: Any, tmp_path: Path) -> None:
     """Corrupt JSON in the state file → empty schema (no error)."""
     state_path = tmp_path / "post-tool-use-state.json"
     state_path.write_text("{not valid json")

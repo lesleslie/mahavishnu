@@ -206,7 +206,9 @@ def serialize_worktree_tar(
 
     try:
         tar_data = _build_tar_payload(source)
-        byte_count, sha_hex = _write_zstd_stream_to_file(tar_data, temp_path, compression_level)
+        byte_count, sha_hex = _write_zstd_stream_to_file(
+            tar_data, temp_path, compression_level
+        )
         yield temp_path, byte_count, sha_hex
     except BaseException:
         # CancelledError, KeyboardInterrupt, and any other
@@ -415,7 +417,9 @@ def deserialize_worktree_tar(
     try:
         temp_path = _create_tar_tempfile()
         actual_sha = _decompress_chunks_to_tempfile(chunk_reader, temp_path)
-        _verify_compressed_integrity(actual_sha, expected_sha256, backend, principal_short)
+        _verify_compressed_integrity(
+            actual_sha, expected_sha256, backend, principal_short
+        )
 
         # Ensure target.parent exists, then create the sibling staging
         # directory. Using a sibling (not a child of target) is what

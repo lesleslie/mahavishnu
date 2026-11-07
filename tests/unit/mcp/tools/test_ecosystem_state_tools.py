@@ -112,7 +112,9 @@ async def test_upsert_service_preserves_created_at_on_re_upsert() -> None:
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
-    first = await store.upsert_service_async(service_id="svc-2", service_type="mcp", status="ok")
+    first = await store.upsert_service_async(
+        service_id="svc-2", service_type="mcp", status="ok"
+    )
     original_created = first["created_at"]
     second = await store.upsert_service_async(
         service_id="svc-2", service_type="mcp", status="degraded"
@@ -132,7 +134,9 @@ async def test_get_service_returns_record() -> None:
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
-    await store.upsert_service_async(service_id="svc-3", service_type="worker_pool", status="ok")
+    await store.upsert_service_async(
+        service_id="svc-3", service_type="worker_pool", status="ok"
+    )
 
     fetched = await store.get_service_async("svc-3")
     assert isinstance(fetched, dict)
@@ -203,8 +207,14 @@ async def test_record_and_list_events() -> None:
     assert second["timestamp"] == "2099-01-01T00:00:00+00:00"
 
     # Both event records are persisted under the documented key layout.
-    assert _stored(f"ecosystem-events/{first['event_id']}/")["event_id"] == first["event_id"]
-    assert _stored(f"ecosystem-events/{second['event_id']}/")["event_id"] == second["event_id"]
+    assert (
+        _stored(f"ecosystem-events/{first['event_id']}/")["event_id"]
+        == first["event_id"]
+    )
+    assert (
+        _stored(f"ecosystem-events/{second['event_id']}/")["event_id"]
+        == second["event_id"]
+    )
 
     # List with no filter → both events (sliced to the most recent `limit`).
     events = await store.list_events_async()
@@ -262,7 +272,9 @@ async def test_registered_upsert_tool_delegates_to_leaf_store() -> None:
     """End-to-end: the registered ``mahavishnu_upsert_service`` writes via the leaf store."""
     mcp = FastMCP(name="test-ecosystem-state-tools-upsert")
     register_ecosystem_state_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_upsert_service")
+    tool = next(
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_upsert_service"
+    )
 
     result = await tool.fn(
         service_id="e2e-svc",
@@ -307,8 +319,12 @@ async def test_registered_list_tools_return_envelope() -> None:
 
     mcp = FastMCP(name="test-ecosystem-state-tools-list")
     register_ecosystem_state_tools(mcp, rbac_manager=_fake_rbac_manager())
-    services_tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_list_services")
-    events_tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_list_events")
+    services_tool = next(
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_list_services"
+    )
+    events_tool = next(
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_list_events"
+    )
 
     services = await services_tool.fn(user_id="alice")
     assert services["ok"] is True
@@ -334,7 +350,9 @@ async def test_write_tool_rejects_without_user_id() -> None:
     """
     mcp = FastMCP(name="test-ecosystem-state-tools-auth-write")
     register_ecosystem_state_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_upsert_service")
+    tool = next(
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_upsert_service"
+    )
 
     result = await tool.fn(service_id="auth-svc", service_type="mcp")
 
@@ -364,7 +382,9 @@ async def test_write_tool_intruder_returns_permission_denied() -> None:
     rbac = _fake_rbac_manager(allow=False)
     mcp = FastMCP(name="test-ecosystem-state-tools-intruder-write")
     register_ecosystem_state_tools(mcp, rbac_manager=rbac)
-    tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_upsert_service")
+    tool = next(
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_upsert_service"
+    )
 
     result = await tool.fn(service_id="x", service_type="mcp", user_id="intruder")
 
@@ -408,7 +428,9 @@ async def test_no_rbac_returns_auth_not_configured() -> None:
     """``rbac_manager=None`` → ``AUTH_NOT_CONFIGURED`` envelope (fail-closed)."""
     mcp = FastMCP(name="test-ecosystem-state-tools-no-rbac")
     register_ecosystem_state_tools(mcp, rbac_manager=None)
-    tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_list_services")
+    tool = next(
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_list_services"
+    )
 
     result = await tool.fn(user_id="alice")
 
@@ -449,7 +471,9 @@ async def test_leaf_store_persists_to_the_shared_store() -> None:
     assert upserted["service_id"] == "bound-svc"
     assert _stored("ecosystem-services/bound-svc/")["service_id"] == "bound-svc"
 
-    recorded = await store.record_event_async(event_type="e", source_service="bound-svc")
+    recorded = await store.record_event_async(
+        event_type="e", source_service="bound-svc"
+    )
     assert recorded["event_type"] == "e"
     assert _stored(f"ecosystem-events/{recorded['event_id']}/")["event_type"] == "e"
 
@@ -475,7 +499,9 @@ async def test_service_record_is_visible_to_the_public_kv_surface() -> None:
     from mahavishnu.core.ecosystem_state import AsyncEcosystemStateStore
 
     store = AsyncEcosystemStateStore()
-    await store.upsert_service_async(service_id="kv-visible", service_type="mcp", status="ok")
+    await store.upsert_service_async(
+        service_id="kv-visible", service_type="mcp", status="ok"
+    )
 
     raw = _raw("ecosystem-services/kv-visible/")
     assert raw is not None
@@ -503,10 +529,14 @@ async def test_writes_emit_no_substrate_skipped_warning() -> None:
 
     store = AsyncEcosystemStateStore()
     with capture_logs() as logs:
-        await store.upsert_service_async(service_id="no-skip", service_type="mcp", status="ok")
+        await store.upsert_service_async(
+            service_id="no-skip", service_type="mcp", status="ok"
+        )
         await store.record_event_async(event_type="e", source_service="no-skip")
 
-    skipped = [entry for entry in logs if str(entry.get("event", "")).endswith("_skipped")]
+    skipped = [
+        entry for entry in logs if str(entry.get("event", "")).endswith("_skipped")
+    ]
     assert not skipped, f"unexpected substrate-skipped warnings: {skipped}"
 
 

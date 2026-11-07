@@ -297,6 +297,7 @@ def test_output_since_strips_history_and_sentinel() -> None:
     # Buffer trimmed by the adapter: fall back to everything rather than "".
     assert "kept" in shell_backend._output_since("gone", "kept\nM", "M")
 
+
 # ---------------------------------------------------------------------------
 # The one-shot shape
 # ---------------------------------------------------------------------------
@@ -329,7 +330,7 @@ class _OneShotManager:
         self.captures += 1
         if self.captures <= self.delay:
             return self.pane
-        self.pane += 'the real answer is 42\n'
+        self.pane += "the real answer is 42\n"
         if self.emits_marker:
             self.pane += "__MAHAVISHNU_DONE__\n"
         return self.pane
@@ -342,9 +343,9 @@ def _one_shot_config(**overrides: Any) -> Any:
     base = {
         "worker_type": "terminal-probe",
         "command": (
-            "sh -lc 'probe \"$MAHAVISHNU_PROMPT\" "
-            "2>>\"${MAHAVISHNU_STDERR_PATH:-/dev/null}\"; "
-            "printf \"\\n__MAHAVISHNU_DONE__\\n\"'"
+            'sh -lc \'probe "$MAHAVISHNU_PROMPT" '
+            '2>>"${MAHAVISHNU_STDERR_PATH:-/dev/null}"; '
+            'printf "\\n__MAHAVISHNU_DONE__\\n"\''
         ),
         "default_timeout": 5,
         "permission_mode": None,
@@ -391,7 +392,9 @@ async def test_one_shot_waits_for_the_completion_marker() -> None:
 async def test_one_shot_times_out_without_the_marker() -> None:
     """No marker means the CLI never finished -- that is a timeout."""
     manager = _OneShotManager(emits_marker=False)
-    worker = ShellWorker(config=_one_shot_config(default_timeout=1), terminal_manager=manager)  # type: ignore[arg-type]
+    worker = ShellWorker(
+        config=_one_shot_config(default_timeout=1), terminal_manager=manager
+    )  # type: ignore[arg-type]
     await worker.start(prompt="do the thing")
 
     result = await worker.execute({"prompt": "do the thing"})
@@ -426,7 +429,9 @@ def test_the_instruction_is_a_single_line() -> None:
     reads rather than sitting in the middle of the message.
     """
     marker = "MAHAVISHNU-DONE-abc123"
-    instruction = shell_backend.build_instruction("line one\nline two\n\nline three", marker)
+    instruction = shell_backend.build_instruction(
+        "line one\nline two\n\nline three", marker
+    )
 
     assert "\n" not in instruction
     assert "line one line two line three" in instruction

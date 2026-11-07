@@ -188,7 +188,9 @@ app.add_typer(workflows_app, name="workflow")
 @workflows_app.command("sweep")
 def workflow_sweep(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
-    adapter: str = typer.Option("prefect", "--adapter", "-a", help="Orchestrator adapter"),
+    adapter: str = typer.Option(
+        "prefect", "--adapter", "-a", help="Orchestrator adapter"
+    ),
 ):
     """Run an AI code sweep across repositories matching a tag."""
     result = asyncio.run(_async_sweep(tag, adapter))
@@ -198,7 +200,9 @@ def workflow_sweep(
 @workflows_app.command("quality-check")
 def workflow_quality_check(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
-    adapter: str = typer.Option("prefect", "--adapter", "-a", help="Orchestrator adapter"),
+    adapter: str = typer.Option(
+        "prefect", "--adapter", "-a", help="Orchestrator adapter"
+    ),
     repos: list[str] | None = typer.Option(
         None, "--repo", "-r", help="Explicit repo list (overrides tag)"
     ),
@@ -225,8 +229,12 @@ def workflow_heal():
 @workflows_app.command("fix")
 def workflow_fix(
     pool_id: str = typer.Option(..., "--pool", "-p", help="Worker pool ID to use"),
-    issue_id: str = typer.Option(..., "--issue", "-i", help="Coordination issue ID to fix"),
-    description: str = typer.Option("", "--desc", "-d", help="Issue description for the AI worker"),
+    issue_id: str = typer.Option(
+        ..., "--issue", "-i", help="Coordination issue ID to fix"
+    ),
+    description: str = typer.Option(
+        "", "--desc", "-d", help="Issue description for the AI worker"
+    ),
     files: list[str] | None = typer.Option(
         None, "--file", "-f", help="Files to include in context"
     ),
@@ -251,7 +259,9 @@ def workflow_review(
         "-s",
         help="Review scope: critical, security, performance, quality, all",
     ),
-    auto_fix: bool = typer.Option(False, "--fix", help="Auto-fix safe, deterministic issues"),
+    auto_fix: bool = typer.Option(
+        False, "--fix", help="Auto-fix safe, deterministic issues"
+    ),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Preview findings without applying fixes"
     ),
@@ -263,11 +273,15 @@ def workflow_review(
 
 @workflows_app.command("prefect-list-deployments")
 def workflow_prefect_list_deployments(
-    flow_name: str | None = typer.Option(None, "--flow", "-f", help="Filter by flow name"),
+    flow_name: str | None = typer.Option(
+        None, "--flow", "-f", help="Filter by flow name"
+    ),
     tags: list[str] | None = typer.Option(
         None, "--tag", "-t", help="Filter by tags (ALL must match)"
     ),
-    limit: int = typer.Option(100, "--limit", "-n", help="Maximum deployments to return"),
+    limit: int = typer.Option(
+        100, "--limit", "-n", help="Maximum deployments to return"
+    ),
     offset: int = typer.Option(0, "--offset", help="Number of deployments to skip"),
 ):
     """List Prefect deployments with optional filters via PrefectAdapter.
@@ -277,7 +291,9 @@ def workflow_prefect_list_deployments(
         mahavishnu workflow prefect-list-deployments --flow my-etl-flow
         mahavishnu workflow prefect-list-deployments --tag production --limit 10
     """
-    result = asyncio.run(_async_prefect_list_deployments(flow_name, tags, limit, offset))
+    result = asyncio.run(
+        _async_prefect_list_deployments(flow_name, tags, limit, offset)
+    )
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -315,7 +331,9 @@ def workflow_prefect_list_flow_runs(
         mahavishnu workflow prefect-list-flow-runs --state FAILED --limit 10
         mahavishnu workflow prefect-list-flow-runs --deployment dep-123
     """
-    result = asyncio.run(_async_prefect_list_flow_runs(deployment_id, state, limit, offset))
+    result = asyncio.run(
+        _async_prefect_list_flow_runs(deployment_id, state, limit, offset)
+    )
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -470,7 +488,9 @@ async def _async_review_and_fix(scope: str, auto_fix: bool, dry_run: bool) -> di
     return result
 
 
-async def _async_adapter_resolve(task_type: str, capabilities: list[str], domain: str) -> dict:
+async def _async_adapter_resolve(
+    task_type: str, capabilities: list[str], domain: str
+) -> dict:
     """Resolve adapter via the canonical routing path."""
     from .core.task_router import TaskRouter, TaskType
 
@@ -493,7 +513,9 @@ async def _async_adapter_resolve(task_type: str, capabilities: list[str], domain
     )
     return {
         "task_type": task_type,
-        "selected_adapter": result.get("adapter") if isinstance(result, dict) else str(result),
+        "selected_adapter": result.get("adapter")
+        if isinstance(result, dict)
+        else str(result),
         "confidence": result.get("confidence") if isinstance(result, dict) else None,
     }
 
@@ -602,7 +624,9 @@ async def _async_prefect_clear_schedule(deployment_id: str) -> dict:
 @app.command()
 def sweep(
     tag: str = typer.Option(..., "--tag", "-t", help="Tag to filter repositories"),
-    adapter: str = typer.Option("prefect", "--adapter", "-a", help="Orchestrator adapter to use"),
+    adapter: str = typer.Option(
+        "prefect", "--adapter", "-a", help="Orchestrator adapter to use"
+    ),
 ):
     """
     Perform an AI sweep across repositories with a specific tag.
@@ -638,7 +662,9 @@ async def _async_sweep(tag: str, adapter: str):
 
     # Get the appropriate adapter from the app
     if adapter not in maha_app.adapters:
-        typer.echo(f"Adapter '{adapter}' not found. Available: {list(maha_app.adapters.keys())}")
+        typer.echo(
+            f"Adapter '{adapter}' not found. Available: {list(maha_app.adapters.keys())}"
+        )
         raise typer.Exit(code=1)
 
     task = {"task": "ai-sweep", "id": f"sweep-{tag}"}
@@ -663,8 +689,12 @@ add_ingestion_commands()
 
 @mcp_app.command("start")
 def mcp_start(
-    host: str = typer.Option(DEFAULT_MCP_HOST, "--host", "-h", help="Host address to bind to"),
-    port: int = typer.Option(DEFAULT_MCP_PORT, "--port", "-p", help="Port to listen on"),
+    host: str = typer.Option(
+        DEFAULT_MCP_HOST, "--host", "-h", help="Host address to bind to"
+    ),
+    port: int = typer.Option(
+        DEFAULT_MCP_PORT, "--port", "-p", help="Port to listen on"
+    ),
 ):
     """Start the MCP server to expose tools via mcp-common."""
 
@@ -716,12 +746,18 @@ def mcp_stop() -> NoReturn:
 
 @mcp_app.command("restart")
 def mcp_restart(
-    host: str = typer.Option(DEFAULT_MCP_HOST, "--host", "-h", help="Host address to bind to"),
-    port: int = typer.Option(DEFAULT_MCP_PORT, "--port", "-p", help="Port to listen on"),
+    host: str = typer.Option(
+        DEFAULT_MCP_HOST, "--host", "-h", help="Host address to bind to"
+    ),
+    port: int = typer.Option(
+        DEFAULT_MCP_PORT, "--port", "-p", help="Port to listen on"
+    ),
 ) -> NoReturn:
     """Restart the MCP server."""
     typer.echo("ERROR: MCP server restart not yet implemented")
-    typer.echo("Use Ctrl+C to stop the server, then run 'mahavishnu mcp start' to restart.")
+    typer.echo(
+        "Use Ctrl+C to stop the server, then run 'mahavishnu mcp start' to restart."
+    )
     raise typer.Exit(code=1)
 
 
@@ -747,11 +783,15 @@ def mcp_status() -> None:
             typer.echo(
                 f"  Default dimensions: {maha_app.config.terminal.default_columns}x{maha_app.config.terminal.default_rows}"
             )
-            typer.echo(f"  Adapter preference: {maha_app.config.terminal.adapter_preference}")
+            typer.echo(
+                f"  Adapter preference: {maha_app.config.terminal.adapter_preference}"
+            )
 
         # Note: We can't check if the server is actually running without
         # connecting to it, but we can show the configuration status
-        typer.echo(f"Server will bind to: {DEFAULT_MCP_HOST}:{DEFAULT_MCP_PORT} (configurable)")
+        typer.echo(
+            f"Server will bind to: {DEFAULT_MCP_HOST}:{DEFAULT_MCP_PORT} (configurable)"
+        )
         typer.echo("\nTo start the server, run: mahavishnu mcp start")
 
     asyncio.run(_status())
@@ -898,7 +938,9 @@ def mcp_audit_health(
         elif row.get("error"):
             typer.echo(f"  - {repo}: ERROR ({row.get('error')})")
         elif row.get("silent_degraded"):
-            typer.echo(f"  - {repo}: SILENT DEGRADED (http={http_code}, body={body_status})")
+            typer.echo(
+                f"  - {repo}: SILENT DEGRADED (http={http_code}, body={body_status})"
+            )
         else:
             typer.echo(f"  - {repo}: http={http_code} body={body_status}")
 
@@ -1023,7 +1065,9 @@ def health_command(
             typer.echo(json.dumps(payload, indent=2, default=str))
             return
 
-        status_symbol = {"ok": "✓", "degraded": "!", "unhealthy": "✗"}[overall_status.value]
+        status_symbol = {"ok": "✓", "degraded": "!", "unhealthy": "✗"}[
+            overall_status.value
+        ]
         typer.echo(f"Service: {status_symbol} {payload['status']}")
         typer.echo(f"Name: {payload['service']}")
         typer.echo(f"Version: {payload['version']}")
@@ -1044,8 +1088,12 @@ def health_command(
 
 @app.command()
 def list_repos(
-    tag: str | None = typer.Option(None, "--tag", "-t", help="Filter repositories by tag"),
-    role: str | None = typer.Option(None, "--role", "-r", help="Filter repositories by role"),
+    tag: str | None = typer.Option(
+        None, "--tag", "-t", help="Filter repositories by tag"
+    ),
+    role: str | None = typer.Option(
+        None, "--role", "-r", help="Filter repositories by role"
+    ),
 ) -> None:
     """
     List repositories in ecosystem.yaml.
@@ -1112,7 +1160,9 @@ def list_roles() -> None:
 
 
 @app.command()
-def show_role(role_name: str = typer.Argument(..., help="Name of the role to display")) -> None:
+def show_role(
+    role_name: str = typer.Argument(..., help="Name of the role to display"),
+) -> None:
     """
     Show detailed information about a specific role.
 
@@ -1185,7 +1235,9 @@ def list_nicknames() -> None:
 
 
 @app.command()
-def generate_claude_token(user_id: str = typer.Argument(..., help="User ID for the token")) -> None:
+def generate_claude_token(
+    user_id: str = typer.Argument(..., help="User ID for the token"),
+) -> None:
     """
     Generate a Claude Code subscription token.
     """
@@ -1196,7 +1248,9 @@ def generate_claude_token(user_id: str = typer.Argument(..., help="User ID for t
 
     if not auth_handler.is_claude_subscribed():
         typer.echo("ERROR: Claude Code subscription authentication is not configured")
-        typer.echo("Please set subscription_auth_enabled and subscription_auth_secret in config")
+        typer.echo(
+            "Please set subscription_auth_enabled and subscription_auth_secret in config"
+        )
         raise typer.Exit(code=1)
 
     # Generate Claude Code subscription token
@@ -1209,7 +1263,9 @@ def generate_claude_token(user_id: str = typer.Argument(..., help="User ID for t
 
 
 @app.command()
-def generate_codex_token(user_id: str = typer.Argument(..., help="User ID for the token")) -> None:
+def generate_codex_token(
+    user_id: str = typer.Argument(..., help="User ID for the token"),
+) -> None:
     """
     Generate a Codex subscription token.
     """
@@ -1220,7 +1276,9 @@ def generate_codex_token(user_id: str = typer.Argument(..., help="User ID for th
 
     if not auth_handler.is_codex_subscribed():  # Using same underlying mechanism
         typer.echo("ERROR: Codex subscription authentication is not configured")
-        typer.echo("Please set subscription_auth_enabled and subscription_auth_secret in config")
+        typer.echo(
+            "Please set subscription_auth_enabled and subscription_auth_secret in config"
+        )
         raise typer.Exit(code=1)
 
     # Generate Codex subscription token (using same mechanism as Claude but different type)
@@ -1543,7 +1601,9 @@ def workers_spawn(
             "gateway-openclaw, container-executor)"
         ),
     ),
-    count: int = typer.Option(1, "--count", "-n", min=1, max=50, help="Number of workers to spawn"),
+    count: int = typer.Option(
+        1, "--count", "-n", min=1, max=50, help="Number of workers to spawn"
+    ),
 ) -> None:
     """Spawn worker instances for task execution.
 
@@ -1719,8 +1779,12 @@ async def _dispatch_dag_nodes(
 
 @workers_app.command("execute")
 def workers_execute(
-    prompt: str = typer.Option(..., "--prompt", "-p", help="Task prompt for AI workers"),
-    count: int = typer.Option(3, "--count", "-n", min=1, max=20, help="Number of workers to use"),
+    prompt: str = typer.Option(
+        ..., "--prompt", "-p", help="Task prompt for AI workers"
+    ),
+    count: int = typer.Option(
+        3, "--count", "-n", min=1, max=20, help="Number of workers to use"
+    ),
     worker_type: str = typer.Option(
         "terminal-claude",
         "--type",
@@ -1811,9 +1875,13 @@ def workers_execute(
         candidates = resolve(spec, engines)
         dag = plan(spec, candidates, trace_id=spec.trace_id or "0" * 32)
 
-        typer.echo(f"✅ Planned DAG with {len(dag.nodes)} node(s), {len(dag.edges)} edge(s)")
+        typer.echo(
+            f"✅ Planned DAG with {len(dag.nodes)} node(s), {len(dag.edges)} edge(s)"
+        )
         for n in dag.nodes:
-            typer.echo(f"   • {n.node_id} → engine={n.engine_id} capability={n.capability_id}")
+            typer.echo(
+                f"   • {n.node_id} → engine={n.engine_id} capability={n.capability_id}"
+            )
 
         if dry_run:
             typer.echo("\n--dry-run: planned only, no worker dispatched.")
@@ -1926,7 +1994,9 @@ app.add_typer(executions_app, name="executions")
 # docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md.
 # Non-isolated workloads are routed via `mahavishnu/pools/` instead
 # (`pool_route_execute`).
-SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = frozenset({"shepherd", "gateway-openclaw"})
+SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = frozenset(
+    {"shepherd", "gateway-openclaw"}
+)
 
 SPAWN_WORKER_TYPE_ERROR_HINT: str = (
     "Supported worker types: shepherd, gateway-openclaw. "
@@ -1948,8 +2018,12 @@ def pool_spawn(
         help="Type of pool (mahavishnu, session-buddy, runpod)",
     ),
     name: str = typer.Option("default", "--name", "-n", help="Pool name"),
-    min_workers: int = typer.Option(1, "--min", "-m", min=1, max=10, help="Minimum workers"),
-    max_workers: int = typer.Option(10, "--max", "-M", min=1, max=100, help="Maximum workers"),
+    min_workers: int = typer.Option(
+        1, "--min", "-m", min=1, max=10, help="Minimum workers"
+    ),
+    max_workers: int = typer.Option(
+        10, "--max", "-M", min=1, max=100, help="Maximum workers"
+    ),
     worker_type: str = typer.Option(
         "shepherd",
         "--worker-type",
@@ -2161,7 +2235,9 @@ def _dispatch_pool_spawn_via_mcp(
             call_headers = dict(common_headers)
             if session_id:
                 call_headers["mcp-session-id"] = session_id
-            response = client.post(mcp_url, json=body, headers=call_headers, timeout=10.0)
+            response = client.post(
+                mcp_url, json=body, headers=call_headers, timeout=10.0
+            )
             response.raise_for_status()
             # The MCP server returns SSE-shaped responses even for
             # tools/call. Parse the ``data:`` line if present;
@@ -2192,7 +2268,9 @@ def _dispatch_pool_spawn_via_mcp(
     # fall back to ``content[0].text`` for older servers.
     payload: dict[str, Any] = {}
     if isinstance(result, dict):
-        if "structuredContent" in result and isinstance(result["structuredContent"], dict):
+        if "structuredContent" in result and isinstance(
+            result["structuredContent"], dict
+        ):
             payload = result["structuredContent"]
         else:
             content = result.get("content")
@@ -2417,7 +2495,9 @@ def pool_route(
 @pool_app.command("scale")
 def pool_scale(
     pool_id: str = typer.Argument(..., help="Pool ID to scale"),
-    target: int = typer.Option(..., "--target", "-t", min=1, max=100, help="Target worker count"),
+    target: int = typer.Option(
+        ..., "--target", "-t", min=1, max=100, help="Target worker count"
+    ),
 ) -> None:
     """Scale pool to target worker count.
 

@@ -163,7 +163,11 @@ def _extract_ids_from_match(match: re.Match[str]) -> list[str]:
         raw = match.group("ids")
     else:
         raw = match.group(1)
-    return [token.strip().strip("\"'") for token in raw.split(",") if token.strip().strip("\"'")]
+    return [
+        token.strip().strip("\"'")
+        for token in raw.split(",")
+        if token.strip().strip("\"'")
+    ]
 
 
 def compute_diff(
@@ -308,7 +312,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.include_tests:
             tests_root = root / "tests"
             if tests_root.exists():
-                source_paths.extend(_collect_source_paths(tests_root, args.exclude_glob))
+                source_paths.extend(
+                    _collect_source_paths(tests_root, args.exclude_glob)
+                )
 
         declared = extract_declarations(plan_paths)
         referenced = extract_references(source_paths)
@@ -374,7 +380,9 @@ def _print_human_report(report: AuditReport) -> None:
     if report.phantoms:
         print("\n## Phantom Requirements (referenced, never declared)")
         for r in report.phantoms:
-            print(f"  - {r.requirement_id}  ({r.referencing_path}:{r.line}  {r.reference_kind})")
+            print(
+                f"  - {r.requirement_id}  ({r.referencing_path}:{r.line}  {r.reference_kind})"
+            )
 
 
 def _write_markdown_report(report: AuditReport, out: Path) -> None:
@@ -396,7 +404,9 @@ def _write_markdown_report(report: AuditReport, out: Path) -> None:
         lines.append("_(none)_")
     lines.extend(["", "## Phantom Requirements", ""])
     for r in report.phantoms:
-        lines.append(f"- `{r.requirement_id}` — {r.reference_kind} ({r.referencing_path}:{r.line})")
+        lines.append(
+            f"- `{r.requirement_id}` — {r.reference_kind} ({r.referencing_path}:{r.line})"
+        )
     if not report.phantoms:
         lines.append("_(none)_")
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")

@@ -97,7 +97,9 @@ class TestResolvePostgresDsn:
         settings_dir = tmp_path / "settings"
         settings_dir.mkdir()
         settings_file = settings_dir / "mahavishnu.yaml"
-        settings_file.write_text("persistence:\n  postgres_url: postgres://yaml:5432/mydb\n")
+        settings_file.write_text(
+            "persistence:\n  postgres_url: postgres://yaml:5432/mydb\n"
+        )
 
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("MAHAVISHNU_PERSISTENCE__POSTGRES_URL", None)
@@ -109,7 +111,9 @@ class TestResolvePostgresDsn:
                 mock_path_instance.open.return_value.__enter__ = MagicMock(
                     return_value=settings_file.open("r").__enter__()
                 )
-                mock_path_instance.open.return_value.__exit__ = MagicMock(return_value=False)
+                mock_path_instance.open.return_value.__exit__ = MagicMock(
+                    return_value=False
+                )
                 mock_path_cls.return_value = mock_path_instance
 
                 result = _resolve_postgres_dsn(None)
@@ -121,7 +125,9 @@ class TestResolvePostgresDsn:
         settings_dir = tmp_path / "settings"
         settings_dir.mkdir()
         settings_file = settings_dir / "mahavishnu.yaml"
-        settings_file.write_text("persistence:\n  postgres_url: '  postgres://yaml:5432/db  '\n")
+        settings_file.write_text(
+            "persistence:\n  postgres_url: '  postgres://yaml:5432/db  '\n"
+        )
 
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("MAHAVISHNU_PERSISTENCE__POSTGRES_URL", None)
@@ -132,7 +138,9 @@ class TestResolvePostgresDsn:
                 mock_path_instance.open.return_value.__enter__ = MagicMock(
                     return_value=settings_file.open("r").__enter__()
                 )
-                mock_path_instance.open.return_value.__exit__ = MagicMock(return_value=False)
+                mock_path_instance.open.return_value.__exit__ = MagicMock(
+                    return_value=False
+                )
                 mock_path_cls.return_value = mock_path_instance
 
                 result = _resolve_postgres_dsn(None)
@@ -179,8 +187,12 @@ class TestResolvePostgresDsn:
             with patch("mahavishnu.metrics_cli.Path") as mock_path_cls:
                 mock_path_instance = MagicMock()
                 mock_path_instance.exists.return_value = True
-                mock_path_instance.open.return_value.__enter__ = MagicMock(return_value=None)
-                mock_path_instance.open.return_value.__exit__ = MagicMock(return_value=False)
+                mock_path_instance.open.return_value.__enter__ = MagicMock(
+                    return_value=None
+                )
+                mock_path_instance.open.return_value.__exit__ = MagicMock(
+                    return_value=False
+                )
                 mock_path_cls.return_value = mock_path_instance
 
                 with patch.dict("sys.modules", {"yaml": mock_yaml}):
@@ -198,8 +210,12 @@ class TestResolvePostgresDsn:
             with patch("mahavishnu.metrics_cli.Path") as mock_path_cls:
                 mock_path_instance = MagicMock()
                 mock_path_instance.exists.return_value = True
-                mock_path_instance.open.return_value.__enter__ = MagicMock(return_value=None)
-                mock_path_instance.open.return_value.__exit__ = MagicMock(return_value=False)
+                mock_path_instance.open.return_value.__enter__ = MagicMock(
+                    return_value=None
+                )
+                mock_path_instance.open.return_value.__exit__ = MagicMock(
+                    return_value=False
+                )
                 mock_path_cls.return_value = mock_path_instance
 
                 with patch.dict("sys.modules", {"yaml": mock_yaml}):
@@ -217,8 +233,12 @@ class TestResolvePostgresDsn:
             with patch("mahavishnu.metrics_cli.Path") as mock_path_cls:
                 mock_path_instance = MagicMock()
                 mock_path_instance.exists.return_value = True
-                mock_path_instance.open.return_value.__enter__ = MagicMock(return_value=None)
-                mock_path_instance.open.return_value.__exit__ = MagicMock(return_value=False)
+                mock_path_instance.open.return_value.__enter__ = MagicMock(
+                    return_value=None
+                )
+                mock_path_instance.open.return_value.__exit__ = MagicMock(
+                    return_value=False
+                )
                 mock_path_cls.return_value = mock_path_instance
 
                 with patch.dict("sys.modules", {"yaml": mock_yaml}):
@@ -338,7 +358,12 @@ class TestLoadEngineMetricsFromPrometheus:
 
         for adapter in ("prefect", "agno", "llamaindex"):
             assert adapter in result
-            assert result[adapter] == {"selected": 0, "executions": 0, "success": 0, "failure": 0}
+            assert result[adapter] == {
+                "selected": 0,
+                "executions": 0,
+                "success": 0,
+                "failure": 0,
+            }
 
     def test_only_comments_and_blank_lines(self) -> None:
         """Comments and blank lines are skipped; defaults still present."""
@@ -357,7 +382,12 @@ class TestLoadEngineMetricsFromPrometheus:
 
         for adapter in ("prefect", "agno", "llamaindex"):
             assert adapter in result
-            assert result[adapter] == {"selected": 0, "executions": 0, "success": 0, "failure": 0}
+            assert result[adapter] == {
+                "selected": 0,
+                "executions": 0,
+                "success": 0,
+                "failure": 0,
+            }
 
     def test_urlerror_raises_runtime_error(self) -> None:
         """A URLError from urlopen is wrapped in a RuntimeError."""
@@ -391,7 +421,12 @@ class TestLoadEngineMetricsFromPrometheus:
         # The three defaults must always be present
         for adapter in ("prefect", "agno", "llamaindex"):
             assert adapter in result
-            assert result[adapter] == {"selected": 0, "executions": 0, "success": 0, "failure": 0}
+            assert result[adapter] == {
+                "selected": 0,
+                "executions": 0,
+                "success": 0,
+                "failure": 0,
+            }
 
     def test_metrics_without_adapter_label_skipped(self) -> None:
         """Lines with no 'adapter' label are ignored."""

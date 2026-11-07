@@ -951,7 +951,9 @@ def get_workers_by_category() -> dict[WorkerCategory, list[WorkerConfig]]:
     Returns:
         Dictionary mapping categories to worker configs
     """
-    result: dict[WorkerCategory, list[WorkerConfig]] = {cat: [] for cat in WorkerCategory}
+    result: dict[WorkerCategory, list[WorkerConfig]] = {
+        cat: [] for cat in WorkerCategory
+    }
     for cfg in WORKER_REGISTRY.values():
         result[cfg.category].append(cfg)
     return result

@@ -44,14 +44,25 @@ class WorkflowExecution(BaseModel):
     """
 
     execution_id: str = Field(
-        default_factory=generate_config_id, description="UUID7 workflow execution identifier"
+        default_factory=generate_config_id,
+        description="UUID7 workflow execution identifier",
     )
-    workflow_name: str = Field(..., min_length=1, max_length=100, description="Workflow name")
-    status: str = Field(..., description="Execution status (running, completed, failed, cancelled)")
-    start_time: datetime = Field(default_factory=_now_utc, description="Execution start timestamp")
+    workflow_name: str = Field(
+        ..., min_length=1, max_length=100, description="Workflow name"
+    )
+    status: str = Field(
+        ..., description="Execution status (running, completed, failed, cancelled)"
+    )
+    start_time: datetime = Field(
+        default_factory=_now_utc, description="Execution start timestamp"
+    )
     end_time: datetime | None = Field(None, description="Execution end timestamp")
-    iterations: int = Field(default=1, ge=1, description="Number of iterations performed")
-    metadata: dict = Field(default_factory=dict, description="Additional execution metadata")
+    iterations: int = Field(
+        default=1, ge=1, description="Number of iterations performed"
+    )
+    metadata: dict = Field(
+        default_factory=dict, description="Additional execution metadata"
+    )
 
     @field_validator("execution_id")
     @classmethod
@@ -81,7 +92,8 @@ class PoolExecution(BaseModel):
     """
 
     execution_id: str = Field(
-        default_factory=generate_config_id, description="UUID7 pool execution identifier"
+        default_factory=generate_config_id,
+        description="UUID7 pool execution identifier",
     )
     pool_id: str = Field(
         ...,
@@ -90,11 +102,19 @@ class PoolExecution(BaseModel):
         description="Pool identifier (e.g., 'local', 'session_buddy_pool_1')",
     )
     worker_id: str | None = Field(None, description="Worker identifier (if applicable)")
-    operation: str = Field(..., description="Operation type (spawn, execute, scale, close)")
-    status: str = Field(..., description="Execution status (running, completed, failed)")
-    start_time: datetime = Field(default_factory=_now_utc, description="Execution start timestamp")
+    operation: str = Field(
+        ..., description="Operation type (spawn, execute, scale, close)"
+    )
+    status: str = Field(
+        ..., description="Execution status (running, completed, failed)"
+    )
+    start_time: datetime = Field(
+        default_factory=_now_utc, description="Execution start timestamp"
+    )
     end_time: datetime | None = Field(None, description="Execution end timestamp")
-    metadata: dict = Field(default_factory=dict, description="Additional execution metadata")
+    metadata: dict = Field(
+        default_factory=dict, description="Additional execution metadata"
+    )
 
     @field_validator("execution_id")
     @classmethod
@@ -123,12 +143,16 @@ class WorkflowCheckpoint(BaseModel):
         default_factory=generate_config_id, description="UUID7 checkpoint identifier"
     )
     workflow_execution_id: str = Field(..., description="Parent workflow execution ID")
-    stage_name: str = Field(..., min_length=1, max_length=100, description="Workflow stage name")
+    stage_name: str = Field(
+        ..., min_length=1, max_length=100, description="Workflow stage name"
+    )
     status: str = Field(
         ..., description="Checkpoint status (pending, in_progress, completed, failed)"
     )
     result_data: dict = Field(default_factory=dict, description="Stage result data")
-    timestamp: datetime = Field(default_factory=_now_utc, description="Checkpoint timestamp")
+    timestamp: datetime = Field(
+        default_factory=_now_utc, description="Checkpoint timestamp"
+    )
     error_message: str | None = Field(None, description="Error message if stage failed")
 
     @field_validator("checkpoint_id")

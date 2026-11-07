@@ -230,7 +230,9 @@ class TaskMetrics:
             operation="started", repository=repository, priority="unknown"
         ).inc()
         self.active_tasks_gauge.labels(status="pending", repository=repository).dec()
-        self.active_tasks_gauge.labels(status="in_progress", repository=repository).inc()
+        self.active_tasks_gauge.labels(
+            status="in_progress", repository=repository
+        ).inc()
 
     def record_task_completed(self, repository: str, duration_seconds: float) -> None:
         """Record a task completion event.
@@ -242,8 +244,12 @@ class TaskMetrics:
         self.task_operations_total.labels(
             operation="completed", repository=repository, priority="unknown"
         ).inc()
-        self.task_duration_seconds.labels(repository=repository).observe(duration_seconds)
-        self.active_tasks_gauge.labels(status="in_progress", repository=repository).dec()
+        self.task_duration_seconds.labels(repository=repository).observe(
+            duration_seconds
+        )
+        self.active_tasks_gauge.labels(
+            status="in_progress", repository=repository
+        ).dec()
 
     def record_task_cancelled(self, repository: str) -> None:
         """Record a task cancellation event.
@@ -254,7 +260,9 @@ class TaskMetrics:
         self.task_operations_total.labels(
             operation="cancelled", repository=repository, priority="unknown"
         ).inc()
-        self.active_tasks_gauge.labels(status="in_progress", repository=repository).dec()
+        self.active_tasks_gauge.labels(
+            status="in_progress", repository=repository
+        ).dec()
 
     def record_task_blocked(self, repository: str) -> None:
         """Record a task blocked event.
@@ -265,7 +273,9 @@ class TaskMetrics:
         self.task_operations_total.labels(
             operation="blocked", repository=repository, priority="unknown"
         ).inc()
-        self.active_tasks_gauge.labels(status="in_progress", repository=repository).dec()
+        self.active_tasks_gauge.labels(
+            status="in_progress", repository=repository
+        ).dec()
         self.active_tasks_gauge.labels(status="blocked", repository=repository).inc()
 
     def record_task_unblocked(self, repository: str) -> None:
@@ -278,7 +288,9 @@ class TaskMetrics:
             operation="unblocked", repository=repository, priority="unknown"
         ).inc()
         self.active_tasks_gauge.labels(status="blocked", repository=repository).dec()
-        self.active_tasks_gauge.labels(status="in_progress", repository=repository).inc()
+        self.active_tasks_gauge.labels(
+            status="in_progress", repository=repository
+        ).inc()
 
     # Quality gate metrics
 
@@ -288,7 +300,9 @@ class TaskMetrics:
         Args:
             repository: Repository name
         """
-        self.quality_gate_results_total.labels(result="passed", repository=repository).inc()
+        self.quality_gate_results_total.labels(
+            result="passed", repository=repository
+        ).inc()
 
     def record_quality_gate_failed(self, repository: str) -> None:
         """Record a quality gate failure event.
@@ -296,7 +310,9 @@ class TaskMetrics:
         Args:
             repository: Repository name
         """
-        self.quality_gate_results_total.labels(result="failed", repository=repository).inc()
+        self.quality_gate_results_total.labels(
+            result="failed", repository=repository
+        ).inc()
 
     # Error metrics
 
@@ -307,7 +323,9 @@ class TaskMetrics:
             repository: Repository name
             error_type: Error category (validation, timeout, database, etc.)
         """
-        self.task_errors_total.labels(error_type=error_type, repository=repository).inc()
+        self.task_errors_total.labels(
+            error_type=error_type, repository=repository
+        ).inc()
 
     def record_validation_failure(self, field: str, error_type: str) -> None:
         """Record a validation failure event.
@@ -352,7 +370,9 @@ class TaskMetrics:
             port: Port to expose metrics on (default: 9091)
         """
         if not self._prometheus_available:
-            logger.warning("Cannot start metrics server: prometheus_client not available")
+            logger.warning(
+                "Cannot start metrics server: prometheus_client not available"
+            )
             return
 
         from prometheus_client import start_http_server
@@ -370,7 +390,9 @@ class TaskMetrics:
                 logger.info(f"Prometheus metrics server started on port {port}")
             except OSError as e:
                 if "Address already in use" in str(e):
-                    logger.warning(f"Port {port} already in use, metrics server may be running")
+                    logger.warning(
+                        f"Port {port} already in use, metrics server may be running"
+                    )
                 else:
                     raise
 

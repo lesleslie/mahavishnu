@@ -50,9 +50,7 @@ def isolated_mcp_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Redirect dead-letter writes to tmp_path."""
     dl_dir = tmp_path / "settle-dead-letter"
     dl_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr(
-        "mahavishnu.settle.persistence.SETTLE_DEAD_LETTER_DIR", dl_dir
-    )
+    monkeypatch.setattr("mahavishnu.settle.persistence.SETTLE_DEAD_LETTER_DIR", dl_dir)
     return dl_dir
 
 
@@ -123,7 +121,9 @@ async def test_full_settle_lifecycle_apply(isolated_mcp_dir, fake_manager, monke
     assert "hello.txt" in applied["merge"]["merged"]
 
 
-async def test_full_settle_lifecycle_release(isolated_mcp_dir, fake_manager, monkeypatch):
+async def test_full_settle_lifecycle_release(
+    isolated_mcp_dir, fake_manager, monkeypatch
+):
     """End-to-end: PROPOSED -> SELECTED -> RELEASED (no merge)."""
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 

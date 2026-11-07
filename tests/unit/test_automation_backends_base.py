@@ -90,7 +90,9 @@ class _StubBackend(DesktopAutomationBackend):
     async def press_key(self, key: str, modifiers: list[str] | None = None) -> bool:  # type: ignore[override]
         return True
 
-    async def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> bool:  # type: ignore[override]
+    async def click(
+        self, x: int, y: int, button: str = "left", clicks: int = 1
+    ) -> bool:  # type: ignore[override]
         return True
 
     async def drag(  # type: ignore[override]
@@ -108,7 +110,9 @@ class _StubBackend(DesktopAutomationBackend):
         return True
 
     # Screenshots
-    async def screenshot(self, region: tuple[int, int, int, int] | None = None) -> bytes:  # type: ignore[override]
+    async def screenshot(
+        self, region: tuple[int, int, int, int] | None = None
+    ) -> bytes:  # type: ignore[override]
         return b""
 
     async def list_screens(self) -> list[ScreenInfo]:  # type: ignore[override]

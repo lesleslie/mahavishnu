@@ -111,6 +111,7 @@ To temporarily disable H6 in production:
 
 ```python
 from mahavishnu.distill.distiller import distill_workflows
+
 ids = distill_workflows(conn, reviewer=None)  # gate skipped
 ```
 

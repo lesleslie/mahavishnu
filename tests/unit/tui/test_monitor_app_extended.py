@@ -85,7 +85,10 @@ async def test_get_pools_handles_none_workers_running() -> None:
     """workers_running=None must coerce to worker_count=0 via the ``or 0`` fallback."""
     from mahavishnu.tui import monitor_app
 
-    mock_metrics: dict[str, Any] = {"workers_running": None, "adapter_health": "healthy"}
+    mock_metrics: dict[str, Any] = {
+        "workers_running": None,
+        "adapter_health": "healthy",
+    }
     mock_app_instance = MagicMock()
     mock_app_instance.get_metrics = AsyncMock(return_value=mock_metrics)
     mock_cls = MagicMock(return_value=mock_app_instance)
@@ -149,9 +152,7 @@ async def test_get_workers_returns_running_when_workers_positive() -> None:
     finally:
         monkey.undo()
 
-    assert result == [
-        {"id": "aggregate", "type": "summary", "status": "running"}
-    ]
+    assert result == [{"id": "aggregate", "type": "summary", "status": "running"}]
 
 
 @pytest.mark.unit
@@ -172,9 +173,7 @@ async def test_get_workers_returns_idle_when_workers_zero() -> None:
     finally:
         monkey.undo()
 
-    assert result == [
-        {"id": "aggregate", "type": "summary", "status": "idle"}
-    ]
+    assert result == [{"id": "aggregate", "type": "summary", "status": "idle"}]
 
 
 @pytest.mark.unit
@@ -412,7 +411,9 @@ async def test_textual_monitor_app_action_refresh_without_provider() -> None:
 
 
 @pytest.mark.unit
-async def test_textual_monitor_app_action_refresh_with_provider_populates_state() -> None:
+async def test_textual_monitor_app_action_refresh_with_provider_populates_state() -> (
+    None
+):
     """Provider result populates _pool_data and _worker_data."""
     from mahavishnu.tui import TUI_AVAILABLE
     from mahavishnu.tui.monitor_app import MonitorApp
@@ -420,12 +421,8 @@ async def test_textual_monitor_app_action_refresh_with_provider_populates_state(
     if not TUI_AVAILABLE:
         pytest.skip("Textual not installed; MonitorApp not importable")
 
-    pools_payload = [
-        {"name": "p1", "type": "t", "worker_count": 3, "healthy": True}
-    ]
-    workers_payload = [
-        {"id": "w1", "type": "t", "status": "running"}
-    ]
+    pools_payload = [{"name": "p1", "type": "t", "worker_count": 3, "healthy": True}]
+    workers_payload = [{"id": "w1", "type": "t", "status": "running"}]
 
     provider = MagicMock()
     provider.get_pools = AsyncMock(return_value=pools_payload)

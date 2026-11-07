@@ -1,4 +1,5 @@
 """Fold layer: FoldResult dataclass + parse_events (I/O only) + build_states."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -50,11 +51,15 @@ def test_parse_events_skips_malformed_lines(tmp_path: Path) -> None:
     """JotParseError is logged, not raised — fold is fail-open on lines."""
     log = tmp_path / "log.jsonl"
     good = JotEvent(
-        id="a" * 32, op="capture",
+        id="a" * 32,
+        op="capture",
         hlc=HLC(wall_ms=1, ctr=0, node="a" * 8),
-        text="ok", ctx={}, created_ms=1,
+        text="ok",
+        ctx={},
+        created_ms=1,
     )
     from mahavishnu.jot.events import serialize
+
     log.write_text(serialize(good) + "\n{this is not json}\n")
     events = parse_events(log)
     assert len(events) == 1
@@ -64,12 +69,16 @@ def test_parse_events_skips_malformed_lines(tmp_path: Path) -> None:
 def test_parse_events_returns_events_in_file_order(tmp_path: Path) -> None:
     """Fold sorts later; parse_events preserves file order (caller's job)."""
     from mahavishnu.jot.events import serialize
+
     log = tmp_path / "log.jsonl"
     evs = [
         JotEvent(
-            id=f"{i:032x}", op="capture",
+            id=f"{i:032x}",
+            op="capture",
             hlc=HLC(wall_ms=i, ctr=0, node="a" * 8),
-            text=f"t{i}", ctx={}, created_ms=i,
+            text=f"t{i}",
+            ctx={},
+            created_ms=i,
         )
         for i in range(3)
     ]
@@ -81,6 +90,7 @@ def test_parse_events_returns_events_in_file_order(tmp_path: Path) -> None:
 def test_parse_events_raises_log_corrupt_on_unreadable_file(tmp_path: Path) -> None:
     """JotLogCorruptError for unreadable (vs unparsable) log."""
     from mahavishnu.jot.errors import JotLogCorruptError
+
     # Directory instead of file -> read_text raises IsADirectoryError
     with pytest.raises(JotLogCorruptError):
         parse_events(tmp_path)  # tmp_path is a directory
@@ -96,9 +106,12 @@ def _event(
     node: str = "a" * 8,
 ) -> JotEvent:
     return JotEvent(
-        id=event_id, op=op,
+        id=event_id,
+        op=op,
         hlc=HLC(wall_ms=wall_ms, ctr=ctr, node=node),
-        text=text, ctx={}, created_ms=created_ms if created_ms is not None else wall_ms,
+        text=text,
+        ctx={},
+        created_ms=created_ms if created_ms is not None else wall_ms,
     )
 
 
@@ -212,6 +225,7 @@ def test_build_states_parked_edit_replay_clamps_last_modified() -> None:
 
 def test_enrich_ctx_returns_repo_branch_sha(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.jot.fold import _enrich_ctx
+
     fake = {
         "rev-parse --show-toplevel": "/Users/les/Projects/mahavishnu",
         "rev-parse --abbrev-ref HEAD": "main",
@@ -220,8 +234,10 @@ def test_enrich_ctx_returns_repo_branch_sha(monkeypatch: pytest.MonkeyPatch) -> 
 
     def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
         return subprocess.CompletedProcess(
-            args=args, returncode=0,
-            stdout=fake[" ".join(args[1:])], stderr="",
+            args=args,
+            returncode=0,
+            stdout=fake[" ".join(args[1:])],
+            stderr="",
         )
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -256,7 +272,9 @@ def test_enrich_ctx_fail_open_on_non_zero_exit(monkeypatch: pytest.MonkeyPatch) 
 
     def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
         return subprocess.CompletedProcess(
-            args=args, returncode=128, stdout="",
+            args=args,
+            returncode=128,
+            stdout="",
             stderr="fatal: not a git repository",
         )
 
@@ -292,17 +310,20 @@ def test_enrich_ctx_spawns_three_git_calls_not_per_state() -> None:
     asserts the hoisted git_ctx is reused across all states.
     """
     from mahavishnu.jot.fold import _enrich_ctx
+
     calls: list[tuple[str, ...]] = []
 
     def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
         calls.append(tuple(args))
         return subprocess.CompletedProcess(
-            args=args, returncode=0,
+            args=args,
+            returncode=0,
             stdout="/r\n" if "show-toplevel" in args else "x",
             stderr="",
         )
 
     import unittest.mock
+
     with unittest.mock.patch.object(subprocess, "run", side_effect=fake_run):
         _enrich_ctx({"cwd": "/x"}, Path("/r"))
 
@@ -315,13 +336,15 @@ def test_enrich_ctx_spawns_three_git_calls_not_per_state() -> None:
 
 def test_enrich_ctx_preserves_existing_keys() -> None:
     from mahavishnu.jot.fold import _enrich_ctx
+
     enriched = _enrich_ctx({"cwd": "/x", "session_id": "s"}, Path("/x"))
     assert enriched["cwd"] == "/x"
     assert enriched["session_id"] == "s"
 
 
 def test_build_states_enrich_populates_ctx_by_id(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """F4 wire-up: enrich=True wires _enrich_ctx output into FoldResult.ctx_by_id.
 
@@ -340,20 +363,27 @@ def test_build_states_enrich_populates_ctx_by_id(
 
     def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
         return subprocess.CompletedProcess(
-            args=args, returncode=0,
-            stdout=fake[" ".join(args[1:])], stderr="",
+            args=args,
+            returncode=0,
+            stdout=fake[" ".join(args[1:])],
+            stderr="",
         )
 
     cap = _event("a" * 32, "capture", "v1", wall_ms=1)
     cap_with_ctx = JotEvent(
-        id=cap.id, op=cap.op, hlc=cap.hlc, text=cap.text,
+        id=cap.id,
+        op=cap.op,
+        hlc=cap.hlc,
+        text=cap.text,
         ctx={"cwd": "/x", "session_id": "s"},
         created_ms=cap.created_ms,
     )
 
     with unittest.mock.patch.object(subprocess, "run", side_effect=fake_run):
         result = build_states(
-            [cap_with_ctx], enrich=True, current_dir=tmp_path,
+            [cap_with_ctx],
+            enrich=True,
+            current_dir=tmp_path,
         )
 
     assert result.ctx_by_id[cap.id]["cwd"] == "/x"

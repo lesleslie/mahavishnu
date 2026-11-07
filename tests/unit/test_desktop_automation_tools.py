@@ -46,7 +46,12 @@ def _make_fake_result(
     r.status = status
     r.data = data
     r.message = message
-    r.to_dict.return_value = {"status": status, "data": data, "message": message, **extra}
+    r.to_dict.return_value = {
+        "status": status,
+        "data": data,
+        "message": message,
+        **extra,
+    }
     return r
 
 
@@ -78,7 +83,9 @@ class _FakeManager:
 
     # ── app ──────────────────────────────────────────────────────────────────
 
-    async def launch_application(self, bundle_id: str, dry_run: bool = False) -> MagicMock:
+    async def launch_application(
+        self, bundle_id: str, dry_run: bool = False
+    ) -> MagicMock:
         return _make_fake_result(launched=bundle_id)
 
     async def quit_application(self, bundle_id: str, force: bool = False) -> MagicMock:
@@ -88,10 +95,14 @@ class _FakeManager:
         return _make_fake_result(activated=bundle_id)
 
     async def list_applications(self) -> MagicMock:
-        return _make_fake_result(data=[{"bundle_id": "com.apple.finder", "name": "Finder"}])
+        return _make_fake_result(
+            data=[{"bundle_id": "com.apple.finder", "name": "Finder"}]
+        )
 
     async def get_active_application(self) -> MagicMock:
-        return _make_fake_result(data={"bundle_id": "com.apple.Terminal", "name": "Terminal"})
+        return _make_fake_result(
+            data={"bundle_id": "com.apple.Terminal", "name": "Terminal"}
+        )
 
     # ── window ───────────────────────────────────────────────────────────────
 
@@ -122,10 +133,14 @@ class _FakeManager:
     ) -> MagicMock:
         return _make_fake_result(typed=text)
 
-    async def press_key(self, key: str, modifiers: list[str] | None = None) -> MagicMock:
+    async def press_key(
+        self, key: str, modifiers: list[str] | None = None
+    ) -> MagicMock:
         return _make_fake_result(pressed=(key, modifiers))
 
-    async def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> MagicMock:
+    async def click(
+        self, x: int, y: int, button: str = "left", clicks: int = 1
+    ) -> MagicMock:
         return _make_fake_result(clicked=(x, y, button, clicks))
 
     async def drag(
@@ -154,7 +169,9 @@ class _FakeManager:
 
     # ── ui elements ──────────────────────────────────────────────────────────
 
-    async def get_ui_elements(self, bundle_id: str, window_id: str | None = None) -> MagicMock:
+    async def get_ui_elements(
+        self, bundle_id: str, window_id: str | None = None
+    ) -> MagicMock:
         return _make_fake_result(data=[{"label": "OK", "type": "button"}])
 
     # ── security ────────────────────────────────────────────────────────────
@@ -338,7 +355,9 @@ async def test_automation_launch_app() -> None:
 
 @pytest.mark.asyncio
 async def test_automation_launch_app_dry_run() -> None:
-    result = await _run_tool("automation_launch_app", bundle_id="com.apple.Finder", dry_run=True)
+    result = await _run_tool(
+        "automation_launch_app", bundle_id="com.apple.Finder", dry_run=True
+    )
     assert result["status"] == "success"
 
 
@@ -350,7 +369,9 @@ async def test_automation_quit_app() -> None:
 
 @pytest.mark.asyncio
 async def test_automation_quit_app_force() -> None:
-    result = await _run_tool("automation_quit_app", bundle_id="com.apple.Finder", force=True)
+    result = await _run_tool(
+        "automation_quit_app", bundle_id="com.apple.Finder", force=True
+    )
     assert result["status"] == "success"
 
 
@@ -380,7 +401,9 @@ async def test_automation_list_windows() -> None:
 
 @pytest.mark.asyncio
 async def test_automation_resize_window() -> None:
-    result = await _run_tool("automation_resize_window", window_id="win1", width=800, height=600)
+    result = await _run_tool(
+        "automation_resize_window", window_id="win1", width=800, height=600
+    )
     assert result["status"] == "success"
 
 
@@ -399,7 +422,9 @@ async def test_automation_close_window() -> None:
 @pytest.mark.asyncio
 async def test_automation_click_menu() -> None:
     result = await _run_tool(
-        "automation_click_menu", bundle_id="com.apple.Finder", menu_path=["File", "Save"]
+        "automation_click_menu",
+        bundle_id="com.apple.Finder",
+        menu_path=["File", "Save"],
     )
     assert result["status"] == "success"
 
@@ -448,7 +473,9 @@ async def test_automation_click_right_button() -> None:
 
 @pytest.mark.asyncio
 async def test_automation_drag() -> None:
-    result = await _run_tool("automation_drag", start_x=0, start_y=0, end_x=100, end_y=100)
+    result = await _run_tool(
+        "automation_drag", start_x=0, start_y=0, end_x=100, end_y=100
+    )
     assert result["status"] == "success"
 
 

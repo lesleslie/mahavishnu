@@ -216,7 +216,11 @@ class TestBaseClassBehavior:
         with pytest.raises(NotImplementedError, match="create_document"):
             import asyncio
 
-            asyncio.run(repo.create(DocumentCreate(source_type="t", source_key="k", content="c")))  # type: ignore[arg-type]
+            asyncio.run(
+                repo.create(
+                    DocumentCreate(source_type="t", source_key="k", content="c")
+                )
+            )  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -231,7 +235,9 @@ class TestCreateDocument:
         conn = FakeConn(rows=[row])
         repo = make_repo(conn)
 
-        data = DocumentCreate(source_type="repo", source_key="key-1", content="hello world")
+        data = DocumentCreate(
+            source_type="repo", source_key="key-1", content="hello world"
+        )
         result = await repo.create_document(data)
 
         assert isinstance(result, DocumentRead)
@@ -258,7 +264,9 @@ class TestCreateDocument:
         conn = BoomConn()
         repo = make_repo(conn)
         with pytest.raises(RepositoryError) as exc:
-            await repo.create_document(DocumentCreate(source_type="t", source_key="k", content="c"))
+            await repo.create_document(
+                DocumentCreate(source_type="t", source_key="k", content="c")
+            )
         assert exc.value.operation == "create_document"
         assert "db down" in str(exc.value)
 
@@ -371,7 +379,9 @@ class TestUpdateDocument:
         conn = FakeConn(rows=[row])
         repo = make_repo(conn)
 
-        result = await repo.update_document(doc_id, DocumentUpdate(metadata={"tag": "x"}))
+        result = await repo.update_document(
+            doc_id, DocumentUpdate(metadata={"tag": "x"})
+        )
         assert result is not None
         # Verify it picked the single-field metadata query
         sql, params = conn.fetchrow_calls[0]
@@ -401,7 +411,9 @@ class TestUpdateDocument:
 
         result = await repo.update_document(
             doc_id,
-            DocumentUpdate(content="x", repository="r", system_name="s", metadata={"k": "v"}),
+            DocumentUpdate(
+                content="x", repository="r", system_name="s", metadata={"k": "v"}
+            ),
         )
         assert result is not None
         sql, params = conn.fetchrow_calls[0]
@@ -513,7 +525,9 @@ class TestSearchDocuments:
         conn = FakeConn(rows=rows)
         repo = make_repo(conn)
 
-        results = await repo.search_documents("query", repository="r1", limit=5, offset=10)
+        results = await repo.search_documents(
+            "query", repository="r1", limit=5, offset=10
+        )
         assert len(results) == 1
         assert results[0].score == 0.2
         sql, params = conn.fetch_calls[0]
@@ -595,7 +609,9 @@ class TestListDocuments:
         rows = [make_row()]
         conn = FakeConn(rows=rows)
         repo = make_repo(conn)
-        results = await repo.list_documents(repository="r1", source_type="t1", limit=10, offset=20)
+        results = await repo.list_documents(
+            repository="r1", source_type="t1", limit=10, offset=20
+        )
         assert len(results) == 1
         sql, params = conn.fetch_calls[0]
         assert "WHERE repository = $1 AND source_type = $2" in sql

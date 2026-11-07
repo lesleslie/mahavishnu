@@ -42,7 +42,11 @@ try:
     # Defensive import so test patching can inject a sentinel gate.
     from mahavishnu.core.concurrency_gate import ConcurrencyGate
     from mahavishnu.core.config import get_settings
-    from mahavishnu.core.model_routing import TaskCategory, classify_task, resolve_model_id
+    from mahavishnu.core.model_routing import (
+        TaskCategory,
+        classify_task,
+        resolve_model_id,
+    )
     from mahavishnu.core.rate_limit import _estimate_retry
 except Exception:  # pragma: no cover - optional import for test patching  # module-level defensive import fallback  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
     ConcurrencyGate = None
@@ -56,7 +60,10 @@ try:
     # C-6: idempotency layer (REQ-006/007/008). Defensive import so tests can
     # inject sentinels via ``set_idempotency_store(None)`` without forcing the
     # full event_store stack to import on every test.
-    from mahavishnu.core.errors import IdempotencyCircuitOpen, IdempotencyStoreUnavailable
+    from mahavishnu.core.errors import (
+        IdempotencyCircuitOpen,
+        IdempotencyStoreUnavailable,
+    )
     from mahavishnu.core.event_store import TaskEventType
     from mahavishnu.core.idempotency import (
         IdempotencyCircuitBreaker,
@@ -256,7 +263,9 @@ async def _hash_prompt(prompt: str) -> str:
     return result["digest"]  # type: ignore[no-any-return]
 
 
-async def _enforce_concurrency_limit(task_category: TaskCategory, pool_id: str | None) -> None:
+async def _enforce_concurrency_limit(
+    task_category: TaskCategory, pool_id: str | None
+) -> None:
     """Acquire a TaskCategory slot or raise RateLimitError (fail-closed).
 
     No-op when the gate is unconfigured (defensive-import failure in tests)
@@ -464,8 +473,12 @@ def register_pool_tools(
 
         try:
             pool_id = await pool_manager.spawn_pool(canonical, pool_config)  # type: ignore[union-attr]
-        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
-            logger.exception("pool_spawn: spawn failed", extra={"error_id": "POOL_SPAWN_FAILED"})
+        except (
+            Exception
+        ) as exc:  # MCP tool error handler — broad catch is the documented contract
+            logger.exception(
+                "pool_spawn: spawn failed", extra={"error_id": "POOL_SPAWN_FAILED"}
+            )
             return {"status": "failed", "error": f"spawn failed: {exc}"}
 
         result: dict[str, Any] = {
@@ -588,7 +601,9 @@ def register_pool_tools(
                 worker_type=worker_type,
             )
             pool_id = await pool_manager.spawn_pool(spawn_type, pool_config)  # type: ignore[union-attr]
-        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as exc:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
                 "pool_bootstrap: spawn failed",
                 extra={"error_id": "POOL_BOOTSTRAP_SPAWN_FAILED"},
@@ -834,8 +849,16 @@ def register_pool_tools(
             idem_store = None
             breaker = None
             if idempotency is not None:
-                idem_store = get_idempotency_store() if get_idempotency_store is not None else None
-                breaker = get_idempotency_breaker() if get_idempotency_breaker is not None else None
+                idem_store = (
+                    get_idempotency_store()
+                    if get_idempotency_store is not None
+                    else None
+                )
+                breaker = (
+                    get_idempotency_breaker()
+                    if get_idempotency_breaker is not None
+                    else None
+                )
                 if idem_store is None or breaker is None:
                     logger.exception(
                         "idempotency requested but layer not configured",
@@ -904,7 +927,9 @@ def register_pool_tools(
                         }
                     raise RateLimitError(
                         limit=spec.concurrency_limit if spec else None,
-                        retry_after_seconds=(_estimate_retry(spec) if _estimate_retry else None),
+                        retry_after_seconds=(
+                            _estimate_retry(spec) if _estimate_retry else None
+                        ),
                         domain=f"task_category={task_category.value}",
                     )
 
@@ -936,14 +961,18 @@ def register_pool_tools(
                             task_id=execution_id,
                             repo_path=repo_path,
                             branch_name=branch,
-                            base_branch=(worktree.base_branch if worktree is not None else "main"),
-                            ttl_seconds=(worktree.ttl_seconds if worktree is not None else 86_400),
+                            base_branch=(
+                                worktree.base_branch if worktree is not None else "main"
+                            ),
+                            ttl_seconds=(
+                                worktree.ttl_seconds if worktree is not None else 86_400
+                            ),
                         )
                         worktree_repo_path = repo_path
-                    except (
-                        Exception
-                    ) as exc:  # MCP tool error handler — broad catch is the documented contract
-                        if WorktreeLockedError is not None and isinstance(exc, WorktreeLockedError):
+                    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
+                        if WorktreeLockedError is not None and isinstance(
+                            exc, WorktreeLockedError
+                        ):
                             logger.exception(
                                 "worktree lock conflict",
                                 extra={"error_id": "WORKTREE_LOCK_CONFLICT"},
@@ -1000,7 +1029,9 @@ def register_pool_tools(
                     and effective_isolation == "worktree"
                 ):
                     on_completion = (
-                        worktree.on_completion if worktree is not None else "return_diff"
+                        worktree.on_completion
+                        if worktree is not None
+                        else "return_diff"
                     )
                     try:
                         completion = await wt_manager.complete_worktree(
@@ -1014,9 +1045,7 @@ def register_pool_tools(
                             "merge": worktree_info.merge,
                             "files_touched": list(worktree_info.files_touched),
                         }
-                    except (
-                        Exception
-                    ) as exc:  # MCP tool error handler — broad catch is the documented contract
+                    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
                         logger.exception(
                             "worktree completion failed",
                             extra={"error_id": "WORKTREE_COMPLETION_FAILED"},
@@ -1050,7 +1079,9 @@ def register_pool_tools(
                 # hiccup at dispatch-completion time does not lose the
                 # result (FIX round-7 Tier 2).
                 try:
-                    await breaker.call(lambda: idem_store.mark_completed(existing_event, result))
+                    await breaker.call(
+                        lambda: idem_store.mark_completed(existing_event, result)
+                    )
                 except IdempotencyStoreUnavailable, IdempotencyCircuitOpen:  # ty: ignore[invalid-exception-caught]
                     logger.exception(
                         "failed to mark idempotency record completed",
@@ -1058,7 +1089,9 @@ def register_pool_tools(
                     )
 
             return result
-        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract
+        except (
+            Exception
+        ) as exc:  # MCP tool error handler — broad catch is the documented contract
             # If idempotency is wired, mark the record FAILED so a future
             # retry does not return stale PENDING. Best-effort — a DB
             # hiccup here must not mask the original dispatch error.
@@ -1112,7 +1145,9 @@ def register_pool_tools(
                     "status": "failed",
                     "error": str(exc),
                 }
-            logger.exception("Failed to route task via pool_route_execute — see traceback")
+            logger.exception(
+                "Failed to route task via pool_route_execute — see traceback"
+            )
             return {
                 "status": "failed",
                 "error": str(exc),

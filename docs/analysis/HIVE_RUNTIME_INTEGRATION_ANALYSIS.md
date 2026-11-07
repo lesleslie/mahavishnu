@@ -143,10 +143,10 @@ Based on typical agent graph frameworks (LangGraph, Agno, etc.):
                 "model": "claude-3-sonnet",
                 "system_prompt": "You are a researcher...",
                 "tools": ["web_search", "read_file"],
-                "max_iterations": 10
+                "max_iterations": 10,
             },
             "inputs": ["query"],
-            "outputs": ["research_result"]
+            "outputs": ["research_result"],
         },
         {
             "node_id": "summarizer",
@@ -156,33 +156,21 @@ Based on typical agent graph frameworks (LangGraph, Agno, etc.):
                 "system_prompt": "Summarize the research...",
             },
             "inputs": ["research_result"],
-            "outputs": ["summary"]
-        }
+            "outputs": ["summary"],
+        },
     ],
     "edges": [
-        {
-            "source": "entry",
-            "target": "researcher",
-            "edge_type": "always"
-        },
-        {
-            "source": "researcher",
-            "target": "summarizer",
-            "edge_type": "on_success"
-        },
-        {
-            "source": "summarizer",
-            "target": "exit",
-            "edge_type": "always"
-        }
+        {"source": "entry", "target": "researcher", "edge_type": "always"},
+        {"source": "researcher", "target": "summarizer", "edge_type": "on_success"},
+        {"source": "summarizer", "target": "exit", "edge_type": "always"},
     ],
     "entry_point": "researcher",
     "exit_points": ["exit"],
     "state_schema": {
         "query": "str",
         "research_result": "str | None",
-        "summary": "str | None"
-    }
+        "summary": "str | None",
+    },
 }
 ```
 
@@ -276,6 +264,7 @@ def select_pool_for_node(node: HiveNode) -> str:
 from pydantic import BaseModel
 from typing import Any
 
+
 class HiveNode(BaseModel):
     node_id: str
     node_type: str  # agent, tool, router, conditional, parallel
@@ -283,10 +272,12 @@ class HiveNode(BaseModel):
     inputs: list[str]
     outputs: list[str]
 
+
 class HiveEdge(BaseModel):
     source: str
     target: str
     edge_type: str  # always, on_success, on_failure, conditional
+
 
 class HiveGraph(BaseModel):
     graph_id: str
@@ -320,7 +311,10 @@ class GraphParser:
 
         for node in graph.nodes:
             if node.node_id not in connected_nodes:
-                if node.node_id != graph.entry_point and node.node_id not in graph.exit_points:
+                if (
+                    node.node_id != graph.entry_point
+                    and node.node_id not in graph.exit_points
+                ):
                     errors.append(f"Orphan node: {node.node_id}")
 
         # Check for missing entry point
@@ -340,6 +334,7 @@ from mahavishnu.core.dependency_graph import (
     DependencyStatus,
 )
 
+
 class GraphCompiler:
     """Compile Hive graph to Mahavishnu DependencyGraph."""
 
@@ -356,7 +351,7 @@ class GraphCompiler:
                     "config": node.config,
                     "inputs": node.inputs,
                     "outputs": node.outputs,
-                }
+                },
             )
 
         # Add edges as dependencies
@@ -388,11 +383,13 @@ class GraphCompiler:
 from dataclasses import dataclass
 from typing import Any
 
+
 @dataclass
 class ExecutionStage:
     stage_id: int
     node_ids: list[str]  # Nodes that can run in parallel
     dependencies: list[str]  # Stages that must complete first
+
 
 @dataclass
 class ExecutionPlan:
@@ -400,6 +397,7 @@ class ExecutionPlan:
     stages: list[ExecutionStage]
     total_nodes: int
     max_parallelism: int
+
 
 class ExecutionPlanner:
     """Generate parallel execution plan from dependency graph."""
@@ -421,7 +419,9 @@ class ExecutionPlanner:
 
             if not ready:
                 # Cycle or error
-                raise RuntimeError(f"No ready tasks, possible cycle. Remaining: {remaining}")
+                raise RuntimeError(
+                    f"No ready tasks, possible cycle. Remaining: {remaining}"
+                )
 
             # Group by execution profile for optimal parallelism
             stage = ExecutionStage(
@@ -450,6 +450,7 @@ import asyncio
 from typing import Any
 from mahavishnu.pools.manager import PoolManager, PoolSelector
 from mahavishnu.websocket.server import MahavishnuWebSocketServer
+
 
 class GraphExecutor:
     """Execute Hive graph using Mahavishnu pools."""
@@ -486,7 +487,10 @@ class GraphExecutor:
         if self.ws_server:
             await self.ws_server.broadcast_workflow_started(
                 execution_id,
-                {"graph_name": hive_graph.name, "total_stages": len(execution_plan.stages)}
+                {
+                    "graph_name": hive_graph.name,
+                    "total_stages": len(execution_plan.stages),
+                },
             )
 
         try:
@@ -503,9 +507,13 @@ class GraphExecutor:
                 for node_id, result in stage_results.items():
                     if result.get("success"):
                         state.update(result.get("outputs", {}))
-                        self._execution_states[execution_id]["completed_nodes"].append(node_id)
+                        self._execution_states[execution_id]["completed_nodes"].append(
+                            node_id
+                        )
                     else:
-                        self._execution_states[execution_id]["failed_nodes"].append(node_id)
+                        self._execution_states[execution_id]["failed_nodes"].append(
+                            node_id
+                        )
                         # Handle failure based on edge type
 
                 # Broadcast stage completion
@@ -525,7 +533,9 @@ class GraphExecutor:
                 "success": True,
                 "execution_id": execution_id,
                 "final_state": state,
-                "completed_nodes": self._execution_states[execution_id]["completed_nodes"],
+                "completed_nodes": self._execution_states[execution_id][
+                    "completed_nodes"
+                ],
             }
 
         except Exception as e:
@@ -563,10 +573,7 @@ class GraphExecutor:
             return_exceptions=True,
         )
 
-        return {
-            tasks[i][0]: self._format_result(r)
-            for i, r in enumerate(results)
-        }
+        return {tasks[i][0]: self._format_result(r) for i, r in enumerate(results)}
 
     async def _execute_node(
         self,
@@ -619,7 +626,9 @@ class GraphExecutor:
         """Format execution result."""
         if isinstance(result, Exception):
             return {"success": False, "error": str(result)}
-        return result if isinstance(result, dict) else {"success": True, "output": result}
+        return (
+            result if isinstance(result, dict) else {"success": True, "output": result}
+        )
 ```
 
 ---
@@ -652,15 +661,17 @@ async def initialize_hive_execution(
     plan = planner.plan(dag, graph)
 
     # 4. Initialize memory context via Session-Buddy
-    await session_buddy_client.store_memory({
-        "content": f"Initializing graph: {graph.name}",
-        "metadata": {
-            "type": "hive_graph_initialization",
-            "graph_id": graph.graph_id,
-            "node_count": len(graph.nodes),
-            "timestamp": datetime.utcnow().isoformat(),
+    await session_buddy_client.store_memory(
+        {
+            "content": f"Initializing graph: {graph.name}",
+            "metadata": {
+                "type": "hive_graph_initialization",
+                "graph_id": graph.graph_id,
+                "node_count": len(graph.nodes),
+                "timestamp": datetime.utcnow().isoformat(),
+            },
         }
-    })
+    )
 
     return graph, dag, plan
 ```
@@ -692,7 +703,9 @@ async def execute_with_streaming(
         }
 
         # Execute stage
-        stage_results = await executor._execute_stage(stage, graph, state, graph.graph_id)
+        stage_results = await executor._execute_stage(
+            stage, graph, state, graph.graph_id
+        )
 
         # Yield stage results
         yield {
@@ -1005,10 +1018,12 @@ class HiveQualityAdapter:
     ) -> dict[str, Any]:
         """Evaluate output quality via Crackerjack."""
         # Run quality checks
-        results = await self.client.run_quality_checks({
-            "code": output,
-            "checks": criteria.get("checks", ["lint", "type", "test"]),
-        })
+        results = await self.client.run_quality_checks(
+            {
+                "code": output,
+                "checks": criteria.get("checks", ["lint", "type", "test"]),
+            }
+        )
 
         return {
             "score": results.get("score", 0),
@@ -1035,20 +1050,24 @@ class HiveAnalyticsAdapter:
         metrics: dict[str, Any],
     ):
         """Record execution metrics to Akosha."""
-        await self.client.aggregate_metrics({
-            "source": "hive",
-            "graph_id": graph_id,
-            "execution_id": execution_id,
-            "metrics": metrics,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        await self.client.aggregate_metrics(
+            {
+                "source": "hive",
+                "graph_id": graph_id,
+                "execution_id": execution_id,
+                "metrics": metrics,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
     async def get_graph_performance(self, graph_id: str) -> dict[str, Any]:
         """Get historical performance for graph pattern."""
-        return await self.client.detect_patterns({
-            "type": "graph_performance",
-            "graph_id": graph_id,
-        })
+        return await self.client.detect_patterns(
+            {
+                "type": "graph_performance",
+                "graph_id": graph_id,
+            }
+        )
 ```
 
 ---

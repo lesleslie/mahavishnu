@@ -318,7 +318,9 @@ class TestBackupManager:
         """Test that cleanup respects retention policy."""
         # This is a difficult test to implement without creating actual old backups
         # We'll just verify the method is called
-        with patch.object(backup_manager, "_cleanup_old_backups", new_callable=AsyncMock):
+        with patch.object(
+            backup_manager, "_cleanup_old_backups", new_callable=AsyncMock
+        ):
             await backup_manager.create_backup()
             # Give some time for async cleanup
             import asyncio
@@ -414,7 +416,10 @@ class TestDisasterRecoveryManager:
     async def test_run_disaster_recovery_check_no_backups(self, recovery_manager):
         """Test disaster recovery check with no backups."""
         with patch.object(
-            recovery_manager.backup_manager, "list_backups", new_callable=AsyncMock, return_value=[]
+            recovery_manager.backup_manager,
+            "list_backups",
+            new_callable=AsyncMock,
+            return_value=[],
         ):
             results = await recovery_manager.run_disaster_recovery_check()
 
@@ -501,10 +506,15 @@ class TestDisasterRecoveryManager:
             assert result["backup_used"] == "backup_latest"
 
     @pytest.mark.asyncio
-    async def test_initiate_disaster_recovery_no_backups_available(self, recovery_manager):
+    async def test_initiate_disaster_recovery_no_backups_available(
+        self, recovery_manager
+    ):
         """Test disaster recovery fails when no backups available."""
         with patch.object(
-            recovery_manager.backup_manager, "list_backups", new_callable=AsyncMock, return_value=[]
+            recovery_manager.backup_manager,
+            "list_backups",
+            new_callable=AsyncMock,
+            return_value=[],
         ):
             result = await recovery_manager.initiate_disaster_recovery()
 
@@ -607,7 +617,10 @@ class TestBackupAndRecoveryCLI:
         )
 
         with patch.object(
-            cli.backup_manager, "create_backup", new_callable=AsyncMock, return_value=backup_info
+            cli.backup_manager,
+            "create_backup",
+            new_callable=AsyncMock,
+            return_value=backup_info,
         ):
             result = await cli.create_backup()
 
@@ -655,7 +668,10 @@ class TestBackupAndRecoveryCLI:
         ]
 
         with patch.object(
-            cli.backup_manager, "list_backups", new_callable=AsyncMock, return_value=backups
+            cli.backup_manager,
+            "list_backups",
+            new_callable=AsyncMock,
+            return_value=backups,
         ):
             result = await cli.list_backups()
 
@@ -667,7 +683,10 @@ class TestBackupAndRecoveryCLI:
     async def test_restore_backup_success(self, cli):
         """Test successful backup restore via CLI."""
         with patch.object(
-            cli.backup_manager, "restore_backup", new_callable=AsyncMock, return_value=True
+            cli.backup_manager,
+            "restore_backup",
+            new_callable=AsyncMock,
+            return_value=True,
         ):
             result = await cli.restore_backup("backup_test")
 
@@ -678,7 +697,10 @@ class TestBackupAndRecoveryCLI:
     async def test_restore_backup_failure(self, cli):
         """Test backup restore failure via CLI."""
         with patch.object(
-            cli.backup_manager, "restore_backup", new_callable=AsyncMock, return_value=False
+            cli.backup_manager,
+            "restore_backup",
+            new_callable=AsyncMock,
+            return_value=False,
         ):
             result = await cli.restore_backup("backup_test")
 
@@ -687,7 +709,11 @@ class TestBackupAndRecoveryCLI:
     @pytest.mark.asyncio
     async def test_run_disaster_recovery_check(self, cli):
         """Test disaster recovery check via CLI."""
-        check_results = {"timestamp": datetime.now(UTC).isoformat(), "checks": {}, "status": "healthy"}
+        check_results = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "checks": {},
+            "status": "healthy",
+        }
 
         with patch.object(
             cli.recovery_manager,
@@ -754,7 +780,10 @@ class TestEdgeCases:
             checksum = await manager._calculate_checksum(Path(tmp.name))
 
             # SHA256 of empty string is known value
-            assert checksum == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            assert (
+                checksum
+                == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            )
 
             Path(tmp.name).unlink()
 

@@ -71,7 +71,7 @@ def _oneiric_reachable(
             )
             if response.status_code == 200:
                 return True
-        except (httpx.RequestError, httpx.TimeoutException):
+        except httpx.RequestError, httpx.TimeoutException:
             time.sleep(0.5)
     return False
 
@@ -99,7 +99,7 @@ def _fetch_runtime_block(
             timeout=5.0,
         )
         response.raise_for_status()
-    except (httpx.RequestError, httpx.TimeoutException):
+    except httpx.RequestError, httpx.TimeoutException:
         return None
     envelope: dict[str, Any] = response.json()
     result: dict[str, Any] = envelope.get("result") or {}
@@ -107,9 +107,7 @@ def _fetch_runtime_block(
     return runtime if isinstance(runtime, dict) else None
 
 
-def _fetch_cycles_total(
-    *, domain: str, key: str, provider: str
-) -> int | None:
+def _fetch_cycles_total(*, domain: str, key: str, provider: str) -> int | None:
     """Return ``result.cycles_total`` from ``oneiric_get_adapter_health``.
 
     Oneiric-set monotonic counter — increments every time the Oneiric
@@ -137,7 +135,7 @@ def _fetch_cycles_total(
             timeout=5.0,
         )
         response.raise_for_status()
-    except (httpx.RequestError, httpx.TimeoutException):
+    except httpx.RequestError, httpx.TimeoutException:
         return None
     envelope: dict[str, Any] = response.json()
     result: dict[str, Any] = envelope.get("result") or {}
@@ -146,7 +144,7 @@ def _fetch_cycles_total(
         return None
     try:
         return int(cycles)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -311,8 +309,7 @@ async def test_mahavishnu_list_adapters_preserves_legacy_wire_shape() -> None:
         row = payload["adapters"].get(name)
         assert row is not None, f"adapter {name} missing from payload"
         assert set(row.keys()) == set(LEGACY_ADAPTER_KEYS), (
-            f"adapter {name} sub-keys {set(row.keys())} != "
-            f"{set(LEGACY_ADAPTER_KEYS)}"
+            f"adapter {name} sub-keys {set(row.keys())} != {set(LEGACY_ADAPTER_KEYS)}"
         )
         assert isinstance(row["enabled"], bool)
         assert isinstance(row["health"], str)
@@ -352,9 +349,7 @@ async def test_mahavishnu_reconfigure_pushes_runtime_to_oneiric() -> None:
     # always passed even when no second push occurred.
     initial_cycles: dict[str, int] = {}
     for adapter in EXPECTED_ADAPTERS:
-        value = _fetch_cycles_total(
-            domain="engine", key=adapter, provider=adapter
-        )
+        value = _fetch_cycles_total(domain="engine", key=adapter, provider=adapter)
         if value is None:
             pytest.skip(
                 "initial cycles_total fetch failed within setup window; "
@@ -374,9 +369,7 @@ async def test_mahavishnu_reconfigure_pushes_runtime_to_oneiric() -> None:
     post_cycles: dict[str, int | None] = {}
     while time.monotonic() < deadline:
         post_cycles = {
-            adapter: _fetch_cycles_total(
-                domain="engine", key=adapter, provider=adapter
-            )
+            adapter: _fetch_cycles_total(domain="engine", key=adapter, provider=adapter)
             for adapter in EXPECTED_ADAPTERS
         }
         if all(

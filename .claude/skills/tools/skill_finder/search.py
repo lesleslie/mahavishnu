@@ -41,7 +41,10 @@ def fuzzy_search(query: str, index: SearchIndex, limit: int = 5) -> list[SearchR
         if query_lower == skill_name.lower():
             results.append(
                 SearchResult(
-                    skill_name=skill_name, score=1.0, match_type="exact", matched_terms=[query]
+                    skill_name=skill_name,
+                    score=1.0,
+                    match_type="exact",
+                    matched_terms=[query],
                 )
             )
             return results[:limit]  # Exact match returns immediately
@@ -81,7 +84,9 @@ def fuzzy_search(query: str, index: SearchIndex, limit: int = 5) -> list[SearchR
             description_lower = skill.description.lower()
             occurrences = description_lower.count(query_lower)
             position = description_lower.find(query_lower)
-            score = 0.80 - (position / len(description_lower)) * 0.1 + (occurrences * 0.05)
+            score = (
+                0.80 - (position / len(description_lower)) * 0.1 + (occurrences * 0.05)
+            )
             results.append(
                 SearchResult(
                     skill_name=skill_name,
@@ -114,7 +119,9 @@ def fuzzy_search(query: str, index: SearchIndex, limit: int = 5) -> list[SearchR
             unique_results[result.skill_name] = result
 
     # Sort by score descending
-    sorted_results = sorted(unique_results.values(), key=lambda r: r.score, reverse=True)
+    sorted_results = sorted(
+        unique_results.values(), key=lambda r: r.score, reverse=True
+    )
 
     return sorted_results[:limit]
 

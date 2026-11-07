@@ -117,7 +117,9 @@ class TwoStageDetector:
         confirm_window_samples: int = DEFAULT_CONFIRM_WINDOW,
     ) -> None:
         if confirm_window_samples <= 0:
-            raise ValueError(f"confirm_window_samples must be > 0, got {confirm_window_samples}")
+            raise ValueError(
+                f"confirm_window_samples must be > 0, got {confirm_window_samples}"
+            )
         self.warn_detector: ChangePointDetector = warn_detector
         self.confirm_detector: ChangePointDetector = confirm_detector
         self._confirm_window_samples: int = confirm_window_samples

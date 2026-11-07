@@ -83,9 +83,13 @@ def test_policy_rejects_invalid_transitions_and_rollback_versions() -> None:
     policy = SkillPromotionPolicy()
 
     with pytest.raises(ValueError, match="Invalid skill promotion transition"):
-        policy.validate_transition(SkillPromotionState.DRAFT, SkillPromotionState.ACTIVE)
+        policy.validate_transition(
+            SkillPromotionState.DRAFT, SkillPromotionState.ACTIVE
+        )
 
-    with pytest.raises(ValueError, match="from_version and to_version must be different"):
+    with pytest.raises(
+        ValueError, match="from_version and to_version must be different"
+    ):
         SkillRollback(
             skill_id="skill-1",
             from_version="1.0.0",

@@ -139,7 +139,10 @@ def migrate_legacy_webhook_event(
         source=f"webhook.{legacy.get('source', 'unknown')}",
         correlation_id=correlation_id,
         causation_id=causation_id,
-        payload={"repository": legacy.get("repository"), "sender": legacy.get("sender")},
+        payload={
+            "repository": legacy.get("repository"),
+            "sender": legacy.get("sender"),
+        },
         metadata={"migrated_from": "webhook_event_v1"},
     )
 

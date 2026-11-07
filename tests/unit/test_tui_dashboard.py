@@ -181,7 +181,9 @@ class TestDataFetchers:
         assert isinstance(data, list)
 
     @pytest.mark.asyncio
-    async def test_fetch_skill_drafts_uses_registry_when_available(self, monkeypatch) -> None:
+    async def test_fetch_skill_drafts_uses_registry_when_available(
+        self, monkeypatch
+    ) -> None:
         from types import SimpleNamespace
 
         from mahavishnu.tui import app as tui_app
@@ -683,7 +685,9 @@ class TestProbeService:
 class TestFetchHealth:
     """Verify _fetch_health HTTP response handling and error branches."""
 
-    def _make_json_response(self, status_code: int, body: dict) -> tuple[AsyncMock, MagicMock]:
+    def _make_json_response(
+        self, status_code: int, body: dict
+    ) -> tuple[AsyncMock, MagicMock]:
         resp = MagicMock()
         resp.status_code = status_code
         resp.json = MagicMock(return_value=body)
@@ -821,7 +825,9 @@ class TestComponentUrls:
         settings_mock.pools = MagicMock(akosha_url=None, session_buddy_url=None)
         settings_mock.oneiric_mcp = None
 
-        with patch("mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock):
+        with patch(
+            "mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock
+        ):
             urls = _component_urls()
 
         assert urls["crackerjack"] == "http://localhost:8676"
@@ -837,7 +843,9 @@ class TestComponentUrls:
         settings_mock.pools = pools_mock
         settings_mock.oneiric_mcp = None
 
-        with patch("mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock):
+        with patch(
+            "mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock
+        ):
             urls = _component_urls()
 
         assert urls["akosha"] == "http://localhost:8682"
@@ -853,7 +861,9 @@ class TestComponentUrls:
         settings_mock.pools = pools_mock
         settings_mock.oneiric_mcp = None
 
-        with patch("mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock):
+        with patch(
+            "mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock
+        ):
             urls = _component_urls()
 
         assert urls["sb-metrics"] == "http://localhost:8678"
@@ -875,7 +885,9 @@ class TestComponentUrls:
         settings_mock.pools = pools_mock
         settings_mock.oneiric_mcp = None
 
-        with patch("mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock):
+        with patch(
+            "mahavishnu.core.config.MahavishnuSettings", return_value=settings_mock
+        ):
             urls = _component_urls()
 
         # crackerjack failed (AttributeError suppressed) but akosha still resolved

@@ -210,7 +210,10 @@ class TestAdapterManager:
         assert mgr.get_statistics() == {}
 
     def test_coerce_adapter_type_enum(self) -> None:
-        assert AdapterManager._coerce_adapter_type(AdapterType.PREFECT) is AdapterType.PREFECT
+        assert (
+            AdapterManager._coerce_adapter_type(AdapterType.PREFECT)
+            is AdapterType.PREFECT
+        )
         assert AdapterManager._coerce_adapter_type("prefect") is AdapterType.PREFECT
         # string matching by value
         assert AdapterManager._coerce_adapter_type("WORKFLOW") is None
@@ -263,7 +266,9 @@ class TestStateManager:
         sm = StateManager(state_dir=tmp_path)
         import asyncio
 
-        asyncio.get_event_loop().run_until_complete(sm.create("wf-1", {"prompt": "hi"}, ["/r1"]))
+        asyncio.get_event_loop().run_until_complete(
+            sm.create("wf-1", {"prompt": "hi"}, ["/r1"])
+        )
         # New instance should load from disk
         sm2 = StateManager(state_dir=tmp_path)
         state = asyncio.get_event_loop().run_until_complete(sm2.get("wf-1"))
@@ -320,12 +325,15 @@ class TestStateManager:
             # State should still be in memory
             assert "wf-1" in sm._workflows
             # Warning was logged
-            assert any("Failed to persist" in record.message for record in caplog.records)
+            assert any(
+                "Failed to persist" in record.message for record in caplog.records
+            )
 
     def test_normalize_status(self) -> None:
         assert StateManager._normalize_status(None) is None
         assert (
-            StateManager._normalize_status(WorkflowStatus.PENDING) == WorkflowStatus.PENDING.value
+            StateManager._normalize_status(WorkflowStatus.PENDING)
+            == WorkflowStatus.PENDING.value
         )
         assert StateManager._normalize_status("running") == "running"
         assert StateManager._normalize_status(123) == "123"
@@ -385,7 +393,9 @@ class TestStateManager:
         assert state["errors"] == [{"msg": "e"}]
         assert state["adapter_states"] == {"prefect": {"x": 1}}
 
-    async def test_update_with_none_collections_preserves_defaults(self, tmp_path: Path) -> None:
+    async def test_update_with_none_collections_preserves_defaults(
+        self, tmp_path: Path
+    ) -> None:
         sm = StateManager(state_dir=tmp_path)
         await sm.create("wf-1", {}, [])
         # results=None and errors=None are tolerated; only the in-memory
@@ -428,10 +438,14 @@ class TestStateManager:
         all_wfs = loop.run_until_complete(sm.list_workflows())
         assert {w["workflow_id"] for w in all_wfs} == {"wf-1", "wf-2"}
         # Only running
-        running = loop.run_until_complete(sm.list_workflows(status=WorkflowStatus.RUNNING))
+        running = loop.run_until_complete(
+            sm.list_workflows(status=WorkflowStatus.RUNNING)
+        )
         assert {w["workflow_id"] for w in running} == {"wf-1"}
         # Pending
-        pending = loop.run_until_complete(sm.list_workflows(status=WorkflowStatus.PENDING))
+        pending = loop.run_until_complete(
+            sm.list_workflows(status=WorkflowStatus.PENDING)
+        )
         assert {w["workflow_id"] for w in pending} == {"wf-2"}
 
     def test_list_workflows_limit(self, tmp_path: Path) -> None:
@@ -495,7 +509,9 @@ class TestStateManager:
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(sm.create("wf-1", {}, []))
-        loop.run_until_complete(sm.update("wf-1", results=[{"a": 1}], errors=[{"e": 1}]))
+        loop.run_until_complete(
+            sm.update("wf-1", results=[{"a": 1}], errors=[{"e": 1}])
+        )
         count = loop.run_until_complete(sm.get_completed_count("wf-1"))
         assert count == 2
 
@@ -541,7 +557,9 @@ class TestStateManager:
         import asyncio
 
         loop = asyncio.get_event_loop()
-        rec = loop.run_until_complete(sm.create_workflow_state("wf-1", "prefect", {"k": "v"}))
+        rec = loop.run_until_complete(
+            sm.create_workflow_state("wf-1", "prefect", {"k": "v"})
+        )
         assert rec["adapter_states"]["prefect"] == {"k": "v"}
 
     def test_create_workflow_state_uses_enum_key(self, tmp_path: Path) -> None:
@@ -602,7 +620,9 @@ class TestCapabilityRouter:
             "workflow",
             "deploy_flows",
         ]
-        assert CapabilityRouter.TASK_CAPABILITY_REQUIREMENTS[TaskType.INTERACTIVE_TASK] == [
+        assert CapabilityRouter.TASK_CAPABILITY_REQUIREMENTS[
+            TaskType.INTERACTIVE_TASK
+        ] == [
             "multi_agent",
             "tool_use",
             "conversational",
@@ -620,7 +640,9 @@ class TestCapabilityRouter:
         router = CapabilityRouter()
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(router.route(TaskType.AI_TASK))
+        result = asyncio.get_event_loop().run_until_complete(
+            router.route(TaskType.AI_TASK)
+        )
         assert result["success"] is False
         assert "No adapter registry" in result["error"]
         assert result["task_type"] == "ai_task"
@@ -641,7 +663,9 @@ class TestCapabilityRouter:
         router = CapabilityRouter(registry=registry)
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(router.route(TaskType.AI_TASK))
+        result = asyncio.get_event_loop().run_until_complete(
+            router.route(TaskType.AI_TASK)
+        )
         assert result["success"] is False
         assert "No adapter found" in result["error"]
 
@@ -663,7 +687,9 @@ class TestCapabilityRouter:
         router = CapabilityRouter(registry=registry)
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(router.route(TaskType.AI_TASK))
+        result = asyncio.get_event_loop().run_until_complete(
+            router.route(TaskType.AI_TASK)
+        )
         # If RoutingDecision is available we get a dataclass, otherwise a dict.
         # At least the adapter name should be "high".
         if hasattr(result, "adapter_name"):
@@ -678,7 +704,9 @@ class TestCapabilityRouter:
         router = CapabilityRouter(registry=registry)
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(router.route(TaskType.WORKFLOW))
+        result = asyncio.get_event_loop().run_until_complete(
+            router.route(TaskType.WORKFLOW)
+        )
         assert result["success"] is False
         assert "boom" in result["error"]
 
@@ -746,14 +774,18 @@ class TestTaskRouterHelpers:
         assert TaskRouter._normalize_task_type("not-a-type") is current.WORKFLOW
 
     def test_coerce_adapter_type(self) -> None:
-        assert TaskRouter._coerce_adapter_type(AdapterType.PREFECT) is AdapterType.PREFECT
+        assert (
+            TaskRouter._coerce_adapter_type(AdapterType.PREFECT) is AdapterType.PREFECT
+        )
         assert TaskRouter._coerce_adapter_type("prefect") is AdapterType.PREFECT
         assert TaskRouter._coerce_adapter_type(None) is None
         assert TaskRouter._coerce_adapter_type("bogus") is None
 
     def test_normalize_preference_order_dedupes(self) -> None:
         tr = TaskRouter()
-        result = tr._normalize_preference_order([AdapterType.PREFECT, "prefect", AdapterType.AGNO])
+        result = tr._normalize_preference_order(
+            [AdapterType.PREFECT, "prefect", AdapterType.AGNO]
+        )
         assert result == [AdapterType.PREFECT, AdapterType.AGNO]
 
     def test_normalize_preference_order_filters_invalid(self) -> None:
@@ -1077,7 +1109,9 @@ class TestTaskRouterHealth:
 
     async def test_get_health_with_adapters(self) -> None:
         mgr = AdapterManager()
-        await mgr.register_adapter(AdapterType.PREFECT, FakeAdapter(AdapterType.PREFECT))
+        await mgr.register_adapter(
+            AdapterType.PREFECT, FakeAdapter(AdapterType.PREFECT)
+        )
         await mgr.register_adapter(AdapterType.AGNO, FakeAdapter(AdapterType.AGNO))
         tr = TaskRouter(adapter_registry=mgr)
         health = await tr.get_health()
@@ -1130,7 +1164,9 @@ class TestGetAdapterHealth:
             async def get_health(self) -> dict[str, Any]:  # type: ignore[override]
                 raise RuntimeError("health-broken")
 
-        await mgr.register_adapter(AdapterType.PREFECT, BoomAdapter(AdapterType.PREFECT))
+        await mgr.register_adapter(
+            AdapterType.PREFECT, BoomAdapter(AdapterType.PREFECT)
+        )
         tr = TaskRouter(adapter_registry=mgr)
         result = await tr._get_adapter_health(AdapterType.PREFECT)
         assert result["status"] == "error"

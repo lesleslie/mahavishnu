@@ -246,7 +246,9 @@ def register_terminal_tools(
         # handle an invalid session ID on every call. See
         # ``docs/followups/2026-09-05-terminal-close-all-empty-id-roundtrip.md``.
         session_ids = [
-            sid for sid in (s.get("id", s.get("terminal_id", "")) for s in sessions) if sid
+            sid
+            for sid in (s.get("id", s.get("terminal_id", "")) for s in sessions)
+            if sid
         ]
         if session_ids:
             await terminal_manager.close_all(session_ids)

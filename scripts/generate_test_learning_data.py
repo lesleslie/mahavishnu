@@ -70,7 +70,14 @@ TASK_TEMPLATES = {
     ],
 }
 
-REPOS = ["mahavishnu", "oneiric", "session-buddy", "akosha", "fastblocks", "crackerjack"]
+REPOS = [
+    "mahavishnu",
+    "oneiric",
+    "session-buddy",
+    "akosha",
+    "fastblocks",
+    "crackerjack",
+]
 
 MODEL_TIERS = ["sonnet-4.5", "opus-4.6", "haiku-3.5"]
 
@@ -198,7 +205,9 @@ def generate_test_data(
         error_value = f"'{error_type}'" if error_type else "NULL"
         user_accepted = random.choice([None, True, False])
         user_value = (
-            "true" if user_accepted is True else ("false" if user_accepted is False else "NULL")
+            "true"
+            if user_accepted is True
+            else ("false" if user_accepted is False else "NULL")
         )
         user_rating = random.choice([None, 1, 2, 3, 4, 5])
         rating_value = user_rating if user_rating else "NULL"
@@ -251,14 +260,18 @@ def generate_test_data(
             logger.debug(f"Inserted {i + 1}/{count} records")
 
     elapsed = time.time() - start_time
-    logger.info(f"Generated {count} records in {elapsed:.2f}s ({count / elapsed:.1f} records/s)")
+    logger.info(
+        f"Generated {count} records in {elapsed:.2f}s ({count / elapsed:.1f} records/s)"
+    )
 
     return count
 
 
 def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Generate test data for learning database")
+    parser = argparse.ArgumentParser(
+        description="Generate test data for learning database"
+    )
     parser.add_argument(
         "--count",
         type=int,
@@ -274,7 +287,9 @@ def main() -> int:
         "--task-types",
         help="Comma-separated list of task types (default: all)",
     )
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
 
     args = parser.parse_args()
 

@@ -230,7 +230,9 @@ def aggregate_statuses(statuses: list[CanonicalStatus]) -> CanonicalStatus:
     return max(statuses, key=lambda s: STATUS_SEVERITY.get(s, 1))
 
 
-def is_valid_transition(from_status: CanonicalStatus, to_status: CanonicalStatus) -> bool:
+def is_valid_transition(
+    from_status: CanonicalStatus, to_status: CanonicalStatus
+) -> bool:
     """Check whether a status transition is valid."""
     return to_status in VALID_TRANSITIONS.get(from_status, set())
 
@@ -443,7 +445,9 @@ class EcosystemStatusService:
         self._recovery_provider = recovery_provider
         self._service_configs = service_configs or {}
 
-    async def generate_report(self, request_id: str | None = None) -> EcosystemStatusReport:
+    async def generate_report(
+        self, request_id: str | None = None
+    ) -> EcosystemStatusReport:
         """Generate a full ecosystem status report.
 
         Each section is collected concurrently with independent timeouts.
@@ -578,7 +582,9 @@ class EcosystemStatusService:
         adapters: dict[str, AdapterStatus] = {}
         for name, adapter in self._adapters.items():
             try:
-                health = await adapter.get_health() if hasattr(adapter, "get_health") else {}  # type: ignore[var-annotated]
+                health = (
+                    await adapter.get_health() if hasattr(adapter, "get_health") else {}
+                )  # type: ignore[var-annotated]
                 raw_status = health.get("status", "unknown")
                 adapters[name] = AdapterStatus(
                     status=normalize_status(raw_status),
@@ -629,13 +635,18 @@ class EcosystemStatusService:
             by_severity: dict[str, int] = {}
             top: list[AlertRef] = []
             for a in alerts[:20]:
-                sev = a.severity.value if hasattr(a.severity, "value") else str(a.severity)
+                sev = (
+                    a.severity.value
+                    if hasattr(a.severity, "value")
+                    else str(a.severity)
+                )
                 by_severity[sev] = by_severity.get(sev, 0) + 1
                 top.append(
                     AlertRef(
                         severity=sev,
                         source=getattr(a, "type", "unknown"),
-                        message=getattr(a, "description", "") or getattr(a, "title", ""),
+                        message=getattr(a, "description", "")
+                        or getattr(a, "title", ""),
                         created_at=getattr(a, "timestamp", datetime.now(UTC)),
                     )
                 )
@@ -686,7 +697,9 @@ class EcosystemStatusService:
 
         for name, adapter in self._adapters.items():
             try:
-                health = await adapter.get_health() if hasattr(adapter, "get_health") else {}  # type: ignore[var-annotated]
+                health = (
+                    await adapter.get_health() if hasattr(adapter, "get_health") else {}
+                )  # type: ignore[var-annotated]
                 adapter_status = normalize_status(health.get("status", "unknown"))
                 caps: list[str] = []
                 if hasattr(adapter, "capabilities"):

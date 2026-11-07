@@ -66,7 +66,9 @@ async def test_duckdb() -> bool:
     ]
 
     result = await ingester.ingest_batch(traces)
-    print(f"  Ingested: {result['success_count']} success, {result['error_count']} errors")
+    print(
+        f"  Ingested: {result['success_count']} success, {result['error_count']} errors"
+    )
 
     # Search
     results = await ingester.search_traces("span", limit=10)
@@ -93,7 +95,9 @@ async def test_pgvector() -> bool:
     storage_type = os.getenv("MAHAVISHNU__OTEL_INGESTER__STORAGE__TYPE", "postgresql")
 
     print(f"  Storage type: {storage_type}")
-    print(f"  PG URL: {pg_url.split('@')[-1] if '@' in pg_url else pg_url}")  # hidecreds
+    print(
+        f"  PG URL: {pg_url.split('@')[-1] if '@' in pg_url else pg_url}"
+    )  # hidecreds
 
     from mahavishnu.ingesters.otel_ingester import create_otel_ingester
 
@@ -126,7 +130,9 @@ async def test_pgvector() -> bool:
 
     print(f"  Ingesting {len(traces)} traces...")
     result = await ingester.ingest_batch(traces)
-    print(f"  Ingested: {result['success_count']} success, {result['error_count']} errors")
+    print(
+        f"  Ingested: {result['success_count']} success, {result['error_count']} errors"
+    )
 
     if result["errors"]:
         for err in result["errors"]:

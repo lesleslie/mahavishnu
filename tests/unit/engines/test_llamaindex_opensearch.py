@@ -50,7 +50,9 @@ def captured_client() -> Any:
             self.client = client
 
     with (
-        patch("llama_index.vector_stores.opensearch.OpensearchVectorClient", _FakeClient),
+        patch(
+            "llama_index.vector_stores.opensearch.OpensearchVectorClient", _FakeClient
+        ),
         patch("llama_index.vector_stores.opensearch.OpensearchVectorStore", _FakeStore),
     ):
         yield captured
@@ -92,7 +94,10 @@ def test_the_dimension_comes_from_the_model_not_a_constant(
     }
 
     with patch.object(impl.httpx, "Client", _fake_client(responses)):
-        assert adapter._resolve_embedding_dim("http://localhost:9200", "mahavishnu_code") == 4096
+        assert (
+            adapter._resolve_embedding_dim("http://localhost:9200", "mahavishnu_code")
+            == 4096
+        )
 
 
 def test_the_existing_index_mapping_wins(captured_client: dict[str, Any]) -> None:
@@ -110,7 +115,10 @@ def test_the_existing_index_mapping_wins(captured_client: dict[str, Any]) -> Non
     }
 
     with patch.object(impl.httpx, "Client", _fake_client(responses)):
-        assert adapter._resolve_embedding_dim("http://localhost:9200", "mahavishnu_code") == 768
+        assert (
+            adapter._resolve_embedding_dim("http://localhost:9200", "mahavishnu_code")
+            == 768
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -182,5 +190,7 @@ def http_status_error(status: int, url: str) -> _FakeResponse:
     request = impl.httpx.Request("GET", url)
     response = impl.httpx.Response(status, request=request)
     return _FakeResponse(
-        error=impl.httpx.HTTPStatusError(f"HTTP Error {status}", request=request, response=response)
+        error=impl.httpx.HTTPStatusError(
+            f"HTTP Error {status}", request=request, response=response
+        )
     )

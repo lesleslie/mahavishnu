@@ -22,7 +22,9 @@ from mahavishnu.shell.formatters import (
 @pytest.fixture
 def recording_console():
     """Real Rich console that records its output as plain text."""
-    return Console(record=True, width=200, force_terminal=False, file=open("/dev/null", "w"))
+    return Console(
+        record=True, width=200, force_terminal=False, file=open("/dev/null", "w")
+    )
 
 
 @pytest.fixture
@@ -172,9 +174,13 @@ class TestWorkflowFormatterFormatWorkflows:
         column_headers = [c.header for c in printed.columns]
         assert "Details" not in column_headers
 
-    def test_renders_workflow_id_and_status(self, recording_workflow_formatter, sample_workflow):
+    def test_renders_workflow_id_and_status(
+        self, recording_workflow_formatter, sample_workflow
+    ):
         """Rendered output contains the workflow ID and status text."""
-        recording_workflow_formatter.format_workflows([sample_workflow], show_details=False)
+        recording_workflow_formatter.format_workflows(
+            [sample_workflow], show_details=False
+        )
         text = _strip(recording_workflow_formatter.console.export_text())
         assert "wf-1234" in text
         assert "running" in text
@@ -188,7 +194,9 @@ class TestWorkflowFormatterFormatWorkflows:
             (WorkflowStatus.PENDING, "blue"),
         ],
     )
-    def test_status_style_mapping_known_status(self, console_mock, status, expected_color):
+    def test_status_style_mapping_known_status(
+        self, console_mock, status, expected_color
+    ):
         """Status keys map to expected Rich styles in the row text."""
         wf = {
             "id": "wf-1",
@@ -246,9 +254,13 @@ class TestWorkflowFormatterFormatWorkflows:
         assert "x" * 20 in text
         assert "x" * 21 not in text
 
-    def test_details_mentions_repos_and_errors(self, recording_workflow_formatter, sample_workflow):
+    def test_details_mentions_repos_and_errors(
+        self, recording_workflow_formatter, sample_workflow
+    ):
         """Details cell includes repo count and error count when present."""
-        recording_workflow_formatter.format_workflows([sample_workflow], show_details=True)
+        recording_workflow_formatter.format_workflows(
+            [sample_workflow], show_details=True
+        )
         text = _strip(recording_workflow_formatter.console.export_text())
         assert "Repos: 2" in text
         assert "Errors: 1" in text

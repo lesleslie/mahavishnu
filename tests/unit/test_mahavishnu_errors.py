@@ -105,7 +105,9 @@ class TestMahavishnuError:
     def test_default_recovery_guidance(self, base_error_message: str) -> None:
         """Test that default recovery guidance is used when none provided."""
         error = MahavishnuError(base_error_message, ErrorCode.INTERNAL_ERROR)
-        expected_guidance = MahavishnuError.RECOVERY_GUIDANCE[ErrorCode.INTERNAL_ERROR.value]
+        expected_guidance = MahavishnuError.RECOVERY_GUIDANCE[
+            ErrorCode.INTERNAL_ERROR.value
+        ]
 
         assert error.recovery == expected_guidance
         assert len(error.recovery) > 0
@@ -1212,7 +1214,10 @@ class TestErrorCreationWithoutContext:
         assert error.message == "Simple message"
         assert error.error_code == ErrorCode.INTERNAL_ERROR
         assert error.details == {}
-        assert error.recovery == MahavishnuError.RECOVERY_GUIDANCE[ErrorCode.INTERNAL_ERROR.value]
+        assert (
+            error.recovery
+            == MahavishnuError.RECOVERY_GUIDANCE[ErrorCode.INTERNAL_ERROR.value]
+        )
 
     def test_only_message_and_code(self) -> None:
         """Test with just message and error code."""

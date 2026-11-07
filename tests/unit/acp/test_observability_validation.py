@@ -40,6 +40,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.acp, pytest.mark.acp_stdio]
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def valid_bearer() -> str:
     """40-byte bearer (passes min-length). Mirrors the fixture in test_server.py."""
@@ -78,6 +79,7 @@ def _restore_tracer_provider() -> None:
     try:
         from opentelemetry import trace
         from opentelemetry.sdk.trace import TracerProvider
+
         trace.set_tracer_provider(TracerProvider())
     except ImportError:
         pass
@@ -122,6 +124,7 @@ def log_capture() -> _LogCapture:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestObservabilityValidation:
     """The plan's mandated Observability Validation test."""
 
@@ -147,8 +150,12 @@ class TestObservabilityValidation:
         # Authenticate, create a session, then send a prompt.
         # The prompt drives ``session_span`` instrumentation.
         server.handle_request(
-            {"jsonrpc": "2.0", "id": 1, "method": "authenticate",
-             "params": {"methodId": "bearer", "token": valid_bearer}}
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "authenticate",
+                "params": {"methodId": "bearer", "token": valid_bearer},
+            }
         )
         new_resp = server.handle_request(
             {"jsonrpc": "2.0", "id": 2, "method": "session/new", "params": {}}
@@ -159,7 +166,10 @@ class TestObservabilityValidation:
                 "jsonrpc": "2.0",
                 "id": 3,
                 "method": "session/prompt",
-                "params": {"sessionId": sid, "content": [{"type": "text", "text": "hi"}]},
+                "params": {
+                    "sessionId": sid,
+                    "content": [{"type": "text", "text": "hi"}],
+                },
             }
         )
 
@@ -189,6 +199,7 @@ class TestObservabilityValidation:
         ``acp.request_received``, ``acp.response_sent``, ``acp.session_started``,
         ``acp.session_completed``.
         """
+
         # OTel may or may not be configured; the log assertion is
         # independent.
         async def execute_fn(payload: dict[str, Any]) -> dict[str, Any]:
@@ -198,12 +209,23 @@ class TestObservabilityValidation:
 
         # Run through the full flow to fire all four log lines.
         server.handle_request(
-            {"jsonrpc": "2.0", "id": 1, "method": "initialize",
-             "params": {"protocolVersion": "0.0.1", "clientInfo": {"name": "s", "version": "0"}}}
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "0.0.1",
+                    "clientInfo": {"name": "s", "version": "0"},
+                },
+            }
         )
         server.handle_request(
-            {"jsonrpc": "2.0", "id": 2, "method": "authenticate",
-             "params": {"methodId": "bearer", "token": valid_bearer}}
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "authenticate",
+                "params": {"methodId": "bearer", "token": valid_bearer},
+            }
         )
         new_resp = server.handle_request(
             {"jsonrpc": "2.0", "id": 3, "method": "session/new", "params": {}}
@@ -214,7 +236,10 @@ class TestObservabilityValidation:
                 "jsonrpc": "2.0",
                 "id": 4,
                 "method": "session/prompt",
-                "params": {"sessionId": sid, "content": [{"type": "text", "text": "hi"}]},
+                "params": {
+                    "sessionId": sid,
+                    "content": [{"type": "text", "text": "hi"}],
+                },
             }
         )
 
@@ -242,6 +267,7 @@ class TestObservabilityValidation:
         try:
             from opentelemetry import trace
             from opentelemetry.sdk.trace import TracerProvider
+
             trace.set_tracer_provider(TracerProvider())
         except ImportError:
             pass

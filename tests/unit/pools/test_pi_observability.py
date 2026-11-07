@@ -184,7 +184,15 @@ def test_record_task_completed_increments_counter_and_records_duration(
     before = _snapshot(metric_reader)
     pi_observability.record_task_completed(0.42)
 
-    assert _delta(metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "completed"}) == 1.0
+    assert (
+        _delta(
+            metric_reader,
+            before,
+            "mahavishnu.pi.tasks.executed",
+            {"status": "completed"},
+        )
+        == 1.0
+    )
     # Histogram emits to the no-label attribute set.
     assert _delta(metric_reader, before, "mahavishnu.pi.task.duration", {}) == 1.0
 
@@ -208,7 +216,12 @@ def test_record_task_failed_with_error_path_increments_failed_counter(
     """``record_task_failed(timed_out=False)`` fires counter{status=failed}+1."""
     before = _snapshot(metric_reader)
     pi_observability.record_task_failed(0.10, timed_out=False)
-    assert _delta(metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "failed"}) == 1.0
+    assert (
+        _delta(
+            metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "failed"}
+        )
+        == 1.0
+    )
 
 
 def test_record_task_failed_with_timeout_path_increments_timeout_counter(
@@ -217,7 +230,12 @@ def test_record_task_failed_with_timeout_path_increments_timeout_counter(
     """``record_task_failed(timed_out=True)`` fires counter{status=timeout}+1."""
     before = _snapshot(metric_reader)
     pi_observability.record_task_failed(5.0, timed_out=True)
-    assert _delta(metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "timeout"}) == 1.0
+    assert (
+        _delta(
+            metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "timeout"}
+        )
+        == 1.0
+    )
 
 
 def test_record_heartbeat_missed_increments_heartbeat_counter(
@@ -227,7 +245,9 @@ def test_record_heartbeat_missed_increments_heartbeat_counter(
     before = _snapshot(metric_reader)
     pi_observability.record_heartbeat_missed()
     pi_observability.record_heartbeat_missed()
-    assert _delta(metric_reader, before, "mahavishnu.pi.heartbeat.missed_total", {}) == 2.0
+    assert (
+        _delta(metric_reader, before, "mahavishnu.pi.heartbeat.missed_total", {}) == 2.0
+    )
 
 
 # --- end-to-end PiPool wire-up -------------------------------------------
@@ -241,7 +261,15 @@ async def test_execute_task_success_emits_completed_counter(
     before = _snapshot(metric_reader)
     await pool.start()
     await pool.execute_task({"prompt": "hello"})
-    assert _delta(metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "completed"}) == 1.0
+    assert (
+        _delta(
+            metric_reader,
+            before,
+            "mahavishnu.pi.tasks.executed",
+            {"status": "completed"},
+        )
+        == 1.0
+    )
 
 
 @pytest.mark.asyncio
@@ -252,7 +280,12 @@ async def test_execute_task_nonzero_returncode_emits_failed_counter(
     before = _snapshot(metric_reader)
     await pool.start()
     await pool.execute_task({"prompt": "x"})
-    assert _delta(metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "failed"}) == 1.0
+    assert (
+        _delta(
+            metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "failed"}
+        )
+        == 1.0
+    )
 
 
 @pytest.mark.asyncio
@@ -267,7 +300,12 @@ async def test_execute_task_openai_error_in_stdout_emits_failed_counter(
     before = _snapshot(metric_reader)
     await pool.start()
     await pool.execute_task({"prompt": "x"})
-    assert _delta(metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "failed"}) == 1.0
+    assert (
+        _delta(
+            metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "failed"}
+        )
+        == 1.0
+    )
 
 
 @pytest.mark.asyncio
@@ -279,8 +317,15 @@ async def test_execute_task_timeout_emits_timeout_and_heartbeat_counter(
     before = _snapshot(metric_reader)
     await pool.start()
     await pool.execute_task({"prompt": "slow"})
-    assert _delta(metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "timeout"}) == 1.0
-    assert _delta(metric_reader, before, "mahavishnu.pi.heartbeat.missed_total", {}) == 1.0
+    assert (
+        _delta(
+            metric_reader, before, "mahavishnu.pi.tasks.executed", {"status": "timeout"}
+        )
+        == 1.0
+    )
+    assert (
+        _delta(metric_reader, before, "mahavishnu.pi.heartbeat.missed_total", {}) == 1.0
+    )
 
 
 @pytest.mark.asyncio

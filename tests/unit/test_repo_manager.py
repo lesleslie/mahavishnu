@@ -1,6 +1,5 @@
 """Tests for RepositoryManager."""
 
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -46,7 +45,10 @@ def sample_repos_path(tmp_path: Path) -> Path:
                 "name": "test-repo-2",
                 "package": "test_repo_2",
                 "path": str(repo2_path),
-                "tags": ["python-testing", "integration"],  # Both repos share python-testing
+                "tags": [
+                    "python-testing",
+                    "integration",
+                ],  # Both repos share python-testing
                 "description": "Test repository 2",
                 "mcp": "3rd-party",
             },

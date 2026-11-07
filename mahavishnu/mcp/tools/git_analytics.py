@@ -18,7 +18,9 @@ if TYPE_CHECKING:
     from ...core.permissions import RBACManager
 
 
-def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager | None = None):
+def register_git_analytics_tools(
+    server, mcp_client, rbac_manager: RBACManager | None = None
+):
     """Register Git analytics tools with MCP server.
 
     Structural C901 suppression: FastMCP's ``@server.tool()`` decorator
@@ -51,7 +53,10 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
 
             app = getattr(server, "app", None)
             if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
+                return {
+                    "status": "error",
+                    "error": "App instance not available in server context",
+                }
 
             mcp = MCPAdapter(app.mcp_url)
 
@@ -91,7 +96,9 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
 
             # Calculate aggregated metrics
             avg_velocity = total_commits / max(len(repo_paths) * days_back, 1)
-            active_projects = len([r for r in results.values() if r["trend"] == "increasing"])
+            active_projects = len(
+                [r for r in results.values() if r["trend"] == "increasing"]
+            )
 
             return {
                 "status": "success",
@@ -108,7 +115,10 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             }
 
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return {"status": "error", "error": f"Failed to get git velocity dashboard: {e!s}"}
+            return {
+                "status": "error",
+                "error": f"Failed to get git velocity dashboard: {e!s}",
+            }
 
     @server.tool()
     @require_mcp_auth(
@@ -126,7 +136,10 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
 
             app = getattr(server, "app", None)
             if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
+                return {
+                    "status": "error",
+                    "error": "App instance not available in server context",
+                }
 
             mcp = MCPAdapter(app.mcp_url)
             repo_name = repo_path.split("/")[-1]
@@ -147,7 +160,9 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             workflow_health = await _query_session_buddy_metrics(app, repo_path)
 
             # Calculate overall health score (0-100)
-            health_score = _calculate_health_score(stale_prs, stale_branches, workflow_health)
+            health_score = _calculate_health_score(
+                stale_prs, stale_branches, workflow_health
+            )
 
             return {
                 "status": "success",
@@ -171,7 +186,10 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             }
 
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return {"status": "error", "error": f"Failed to get repository health: {e!s}"}
+            return {
+                "status": "error",
+                "error": f"Failed to get repository health: {e!s}",
+            }
 
     @server.tool()
     @require_mcp_auth(
@@ -206,7 +224,10 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
 
             app = getattr(server, "app", None)
             if not app:
-                return {"status": "error", "error": "App instance not available in server context"}
+                return {
+                    "status": "error",
+                    "error": "App instance not available in server context",
+                }
 
             mcp = MCPAdapter(app.mcp_url)
 
@@ -237,7 +258,9 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             run_metadata: dict[str, Any] | None = None
 
             if detect_until_dry:
-                from ...core.loop_helpers import detect_until_dry as _run_detect_until_dry
+                from ...core.loop_helpers import (
+                    detect_until_dry as _run_detect_until_dry,
+                )
 
                 def _pattern_dedup_key(finding: Any) -> tuple[str, str, str, str, str]:
                     """Stable dedup key for a cross-source pattern tuple.
@@ -287,13 +310,17 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
                 # ``exception`` is a BaseException instance — non-JSON-serializable.
                 # Strip it from the wire payload; it remains in logs via the helper.
                 run_metadata = {
-                    key: value for key, value in raw_metadata.items() if key != "exception"
+                    key: value
+                    for key, value in raw_metadata.items()
+                    if key != "exception"
                 }
             else:
                 git_patterns, workflow_patterns, quality_patterns = await _single_scan()
 
             # Analyze correlations on the (possibly merged) patterns
-            correlations = _analyze_correlations(git_patterns, workflow_patterns, quality_patterns)
+            correlations = _analyze_correlations(
+                git_patterns, workflow_patterns, quality_patterns
+            )
 
             result: dict[str, Any] = {
                 "analysis_period": f"P{days_back} days",
@@ -301,7 +328,9 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
                 "workflow_patterns": workflow_patterns,
                 "quality_patterns": quality_patterns,
                 "correlations": correlations,
-                "insights": _generate_insights(git_patterns, workflow_patterns, correlations),
+                "insights": _generate_insights(
+                    git_patterns, workflow_patterns, correlations
+                ),
                 "generated_at": datetime.now(UTC).isoformat(),
             }
             if run_metadata is not None:
@@ -310,7 +339,10 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             return {"status": "success", "result": result}
 
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return {"status": "error", "error": f"Failed to get cross-project patterns: {e!s}"}
+            return {
+                "status": "error",
+                "error": f"Failed to get cross-project patterns: {e!s}",
+            }
 
     async def _query_session_buddy_metrics(app, repo_path: str) -> dict[str, Any]:
         """Query Session-Buddy for workflow performance metrics.
@@ -376,7 +408,9 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
         except Exception:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             return []
 
-    def _calculate_health_score(stale_prs: int, stale_branches: int, workflow_health: dict) -> int:
+    def _calculate_health_score(
+        stale_prs: int, stale_branches: int, workflow_health: dict
+    ) -> int:
         """Calculate overall repository health score.
 
         Score components:
@@ -446,13 +480,16 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
 
         # Analyze velocity vs quality
         high_velocity_repos = {
-            p.get("repository", "") for p in git_patterns if p.get("type") == "high_velocity"
+            p.get("repository", "")
+            for p in git_patterns
+            if p.get("type") == "high_velocity"
         }
 
         quality_issues = [
             q
             for q in quality_patterns
-            if q.get("severity") == "high" and q.get("repository") in high_velocity_repos
+            if q.get("severity") == "high"
+            and q.get("repository") in high_velocity_repos
         ]
 
         if quality_issues:
@@ -466,7 +503,9 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             )
 
         # Analyze workflow failures
-        failing_workflows = [w for w in workflow_patterns if w.get("success_rate", 100) < 80]
+        failing_workflows = [
+            w for w in workflow_patterns if w.get("success_rate", 100) < 80
+        ]
 
         if failing_workflows:
             correlations.append(
@@ -514,7 +553,9 @@ def register_git_analytics_tools(server, mcp_client, rbac_manager: RBACManager |
             )
 
         # Identify workflow improvements
-        failed_workflows = [w for w in workflow_patterns if w.get("success_rate", 100) < 80]
+        failed_workflows = [
+            w for w in workflow_patterns if w.get("success_rate", 100) < 80
+        ]
         if failed_workflows:
             insights.append(
                 f"🔄 {len(failed_workflows)} workflows with low success rate - "

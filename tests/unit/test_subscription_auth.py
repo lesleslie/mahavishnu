@@ -43,7 +43,9 @@ def test_subscription_auth_requires_min_secret_length() -> None:
 
 def test_create_and_verify_subscription_token_defaults() -> None:
     auth = SubscriptionAuth(secret="s" * 32, expire_minutes=60)
-    token = auth.create_subscription_token(user_id="u1", subscription_type="claude_code")
+    token = auth.create_subscription_token(
+        user_id="u1", subscription_type="claude_code"
+    )
     decoded = auth.verify_subscription_token(token)
 
     assert decoded.user_id == "u1"
@@ -56,13 +58,17 @@ def test_verify_subscription_token_invalid_signature() -> None:
     auth_b = SubscriptionAuth(secret="b" * 32)
     token = auth_a.create_subscription_token(user_id="u1", subscription_type="codex")
 
-    with pytest.raises(AuthenticationError, match="Invalid subscription token signature"):
+    with pytest.raises(
+        AuthenticationError, match="Invalid subscription token signature"
+    ):
         auth_b.verify_subscription_token(token)
 
 
 def test_verify_subscription_token_decode_error() -> None:
     auth = SubscriptionAuth(secret="s" * 32)
-    with pytest.raises(AuthenticationError, match="Could not decode subscription token"):
+    with pytest.raises(
+        AuthenticationError, match="Could not decode subscription token"
+    ):
         auth.verify_subscription_token("not-a-token")
 
 
@@ -165,7 +171,9 @@ def test_multi_auth_jwt_non_dict_token_data_uses_username_attribute() -> None:
 
 def test_multi_auth_all_methods_failed_reports_errors() -> None:
     handler = MultiAuthHandler(_config(subscription_enabled=False))
-    with pytest.raises(AuthenticationError, match="All authentication methods failed") as exc:
+    with pytest.raises(
+        AuthenticationError, match="All authentication methods failed"
+    ) as exc:
         handler.authenticate_request("Bearer invalid.token.here")
 
     assert "errors" in exc.value.details
@@ -173,7 +181,9 @@ def test_multi_auth_all_methods_failed_reports_errors() -> None:
 
 
 def test_subscription_not_configured_token_creation_raises() -> None:
-    handler = MultiAuthHandler(_config(subscription_enabled=False, subscription_secret=None))
+    handler = MultiAuthHandler(
+        _config(subscription_enabled=False, subscription_secret=None)
+    )
     assert handler.is_claude_subscribed() is False
     assert handler.is_codex_subscribed() is False
 

@@ -221,13 +221,17 @@ class TestTypeText:
         mock_pyautogui_module.write.assert_called_once_with("hello", interval=0.0)
 
     @pytest.mark.unit
-    async def test_type_text_uses_default_interval(self, backend, mock_pyautogui_module):
+    async def test_type_text_uses_default_interval(
+        self, backend, mock_pyautogui_module
+    ):
         result = await backend.type_text("x")
         assert result is True
         mock_pyautogui_module.write.assert_called_once_with("x", interval=0.05)
 
     @pytest.mark.unit
-    async def test_type_text_failure_returns_false(self, backend, mock_pyautogui_module):
+    async def test_type_text_failure_returns_false(
+        self, backend, mock_pyautogui_module
+    ):
         mock_pyautogui_module.write.side_effect = RuntimeError("boom")
         result = await backend.type_text("x")
         assert result is False
@@ -248,7 +252,9 @@ class TestPressKey:
         mock_pyautogui_module.hotkey.assert_called_once_with("cmd", "shift", "a")
 
     @pytest.mark.unit
-    async def test_press_key_failure_returns_false(self, backend, mock_pyautogui_module):
+    async def test_press_key_failure_returns_false(
+        self, backend, mock_pyautogui_module
+    ):
         mock_pyautogui_module.press.side_effect = RuntimeError("boom")
         result = await backend.press_key("a")
         assert result is False
@@ -282,13 +288,17 @@ class TestClick:
     async def test_click(self, backend, mock_pyautogui_module):
         result = await backend.click(100, 200)
         assert result is True
-        mock_pyautogui_module.click.assert_called_once_with(100, 200, clicks=1, button="left")
+        mock_pyautogui_module.click.assert_called_once_with(
+            100, 200, clicks=1, button="left"
+        )
 
     @pytest.mark.unit
     async def test_click_right_double(self, backend, mock_pyautogui_module):
         result = await backend.click(10, 20, button="right", clicks=2)
         assert result is True
-        mock_pyautogui_module.click.assert_called_once_with(10, 20, clicks=2, button="right")
+        mock_pyautogui_module.click.assert_called_once_with(
+            10, 20, clicks=2, button="right"
+        )
 
     @pytest.mark.unit
     async def test_click_failure(self, backend, mock_pyautogui_module):
@@ -303,7 +313,9 @@ class TestDrag:
         result = await backend.drag(0, 0, 100, 200, duration=0.5)
         assert result is True
         mock_pyautogui_module.moveTo.assert_called_once_with(0, 0)
-        mock_pyautogui_module.drag.assert_called_once_with(100, 200, duration=0.5, button="left")
+        mock_pyautogui_module.drag.assert_called_once_with(
+            100, 200, duration=0.5, button="left"
+        )
 
     @pytest.mark.unit
     async def test_drag_failure(self, backend, mock_pyautogui_module):
@@ -355,7 +367,9 @@ class TestScreenshot:
         mock_pyautogui_module.screenshot.assert_called_with(region=(10, 20, 100, 100))
 
     @pytest.mark.unit
-    async def test_screenshot_failure_raises_screenshot_error(self, backend, mock_pyautogui_module):
+    async def test_screenshot_failure_raises_screenshot_error(
+        self, backend, mock_pyautogui_module
+    ):
         with patch.dict(sys.modules, {"mss": None}):
             mock_pyautogui_module.screenshot.side_effect = RuntimeError("display gone")
             with pytest.raises(ScreenshotError) as exc:
@@ -363,7 +377,9 @@ class TestScreenshot:
         assert "display gone" in str(exc.value)
 
     @pytest.mark.unit
-    async def test_screenshot_uses_mss_when_available(self, backend, mock_pyautogui_module):
+    async def test_screenshot_uses_mss_when_available(
+        self, backend, mock_pyautogui_module
+    ):
         # Build a fake mss screenshot
         fake_screenshot = MagicMock()
         fake_screenshot.size = (10, 10)
@@ -408,7 +424,9 @@ class TestListScreens:
         assert screens[0].primary is True
 
     @pytest.mark.unit
-    async def test_list_screens_failure_returns_empty(self, backend, mock_pyautogui_module):
+    async def test_list_screens_failure_returns_empty(
+        self, backend, mock_pyautogui_module
+    ):
         mock_pyautogui_module.size.side_effect = RuntimeError("no display")
         screens = await backend.list_screens()
         assert screens == []
@@ -474,7 +492,9 @@ class TestAdditionalMethods:
         assert result == (100, 200)
 
     @pytest.mark.unit
-    async def test_locate_center_on_screen_not_found(self, backend, mock_pyautogui_module):
+    async def test_locate_center_on_screen_not_found(
+        self, backend, mock_pyautogui_module
+    ):
         mock_pyautogui_module.locateCenterOnScreen.return_value = None
         result = await backend.locate_center_on_screen("/tmp/foo.png")
         assert result is None
@@ -482,7 +502,9 @@ class TestAdditionalMethods:
     @pytest.mark.unit
     async def test_alert(self, backend, mock_pyautogui_module):
         await backend.alert("hello", title="My Alert")
-        mock_pyautogui_module.alert.assert_called_once_with(text="hello", title="My Alert")
+        mock_pyautogui_module.alert.assert_called_once_with(
+            text="hello", title="My Alert"
+        )
 
     @pytest.mark.unit
     async def test_confirm_returns_true_for_ok(self, backend, mock_pyautogui_module):
@@ -491,7 +513,9 @@ class TestAdditionalMethods:
         assert result is True
 
     @pytest.mark.unit
-    async def test_confirm_returns_false_for_cancel(self, backend, mock_pyautogui_module):
+    async def test_confirm_returns_false_for_cancel(
+        self, backend, mock_pyautogui_module
+    ):
         mock_pyautogui_module.confirm.return_value = "Cancel"
         result = await backend.confirm("Are you sure?")
         assert result is False

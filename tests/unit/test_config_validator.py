@@ -132,13 +132,17 @@ class TestConfigValidator:
         """Create temp directory."""
         return tmp_path
 
-    def test_validate_missing_file(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_missing_file(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating missing file."""
         report = validator.validate_repos_yaml(temp_dir / "missing.yaml")
         assert report.valid is False
         assert "not found" in report.results[0].message.lower()
 
-    def test_validate_invalid_yaml(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_invalid_yaml(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating invalid YAML."""
         yaml_path = temp_dir / "repos.yaml"
         yaml_path.write_text("invalid: yaml: content: [")
@@ -147,7 +151,9 @@ class TestConfigValidator:
         assert report.valid is False
         assert "yaml" in report.results[0].message.lower()
 
-    def test_validate_non_dict_config(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_non_dict_config(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating non-dict config."""
         yaml_path = temp_dir / "repos.yaml"
         yaml_path.write_text("- item1\n- item2")
@@ -156,7 +162,9 @@ class TestConfigValidator:
         assert report.valid is False
         assert "dictionary" in report.results[0].message.lower()
 
-    def test_validate_non_list_repos(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_non_list_repos(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating non-list repos."""
         yaml_path = temp_dir / "repos.yaml"
         yaml_path.write_text("repos:\n  not: a list")
@@ -165,7 +173,9 @@ class TestConfigValidator:
         assert report.valid is False
         assert "list" in report.results[0].message.lower()
 
-    def test_validate_empty_repos(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_empty_repos(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating empty repos list."""
         yaml_path = temp_dir / "repos.yaml"
         yaml_path.write_text("repos: []")
@@ -174,7 +184,9 @@ class TestConfigValidator:
         assert report.valid is True  # Empty is valid, just warning
         assert len(report.warnings) == 1
 
-    def test_validate_valid_repo(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_valid_repo(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating valid repository."""
         yaml_path = temp_dir / "repos.yaml"
         yaml_path.write_text("""
@@ -204,7 +216,9 @@ repos:
         assert report.valid is False
         assert any("path" in r.message.lower() for r in report.results)
 
-    def test_validate_invalid_name(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_invalid_name(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating invalid repository name."""
         yaml_path = temp_dir / "repos.yaml"
         yaml_path.write_text("""
@@ -217,7 +231,9 @@ repos:
         assert report.valid is False
         assert any("name" in r.message.lower() for r in report.results)
 
-    def test_validate_unknown_role(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_unknown_role(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating unknown role."""
         yaml_path = temp_dir / "repos.yaml"
         yaml_path.write_text("""
@@ -232,7 +248,9 @@ repos:
         assert report.valid is True
         assert any("role" in w.message.lower() for w in report.warnings)
 
-    def test_validate_non_dict_repo(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_non_dict_repo(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating non-dict repo entry."""
         yaml_path = temp_dir / "repos.yaml"
         yaml_path.write_text("""
@@ -244,7 +262,9 @@ repos:
         assert report.valid is False
         assert "dictionary" in report.results[0].message.lower()
 
-    def test_validate_settings_yaml(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_settings_yaml(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating settings.yaml."""
         settings_path = temp_dir / "settings.yaml"
         settings_path.write_text("server_name: test\nport: 8080")
@@ -252,7 +272,9 @@ repos:
         report = validator.validate_settings_yaml(settings_path)
         assert report.valid is True
 
-    def test_validate_settings_missing(self, validator: ConfigValidator, temp_dir: Path) -> None:
+    def test_validate_settings_missing(
+        self, validator: ConfigValidator, temp_dir: Path
+    ) -> None:
         """Test validating missing settings file."""
         report = validator.validate_settings_yaml(temp_dir / "missing.yaml")
         assert report.valid is True  # Missing is OK (optional)

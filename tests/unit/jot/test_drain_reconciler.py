@@ -4,6 +4,7 @@ Tests use real fold + actual JSONL log via tmp_path, not mocks. Mocks are
 used only for the substrate calls (trigger_workflow, get_workflow_status)
 which cross process boundaries.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -35,11 +36,18 @@ def isolated_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return p
 
 
-def _capture_event(op: str, status: str, *, text: str = "x", workflow_id: str | None = None,
-                  attempt: int | None = None, ms: int = 0,
-                  dispatch_started_at_ms: int | None = None,
-                  jot_id: str = "",
-                  retry_budget_exhausted: bool | None = None) -> dict[str, object]:
+def _capture_event(
+    op: str,
+    status: str,
+    *,
+    text: str = "x",
+    workflow_id: str | None = None,
+    attempt: int | None = None,
+    ms: int = 0,
+    dispatch_started_at_ms: int | None = None,
+    jot_id: str = "",
+    retry_budget_exhausted: bool | None = None,
+) -> dict[str, object]:
     ctx: dict[str, object] = {}
     if workflow_id is not None:
         ctx["workflow_id"] = workflow_id
@@ -50,7 +58,10 @@ def _capture_event(op: str, status: str, *, text: str = "x", workflow_id: str | 
     if retry_budget_exhausted is not None:
         ctx["retry_budget_exhausted"] = retry_budget_exhausted
     return {
-        "id": jot_id, "op": op, "text": text, "ctx": ctx,
+        "id": jot_id,
+        "op": op,
+        "text": text,
+        "ctx": ctx,
         "hlc": {"wall_ms": ms, "ctr": 0, "node": "n1"},
         "node": "n1",
         "created_ms": ms,
@@ -60,6 +71,7 @@ def _capture_event(op: str, status: str, *, text: str = "x", workflow_id: str | 
 def _write_log(path: Path, *events: dict) -> None:
     """Write a JSONL log containing the given events."""
     from mahavishnu.jot.events import HLC, JotEvent
+
     with path.open("w") as f:
         for ev in events:
             event = JotEvent(
@@ -80,14 +92,19 @@ def _make_summary(**overrides) -> RealJotSummary:
     doesn't fire — tests that want the timeout gate can override to 0.
     """
     from time import time
+
     defaults = dict(
-        id="e1", short_id="123456", text="hello",
-        status="open", last_modified_ms=0,
+        id="e1",
+        short_id="123456",
+        text="hello",
+        status="open",
+        last_modified_ms=0,
         dispatch_state=DispatchState.IN_FLIGHT,
         dispatch_workflow_id="wf-1",
         current_attempt=1,
         dispatch_started_at_ms=int(time() * 1000),  # recent
-        deferred_until=None, deleted=False,
+        deferred_until=None,
+        deleted=False,
     )
     defaults.update(overrides)
     return RealJotSummary(**defaults)  # type: ignore[arg-type]
@@ -112,7 +129,9 @@ async def test_reconcile_warns_when_no_workflow_id(isolated_log: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_reconcile_tier2_timeout_attempt_one_preserves_budget(
-    isolated_log: Path, fake_workflow_substrate: dict, fast_backoff: None,
+    isolated_log: Path,
+    fake_workflow_substrate: dict,
+    fast_backoff: None,
 ) -> None:
     """Timeout on attempt 1 → dispatch_failed + auto-retry scheduled (locked policy).
 
@@ -128,7 +147,9 @@ async def test_reconcile_tier2_timeout_attempt_one_preserves_budget(
     """
     s = _make_summary(current_attempt=1, dispatch_started_at_ms=0)
 
-    with patch("mahavishnu.jot.drain._now_ms", return_value=RECONCILER_TIMEOUT_MS + 1000):
+    with patch(
+        "mahavishnu.jot.drain._now_ms", return_value=RECONCILER_TIMEOUT_MS + 1000
+    ):
         await _reconcile_if_in_flight(s)
     # Yield to event loop so the fire-and-forget task can start.
     await asyncio.sleep(0)
@@ -146,7 +167,8 @@ async def test_reconcile_tier2_timeout_attempt_one_preserves_budget(
 
 @pytest.mark.asyncio
 async def test_reconcile_tier2_timeout_attempt_two_exhausts_budget(
-    isolated_log: Path, fast_backoff: None,
+    isolated_log: Path,
+    fast_backoff: None,
 ) -> None:
     """Timeout on attempt 2 → dispatch_failed + retry_budget_exhausted=true.
 
@@ -156,7 +178,9 @@ async def test_reconcile_tier2_timeout_attempt_two_exhausts_budget(
     """
     s = _make_summary(current_attempt=2, dispatch_started_at_ms=0)
 
-    with patch("mahavishnu.jot.drain._now_ms", return_value=RECONCILER_TIMEOUT_MS + 1000):
+    with patch(
+        "mahavishnu.jot.drain._now_ms", return_value=RECONCILER_TIMEOUT_MS + 1000
+    ):
         await _reconcile_if_in_flight(s)
     # Yield to event loop to ensure no fire-and-forget task could sneak in.
     await asyncio.sleep(0)
@@ -210,7 +234,9 @@ async def test_reconcile_writes_dispatch_done_on_completed(isolated_log: Path) -
 
 @pytest.mark.asyncio
 async def test_reconcile_writes_dispatch_failed_with_budget_exhausted_false_attempt_one(
-    isolated_log: Path, fake_workflow_substrate: dict, fast_backoff: None,
+    isolated_log: Path,
+    fake_workflow_substrate: dict,
+    fast_backoff: None,
 ) -> None:
     """Substrate FAILED, attempt 1 → dispatch_failed + auto-retry scheduled.
 
@@ -237,7 +263,8 @@ async def test_reconcile_writes_dispatch_failed_with_budget_exhausted_false_atte
 
 @pytest.mark.asyncio
 async def test_reconcile_writes_dispatch_failed_with_budget_exhausted_true_attempt_two(
-    isolated_log: Path, fast_backoff: None,
+    isolated_log: Path,
+    fast_backoff: None,
 ) -> None:
     """Substrate FAILED, attempt 2 → dispatch_failed + budget exhausted (no retry).
 
@@ -286,15 +313,19 @@ async def test_reconcile_catches_validation_error_propagation(
     async def broken_append(op, ctx, *, jot_id):
         raise JotValidationError("test forced", field="ctx.retry_budget_exhausted")
 
-    with patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status), \
-         patch("mahavishnu.jot.drain._append_event", broken_append):
+    with (
+        patch("mahavishnu.jot.drain._mcp_get_workflow_status", fake_status),
+        patch("mahavishnu.jot.drain._append_event", broken_append),
+    ):
         # Must not raise
         await _reconcile_if_in_flight(s)
 
 
 @pytest.mark.asyncio
 async def test_reconcile_terminal_statuses_include_cancelled_and_timeout(
-    isolated_log: Path, fake_workflow_substrate: dict, fast_backoff: None,
+    isolated_log: Path,
+    fake_workflow_substrate: dict,
+    fast_backoff: None,
 ) -> None:
     """CANCELLED + TIMEOUT are terminal; reconciliation emits dispatch_failed.
 
@@ -328,27 +359,40 @@ async def test_reconcile_terminal_statuses_include_cancelled_and_timeout(
 
 @pytest.mark.asyncio
 async def test_auto_retry_skips_when_already_succeeded(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Race: manual retry succeeded before backoff completed → auto-retry exits."""
     _write_log(
         isolated_log,
         _capture_event(
-            "capture", "ok", text="x", ms=0,
+            "capture",
+            "ok",
+            text="x",
+            ms=0,
         ),
         _capture_event(
-            "dispatch", "ok", workflow_id="wf-1", attempt=1, ms=1000,
+            "dispatch",
+            "ok",
+            workflow_id="wf-1",
+            attempt=1,
+            ms=1000,
             dispatch_started_at_ms=1000,
         ),
         _capture_event(
-            "dispatch_done", "ok", workflow_id="wf-1", ms=2000,
+            "dispatch_done",
+            "ok",
+            workflow_id="wf-1",
+            ms=2000,
         ),
     )
     monkeypatch.setattr("asyncio.sleep", AsyncMock())
     triggered = []
+
     async def fake_trigger(*a, **kw):
         triggered.append(1)
         return {"workflow_id": "wf-new"}
+
     monkeypatch.setattr("mahavishnu.jot.drain._mcp_trigger_workflow", fake_trigger)
 
     await _auto_retry_after("x", backoff_s=0)
@@ -357,19 +401,29 @@ async def test_auto_retry_skips_when_already_succeeded(
 
 @pytest.mark.asyncio
 async def test_auto_retry_appends_dispatch_event_when_trigger_succeeds(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Successful trigger writes dispatch event with attempt=current+1."""
     _write_log(
         isolated_log,
-        _capture_event("capture", "ok", text="hello", ms=0,
-                       jot_id="x" * 32),
-        _capture_event("dispatch", "ok", workflow_id="wf-old", attempt=1, ms=1000,
-                       dispatch_started_at_ms=1000,
-                       jot_id="x" * 32),
+        _capture_event("capture", "ok", text="hello", ms=0, jot_id="x" * 32),
         _capture_event(
-            "dispatch_failed", "ok", workflow_id="wf-old", attempt=1,
-            ms=2000, jot_id="x" * 32,
+            "dispatch",
+            "ok",
+            workflow_id="wf-old",
+            attempt=1,
+            ms=1000,
+            dispatch_started_at_ms=1000,
+            jot_id="x" * 32,
+        ),
+        _capture_event(
+            "dispatch_failed",
+            "ok",
+            workflow_id="wf-old",
+            attempt=1,
+            ms=2000,
+            jot_id="x" * 32,
             retry_budget_exhausted=True,
         ),
     )
@@ -395,19 +449,32 @@ async def test_auto_retry_appends_dispatch_event_when_trigger_succeeds(
 
 @pytest.mark.asyncio
 async def test_auto_retry_writes_failed_event_when_trigger_raises(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from mahavishnu.jot.errors import JotDispatchError
+
     _write_log(
         isolated_log,
-        _capture_event("capture", "ok", text="x", ms=0,
-                       jot_id="x" * 32),
-        _capture_event("dispatch", "ok", workflow_id="wf-old", attempt=1, ms=1000,
-                       dispatch_started_at_ms=1000,
-                       jot_id="x" * 32),
-        _capture_event("dispatch_failed", "ok", workflow_id="wf-old", attempt=1, ms=2000,
-                       jot_id="x" * 32,
-                       retry_budget_exhausted=True),
+        _capture_event("capture", "ok", text="x", ms=0, jot_id="x" * 32),
+        _capture_event(
+            "dispatch",
+            "ok",
+            workflow_id="wf-old",
+            attempt=1,
+            ms=1000,
+            dispatch_started_at_ms=1000,
+            jot_id="x" * 32,
+        ),
+        _capture_event(
+            "dispatch_failed",
+            "ok",
+            workflow_id="wf-old",
+            attempt=1,
+            ms=2000,
+            jot_id="x" * 32,
+            retry_budget_exhausted=True,
+        ),
     )
     monkeypatch.setattr("asyncio.sleep", AsyncMock())
 
@@ -424,21 +491,32 @@ async def test_auto_retry_writes_failed_event_when_trigger_raises(
 
 @pytest.mark.asyncio
 async def test_auto_retry_does_nothing_when_attempt_exceeds_max(
-    isolated_log: Path, monkeypatch: pytest.MonkeyPatch,
+    isolated_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """current_attempt=2 (the last) → no retry fires."""
     _write_log(
         isolated_log,
         _capture_event("capture", "ok", text="x", ms=0),
-        _capture_event("dispatch", "ok", workflow_id="wf-old", attempt=2, ms=1000,
-                       dispatch_started_at_ms=1000),
-        _capture_event("dispatch_failed", "ok", workflow_id="wf-old", attempt=2, ms=2000),
+        _capture_event(
+            "dispatch",
+            "ok",
+            workflow_id="wf-old",
+            attempt=2,
+            ms=1000,
+            dispatch_started_at_ms=1000,
+        ),
+        _capture_event(
+            "dispatch_failed", "ok", workflow_id="wf-old", attempt=2, ms=2000
+        ),
     )
     monkeypatch.setattr("asyncio.sleep", AsyncMock())
     triggered = []
+
     async def fake_trigger(*a, **kw):
         triggered.append(1)
         return {"workflow_id": "wf"}
+
     monkeypatch.setattr("mahavishnu.jot.drain._mcp_trigger_workflow", fake_trigger)
 
     await _auto_retry_after("x", backoff_s=0)

@@ -104,7 +104,10 @@ def normalize_repo_url(raw: str, *, raise_on_reject: bool = False) -> str | None
     # line separator (U+2028, category Zl) and paragraph separator
     # (U+2029, category Zp), which are valid log-injection vectors
     # that bypass an ASCII-only check.
-    if any(ord(c) < 0x20 or ord(c) == 0x7F or unicodedata.category(c) in ("Zl", "Zp") for c in raw):
+    if any(
+        ord(c) < 0x20 or ord(c) == 0x7F or unicodedata.category(c) in ("Zl", "Zp")
+        for c in raw
+    ):
         raise RepoUrlRejectedError(raw, "control characters")
 
     # Strip userinfo first so the pattern check sees host-only URLs.

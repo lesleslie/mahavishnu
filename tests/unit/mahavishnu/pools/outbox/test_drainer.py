@@ -41,7 +41,9 @@ def writer(tmp_path: pathlib.Path) -> MemoryOutboxWriter:
     w.close()
 
 
-async def test_drainer_drains_pending_when_breaker_closed(writer: MemoryOutboxWriter) -> None:
+async def test_drainer_drains_pending_when_breaker_closed(
+    writer: MemoryOutboxWriter,
+) -> None:
     for i in range(50):
         await writer.enqueue(f"k{i}", {"i": i})
 
@@ -73,13 +75,17 @@ async def test_drainer_skips_when_breaker_open(writer: MemoryOutboxWriter) -> No
     assert await writer.pending_count() == 50
 
 
-async def test_drainer_marks_failed_after_max_attempts(writer: MemoryOutboxWriter) -> None:
+async def test_drainer_marks_failed_after_max_attempts(
+    writer: MemoryOutboxWriter,
+) -> None:
     await writer.enqueue("k1", {"i": 1})
 
     async def sink(key: str, payload: dict[str, object]) -> None:
         raise RuntimeError("simulated 5xx")
 
-    drainer = MemoryOutboxDrainer(writer, _StubBreaker(can_execute=True), sink, max_attempts=5)
+    drainer = MemoryOutboxDrainer(
+        writer, _StubBreaker(can_execute=True), sink, max_attempts=5
+    )
     # Five cycles; row stays pending until attempts >= max, then flips to failed.
     for _ in range(5):
         await drainer.drain_once()
@@ -101,7 +107,9 @@ async def test_drainer_fires_sink_when_real_breaker_is_half_open(
     """
     # Build a real breaker that opens after a single failure and has a
     # zero-second recovery window, then trip it.
-    breaker = _CircuitBreaker("session-buddy", failure_threshold=1, recovery_timeout=0.0)
+    breaker = _CircuitBreaker(
+        "session-buddy", failure_threshold=1, recovery_timeout=0.0
+    )
     breaker.record_failure()
     assert breaker.is_open  # the breaker is open right now
     # Let the recovery window elapse.

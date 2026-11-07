@@ -397,9 +397,7 @@ def run_squash_merge(
         check=False,
     )
     if status_result.stdout.strip():
-        stash_message = (
-            f"merge-to-main auto-stash: {branch} -> {base} ({datetime.now(UTC).isoformat()})"
-        )
+        stash_message = f"merge-to-main auto-stash: {branch} -> {base} ({datetime.now(UTC).isoformat()})"
         stash_result = subprocess.run(  # nosec B603 — argv-list, no shell
             [
                 "git",
@@ -727,7 +725,9 @@ def _run_consolidation_gate(
         text=True,
         check=False,
     )
-    worktree_list_output = wt_list_result.stdout if wt_list_result.returncode == 0 else ""
+    worktree_list_output = (
+        wt_list_result.stdout if wt_list_result.returncode == 0 else ""
+    )
 
     for sibling in _list_repo_worktrees(worktree_root):
         reason = _check_sibling_worktree_state(
@@ -1108,7 +1108,9 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--from",
         dest="base",
         default=None,
-        help=("rebase base override (default: origin/main if remote exists, else main)"),
+        help=(
+            "rebase base override (default: origin/main if remote exists, else main)"
+        ),
     )
     return parser
 

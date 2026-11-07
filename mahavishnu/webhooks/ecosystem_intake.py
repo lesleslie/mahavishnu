@@ -39,7 +39,9 @@ from mahavishnu.core.events.contract import create_event_envelope
 from mahavishnu.core.events.publisher import safe_publish
 
 router = APIRouter()
-ALLOWED_SOURCES: Final[frozenset[str]] = frozenset({"git-monitor", "crontroller", "ops-bridge"})
+ALLOWED_SOURCES: Final[frozenset[str]] = frozenset(
+    {"git-monitor", "crontroller", "ops-bridge"}
+)
 """Default allowlist. Operators extend via ``webhook_intake.allowed_sources``
 in settings; the endpoint reads both lists (union)."""
 logger = get_logger(__name__)

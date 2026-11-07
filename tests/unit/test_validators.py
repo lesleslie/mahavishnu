@@ -162,7 +162,9 @@ class TestPathValidator:
             result = validator.validate_path(test_path, allowed_base_dirs=[tmpdir])
 
             assert result.is_absolute()
-            assert str(tmpdir) in str(result) or str(Path(tmpdir).resolve()) in str(result)
+            assert str(tmpdir) in str(result) or str(Path(tmpdir).resolve()) in str(
+                result
+            )
 
     def test_validate_path_must_exist_true(self):
         """Test validation with must_exist=True for existing file."""
@@ -202,7 +204,9 @@ class TestPathValidator:
 
         # Path within base
         assert validator._is_path_within_base(Path("/tmp/test"), Path("/tmp"))
-        assert validator._is_path_within_base(Path("/tmp/subdir/test.txt"), Path("/tmp"))
+        assert validator._is_path_within_base(
+            Path("/tmp/subdir/test.txt"), Path("/tmp")
+        )
 
         # Path outside base
         assert not validator._is_path_within_base(Path("/etc/passwd"), Path("/tmp"))
@@ -466,7 +470,7 @@ class TestValidateFileOperation:
             # Restore permissions for cleanup
             try:
                 os.chmod(readonly_dir, 0o755)
-            except (PermissionError, OSError):
+            except PermissionError, OSError:
                 pass
 
     def test_validate_delete_operation_success(self, tmp_path):
@@ -704,7 +708,9 @@ class TestValidatorsAdditionalBranches:
 
     def test_validate_path_wraps_unexpected_exception(self, monkeypatch):
         validator = PathValidator()
-        monkeypatch.setattr(validator, "_check_path_format", lambda path_str: None, raising=True)
+        monkeypatch.setattr(
+            validator, "_check_path_format", lambda path_str: None, raising=True
+        )
 
         def boom(*args, **kwargs):
             raise RuntimeError("boom")
@@ -724,7 +730,9 @@ class TestValidatorsAdditionalBranches:
         with pytest.raises(PathValidationError, match="not readable"):
             validator.validate_repository_path(repo)
 
-    def test_validate_repository_path_wraps_unexpected_exception(self, tmp_path, monkeypatch):
+    def test_validate_repository_path_wraps_unexpected_exception(
+        self, tmp_path, monkeypatch
+    ):
         repo = tmp_path / "repo"
         repo.mkdir()
         validator = PathValidator()
@@ -746,7 +754,9 @@ class TestValidatorsAdditionalBranches:
         validator = PathValidator()
         target = tmp_path / "missing" / "file.txt"
 
-        with pytest.raises(PathValidationError, match="Parent directory does not exist"):
+        with pytest.raises(
+            PathValidationError, match="Parent directory does not exist"
+        ):
             validator.validate_file_operation(target, "write")
 
     def test_validate_write_operation_parent_not_writable(self, tmp_path, monkeypatch):

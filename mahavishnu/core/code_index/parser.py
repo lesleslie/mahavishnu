@@ -84,7 +84,12 @@ def _extract_node_metadata(
             getattr(node, "end_line", None),
         )
     if node.node_type == "class":
-        return (None, None, getattr(node, "start_line", None), getattr(node, "end_line", None))
+        return (
+            None,
+            None,
+            getattr(node, "start_line", None),
+            getattr(node, "end_line", None),
+        )
     return (None, None, None, None)
 
 
@@ -166,7 +171,9 @@ def parse_file(
         if node.node_type == "function" and hasattr(node, "calls"):
             source_id = f"{repo_path}|||{file_path}|||function|||{node.name}"
             calls_obj = getattr(node, "calls", ())
-            calls_iterable: Iterable[str] = calls_obj if isinstance(calls_obj, Iterable) else ()
+            calls_iterable: Iterable[str] = (
+                calls_obj if isinstance(calls_obj, Iterable) else ()
+            )
             for callee in calls_iterable:
                 target_id = f"{repo_path}|||{file_path}|||function|||{callee}"
                 edge = CodeGraphEdge(
@@ -230,4 +237,6 @@ def filter_changed_files(
         check=False,
     )
     changed = result.stdout.strip().split("\n") if result.stdout.strip() else []
-    return sorted(str(repo / f) for f in changed if Path(f).suffix in PARSABLE_EXTENSIONS)
+    return sorted(
+        str(repo / f) for f in changed if Path(f).suffix in PARSABLE_EXTENSIONS
+    )

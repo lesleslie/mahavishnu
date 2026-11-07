@@ -83,7 +83,11 @@ class Budget:
                 f"Invalid period_days: {self.period_days}. Must be 1, 7, 30, 90, or 365"
             )
 
-        if self.period_days is not None and self.period_start is None and self.period_end is None:
+        if (
+            self.period_days is not None
+            and self.period_start is None
+            and self.period_end is None
+        ):
             now = datetime.now(UTC)
             self.period_start = now
             self.period_end = now + timedelta(days=self.period_days)
@@ -248,7 +252,9 @@ class CostOptimizer:
 
         remaining = budget.limit_usd - total_spent if active else Decimal(0)
         percentage = (
-            (total_spent / budget.limit_usd) if active and budget.limit_usd > 0 else Decimal(0)
+            (total_spent / budget.limit_usd)
+            if active and budget.limit_usd > 0
+            else Decimal(0)
         )
 
         return {
@@ -258,7 +264,8 @@ class CostOptimizer:
             "remaining_usd": float(remaining),
             "percentage_used": float(percentage),
             "is_active": active,
-            "is_over_budget": active and percentage >= Decimal(str(budget.alert_threshold)),
+            "is_over_budget": active
+            and percentage >= Decimal(str(budget.alert_threshold)),
         }
 
     async def check_budget_constraints(
@@ -323,7 +330,9 @@ class CostOptimizer:
             actual_latency_ms = 0
             if adapter_executions:
                 latencies = [
-                    execution.latency_ms for execution in adapter_executions if execution.latency_ms
+                    execution.latency_ms
+                    for execution in adapter_executions
+                    if execution.latency_ms
                 ]
                 if latencies:
                     actual_latency_ms = int(np.mean(latencies))
@@ -331,7 +340,9 @@ class CostOptimizer:
                 tracked_cost = self._get_tracked_cost(adapter, task_type)
                 cost_per_second = ADAPTER_COSTS.get(adapter)
                 if tracked_cost > 0 and cost_per_second:
-                    actual_latency_ms = int((tracked_cost / cost_per_second) * Decimal(1000))
+                    actual_latency_ms = int(
+                        (tracked_cost / cost_per_second) * Decimal(1000)
+                    )
 
             success_rate = stats["success_rate"] if stats is not None else 0.0
 
@@ -480,7 +491,9 @@ class CostOptimizer:
             latency_score = max(0.0, 1.0 - (choice.latency_ms / self.max_latency_ms))
             return 0.7 * choice.success_rate + 0.3 * latency_score
 
-    async def _compute_avg_latency(self, tracker: Any, adapter: Any, task_type: TaskType) -> int:
+    async def _compute_avg_latency(
+        self, tracker: Any, adapter: Any, task_type: TaskType
+    ) -> int:
         recent = await tracker.get_recent_executions(limit=100)
         latencies = [
             e.latency_ms
@@ -568,7 +581,9 @@ class CostOptimizer:
                 pareto_dominated=False,
                 constraints_satisfied=True,
             )
-            base_choice.score = self.score_adapter_choice(choice=base_choice, strategy=strategy)
+            base_choice.score = self.score_adapter_choice(
+                choice=base_choice, strategy=strategy
+            )
             choices.append(base_choice)
 
         if constraints:

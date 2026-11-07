@@ -33,9 +33,13 @@ raised `AttributeError` at runtime whenever `get_worker_entry` returned a
 ## Reproduction (before fix)
 
 ```python
-config = PoolConfig(name="p", pool_type="mahavishnu",
-                    min_workers=1, max_workers=1,
-                    worker_type="not-a-real-worker")
+config = PoolConfig(
+    name="p",
+    pool_type="mahavishnu",
+    min_workers=1,
+    max_workers=1,
+    worker_type="not-a-real-worker",
+)
 pool = MahavishnuPool(config=config, terminal_manager=mock_tm)
 await pool.start()  # AttributeError: 'MahavishnuError' object has no attribute 'code'
 ```

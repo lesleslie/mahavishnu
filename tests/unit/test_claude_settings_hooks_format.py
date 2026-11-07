@@ -31,6 +31,7 @@ Phase 12a Task 5 (2026-09) retired the daemon counterpart
 (``.claude/hooks/bodai-activity-subscriber.py``); only the
 ``PostToolUse`` hook remains under that name.
 """
+
 from __future__ import annotations
 
 import json
@@ -194,9 +195,7 @@ def test_project_settings_known_bodai_hooks_present() -> None:
         # Covered by test_project_settings_has_hooks_top_level_key.
         return
 
-    expected_substrings = (
-        "bodai-activity-post-tool-use.py",
-    )
+    expected_substrings = ("bodai-activity-post-tool-use.py",)
 
     flattened = json.dumps(hooks)
     missing = [s for s in expected_substrings if s not in flattened]

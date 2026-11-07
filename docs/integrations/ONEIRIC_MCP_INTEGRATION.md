@@ -153,13 +153,10 @@ List available adapters with optional filtering.
 
 ```python
 # List all healthy storage adapters
-result = await oneiric_list_adapters(
-    category="storage",
-    healthy_only=True
-)
+result = await oneiric_list_adapters(category="storage", healthy_only=True)
 
 print(f"Found {result['count']} storage adapters")
-for adapter in result['adapters']:
+for adapter in result["adapters"]:
     print(f"  - {adapter['adapter_id']}")
 ```
 
@@ -192,13 +189,11 @@ Resolve best-matching adapter by domain, category, and provider.
 ```python
 # Resolve S3 storage adapter
 result = await oneiric_resolve_adapter(
-    domain="adapter",
-    category="storage",
-    provider="s3"
+    domain="adapter", category="storage", provider="s3"
 )
 
-if result['found']:
-    adapter = result['adapter']
+if result["found"]:
+    adapter = result["adapter"]
     print(f"Resolved: {adapter['adapter_id']}")
     print(f"Factory: {adapter['factory_path']}")
 ```
@@ -214,10 +209,7 @@ Check health status of a specific adapter.
 **Returns:**
 
 ```python
-{
-    "healthy": true,
-    "adapter_id": "mahavishnu.adapter.storage.s3"
-}
+{"healthy": true, "adapter_id": "mahavishnu.adapter.storage.s3"}
 ```
 
 **Example:**
@@ -226,7 +218,7 @@ Check health status of a specific adapter.
 # Check adapter health before use
 health = await oneiric_check_health("mahavishnu.adapter.storage.s3")
 
-if health['healthy']:
+if health["healthy"]:
     print("Adapter is healthy, safe to use")
 else:
     print("Adapter is unhealthy, use fallback")
@@ -257,8 +249,8 @@ Get detailed information about a specific adapter.
         "metadata": {"region": "us-east-1"},
         "health_status": "healthy",
         "registered_at": "2025-02-03T12:00:00Z",
-        "last_heartbeat": "2025-02-03T12:05:00Z"
-    }
+        "last_heartbeat": "2025-02-03T12:05:00Z",
+    },
 }
 ```
 
@@ -268,8 +260,8 @@ Get detailed information about a specific adapter.
 # Get adapter details
 result = await oneiric_get_adapter("mahavishnu.adapter.storage.s3")
 
-if result['found']:
-    adapter = result['adapter']
+if result["found"]:
+    adapter = result["adapter"]
     print(f"Provider: {adapter['provider']}")
     print(f"Capabilities: {adapter['capabilities']}")
 ```
@@ -281,10 +273,7 @@ Invalidate the adapter list cache.
 **Returns:**
 
 ```python
-{
-    "success": true,
-    "message": "Adapter cache invalidated successfully"
-}
+{"success": true, "message": "Adapter cache invalidated successfully"}
 ```
 
 **Example:**
@@ -304,12 +293,7 @@ Check overall health of Oneiric MCP integration.
 **Returns:**
 
 ```python
-{
-    "status": "healthy",
-    "connected": true,
-    "adapter_count": 42,
-    "cache_entries": 5
-}
+{"status": "healthy", "connected": true, "adapter_count": 42, "cache_entries": 5}
 ```
 
 **Example:**
@@ -318,7 +302,7 @@ Check overall health of Oneiric MCP integration.
 # Check integration health before critical workflow
 health = await oneiric_health_check()
 
-if health['status'] != 'healthy':
+if health["status"] != "healthy":
     logger.warning(f"Oneiric MCP unhealthy: {health.get('error')}")
     # Use fallback mechanism
 ```
@@ -474,10 +458,7 @@ async def backup_workflow(repos: list[str]):
             raise Exception("No storage adapters available")
 
         # Select S3 if available, otherwise first adapter
-        adapter = next(
-            (a for a in adapters if a.provider == "s3"),
-            adapters[0]
-        )
+        adapter = next((a for a in adapters if a.provider == "s3"), adapters[0])
 
         # Verify health
         is_healthy = await client.check_adapter_health(adapter.adapter_id)
@@ -712,7 +693,7 @@ The Oneiric MCP client exposes the following metrics (when observability enabled
 # Programmatic health check
 health = await client.health_check()
 
-if health['status'] == 'healthy':
+if health["status"] == "healthy":
     print(f"Connected: {health['connected']}")
     print(f"Adapters: {health['adapter_count']}")
     print(f"Cache entries: {health['cache_entries']}")
@@ -726,7 +707,8 @@ Enable debug logging for troubleshooting:
 
 ```python
 import logging
-logging.getLogger('mahavishnu.core.oneiric_client').setLevel(logging.DEBUG)
+
+logging.getLogger("mahavishnu.core.oneiric_client").setLevel(logging.DEBUG)
 ```
 
 ## Best Practices

@@ -96,7 +96,9 @@ class AuthContextMiddleware(Middleware):
         # ``Authorization`` header here in some transports; falling back
         # to a top-level ``request`` attribute keeps us tolerant of any
         # future wire shape FastMCP might introduce.
-        request_dict: dict[str, Any] = dict(request) if isinstance(request, dict) else {}
+        request_dict: dict[str, Any] = (
+            dict(request) if isinstance(request, dict) else {}
+        )
         if "request" in request_dict and isinstance(request_dict["request"], dict):
             request_dict = request_dict["request"]
 
@@ -127,8 +129,12 @@ class AuthContextMiddleware(Middleware):
         if fastmcp_ctx is not None:
             try:
                 await fastmcp_ctx.set_state(USER_ID_STATE_KEY, user_id)
-                await fastmcp_ctx.set_state(INTERNAL_PRINCIPAL_STATE_KEY, internal_verified)
-            except Exception:  # MCP tool error handler — broad catch is the documented contract
+                await fastmcp_ctx.set_state(
+                    INTERNAL_PRINCIPAL_STATE_KEY, internal_verified
+                )
+            except (
+                Exception
+            ):  # MCP tool error handler — broad catch is the documented contract
                 logger.debug(
                     "AuthContextMiddleware: failed to persist user_id to Context state",
                     exc_info=True,

@@ -219,9 +219,12 @@ def infer_repo(worktree_path: str) -> str:
 def pre_migration_discover(main_repo: str) -> list[WorktreeHandle]:
     """Discover all worktrees for main_repo and synthesize WorktreeHandles."""
     import subprocess
+
     result = subprocess.run(
         ["git", "-C", main_repo, "worktree", "list", "--porcelain"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     raw = parse_porcelain(result.stdout)
     principal = Principal.current()
@@ -327,16 +330,19 @@ class BundleRef:
 # Exceptions follow the mahavishnu/core/errors.py hierarchy (CLAUDE.md).
 class WorktreeError(MahavishnuError):
     """Base class for all worktree operation errors."""
+
     pass
 
 
 class WorktreeLocked(WorktreeError):
     """Distributed lock could not be acquired within the timeout."""
+
     pass
 
 
 class WorktreeIntegrityError(WorktreeError):
     """Bundle hash mismatch at fetch time."""
+
     pass
 
 
@@ -365,7 +371,14 @@ class WorktreeLock:
 ### 14. `lock()` semantics: Redis SETNX with fencing token
 
 ```python
-async def lock(self, repo: str, branch: str, *, acquire_timeout: float = 10.0, lease_ttl: float = 30.0) -> WorktreeLock:
+async def lock(
+    self,
+    repo: str,
+    branch: str,
+    *,
+    acquire_timeout: float = 10.0,
+    lease_ttl: float = 30.0,
+) -> WorktreeLock:
     """Distributed lock via Redis SETNX with EX + fencing token.
 
     Returns a WorktreeLock with the fencing_token. Pass the fencing_token

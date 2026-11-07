@@ -234,7 +234,9 @@ class WorkerManager:
         # Only use self.settings when it is a real MahavishnuSettings instance.
         # Tests sometimes inject ``settings=object()`` as a sentinel; we ignore
         # those and let ``get_worker_entry`` construct a default.
-        registry_settings = self.settings if isinstance(self.settings, MahavishnuSettings) else None
+        registry_settings = (
+            self.settings if isinstance(self.settings, MahavishnuSettings) else None
+        )
 
         try:
             entry = get_worker_entry(worker_type, settings=registry_settings)
@@ -274,7 +276,9 @@ class WorkerManager:
         from ..core.config import MahavishnuSettings
         from ..core.errors import ErrorCode, MahavishnuError
 
-        registry_settings = self.settings if isinstance(self.settings, MahavishnuSettings) else None
+        registry_settings = (
+            self.settings if isinstance(self.settings, MahavishnuSettings) else None
+        )
 
         try:
             entry = get_worker_entry(worker_type, settings=registry_settings)
@@ -557,7 +561,9 @@ class WorkerManager:
         adapter = "worker_manager"
 
         async with self._semaphore:
-            agent_tasks_in_progress.labels(agent_type=worker_type, adapter=adapter).inc()
+            agent_tasks_in_progress.labels(
+                agent_type=worker_type, adapter=adapter
+            ).inc()
             try:
                 logger.info(f"Executing task on worker {worker_id}")
                 # Bounded execution: a hung worker would otherwise hold this
@@ -630,7 +636,9 @@ class WorkerManager:
                 ).observe(failure_result.duration_seconds)
                 return failure_result
             finally:
-                agent_tasks_in_progress.labels(agent_type=worker_type, adapter=adapter).dec()
+                agent_tasks_in_progress.labels(
+                    agent_type=worker_type, adapter=adapter
+                ).dec()
 
     async def execute_batch(
         self,
@@ -652,12 +660,16 @@ class WorkerManager:
         if len(worker_ids) != len(tasks):
             raise ValueError("worker_ids and tasks must have same length")
 
-        async def execute_one(worker_id: str, task: dict[str, Any]) -> tuple[str, WorkerResult]:
+        async def execute_one(
+            worker_id: str, task: dict[str, Any]
+        ) -> tuple[str, WorkerResult]:
             result = await self.execute_task(worker_id, task)
             return worker_id, result
 
         # Execute all tasks concurrently
-        coros = [execute_one(wid, task) for wid, task in zip(worker_ids, tasks, strict=False)]
+        coros = [
+            execute_one(wid, task) for wid, task in zip(worker_ids, tasks, strict=False)
+        ]
         results = await asyncio.gather(*coros)
 
         logger.info(f"Completed {len(results)} worker tasks")

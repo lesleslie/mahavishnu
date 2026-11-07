@@ -175,7 +175,9 @@ def test_event_activity_and_fix_traces() -> None:
     app = SimpleNamespace(event_activity=[], fix_activity=[])
 
     record_event_activity(app, _Envelope())
-    record_event_activity(app, {"event_id": "evt-2", "payload": "not-a-dict", "metadata": 1})
+    record_event_activity(
+        app, {"event_id": "evt-2", "payload": "not-a-dict", "metadata": 1}
+    )
     assert get_event_activity(app, limit=0) == []
     assert len(get_event_activity(app, limit=10)) == 2
 

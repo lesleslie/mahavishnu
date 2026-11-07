@@ -213,7 +213,10 @@ async def execute_rag_pipeline(query: str) -> RAGPipelineResult:
                 RAGStageMetrics(
                     name="embedding_generation",
                     latency_ms=stage_time,
-                    metadata={"source": emb_result.source.value, "cached": emb_result.cached},
+                    metadata={
+                        "source": emb_result.source.value,
+                        "cached": emb_result.cached,
+                    },
                 )
             )
             await client.close()
@@ -320,7 +323,9 @@ async def run_e2e_benchmark(
     Returns:
         Aggregated benchmark results
     """
-    print(f"\nRunning E2E RAG Benchmark ({iterations} queries, {concurrent} concurrent)...")
+    print(
+        f"\nRunning E2E RAG Benchmark ({iterations} queries, {concurrent} concurrent)..."
+    )
 
     results: list[RAGPipelineResult] = []
     strategy_counts: dict[str, int] = {}

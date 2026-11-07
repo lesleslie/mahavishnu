@@ -321,7 +321,9 @@ class FlowRegistry:
             matches = registry.find_by_prefect_name("data-pipeline-flow")
             ```
         """
-        return [f for f in self._flows.values() if f.get("prefect_name") == prefect_name]
+        return [
+            f for f in self._flows.values() if f.get("prefect_name") == prefect_name
+        ]
 
 
 # Global registry instance for convenience

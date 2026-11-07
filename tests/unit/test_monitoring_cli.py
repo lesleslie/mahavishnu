@@ -32,6 +32,7 @@ def _force_mock_terminal_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(TerminalManager, "create", classmethod(_fake_create))
     yield
 
+
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------

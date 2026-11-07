@@ -167,11 +167,11 @@ ______________________________________________________________________
 ```python
 @dataclass(frozen=True, slots=True)
 class JotSummary:
-    id: str                       # 32-hex UUID v4
-    short_id: str                 # last 6 hex chars (UD5)
-    text: str                     # current text (latest edit wins)
+    id: str  # 32-hex UUID v4
+    short_id: str  # last 6 hex chars (UD5)
+    text: str  # current text (latest edit wins)
     status: Literal["open", "done"]
-    last_modified_ms: int         # latest event time for this jot
+    last_modified_ms: int  # latest event time for this jot
 ```
 
 ### `JotDetail` dataclass (show view, 8 fields via composition)
@@ -179,9 +179,9 @@ class JotSummary:
 ```python
 @dataclass(frozen=True, slots=True)
 class JotDetail:
-    summary: JotSummary           # composition
-    hlc: HLC                      # *latest* HLC for this jot (post-edit/done/reopen)
-    created_ms: int               # original capture time (anchor)
+    summary: JotSummary  # composition
+    hlc: HLC  # *latest* HLC for this jot (post-edit/done/reopen)
+    created_ms: int  # original capture time (anchor)
     ctx: Mapping[str, str | list[str] | None]  # read-only contract
 ```
 
@@ -192,9 +192,9 @@ class JotDetail:
 ```python
 @dataclass(frozen=True, slots=True)
 class FoldResult:
-    states: list[JotSummary]      # current state, sorted by last_modified_ms desc
-    parked: list[JotEvent]        # ops parked because target not yet seen
-    errors: list[JotEvent]        # genuine orphans (parked after full scan)
+    states: list[JotSummary]  # current state, sorted by last_modified_ms desc
+    parked: list[JotEvent]  # ops parked because target not yet seen
+    errors: list[JotEvent]  # genuine orphans (parked after full scan)
 ```
 
 `states` is what callers use. `parked` and `errors` are exposed for observability and tests — never silently dropped.
@@ -222,6 +222,7 @@ class JotSummaryDict(TypedDict):
     status: Literal["open", "done"]
     last_modified_ms: int
 
+
 class JotDetailDict(TypedDict):
     id: str
     short_id: str
@@ -231,6 +232,7 @@ class JotDetailDict(TypedDict):
     hlc: str  # serialized "{wall_ms}-{ctr}-{node}"
     created_ms: int
     ctx: dict[str, str | list[str] | None]
+
 
 class JotVitalsDict(TypedDict):
     total: int
@@ -246,14 +248,18 @@ class JotVitalsDict(TypedDict):
 class JotError(Exception):
     """Base class for all jot errors."""
 
+
 class JotNotFoundError(JotError):
     """Handle didn't match any jot."""
+
 
 class JotAmbiguousHandleError(JotError):
     """Handle matched multiple jots; lists candidates."""
 
+
 class JotLogCorruptError(JotError):
     """Log file has unparsable lines that prevent fold."""
+
 
 class JotParseError(JotError):
     """Generic log parse failure (line-level)."""
@@ -273,6 +279,7 @@ def parse_events(log_path: Path) -> list[JotEvent]:
     - Raises JotLogCorruptError only when the log can't be opened or is unreadable.
     - Truncated last line is silently skipped (handled by sub-plan 1's read_tail_hlc).
     """
+
 
 def build_states(
     events: list[JotEvent],
@@ -385,6 +392,7 @@ All tools return TypedDicts (JSON-serializable, no `Any`). Errors raise specific
 def jot_list(status: str | None = None, limit: int = 50) -> list[JotSummaryDict]:
     """List jots, newest first. status filter: 'open' | 'done' | None for all."""
 
+
 @mcp.tool()
 def jot_show(handle: str) -> JotDetailDict:
     """Show one jot by id (32 hex) or short_id (6 hex).
@@ -392,9 +400,11 @@ def jot_show(handle: str) -> JotDetailDict:
     Raises JotNotFoundError or JotAmbiguousHandleError.
     """
 
+
 @mcp.tool()
 def jot_add(text: str) -> JotDetailDict:
     """Manually create a jot (alternative to ',,' capture). Writes capture event."""
+
 
 @mcp.tool()
 def jot_edit(handle: str, new_text: str) -> JotDetailDict:
@@ -403,12 +413,14 @@ def jot_edit(handle: str, new_text: str) -> JotDetailDict:
     Raises JotNotFoundError or JotAmbiguousHandleError.
     """
 
+
 @mcp.tool()
 def jot_done(handle: str) -> JotDetailDict:
     """Mark a jot as done. No-op if already done.
 
     Raises JotNotFoundError or JotAmbiguousHandleError.
     """
+
 
 @mcp.tool()
 def jot_reopen(handle: str) -> JotDetailDict:
@@ -417,9 +429,11 @@ def jot_reopen(handle: str) -> JotDetailDict:
     Raises JotNotFoundError or JotAmbiguousHandleError.
     """
 
+
 @mcp.tool()
 def jot_vitals() -> JotVitalsDict:
     """Return counts: total, open, done, last_capture_ms, oldest_ms."""
+
 
 @mcp.tool()
 def jot_search(query: str, limit: int = 20) -> list[JotSummaryDict]:
@@ -477,15 +491,15 @@ def _enrich_ctx(ctx: dict, current_dir: Path) -> Mapping[str, str | None]:
     enriched: dict[str, str | None] = dict(ctx)
     try:
         enriched["repo"] = _git(current_dir, "rev-parse", "--show-toplevel")
-    except (FileNotFoundError, subprocess.CalledProcessError, OSError):
+    except FileNotFoundError, subprocess.CalledProcessError, OSError:
         enriched["repo"] = None
     try:
         enriched["branch"] = _git(current_dir, "rev-parse", "--abbrev-ref", "HEAD")
-    except (FileNotFoundError, subprocess.CalledProcessError, OSError):
+    except FileNotFoundError, subprocess.CalledProcessError, OSError:
         enriched["branch"] = None
     try:
         enriched["sha"] = _git(current_dir, "rev-parse", "HEAD")
-    except (FileNotFoundError, subprocess.CalledProcessError, OSError):
+    except FileNotFoundError, subprocess.CalledProcessError, OSError:
         enriched["sha"] = None
     return enriched
 ```

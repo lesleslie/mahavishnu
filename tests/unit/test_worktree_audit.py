@@ -497,7 +497,12 @@ class TestWorktreeAuditLogger:
                     user_id="user-123", repo_nickname="test", pruned_count=1
                 ),
             ),
-            ("list", lambda: logger.log_list_operation(user_id="user-123", repo_nickname="test")),
+            (
+                "list",
+                lambda: logger.log_list_operation(
+                    user_id="user-123", repo_nickname="test"
+                ),
+            ),
         ]
 
         for _event_name, event_func in events_to_test:

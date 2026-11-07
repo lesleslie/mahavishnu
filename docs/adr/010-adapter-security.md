@@ -48,6 +48,7 @@ class AdapterDiscoveryEngine:
     def _is_allowed(self, module_path: str) -> bool:
         """Check if module matches allowlist patterns."""
         import fnmatch
+
         for pattern in self.allowlist_patterns:
             if fnmatch.fnmatch(module_path, pattern):
                 return True
@@ -57,6 +58,7 @@ class AdapterDiscoveryEngine:
     async def discover_from_entry_points(self) -> list[AdapterMetadata]:
         """Load adapters from Python entry points with validation."""
         import importlib.metadata as metadata
+
         eps = metadata.entry_points(group="mahavishnu.adapters")
 
         for ep in eps:
@@ -96,6 +98,7 @@ class AuthorizationLevel(str, Enum):
     FULL = "full"
     READ_ONLY = "read_only"
     SANDBOXED = "sandboxed"
+
 
 @dataclass
 class AdapterMetadata:
@@ -140,10 +143,10 @@ class OneiricMCPClient:
             )
         else:
             # Development only - warn in logs
-            logger.warning("Using insecure gRPC channel - not recommended for production")
-            return grpc.insecure_channel(
-                f"{config.grpc_host}:{config.grpc_port}"
+            logger.warning(
+                "Using insecure gRPC channel - not recommended for production"
             )
+            return grpc.insecure_channel(f"{config.grpc_host}:{config.grpc_port}")
 ```
 
 ### Layer 4: Audit Logging
@@ -162,7 +165,7 @@ class AdapterAuditLogger:
                 "source": source,  # "entry_point", "oneiric_mcp", "durable_kv"
                 "capabilities": metadata.capabilities,
                 "authorization_level": metadata.authorization_level.value,
-            }
+            },
         )
 
     def log_resolution(self, task_type: str, adapter_id: str, capabilities: list[str]):
@@ -172,7 +175,7 @@ class AdapterAuditLogger:
                 "task_type": task_type,
                 "adapter_id": adapter_id,
                 "matched_capabilities": capabilities,
-            }
+            },
         )
 
     def log_rejection(self, module_path: str, reason: str):
@@ -181,7 +184,7 @@ class AdapterAuditLogger:
             extra={
                 "module_path": module_path,
                 "reason": reason,  # "not_in_allowlist", "invalid_signature"
-            }
+            },
         )
 ```
 
@@ -196,18 +199,18 @@ from prometheus_client import Counter, Gauge, Histogram
 adapter_rejections_total = Counter(
     "mahavishnu_adapter_rejections_total",
     "Adapter rejections by reason",
-    ["reason", "module_path"]
+    ["reason", "module_path"],
 )
 
 adapter_registrations_total = Counter(
     "mahavishnu_adapter_registrations_total",
     "Adapter registrations by source",
-    ["source", "authorization_level"]
+    ["source", "authorization_level"],
 )
 
 unverified_adapters_gauge = Gauge(
     "mahavishnu_unverified_adapters",
-    "Number of adapters loaded without signature verification"
+    "Number of adapters loaded without signature verification",
 )
 ```
 

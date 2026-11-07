@@ -55,7 +55,9 @@ def sample_worktree(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _chunk_reader(path: Path, chunk_size: int = 64 * 1024) -> Callable[[], Iterator[bytes]]:
+def _chunk_reader(
+    path: Path, chunk_size: int = 64 * 1024
+) -> Callable[[], Iterator[bytes]]:
     """Return a fresh callable that yields ``path`` in fixed-size chunks.
 
     Per the storage_io contract, ``chunk_reader`` is a sync
@@ -327,7 +329,8 @@ def test_deserialize_blocks_path_traversal(tmp_path: Path) -> None:
     # was cleaned up by the BaseException handler.
     if target.parent.exists():
         leftovers = [
-            p for p in target.parent.iterdir()
+            p
+            for p in target.parent.iterdir()
             if p.name.startswith(".staging-") and p.parent == target.parent
         ]
         assert not leftovers, f"staging leftovers under target.parent: {leftovers}"
@@ -438,9 +441,7 @@ def test_round_trip_100mb_file(tmp_path: Path) -> None:
     target = tmp_path / "big_target"
     temp_path, byte_count, _sha = _serialize_to_payload(tmp_path)
     # Sanity: compression must shrink a uniform-byte file dramatically.
-    assert byte_count < 10 * 1024 * 1024, (
-        f"expected compressed <10MB, got {byte_count}"
-    )
+    assert byte_count < 10 * 1024 * 1024, f"expected compressed <10MB, got {byte_count}"
     deserialize_worktree_tar(_chunk_reader(temp_path), target)
     assert (target / "big.bin").stat().st_size == 100 * 1024 * 1024
 
@@ -455,9 +456,7 @@ def test_round_trip_100mb_file(tmp_path: Path) -> None:
     [0, 1, 1024, 99 * 1024 * 1024, 101 * 1024 * 1024],
     ids=["empty", "1B", "1KB", "99MB", "101MB"],
 )
-def test_round_trip_at_size_boundary(
-    tmp_path: Path, size_bytes: int
-) -> None:
+def test_round_trip_at_size_boundary(tmp_path: Path, size_bytes: int) -> None:
     """Sizes from 0B to 101MB round-trip; sanity boundary at 100MB."""
     big = tmp_path / "blob.bin"
     if size_bytes > 0:
@@ -503,9 +502,7 @@ def test_chunk_reader_contract(sample_worktree: Path) -> None:
 
 def test_tempfile_mkstemp_creates_real_file(tmp_path: Path) -> None:
     """Sanity-check the stdlib API our error wrappers depend on."""
-    fd, path_str = tempfile.mkstemp(
-        prefix="sanity-", suffix=".bin", dir=str(tmp_path)
-    )
+    fd, path_str = tempfile.mkstemp(prefix="sanity-", suffix=".bin", dir=str(tmp_path))
     try:
         with open(fd, "wb") as f:
             f.write(b"x")

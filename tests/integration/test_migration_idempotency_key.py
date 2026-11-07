@@ -141,13 +141,11 @@ async def db_with_duplicate_keys(tmp_path: Path) -> Path:
     _make_sqlite_db(db_path, with_idempotency_key=True)
     with sqlite3.connect(str(db_path)) as conn:
         conn.execute(
-            "INSERT INTO task_events (idempotency_key, event_type) "
-            "VALUES (?, ?)",
+            "INSERT INTO task_events (idempotency_key, event_type) VALUES (?, ?)",
             ("dup-key-1", "created"),
         )
         conn.execute(
-            "INSERT INTO task_events (idempotency_key, event_type) "
-            "VALUES (?, ?)",
+            "INSERT INTO task_events (idempotency_key, event_type) VALUES (?, ?)",
             ("dup-key-1", "updated"),
         )
         conn.commit()
@@ -224,8 +222,7 @@ class TestMigrationRevBIndex:
 
         async with aiosqlite.connect(fresh_db_with_audit_schema) as db:
             await db.execute(
-                "INSERT INTO task_events (idempotency_key, event_type) "
-                "VALUES (?, ?)",
+                "INSERT INTO task_events (idempotency_key, event_type) VALUES (?, ?)",
                 ("key-a", "created"),
             )
             await db.commit()

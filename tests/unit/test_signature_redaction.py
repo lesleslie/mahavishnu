@@ -10,7 +10,8 @@ from mahavishnu.core.code_index.signature_redaction import (
 
 def test_redact_api_key():
     assert (
-        redact_signature('def connect(api_key="sk-abc123")') == 'def connect(api_key="<REDACTED>")'
+        redact_signature('def connect(api_key="sk-abc123")')
+        == 'def connect(api_key="<REDACTED>")'
     )
 
 
@@ -40,14 +41,20 @@ def test_redact_none():
 
 
 def test_redact_connection_string():
-    assert redact_signature('database_url = "postgres://..."') == 'database_url = "<REDACTED>"'
+    assert (
+        redact_signature('database_url = "postgres://..."')
+        == 'database_url = "<REDACTED>"'
+    )
 
 
 @pytest.mark.parametrize(
     ("signature", "expected"),
     [
         ('api_secret = "abc"', 'api_secret = "<REDACTED>"'),
-        ('private_key = "-----BEGIN RSA PRIVATE KEY-----"', 'private_key = "<REDACTED>"'),
+        (
+            'private_key = "-----BEGIN RSA PRIVATE KEY-----"',
+            'private_key = "<REDACTED>"',
+        ),
         ('github_token = "ghp_123"', 'github_token = "<REDACTED>"'),
     ],
 )

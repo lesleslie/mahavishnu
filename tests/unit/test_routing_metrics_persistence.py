@@ -164,7 +164,9 @@ class TestRoutingMetricsPersistence:
     """Test suite for RoutingMetricsPersistence."""
 
     @pytest.mark.asyncio
-    async def test_initialize_and_close(self, persistence: RoutingMetricsPersistence) -> None:
+    async def test_initialize_and_close(
+        self, persistence: RoutingMetricsPersistence
+    ) -> None:
         """Test initialization and cleanup."""
         await persistence.initialize()
         assert persistence._pool is not None
@@ -182,7 +184,9 @@ class TestRoutingMetricsPersistence:
         assert persistence._pool is None
 
     @pytest.mark.asyncio
-    async def test_write_and_get_execution(self, persistence: RoutingMetricsPersistence) -> None:
+    async def test_write_and_get_execution(
+        self, persistence: RoutingMetricsPersistence
+    ) -> None:
         """Test writing and retrieving execution records."""
         await persistence.initialize()
 
@@ -212,7 +216,9 @@ class TestRoutingMetricsPersistence:
         await persistence.close()
 
     @pytest.mark.asyncio
-    async def test_write_adapter_stats(self, persistence: RoutingMetricsPersistence) -> None:
+    async def test_write_adapter_stats(
+        self, persistence: RoutingMetricsPersistence
+    ) -> None:
         """Test writing adapter statistics."""
         await persistence.initialize()
 
@@ -270,7 +276,9 @@ class TestRoutingMetricsPersistence:
         await persistence.close()
 
     @pytest.mark.asyncio
-    async def test_batch_write_interface(self, persistence: RoutingMetricsPersistence) -> None:
+    async def test_batch_write_interface(
+        self, persistence: RoutingMetricsPersistence
+    ) -> None:
         """Test ExecutionTracker-compatible batch_write interface."""
         await persistence.initialize()
 
@@ -293,7 +301,9 @@ class TestRoutingMetricsPersistence:
         await persistence.close()
 
     @pytest.mark.asyncio
-    async def test_get_recent_executions(self, persistence: RoutingMetricsPersistence) -> None:
+    async def test_get_recent_executions(
+        self, persistence: RoutingMetricsPersistence
+    ) -> None:
         """Test retrieving recent execution records."""
         await persistence.initialize()
 
@@ -309,7 +319,9 @@ class TestRoutingMetricsPersistence:
             await persistence.write_execution(record)
 
         await persistence._flush_executions()
-        recent = await persistence.get_recent_executions(adapter=AdapterType.PREFECT, limit=10)
+        recent = await persistence.get_recent_executions(
+            adapter=AdapterType.PREFECT, limit=10
+        )
 
         assert len(recent) == 5
         assert recent[0].execution_id.startswith("recent-test-")
@@ -422,7 +434,9 @@ class TestRoutingMetricsPersistence:
         self, persistence: RoutingMetricsPersistence, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test the periodic flush loop error branch."""
-        persistence = RoutingMetricsPersistence(dsn="postgresql://les@localhost/mahavishnu")
+        persistence = RoutingMetricsPersistence(
+            dsn="postgresql://les@localhost/mahavishnu"
+        )
 
         calls = {"sleep": 0, "flush": 0}
 
@@ -434,7 +448,9 @@ class TestRoutingMetricsPersistence:
             calls["flush"] += 1
             raise RuntimeError("boom")
 
-        monkeypatch.setattr("mahavishnu.core.routing_metrics_persistence.asyncio.sleep", fake_sleep)
+        monkeypatch.setattr(
+            "mahavishnu.core.routing_metrics_persistence.asyncio.sleep", fake_sleep
+        )
         monkeypatch.setattr(persistence, "_flush_all_pending", fake_flush)
 
         await persistence._periodic_flush()
@@ -444,7 +460,9 @@ class TestRoutingMetricsPersistence:
     @pytest.mark.asyncio
     async def test_periodic_flush_cancelled_branch(self) -> None:
         """Test the periodic flush loop cancellation branch."""
-        persistence = RoutingMetricsPersistence(dsn="postgresql://les@localhost/mahavishnu")
+        persistence = RoutingMetricsPersistence(
+            dsn="postgresql://les@localhost/mahavishnu"
+        )
 
         started = asyncio.Event()
 
@@ -465,7 +483,9 @@ class TestRoutingMetricsPersistence:
     @pytest.mark.asyncio
     async def test_not_initialized_branches_and_global_helpers(self) -> None:
         """Test branches that run before initialization plus global helper paths."""
-        persistence = RoutingMetricsPersistence(dsn="postgresql://les@localhost/mahavishnu")
+        persistence = RoutingMetricsPersistence(
+            dsn="postgresql://les@localhost/mahavishnu"
+        )
         assert await persistence.get_execution("missing") is None
         assert await persistence.get_recent_executions() == []
         assert await persistence.get_adapter_stats(AdapterType.PREFECT) == []
@@ -474,7 +494,9 @@ class TestRoutingMetricsPersistence:
         module = sys.modules["mahavishnu.core.routing_metrics_persistence"]
         module._persistence = None
 
-        created = await initialize_routing_metrics_persistence("postgresql://test", batch_size=3)
+        created = await initialize_routing_metrics_persistence(
+            "postgresql://test", batch_size=3
+        )
         assert get_routing_metrics_persistence() is created
 
         recreated = await initialize_routing_metrics_persistence(
@@ -515,7 +537,9 @@ class TestRoutingMetricsPersistence:
         persistence._pool.acquire = MagicMock(return_value=bad_acquire)  # type: ignore[method-assign]
 
         assert await persistence.get_execution("missing") is None
-        assert await persistence.get_recent_executions(adapter=AdapterType.PREFECT) == []
+        assert (
+            await persistence.get_recent_executions(adapter=AdapterType.PREFECT) == []
+        )
         assert await persistence.get_adapter_stats(AdapterType.PREFECT) == []
 
         await persistence.write_adapter_stats(
@@ -580,7 +604,9 @@ class TestRoutingMetricsPersistence:
 
         monkeypatch.setattr(builtins, "__import__", guarded_import)
         for module_name in [
-            name for name in sys.modules if name == "asyncpg" or name.startswith("asyncpg.")
+            name
+            for name in sys.modules
+            if name == "asyncpg" or name.startswith("asyncpg.")
         ]:
             monkeypatch.delitem(sys.modules, module_name, raising=False)
 

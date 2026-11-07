@@ -90,7 +90,9 @@ class ScaffoldingEngine:
                     issues.append(issue)
         issues.extend(self._check_file_conflicts(resolved, graph))
         if issues:
-            raise ValueError("Validation failed:\n" + "\n".join(f"  - {i}" for i in issues))
+            raise ValueError(
+                "Validation failed:\n" + "\n".join(f"  - {i}" for i in issues)
+            )
 
     def _prepare_all_variables(
         self,
@@ -174,7 +176,9 @@ class ScaffoldingEngine:
             # Second pass: render patterns in topological order
             for pattern_id in graph.topological_sort():
                 pattern = resolved[pattern_id]
-                self._render_pattern(pattern, all_variables, temp_dir, scaffold_env, template_env)
+                self._render_pattern(
+                    pattern, all_variables, temp_dir, scaffold_env, template_env
+                )
 
             # 7. Write manifest and lockfile
             self._write_manifest(temp_dir, project_name, resolved, variables)
@@ -325,10 +329,18 @@ class ScaffoldingEngine:
             "python_version": python_version,
             "session_secret": secrets.token_urlsafe(32),
             "dependencies": ", ".join(
-                sorted({dep for p in resolved.values() for dep in p.get_dependency_ids()})
+                sorted(
+                    {dep for p in resolved.values() for dep in p.get_dependency_ids()}
+                )
             ),
             "adapter_names": ", ".join(
-                sorted({pid.split("/")[0] for pid in resolved if pid.startswith("adapters/")})
+                sorted(
+                    {
+                        pid.split("/")[0]
+                        for pid in resolved
+                        if pid.startswith("adapters/")
+                    }
+                )
             ),
         }
 
@@ -366,8 +378,14 @@ class ScaffoldingEngine:
                             if sn == slot_name:
                                 slot = s
                                 break
-                    env = template_env if slot and slot.path.endswith(".html") else scaffold_env
-                    content = env.from_string(pattern.templates[injection_key]).render(**variables)
+                    env = (
+                        template_env
+                        if slot and slot.path.endswith(".html")
+                        else scaffold_env
+                    )
+                    content = env.from_string(pattern.templates[injection_key]).render(
+                        **variables
+                    )
                     if slot_name in injections:
                         injections[slot_name] += "\n" + content
                     else:
@@ -455,9 +473,9 @@ class ScaffoldingEngine:
         patterns_list = []
         for pid in sorted(resolved):
             p = resolved[pid]
-            file_hash = hashlib.sha256(yaml.dump(p.model_dump(mode="json")).encode()).hexdigest()[
-                :16
-            ]
+            file_hash = hashlib.sha256(
+                yaml.dump(p.model_dump(mode="json")).encode()
+            ).hexdigest()[:16]
             patterns_list.append(
                 {
                     "id": p.id,
@@ -482,13 +500,26 @@ class ScaffoldingEngine:
         """Initialize a git repo and create the initial commit."""
         try:
             subprocess.run(
-                ["git", "init"], cwd=project_dir, capture_output=True, check=True, text=True
+                ["git", "init"],
+                cwd=project_dir,
+                capture_output=True,
+                check=True,
+                text=True,
             )
             subprocess.run(
-                ["git", "add", "-A"], cwd=project_dir, capture_output=True, check=True, text=True
+                ["git", "add", "-A"],
+                cwd=project_dir,
+                capture_output=True,
+                check=True,
+                text=True,
             )
             subprocess.run(
-                ["git", "commit", "-m", f"init: scaffold {project_name} via mahavishnu"],
+                [
+                    "git",
+                    "commit",
+                    "-m",
+                    f"init: scaffold {project_name} via mahavishnu",
+                ],
                 cwd=project_dir,
                 capture_output=True,
                 check=True,
@@ -496,7 +527,8 @@ class ScaffoldingEngine:
             )
         except FileNotFoundError:
             logger.warning(
-                "git not found — skipping repository initialization for %s", project_name
+                "git not found — skipping repository initialization for %s",
+                project_name,
             )
         except subprocess.CalledProcessError as exc:
             logger.warning("git command failed for %s: %s", project_name, exc)

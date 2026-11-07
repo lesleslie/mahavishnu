@@ -130,11 +130,15 @@ class DeploymentVerifier:
                             f"Active connections: {data['metrics'].get('active_connections', 'N/A')}"
                         )
 
-                    self.record_result("health_endpoint", True, "Health endpoint accessible")
+                    self.record_result(
+                        "health_endpoint", True, "Health endpoint accessible"
+                    )
                     return True
                 else:
                     print_error(f"Health endpoint returned {response.status_code}")
-                    self.record_result("health_endpoint", False, f"HTTP {response.status_code}")
+                    self.record_result(
+                        "health_endpoint", False, f"HTTP {response.status_code}"
+                    )
                     return False
 
         except httpx.ConnectError as e:
@@ -173,14 +177,20 @@ class DeploymentVerifier:
                             all_present = False
 
                     if all_present:
-                        self.record_result("metrics_endpoint", True, "All required metrics present")
+                        self.record_result(
+                            "metrics_endpoint", True, "All required metrics present"
+                        )
                         return True
                     else:
-                        self.record_result("metrics_endpoint", False, "Some metrics missing")
+                        self.record_result(
+                            "metrics_endpoint", False, "Some metrics missing"
+                        )
                         return False
                 else:
                     print_error(f"Metrics endpoint returned {response.status_code}")
-                    self.record_result("metrics_endpoint", False, f"HTTP {response.status_code}")
+                    self.record_result(
+                        "metrics_endpoint", False, f"HTTP {response.status_code}"
+                    )
                     return False
 
         except Exception as e:
@@ -200,7 +210,9 @@ class DeploymentVerifier:
                 ssl_context.check_hostname = False
                 ssl_context.verify_mode = ssl.CERT_NONE
 
-            async with websockets.connect(self.ws_url, ssl=ssl_context, close_timeout=5) as ws:
+            async with websockets.connect(
+                self.ws_url, ssl=ssl_context, close_timeout=5
+            ) as ws:
                 print_success(f"Connected to {self.ws_url}")
 
                 # Receive welcome message
@@ -213,7 +225,9 @@ class DeploymentVerifier:
                 except TimeoutError:
                     print_warning("No welcome message received")
 
-                self.record_result("websocket_connection", True, "WebSocket connection successful")
+                self.record_result(
+                    "websocket_connection", True, "WebSocket connection successful"
+                )
                 return True
 
         except websockets.exceptions.InvalidStatusCode as e:
@@ -303,10 +317,14 @@ class DeploymentVerifier:
                 print_info(f"{var} is set")
 
         if all_present:
-            self.record_result("environment_variables", True, "All required vars present")
+            self.record_result(
+                "environment_variables", True, "All required vars present"
+            )
             return True
         else:
-            self.record_result("environment_variables", False, "Some required vars missing")
+            self.record_result(
+                "environment_variables", False, "Some required vars missing"
+            )
             return False
 
     def check_file_permissions(self) -> bool:
@@ -386,7 +404,9 @@ class DeploymentVerifier:
             if days_remaining < 30:
                 print_warning(f"Certificate expires in {days_remaining:.0f} days")
                 self.record_result(
-                    "certificate_validity", False, f"Expires in {days_remaining:.0f} days"
+                    "certificate_validity",
+                    False,
+                    f"Expires in {days_remaining:.0f} days",
                 )
                 return False
             else:

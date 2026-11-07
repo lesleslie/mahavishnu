@@ -189,7 +189,9 @@ class ResilientEmbeddingClient:
         )
 
         # Statistics
-        self._source_counts: dict[EmbeddingSource, int] = dict.fromkeys(EmbeddingSource, 0)
+        self._source_counts: dict[EmbeddingSource, int] = dict.fromkeys(
+            EmbeddingSource, 0
+        )
         self._dimension_mismatches = 0
 
     def _get_client(self) -> CommonMCPClient:
@@ -521,10 +523,14 @@ class ResilientEmbeddingClient:
         Returns:
             List of ResilientEmbeddingResult objects
         """
-        cached_results, uncached_indices = await self._partition_by_cache(texts, use_cache)
+        cached_results, uncached_indices = await self._partition_by_cache(
+            texts, use_cache
+        )
         new_results: list[ResilientEmbeddingResult] = []
         if uncached_indices:
-            new_results = await self._generate_uncached(texts, uncached_indices, use_cache)
+            new_results = await self._generate_uncached(
+                texts, uncached_indices, use_cache
+            )
         return self._assemble_batch_results(texts, cached_results, new_results)
 
     async def _try_batch_akosha(self, texts: list[str]) -> list[list[float]] | None:
@@ -551,7 +557,9 @@ class ResilientEmbeddingClient:
             elif isinstance(result, list):
                 embeddings = result  # type: ignore[assignment]
 
-            valid = all(self._validate_dimension(emb, "akosha_batch") for emb in embeddings)
+            valid = all(
+                self._validate_dimension(emb, "akosha_batch") for emb in embeddings
+            )
             if valid and len(embeddings) == len(texts):
                 self._circuit_breaker.record_success()
                 return embeddings  # type: ignore[no-any-return]

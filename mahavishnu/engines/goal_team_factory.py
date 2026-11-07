@@ -66,7 +66,9 @@ class ParsedGoal(BaseModel):
     skills: list[str] = Field(default_factory=list, description="Required skills")
     confidence: float = Field(ge=0.0, le=1.0, description="Parsing confidence")
     raw_goal: str = Field(description="Original goal string")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 @dataclass
@@ -246,7 +248,13 @@ INTENT_PATTERNS = {
 
 # Domain patterns for skill extraction
 DOMAIN_PATTERNS = {
-    "security": [r"\bsecurity\b", r"\bauth\b", r"\bxss\b", r"\binjection\b", r"\bvulnerab"],
+    "security": [
+        r"\bsecurity\b",
+        r"\bauth\b",
+        r"\bxss\b",
+        r"\binjection\b",
+        r"\bvulnerab",
+    ],
     "performance": [
         r"\bperformance\b",
         r"\bspeed\b",
@@ -254,7 +262,13 @@ DOMAIN_PATTERNS = {
         r"\bmemory\b",
         r"\blatency\b",
     ],
-    "quality": [r"\bquality\b", r"\bstyle\b", r"\blint\b", r"\bcomplexity\b", r"\bmaintain"],
+    "quality": [
+        r"\bquality\b",
+        r"\bstyle\b",
+        r"\blint\b",
+        r"\bcomplexity\b",
+        r"\bmaintain",
+    ],
     "testing": [r"\btest\b", r"\bcoverage\b", r"\bunit\b", r"\bintegration\b"],
     "documentation": [r"\bdoc\b", r"\breadme\b", r"\bcomment\b", r"\bapi\b"],
 }
@@ -312,7 +326,9 @@ class GoalDrivenTeamFactory:
         """
         self.llm_factory = llm_factory
         self.skill_mapping = skill_mapping or SKILL_MAPPING
-        logger.info(f"GoalDrivenTeamFactory initialized with {len(self.skill_mapping)} skills")
+        logger.info(
+            f"GoalDrivenTeamFactory initialized with {len(self.skill_mapping)} skills"
+        )
 
     async def parse_goal(self, goal: str) -> ParsedGoal:
         """Parse a natural language goal into structured components.
@@ -475,7 +491,9 @@ class GoalDrivenTeamFactory:
                     return domain
         return "general"
 
-    def _calculate_confidence(self, intent: str, skills: list[str], domain: str) -> float:
+    def _calculate_confidence(
+        self, intent: str, skills: list[str], domain: str
+    ) -> float:
         """Calculate confidence score for pattern matching results.
 
         Args:
@@ -652,7 +670,9 @@ CONFIDENCE: <0.0-1.0>"""
             response = await model.ainvoke(prompt)
 
             # Parse LLM response
-            content = response.content if hasattr(response, "content") else str(response)
+            content = (
+                response.content if hasattr(response, "content") else str(response)
+            )
             return self._parse_llm_response(goal, content)
 
         except Exception as e:  # LLM fallback — broad catch to return safe defaults when provider response is malformed  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100

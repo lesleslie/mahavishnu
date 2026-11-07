@@ -58,8 +58,9 @@ Prefect is the modern replacement for Airflow, offering:
 
 ```python
 # Before (Airflow)
-with DAG('my_dag', start_date=datetime(2025, 1, 1)) as dag:
-    task1 = PythonOperator(task_id='task1', python_callable=my_func)
+with DAG("my_dag", start_date=datetime(2025, 1, 1)) as dag:
+    task1 = PythonOperator(task_id="task1", python_callable=my_func)
+
 
 # After (Prefect)
 @flow

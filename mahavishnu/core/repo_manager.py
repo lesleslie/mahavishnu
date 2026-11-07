@@ -191,7 +191,9 @@ class RepositoryManager:
 
         # Filter by tags (O(1) with index)
         if tags_list:
-            results = [r for r in self._filter_by_tags(results, tags_list) if r is not None]
+            results = [
+                r for r in self._filter_by_tags(results, tags_list) if r is not None
+            ]
 
         # Filter by MCP type (O(1) with index)
         if mcp_type:
@@ -236,12 +238,16 @@ class RepositoryManager:
                 # Filter to repos that are in all tag results
                 for tag_result_list in tag_results[1:]:
                     names_in_this = {r.name for r in tag_result_list if r}
-                    name_to_repo = {n: r for n, r in name_to_repo.items() if n in names_in_this}
+                    name_to_repo = {
+                        n: r for n, r in name_to_repo.items() if n in names_in_this
+                    }
                 return list(name_to_repo.values())
             else:
                 return []
 
-    def _filter_by_mcp_type(self, results: list[Repository], mcp_type: str) -> list[Repository]:
+    def _filter_by_mcp_type(
+        self, results: list[Repository], mcp_type: str
+    ) -> list[Repository]:
         """Filter repositories by MCP type."""
         mcp_repos = [
             self.get_by_package(pkg)
@@ -251,7 +257,9 @@ class RepositoryManager:
         mcp_names = {r.name for r in mcp_repos if r}
         return [r for r in results if r and r.name in mcp_names]
 
-    def _filter_by_language(self, results: list[Repository], language: str) -> list[Repository]:
+    def _filter_by_language(
+        self, results: list[Repository], language: str
+    ) -> list[Repository]:
         """Filter repositories by language."""
         return [r for r in results if r.metadata and r.metadata.language == language]
 

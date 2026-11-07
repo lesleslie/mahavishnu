@@ -35,7 +35,9 @@ class SubscriptionTokenData(BaseModel):
 class SubscriptionAuth:
     """Subscription-based authentication handler for services like Claude Code."""
 
-    def __init__(self, secret: str, algorithm: str = "HS256", expire_minutes: int = 60) -> None:
+    def __init__(
+        self, secret: str, algorithm: str = "HS256", expire_minutes: int = 60
+    ) -> None:
         """
         Initialize subscription auth handler.
 
@@ -45,7 +47,9 @@ class SubscriptionAuth:
             expire_minutes: Token expiration time in minutes
         """
         if len(secret) < 32:
-            raise ValueError("Subscription auth secret must be at least 32 characters long")
+            raise ValueError(
+                "Subscription auth secret must be at least 32 characters long"
+            )
 
         self.secret = secret
         self.algorithm = algorithm
@@ -105,11 +109,13 @@ class SubscriptionAuth:
             ) from e
         except jwt.exceptions.DecodeError as e:
             raise AuthenticationError(
-                message="Could not decode subscription token", details={"error": "Decode error"}
+                message="Could not decode subscription token",
+                details={"error": "Decode error"},
             ) from e
         except Exception as e:
             raise AuthenticationError(
-                message=f"Subscription authentication error: {e}", details={"error": str(e)}
+                message=f"Subscription authentication error: {e}",
+                details={"error": str(e)},
             ) from e
 
     def _validate_subscription_payload(self, payload: dict) -> SubscriptionTokenData:
@@ -130,11 +136,14 @@ class SubscriptionAuth:
             scopes=payload.get("scopes", []),
         )
 
-    def _check_subscription_token_expiry(self, token_data: SubscriptionTokenData) -> None:
+    def _check_subscription_token_expiry(
+        self, token_data: SubscriptionTokenData
+    ) -> None:
         """Check if the subscription token has expired."""
         if datetime.now(tz=UTC).timestamp() > token_data.exp:
             raise AuthenticationError(
-                message="Subscription token has expired", details={"error": "Expired token"}
+                message="Subscription token has expired",
+                details={"error": "Expired token"},
             )
 
 
@@ -173,9 +182,9 @@ class MultiAuthHandler:
         subscription_secret = getattr(subscription_config, "secret", None) or getattr(
             config, "subscription_auth_secret", None
         )
-        subscription_algorithm = getattr(subscription_config, "algorithm", None) or getattr(
-            config, "subscription_auth_algorithm", "HS256"
-        )
+        subscription_algorithm = getattr(
+            subscription_config, "algorithm", None
+        ) or getattr(config, "subscription_auth_algorithm", "HS256")
         subscription_expire_minutes = getattr(
             subscription_config, "expire_minutes", None
         ) or getattr(config, "subscription_auth_expire_minutes", 60)
@@ -298,7 +307,9 @@ class MultiAuthHandler:
         """
         return self.subscription_auth is not None
 
-    def create_codex_subscription_token(self, user_id: str, scopes: list[str] | None = None) -> str:
+    def create_codex_subscription_token(
+        self, user_id: str, scopes: list[str] | None = None
+    ) -> str:
         """
         Create a Codex subscription token.
 

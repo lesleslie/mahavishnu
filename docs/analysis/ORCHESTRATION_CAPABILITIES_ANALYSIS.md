@@ -51,18 +51,12 @@ class SessionLifecycleManager:
 ```python
 # In settings.json hooks configuration:
 {
-  "SessionStart": [
-    {
-      "command": "qwen session start --project {project_name}",
-      "enabled": true
-    }
-  ],
-  "SessionEnd": [
-    {
-      "command": "qwen session stop --project {project_name}",
-      "enabled": true
-    }
-  ]
+    "SessionStart": [
+        {"command": "qwen session start --project {project_name}", "enabled": true}
+    ],
+    "SessionEnd": [
+        {"command": "qwen session stop --project {project_name}", "enabled": true}
+    ],
 }
 ```
 
@@ -154,7 +148,7 @@ EOF
 Task(
     subagent_type="fastblocks-architect",
     prompt="Design a user authentication block for FastBlocks",
-    description="Design FastBlocks auth block"
+    description="Design FastBlocks auth block",
 )
 ```
 
@@ -215,15 +209,11 @@ class TerminalManager:
     async def launch_sessions(
         self,
         profile: str,  # "qwen", "dev", "prod"
-        count: int = 1
+        count: int = 1,
     ) -> List[str]:
         """Launch multiple terminal sessions."""
 
-    async def send_command(
-        self,
-        session_id: str,
-        command: str
-    ) -> None:
+    async def send_command(self, session_id: str, command: str) -> None:
         """Send command to terminal session."""
 ```
 
@@ -246,34 +236,32 @@ class OrchestratorAdapter(ABC):
     """Base class for all orchestration adapters."""
 
     @abstractmethod
-    async def launch_instances(
-        self,
-        profile: str,
-        count: int
-    ) -> List[str]:
+    async def launch_instances(self, profile: str, count: int) -> List[str]:
         """Launch orchestrated instances."""
 
     @abstractmethod
-    async def execute_command(
-        self,
-        instance_id: str,
-        command: str
-    ) -> Dict[str, Any]:
+    async def execute_command(self, instance_id: str, command: str) -> Dict[str, Any]:
         """Execute command in instance."""
+
 
 # mahavishnu/orchestration/terminal_adapter.py
 class TerminalOrchestrator(OrchestratorAdapter):
     """Terminal session orchestration (already exists)."""
+
     pass
+
 
 # mahavishnu/orchestration/kubernetes_adapter.py
 class KubernetesOrchestrator(OrchestratorAdapter):
     """Kubernetes pod orchestration (needs to be built)."""
+
     pass
+
 
 # mahavishnu/orchestration/cloudrun_adapter.py
 class CloudRunOrchestrator(OrchestratorAdapter):
     """Cloud Run service orchestration (needs to be built)."""
+
     pass
 ```
 
@@ -332,18 +320,10 @@ class CloudRunManager:
         self.region = region
         # Use Cloud Run MCP server tools
 
-    async def launch_services(
-        self,
-        service_name: str,
-        count: int = 1
-    ) -> List[str]:
+    async def launch_services(self, service_name: str, count: int = 1) -> List[str]:
         """Launch multiple Cloud Run service instances."""
 
-    async def execute_command(
-        self,
-        service_id: str,
-        command: str
-    ) -> Dict[str, Any]:
+    async def execute_command(self, service_id: str, command: str) -> Dict[str, Any]:
         """Execute command in Cloud Run service."""
 ```
 
@@ -361,9 +341,10 @@ class MahavishnuApp:
         # NEW: Cloud Run orchestration
         if self.settings.adapters.cloudrun:
             from mahavishnu.cloudrun import CloudRunManager
+
             self.cloudrun = CloudRunManager(
                 project=self.settings.cloudrun_project,
-                region=self.settings.cloudrun_region
+                region=self.settings.cloudrun_region,
             )
 ```
 
@@ -373,10 +354,7 @@ class MahavishnuApp:
 ```python
 # Deploy FastBlocks blocks as Cloud Run services
 async def deploy_fastblocks_block(
-    block_name: str,
-    container_image: str,
-    memory: str = "512Mi",
-    cpu: str = "1"
+    block_name: str, container_image: str, memory: str = "512Mi", cpu: str = "1"
 ):
     """Deploy a single FastBlocks block as Cloud Run service."""
     # Each block = independent Cloud Run service
@@ -386,10 +364,7 @@ async def deploy_fastblocks_block(
 **SplashSand Cloud Run**:
 ```python
 # Deploy SplashSand sandcastles as Cloud Run services
-async def deploy_splashsand_sandcastle(
-    sandcastle_name: str,
-    config: SandcastleConfig
-):
+async def deploy_splashsand_sandcastle(sandcastle_name: str, config: SandcastleConfig):
     """Deploy SplashSand sandcastle with multiple services."""
     # Each sandcastle = collection of Cloud Run services
     # Services = API, workers, webhooks, etc.
@@ -441,9 +416,7 @@ class FastBlocksOrchestrator:
     """Orchestrate FastBlocks block deployment."""
 
     async def deploy_block(
-        self,
-        block: FastBlock,
-        target: "cloudrun" | "k8s" | "terminal"
+        self, block: FastBlock, target: "cloudrun" | "k8s" | "terminal"
     ):
         """Deploy block to target environment."""
         if target == "cloudrun":
@@ -457,10 +430,7 @@ class FastBlocksOrchestrator:
 **Block Composition**:
 ```python
 # Orchestrate multiple blocks as a pipeline
-async def deploy_pipeline(
-    blocks: List[FastBlock],
-    orchestration_target: str
-):
+async def deploy_pipeline(blocks: List[FastBlock], orchestration_target: str):
     """Deploy connected blocks."""
     # Deploy each block
     # Configure inter-block communication
@@ -476,9 +446,7 @@ class SplashSandOrchestrator:
     """Orchestrate SplashSand sandcastle deployment."""
 
     async def deploy_sandcastle(
-        self,
-        sandcastle: Sandcastle,
-        region: str = "us-central1"
+        self, sandcastle: Sandcastle, region: str = "us-central1"
     ):
         """Deploy entire sandcastle to Cloud Run."""
         # 1. Deploy API service
@@ -490,10 +458,7 @@ class SplashSandOrchestrator:
 
 **Multi-Region Deployment**:
 ```python
-async def deploy_multi_region(
-    sandcastle: Sandcastle,
-    regions: List[str]
-):
+async def deploy_multi_region(sandcastle: Sandcastle, regions: List[str]):
     """Deploy sandcastle to multiple regions."""
     # Deploy to each region
     # Configure regional load balancing
@@ -682,8 +647,7 @@ await splash_orchestrator.deploy_sandcastle(
 ```python
 # Deploy to multiple regions for redundancy
 await splash_orchestrator.deploy_multi_region(
-    sandcastle=global_sandcastle,
-    regions=["us-central1", "europe-west1", "asia-east1"]
+    sandcastle=global_sandcastle, regions=["us-central1", "europe-west1", "asia-east1"]
 )
 
 # Result:

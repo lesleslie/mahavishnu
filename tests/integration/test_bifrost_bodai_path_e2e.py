@@ -127,7 +127,9 @@ def test_bodai_provider_carries_the_cache_mode(bodai_provider: Any) -> None:
 
 
 async def test_cloud_worker_completes_through_the_gateway(
-    bifrost_reachable: bool, credentials: dict[str, str], monkeypatch: pytest.MonkeyPatch
+    bifrost_reachable: bool,
+    credentials: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A real ``CloudWorker.execute()`` succeeds against the gateway.
 
@@ -141,7 +143,9 @@ async def test_cloud_worker_completes_through_the_gateway(
 
     worker = CloudWorker(CloudWorkerConfig())
     await worker.start()
-    result = await worker.execute({"prompt": "say the single word PONG", "max_tokens": 8})
+    result = await worker.execute(
+        {"prompt": "say the single word PONG", "max_tokens": 8}
+    )
 
     assert result.status.value == "completed", (
         f"Bodai call through the gateway failed: {result.error}"
@@ -149,7 +153,9 @@ async def test_cloud_worker_completes_through_the_gateway(
     assert result.output, "Bodai call through the gateway returned no output"
 
 
-def test_bodai_headers_produce_a_cache_hit(bodai_provider: Any, bifrost_reachable: bool) -> None:
+def test_bodai_headers_produce_a_cache_hit(
+    bodai_provider: Any, bifrost_reachable: bool
+) -> None:
     """Headers built the Bodai way make the gateway serve from cache.
 
     The provider does not surface the gateway's response headers, so the
@@ -171,8 +177,14 @@ def test_bodai_headers_produce_a_cache_hit(bodai_provider: Any, bifrost_reachabl
                 "max_tokens": 16,
             }
         ).encode()
-        request_headers = {**headers, "x-bf-cache-key": bucket, "Content-Type": "application/json"}
-        req = urllib.request.Request(model, data=payload, headers=request_headers, method="POST")
+        request_headers = {
+            **headers,
+            "x-bf-cache-key": bucket,
+            "Content-Type": "application/json",
+        }
+        req = urllib.request.Request(
+            model, data=payload, headers=request_headers, method="POST"
+        )
         try:
             with urllib.request.urlopen(req, timeout=120) as resp:
                 return {k.lower(): v for k, v in resp.getheaders()}
@@ -195,7 +207,9 @@ def test_bodai_headers_produce_a_cache_hit(bodai_provider: Any, bifrost_reachabl
     deadline = time.monotonic() + 180.0
     repeat: dict[str, str] = {}
     while time.monotonic() < deadline:
-        repeat = call(f"bodai cache probe {token}: please reply with the single word PONG")
+        repeat = call(
+            f"bodai cache probe {token}: please reply with the single word PONG"
+        )
         if repeat.get("x-bifrost-cache-hit") == "true":
             break
         time.sleep(0.5)

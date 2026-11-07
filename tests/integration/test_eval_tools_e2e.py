@@ -39,9 +39,7 @@ if TYPE_CHECKING:
 # req: REQ-EVAL-005
 
 #: The three tool names the group registers.
-EVAL_TOOL_NAMES = frozenset(
-    {"eval_register_dataset", "eval_run_suite", "eval_get_run"}
-)
+EVAL_TOOL_NAMES = frozenset({"eval_register_dataset", "eval_run_suite", "eval_get_run"})
 
 
 def _eval_settings(tmp_path: Path, *, enabled: bool = True) -> EvalSettings:
@@ -59,7 +57,9 @@ def _dataset(tmp_path: Path, *, cases: int = 2) -> Path:
     """Write a JSONL dataset of ``cases`` echo cases and return its path."""
     path = tmp_path / "cases.jsonl"
     lines = [
-        json.dumps({"id": f"c{index}", "input": f"ping-{index}", "expected": f"ping-{index}"})
+        json.dumps(
+            {"id": f"c{index}", "input": f"ping-{index}", "expected": f"ping-{index}"}
+        )
         for index in range(cases)
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -306,7 +306,9 @@ async def test_a_dataset_outside_the_root_is_refused(
     _install_settings(monkeypatch, _eval_settings(tmp_path))
 
     outside = tmp_path.parent / "outside-dataset.jsonl"
-    outside.write_text('{"id": "c1", "input": "x", "expected": "x"}\n', encoding="utf-8")
+    outside.write_text(
+        '{"id": "c1", "input": "x", "expected": "x"}\n', encoding="utf-8"
+    )
 
     mcp = FastMCP(name="eval-confinement")
     register_eval_tools(mcp)

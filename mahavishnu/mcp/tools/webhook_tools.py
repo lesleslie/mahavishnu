@@ -53,7 +53,9 @@ def register_webhook_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> Non
     """
 
     @mcp.tool()
-    @require_mcp_auth(rbac_manager=rbac_manager, required_permission=Permission.READ_WEBHOOK)
+    @require_mcp_auth(
+        rbac_manager=rbac_manager, required_permission=Permission.READ_WEBHOOK
+    )
     async def webhook_replay_tool(
         webhook_id: str,
         user_id: str | None = None,

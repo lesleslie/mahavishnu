@@ -105,8 +105,12 @@ def stub_mcp() -> _StubMCP:
 def fake_parser() -> MagicMock:
     parser = MagicMock(name="TreeSitterParser")
     parser.parse_file = AsyncMock(return_value=_make_parse_result())
-    parser.detect_language = MagicMock(return_value=MagicMock(value="python", name="PYTHON"))
-    parser.get_cache_stats = MagicMock(return_value={"hits": 5, "misses": 3, "hit_rate": 0.625})
+    parser.detect_language = MagicMock(
+        return_value=MagicMock(value="python", name="PYTHON")
+    )
+    parser.get_cache_stats = MagicMock(
+        return_value={"hits": 5, "misses": 3, "hit_rate": 0.625}
+    )
     parser.clear_cache = MagicMock(return_value=42)
     return parser
 
@@ -194,7 +198,9 @@ class TestTreesitterExtractSymbols:
     def test_no_filter_returns_all_symbols(self, registered, fake_parser):
         """Without symbol_kinds, all symbols are returned."""
         fake_parser.parse_file = AsyncMock(
-            return_value=_make_parse_result(symbols=[_make_symbol("a"), _make_symbol("b")])
+            return_value=_make_parse_result(
+                symbols=[_make_symbol("a"), _make_symbol("b")]
+            )
         )
         tool = registered.tools["treesitter_extract_symbols"]
         result = _run(tool(file_path="/tmp/foo.py"))
@@ -209,7 +215,9 @@ class TestTreesitterExtractSymbols:
             _make_symbol("a", kind_value="function"),
             _make_symbol("B", kind_value="class"),
         ]
-        fake_parser.parse_file = AsyncMock(return_value=_make_parse_result(symbols=syms))
+        fake_parser.parse_file = AsyncMock(
+            return_value=_make_parse_result(symbols=syms)
+        )
         tool = registered.tools["treesitter_extract_symbols"]
         result = _run(tool(file_path="/tmp/foo.py", symbol_kinds=["function"]))
         assert result["success"] is True
@@ -222,7 +230,9 @@ class TestTreesitterExtractSymbols:
         """Docstrings longer than 100 chars are truncated with ellipsis."""
         sym = _make_symbol()
         sym.docstring = "x" * 200
-        fake_parser.parse_file = AsyncMock(return_value=_make_parse_result(symbols=[sym]))
+        fake_parser.parse_file = AsyncMock(
+            return_value=_make_parse_result(symbols=[sym])
+        )
         tool = registered.tools["treesitter_extract_symbols"]
         result = _run(tool(file_path="/tmp/foo.py"))
         assert result["symbols"][0]["docstring"].endswith("...")
@@ -363,7 +373,9 @@ class TestTreesitterBatchAnalyze:
         for i in range(3):
             (tmp_path / f"f{i}.py").write_text(f"x = {i}\n")
         fake_parser.parse_file = AsyncMock(
-            return_value=_make_parse_result(symbols=[_make_symbol("x")], imports=[MagicMock()])
+            return_value=_make_parse_result(
+                symbols=[_make_symbol("x")], imports=[MagicMock()]
+            )
         )
         tool = registered.tools["treesitter_batch_analyze"]
         result = _run(tool(directory=str(tmp_path), file_pattern="*.py"))
@@ -398,7 +410,9 @@ class TestTreesitterBatchAnalyze:
         assert result["error_count"] == 1
         assert result["errors"][0]["error"] == "bad file"
 
-    def test_exception_in_loop_collected_as_error(self, registered, fake_parser, tmp_path):
+    def test_exception_in_loop_collected_as_error(
+        self, registered, fake_parser, tmp_path
+    ):
         (tmp_path / "f.py").write_text("x = 1\n")
 
         async def parse_side_effect(path, language=None):

@@ -94,7 +94,14 @@ class CutoverReadinessValidator:
         "search": ["documents", "document_embeddings"],
         "integration": ["session_context_links"],
     }
-    VALID_STATUSES = ["pending", "in_progress", "completed", "failed", "cancelled", "blocked"]
+    VALID_STATUSES = [
+        "pending",
+        "in_progress",
+        "completed",
+        "failed",
+        "cancelled",
+        "blocked",
+    ]
     VALID_PRIORITIES = ["low", "medium", "high", "critical"]
     VALID_SYNC_STATUSES = ["pending", "synced", "failed", "retrying", "skipped"]
 
@@ -248,7 +255,9 @@ class CutoverReadinessValidator:
                 AND cc.check_clause LIKE '%= ANY%'
             """)
 
-            if len(constraints) >= 4:  # At least status, priority, sync_status, dependency_type
+            if (
+                len(constraints) >= 4
+            ):  # At least status, priority, sync_status, dependency_type
                 return CheckResult(
                     name="check_constraints",
                     status=CheckStatus.PASS,
@@ -291,7 +300,9 @@ class CutoverReadinessValidator:
                 name="hnsw_index",
                 status=CheckStatus.FAIL,
                 message="HNSW index not found for vector search",
-                details={"hint": "Run: CREATE INDEX ... USING hnsw (embedding vector_cosine_ops)"},
+                details={
+                    "hint": "Run: CREATE INDEX ... USING hnsw (embedding vector_cosine_ops)"
+                },
             )
         except Exception as e:
             return CheckResult(
@@ -372,8 +383,12 @@ class CutoverReadinessValidator:
             if settings_path.exists():
                 content = settings_path.read_text()
                 # Simple check for persistence settings
-                has_write_mode = "persistence_write_mode" in content or "write_mode" in content
-                has_read_source = "persistence_read_source" in content or "read_source" in content
+                has_write_mode = (
+                    "persistence_write_mode" in content or "write_mode" in content
+                )
+                has_read_source = (
+                    "persistence_read_source" in content or "read_source" in content
+                )
 
                 if has_write_mode or has_read_source:
                     return CheckResult(
@@ -405,7 +420,9 @@ class CutoverReadinessValidator:
         from pathlib import Path
 
         try:
-            plan_path = Path("docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md")
+            plan_path = Path(
+                "docs/plans/2026-04-02-storage-consolidation-and-akosha-role.md"
+            )
             if plan_path.exists():
                 content = plan_path.read_text()
                 if "rollback" in content.lower():
@@ -497,7 +514,9 @@ async def main(dsn: str, verbose: bool = False, output_format: str = "json") -> 
             print(f"Status: {result.status.value.upper()}")
             print("\nChecks:")
             for check in result.checks:
-                icon = {"pass": "✅", "fail": "❌", "warn": "⚠️", "skip": "⏭️"}[check.status.value]
+                icon = {"pass": "✅", "fail": "❌", "warn": "⚠️", "skip": "⏭️"}[
+                    check.status.value
+                ]
                 print(f"  {icon} {check.name}: {check.message}")
             print(f"\nSummary: {result.summary}")
 

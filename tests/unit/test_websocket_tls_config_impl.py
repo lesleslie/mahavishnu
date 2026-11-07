@@ -36,7 +36,9 @@ class TestGetWebsocketTlsConfig:
             "ca_file": None,
             "verify_client": False,
         }
-        with patch.object(tls_module, "get_tls_config_from_env", return_value=sentinel) as get_cfg:
+        with patch.object(
+            tls_module, "get_tls_config_from_env", return_value=sentinel
+        ) as get_cfg:
             result = get_websocket_tls_config()
 
         get_cfg.assert_called_once_with("MAHAVISHNU_WS")
@@ -77,8 +79,12 @@ class TestLoadSslContext:
         fake_ssl = MagicMock(name="ssl_context")
 
         with (
-            patch.object(tls_module, "get_tls_config_from_env", return_value=env_config) as get_env,
-            patch.object(tls_module, "create_ssl_context", return_value=fake_ssl) as create,
+            patch.object(
+                tls_module, "get_tls_config_from_env", return_value=env_config
+            ) as get_env,
+            patch.object(
+                tls_module, "create_ssl_context", return_value=fake_ssl
+            ) as create,
         ):
             result = load_ssl_context()
 
@@ -103,7 +109,9 @@ class TestLoadSslContext:
             "verify_client": False,
         }
         with (
-            patch.object(tls_module, "get_tls_config_from_env", return_value=env_config) as get_env,
+            patch.object(
+                tls_module, "get_tls_config_from_env", return_value=env_config
+            ) as get_env,
             patch.object(tls_module, "create_ssl_context") as create,
         ):
             result = load_ssl_context()
@@ -116,7 +124,9 @@ class TestLoadSslContext:
         """Explicit cert/key file paths produce an SSL context."""
         fake_ssl = MagicMock(name="ssl_context")
 
-        with patch.object(tls_module, "create_ssl_context", return_value=fake_ssl) as create:
+        with patch.object(
+            tls_module, "create_ssl_context", return_value=fake_ssl
+        ) as create:
             result = load_ssl_context(
                 cert_file="/x/cert.pem",
                 key_file="/x/key.pem",
@@ -219,8 +229,12 @@ class TestLoadSslContext:
         fake_ssl = MagicMock(name="ssl_context")
 
         with (
-            patch.object(tls_module, "get_tls_config_from_env", return_value=env_config),
-            patch.object(tls_module, "create_ssl_context", return_value=fake_ssl) as create,
+            patch.object(
+                tls_module, "get_tls_config_from_env", return_value=env_config
+            ),
+            patch.object(
+                tls_module, "create_ssl_context", return_value=fake_ssl
+            ) as create,
         ):
             load_ssl_context()
 
@@ -245,7 +259,9 @@ class TestGetTlsCliOptions:
             "ca_file": "/x/ca.pem",
             "verify_client": True,
         }
-        with patch.object(tls_module, "get_tls_config_from_env", return_value=env_config):
+        with patch.object(
+            tls_module, "get_tls_config_from_env", return_value=env_config
+        ):
             options = get_tls_cli_options()
 
         assert set(options.keys()) == {
@@ -265,7 +281,9 @@ class TestGetTlsCliOptions:
             "ca_file": "/x/ca.pem",
             "verify_client": True,
         }
-        with patch.object(tls_module, "get_tls_config_from_env", return_value=env_config):
+        with patch.object(
+            tls_module, "get_tls_config_from_env", return_value=env_config
+        ):
             options = get_tls_cli_options()
 
         assert options["tls_enabled"] is True
@@ -283,7 +301,9 @@ class TestGetTlsCliOptions:
             "ca_file": None,
             # no verify_client
         }
-        with patch.object(tls_module, "get_tls_config_from_env", return_value=env_config):
+        with patch.object(
+            tls_module, "get_tls_config_from_env", return_value=env_config
+        ):
             options = get_tls_cli_options()
 
         assert options["verify_client"] is False
@@ -297,7 +317,9 @@ class TestGetTlsCliOptions:
             "ca_file": None,
             "verify_client": False,
         }
-        with patch.object(tls_module, "get_tls_config_from_env", return_value=env_config):
+        with patch.object(
+            tls_module, "get_tls_config_from_env", return_value=env_config
+        ):
             options = get_tls_cli_options()
 
         assert options == env_config
@@ -323,7 +345,9 @@ class TestTlsConfigSmoke:
         fake_ssl = MagicMock(name="ssl_context")
 
         with (
-            patch.object(tls_module, "get_tls_config_from_env", return_value=env_config) as get_env,
+            patch.object(
+                tls_module, "get_tls_config_from_env", return_value=env_config
+            ) as get_env,
             patch.object(tls_module, "create_ssl_context", return_value=fake_ssl),
         ):
             load_ssl_context()
@@ -341,7 +365,9 @@ class TestTlsConfigSmoke:
             "ca_file": None,
             "verify_client": False,
         }
-        with patch.object(tls_module, "get_tls_config_from_env", return_value=env_config):
+        with patch.object(
+            tls_module, "get_tls_config_from_env", return_value=env_config
+        ):
             options = get_tls_cli_options()
 
         assert options["tls_enabled"] is tls_enabled

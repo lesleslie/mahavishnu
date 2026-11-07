@@ -43,7 +43,9 @@ from typing import Any
 
 import pytest
 
-SERVER_CORE_PATH = Path(__file__).resolve().parents[2] / "mahavishnu" / "mcp" / "server_core.py"
+SERVER_CORE_PATH = (
+    Path(__file__).resolve().parents[2] / "mahavishnu" / "mcp" / "server_core.py"
+)
 
 # Top-10 tools per Phase 2 Task 2.1 (audit_top_tool_calls.py).
 # The list is closed — adding a new tool to this set requires updating
@@ -237,7 +239,9 @@ def _check_negative_case(doc: str) -> tuple[bool, str]:
 
 def _check_failure_modes(doc: str) -> tuple[bool, str]:
     """Criterion 2: docstring lists at least one realistic failure mode."""
-    has_fail = bool(re.search(r"\b(fails?|failure|error|timed?\s*out)\b", doc, re.IGNORECASE))
+    has_fail = bool(
+        re.search(r"\b(fails?|failure|error|timed?\s*out)\b", doc, re.IGNORECASE)
+    )
     if not has_fail:
         return (False, "no failure-mode mention (criterion 2)")
     return (True, "failure mode mentioned")
@@ -246,7 +250,9 @@ def _check_failure_modes(doc: str) -> tuple[bool, str]:
 def _check_return_shape(doc: str) -> tuple[bool, str]:
     """Criterion 3: docstring specifies what the tool returns."""
     has_returns = bool(re.search(r"\breturns\b\s+(a|an|the|\{|`)", doc, re.IGNORECASE))
-    has_dict_or_list = bool(re.search(r"\b(dict|list|str|object|array)\b", doc, re.IGNORECASE))
+    has_dict_or_list = bool(
+        re.search(r"\b(dict|list|str|object|array)\b", doc, re.IGNORECASE)
+    )
     if not (has_returns and has_dict_or_list):
         return (False, "no return-shape hint (criterion 3)")
     return (True, "return shape hinted")
@@ -283,7 +289,9 @@ def _check_active_voice(doc: str) -> tuple[bool, str]:
     if first_word in marketing:
         return (False, f"first word '{first_word}' is marketing prose")
     # Also reject if marketing adjectives appear anywhere in the doc.
-    found_marketing = [w for w in marketing if re.search(rf"\b{w}\b", doc, re.IGNORECASE)]
+    found_marketing = [
+        w for w in marketing if re.search(rf"\b{w}\b", doc, re.IGNORECASE)
+    ]
     if found_marketing:
         return (False, f"marketing prose found: {found_marketing}")
     return (True, "active voice + no marketing prose")
@@ -352,7 +360,9 @@ def live_docstrings() -> dict[str, str]:
     return _extract_docstrings()
 
 
-def test_all_top_10_tools_have_extractable_docstrings(live_docstrings: dict[str, str]) -> None:
+def test_all_top_10_tools_have_extractable_docstrings(
+    live_docstrings: dict[str, str],
+) -> None:
     """Every top-10 tool must have a non-empty docstring reachable via AST."""
     missing = [t for t in TOP_10_TOOLS if not live_docstrings.get(t)]
     assert not missing, f"missing docstrings for: {missing}"
@@ -375,7 +385,9 @@ def test_tool_docstring_satisfies_all_six_rubric_criteria(
     )
 
 
-def test_rewrites_improve_rubric_score_vs_before(live_docstrings: dict[str, str]) -> None:
+def test_rewrites_improve_rubric_score_vs_before(
+    live_docstrings: dict[str, str],
+) -> None:
     """Before/after measurement: rubric score must increase after rewrites.
 
     The BEFORE baseline is captured at Task 2.3 time. The AFTER state is

@@ -85,7 +85,9 @@ class PathValidator:
             strict_mode: Whether to enforce strict validation (default: True)
         """
         self.allowed_base_dirs = (
-            [Path(d).resolve() for d in allowed_base_dirs] if allowed_base_dirs else None
+            [Path(d).resolve() for d in allowed_base_dirs]
+            if allowed_base_dirs
+            else None
         )
         self.strict_mode = strict_mode
 
@@ -165,7 +167,8 @@ class PathValidator:
                 else self.allowed_base_dirs
             )
             if base_dirs and not any(
-                self._is_path_within_base(resolved_path, base_dir) for base_dir in base_dirs
+                self._is_path_within_base(resolved_path, base_dir)
+                for base_dir in base_dirs
             ):
                 raise PathValidationError(
                     message="Path is outside allowed directories",

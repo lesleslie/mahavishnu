@@ -196,7 +196,9 @@ class MigrationManager:
         Returns:
             List of pending migrations
         """
-        return [m for m in self.migrations.values() if m.status == MigrationStatus.PENDING]
+        return [
+            m for m in self.migrations.values() if m.status == MigrationStatus.PENDING
+        ]
 
     def get_completed_migrations(self) -> list[Migration]:
         """Get all completed migrations.
@@ -204,7 +206,9 @@ class MigrationManager:
         Returns:
             List of completed migrations
         """
-        return [m for m in self.migrations.values() if m.status == MigrationStatus.COMPLETED]
+        return [
+            m for m in self.migrations.values() if m.status == MigrationStatus.COMPLETED
+        ]
 
     def get_current_version(self) -> str:
         """Get current database version.
@@ -462,7 +466,9 @@ class MigrationManager:
         """
         completed = self.get_completed_migrations()
         completed.sort(
-            key=lambda m: m.applied_at or datetime.min.replace(tzinfo=UTC).replace(tzinfo=UTC)
+            key=lambda m: (
+                m.applied_at or datetime.min.replace(tzinfo=UTC).replace(tzinfo=UTC)
+            )
         )
         return completed
 

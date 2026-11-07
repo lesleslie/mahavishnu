@@ -94,7 +94,9 @@ async def test_opensearch_success_paths(monkeypatch: pytest.MonkeyPatch) -> None
     mock_client = AsyncMock()
     mock_client.get.return_value = {"_source": {"id": "wf-os", "status": "running"}}
     mock_client.search.return_value = {
-        "hits": {"hits": [{"_source": {"id": "wf-os-1"}}, {"_source": {"id": "wf-os-2"}}]}
+        "hits": {
+            "hits": [{"_source": {"id": "wf-os-1"}}, {"_source": {"id": "wf-os-2"}}]
+        }
     }
 
     manager = WorkflowState(opensearch_client=mock_client)
@@ -145,8 +147,14 @@ async def test_opensearch_list_falls_back_to_local_on_error(
     mock_client = AsyncMock()
     mock_client.search.side_effect = RuntimeError("search failed")
     manager = WorkflowState(opensearch_client=mock_client)
-    manager.local_states["wf-1"] = {"id": "wf-1", "status": WorkflowStatus.RUNNING.value}
-    manager.local_states["wf-2"] = {"id": "wf-2", "status": WorkflowStatus.COMPLETED.value}
+    manager.local_states["wf-1"] = {
+        "id": "wf-1",
+        "status": WorkflowStatus.RUNNING.value,
+    }
+    manager.local_states["wf-2"] = {
+        "id": "wf-2",
+        "status": WorkflowStatus.COMPLETED.value,
+    }
 
     running = await manager.list_workflows(status=WorkflowStatus.RUNNING, limit=10)
     assert running == [{"id": "wf-1", "status": WorkflowStatus.RUNNING.value}]
@@ -172,7 +180,9 @@ async def test_opensearch_delete_falls_back_to_local_on_error(
     assert "wf-to-delete" not in manager.local_states
 
 
-def test_import_falls_back_when_opensearch_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_import_falls_back_when_opensearch_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import mahavishnu.core.workflow_state as workflow_state_module
 
     monkeypatch.setitem(sys.modules, "opensearchpy", types.ModuleType("opensearchpy"))

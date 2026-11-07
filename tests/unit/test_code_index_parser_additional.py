@@ -67,7 +67,9 @@ def _install_fake_mcp_common(monkeypatch):
 
 def test_parse_file_success_builds_nodes_and_edges(tmp_path, monkeypatch):
     _install_fake_mcp_common(monkeypatch)
-    monkeypatch.setattr(parser, "redact_signature", lambda docstring: f"redacted:{docstring}")
+    monkeypatch.setattr(
+        parser, "redact_signature", lambda docstring: f"redacted:{docstring}"
+    )
     source = tmp_path / "sample.py"
     source.write_text("def foo():\n    pass\n")
 

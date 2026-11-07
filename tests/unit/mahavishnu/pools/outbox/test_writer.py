@@ -65,7 +65,9 @@ async def test_writer_enqueues_and_round_trips(writer: MemoryOutboxWriter) -> No
     assert await writer.pending_count() == 100
 
 
-async def test_writer_pending_count_filters_correctly(writer: MemoryOutboxWriter) -> None:
+async def test_writer_pending_count_filters_correctly(
+    writer: MemoryOutboxWriter,
+) -> None:
     id1 = await writer.enqueue("k1", {"a": 1})
     id2 = await writer.enqueue("k2", {"a": 2})
     await writer.enqueue("k3", {"a": 3})  # must remain pending

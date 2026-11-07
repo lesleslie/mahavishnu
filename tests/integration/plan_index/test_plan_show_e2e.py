@@ -66,7 +66,10 @@ class TestPlanShowE2E:
         assert isinstance(result, dict)
         assert result["status"] == "error"
         # The original PlanNotFoundError message must surface.
-        assert "Plan not found" in result["error"] or "not found" in result["error"].lower()
+        assert (
+            "Plan not found" in result["error"]
+            or "not found" in result["error"].lower()
+        )
 
     async def test_show_invalid_plan_id_raises_value_error(
         self, call_tool: Any

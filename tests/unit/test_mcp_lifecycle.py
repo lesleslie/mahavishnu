@@ -17,7 +17,9 @@ from mahavishnu.mcp.lifecycle import (
 
 
 @pytest.mark.asyncio
-async def test_start_server_uses_profile_registration(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_start_server_uses_profile_registration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class DummyProfile:
         value = "full"
 
@@ -313,7 +315,10 @@ async def test_start_server_honors_passed_uvicorn_config(
         {profile: ["alpha"]},
     )
 
-    custom_uvicorn_config = {"timeout_graceful_shutdown": 45, "h11_max_incomplete_event_size": 16384}
+    custom_uvicorn_config = {
+        "timeout_graceful_shutdown": 45,
+        "h11_max_incomplete_event_size": 16384,
+    }
     await start_server(
         server, host="127.0.0.1", port=3000, uvicorn_config=custom_uvicorn_config
     )

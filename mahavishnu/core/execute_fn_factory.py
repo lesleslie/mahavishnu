@@ -142,7 +142,10 @@ def build_execute_fn(
         app = getattr(settings, "app", None)
         if app is not None and hasattr(app, "execute"):
             return await _wrap_with_timeout(
-                app.execute, payload, timeout_seconds=timeout_seconds, caller=caller_label
+                app.execute,
+                payload,
+                timeout_seconds=timeout_seconds,
+                caller=caller_label,
             )
 
         # Fallback stub: echo the prompt back. The shape is

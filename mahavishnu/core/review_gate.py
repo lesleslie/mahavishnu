@@ -61,7 +61,8 @@ class ReviewGateResult:
             "passed": self.passed,
             "summary": self.summary,
             "checks": [
-                {"name": c.name, "passed": c.passed, "message": c.message} for c in self.checks
+                {"name": c.name, "passed": c.passed, "message": c.message}
+                for c in self.checks
             ],
         }
 
@@ -107,12 +108,12 @@ class ReviewGate:
         result_passed = len(failed) == 0
 
         if result_passed:
-            summary = (
-                f"All {len(checks)} checks passed for skill '{draft.name}' ({draft.skill_id})."
-            )
+            summary = f"All {len(checks)} checks passed for skill '{draft.name}' ({draft.skill_id})."
         else:
             names = ", ".join(c.name for c in failed)
-            summary = f"{len(failed)} check(s) failed for skill '{draft.name}': {names}."
+            summary = (
+                f"{len(failed)} check(s) failed for skill '{draft.name}': {names}."
+            )
 
         return ReviewGateResult(
             passed=result_passed,
@@ -163,7 +164,9 @@ class ReviewGate:
         issues: list[str] = []
 
         if len(draft.name) < _MIN_NAME_LENGTH:
-            issues.append(f"Name is {len(draft.name)} chars, minimum {_MIN_NAME_LENGTH}.")
+            issues.append(
+                f"Name is {len(draft.name)} chars, minimum {_MIN_NAME_LENGTH}."
+            )
         if len(draft.description) < _MIN_DESCRIPTION_LENGTH:
             issues.append(
                 f"Description is {len(draft.description)} chars, minimum {_MIN_DESCRIPTION_LENGTH}."
@@ -235,7 +238,9 @@ class ReviewGate:
             return ReviewCheck(
                 name="crackerjack_quality",
                 passed=True,
-                message=("Crackerjack MCP unavailable or raised an error; check skipped."),
+                message=(
+                    "Crackerjack MCP unavailable or raised an error; check skipped."
+                ),
             )
 
     def _run_crackerjack_check(self, draft: SkillDraft) -> ReviewCheck:

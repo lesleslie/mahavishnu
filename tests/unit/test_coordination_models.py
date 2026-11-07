@@ -240,7 +240,9 @@ class TestCrossRepoPlan:
         assert plan.milestones == []
 
     def test_creation_with_all_fields(self):
-        milestone = Milestone(id="M-1", name="M1", description="D", due="2026-02-01T00:00:00")
+        milestone = Milestone(
+            id="M-1", name="M1", description="D", due="2026-02-01T00:00:00"
+        )
         plan = CrossRepoPlan(
             id="PLAN-002",
             title="Full plan",
@@ -434,7 +436,9 @@ class TestDependency:
         assert dep.validation is None
 
     def test_creation_with_all_fields(self):
-        validation = DependencyValidation(command="pip show lib", expected_pattern="^Version: 1\\.")
+        validation = DependencyValidation(
+            command="pip show lib", expected_pattern="^Version: 1\\."
+        )
         dep = Dependency(
             id="DEP-002",
             consumer="fastblocks",
@@ -452,7 +456,9 @@ class TestDependency:
         assert dep.validation.command == "pip show lib"
 
     def test_empty_consumer_fails(self):
-        with pytest.raises(ValidationError, match="Repository nickname cannot be empty"):
+        with pytest.raises(
+            ValidationError, match="Repository nickname cannot be empty"
+        ):
             Dependency(
                 id="DEP-003",
                 consumer="",
@@ -465,7 +471,9 @@ class TestDependency:
             )
 
     def test_whitespace_consumer_fails(self):
-        with pytest.raises(ValidationError, match="Repository nickname cannot be empty"):
+        with pytest.raises(
+            ValidationError, match="Repository nickname cannot be empty"
+        ):
             Dependency(
                 id="DEP-004",
                 consumer="   ",
@@ -478,7 +486,9 @@ class TestDependency:
             )
 
     def test_empty_provider_fails(self):
-        with pytest.raises(ValidationError, match="Repository nickname cannot be empty"):
+        with pytest.raises(
+            ValidationError, match="Repository nickname cannot be empty"
+        ):
             Dependency(
                 id="DEP-005",
                 consumer="app",
@@ -491,7 +501,9 @@ class TestDependency:
             )
 
     def test_whitespace_provider_fails(self):
-        with pytest.raises(ValidationError, match="Repository nickname cannot be empty"):
+        with pytest.raises(
+            ValidationError, match="Repository nickname cannot be empty"
+        ):
             Dependency(
                 id="DEP-006",
                 consumer="app",

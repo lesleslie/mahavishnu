@@ -11,7 +11,9 @@ import pytest
 def pytest_configure(config):
     """Configure pytest markers."""
     config.addinivalue_line("markers", "production: marks tests as production tests")
-    config.addinivalue_line("markers", "slow: marks tests as slow (performance/load tests)")
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (performance/load tests)"
+    )
 
 
 @pytest.fixture(scope="session")

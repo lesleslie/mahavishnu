@@ -29,8 +29,17 @@ class TestPlanRecordDict:
     def test_required_fields_present(self) -> None:
         hints = get_type_hints(PlanRecordDict)
         for required in (
-            "plan_id", "path", "title", "status", "role", "topic",
-            "date", "last_reviewed", "blocks_on", "sha", "repo",
+            "plan_id",
+            "path",
+            "title",
+            "status",
+            "role",
+            "topic",
+            "date",
+            "last_reviewed",
+            "blocks_on",
+            "sha",
+            "repo",
             "updated_at_ms",
         ):
             assert required in hints, f"missing required field: {required}"

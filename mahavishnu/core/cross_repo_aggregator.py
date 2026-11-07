@@ -28,7 +28,13 @@ from dataclasses import dataclass, field
 import logging
 from typing import TYPE_CHECKING, Any
 
-from mahavishnu.core.task_store import Task, TaskListFilter, TaskPriority, TaskStatus, TaskStore
+from mahavishnu.core.task_store import (
+    Task,
+    TaskListFilter,
+    TaskPriority,
+    TaskStatus,
+    TaskStore,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -132,7 +138,9 @@ class RepoTaskStats:
             "blocked_tasks": self.blocked_tasks,
             "completion_rate": self.completion_rate,
             "blocked_rate": self.blocked_rate,
-            "oldest_pending": self.oldest_pending.isoformat() if self.oldest_pending else None,
+            "oldest_pending": self.oldest_pending.isoformat()
+            if self.oldest_pending
+            else None,
             "newest_task": self.newest_task.isoformat() if self.newest_task else None,
         }
 
@@ -209,7 +217,9 @@ class CrossRepoSummary:
             "cancelled_count": self.cancelled_count,
             "failed_count": self.failed_count,
             "critical_count": self.critical_count,
-            "repo_stats": {name: stats.to_dict() for name, stats in self.repo_stats.items()},
+            "repo_stats": {
+                name: stats.to_dict() for name, stats in self.repo_stats.items()
+            },
         }
 
 
@@ -386,7 +396,9 @@ class CrossRepoAggregator:
         Returns:
             RepoTaskStats with detailed statistics
         """
-        tasks = await self.task_store.list(TaskListFilter(repository=repo_name, limit=10000))
+        tasks = await self.task_store.list(
+            TaskListFilter(repository=repo_name, limit=10000)
+        )
         return self._build_repo_stats(repo_name, tasks)
 
     async def get_summary(self) -> CrossRepoSummary:
@@ -408,7 +420,10 @@ class CrossRepoAggregator:
             priority_counts[task.priority] += 1
 
             # Critical = high priority + (blocked or in_progress)
-            if task.priority == TaskPriority.HIGH or task.priority == TaskPriority.CRITICAL:
+            if (
+                task.priority == TaskPriority.HIGH
+                or task.priority == TaskPriority.CRITICAL
+            ):
                 if task.status in (TaskStatus.BLOCKED, TaskStatus.IN_PROGRESS):
                     critical_count += 1
 
@@ -487,7 +502,10 @@ class CrossRepoAggregator:
         for task in tasks:
             repo_tasks[task.repository].append(task)
 
-        return {repo: self._build_repo_stats(repo, tasks) for repo, tasks in repo_tasks.items()}
+        return {
+            repo: self._build_repo_stats(repo, tasks)
+            for repo, tasks in repo_tasks.items()
+        }
 
     def _build_repo_stats(self, repo_name: str, tasks: list[Task]) -> RepoTaskStats:
         """Build RepoTaskStats from a list of tasks for a repository."""

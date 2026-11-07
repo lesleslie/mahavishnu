@@ -74,7 +74,9 @@ def parse(
     system_table = Table()
     system_table.add_column("System", style="magenta")
     system_table.add_column("Count", justify="right")
-    for system, count in sorted(system_counts.items(), key=lambda x: x[1], reverse=True):
+    for system, count in sorted(
+        system_counts.items(), key=lambda x: x[1], reverse=True
+    ):
         system_table.add_row(system, str(count))
     console.print(system_table)
 

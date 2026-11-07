@@ -419,9 +419,7 @@ class TestBudgetArithmeticPropertyBased:
 
     @given(spec=budget_specs())
     @settings(max_examples=30, deadline=None)
-    def test_mark_exceeded_idempotent(
-        self, spec: BudgetSpec
-    ) -> None:
+    def test_mark_exceeded_idempotent(self, spec: BudgetSpec) -> None:
         sm = BudgetStateMachine(BudgetRecord(workflow_id="wf", spec=spec))
         sm.start()
         sm.mark_exceeded(BudgetDimension.WALLCLOCK, when=datetime.now(UTC))

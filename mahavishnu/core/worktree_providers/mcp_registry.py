@@ -126,7 +126,9 @@ def _handle_to_row(handle: WorktreeHandle) -> dict[str, Any]:
         "provenance": handle.provenance,
         "storage_ref_json": json.dumps(_storage_ref_to_dict(storage_ref)),
         "backend_kind": storage_ref.backend_kind,
-        "origin_path": str(storage_ref.path) if isinstance(storage_ref, LocalWorktreeRef) else "",
+        "origin_path": str(storage_ref.path)
+        if isinstance(storage_ref, LocalWorktreeRef)
+        else "",
     }
 
 
@@ -173,7 +175,9 @@ def _validate_storage_path_shape(path_str: str, backend_kind: str) -> None:
     if not path_str:
         raise ValueError(f"{backend_kind} storage path is empty")
     if path_str.startswith("-"):
-        raise ValueError(f"{backend_kind} storage path starts with dash (flag-like): {path_str!r}")
+        raise ValueError(
+            f"{backend_kind} storage path starts with dash (flag-like): {path_str!r}"
+        )
     p = Path(path_str)
     if not p.is_absolute():
         raise ValueError(f"{backend_kind} storage path must be absolute: {path_str!r}")
@@ -196,7 +200,9 @@ def _validate_storage_path_within_base(path_str: str, backend_kind: str) -> None
             f"{backend_kind} storage path cannot be resolved: {path_str!r} ({exc})"
         ) from exc
     if not _is_within(candidate, base):
-        raise ValueError(f"{backend_kind} storage path {candidate} is outside worktree base {base}")
+        raise ValueError(
+            f"{backend_kind} storage path {candidate} is outside worktree base {base}"
+        )
 
 
 def _validate_storage_path(path_str: str, backend_kind: str) -> str:
@@ -339,7 +345,9 @@ async def register_handles(
     has_register = "worktree:register" in caller.scopes
     has_admin = "worktree:register-any" in caller.scopes
     if not (has_register or has_admin):
-        raise PermissionError(f"Principal {caller.name!r} lacks scope 'worktree:register'")
+        raise PermissionError(
+            f"Principal {caller.name!r} lacks scope 'worktree:register'"
+        )
 
     count = 0
     for handle in handles:
@@ -494,7 +502,9 @@ async def remove_handle(
     has_remove = "worktree:remove" in caller.scopes
     has_admin = "worktree:register-any" in caller.scopes
     if not (has_remove or has_admin):
-        raise PermissionError(f"Principal {caller.name!r} lacks scope 'worktree:remove'")
+        raise PermissionError(
+            f"Principal {caller.name!r} lacks scope 'worktree:remove'"
+        )
 
     # Look up the primary to discover principal + uid BEFORE we delete
     # the primary. If absent, return False without touching indexes
@@ -535,10 +545,14 @@ async def remove_handle(
 def _assert_admin_scope(caller: Principal | None, *, action: str) -> None:
     """Raise PermissionError unless caller has the worktree:list-all scope."""
     if caller is None or "worktree:list-all" not in caller.scopes:
-        raise PermissionError(f"Action {action!r} requires scope 'worktree:list-all' on the caller")
+        raise PermissionError(
+            f"Action {action!r} requires scope 'worktree:list-all' on the caller"
+        )
 
 
-def _assert_principal_match(caller: Principal | None, principal: str, is_admin: bool) -> None:
+def _assert_principal_match(
+    caller: Principal | None, principal: str, is_admin: bool
+) -> None:
     """Raise unless caller is admin or asking for their own principal."""
     if is_admin:
         return
@@ -554,7 +568,9 @@ def _assert_repo_read_scope(caller: Principal | None, is_admin: bool) -> None:
     if is_admin:
         return
     if caller is None:
-        raise PermissionError("Repo-scoped listing requires a caller with scope 'worktree:read'")
+        raise PermissionError(
+            "Repo-scoped listing requires a caller with scope 'worktree:read'"
+        )
     if "worktree:read" not in caller.scopes:
         raise PermissionError(
             f"Caller {caller.name!r} lacks scope 'worktree:read' for repo listing"
@@ -563,11 +579,15 @@ def _assert_repo_read_scope(caller: Principal | None, is_admin: bool) -> None:
 
 async def _fetch_all_handles(client: Any) -> list[WorktreeHandle]:
     """Return every handle in the registry (admin-only caller gate above)."""
-    rows = await client.query("SELECT * FROM mahavishnu_worktree_registry ORDER BY created_at")
+    rows = await client.query(
+        "SELECT * FROM mahavishnu_worktree_registry ORDER BY created_at"
+    )
     return [_row_to_handle(r) for r in rows]
 
 
-async def _fetch_handles_for_principal(client: Any, principal: str) -> list[WorktreeHandle]:
+async def _fetch_handles_for_principal(
+    client: Any, principal: str
+) -> list[WorktreeHandle]:
     """Run the principal-filtered JOIN query and materialize handles."""
     rows = await client.query(
         """

@@ -140,7 +140,9 @@ class TestBuiltinSchemas:
 class TestRegister:
     """register() add / duplicate behavior."""
 
-    def test_register_new_schema(self, registry: EventSchemaRegistry, custom_schema: EventSchema):
+    def test_register_new_schema(
+        self, registry: EventSchemaRegistry, custom_schema: EventSchema
+    ):
         registry.register(custom_schema)
         assert registry.is_registered("custom.test.event")
 

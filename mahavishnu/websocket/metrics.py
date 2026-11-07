@@ -150,7 +150,9 @@ class WebSocketMetrics:
         for collector in REGISTRY._names_to_collectors.values():
             if hasattr(collector, "_name") and collector._name == name:
                 return collector
-            if hasattr(collector, "_names") and name in cast("list[str]", collector._names):
+            if hasattr(collector, "_names") and name in cast(
+                "list[str]", collector._names
+            ):
                 return collector
         return None
 
@@ -171,7 +173,9 @@ class WebSocketMetrics:
                 ["server", "message_type"],
             )
         except ValueError:
-            self._message_counter = self._get_existing_collector("websocket_messages_total")
+            self._message_counter = self._get_existing_collector(
+                "websocket_messages_total"
+            )
             logger.debug(f"Reusing existing message counter: {self.server_name}")
 
         # Create connection gauge
@@ -182,16 +186,22 @@ class WebSocketMetrics:
                 ["server"],
             )
         except ValueError:
-            self._connection_gauge = self._get_existing_collector("websocket_connections")
+            self._connection_gauge = self._get_existing_collector(
+                "websocket_connections"
+            )
             logger.debug(f"Reusing existing connection gauge: {self.server_name}")
 
         # Create subscription gauge
         try:
             self._subscription_gauge = Gauge(
-                "websocket_subscriptions", "Current number of active room subscriptions", ["server"]
+                "websocket_subscriptions",
+                "Current number of active room subscriptions",
+                ["server"],
             )
         except ValueError:
-            self._subscription_gauge = self._get_existing_collector("websocket_subscriptions")
+            self._subscription_gauge = self._get_existing_collector(
+                "websocket_subscriptions"
+            )
             logger.debug(f"Reusing existing subscription gauge: {self.server_name}")
 
         self._metrics_initialized = True
@@ -207,7 +217,9 @@ class WebSocketMetrics:
         don't trip the "X not initialized" RuntimeError.
         """
         if not self._enabled:
-            logger.debug(f"Metrics disabled, skipping operation for server: {self.server_name}")
+            logger.debug(
+                f"Metrics disabled, skipping operation for server: {self.server_name}"
+            )
             return False
 
         # Initialize metrics on first use
@@ -237,7 +249,20 @@ class WebSocketMetrics:
                     "websocket_broadcast_duration_seconds",
                     "Time taken to broadcast messages to subscribers",
                     ["server", "channel"],
-                    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+                    buckets=(
+                        0.001,
+                        0.005,
+                        0.01,
+                        0.025,
+                        0.05,
+                        0.1,
+                        0.25,
+                        0.5,
+                        1.0,
+                        2.5,
+                        5.0,
+                        10.0,
+                    ),
                 )
                 logger.info(
                     f"Created broadcast histogram for channel: {channel} in {self.server_name}"
@@ -246,7 +271,9 @@ class WebSocketMetrics:
                 self._broadcast_histogram = self._get_existing_collector(
                     "websocket_broadcast_duration_seconds"
                 )
-                logger.debug(f"Reusing existing broadcast histogram: {self.server_name}/{channel}")
+                logger.debug(
+                    f"Reusing existing broadcast histogram: {self.server_name}/{channel}"
+                )
 
         return self._broadcast_histogram
 
@@ -266,7 +293,9 @@ class WebSocketMetrics:
                 "Total errors encountered by WebSocket server",
                 ["server", "error_type"],
             )
-            logger.info(f"Created error counter '{error_type}' for server: {self.server_name}")
+            logger.info(
+                f"Created error counter '{error_type}' for server: {self.server_name}"
+            )
 
         return self._error_counter
 
@@ -301,7 +330,9 @@ class WebSocketMetrics:
             ).inc(amount)
         except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.debug(f"Skipping message metric update for {self.server_name}: {e}")
-        logger.debug(f"Incremented {message_type} messages by {amount} for {self.server_name}")
+        logger.debug(
+            f"Incremented {message_type} messages by {amount} for {self.server_name}"
+        )
 
     def set_connections(self, count: int) -> None:
         """Set connection count gauge.
@@ -315,7 +346,9 @@ class WebSocketMetrics:
         try:
             self._select_metric_child(gauge, server=self.server_name).set(count)
         except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.debug(f"Skipping connection metric update for {self.server_name}: {e}")
+            logger.debug(
+                f"Skipping connection metric update for {self.server_name}: {e}"
+            )
         logger.debug(f"Set connections to {count} for {self.server_name}")
 
     def adjust_connections(self, delta: int) -> None:
@@ -330,7 +363,9 @@ class WebSocketMetrics:
         try:
             self._select_metric_child(gauge, server=self.server_name).inc(delta)
         except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.debug(f"Skipping connection metric adjustment for {self.server_name}: {e}")
+            logger.debug(
+                f"Skipping connection metric adjustment for {self.server_name}: {e}"
+            )
         logger.debug(f"Adjusted connections by {delta} for {self.server_name}")
 
     def observe_broadcast(self, channel: str, duration: float) -> None:
@@ -344,12 +379,16 @@ class WebSocketMetrics:
             return
         histogram = self._get_broadcast_histogram(channel)
         try:
-            self._select_metric_child(histogram, server=self.server_name, channel=channel).observe(
-                duration
-            )
+            self._select_metric_child(
+                histogram, server=self.server_name, channel=channel
+            ).observe(duration)
         except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.debug(f"Skipping broadcast metric update for {self.server_name}: {e}")
-        logger.debug(f"Recorded broadcast to {channel}: {duration:.4f}s for {self.server_name}")
+            logger.debug(
+                f"Skipping broadcast metric update for {self.server_name}: {e}"
+            )
+        logger.debug(
+            f"Recorded broadcast to {channel}: {duration:.4f}s for {self.server_name}"
+        )
 
     def set_subscriptions(self, count: int) -> None:
         """Set subscription count gauge.
@@ -363,7 +402,9 @@ class WebSocketMetrics:
         try:
             self._select_metric_child(gauge, server=self.server_name).set(count)
         except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.debug(f"Skipping subscription metric update for {self.server_name}: {e}")
+            logger.debug(
+                f"Skipping subscription metric update for {self.server_name}: {e}"
+            )
         logger.debug(f"Set subscriptions to {count} for {self.server_name}")
 
     def inc_error(self, error_type: str, amount: int = 1) -> None:
@@ -377,12 +418,14 @@ class WebSocketMetrics:
             return
         counter = self._get_error_counter(error_type)
         try:
-            self._select_metric_child(counter, server=self.server_name, error_type=error_type).inc(
-                amount
-            )
+            self._select_metric_child(
+                counter, server=self.server_name, error_type=error_type
+            ).inc(amount)
         except Exception as e:  # Metric emission must be best-effort and never fail the operation  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.debug(f"Skipping error metric update for {self.server_name}: {e}")
-        logger.warning(f"Incremented {error_type} errors by {amount} for {self.server_name}")
+        logger.warning(
+            f"Incremented {error_type} errors by {amount} for {self.server_name}"
+        )
 
     def on_broadcast(self, channel: str, duration: float) -> None:
         """Backward-compatible alias for broadcast timing updates."""
@@ -401,7 +444,9 @@ class WebSocketMetrics:
             "connection_tracking": self._connection_gauge is not None,
             "broadcast_tracking": len(self._broadcast_histograms) > 0,
             "subscription_tracking": self._subscription_gauge is not None,
-            "error_types_tracked": list(self._error_counters.keys()) if self._enabled else [],
+            "error_types_tracked": list(self._error_counters.keys())
+            if self._enabled
+            else [],
         }
 
 
@@ -420,7 +465,9 @@ def start_metrics_server(port: int = 9090) -> Any:
         >>> print("Prometheus metrics available on http://localhost:9090")
     """
     if not PROMETHEUS_AVAILABLE:
-        logger.warning("Cannot start Prometheus metrics server: prometheus_client not installed")
+        logger.warning(
+            "Cannot start Prometheus metrics server: prometheus_client not installed"
+        )
         logger.warning("Install with: pip install prometheus-client")
         return None
 

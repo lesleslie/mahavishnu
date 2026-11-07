@@ -196,7 +196,11 @@ def _post_chat(
         parsed = response.json()
     except ValueError:
         parsed = {}
-    return {"status": response.status_code, "headers": response.headers, "payload": parsed}
+    return {
+        "status": response.status_code,
+        "headers": response.headers,
+        "payload": parsed,
+    }
 
 
 def _cache_headers(result: dict[str, Any]) -> dict[str, str]:
@@ -259,7 +263,10 @@ def test_embedding_model_is_callable(embedding_model: str) -> None:
     response = requests.post(
         "https://api.openai.com/v1/embeddings",
         json={"model": embedding_model, "input": "semantic cache liveness probe"},
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
         timeout=30,
     )
     assert response.status_code == 200, (
@@ -349,7 +356,9 @@ def test_paraphrase_is_a_semantic_cache_hit(
     seed = _post_chat(virtual_key, upstream_model, seed_prompt, cache_key)
     assert seed["status"] == 200, f"seed request failed: {seed['payload']}"
 
-    result = _poll_for_hit(virtual_key, upstream_model, paraphrase, cache_key, "semantic")
+    result = _poll_for_hit(
+        virtual_key, upstream_model, paraphrase, cache_key, "semantic"
+    )
     assert result["status"] == 200, f"paraphrase request failed: {result['payload']}"
 
     headers = _cache_headers(result)
@@ -395,7 +404,9 @@ def test_unrelated_prompt_does_not_hit_the_cache(
     # Wait until the seed is actually readable. Without this the
     # unrelated request below would miss trivially -- the cache would
     # hold nothing yet -- and the assertion would prove nothing.
-    seeded = _poll_for_hit(virtual_key, upstream_model, seed_prompt, cache_key, "direct")
+    seeded = _poll_for_hit(
+        virtual_key, upstream_model, seed_prompt, cache_key, "direct"
+    )
     assert _cache_headers(seeded).get("X-Bifrost-Cache-Hit") == "true", (
         "the seed request was never cached, so the negative assertion below would be vacuous"
     )
@@ -406,7 +417,9 @@ def test_unrelated_prompt_does_not_hit_the_cache(
         "What is the capital of France? Answer in one short sentence.",
         cache_key,
     )
-    assert unrelated["status"] == 200, f"unrelated request failed: {unrelated['payload']}"
+    assert unrelated["status"] == 200, (
+        f"unrelated request failed: {unrelated['payload']}"
+    )
 
     headers = _cache_headers(unrelated)
     assert headers.get("X-Bifrost-Cache-Hit") != "true", (

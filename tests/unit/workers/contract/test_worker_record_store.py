@@ -43,6 +43,7 @@ def _write_corrupt_json(path: pathlib.Path, name: str) -> None:
 
 # ---------- list_all: empty / present / corrupt ----------
 
+
 def test_list_all_returns_empty_when_directory_has_no_records(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -80,6 +81,7 @@ def test_list_all_skips_dot_prefixed_files(tmp_path: pathlib.Path) -> None:
 
 # ---------- get: missing / present / corrupt ----------
 
+
 def test_get_missing_record_returns_none(tmp_path: pathlib.Path) -> None:
     store = WorkerRecordStore(tmp_path)
     assert store.get("does-not-exist") is None
@@ -99,6 +101,7 @@ def test_get_corrupt_json_returns_none(tmp_path: pathlib.Path) -> None:
 
 
 # ---------- put: new / overwrite / atomic semantics ----------
+
 
 def test_put_creates_json_file_on_disk(tmp_path: pathlib.Path) -> None:
     store = WorkerRecordStore(tmp_path)
@@ -153,6 +156,7 @@ def test_put_applies_0o600_mode_to_record_file(tmp_path: pathlib.Path) -> None:
 
 # ---------- delete: missing / present ----------
 
+
 def test_delete_present_record_removes_file(tmp_path: pathlib.Path) -> None:
     store = WorkerRecordStore(tmp_path)
     store.put(_record("w-1"))
@@ -169,6 +173,7 @@ def test_delete_missing_record_is_silent_noop(tmp_path: pathlib.Path) -> None:
 
 # ---------- constructor accepts str and pathlib.Path ----------
 
+
 def test_init_accepts_string_path(tmp_path: pathlib.Path) -> None:
     store = WorkerRecordStore(str(tmp_path))
     rec = _record("w-1")
@@ -177,6 +182,7 @@ def test_init_accepts_string_path(tmp_path: pathlib.Path) -> None:
 
 
 # ---------- list_active: terminal-state exclusion ----------
+
 
 @pytest.mark.parametrize(
     "terminal_state",

@@ -41,7 +41,11 @@ def analyze_module(path: str) -> dict[str, float | int]:
     programmatic_tools = len(re.findall(r"async def \w+\(", text))
     # Only count programmatic if there's a register_* function
     has_register = bool(re.search(r"def register_\w+_tools\(", text))
-    tools = decorator_tools if decorator_tools > 0 else (programmatic_tools if has_register else 0)
+    tools = (
+        decorator_tools
+        if decorator_tools > 0
+        else (programmatic_tools if has_register else 0)
+    )
 
     docstrings = text.count('"""') // 2
     try_blocks = len(re.findall(r"^\s*try:", text, re.MULTILINE))

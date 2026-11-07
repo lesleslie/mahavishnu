@@ -30,7 +30,9 @@ DEFAULT_BOARD_TEMPLATE = (
 
 @board_app.command("init")
 def init_cmd(
-    path: Path = typer.Option(".mahavishnu/board.md", "--path", help="Path to the board file"),
+    path: Path = typer.Option(
+        ".mahavishnu/board.md", "--path", help="Path to the board file"
+    ),
 ) -> None:
     """Initialize an empty board file with default section headers."""
     if path.exists():
@@ -43,7 +45,9 @@ def init_cmd(
 
 @board_app.command("status")
 def status_cmd(
-    path: Path = typer.Option(".mahavishnu/board.md", "--path", help="Path to the board file"),
+    path: Path = typer.Option(
+        ".mahavishnu/board.md", "--path", help="Path to the board file"
+    ),
 ) -> None:
     """Show per-section card counts parsed from the board."""
     if not path.exists():
@@ -60,7 +64,9 @@ def status_cmd(
 
 @board_app.command("validate")
 def validate_cmd(
-    path: Path = typer.Option(".mahavishnu/board.md", "--path", help="Path to the board file"),
+    path: Path = typer.Option(
+        ".mahavishnu/board.md", "--path", help="Path to the board file"
+    ),
 ) -> None:
     """Validate board syntax against the Oneiric schema."""
     if not path.exists():

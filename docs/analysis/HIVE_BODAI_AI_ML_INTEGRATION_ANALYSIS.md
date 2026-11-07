@@ -70,7 +70,7 @@ from mahavishnu.engines.goal_factory import GoalDrivenTeamFactory
 # Initialize with Bodai's existing LLM infrastructure
 factory = GoalDrivenTeamFactory(
     llm_factory=llm_factory,  # Reuse existing provider abstraction
-    mcp_tools=all_tools,       # Reuse existing tool registry
+    mcp_tools=all_tools,  # Reuse existing tool registry
     quality_validator=crackerjack_adapter,
     memory_backend=session_buddy_client,
 )
@@ -247,20 +247,22 @@ class EvolutionMemory:
     ):
         """Store for future pattern detection."""
 
-        await self.session_buddy.store_memory({
-            "type": "team_evolution",
-            "goal": goal,
-            "team_mode": team_config.mode.value,
-            "agent_count": len(team_config.members),
-            "success": outcome.success,
-            "latency_ms": outcome.latency_ms,
-            "quality_score": quality_metrics.get("overall", 0),
-            "timestamp": datetime.now(UTC).isoformat(),
-            # Store embedding for similarity search
-            "embedding": await self.get_embedding(
-                f"{goal} {team_config.mode.value} {outcome.content[:500]}"
-            ),
-        })
+        await self.session_buddy.store_memory(
+            {
+                "type": "team_evolution",
+                "goal": goal,
+                "team_mode": team_config.mode.value,
+                "agent_count": len(team_config.members),
+                "success": outcome.success,
+                "latency_ms": outcome.latency_ms,
+                "quality_score": quality_metrics.get("overall", 0),
+                "timestamp": datetime.now(UTC).isoformat(),
+                # Store embedding for similarity search
+                "embedding": await self.get_embedding(
+                    f"{goal} {team_config.mode.value} {outcome.content[:500]}"
+                ),
+            }
+        )
 ```
 
 **Akosha Pattern Detection:**
@@ -277,12 +279,14 @@ class EvolutionPatternDetector:
         """Find similar past failures across ecosystem."""
 
         # Use Akosha's semantic search
-        results = await self.akosha.search({
-            "query": f"failure {current_failure['error_type']} {current_failure['goal']}",
-            "filters": {"type": "team_evolution", "success": False},
-            "similarity_threshold": threshold,
-            "limit": 10,
-        })
+        results = await self.akosha.search(
+            {
+                "query": f"failure {current_failure['error_type']} {current_failure['goal']}",
+                "filters": {"type": "team_evolution", "success": False},
+                "similarity_threshold": threshold,
+                "limit": 10,
+            }
+        )
 
         return results
 
@@ -294,21 +298,25 @@ class EvolutionPatternDetector:
         """Suggest evolutions based on historical patterns."""
 
         # Find successful configurations for similar goals
-        successful = await self.akosha.search({
-            "query": f"success {goal}",
-            "filters": {"type": "team_evolution", "success": True},
-            "similarity_threshold": 0.8,
-        })
+        successful = await self.akosha.search(
+            {
+                "query": f"success {goal}",
+                "filters": {"type": "team_evolution", "success": True},
+                "similarity_threshold": 0.8,
+            }
+        )
 
         suggestions = []
         for result in successful:
             if result["quality_score"] > 0.8:  # High-quality successes only
-                suggestions.append(EvolutionSuggestion(
-                    type="adopt_pattern",
-                    source_config=result["team_config"],
-                    confidence=result["similarity"],
-                    reason=f"Similar goal achieved with {result['quality_score']:.2f} quality",
-                ))
+                suggestions.append(
+                    EvolutionSuggestion(
+                        type="adopt_pattern",
+                        source_config=result["team_config"],
+                        confidence=result["similarity"],
+                        reason=f"Similar goal achieved with {result['quality_score']:.2f} quality",
+                    )
+                )
 
         return suggestions
 ```
@@ -327,8 +335,8 @@ class LLMProviderFactory:
 
     SUPPORTED_PROVIDERS = [
         LLMProvider.ANTHROPIC,  # Claude models
-        LLMProvider.OPENAI,     # GPT models
-        LLMProvider.OLLAMA,     # Local models
+        LLMProvider.OPENAI,  # GPT models
+        LLMProvider.OLLAMA,  # Local models
     ]
 
     def create_model(self) -> Any:
@@ -409,9 +417,7 @@ class SharedLLMRegistry:
         """Get LLM factory for specific purpose."""
         if purpose not in self._factories:
             config = self.configs[purpose]
-            self._factories[purpose] = LLMProviderFactory(
-                AgnoLLMConfig(**config)
-            )
+            self._factories[purpose] = LLMProviderFactory(AgnoLLMConfig(**config))
         return self._factories[purpose]
 
     def get_model(self, purpose: str) -> Any:
@@ -494,8 +500,8 @@ class SharedPromptManager:
 # From mahavishnu/ingesters/otel_ingester.py
 class EmbeddingBackend(StrEnum):
     SENTENCE_TRANSFORMERS = "sentence_transformers"  # Best quality
-    FASTEMBED = "fastembed"                          # Cross-platform
-    TEXT_ONLY = "text_only"                          # Fallback
+    FASTEMBED = "fastembed"  # Cross-platform
+    TEXT_ONLY = "text_only"  # Fallback
 ```
 
 **Shared Embedding Configuration:**
@@ -661,25 +667,29 @@ class EvolutionLearningEngine:
         quality = await self.validator.evaluate(result)
 
         # 2. Store in hot layer (immediate access)
-        await self.akosha.store_hot({
-            "type": "execution_learning",
-            "goal": goal,
-            "team_hash": self._hash_config(team_config),
-            "success": result.success,
-            "quality_score": quality.overall,
-            "latency_ms": result.latency_ms,
-            "timestamp": datetime.now(UTC),
-        })
+        await self.akosha.store_hot(
+            {
+                "type": "execution_learning",
+                "goal": goal,
+                "team_hash": self._hash_config(team_config),
+                "success": result.success,
+                "quality_score": quality.overall,
+                "latency_ms": result.latency_ms,
+                "timestamp": datetime.now(UTC),
+            }
+        )
 
         # 3. Store in warm layer (session memory)
-        await self.session_buddy.store_memory({
-            "type": "team_execution",
-            "goal": goal,
-            "team_config": team_config.model_dump(),
-            "result_summary": self._summarize_result(result),
-            "quality_metrics": quality.model_dump(),
-            "success": result.success,
-        })
+        await self.session_buddy.store_memory(
+            {
+                "type": "team_execution",
+                "goal": goal,
+                "team_config": team_config.model_dump(),
+                "result_summary": self._summarize_result(result),
+                "quality_metrics": quality.model_dump(),
+                "success": result.success,
+            }
+        )
 
         # 4. Update router preferences
         await self.router.record_execution(
@@ -702,18 +712,22 @@ class EvolutionLearningEngine:
         """Analyze failure and suggest evolution."""
 
         # Find similar failures
-        similar_failures = await self.akosha.search({
-            "query": f"failure {goal}",
-            "filters": {"type": "execution_learning", "success": False},
-            "limit": 5,
-        })
+        similar_failures = await self.akosha.search(
+            {
+                "query": f"failure {goal}",
+                "filters": {"type": "execution_learning", "success": False},
+                "limit": 5,
+            }
+        )
 
         # Find successful patterns
-        successful = await self.akosha.search({
-            "query": f"success {goal}",
-            "filters": {"type": "execution_learning", "success": True},
-            "limit": 5,
-        })
+        successful = await self.akosha.search(
+            {
+                "query": f"success {goal}",
+                "filters": {"type": "execution_learning", "success": True},
+                "limit": 5,
+            }
+        )
 
         # Generate evolution suggestions
         suggestions = await self._generate_evolution_suggestions(
@@ -723,13 +737,15 @@ class EvolutionLearningEngine:
         )
 
         # Store suggestions for review
-        await self.session_buddy.store_memory({
-            "type": "evolution_suggestion",
-            "goal": goal,
-            "current_config": team_config.model_dump(),
-            "suggestions": [s.model_dump() for s in suggestions],
-            "timestamp": datetime.now(UTC),
-        })
+        await self.session_buddy.store_memory(
+            {
+                "type": "evolution_suggestion",
+                "goal": goal,
+                "current_config": team_config.model_dump(),
+                "suggestions": [s.model_dump() for s in suggestions],
+                "timestamp": datetime.now(UTC),
+            }
+        )
 
         return suggestions
 
@@ -740,17 +756,21 @@ class EvolutionLearningEngine:
         """Query collective knowledge for a goal."""
 
         # Hot layer: recent learnings
-        recent = await self.akosha.search_hot({
-            "query": goal,
-            "limit": 10,
-        })
+        recent = await self.akosha.search_hot(
+            {
+                "query": goal,
+                "limit": 10,
+            }
+        )
 
         # Warm layer: session memory
-        sessions = await self.session_buddy.search({
-            "query": goal,
-            "filters": {"type": "team_execution"},
-            "limit": 10,
-        })
+        sessions = await self.session_buddy.search(
+            {
+                "query": goal,
+                "filters": {"type": "team_execution"},
+                "limit": 10,
+            }
+        )
 
         # Aggregate insights
         return {
@@ -900,11 +920,13 @@ class EmbeddingAwareEvolution:
         query_embedding = await self.embedder.embed(query_text)
 
         # Search across all knowledge layers
-        results = await self.akosha.vector_search({
-            "embedding": query_embedding,
-            "filters": {"type": "evolution_suggestion", "applied": True},
-            "limit": 10,
-        })
+        results = await self.akosha.vector_search(
+            {
+                "embedding": query_embedding,
+                "filters": {"type": "evolution_suggestion", "applied": True},
+                "limit": 10,
+            }
+        )
 
         return [self._to_suggestion(r) for r in results]
 ```
@@ -925,8 +947,8 @@ class EnsembleGoalParser:
 
         # Parse with different models
         results = await asyncio.gather(
-            self._parse_with_ollama(goal),      # Fast, local
-            self._parse_with_anthropic(goal),   # High quality (if available)
+            self._parse_with_ollama(goal),  # Fast, local
+            self._parse_with_anthropic(goal),  # High quality (if available)
         )
 
         # Combine results
@@ -1119,9 +1141,13 @@ class QualityGatedEvolutionPipeline:
 # Example: Complete integration of Hive-style evolution with Bodai
 
 from mahavishnu.engines.goal_factory import GoalDrivenTeamFactory
-from mahavishnu.engines.evolution import EvolutionLearningEngine, QualityGatedEvolutionPipeline
+from mahavishnu.engines.evolution import (
+    EvolutionLearningEngine,
+    QualityGatedEvolutionPipeline,
+)
 from mahavishnu.core.llm_registry import UnifiedLLMRegistry
 from mahavishnu.core.statistical_router import StatisticalRouter
+
 
 async def integrated_evolution_example():
     """Example of Hive + Bodai integrated evolution."""

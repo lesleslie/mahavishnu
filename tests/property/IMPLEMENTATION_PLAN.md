@@ -92,6 +92,7 @@ def test_pool_config_roundtrip(config):
     reconstructed = PoolConfig(**config_dict)
     assert reconstructed.model_dump() == config_dict
 
+
 # Boundary validation
 @given(st.floats(min_value=0.0, max_value=400.0))
 def test_timeout_rejects_out_of_bounds(timeout):
@@ -109,8 +110,9 @@ def test_rejects_directory_traversal(path):
     with pytest.raises(PathValidationError):
         validate_path(path, allowed_base_dirs=["/safe"])
 
+
 # Absolute path invariance
-@given(st.from_regex(r'^/tmp/test_[a-z]{5,10}$'))
+@given(st.from_regex(r"^/tmp/test_[a-z]{5,10}$"))
 def test_absolute_path_consistency(path):
     result = validate_path(path)
     assert result.is_absolute()

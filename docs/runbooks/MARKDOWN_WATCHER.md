@@ -57,7 +57,7 @@ The watcher uses `async with asyncio.timeout(...)` (NOT `wait_for(async_generato
 
 1. **Add exponential backoff** to the restart loop (round-5 devops finding, not yet implemented):
    ```python
-   backoff = min(60, 2 ** consecutive_timeouts)
+   backoff = min(60, 2**consecutive_timeouts)
    await asyncio.sleep(backoff)
    ```
 1. **Reduce file modification frequency** at the source: if a script writes the board every second, throttle to once per minute

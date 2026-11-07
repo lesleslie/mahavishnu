@@ -64,7 +64,9 @@ def _yaml_adapter_value(path: pathlib.Path = YAML_PATH) -> str | None:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
-        logger.exception("failed to read settings yaml for status diagnostic", path=str(path))
+        logger.exception(
+            "failed to read settings yaml for status diagnostic", path=str(path)
+        )
         return None
 
     in_terminal_block = False

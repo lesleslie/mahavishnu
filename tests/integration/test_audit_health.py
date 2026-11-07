@@ -177,6 +177,7 @@ async def test_audit_one_repo_honest_503_not_silent():
 @pytest.mark.asyncio
 async def test_audit_one_repo_connection_refused_records_error():
     """Connection refused surfaces as http_code=None + error string."""
+
     def boom(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("Connection refused", request=request)
 
@@ -240,7 +241,9 @@ async def test_audit_health_async_explicit_subset():
         httpx.Response(200, json={"status": "degraded"}),
     )
     with patch_async_client(handler, _TARGET_MODULE):
-        report = await audit_health_async(repos=["mahavishnu", "akosha", "not-a-core-repo"])
+        report = await audit_health_async(
+            repos=["mahavishnu", "akosha", "not-a-core-repo"]
+        )
     assert report["total"] == 2
     assert report["healthy_count"] == 1
     assert report["degraded_count"] == 1

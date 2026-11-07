@@ -19,7 +19,9 @@ def test_path_helper_functions_join_components() -> None:
     assert paths.get_audit_path("audit.log") == paths.AUDIT_DIR / "audit.log"
 
 
-def test_ensure_directories_creates_all_expected_directories(tmp_path: Path, monkeypatch) -> None:
+def test_ensure_directories_creates_all_expected_directories(
+    tmp_path: Path, monkeypatch
+) -> None:
     data = tmp_path / "data"
     config = tmp_path / "config"
     cache = tmp_path / "cache"
@@ -51,7 +53,9 @@ def test_migrate_legacy_data_returns_false_when_legacy_missing(tmp_path: Path) -
     assert not new.exists()
 
 
-def test_migrate_legacy_data_returns_false_when_destination_exists(tmp_path: Path) -> None:
+def test_migrate_legacy_data_returns_false_when_destination_exists(
+    tmp_path: Path,
+) -> None:
     legacy = tmp_path / "legacy.db"
     legacy.write_text("legacy")
     new = tmp_path / "new.db"

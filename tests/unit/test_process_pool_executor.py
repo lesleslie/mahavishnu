@@ -285,7 +285,10 @@ class TestSubmit:
                 return p
 
             with (
-                patch("mahavishnu.core.process_pool_executor.partial", side_effect=capture_partial),
+                patch(
+                    "mahavishnu.core.process_pool_executor.partial",
+                    side_effect=capture_partial,
+                ),
                 patch.object(loop, "run_in_executor", return_value=future),
             ):
                 await executor.submit(lambda a, b, c=0: a + b + c, 1, 2, c=3)

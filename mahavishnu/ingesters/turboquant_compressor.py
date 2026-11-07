@@ -116,7 +116,9 @@ class TurboQuantCompressor:
             ImportError: If turboquant-pro is not installed
             RuntimeError: If compression fails for a specific embedding
         """
-        logger.debug(f"turboquant_compress_batch_start count={len(embeddings)} bits={self._bits}")
+        logger.debug(
+            f"turboquant_compress_batch_start count={len(embeddings)} bits={self._bits}"
+        )
         tq = self._get_tq()
         compressed: list[TQPackedVector] = []
         for i, emb in enumerate(embeddings):
@@ -172,7 +174,9 @@ class TurboQuantCompressor:
                 lambda: tq.search_compressed(conn, table, query_embedding, top_k=top_k),
             )
         except Exception as e:
-            logger.error(f"turboquant_search_pgvector_failed table={table} top_k={top_k} error={e}")
+            logger.error(
+                f"turboquant_search_pgvector_failed table={table} top_k={top_k} error={e}"
+            )
             raise
 
     def compressed_bytes_per_vector(self) -> int:

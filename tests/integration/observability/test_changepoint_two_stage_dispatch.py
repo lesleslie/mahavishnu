@@ -12,6 +12,7 @@ but exercises the two-stage architecture end-to-end.
 
 Req: REQ-005 (two-stage extension verification).
 """
+
 from __future__ import annotations
 
 import random
@@ -55,8 +56,12 @@ def _make_two_stage_manager(
     )
     mgr.logger = None  # type: ignore[attr-defined]
 
-    warn = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=warn_threshold, two_sided=True)
-    confirm = CUSUMDetector(target_mean=0.0, slack=0.25, threshold=confirm_threshold, two_sided=True)
+    warn = CUSUMDetector(
+        target_mean=0.0, slack=0.25, threshold=warn_threshold, two_sided=True
+    )
+    confirm = CUSUMDetector(
+        target_mean=0.0, slack=0.25, threshold=confirm_threshold, two_sided=True
+    )
     mgr._changepoint_detector = TwoStageDetector(warn, confirm, confirm_window_samples)
     return mgr
 
@@ -78,15 +83,21 @@ class TestTwoStageDispatch:
         warning_calls: list[TwoStageResult] = []
         detected_calls: list[TwoStageResult] = []
 
-        def _capture_warning(metric_name: str, value: float, result: TwoStageResult) -> None:
+        def _capture_warning(
+            metric_name: str, value: float, result: TwoStageResult
+        ) -> None:
             warning_calls.append(result)
 
-        def _capture_detected(metric_name: str, value: float, result: TwoStageResult) -> None:
+        def _capture_detected(
+            metric_name: str, value: float, result: TwoStageResult
+        ) -> None:
             detected_calls.append(result)
 
         with (
             patch.object(mgr, "_on_drift_warning", side_effect=_capture_warning),
-            patch.object(mgr, "_on_drift_detected_two_stage", side_effect=_capture_detected),
+            patch.object(
+                mgr, "_on_drift_detected_two_stage", side_effect=_capture_detected
+            ),
         ):
             # Quiet baseline so the detector starts fresh.
             for _ in range(200):
@@ -133,7 +144,14 @@ class TestTwoStageDispatch:
             def add(self, amount: int, attributes: dict | None = None) -> None:
                 attrs = attributes or {}
                 _validate_labels(attrs)
-                if amount == 1 and "severity" in attrs and self._allow_severity or amount == 1 and "severity" not in attrs and not self._allow_severity:
+                if (
+                    amount == 1
+                    and "severity" in attrs
+                    and self._allow_severity
+                    or amount == 1
+                    and "severity" not in attrs
+                    and not self._allow_severity
+                ):
                     self._sink.append(attrs)
 
         mgr.drift_warning_counter = _StubCounter(warning_adds, allow_severity=False)  # type: ignore[attr-defined]

@@ -64,7 +64,9 @@ def test_register_worker_contract_block_wires_real_manager_when_tmux_available(
     ``state="manager_unconfigured"``.
     """
     fake_manager = MagicMock(name="DurableWorkerManager")
-    monkeypatch.setattr(bootstrap, "_try_build_durable_worker_manager", lambda: fake_manager)
+    monkeypatch.setattr(
+        bootstrap, "_try_build_durable_worker_manager", lambda: fake_manager
+    )
     monkeypatch.setattr(bootstrap.shutil, "which", lambda binary: "/usr/bin/tmux")
 
     server = _StubServer()

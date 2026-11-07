@@ -9,7 +9,12 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "mcp-common"))
 
-from mcp_common.code_graph.analyzer import ClassNode, CodeGraphAnalyzer, FunctionNode, ImportNode
+from mcp_common.code_graph.analyzer import (
+    ClassNode,
+    CodeGraphAnalyzer,
+    FunctionNode,
+    ImportNode,
+)
 
 
 @pytest.mark.asyncio
@@ -47,20 +52,28 @@ from pathlib import Path
 
         # Verify the analysis results
         assert result["files_indexed"] >= 1
-        assert result["functions_indexed"] >= 2  # simple_function and function_with_calls
+        assert (
+            result["functions_indexed"] >= 2
+        )  # simple_function and function_with_calls
         assert result["classes_indexed"] >= 1  # SimpleClass
         assert result["imports_indexed"] >= 2  # os and pathlib imports
 
         # Verify that function nodes were created
-        func_nodes = [node for node in analyzer.nodes.values() if isinstance(node, FunctionNode)]
+        func_nodes = [
+            node for node in analyzer.nodes.values() if isinstance(node, FunctionNode)
+        ]
         assert len(func_nodes) >= 2
 
         # Verify that class nodes were created
-        class_nodes = [node for node in analyzer.nodes.values() if isinstance(node, ClassNode)]
+        class_nodes = [
+            node for node in analyzer.nodes.values() if isinstance(node, ClassNode)
+        ]
         assert len(class_nodes) >= 1
 
         # Verify that import nodes were created
-        import_nodes = [node for node in analyzer.nodes.values() if isinstance(node, ImportNode)]
+        import_nodes = [
+            node for node in analyzer.nodes.values() if isinstance(node, ImportNode)
+        ]
         assert len(import_nodes) >= 2  # os and pathlib imports
 
 
@@ -126,7 +139,9 @@ def helper_function():
         related = await analyzer.find_related_files(str(main_file))
 
         # Should find the import relationship
-        assert len(related) >= 0  # May not find direct relationships in this simple case
+        assert (
+            len(related) >= 0
+        )  # May not find direct relationships in this simple case
 
 
 @pytest.mark.asyncio
@@ -168,7 +183,9 @@ class ComplexClass:
         result = await analyzer.analyze_repository(str(tmp_dir))
 
         # Verify analysis results
-        assert result["functions_indexed"] >= 3  # utility_func_a, utility_func_b, complex_function
+        assert (
+            result["functions_indexed"] >= 3
+        )  # utility_func_a, utility_func_b, complex_function
         assert result["classes_indexed"] >= 1  # ComplexClass
 
         # Find the complex function and verify its calls
@@ -220,11 +237,17 @@ class PublicClass:
         await analyzer.analyze_repository(str(tmp_dir))
 
         # Find all function nodes
-        func_nodes = [node for node in analyzer.nodes.values() if isinstance(node, FunctionNode)]
+        func_nodes = [
+            node for node in analyzer.nodes.values() if isinstance(node, FunctionNode)
+        ]
 
         # Verify that private functions are correctly identified
         public_funcs = [fn for fn in func_nodes if fn.is_export]
         private_funcs = [fn for fn in func_nodes if not fn.is_export]
 
-        assert len(public_funcs) == 1  # public_function only; methods are skipped by analyzer
-        assert len(private_funcs) == 1  # _private_helper only; private methods are skipped too
+        assert (
+            len(public_funcs) == 1
+        )  # public_function only; methods are skipped by analyzer
+        assert (
+            len(private_funcs) == 1
+        )  # _private_helper only; private methods are skipped too

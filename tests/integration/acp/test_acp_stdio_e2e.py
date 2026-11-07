@@ -127,7 +127,9 @@ async def _spawn_server(
     return proc, prompt_bytes, ok_bytes
 
 
-async def _read_one_line(proc: asyncio.subprocess.Process, *, timeout: float = 15.0) -> bytes:
+async def _read_one_line(
+    proc: asyncio.subprocess.Process, *, timeout: float = 15.0
+) -> bytes:
     """Read one newline-delimited line from stdout with a hard timeout.
 
     Default 15 s — the first read after ``_spawn_server`` waits through
@@ -140,7 +142,9 @@ async def _read_one_line(proc: asyncio.subprocess.Process, *, timeout: float = 1
     return await asyncio.wait_for(proc.stdout.readline(), timeout=timeout)
 
 
-async def _read_stderr_drain(proc: asyncio.subprocess.Process, *, timeout: float = 15.0) -> bytes:
+async def _read_stderr_drain(
+    proc: asyncio.subprocess.Process, *, timeout: float = 15.0
+) -> bytes:
     """Drain stderr for *timeout* seconds. Used by the redaction test.
 
     Default 15 s — the bearer-acquisition startup warning may arrive
@@ -169,7 +173,7 @@ async def _terminate(proc: asyncio.subprocess.Process) -> None:
         try:
             proc.terminate()
             await asyncio.wait_for(proc.wait(), timeout=10.0)
-        except (TimeoutError, ProcessLookupError):
+        except TimeoutError, ProcessLookupError:
             try:
                 proc.kill()
             except ProcessLookupError:
@@ -179,6 +183,7 @@ async def _terminate(proc: asyncio.subprocess.Process) -> None:
 # ---------------------------------------------------------------------------
 # Test cases (six, per plan §Phase 4)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_smoke_round_trip() -> None:
@@ -209,7 +214,8 @@ async def test_smoke_round_trip() -> None:
                     "method": "authenticate",
                     "params": {"methodId": "bearer", "token": bearer},
                 }
-            ).encode() + b"\n"
+            ).encode()
+            + b"\n"
         )
         await proc.stdin.drain()
         auth_line = await _read_one_line(proc)
@@ -237,7 +243,8 @@ async def test_smoke_round_trip() -> None:
                         "content": [{"type": "text", "text": "hello"}],
                     },
                 }
-            ).encode() + b"\n"
+            ).encode()
+            + b"\n"
         )
         await proc.stdin.drain()
         prompt_line = await _read_one_line(proc)
@@ -294,7 +301,8 @@ async def test_auth_failure_e2e() -> None:
                     "method": "authenticate",
                     "params": {"methodId": "bearer", "token": bearer},
                 }
-            ).encode() + b"\n"
+            ).encode()
+            + b"\n"
         )
         await proc.stdin.drain()
         await _read_one_line(proc)  # consume auth response
@@ -376,7 +384,8 @@ async def test_bearer_redaction_e2e() -> None:
                     "method": "authenticate",
                     "params": {"methodId": "bearer", "token": "wrong-token-pad"},
                 }
-            ).encode() + b"\n"
+            ).encode()
+            + b"\n"
         )
         await proc.stdin.drain()
         await _read_one_line(proc)  # consume error response
@@ -401,9 +410,7 @@ async def test_bearer_redaction_e2e() -> None:
         "bearer value leaked to stderr — BearerRedactionFilter missing or "
         "not attached to the logger"
     )
-    assert bearer_bytes not in stdout_data, (
-        "bearer value leaked to stdout"
-    )
+    assert bearer_bytes not in stdout_data, "bearer value leaked to stdout"
 
 
 @pytest.mark.asyncio
@@ -432,7 +439,8 @@ async def test_adversarial_1mb_prompt() -> None:
                     "method": "authenticate",
                     "params": {"methodId": "bearer", "token": bearer},
                 }
-            ).encode() + b"\n"
+            ).encode()
+            + b"\n"
         )
         await proc.stdin.drain()
         await _read_one_line(proc)
@@ -456,7 +464,8 @@ async def test_adversarial_1mb_prompt() -> None:
                         "content": [{"type": "text", "text": big_text}],
                     },
                 }
-            ).encode() + b"\n"
+            ).encode()
+            + b"\n"
         )
         await proc.stdin.drain()
         # 1 MB JSON-RPC payload + ``json.loads`` over it + execute_fn
@@ -503,14 +512,14 @@ async def test_adversarial_batch_request_rejected() -> None:
         assert proc.stdin is not None
         # Send a batch (array) of two requests.
         proc.stdin.write(
-            b'['
+            b"["
             b'{"jsonrpc":"2.0","id":1,"method":"initialize",'
             b'"params":{"protocolVersion":"0.0.1",'
             b'"clientInfo":{"name":"e2e","version":"0.0.1"}}},'
             b'{"jsonrpc":"2.0","id":2,"method":"initialize",'
             b'"params":{"protocolVersion":"0.0.1",'
             b'"clientInfo":{"name":"e2e","version":"0.0.1"}}}'
-            b']\n'
+            b"]\n"
         )
         await proc.stdin.drain()
         # First read after spawn — bound covers Oneiric warmup (5-7 s)

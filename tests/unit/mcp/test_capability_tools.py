@@ -175,7 +175,9 @@ def test_resolve_capabilities_short_circuits_when_feature_flag_off() -> None:
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "resolve_capabilities")
 
-    result = asyncio.run(tool.fn(requires=["engine:durable-flow"], prompt="x", user_id="alice"))
+    result = asyncio.run(
+        tool.fn(requires=["engine:durable-flow"], prompt="x", user_id="alice")
+    )
 
     assert result["status"] == "error"
     assert result["error_code"] == ErrorCode.FEATURE_DISABLED.value
@@ -235,7 +237,9 @@ def test_resolve_capabilities_requires_user_id() -> None:
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
     tool = _tool(server, "resolve_capabilities")
 
-    result = asyncio.run(tool.fn(requires=["engine:durable-flow"], prompt="x", user_id=None))
+    result = asyncio.run(
+        tool.fn(requires=["engine:durable-flow"], prompt="x", user_id=None)
+    )
     assert result["status"] == "error"
     assert result["error_code"] == "AUTH_REQUIRED"
 
@@ -429,7 +433,6 @@ def test_resolve_capabilities_rejects_unknown_selector() -> None:
 def test_capability_id_is_validated_via_pydantic() -> None:
     """CapabilityId newtype uses TypeAdapter for runtime validation."""
     from pydantic import TypeAdapter, ValidationError
-
 
     adapter: TypeAdapter[str] = TypeAdapter(CapabilityId)
     with pytest.raises(ValidationError):

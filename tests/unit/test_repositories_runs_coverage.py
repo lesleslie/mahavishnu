@@ -515,14 +515,18 @@ class TestListRuns:
         repo = TaskRunRepository()
         conn = _FakeConn(fetch_results=[])
         patch_repo_connection(repo, conn)
-        await repo.list_runs(TaskRunFilter(started_after=datetime(2024, 1, 1, tzinfo=UTC)))
+        await repo.list_runs(
+            TaskRunFilter(started_after=datetime(2024, 1, 1, tzinfo=UTC))
+        )
         assert "started_at >=" in (conn.last_query or "")
 
     async def test_filter_started_before(self):
         repo = TaskRunRepository()
         conn = _FakeConn(fetch_results=[])
         patch_repo_connection(repo, conn)
-        await repo.list_runs(TaskRunFilter(started_before=datetime(2024, 1, 1, tzinfo=UTC)))
+        await repo.list_runs(
+            TaskRunFilter(started_before=datetime(2024, 1, 1, tzinfo=UTC))
+        )
         assert "started_at <=" in (conn.last_query or "")
 
     async def test_list_runs_query_error(self):

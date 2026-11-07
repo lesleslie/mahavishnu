@@ -156,7 +156,8 @@ class TestPreferenceOrderChain:
         )
         chain = pref.get_preference_chain()
         assert chain == [
-            a.value for a in [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX]
+            a.value
+            for a in [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX]
         ]
 
     def test_get_preference_chain_empty(self):
@@ -340,7 +341,9 @@ class TestPreferenceOrderGeneration:
             tracker._metrics.adapter_attempts[adapter.value]["success"] = counts[0]
             tracker._metrics.adapter_attempts[adapter.value]["failure"] = counts[1]
 
-            score = await router.calculate_adapter_score(adapter, TaskType.WORKFLOW, tracker)
+            score = await router.calculate_adapter_score(
+                adapter, TaskType.WORKFLOW, tracker
+            )
             if score:
                 scores_data.append(score)
 
@@ -629,7 +632,9 @@ class TestABTesting:
             traffic_split=0.5,
             duration_hours=24,
         )
-        result = await router.complete_ab_test("test_inconclusive", winner="inconclusive")
+        result = await router.complete_ab_test(
+            "test_inconclusive", winner="inconclusive"
+        )
         assert result["status"] == "completed"
         assert result["winner"] == "inconclusive"
 
@@ -669,7 +674,8 @@ class TestRecalculationLoop:
 
         # Cache should be cleared
         assert (
-            cache_key not in router._preferences or router._preferences.get(cache_key) is not pref1
+            cache_key not in router._preferences
+            or router._preferences.get(cache_key) is not pref1
         )
 
 

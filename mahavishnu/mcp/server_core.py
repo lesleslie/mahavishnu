@@ -168,7 +168,9 @@ class FastMCPServer:
             # for visibility in production logs.
             if self.terminal_manager is not None:
                 self.app.terminal_manager = self.terminal_manager
-                logger.warning("Wired app.terminal_manager for downstream pool_manager init")
+                logger.warning(
+                    "Wired app.terminal_manager for downstream pool_manager init"
+                )
 
         # Register HTTP health endpoint for Claude Code health checks
         # (already registered earlier in __init__ to bypass runtime init —
@@ -182,12 +184,16 @@ class FastMCPServer:
     def _register_telemetry_middleware(self) -> None:
         """Attach OpenTelemetry middleware when tracing is enabled."""
         observability = getattr(self.app.config, "observability", None)
-        if observability is None or not getattr(observability, "tracing_enabled", False):
+        if observability is None or not getattr(
+            observability, "tracing_enabled", False
+        ):
             return
 
         service_name = getattr(self.app.config, "server_name", "mahavishnu")
         environment = "production"
-        if hasattr(observability, "environment") and isinstance(observability.environment, str):
+        if hasattr(observability, "environment") and isinstance(
+            observability.environment, str
+        ):
             environment = observability.environment
 
         self.server.add_middleware(
@@ -219,12 +225,16 @@ class FastMCPServer:
         ``tracing_enabled`` — flagged by the security lens on 2026-09-27.
         """
         observability = getattr(self.app.config, "observability", None)
-        if observability is None or not getattr(observability, "tool_enrichment_enabled", False):
+        if observability is None or not getattr(
+            observability, "tool_enrichment_enabled", False
+        ):
             return
 
         service_name = getattr(self.app.config, "server_name", "mahavishnu")
         environment = "production"
-        if hasattr(observability, "environment") and isinstance(observability.environment, str):
+        if hasattr(observability, "environment") and isinstance(
+            observability.environment, str
+        ):
             environment = observability.environment
 
         from .tool_call_middleware import ToolCallEnrichmentMiddleware
@@ -289,7 +299,9 @@ class FastMCPServer:
             except TimeoutError:
                 status = "timeout"
                 raise
-            except Exception:  # MCP tool error handler — broad catch is the documented contract
+            except (
+                Exception
+            ):  # MCP tool error handler — broad catch is the documented contract
                 status = "error"
                 raise
             finally:
@@ -310,7 +322,9 @@ class FastMCPServer:
             except TimeoutError:
                 status = "timeout"
                 raise
-            except Exception:  # MCP tool error handler — broad catch is the documented contract
+            except (
+                Exception
+            ):  # MCP tool error handler — broad catch is the documented contract
                 status = "error"
                 raise
             finally:
@@ -335,7 +349,11 @@ class FastMCPServer:
         error = result.get("error")
         if error:
             return "error"
-        if isinstance(status, str) and status.lower() in {"error", "failed", "unhealthy"}:
+        if isinstance(status, str) and status.lower() in {
+            "error",
+            "failed",
+            "unhealthy",
+        }:
             return "error"
         return "success"
 
@@ -541,7 +559,9 @@ class FastMCPServer:
                     "successful_repos": 0,
                     "failed_repos": len(target_repos),
                     "execution_time": timeout,
-                    "errors": [{"error": "Operation timed out", "type": "TimeoutError"}],
+                    "errors": [
+                        {"error": "Operation timed out", "type": "TimeoutError"}
+                    ],
                 }
             except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
                 # Create a workflow ID for the error case
@@ -571,7 +591,9 @@ class FastMCPServer:
                     "result": {"error": str(e)},
                     "repos_processed": 0,
                     "successful_repos": 0,
-                    "failed_repos": len(target_repos) if "target_repos" in locals() else 0,
+                    "failed_repos": len(target_repos)
+                    if "target_repos" in locals()
+                    else 0,
                     "execution_time": 0,
                     "errors": [{"error": str(e), "type": type(e).__name__}],
                 }
@@ -706,7 +728,9 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def cancel_workflow(workflow_id: str, user_id: str | None = None) -> dict[str, Any]:
+        async def cancel_workflow(
+            workflow_id: str, user_id: str | None = None
+        ) -> dict[str, Any]:
             """Cancel a running workflow."""
             try:
                 # Check if user has permission to cancel workflows
@@ -763,7 +787,9 @@ class FastMCPServer:
                         }
 
                 # Create the user
-                user = await self.app.rbac_manager.create_user(user_id, roles, allowed_repos)
+                user = await self.app.rbac_manager.create_user(
+                    user_id, roles, allowed_repos
+                )
 
                 return {
                     "status": "success",
@@ -773,10 +799,16 @@ class FastMCPServer:
                     "message": f"User {user_id} created successfully",
                 }
             except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                return {"status": "error", "error": str(e), "message": "Failed to create user"}
+                return {
+                    "status": "error",
+                    "error": str(e),
+                    "message": "Failed to create user",
+                }
 
         @server.tool()
-        async def check_permission(user_id: str, repo: str, permission: str) -> dict[str, Any]:
+        async def check_permission(
+            user_id: str, repo: str, permission: str
+        ) -> dict[str, Any]:
             """Check if a user has a specific permission for a repository."""
             try:
                 # Convert string permission to enum
@@ -826,7 +858,10 @@ class FastMCPServer:
             """
             try:
                 if not self.app.observability:
-                    return {"error": "Observability system not initialized", "metrics": {}}
+                    return {
+                        "error": "Observability system not initialized",
+                        "metrics": {},
+                    }
 
                 # Get performance metrics
                 perf_metrics = self.app.observability.get_performance_metrics()
@@ -850,7 +885,10 @@ class FastMCPServer:
                     "timestamp": datetime.now(UTC).isoformat(),
                 }
             except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                return {"error": f"Failed to get observability metrics: {e}", "metrics": {}}
+                return {
+                    "error": f"Failed to get observability metrics: {e}",
+                    "metrics": {},
+                }
 
         @server.tool()
         async def search_logs(
@@ -889,7 +927,11 @@ class FastMCPServer:
                     },
                 }
             except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                return {"status": "error", "error": f"Failed to search logs: {e}", "logs": []}
+                return {
+                    "status": "error",
+                    "error": f"Failed to search logs: {e}",
+                    "logs": [],
+                }
 
         @server.tool()
         async def search_workflows(
@@ -1168,7 +1210,10 @@ class FastMCPServer:
                     "ecosystem_status": report.model_dump(mode="json"),
                 }
             except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                return {"status": "error", "error": f"Failed to get monitoring dashboard: {e}"}
+                return {
+                    "status": "error",
+                    "error": f"Failed to get monitoring dashboard: {e}",
+                }
 
         @server.tool()
         async def get_active_alerts() -> dict[str, Any]:
@@ -1187,10 +1232,18 @@ class FastMCPServer:
             Side effect: none.
             """
             try:
-                if not self.app.monitoring_service or not self.app.monitoring_service.alert_manager:
-                    return {"status": "error", "error": "Monitoring service not initialized"}
+                if (
+                    not self.app.monitoring_service
+                    or not self.app.monitoring_service.alert_manager
+                ):
+                    return {
+                        "status": "error",
+                        "error": "Monitoring service not initialized",
+                    }
 
-                active_alerts = await self.app.monitoring_service.alert_manager.get_active_alerts()
+                active_alerts = (
+                    await self.app.monitoring_service.alert_manager.get_active_alerts()
+                )
 
                 return {
                     "status": "success",
@@ -1216,9 +1269,14 @@ class FastMCPServer:
             """Acknowledge an alert."""
             try:
                 if not self.app.monitoring_service:
-                    return {"status": "error", "error": "Monitoring service not initialized"}
+                    return {
+                        "status": "error",
+                        "error": "Monitoring service not initialized",
+                    }
 
-                success = await self.app.monitoring_service.acknowledge_alert(alert_id, user)
+                success = await self.app.monitoring_service.acknowledge_alert(
+                    alert_id, user
+                )
 
                 return {
                     "status": "success" if success else "error",
@@ -1235,8 +1293,14 @@ class FastMCPServer:
         ) -> dict[str, Any]:
             """Trigger a test alert for testing purposes."""
             try:
-                if not self.app.monitoring_service or not self.app.monitoring_service.alert_manager:
-                    return {"status": "error", "error": "Monitoring service not initialized"}
+                if (
+                    not self.app.monitoring_service
+                    or not self.app.monitoring_service.alert_manager
+                ):
+                    return {
+                        "status": "error",
+                        "error": "Monitoring service not initialized",
+                    }
 
                 from ..core.monitoring import AlertSeverity, AlertType
 
@@ -1263,7 +1327,10 @@ class FastMCPServer:
                     "message": f"Test alert created with ID: {alert.id}",
                 }
             except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                return {"status": "error", "error": f"Failed to trigger test alert: {e}"}
+                return {
+                    "status": "error",
+                    "error": f"Failed to trigger test alert: {e}",
+                }
 
         @server.tool()
         async def flush_metrics() -> dict[str, Any]:
@@ -1336,7 +1403,9 @@ class FastMCPServer:
                     adapters_info[name] = {
                         "enabled": True,
                         "health": {"status": "unhealthy", "error": str(e)},
-                        "type": type(adapter).__name__ if "adapter" in locals() else "Unknown",
+                        "type": type(adapter).__name__
+                        if "adapter" in locals()
+                        else "Unknown",
                         "features": [],
                     }
 
@@ -1601,7 +1670,9 @@ class FastMCPServer:
                 launchd-driven ``scripts/launch_mcp.py`` path threads
                 the launcher's config through so REQ-007 wins.
         """
-        await _start_server_helper(self, host=host, port=port, uvicorn_config=uvicorn_config)
+        await _start_server_helper(
+            self, host=host, port=port, uvicorn_config=uvicorn_config
+        )
 
     async def run_async(
         self,
@@ -1642,7 +1713,9 @@ class FastMCPServer:
                 that case.
         """
         if transport != "http":
-            raise ValueError(f"FastMCPServer only supports transport='http', got {transport!r}")
+            raise ValueError(
+                f"FastMCPServer only supports transport='http', got {transport!r}"
+            )
         await self.start(host=host, port=port, uvicorn_config=uvicorn_config)
 
     async def stop(self) -> None:

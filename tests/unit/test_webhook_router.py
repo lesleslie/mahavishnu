@@ -71,7 +71,9 @@ class TestValidateAuth:
             "method": "subscription",
         }
 
-        with patch("mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler):
+        with patch(
+            "mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler
+        ):
             result = await validate_auth("Bearer valid-token")
             assert result["authenticated"] is True
             assert result["user"] == "testuser"
@@ -84,7 +86,9 @@ class TestValidateAuth:
         }
 
         with (
-            patch("mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler),
+            patch(
+                "mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler
+            ),
             pytest.raises(HTTPException) as exc_info,
         ):
             await validate_auth("Bearer bad-token")
@@ -103,7 +107,9 @@ class TestValidateAuth:
         mock_handler.authenticate_request.side_effect = auth_error
 
         with (
-            patch("mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler),
+            patch(
+                "mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler
+            ),
             pytest.raises(HTTPException) as exc_info,
         ):
             await validate_auth("Bearer expired-token")
@@ -122,7 +128,9 @@ class TestValidateAuth:
         }
 
         with (
-            patch("mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler),
+            patch(
+                "mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler
+            ),
             pytest.raises(HTTPException) as exc_info,
         ):
             await validate_auth("Bearer bad-token")
@@ -141,7 +149,9 @@ class TestValidateAuth:
         mock_handler.authenticate_request.side_effect = auth_error
 
         with (
-            patch("mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler),
+            patch(
+                "mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler
+            ),
             pytest.raises(HTTPException) as exc_info,
         ):
             await validate_auth("Bearer invalid-token")
@@ -174,9 +184,13 @@ class TestValidateAuth:
             "user": "u1",
         }
 
-        with patch("mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler):
+        with patch(
+            "mahavishnu.webhooks.router.get_auth_handler", return_value=mock_handler
+        ):
             await validate_auth("Bearer my-secret-token")
-            mock_handler.authenticate_request.assert_called_once_with("Bearer my-secret-token")
+            mock_handler.authenticate_request.assert_called_once_with(
+                "Bearer my-secret-token"
+            )
 
 
 class TestSweepEndpoint:
@@ -204,7 +218,9 @@ class TestSweepEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             unwrapped = (
@@ -215,7 +231,9 @@ class TestSweepEndpoint:
             try:
                 response = await unwrapped(request, sweep_req, auth_result)
             except TypeError:
-                response = await sweep_endpoint.__wrapped__(request, sweep_req, auth_result)
+                response = await sweep_endpoint.__wrapped__(
+                    request, sweep_req, auth_result
+                )
 
         assert response.status == WebhookStatus.ACCEPTED
         assert "sweep" in response.message.lower()
@@ -232,7 +250,9 @@ class TestSweepEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             response = await sweep_endpoint.__wrapped__(request, sweep_req, auth_result)
@@ -253,7 +273,9 @@ class TestSweepEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             await sweep_endpoint.__wrapped__(request, sweep_req, auth_result)
@@ -271,12 +293,16 @@ class TestSweepEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             await sweep_endpoint.__wrapped__(request, sweep_req, auth_result)
 
-        mock_task_router.classify_intent.assert_called_once_with("sweep frontend repositories")
+        mock_task_router.classify_intent.assert_called_once_with(
+            "sweep frontend repositories"
+        )
 
     @pytest.mark.asyncio
     async def test_sweep_generates_fallback_chain_with_preferred_adapter(self):
@@ -292,7 +318,9 @@ class TestSweepEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             await sweep_endpoint.__wrapped__(request, sweep_req, auth_result)
@@ -320,7 +348,9 @@ class TestSweepEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             response = await sweep_endpoint.__wrapped__(request, sweep_req, auth_result)
@@ -344,7 +374,9 @@ class TestSweepEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager") as mock_pool_fn,
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             await sweep_endpoint.__wrapped__(request, sweep_req, auth_result)
@@ -361,7 +393,9 @@ class TestSweepEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             response = await sweep_endpoint.__wrapped__(request, sweep_req, auth_result)
@@ -380,7 +414,9 @@ class TestSweepEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             response = await sweep_endpoint.__wrapped__(request, sweep_req, auth_result)
@@ -410,7 +446,9 @@ class TestWorkflowEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             response = await workflow_endpoint.__wrapped__(request, wf_req, auth_result)
@@ -429,7 +467,9 @@ class TestWorkflowEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             response = await workflow_endpoint.__wrapped__(request, wf_req, auth_result)
@@ -449,7 +489,9 @@ class TestWorkflowEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             await workflow_endpoint.__wrapped__(request, wf_req, auth_result)
@@ -467,7 +509,9 @@ class TestWorkflowEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             await workflow_endpoint.__wrapped__(request, wf_req, auth_result)
@@ -493,7 +537,9 @@ class TestWorkflowEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             response = await workflow_endpoint.__wrapped__(request, wf_req, auth_result)
@@ -521,7 +567,9 @@ class TestWorkflowEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             response = await workflow_endpoint.__wrapped__(request, wf_req, auth_result)
@@ -543,7 +591,9 @@ class TestWorkflowEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager") as mock_pool_fn,
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             await workflow_endpoint.__wrapped__(request, wf_req, auth_result)
@@ -560,7 +610,9 @@ class TestWorkflowEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             response = await workflow_endpoint.__wrapped__(request, wf_req, auth_result)
@@ -582,7 +634,9 @@ class TestWorkflowEndpoint:
 
         with (
             patch("mahavishnu.webhooks.router.get_pool_manager"),
-            patch("mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router),
+            patch(
+                "mahavishnu.webhooks.router.TaskRouter", return_value=mock_task_router
+            ),
             patch("mahavishnu.webhooks.router.rate_limit", lambda x: lambda f: f),
         ):
             await workflow_endpoint.__wrapped__(request, wf_req, auth_result)
@@ -718,5 +772,10 @@ class TestAllExportedNames:
     def test_all_contains_expected_names(self):
         from mahavishnu.webhooks.router import __all__
 
-        expected = {"webhook_router", "validate_auth", "sweep_endpoint", "workflow_endpoint"}
+        expected = {
+            "webhook_router",
+            "validate_auth",
+            "sweep_endpoint",
+            "workflow_endpoint",
+        }
         assert set(__all__) == expected

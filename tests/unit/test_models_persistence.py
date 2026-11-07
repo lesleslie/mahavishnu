@@ -87,21 +87,30 @@ def test_webhook_ingress_roundtrip_matches_mcp_shape() -> None:
 
 def test_metadata_defaults_to_empty_dict() -> None:
     """All three types default ``metadata`` to ``{}`` (matches MCP originals)."""
-    assert WorkflowOutcome(
-        workflow_id="wf-002",
-        status="failed",
-        started_at=datetime(2026, 9, 16),
-        finished_at=datetime(2026, 9, 16, 0, 0, 1),
-    ).metadata == {}
-    assert ApprovalLog(
-        approval_id="apr-002",
-        actor="bob",
-        action="denied",
-        at=datetime(2026, 9, 16),
-    ).metadata == {}
-    assert WebhookIngress(
-        webhook_id="wh-002",
-        source="stripe",
-        received_at=datetime(2026, 9, 16),
-        payload_hash="sha256:" + "b" * 64,
-    ).metadata == {}
+    assert (
+        WorkflowOutcome(
+            workflow_id="wf-002",
+            status="failed",
+            started_at=datetime(2026, 9, 16),
+            finished_at=datetime(2026, 9, 16, 0, 0, 1),
+        ).metadata
+        == {}
+    )
+    assert (
+        ApprovalLog(
+            approval_id="apr-002",
+            actor="bob",
+            action="denied",
+            at=datetime(2026, 9, 16),
+        ).metadata
+        == {}
+    )
+    assert (
+        WebhookIngress(
+            webhook_id="wh-002",
+            source="stripe",
+            received_at=datetime(2026, 9, 16),
+            payload_hash="sha256:" + "b" * 64,
+        ).metadata
+        == {}
+    )

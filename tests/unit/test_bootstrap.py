@@ -109,7 +109,9 @@ class TestValidatePathOutsideAllowed:
         """Raises when path is not under any allowed_base_paths."""
         # Use a completely different base
         with pytest.raises(ConfigurationError, match="outside allowed directory"):
-            _validate_path("/usr/local/other_project", allowed_base_paths=[str(tmp_path)])
+            _validate_path(
+                "/usr/local/other_project", allowed_base_paths=[str(tmp_path)]
+            )
 
     def test_rejects_never_nested_path_with_custom_base(self, tmp_path):
         """Raises when path is not under allowed base even with custom bases."""
@@ -144,7 +146,9 @@ class TestLoadRawYaml:
     def test_loads_valid_yaml_with_repos_structure(self, tmp_path):
         """Returns dict with 'repos' key as expected by config."""
         yaml_file = tmp_path / "ecosystem.yaml"
-        yaml_file.write_text("repos:\n  - path: /some/path\n    tags: [python]\nroles: []\n")
+        yaml_file.write_text(
+            "repos:\n  - path: /some/path\n    tags: [python]\nroles: []\n"
+        )
         result = _load_raw_yaml(yaml_file)
         assert "repos" in result
         assert len(result["repos"]) == 1
@@ -207,7 +211,9 @@ class TestLoadConfig:
 
         config_module.MahavishnuSettings.__init__ = bad_init
         try:
-            with pytest.raises(ConfigurationError, match="Failed to load configuration"):
+            with pytest.raises(
+                ConfigurationError, match="Failed to load configuration"
+            ):
                 load_config()
         finally:
             config_module.MahavishnuSettings.__init__ = original_init
@@ -273,7 +279,9 @@ class TestResolveReposPath:
             def warning(self, *args, **kwargs):
                 pass
 
-        with pytest.raises(ConfigurationError, match="No repository configuration found"):
+        with pytest.raises(
+            ConfigurationError, match="No repository configuration found"
+        ):
             _resolve_repos_path(mock_app, MockLogger())
 
 
@@ -299,7 +307,9 @@ class TestComponentEndpointRegistration:
     def test_register_component_endpoint_no_mcp_state(self, caplog):
         """No state backend should log and return without error."""
         with caplog.at_level(logging.WARNING):
-            bootstrap._register_component_endpoint(None, "mahavishnu", "http://localhost")
+            bootstrap._register_component_endpoint(
+                None, "mahavishnu", "http://localhost"
+            )
 
         assert "MCP state not available" in caplog.text
 
@@ -321,14 +331,18 @@ class TestComponentEndpointRegistration:
             {"put": lambda self, key, value: asyncio.sleep(0)},
         )()
 
-        bootstrap._register_component_endpoint(mcp_state, "mahavishnu", "http://localhost")
+        bootstrap._register_component_endpoint(
+            mcp_state, "mahavishnu", "http://localhost"
+        )
 
         assert len(created) == 1
 
     def test_register_component_endpoint_sync_fallback(self, monkeypatch):
         """No running loop should use the sync fallback client."""
         monkeypatch.setattr(
-            asyncio, "get_running_loop", lambda: (_ for _ in ()).throw(RuntimeError("no loop"))
+            asyncio,
+            "get_running_loop",
+            lambda: (_ for _ in ()).throw(RuntimeError("no loop")),
         )
 
         class FakeClient:
@@ -360,7 +374,9 @@ class TestComponentEndpointRegistration:
             {"_client": type("Client", (), {"_base_url": "http://mcp"})()},
         )()
 
-        bootstrap._register_component_endpoint(mcp_state, "mahavishnu", "http://localhost")
+        bootstrap._register_component_endpoint(
+            mcp_state, "mahavishnu", "http://localhost"
+        )
 
         assert fake_client.put_calls == [
             (
@@ -378,7 +394,11 @@ class TestHealthEndpointBootstrap:
         app = type(
             "App",
             (),
-            {"config": type("Config", (), {"health": type("Health", (), {"enabled": False})()})()},
+            {
+                "config": type(
+                    "Config", (), {"health": type("Health", (), {"enabled": False})()}
+                )()
+            },
         )()
 
         assert bootstrap.init_health_endpoint(app) is None
@@ -409,20 +429,28 @@ class TestHealthEndpointBootstrap:
 class TestBootstrapDeepHelpers:
     """Deeper coverage for helper branches in bootstrap."""
 
-    def test_parse_repos_config_file_wraps_unexpected_error(self, tmp_path, monkeypatch):
+    def test_parse_repos_config_file_wraps_unexpected_error(
+        self, tmp_path, monkeypatch
+    ):
         yaml_file = tmp_path / "ecosystem.yaml"
         yaml_file.write_text("repos: []\n")
 
         monkeypatch.setattr(
-            bootstrap, "_load_raw_yaml", lambda path: (_ for _ in ()).throw(ValueError("boom"))
+            bootstrap,
+            "_load_raw_yaml",
+            lambda path: (_ for _ in ()).throw(ValueError("boom")),
         )
 
         with pytest.raises(ConfigurationError, match="Failed to load ecosystem.yaml"):
             bootstrap._parse_repos_config_file(yaml_file)
 
-    def test_register_component_endpoint_sync_failure_logs_warning(self, monkeypatch, caplog):
+    def test_register_component_endpoint_sync_failure_logs_warning(
+        self, monkeypatch, caplog
+    ):
         monkeypatch.setattr(
-            asyncio, "get_running_loop", lambda: (_ for _ in ()).throw(RuntimeError("no loop"))
+            asyncio,
+            "get_running_loop",
+            lambda: (_ for _ in ()).throw(RuntimeError("no loop")),
         )
 
         fake_module = types.ModuleType("mahavishnu.core.mcp_adapter")
@@ -440,16 +468,24 @@ class TestBootstrapDeepHelpers:
         mcp_state = SimpleNamespace(_client=SimpleNamespace(_base_url="http://mcp"))
 
         with caplog.at_level(logging.WARNING):
-            bootstrap._register_component_endpoint(mcp_state, "mahavishnu", "http://localhost")
+            bootstrap._register_component_endpoint(
+                mcp_state, "mahavishnu", "http://localhost"
+            )
 
         assert "failed to register" in caplog.text.lower()
 
     def test_import_adapter_class_known_and_importerror(self, monkeypatch):
         fake_names = {
             "prefect": ("mahavishnu.engines.prefect_adapter_impl", "PrefectAdapter"),
-            "llamaindex": ("mahavishnu.engines.llamaindex_adapter_impl", "LlamaIndexAdapter"),
+            "llamaindex": (
+                "mahavishnu.engines.llamaindex_adapter_impl",
+                "LlamaIndexAdapter",
+            ),
             "agno": ("mahavishnu.engines.agno_adapter_impl", "AgnoAdapter"),
-            "hatchet": ("mahavishnu.engines.hatchet_adapter_impl", "HatchetAdapterImpl"),
+            "hatchet": (
+                "mahavishnu.engines.hatchet_adapter_impl",
+                "HatchetAdapterImpl",
+            ),
             "worker": ("mahavishnu.core.adapters.worker", "WorkerOrchestratorAdapter"),
         }
 
@@ -464,7 +500,9 @@ class TestBootstrapDeepHelpers:
         for name, expected in created.items():
             assert bootstrap._import_adapter_class(name) is expected
 
-        monkeypatch.setitem(sys.modules, "mahavishnu.engines.prefect_adapter_impl", None)
+        monkeypatch.setitem(
+            sys.modules, "mahavishnu.engines.prefect_adapter_impl", None
+        )
         assert bootstrap._import_adapter_class("prefect") is None
         assert bootstrap._import_adapter_class("missing") is None
 
@@ -496,7 +534,9 @@ class TestBootstrapDeepHelpers:
         )
 
         with caplog.at_level(logging.WARNING):
-            classes = bootstrap._collect_adapter_classes(app, logging.getLogger(__name__))
+            classes = bootstrap._collect_adapter_classes(
+                app, logging.getLogger(__name__)
+            )
 
         assert classes == {"prefect": fake_prefect, "worker": fake_worker}
         assert "agno adapter not available" in caplog.text.lower()
@@ -523,8 +563,12 @@ class TestBootstrapDeepHelpers:
         assert received[1][1] is app.config.hatchet
         assert "prefect" in app.adapters and "hatchet" in app.adapters
 
-    def test_instantiate_adapters_error_and_importerror_paths(self, monkeypatch, caplog):
-        app = SimpleNamespace(config=SimpleNamespace(hatchet=SimpleNamespace()), adapters={})
+    def test_instantiate_adapters_error_and_importerror_paths(
+        self, monkeypatch, caplog
+    ):
+        app = SimpleNamespace(
+            config=SimpleNamespace(hatchet=SimpleNamespace()), adapters={}
+        )
 
         class _ImportErrorAdapter:
             def __init__(self, config):
@@ -543,7 +587,9 @@ class TestBootstrapDeepHelpers:
 
         assert "missing optional dependencies" in caplog.text.lower()
 
-        with pytest.raises(ConfigurationError, match="Failed to initialize agno adapter"):
+        with pytest.raises(
+            ConfigurationError, match="Failed to initialize agno adapter"
+        ):
             bootstrap._instantiate_adapters(
                 app,
                 {"agno": _ValueErrorAdapter},
@@ -554,11 +600,15 @@ class TestBootstrapDeepHelpers:
         worker_manager = object()
         worker_adapter = SimpleNamespace(worker_manager=worker_manager)
 
-        monkeypatch.setattr(bootstrap, "_collect_adapter_classes", lambda app, logger: {})
+        monkeypatch.setattr(
+            bootstrap, "_collect_adapter_classes", lambda app, logger: {}
+        )
         monkeypatch.setattr(
             bootstrap,
             "_instantiate_adapters",
-            lambda app, adapter_classes, logger: app.adapters.update({"worker": worker_adapter}),
+            lambda app, adapter_classes, logger: app.adapters.update(
+                {"worker": worker_adapter}
+            ),
         )
 
         app = SimpleNamespace(
@@ -624,11 +674,17 @@ class TestBootstrapDeepHelpers:
         assert bootstrap.resolve_mcp_url(own_config) == "http://localhost:8680/mcp"
 
         dependency = SimpleNamespace(use_tls=True, host="mcp.example", port=9443)
-        custom_config = SimpleNamespace(health=SimpleNamespace(dependencies={"mcp": dependency}))
-        assert bootstrap.resolve_mcp_url(custom_config) == "https://mcp.example:9443/mcp"
+        custom_config = SimpleNamespace(
+            health=SimpleNamespace(dependencies={"mcp": dependency})
+        )
+        assert (
+            bootstrap.resolve_mcp_url(custom_config) == "https://mcp.example:9443/mcp"
+        )
 
     def test_init_pool_manager_success_and_failure(self, monkeypatch, caplog):
-        fake_message_bus_module = types.ModuleType("mahavishnu.mcp.protocols.message_bus")
+        fake_message_bus_module = types.ModuleType(
+            "mahavishnu.mcp.protocols.message_bus"
+        )
         fake_pools_module = types.ModuleType("mahavishnu.pools.manager")
 
         class FakeMessageBus:
@@ -641,7 +697,9 @@ class TestBootstrapDeepHelpers:
                 self.strategy = strategy
 
         class FakePoolManager:
-            def __init__(self, terminal_manager, session_buddy_client, message_bus, mcp_state):
+            def __init__(
+                self, terminal_manager, session_buddy_client, message_bus, mcp_state
+            ):
                 captured["init"] = (
                     terminal_manager,
                     session_buddy_client,
@@ -667,7 +725,9 @@ class TestBootstrapDeepHelpers:
             session_buddy="buddy",
             _mcp_state="mcp",
             config=SimpleNamespace(
-                pools=SimpleNamespace(routing_strategy="least_loaded", default_type="mahavishnu")
+                pools=SimpleNamespace(
+                    routing_strategy="least_loaded", default_type="mahavishnu"
+                )
             ),
         )
 
@@ -702,8 +762,12 @@ class TestBootstrapDeepHelpers:
 
         fake_memory_module.MemoryAggregator = FakeMemoryAggregator
         fake_learning_module.LearningPipelineService = FakeLearningPipelineService
-        monkeypatch.setitem(sys.modules, "mahavishnu.pools.memory_aggregator", fake_memory_module)
-        monkeypatch.setitem(sys.modules, "mahavishnu.core.learning_pipeline", fake_learning_module)
+        monkeypatch.setitem(
+            sys.modules, "mahavishnu.pools.memory_aggregator", fake_memory_module
+        )
+        monkeypatch.setitem(
+            sys.modules, "mahavishnu.core.learning_pipeline", fake_learning_module
+        )
 
         app = SimpleNamespace(
             config=SimpleNamespace(
@@ -754,7 +818,9 @@ class TestBootstrapDeepHelpers:
                 list_prefix=AsyncMock(return_value=[{"id": "a"}]),
             ),
             active_workflows=set(),
-            approval_manager=SimpleNamespace(restore_from_mcp_entries=lambda entries: len(entries)),
+            approval_manager=SimpleNamespace(
+                restore_from_mcp_entries=lambda entries: len(entries)
+            ),
         )
 
         with caplog.at_level(logging.INFO):
@@ -763,7 +829,9 @@ class TestBootstrapDeepHelpers:
 
         assert "wf-1" in app.active_workflows
 
-        app._mcp_state.recover_workflows = AsyncMock(side_effect=RuntimeError("wf boom"))
+        app._mcp_state.recover_workflows = AsyncMock(
+            side_effect=RuntimeError("wf boom")
+        )
         app._mcp_state.list_prefix = AsyncMock(side_effect=RuntimeError("appr boom"))
 
         with caplog.at_level(logging.DEBUG):
@@ -772,7 +840,9 @@ class TestBootstrapDeepHelpers:
 
     @pytest.mark.asyncio
     async def test_recover_helpers_return_early_without_mcp(self):
-        app = SimpleNamespace(_mcp_state=None, active_workflows=set(), approval_manager=None)
+        app = SimpleNamespace(
+            _mcp_state=None, active_workflows=set(), approval_manager=None
+        )
 
         await bootstrap.recover_workflow_state_from_mcp(app)
         await bootstrap.recover_approvals_from_mcp(app)
@@ -830,7 +900,9 @@ class TestBootstrapDeepHelpers:
         assert factory.get_default_provider() == "openai"
         assert factory.get_default_model() == "gpt-4o-mini"
 
-    def test_initialize_runtime_services_happy_path_with_fakes(self, monkeypatch, tmp_path):
+    def test_initialize_runtime_services_happy_path_with_fakes(
+        self, monkeypatch, tmp_path
+    ):
         fake_modules: dict[str, types.ModuleType] = {}
 
         def install(module_name: str, **attrs):
@@ -850,7 +922,9 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.messaging.repository_messenger", RepositoryMessenger=_NoOp)
         install("mahavishnu.core.approval_manager", ApprovalManager=_NoOp)
         install(
-            "mahavishnu.core.backup_recovery", BackupManager=_NoOp, DisasterRecoveryManager=_NoOp
+            "mahavishnu.core.backup_recovery",
+            BackupManager=_NoOp,
+            DisasterRecoveryManager=_NoOp,
         )
         install("mahavishnu.core.coordination.manager", CoordinationManager=_NoOp)
         install(
@@ -881,7 +955,11 @@ class TestBootstrapDeepHelpers:
         )
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
-        install("mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp)
+        install(
+            "mahavishnu.core.state_backends.mcp",
+            MCPStateBackend=_NoOp,
+            MCPStateConfig=_NoOp,
+        )
 
         routing_metrics_module = types.ModuleType("mahavishnu.core.routing_metrics")
 
@@ -890,12 +968,18 @@ class TestBootstrapDeepHelpers:
 
         routing_metrics_module.RoutingMetrics = RoutingMetrics
         routing_metrics_module.get_routing_metrics = lambda name: {"name": name}
-        monkeypatch.setitem(sys.modules, "mahavishnu.core.routing_metrics", routing_metrics_module)
+        monkeypatch.setitem(
+            sys.modules, "mahavishnu.core.routing_metrics", routing_metrics_module
+        )
 
-        session_poller_module = types.ModuleType("mahavishnu.integrations.session_buddy_poller")
+        session_poller_module = types.ModuleType(
+            "mahavishnu.integrations.session_buddy_poller"
+        )
         session_poller_module.SessionBuddyPoller = _NoOp
         monkeypatch.setitem(
-            sys.modules, "mahavishnu.integrations.session_buddy_poller", session_poller_module
+            sys.modules,
+            "mahavishnu.integrations.session_buddy_poller",
+            session_poller_module,
         )
 
         app = SimpleNamespace(
@@ -947,7 +1031,9 @@ class TestBootstrapDeepHelpers:
         assert app.session_buddy_poller is not None
         assert app.worktree_coordinator is None
 
-    def test_initialize_runtime_services_fallback_branches(self, monkeypatch, tmp_path, caplog):
+    def test_initialize_runtime_services_fallback_branches(
+        self, monkeypatch, tmp_path, caplog
+    ):
         def install(module_name: str, **attrs):
             module = types.ModuleType(module_name)
             for key, value in attrs.items():
@@ -968,7 +1054,9 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.messaging.repository_messenger", RepositoryMessenger=_Boom)
         install("mahavishnu.core.approval_manager", ApprovalManager=_NoOp)
         install(
-            "mahavishnu.core.backup_recovery", BackupManager=_NoOp, DisasterRecoveryManager=_NoOp
+            "mahavishnu.core.backup_recovery",
+            BackupManager=_NoOp,
+            DisasterRecoveryManager=_NoOp,
         )
         install("mahavishnu.core.coordination.manager", CoordinationManager=_NoOp)
         install(
@@ -990,11 +1078,19 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.core.task_router", StateManager=_NoOp)
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
-        install("mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp)
-        install("mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_Boom)
+        install(
+            "mahavishnu.core.state_backends.mcp",
+            MCPStateBackend=_NoOp,
+            MCPStateConfig=_NoOp,
+        )
+        install(
+            "mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_Boom
+        )
 
         monkeypatch.setitem(sys.modules, "mahavishnu.core.routing_metrics", None)
-        monkeypatch.setattr(bootstrap, "_register_component_endpoint", lambda *args, **kwargs: None)
+        monkeypatch.setattr(
+            bootstrap, "_register_component_endpoint", lambda *args, **kwargs: None
+        )
         monkeypatch.setattr(bootstrap, "_validate_path", lambda path: Path(tmp_path))
 
         app = SimpleNamespace(
@@ -1028,7 +1124,9 @@ class TestBootstrapDeepHelpers:
             adapters={},
             mcp_url="http://mcp",
             active_workflows=set(),
-            approval_manager=SimpleNamespace(restore_from_mcp_entries=lambda entries: len(entries)),
+            approval_manager=SimpleNamespace(
+                restore_from_mcp_entries=lambda entries: len(entries)
+            ),
         )
         (tmp_path / "ecosystem.yaml").write_text("repos: []\n")
 
@@ -1041,7 +1139,9 @@ class TestBootstrapDeepHelpers:
         assert app.routing_metrics_server is None
         assert app.session_buddy_poller is None
 
-    def test_initialize_runtime_services_routing_metrics_paths(self, monkeypatch, tmp_path, caplog):
+    def test_initialize_runtime_services_routing_metrics_paths(
+        self, monkeypatch, tmp_path, caplog
+    ):
         def install(module_name: str, **attrs):
             module = types.ModuleType(module_name)
             for key, value in attrs.items():
@@ -1059,7 +1159,9 @@ class TestBootstrapDeepHelpers:
         install("mahavishnu.messaging.repository_messenger", RepositoryMessenger=_NoOp)
         install("mahavishnu.core.approval_manager", ApprovalManager=_NoOp)
         install(
-            "mahavishnu.core.backup_recovery", BackupManager=_NoOp, DisasterRecoveryManager=_NoOp
+            "mahavishnu.core.backup_recovery",
+            BackupManager=_NoOp,
+            DisasterRecoveryManager=_NoOp,
         )
         install("mahavishnu.core.coordination.manager", CoordinationManager=_NoOp)
         install(
@@ -1080,14 +1182,23 @@ class TestBootstrapDeepHelpers:
         )
         install("mahavishnu.core.skill_registry", SkillRegistry=_NoOp)
         install("mahavishnu.core.learning_pipeline", LearningPipelineService=_NoOp)
-        install("mahavishnu.core.state_backends.mcp", MCPStateBackend=_NoOp, MCPStateConfig=_NoOp)
-        install("mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_NoOp)
+        install(
+            "mahavishnu.core.state_backends.mcp",
+            MCPStateBackend=_NoOp,
+            MCPStateConfig=_NoOp,
+        )
+        install(
+            "mahavishnu.integrations.session_buddy_poller", SessionBuddyPoller=_NoOp
+        )
 
         routing_metrics_module = install(
-            "mahavishnu.core.routing_metrics", RoutingMetrics=type("RoutingMetrics", (), {})
+            "mahavishnu.core.routing_metrics",
+            RoutingMetrics=type("RoutingMetrics", (), {}),
         )
         routing_metrics_module.get_routing_metrics = lambda name: {"name": name}
-        monkeypatch.setattr(bootstrap, "_register_component_endpoint", lambda *args, **kwargs: None)
+        monkeypatch.setattr(
+            bootstrap, "_register_component_endpoint", lambda *args, **kwargs: None
+        )
         monkeypatch.setattr(bootstrap, "_validate_path", lambda path: Path(tmp_path))
 
         app = SimpleNamespace(
@@ -1121,7 +1232,9 @@ class TestBootstrapDeepHelpers:
             adapters={},
             mcp_url=None,
             active_workflows=set(),
-            approval_manager=SimpleNamespace(restore_from_mcp_entries=lambda entries: len(entries)),
+            approval_manager=SimpleNamespace(
+                restore_from_mcp_entries=lambda entries: len(entries)
+            ),
         )
         (tmp_path / "ecosystem.yaml").write_text("repos: []\n")
 

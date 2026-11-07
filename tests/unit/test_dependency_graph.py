@@ -186,7 +186,9 @@ class TestDependencyGraph:
         """Test updating edge status."""
         graph.add_dependency("task-1", "task-2")
 
-        result = graph.update_edge_status("task-1", "task-2", DependencyStatus.SATISFIED)
+        result = graph.update_edge_status(
+            "task-1", "task-2", DependencyStatus.SATISFIED
+        )
 
         assert result is True
         edge = graph.get_edge("task-1", "task-2")
@@ -507,20 +509,26 @@ class TestDependencyTypes:
     def test_blocks_type(self) -> None:
         """Test BLOCKS dependency type."""
         graph = DependencyGraph()
-        edge = graph.add_dependency("task-1", "task-2", dependency_type=DependencyType.BLOCKS)
+        edge = graph.add_dependency(
+            "task-1", "task-2", dependency_type=DependencyType.BLOCKS
+        )
 
         assert edge.dependency_type == DependencyType.BLOCKS
 
     def test_requires_type(self) -> None:
         """Test REQUIRES dependency type."""
         graph = DependencyGraph()
-        edge = graph.add_dependency("task-1", "task-2", dependency_type=DependencyType.REQUIRES)
+        edge = graph.add_dependency(
+            "task-1", "task-2", dependency_type=DependencyType.REQUIRES
+        )
 
         assert edge.dependency_type == DependencyType.REQUIRES
 
     def test_subtask_type(self) -> None:
         """Test SUBTASK dependency type."""
         graph = DependencyGraph()
-        edge = graph.add_dependency("task-1", "task-2", dependency_type=DependencyType.SUBTASK)
+        edge = graph.add_dependency(
+            "task-1", "task-2", dependency_type=DependencyType.SUBTASK
+        )
 
         assert edge.dependency_type == DependencyType.SUBTASK

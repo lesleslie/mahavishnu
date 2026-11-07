@@ -33,7 +33,9 @@ def test_hlc_now_first_call_returns_ctr_zero() -> None:
     assert hlc.wall_ms > 0
 
 
-def test_hlc_now_increments_ctr_on_same_wall_ms(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_hlc_now_increments_ctr_on_same_wall_ms(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """When wall_ms is unchanged from last, ctr must increment."""
     fixed_time = 1_757_452_800.123
     monkeypatch.setattr(time, "time", lambda: fixed_time)
@@ -43,7 +45,9 @@ def test_hlc_now_increments_ctr_on_same_wall_ms(monkeypatch: pytest.MonkeyPatch)
     assert next_hlc.ctr == last.ctr + 1
 
 
-def test_hlc_now_resets_ctr_when_wall_ms_advances(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_hlc_now_resets_ctr_when_wall_ms_advances(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """When wall_ms advances past last.wall_ms, ctr must reset to 0."""
     # Capture real time BEFORE patching to avoid recursion in the lambda.
     original_time = time.time
@@ -69,11 +73,20 @@ def test_hlc_now_uses_passed_node() -> None:
 
 def test_generate_node_id_always_8_lowercase_hex() -> None:
     """B2 fix: regardless of hostname, output is always exactly 8 hex chars."""
-    for hostname in ["ci", "abc", "myhost.example.com", "verylonghostname", "HOST", "MyHost"]:
+    for hostname in [
+        "ci",
+        "abc",
+        "myhost.example.com",
+        "verylonghostname",
+        "HOST",
+        "MyHost",
+    ]:
         with pytest.MonkeyPatch.context() as m:
             m.setattr(socket, "gethostname", lambda h=hostname: h)
             result = _generate_node_id()
-        assert re.match(r"^[0-9a-f]{8}$", result), f"hostname {hostname!r} produced {result!r}"
+        assert re.match(r"^[0-9a-f]{8}$", result), (
+            f"hostname {hostname!r} produced {result!r}"
+        )
 
 
 def test_generate_node_id_is_deterministic_per_hostname() -> None:
@@ -121,7 +134,9 @@ def test_node_init_returns_existing_node_on_second_call(tmp_path: Path) -> None:
     assert first == second
 
 
-def test_node_init_uses_hostname_hash_prefix(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_node_init_uses_hostname_hash_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Node ID prefix is sha256(hostname)[:4], not raw hostname chars."""
     monkeypatch.setattr(socket, "gethostname", lambda: "stable-host")
     node_file = tmp_path / "node"
@@ -133,9 +148,12 @@ def test_node_init_uses_hostname_hash_prefix(tmp_path: Path, monkeypatch: pytest
     assert re.match(r"^[0-9a-f]{8}$", first)
 
 
-def test_node_init_write_failure_raises_node_persist_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_node_init_write_failure_raises_node_persist_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """When file write fails, raise NodePersistError (B5 fix)."""
     import os
+
     node_file = tmp_path / "node"
 
     original_open = os.open
@@ -164,7 +182,9 @@ def test_get_node_returns_cached_value(tmp_path: Path) -> None:
     assert first == second
 
 
-def test_get_node_initializes_only_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_node_initializes_only_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """get_node must call node_init exactly once even when called many times."""
     node_file = tmp_path / "node"
     call_count = 0
@@ -177,6 +197,7 @@ def test_get_node_initializes_only_once(tmp_path: Path, monkeypatch: pytest.Monk
 
     # Patch the module-level reference that get_node uses
     from mahavishnu.jot import hlc as hlc_module
+
     monkeypatch.setattr(hlc_module, "node_init", counting_init)
 
     for _ in range(5):
@@ -227,7 +248,9 @@ def test_read_tail_hlc_returns_hlc_of_last_event(tmp_path: Path) -> None:
     assert last_hlc == HLC(wall_ms=2000, ctr=0, node="a3f9b2e1")
 
 
-def test_read_tail_hlc_returns_last_valid_when_final_line_truncated(tmp_path: Path) -> None:
+def test_read_tail_hlc_returns_last_valid_when_final_line_truncated(
+    tmp_path: Path,
+) -> None:
     """B4 fix: when final line is truncated, return the prior valid HLC (not None)."""
     log = tmp_path / "log.jsonl"
     valid_event = JotEvent(
@@ -239,7 +262,10 @@ def test_read_tail_hlc_returns_last_valid_when_final_line_truncated(tmp_path: Pa
         created_ms=1000,
     )
     # Append a truncated (unparsable) line after a valid line
-    log.write_text(serialize(valid_event) + '{"id":"b","op":"capture","hlc":{"wall_ms":2000,"ctr":0,"nod')
+    log.write_text(
+        serialize(valid_event)
+        + '{"id":"b","op":"capture","hlc":{"wall_ms":2000,"ctr":0,"nod'
+    )
     # Should return the valid event's HLC, NOT None
     last_hlc = read_tail_hlc(log)
     assert last_hlc == HLC(wall_ms=1000, ctr=5, node="a3f9b2e1")
@@ -276,7 +302,9 @@ def test_read_tail_hlc_skips_malformed_lines_in_middle(tmp_path: Path) -> None:
     assert last_hlc == HLC(wall_ms=2000, ctr=0, node="a3f9b2e1")
 
 
-def test_read_tail_hlc_reads_only_tail_of_large_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_read_tail_hlc_reads_only_tail_of_large_log(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """For large logs (>64KB), only the tail is read."""
     from mahavishnu.jot import hlc as hlc_module
 

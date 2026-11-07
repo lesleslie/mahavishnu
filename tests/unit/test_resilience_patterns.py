@@ -50,7 +50,9 @@ class TestRetryPolicy:
         assert p.delay_for_attempt(3) == 18.0
 
     def test_delay_capped_at_max(self):
-        p = RetryPolicy(initial_delay_seconds=10.0, backoff_factor=10.0, max_delay_seconds=50.0)
+        p = RetryPolicy(
+            initial_delay_seconds=10.0, backoff_factor=10.0, max_delay_seconds=50.0
+        )
         assert p.delay_for_attempt(1) == 10.0
         assert p.delay_for_attempt(2) == 50.0  # capped
         assert p.delay_for_attempt(3) == 50.0
@@ -569,7 +571,12 @@ class TestErrorRecoveryManagerHeal:
         app = _mock_app()
         app.workflow_state_manager.list_workflows = AsyncMock(
             return_value=[
-                {"id": "wf1", "errors": ["e"] * 6, "task": {"adapter": "prefect"}, "repos": ["/r"]},
+                {
+                    "id": "wf1",
+                    "errors": ["e"] * 6,
+                    "task": {"adapter": "prefect"},
+                    "repos": ["/r"],
+                },
             ]
         )
 
@@ -593,7 +600,9 @@ class TestErrorRecoveryManagerHeal:
     @pytest.mark.asyncio
     async def test_monitor_and_heal_graceful_error(self):
         app = _mock_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(side_effect=RuntimeError("db down"))
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            side_effect=RuntimeError("db down")
+        )
 
         mgr = ErrorRecoveryManager(app)
         await mgr.monitor_and_heal_workflows()  # no exception
@@ -648,7 +657,9 @@ class TestErrorRecoveryManagerStuckWorkflows:
     @pytest.mark.asyncio
     async def test_stuck_check_graceful_error(self):
         app = _mock_app()
-        app.workflow_state_manager.list_workflows = AsyncMock(side_effect=RuntimeError("fail"))
+        app.workflow_state_manager.list_workflows = AsyncMock(
+            side_effect=RuntimeError("fail")
+        )
 
         mgr = ErrorRecoveryManager(app)
         await mgr._check_stuck_workflows()  # no exception
@@ -708,7 +719,10 @@ class TestGetResilienceMetrics:
     """Line 176: get_resilience_metrics() returns the shared singleton."""
 
     def test_returns_shared_instance(self):
-        from mahavishnu.core.resilience import RESILIENCE_METRICS, get_resilience_metrics
+        from mahavishnu.core.resilience import (
+            RESILIENCE_METRICS,
+            get_resilience_metrics,
+        )
 
         assert get_resilience_metrics() is RESILIENCE_METRICS
 
@@ -876,7 +890,9 @@ class TestSkipAndContinue:
         mgr = ErrorRecoveryManager(app)
         error = RuntimeError("skip me")
 
-        result = await mgr._skip_and_continue(error, workflow_id="wf1", repo_path="/repo")
+        result = await mgr._skip_and_continue(
+            error, workflow_id="wf1", repo_path="/repo"
+        )
         assert result["success"] is False
         assert result["error"] == "skip me"
         assert result["attempts"] == 1
@@ -978,7 +994,9 @@ class TestHealWorkflowFailure:
         )
         # execute_workflow raises an exception that propagates past recovery
         app.execute_workflow = AsyncMock(side_effect=MemoryError("oom during heal"))
-        app.workflow_state_manager.update = AsyncMock(side_effect=RuntimeError("db down"))
+        app.workflow_state_manager.update = AsyncMock(
+            side_effect=RuntimeError("db down")
+        )
 
         mgr = ErrorRecoveryManager(app)
         # Should not raise — monitor_and_heal_workflows catches exceptions

@@ -248,7 +248,9 @@ def register(server: FastMCP | StandardServer, settings: CrowSettings) -> None:
         return await _read_impl(file_path, settings, offset, limit, encoding)
 
     @deco()
-    async def write_file(file_path: str, content: str, dry_run: bool = False) -> WriteResult:
+    async def write_file(
+        file_path: str, content: str, dry_run: bool = False
+    ) -> WriteResult:
         """(HTTP, for pool workers and CLI) - Atomic write preserving mode."""
         return await _write_impl(file_path, content, settings, dry_run)
 

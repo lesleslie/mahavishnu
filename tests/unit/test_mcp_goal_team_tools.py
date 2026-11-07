@@ -65,7 +65,9 @@ def _make_factory(parsed=None, team_config=None):
     """Build a mock GoalDrivenTeamFactory."""
     factory = MagicMock()
     factory.parse_goal = AsyncMock(return_value=parsed or _make_parsed_goal())
-    factory.create_team_from_goal = AsyncMock(return_value=team_config or _make_team_config())
+    factory.create_team_from_goal = AsyncMock(
+        return_value=team_config or _make_team_config()
+    )
     return factory
 
 
@@ -384,7 +386,9 @@ class TestTeamFromGoal:
         ws.broadcast_team_parsed.assert_awaited()
         ws.broadcast_team_created.assert_awaited()
 
-    async def test_generic_exception_returns_internal_error(self, registered_mcp, default_modules):
+    async def test_generic_exception_returns_internal_error(
+        self, registered_mcp, default_modules
+    ):
         """An unexpected exception should be caught and returned as INTERNAL_ERROR."""
         factory = default_modules["factory"]
         factory.parse_goal.side_effect = RuntimeError("boom")
@@ -525,7 +529,9 @@ class TestParseGoal:
                 "mahavishnu.engines.goal_team_factory.GoalDrivenTeamFactory",
                 return_value=factory,
             ),
-            patch("mahavishnu.core.team_learning.get_learning_engine") as mock_get_engine,
+            patch(
+                "mahavishnu.core.team_learning.get_learning_engine"
+            ) as mock_get_engine,
         ):
             mock_engine = MagicMock()
             mock_engine.get_mode_recommendation = MagicMock(return_value=recommendation)

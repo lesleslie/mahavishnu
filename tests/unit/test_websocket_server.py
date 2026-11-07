@@ -36,7 +36,10 @@ def _make_server(**overrides) -> MahavishnuWebSocketServer:
     with (
         patch("mahavishnu.websocket.server.get_authenticator", return_value=None),
         patch("mahavishnu.websocket.server.get_metrics") as mock_get_metrics,
-        patch("mahavishnu.websocket.server.load_ssl_context", return_value={"ssl_context": None}),
+        patch(
+            "mahavishnu.websocket.server.load_ssl_context",
+            return_value={"ssl_context": None},
+        ),
         patch(
             "mahavishnu.websocket.server.get_websocket_tls_config",
             return_value={"tls_enabled": False, "cert_file": None},
@@ -221,11 +224,16 @@ class TestMahavishnuWebSocketServerInit:
                 "mahavishnu.websocket.server.load_ssl_context",
                 return_value={"ssl_context": None},
             ),
-            patch("mahavishnu.websocket.server.get_websocket_tls_config") as mock_env_config,
+            patch(
+                "mahavishnu.websocket.server.get_websocket_tls_config"
+            ) as mock_env_config,
         ):
             mock_get_metrics.return_value = MagicMock()
             fake_ssl = MagicMock()
-            mock_env_config.return_value = {"tls_enabled": True, "cert_file": "/env/cert.pem"}
+            mock_env_config.return_value = {
+                "tls_enabled": True,
+                "cert_file": "/env/cert.pem",
+            }
             mock_load_ssl = MagicMock(
                 side_effect=[
                     {"ssl_context": None},
@@ -427,7 +435,9 @@ class TestOnMessage:
         server._handle_request = AsyncMock()
 
         msg = _make_message(
-            msg_type=MessageType.REQUEST, event="subscribe", data={"channel": "pool:abc"}
+            msg_type=MessageType.REQUEST,
+            event="subscribe",
+            data={"channel": "pool:abc"},
         )
         await server.on_message(ws, msg)
         server._handle_request.assert_called_once_with(ws, msg)
@@ -557,7 +567,9 @@ class TestSendRateLimitError:
 
         with caplog.at_level(logging.DEBUG):
             await server._send_rate_limit_error(ws, msg, rate_result)
-        assert any("Failed to send rate limit error" in r.message for r in caplog.records)
+        assert any(
+            "Failed to send rate limit error" in r.message for r in caplog.records
+        )
 
 
 # ===========================================================================
@@ -757,7 +769,9 @@ class TestHandleRequestGetPoolStatus:
         server = _make_server()
         ws = _make_websocket()
         server.pool_manager.pools = MagicMock()
-        server.pool_manager.pools.__contains__ = MagicMock(side_effect=RuntimeError("boom"))
+        server.pool_manager.pools.__contains__ = MagicMock(
+            side_effect=RuntimeError("boom")
+        )
 
         msg = _make_message(event="get_pool_status", data={"pool_id": "pool-1"})
         with caplog.at_level(logging.ERROR):
@@ -815,7 +829,9 @@ class TestHandleRequestGetWorkflowStatus:
         server = _make_server()
         ws = _make_websocket()
 
-        msg = _make_message(event="get_workflow_status", data={"workflow_id": "wf-stages"})
+        msg = _make_message(
+            event="get_workflow_status", data={"workflow_id": "wf-stages"}
+        )
         await server._handle_request(ws, msg)
 
         sent_json = ws.send.call_args[0][0]
@@ -955,7 +971,11 @@ class TestGetPoolStatus:
         server.pool_manager.pools = {"p1": mock_pool}
 
         result = await server._get_pool_status("p1")
-        assert result == {"pool_id": "p1", "status": "healthy", "workers": ["w1", "w2", "w3"]}
+        assert result == {
+            "pool_id": "p1",
+            "status": "healthy",
+            "workers": ["w1", "w2", "w3"],
+        }
 
     @pytest.mark.asyncio
     async def test_returns_unknown_status_when_pool_lacks_attrs(self):
@@ -978,7 +998,9 @@ class TestGetPoolStatus:
     async def test_handles_exception(self, caplog):
         server = _make_server()
         server.pool_manager.pools = MagicMock()
-        server.pool_manager.pools.__contains__ = MagicMock(side_effect=RuntimeError("db error"))
+        server.pool_manager.pools.__contains__ = MagicMock(
+            side_effect=RuntimeError("db error")
+        )
 
         with caplog.at_level(logging.ERROR):
             result = await server._get_pool_status("p1")
@@ -1008,7 +1030,12 @@ class TestGetWorkflowStatus:
     async def test_returns_all_expected_keys(self):
         server = _make_server()
         result = await server._get_workflow_status("wf-2")
-        assert set(result.keys()) == {"workflow_id", "status", "stages_completed", "total_stages"}
+        assert set(result.keys()) == {
+            "workflow_id",
+            "status",
+            "stages_completed",
+            "total_stages",
+        }
 
     @pytest.mark.asyncio
     async def test_preserves_workflow_id_in_result(self):
@@ -1069,7 +1096,9 @@ class TestLeaveAllRooms:
         }
         server.room_connections = {}
 
-        with patch.object(type(server).__mro__[1], "leave_all_rooms", new_callable=AsyncMock):
+        with patch.object(
+            type(server).__mro__[1], "leave_all_rooms", new_callable=AsyncMock
+        ):
             await server.leave_all_rooms("conn-1")
 
         assert "conn-1" not in server.connection_rooms["room-1"]
@@ -1083,7 +1112,9 @@ class TestLeaveAllRooms:
         }
         server.room_connections = {}
 
-        with patch.object(type(server).__mro__[1], "leave_all_rooms", new_callable=AsyncMock):
+        with patch.object(
+            type(server).__mro__[1], "leave_all_rooms", new_callable=AsyncMock
+        ):
             await server.leave_all_rooms("conn-1")
 
         assert "room-1" in server.connection_rooms
@@ -1158,7 +1189,9 @@ class TestBroadcastWorkflowStageCompleted:
         server = _make_server()
         server.broadcast_to_room = AsyncMock()
 
-        await server.broadcast_workflow_stage_completed("wf-1", "build", {"status": "ok"})
+        await server.broadcast_workflow_stage_completed(
+            "wf-1", "build", {"status": "ok"}
+        )
         server.broadcast_to_room.assert_called_once()
         event = server.broadcast_to_room.call_args[0][1]
         assert event.data["workflow_id"] == "wf-1"
@@ -1297,7 +1330,9 @@ class TestBroadcastPoolStatusChanged:
         server = _make_server()
         server.broadcast_to_room = AsyncMock()
 
-        await server.broadcast_pool_status_changed("pool:p1", {"workers": 5, "queue": 2})
+        await server.broadcast_pool_status_changed(
+            "pool:p1", {"workers": 5, "queue": 2}
+        )
         event = server.broadcast_to_room.call_args[0][1]
         assert event.data["pool_id"] == "p1"
         assert event.data["status"] == {"workers": 5, "queue": 2}
@@ -1465,7 +1500,9 @@ class TestBroadcastTeamExecutionStarted:
         server = _make_server()
         server.broadcast_to_room = AsyncMock()
 
-        await server.broadcast_team_execution_started(team_id="t1", task="build", user_id="u1")
+        await server.broadcast_team_execution_started(
+            team_id="t1", task="build", user_id="u1"
+        )
         assert server.broadcast_to_room.call_count == 2
 
 

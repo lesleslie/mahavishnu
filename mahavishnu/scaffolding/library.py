@@ -70,7 +70,9 @@ class PatternLibrary:
         return [
             p
             for p in self._cache.values()
-            if q in p.name.lower() or q in p.description.lower() or q in " ".join(p.tags).lower()
+            if q in p.name.lower()
+            or q in p.description.lower()
+            or q in " ".join(p.tags).lower()
         ]
 
     def save(self, pattern: Pattern) -> Path:
@@ -111,7 +113,9 @@ def atomic_write(path: Path, content: str) -> None:
     ``fchmod`` on the open descriptor so it is never observable at a
     wider mode than requested.
     """
-    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    fd, temp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             os.fchmod(handle.fileno(), 0o600)

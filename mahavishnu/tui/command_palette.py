@@ -88,7 +88,9 @@ class CommandMatch(BaseModel):
 # imports so Pydantic can't resolve them automatically at model_rebuild time.
 from collections.abc import Callable, Coroutine
 
-CommandMatch.model_rebuild(_types_namespace={"Callable": Callable, "Coroutine": Coroutine})
+CommandMatch.model_rebuild(
+    _types_namespace={"Callable": Callable, "Coroutine": Coroutine}
+)
 
 
 class FuzzyMatcher:

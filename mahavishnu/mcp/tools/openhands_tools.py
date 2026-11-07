@@ -10,7 +10,11 @@ from oneiric.core.logging import get_logger
 from pydantic import BaseModel, Field
 
 from mahavishnu.core.config import MahavishnuSettings
-from mahavishnu.workers.openhands import OpenHandsClient, OpenHandsConfig, OpenHandsWorker
+from mahavishnu.workers.openhands import (
+    OpenHandsClient,
+    OpenHandsConfig,
+    OpenHandsWorker,
+)
 
 logger = get_logger(__name__)
 mcp = FastMCP("openhands")
@@ -45,7 +49,9 @@ def _make_config() -> OpenHandsConfig:
     if oh_settings and hasattr(oh_settings, "workspace_root"):
         allowed_root = Path(oh_settings.workspace_root).resolve()
     if not workspace_dir.is_relative_to(allowed_root):
-        raise ValueError(f"workspace_dir {workspace_dir} is outside allowed root {allowed_root}")
+        raise ValueError(
+            f"workspace_dir {workspace_dir} is outside allowed root {allowed_root}"
+        )
 
     return OpenHandsConfig(base_url=base_url, workspace_dir=workspace_dir)
 
@@ -95,7 +101,9 @@ async def openhands_run(
         timeout: Max seconds to wait (30-3600). Default 600.
         run_quality_check: Run Crackerjack quality check on output. Default True.
     """
-    inp = OpenHandsRunInput(prompt=prompt, timeout=timeout, run_quality_check=run_quality_check)
+    inp = OpenHandsRunInput(
+        prompt=prompt, timeout=timeout, run_quality_check=run_quality_check
+    )
     return await run_openhands_task(inp)
 
 

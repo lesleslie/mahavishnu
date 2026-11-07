@@ -141,9 +141,7 @@ class WorktreeProviderRegistry:
                 logger.debug(f"Using provider: {provider_name}")
                 return provider
 
-            except (
-                Exception
-            ) as e:  # Provider health check logs and falls through to next provider on any failure
+            except Exception as e:  # Provider health check logs and falls through to next provider on any failure
                 logger.warning(
                     f"Provider {provider_name} health check failed: {e}",
                     exc_info=True,
@@ -153,7 +151,9 @@ class WorktreeProviderRegistry:
 
         # No provider available
         provider_names = [p.provider_name() for p in self._providers]
-        error_msg = f"No worktree providers available. Tried: {', '.join(provider_names)}"
+        error_msg = (
+            f"No worktree providers available. Tried: {', '.join(provider_names)}"
+        )
 
         logger.error(error_msg)
         raise ProviderUnavailableError(
@@ -209,7 +209,9 @@ class WorktreeProviderRegistry:
         Args:
             interval_seconds: Seconds between health checks
         """
-        logger.info(f"Starting provider health check loop (interval={interval_seconds}s)")
+        logger.info(
+            f"Starting provider health check loop (interval={interval_seconds}s)"
+        )
 
         while True:
             try:
@@ -221,7 +223,9 @@ class WorktreeProviderRegistry:
                     try:
                         is_healthy = provider.health_check()
                         self._provider_health[provider_name] = is_healthy
-                        self._last_health_check[provider_name] = asyncio.get_event_loop().time()
+                        self._last_health_check[provider_name] = (
+                            asyncio.get_event_loop().time()
+                        )
 
                         if not is_healthy:
                             logger.warning(f"Provider {provider_name} is unhealthy")
@@ -240,6 +244,8 @@ class WorktreeProviderRegistry:
             except asyncio.CancelledError:
                 logger.info("Provider health check loop cancelled")
                 break
-            except Exception:  # background task — broad catch is the documented contract
+            except (
+                Exception
+            ):  # background task — broad catch is the documented contract
                 logger.exception("Error in health check loop")
                 # Continue loop despite errors

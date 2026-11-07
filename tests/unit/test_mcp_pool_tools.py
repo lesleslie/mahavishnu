@@ -16,7 +16,9 @@ def mock_pool_manager():
     manager.execute_on_pool = AsyncMock(
         return_value={"status": "completed", "output": "test output"}
     )
-    manager.route_task = AsyncMock(return_value={"pool_id": "pool_test_id", "status": "completed"})
+    manager.route_task = AsyncMock(
+        return_value={"pool_id": "pool_test_id", "status": "completed"}
+    )
     manager.list_pools = AsyncMock(
         return_value=[
             {"pool_id": "pool_1", "pool_type": "mahavishnu", "status": "active"},
@@ -38,7 +40,9 @@ def mock_pool_manager():
     manager.close_pool = AsyncMock(return_value=None)
     manager.close_all = AsyncMock(return_value=None)
     manager._pools = {
-        "pool_1": MagicMock(scale=AsyncMock(return_value=None), _workers=[1, 2, 3, 4, 5]),
+        "pool_1": MagicMock(
+            scale=AsyncMock(return_value=None), _workers=[1, 2, 3, 4, 5]
+        ),
         "pool_2": MagicMock(scale=AsyncMock(return_value=None), _workers=[1, 2, 3]),
     }
     return manager
@@ -304,7 +308,9 @@ class TestPoolHealthTool:
     @pytest.mark.asyncio
     async def test_pool_health_error_handling(self, mock_mcp, mock_pool_manager):
         """Test pool_health handles errors gracefully."""
-        mock_pool_manager.health_check = AsyncMock(side_effect=Exception("Health check failed"))
+        mock_pool_manager.health_check = AsyncMock(
+            side_effect=Exception("Health check failed")
+        )
 
         @mock_mcp.tool()
         async def pool_health():
@@ -341,7 +347,9 @@ class TestPoolSearchMemoryTool:
             return results
 
         # Mock the aggregator
-        with patch("mahavishnu.mcp.tools.pool_tools.MemoryAggregator") as MockAggregator:
+        with patch(
+            "mahavishnu.mcp.tools.pool_tools.MemoryAggregator"
+        ) as MockAggregator:
             mock_aggregator = MagicMock()
             mock_aggregator.cross_pool_search = AsyncMock(
                 return_value=[
@@ -377,9 +385,13 @@ class TestPoolSearchMemoryTool:
                 return []
 
         # Mock the aggregator to raise error
-        with patch("mahavishnu.mcp.tools.pool_tools.MemoryAggregator") as MockAggregator:
+        with patch(
+            "mahavishnu.mcp.tools.pool_tools.MemoryAggregator"
+        ) as MockAggregator:
             mock_aggregator = MagicMock()
-            mock_aggregator.cross_pool_search = AsyncMock(side_effect=Exception("Search failed"))
+            mock_aggregator.cross_pool_search = AsyncMock(
+                side_effect=Exception("Search failed")
+            )
             MockAggregator.return_value = mock_aggregator
 
             results = await pool_search_memory(query="test")
@@ -478,7 +490,9 @@ class TestPoolRouteExecuteTool:
         assert call_kwargs["auto_spawn"] is False
 
     @pytest.mark.asyncio
-    async def test_pool_route_execute_logs_routed_model(self, mock_pool_manager, caplog):
+    async def test_pool_route_execute_logs_routed_model(
+        self, mock_pool_manager, caplog
+    ):
         """The dispatch records which model the prompt was routed to."""
         execute = _capture_pool_route_execute(mock_pool_manager)
 
@@ -516,7 +530,9 @@ class TestPoolRouteExecuteTool:
         assert result == {"status": "timeout"}
 
     @pytest.mark.asyncio
-    async def test_pool_route_execute_invalid_selector_envelope(self, mock_pool_manager):
+    async def test_pool_route_execute_invalid_selector_envelope(
+        self, mock_pool_manager
+    ):
         """Scenario 4 — ValueError from ``PoolSelector('invalid_garbage')`` →
         {status: 'invalid_selector', error: ...}. Actually caught at the
         selector-string → enum conversion; route_task is never called.

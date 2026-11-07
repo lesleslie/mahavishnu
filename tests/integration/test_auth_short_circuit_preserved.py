@@ -13,6 +13,7 @@ The actual auth middleware/decorator code lives in oneiric
 flag propagates). This file focuses on the *cross-component* contract:
 that the substrate's auth defaults are the values the 3 components see.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -31,7 +32,9 @@ def _fresh_substrate(monkeypatch: pytest.MonkeyPatch):
     return OneiricSettings()
 
 
-def test_substrate_auth_enabled_default_is_false(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_substrate_auth_enabled_default_is_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The substrate's ``auth__enabled`` defaults to ``False`` so loopback traffic
     between Bodai components is trusted without ceremony.
 

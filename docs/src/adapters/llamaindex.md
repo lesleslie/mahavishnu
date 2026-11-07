@@ -55,22 +55,18 @@ The adapter includes real llama-server integration:
 ```python
 from mahavishnu.engines import LlamaIndexAdapter
 
-adapter = LlamaIndexAdapter(config={
-    "llm_model": "qwen3.5",
-    "base_url": "http://localhost:8081"
-})
+adapter = LlamaIndexAdapter(
+    config={"llm_model": "qwen3.5", "base_url": "http://localhost:8081"}
+)
 
 # Ingest documents
 result = await adapter.ingest_documents(
-    repo_path="/path/to/repo",
-    document_types=["py", "md", "txt"]
+    repo_path="/path/to/repo", document_types=["py", "md", "txt"]
 )
 
 # Query for semantic search
 results = await adapter.query_documents(
-    query="authentication patterns",
-    repo_path="/path/to/repo",
-    top_k=5
+    query="authentication patterns", repo_path="/path/to/repo", top_k=5
 )
 ```
 

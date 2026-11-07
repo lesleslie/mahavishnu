@@ -183,6 +183,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 import pytest
 
+
 @given(st.text(min_size=1, max_size=100))
 @settings(max_examples=100)
 def test_property(input_data):
@@ -203,7 +204,7 @@ def test_property(input_data):
 
 ```python
 # Text generation
-st.text(min_size=1, max_size=100, alphabet='abc')
+st.text(min_size=1, max_size=100, alphabet="abc")
 
 # Integers in range
 st.integers(min_value=0, max_value=100)
@@ -215,13 +216,14 @@ st.floats(min_value=0.0, max_value=1.0, allow_nan=False)
 st.lists(st.integers(), min_size=0, max_size=10)
 
 # One of a set
-st.sampled_from(['a', 'b', 'c'])
+st.sampled_from(["a", "b", "c"])
 
 # Dictionaries
 st.dictionaries(st.text(), st.integers())
 
 # Pydantic models
 from hypothesis.extra import pydantic as st_pydantic
+
 st_pydantic.from_type(MyModel)
 ```
 

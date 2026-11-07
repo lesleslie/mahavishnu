@@ -16,7 +16,9 @@ class TestTerminalSession:
         """Create a mock terminal adapter."""
         adapter = MagicMock()
         adapter.send_command = AsyncMock()
-        adapter.capture_output = AsyncMock(return_value="test output line 1\ntest output line 2")
+        adapter.capture_output = AsyncMock(
+            return_value="test output line 1\ntest output line 2"
+        )
         adapter.close_session = AsyncMock()
         return adapter
 

@@ -411,7 +411,9 @@ class TestEventStore:
         assert event.idempotency_key == "idem-123"
 
     @pytest.mark.asyncio
-    async def test_get_event_by_idempotency_key_not_found(self, store: EventStore) -> None:
+    async def test_get_event_by_idempotency_key_not_found(
+        self, store: EventStore
+    ) -> None:
         """Test getting event by idempotency key when not found."""
         store.db.fetchrow = AsyncMock(return_value=None)
 

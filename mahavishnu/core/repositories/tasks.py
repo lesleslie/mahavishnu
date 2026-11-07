@@ -68,20 +68,30 @@ class TaskCreate(BaseModel):
     """
 
     title: str = Field(..., min_length=1, max_length=200, description="Task title")
-    description: str | None = Field(None, max_length=5000, description="Task description")
+    description: str | None = Field(
+        None, max_length=5000, description="Task description"
+    )
     repository: str | None = Field(None, max_length=100, description="Repository name")
     pool_name: str | None = Field(None, max_length=100, description="Pool name")
     worker_type: str | None = Field(None, max_length=100, description="Worker type")
     status: TaskStatus = Field(default=TaskStatus.PENDING, description="Task status")
-    priority: TaskPriority = Field(default=TaskPriority.MEDIUM, description="Task priority")
-    created_by: str | None = Field(None, max_length=100, description="Creator identifier")
-    assigned_to: str | None = Field(None, max_length=100, description="Assignee identifier")
+    priority: TaskPriority = Field(
+        default=TaskPriority.MEDIUM, description="Task priority"
+    )
+    created_by: str | None = Field(
+        None, max_length=100, description="Creator identifier"
+    )
+    assigned_to: str | None = Field(
+        None, max_length=100, description="Assignee identifier"
+    )
     deadline: datetime | None = Field(None, description="Task deadline")
     metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional task metadata",
     )
-    external_id: str | None = Field(None, max_length=200, description="External reference ID")
+    external_id: str | None = Field(
+        None, max_length=200, description="External reference ID"
+    )
 
 
 class TaskRead(BaseModel):
@@ -132,10 +142,14 @@ class TaskUpdate(BaseModel):
     """
 
     title: str | None = Field(None, max_length=200, description="Task title")
-    description: str | None = Field(None, max_length=5000, description="Task description")
+    description: str | None = Field(
+        None, max_length=5000, description="Task description"
+    )
     status: TaskStatus | None = Field(None, description="Task status")
     priority: TaskPriority | None = Field(None, description="Task priority")
-    assigned_to: str | None = Field(None, max_length=100, description="Assignee identifier")
+    assigned_to: str | None = Field(
+        None, max_length=100, description="Assignee identifier"
+    )
     deadline: datetime | None = Field(None, description="Task deadline")
     metadata: dict[str, Any] | None = Field(None, description="Metadata updates")
     pool_name: str | None = Field(None, max_length=100, description="Pool name")
@@ -191,8 +205,12 @@ class TaskFilter(BaseModel):
 
     status: TaskStatus | None = Field(None, description="Filter by status")
     priority: TaskPriority | None = Field(None, description="Filter by priority")
-    repository: str | None = Field(None, max_length=100, description="Filter by repository")
-    assigned_to: str | None = Field(None, max_length=100, description="Filter by assignee")
+    repository: str | None = Field(
+        None, max_length=100, description="Filter by repository"
+    )
+    assigned_to: str | None = Field(
+        None, max_length=100, description="Filter by assignee"
+    )
     created_after: datetime | None = Field(None, description="Filter created after")
     created_before: datetime | None = Field(None, description="Filter created before")
     limit: int = Field(default=50, ge=1, le=1000, description="Maximum results")

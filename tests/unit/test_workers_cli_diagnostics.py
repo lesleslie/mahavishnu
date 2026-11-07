@@ -3,6 +3,7 @@
 Covers Task 10 of the worker-readiness plan: the ``--ready`` and ``--all``
 filters added to ``mahavishnu workers list-types``.
 """
+
 from __future__ import annotations
 
 import os

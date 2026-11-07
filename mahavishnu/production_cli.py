@@ -19,7 +19,9 @@ def add_production_commands(app: typer.Typer) -> None:
 
     @production_app.command("check")
     def production_check(
-        detailed: bool = typer.Option(False, "--detailed", "-d", help="Show detailed results"),
+        detailed: bool = typer.Option(
+            False, "--detailed", "-d", help="Show detailed results"
+        ),
     ) -> None:
         """Run production readiness checks."""
 
@@ -39,7 +41,9 @@ def add_production_commands(app: typer.Typer) -> None:
 
     @production_app.command("test")
     def production_test(
-        detailed: bool = typer.Option(False, "--detailed", "-d", help="Show detailed results"),
+        detailed: bool = typer.Option(
+            False, "--detailed", "-d", help="Show detailed results"
+        ),
     ) -> None:
         """Run integration tests."""
 
@@ -59,7 +63,9 @@ def add_production_commands(app: typer.Typer) -> None:
 
     @production_app.command("benchmark")
     def production_benchmark(
-        detailed: bool = typer.Option(False, "--detailed", "-d", help="Show detailed results"),
+        detailed: bool = typer.Option(
+            False, "--detailed", "-d", help="Show detailed results"
+        ),
     ) -> None:
         """Run performance benchmarks."""
 
@@ -79,7 +85,9 @@ def add_production_commands(app: typer.Typer) -> None:
 
     @production_app.command("suite")
     def production_suite(
-        detailed: bool = typer.Option(False, "--detailed", "-d", help="Show detailed results"),
+        detailed: bool = typer.Option(
+            False, "--detailed", "-d", help="Show detailed results"
+        ),
     ) -> None:
         """Run complete production readiness suite."""
 

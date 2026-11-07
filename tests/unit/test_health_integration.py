@@ -264,7 +264,9 @@ class TestCheckAdapterHealth:
         )
         cfg = HealthIntegrationConfig(unhealthy_threshold=1)
         adapter = AsyncMock()
-        adapter.get_health = AsyncMock(return_value={"status": "unhealthy", "error": "down"})
+        adapter.get_health = AsyncMock(
+            return_value={"status": "unhealthy", "error": "down"}
+        )
         monitor = AdapterHealthMonitor(registry={"a": adapter}, config=cfg)
         await monitor.check_adapter_health("a")
         assert monitor.health_states["a"].is_healthy is False
@@ -344,7 +346,9 @@ class TestHandleHealthStateChange:
         ws = MagicMock()
         ws.broadcast_to_room = AsyncMock()
         cfg = HealthIntegrationConfig(
-            broadcast_changes=True, persist_to_storage=False, update_router_preferences=False
+            broadcast_changes=True,
+            persist_to_storage=False,
+            update_router_preferences=False,
         )
         monitor = AdapterHealthMonitor(registry={}, websocket_server=ws, config=cfg)
         state = AdapterHealthState(adapter_name="a")
@@ -358,7 +362,9 @@ class TestHandleHealthStateChange:
 
     async def test_no_broadcast_when_disabled(self):
         cfg = HealthIntegrationConfig(
-            broadcast_changes=False, persist_to_storage=False, update_router_preferences=False
+            broadcast_changes=False,
+            persist_to_storage=False,
+            update_router_preferences=False,
         )
         monitor = AdapterHealthMonitor(registry={}, config=cfg)
         state = AdapterHealthState(adapter_name="a")
@@ -368,7 +374,9 @@ class TestHandleHealthStateChange:
     async def test_alert_on_unhealthy(self):
         alert_mgr = MagicMock()
         alert_mgr.handlers = []
-        cfg = HealthIntegrationConfig(persist_to_storage=False, update_router_preferences=False)
+        cfg = HealthIntegrationConfig(
+            persist_to_storage=False, update_router_preferences=False
+        )
         monitor = AdapterHealthMonitor(registry={}, alert_manager=alert_mgr, config=cfg)
         state = AdapterHealthState(adapter_name="a", is_healthy=False)
         with (
@@ -381,7 +389,9 @@ class TestHandleHealthStateChange:
     async def test_no_alert_on_recovery(self):
         alert_mgr = MagicMock()
         alert_mgr.handlers = []
-        cfg = HealthIntegrationConfig(persist_to_storage=False, update_router_preferences=False)
+        cfg = HealthIntegrationConfig(
+            persist_to_storage=False, update_router_preferences=False
+        )
         monitor = AdapterHealthMonitor(registry={}, alert_manager=alert_mgr, config=cfg)
         state = AdapterHealthState(adapter_name="a", is_healthy=True)
         # Recovery (healthy) should not trigger alert even with alert_manager

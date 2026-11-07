@@ -79,7 +79,9 @@ class TestWorktreeWorkflowIntegration:
 
         # Create initial commit
         (repo_path / "README.md").write_text("# Test Repository")
-        subprocess.run(["git", "add", "."], cwd=repo_path, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=repo_path, check=True, capture_output=True
+        )
         subprocess.run(
             ["git", "commit", "-m", "Initial commit"],
             cwd=repo_path,
@@ -117,7 +119,9 @@ class TestWorktreeWorkflowIntegration:
         mock_provider.create_worktree = AsyncMock(
             return_value={
                 "success": True,
-                "worktree_path": str(tmp_path / "worktrees" / "test-repo" / "test-branch"),
+                "worktree_path": str(
+                    tmp_path / "worktrees" / "test-repo" / "test-branch"
+                ),
                 "branch": "test-branch",
             }
         )
@@ -126,7 +130,9 @@ class TestWorktreeWorkflowIntegration:
                 "success": True,
                 "worktrees": [
                     {
-                        "path": str(tmp_path / "worktrees" / "test-repo" / "test-branch"),
+                        "path": str(
+                            tmp_path / "worktrees" / "test-repo" / "test-branch"
+                        ),
                         "branch": "test-branch",
                     }
                 ],
@@ -196,7 +202,9 @@ class TestWorktreeWorkflowIntegration:
         )
 
         (repo_path / "README.md").write_text("# Test")
-        subprocess.run(["git", "add", "."], cwd=repo_path, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=repo_path, check=True, capture_output=True
+        )
         subprocess.run(
             ["git", "commit", "-m", "Initial"],
             cwd=repo_path,
@@ -503,7 +511,9 @@ class TestWorktreeWorkflowIntegration:
         )
 
         (repo_path / "README.md").write_text("# Test")
-        subprocess.run(["git", "add", "."], cwd=repo_path, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=repo_path, check=True, capture_output=True
+        )
         subprocess.run(
             ["git", "commit", "-m", "Initial"],
             cwd=repo_path,
@@ -541,8 +551,14 @@ class TestWorktreeWorkflowIntegration:
             return_value={
                 "success": True,
                 "worktrees": [
-                    {"path": "/worktrees/test/active-branch", "branch": "active-branch"},
-                    {"path": "/worktrees/test/deleted-branch", "branch": "deleted-branch"},
+                    {
+                        "path": "/worktrees/test/active-branch",
+                        "branch": "active-branch",
+                    },
+                    {
+                        "path": "/worktrees/test/deleted-branch",
+                        "branch": "deleted-branch",
+                    },
                 ],
             }
         )
@@ -677,7 +693,9 @@ class TestWorktreeWorkflowIntegration:
                 raise RuntimeError("Repo 2 unavailable")
             return {
                 "success": True,
-                "worktrees": [{"path": f"/worktrees/repo{call_count[0]}/main", "branch": "main"}],
+                "worktrees": [
+                    {"path": f"/worktrees/repo{call_count[0]}/main", "branch": "main"}
+                ],
             }
 
         mock_provider.list_worktrees = AsyncMock(side_effect=mock_list)

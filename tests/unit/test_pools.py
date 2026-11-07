@@ -335,7 +335,9 @@ class MockPool(BasePool):
     async def scale(self, target_worker_count: int) -> None:
         """Scale the pool."""
         self._scale_called_with = target_worker_count
-        self._workers = {f"worker_{i}": f"worker_{i}" for i in range(target_worker_count)}
+        self._workers = {
+            f"worker_{i}": f"worker_{i}" for i in range(target_worker_count)
+        }
 
     async def health_check(self) -> dict:
         """Check pool health."""
@@ -373,7 +375,9 @@ class TestPoolManager:
             self.pools: list[tuple[str, dict]] = []
             self.routings: list[tuple[str, dict]] = []
 
-        async def persist_pool(self, pool_id: str, value: dict, ttl: int | None = None) -> None:
+        async def persist_pool(
+            self, pool_id: str, value: dict, ttl: int | None = None
+        ) -> None:
             self.pools.append((pool_id, value))
 
         async def persist_routing_decision(
@@ -386,7 +390,9 @@ class TestPoolManager:
             self.routings.append((task_class, value))
 
     class _FailingMCPState:
-        async def persist_pool(self, pool_id: str, value: dict, ttl: int | None = None) -> None:
+        async def persist_pool(
+            self, pool_id: str, value: dict, ttl: int | None = None
+        ) -> None:
             raise RuntimeError("mcp unavailable")
 
         async def persist_routing_decision(
@@ -812,9 +818,7 @@ async def test_spawn_pool_populates_pools_by_name_index() -> None:
     stub for the heavy terminal/worker setup, and patches
     get_pool_factory to return a controllable factory.
     """
-    pm = PoolManager(
-        terminal_manager=MagicMock(), message_bus=MagicMock()
-    )
+    pm = PoolManager(terminal_manager=MagicMock(), message_bus=MagicMock())
     # Stub the message_bus.publish and _persist_pool_state to be no-ops;
     # the new line we test runs BEFORE both, so they don't matter.
     pm.message_bus.publish = AsyncMock()
@@ -823,8 +827,10 @@ async def test_spawn_pool_populates_pools_by_name_index() -> None:
     # MagicPool: minimal stub for the BasePool that the factory returns.
     magic_pool = MagicMock(spec=BasePool)
     magic_pool.config = PoolConfig(
-        name="test-pool", pool_type="mahavishnu",
-        min_workers=1, max_workers=2,
+        name="test-pool",
+        pool_type="mahavishnu",
+        min_workers=1,
+        max_workers=2,
     )
     magic_pool._workers = {}  # _refresh_pool_worker_metrics reads len(pool._workers)
     magic_pool.start = AsyncMock(return_value="pid-real-1")
@@ -857,17 +863,17 @@ async def test_close_pool_removes_pools_by_name_entry() -> None:
     (e.g. `_pools_by_name.pop(pool.config.name, None)` with the wrong
     attribute) would be caught here.
     """
-    pm = PoolManager(
-        terminal_manager=MagicMock(), message_bus=MagicMock()
-    )
+    pm = PoolManager(terminal_manager=MagicMock(), message_bus=MagicMock())
     pm.message_bus.publish = AsyncMock()
     pm._persist_pool_state = AsyncMock()
 
     # Set up state as if a real spawn happened
     magic_pool = MagicMock(spec=BasePool)
     magic_pool.config = PoolConfig(
-        name="close-test", pool_type="mahavishnu",
-        min_workers=1, max_workers=1,
+        name="close-test",
+        pool_type="mahavishnu",
+        min_workers=1,
+        max_workers=1,
     )
     magic_pool.start = AsyncMock(return_value="pid-close-1")
     magic_pool.stop = AsyncMock()

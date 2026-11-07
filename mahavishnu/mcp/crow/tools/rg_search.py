@@ -108,7 +108,9 @@ async def rg_search(
         rg_path=settings.rg_path,
         line_numbers=line_numbers,
     )
-    proc = await asyncio.to_thread(subprocess.run, args, capture_output=True, timeout=30.0)
+    proc = await asyncio.to_thread(
+        subprocess.run, args, capture_output=True, timeout=30.0
+    )
     # Exit codes: 0 = matches, 1 = no matches, 2 = real error.
     if proc.returncode not in (0, 1):
         stderr = cast("bytes", proc.stderr).decode(errors="replace")[:500]
@@ -160,7 +162,9 @@ async def rg_search(
         except ValueError:
             continue
         match_text = parts[3] if len(parts) >= 4 else parts[-1]
-        matches_list.append(RgMatch(file=parts[0], line_number=ln, column=col, match=match_text))
+        matches_list.append(
+            RgMatch(file=parts[0], line_number=ln, column=col, match=match_text)
+        )
     truncated = len(matches_list) > limit
     capped = matches_list[:limit]
     return RgResult(

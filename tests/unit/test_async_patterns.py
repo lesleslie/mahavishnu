@@ -51,7 +51,10 @@ class TestDefaultTimeouts:
             assert value > 0, f"{key} timeout must be positive"
 
     def test_transaction_longer_than_query(self):
-        assert DEFAULT_TIMEOUTS["database_transaction"] >= DEFAULT_TIMEOUTS["database_query"]
+        assert (
+            DEFAULT_TIMEOUTS["database_transaction"]
+            >= DEFAULT_TIMEOUTS["database_query"]
+        )
 
 
 # ============================================================================
@@ -444,6 +447,8 @@ class TestWithRetry:
     @pytest.mark.asyncio
     async def test_passes_args_and_kwargs(self):
         func = AsyncMock(return_value="done")
-        result = await with_retry(func, max_retries=1, base_delay=0.01, _arg1="hello", _arg2=42)
+        result = await with_retry(
+            func, max_retries=1, base_delay=0.01, _arg1="hello", _arg2=42
+        )
         assert result == "done"
         func.assert_awaited_once_with(_arg1="hello", _arg2=42)

@@ -7,6 +7,7 @@ publisher module expects) and ``EventBridge.emit(topic, payload, headers)``
 Mirrors the parallel ``tests/unit/test_eventbridge_adapter.py`` in
 Crackerjack and Akosha.
 """
+
 from __future__ import annotations
 
 import asyncio

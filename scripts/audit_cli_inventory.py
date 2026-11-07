@@ -134,7 +134,8 @@ def _walk_typer(app: typer.Typer, prefix: str = "") -> list[CommandEntry]:
                 deprecated=getattr(cmd, "deprecated", False)
                 or "[deprecated]" in short_help.lower(),
                 hidden=getattr(cmd, "hidden", False),
-                experimental="experimental" in short_help.lower() or "alpha" in short_help.lower(),
+                experimental="experimental" in short_help.lower()
+                or "alpha" in short_help.lower(),
             )
         )
     return entries
@@ -300,7 +301,9 @@ def repo(
     resolved_out_dir.mkdir(parents=True, exist_ok=True)
     out_path = resolved_out_dir / f"{repo_name}-cli-inventory.json"
     data = inventory_one_repo(repo_name, str(resolved_repo_path), out_path)
-    typer.echo(f"Wrote {out_path} ({data['command_count']} commands) from {resolved_repo_path}")
+    typer.echo(
+        f"Wrote {out_path} ({data['command_count']} commands) from {resolved_repo_path}"
+    )
 
 
 @app.command(name="all")
@@ -328,7 +331,9 @@ def all_repos(
     ),
 ) -> None:
     repos = list(CORE_REPOS)
-    root = Path(projects_root).expanduser() if projects_root else resolve_projects_root()
+    root = (
+        Path(projects_root).expanduser() if projects_root else resolve_projects_root()
+    )
     resolved_out_dir = Path(out_dir) if out_dir else Path("docs/audit-inventory")
     resolved_out_dir.mkdir(parents=True, exist_ok=True)
     any_stale = False
@@ -343,7 +348,9 @@ def all_repos(
         typer.echo(f"{repo}: {data['command_count']} commands")
         if check_stale:
             stale = [
-                c for c in data["commands"] if c["staleness_verdict"] in {"stale", "deprecated"}
+                c
+                for c in data["commands"]
+                if c["staleness_verdict"] in {"stale", "deprecated"}
             ]
             if stale:
                 any_stale = True

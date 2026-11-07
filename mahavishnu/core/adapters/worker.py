@@ -53,7 +53,9 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         >>> result = await adapter.execute(task, ["/path/to/repo"])
     """
 
-    def __init__(self, config: Any = None, worker_manager: WorkerManager | None = None) -> None:
+    def __init__(
+        self, config: Any = None, worker_manager: WorkerManager | None = None
+    ) -> None:
         """Initialize worker orchestrator adapter.
 
         Args:
@@ -208,7 +210,9 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         prompt = task.get("prompt", "")
         timeout = task.get("timeout", 300)
         task_type = task.get("task_type", "general")
-        worker_type = resolve_worker_type(requested_worker_type, task_type=task_type, prompt=prompt)
+        worker_type = resolve_worker_type(
+            requested_worker_type, task_type=task_type, prompt=prompt
+        )
 
         # Validate parameters
         if not prompt:
@@ -252,9 +256,7 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                     count=count,
                 )
             logger.info(f"Spawned {len(worker_ids)} workers: {', '.join(worker_ids)}")
-        except (
-            Exception
-        ) as e:  # Worker spawn logs and re-raises so the caller can surface the orchestrator error
+        except Exception as e:  # Worker spawn logs and re-raises so the caller can surface the orchestrator error
             logger.error(f"Failed to spawn workers: {e}")
             raise
 
@@ -317,7 +319,11 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
         workers_active = health.get("workers_active", 0)
         max_concurrent = health.get("max_concurrent", 10)
 
-        status = "healthy" if workers_active == 0 or workers_active < max_concurrent else "degraded"
+        status = (
+            "healthy"
+            if workers_active == 0 or workers_active < max_concurrent
+            else "degraded"
+        )
 
         return {
             "status": status,

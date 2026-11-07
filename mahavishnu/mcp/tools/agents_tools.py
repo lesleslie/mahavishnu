@@ -191,7 +191,9 @@ def _read_body(filename: str) -> str:
     """Load an agent body from the catalog, asserting the file exists."""
     path = _CATALOG_DIR / filename
     if not path.is_file():
-        raise FileNotFoundError(f"Agent body {filename!r} missing from catalog at {path}")
+        raise FileNotFoundError(
+            f"Agent body {filename!r} missing from catalog at {path}"
+        )
     return path.read_text(encoding="utf-8")
 
 

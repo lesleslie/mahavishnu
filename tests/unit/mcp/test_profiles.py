@@ -329,7 +329,9 @@ def test_env_isolation_between_calls(monkeypatch: pytest.MonkeyPatch) -> None:
     assert second == ToolProfile.FULL
 
 
-def test_get_active_profile_uses_clear_os_environ(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_active_profile_uses_clear_os_environ(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """With os.environ cleared and the default env var unset, FULL is returned."""
     monkeypatch.delenv("MAHAVISHNU_TOOL_PROFILE", raising=False)
     with patch.dict(os.environ, {}, clear=True):

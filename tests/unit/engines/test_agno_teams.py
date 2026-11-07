@@ -94,7 +94,9 @@ def route_team_config(member_config: MemberConfig) -> TeamConfig:
 def mock_llm_factory() -> MagicMock:
     """Create a mock LLM provider factory."""
     factory = MagicMock()
-    factory.config = AgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER, model_id="qwen3.5")
+    factory.config = AgnoLLMConfig(
+        provider=LLMProvider.LLAMA_SERVER, model_id="qwen3.5"
+    )
     factory._model_instance = None
 
     def create_model():
@@ -346,7 +348,10 @@ class TestAgentTeamManager:
         team_config: TeamConfig,
     ) -> None:
         """Test creating a team from config."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent.name = "test_agent"
             mock_agent_cls.return_value = mock_agent
@@ -387,7 +392,10 @@ team:
         yaml_path = tmp_path / "test_team.yaml"
         yaml_path.write_text(yaml_content)
 
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 
@@ -400,7 +408,9 @@ team:
             assert "yaml_test_team" in team_id
 
     @pytest.mark.asyncio
-    async def test_create_team_missing_file(self, team_manager: AgentTeamManager) -> None:
+    async def test_create_team_missing_file(
+        self, team_manager: AgentTeamManager
+    ) -> None:
         """Test error when YAML file doesn't exist."""
         with pytest.raises(AgnoError, match="Team config file not found"):
             await team_manager.create_team_from_yaml("/nonexistent/path.yaml")
@@ -412,7 +422,10 @@ team:
         team_config: TeamConfig,
     ) -> None:
         """Test running a team task."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent.name = "test_agent"
             mock_agent_cls.return_value = mock_agent
@@ -449,7 +462,10 @@ team:
         team_config: TeamConfig,
     ) -> None:
         """Test getting a team by ID."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 
@@ -472,7 +488,10 @@ team:
         team_config: TeamConfig,
     ) -> None:
         """Test listing teams."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 
@@ -495,7 +514,10 @@ team:
         team_config: TeamConfig,
     ) -> None:
         """Test deleting a team."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 
@@ -520,7 +542,10 @@ team:
         team_config: TeamConfig,
     ) -> None:
         """Test getting team statistics."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 
@@ -542,7 +567,10 @@ team:
         team_config: TeamConfig,
     ) -> None:
         """Test shutting down the manager."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 
@@ -651,7 +679,10 @@ class TestTeamModes:
         team_config: TeamConfig,
     ) -> None:
         """Test coordinate mode team creation."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 
@@ -671,7 +702,10 @@ class TestTeamModes:
         route_team_config: TeamConfig,
     ) -> None:
         """Test route mode team creation."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 
@@ -697,7 +731,10 @@ class TestTeamModes:
             members=[member_config],
         )
 
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 
@@ -725,7 +762,10 @@ class TestTeamManagerIntegration:
         team_config: TeamConfig,
     ) -> None:
         """Test full team lifecycle: create -> run -> delete."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent.name = "test_agent"
             mock_agent_cls.return_value = mock_agent
@@ -764,7 +804,10 @@ class TestTeamManagerIntegration:
         route_team_config: TeamConfig,
     ) -> None:
         """Test managing multiple teams."""
-        with patch("agno.agent.Agent") as mock_agent_cls, patch("agno.team.Team") as mock_team_cls:
+        with (
+            patch("agno.agent.Agent") as mock_agent_cls,
+            patch("agno.team.Team") as mock_team_cls,
+        ):
             mock_agent = MagicMock()
             mock_agent_cls.return_value = mock_agent
 

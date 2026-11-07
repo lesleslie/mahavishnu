@@ -1,4 +1,5 @@
 """Integration tests for `mahavishnu worktree scan` CLI subcommand."""
+
 from __future__ import annotations
 
 import json
@@ -39,17 +40,23 @@ def test_scan_text_format(tmp_path: Path) -> None:
     repo.mkdir()
     subprocess.run(
         ["git", "init", "--initial-branch=main", str(repo)],
-        check=True, capture_output=True, timeout=15,
+        check=True,
+        capture_output=True,
+        timeout=15,
     )
 
-    _write_minimal_ecosystem_yaml(
-        tmp_path, {"name": "repo1", "path": str(repo)}
-    )
+    _write_minimal_ecosystem_yaml(tmp_path, {"name": "repo1", "path": str(repo)})
 
     result = subprocess.run(
         [
-            sys.executable, "-m", "mahavishnu.worktree_cli", "scan",
-            "--repo", str(repo), "--format", "text",
+            sys.executable,
+            "-m",
+            "mahavishnu.worktree_cli",
+            "scan",
+            "--repo",
+            str(repo),
+            "--format",
+            "text",
         ],
         capture_output=True,
         text=True,
@@ -86,17 +93,23 @@ def test_scan_json_format(tmp_path: Path) -> None:
     repo.mkdir()
     subprocess.run(
         ["git", "init", "--initial-branch=main", str(repo)],
-        check=True, capture_output=True, timeout=15,
+        check=True,
+        capture_output=True,
+        timeout=15,
     )
 
-    _write_minimal_ecosystem_yaml(
-        tmp_path, {"name": "repo1", "path": str(repo)}
-    )
+    _write_minimal_ecosystem_yaml(tmp_path, {"name": "repo1", "path": str(repo)})
 
     result = subprocess.run(
         [
-            sys.executable, "-m", "mahavishnu.worktree_cli", "scan",
-            "--repo", str(repo), "--format", "json",
+            sys.executable,
+            "-m",
+            "mahavishnu.worktree_cli",
+            "scan",
+            "--repo",
+            str(repo),
+            "--format",
+            "json",
         ],
         capture_output=True,
         text=True,
@@ -146,8 +159,12 @@ def test_nonexistent_path_exits_1_with_stderr(tmp_path: Path) -> None:
     )
     result = subprocess.run(
         [
-            sys.executable, "-m", "mahavishnu.worktree_cli", "scan",
-            "--repo", "ALL",
+            sys.executable,
+            "-m",
+            "mahavishnu.worktree_cli",
+            "scan",
+            "--repo",
+            "ALL",
         ],
         capture_output=True,
         text=True,
@@ -174,8 +191,12 @@ def test_all_repos_nonexistent_exits_1(tmp_path: Path) -> None:
     )
     result = subprocess.run(
         [
-            sys.executable, "-m", "mahavishnu.worktree_cli", "scan",
-            "--repo", "ALL",
+            sys.executable,
+            "-m",
+            "mahavishnu.worktree_cli",
+            "scan",
+            "--repo",
+            "ALL",
         ],
         capture_output=True,
         text=True,
@@ -199,15 +220,21 @@ def test_repo_all_format_text_smoke(tmp_path: Path) -> None:
     repo.mkdir()
     subprocess.run(
         ["git", "init", "--initial-branch=main", str(repo)],
-        check=True, capture_output=True, timeout=15,
+        check=True,
+        capture_output=True,
+        timeout=15,
     )
-    _write_minimal_ecosystem_yaml(
-        tmp_path, {"name": "repo1", "path": str(repo)}
-    )
+    _write_minimal_ecosystem_yaml(tmp_path, {"name": "repo1", "path": str(repo)})
     result = subprocess.run(
         [
-            sys.executable, "-m", "mahavishnu.worktree_cli", "scan",
-            "--repo", "ALL", "--format", "text",
+            sys.executable,
+            "-m",
+            "mahavishnu.worktree_cli",
+            "scan",
+            "--repo",
+            "ALL",
+            "--format",
+            "text",
         ],
         capture_output=True,
         text=True,
@@ -236,19 +263,19 @@ def test_driver_failure_exits_1(tmp_path: Path) -> None:
     repo = tmp_path / "corrupt_repo"
     repo.mkdir()
     (repo / ".git").mkdir()
-    _write_minimal_ecosystem_yaml(
-        tmp_path, {"name": "corrupt_repo", "path": str(repo)}
-    )
-    with patch(
-        "mahavishnu.core.worktree_scan._run_git_scanned"
-    ) as mock_git:
+    _write_minimal_ecosystem_yaml(tmp_path, {"name": "corrupt_repo", "path": str(repo)})
+    with patch("mahavishnu.core.worktree_scan._run_git_scanned") as mock_git:
         mock_git.return_value = MagicMock(
             returncode=128, stdout="", stderr="fatal: not a git repository"
         )
         result = subprocess.run(
             [
-                sys.executable, "-m", "mahavishnu.worktree_cli", "scan",
-                "--repo", str(tmp_path),
+                sys.executable,
+                "-m",
+                "mahavishnu.worktree_cli",
+                "scan",
+                "--repo",
+                str(tmp_path),
             ],
             capture_output=True,
             text=True,

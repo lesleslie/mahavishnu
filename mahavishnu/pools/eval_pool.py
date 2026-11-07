@@ -250,13 +250,9 @@ class EvalPool(BasePool):
         )
         from mahavishnu.core.eval.paths import resolve_dataset_path
 
-        loader_cls = discover_dataset_loaders()[
-            self._settings.default_dataset_loader
-        ]
+        loader_cls = discover_dataset_loaders()[self._settings.default_dataset_loader]
         dataset = await loader_cls().load(
-            resolve_dataset_path(
-                str(dataset_path), self._settings.dataset_root
-            )
+            resolve_dataset_path(str(dataset_path), self._settings.dataset_root)
         )
         scorer_registry = discover_scorers()
         scorers = []

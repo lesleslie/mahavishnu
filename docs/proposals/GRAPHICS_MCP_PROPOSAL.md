@@ -132,18 +132,18 @@ security:
 async def open_image(path: str, backend: str = "auto") -> ImageInfo:
     """Open an image file in specified backend."""
 
+
 @mcp.tool()
 async def save_image(
-    image_id: str,
-    path: str,
-    format: str = "png",
-    quality: int = 95
+    image_id: str, path: str, format: str = "png", quality: int = 95
 ) -> str:
     """Save image to file."""
+
 
 @mcp.tool()
 async def get_image_info(image_id: str) -> ImageInfo:
     """Get image metadata (dimensions, format, color space)."""
+
 
 @mcp.tool()
 async def close_image(image_id: str) -> bool:
@@ -159,25 +159,22 @@ async def resize_image(
     width: int,
     height: int,
     maintain_aspect: bool = True,
-    interpolation: str = "lanczos"
+    interpolation: str = "lanczos",
 ) -> ImageInfo:
     """Resize image with specified interpolation."""
 
+
 @mcp.tool()
 async def crop_image(
-    image_id: str,
-    x: int, y: int,
-    width: int, height: int
+    image_id: str, x: int, y: int, width: int, height: int
 ) -> ImageInfo:
     """Crop image to specified region."""
 
+
 @mcp.tool()
-async def rotate_image(
-    image_id: str,
-    angle: float,
-    expand: bool = True
-) -> ImageInfo:
+async def rotate_image(image_id: str, angle: float, expand: bool = True) -> ImageInfo:
     """Rotate image by angle in degrees."""
+
 
 @mcp.tool()
 async def adjust_colors(
@@ -185,24 +182,24 @@ async def adjust_colors(
     brightness: float = 0,
     contrast: float = 0,
     saturation: float = 0,
-    hue: float = 0
+    hue: float = 0,
 ) -> ImageInfo:
     """Adjust color properties."""
 
+
 @mcp.tool()
 async def apply_filter(
-    image_id: str,
-    filter_name: str,
-    params: dict[str, Any]
+    image_id: str, filter_name: str, params: dict[str, Any]
 ) -> ImageInfo:
     """Apply named filter (blur, sharpen, edge-detect, etc.)."""
+
 
 @mcp.tool()
 async def layer_operation(
     image_id: str,
     operation: str,  # new, delete, duplicate, merge, reorder
     layer_id: str | None = None,
-    params: dict[str, Any] | None = None
+    params: dict[str, Any] | None = None,
 ) -> LayerInfo:
     """Perform layer operations."""
 ```
@@ -214,25 +211,24 @@ async def layer_operation(
 async def create_shape(
     document_id: str,
     shape_type: str,  # rectangle, ellipse, polygon, path, text
-    params: dict[str, Any]
+    params: dict[str, Any],
 ) -> ShapeInfo:
     """Create a vector shape."""
 
+
 @mcp.tool()
-async def apply_svg_filter(
-    document_id: str,
-    object_id: str,
-    filter_name: str
-) -> bool:
+async def apply_svg_filter(document_id: str, object_id: str, filter_name: str) -> bool:
     """Apply SVG filter to object."""
+
 
 @mcp.tool()
 async def export_svg(
     document_id: str,
     path: str,
-    area: str = "document"  # document, selection, drawing
+    area: str = "document",  # document, selection, drawing
 ) -> str:
     """Export to SVG format."""
+
 
 @mcp.tool()
 async def text_to_path(document_id: str, text_id: str) -> str:
@@ -246,17 +242,19 @@ async def text_to_path(document_id: str, text_id: str) -> str:
 async def create_object(
     scene_id: str,
     object_type: str,  # cube, sphere, cylinder, plane, mesh
-    params: dict[str, Any]
+    params: dict[str, Any],
 ) -> ObjectInfo:
     """Create a 3D object."""
+
 
 @mcp.tool()
 async def apply_modifier(
     object_id: str,
     modifier_type: str,  # subsurf, bevel, mirror, boolean
-    params: dict[str, Any]
+    params: dict[str, Any],
 ) -> bool:
     """Apply modifier to object."""
+
 
 @mcp.tool()
 async def render_scene(
@@ -264,15 +262,13 @@ async def render_scene(
     output_path: str,
     engine: str = "cycles",  # cycles, eevee, workbench
     resolution: tuple[int, int] = (1920, 1080),
-    samples: int = 128
+    samples: int = 128,
 ) -> str:
     """Render scene to image."""
 
+
 @mcp.tool()
-async def set_material(
-    object_id: str,
-    material_params: dict[str, Any]
-) -> str:
+async def set_material(object_id: str, material_params: dict[str, Any]) -> str:
     """Apply material to object."""
 ```
 
@@ -404,11 +400,7 @@ The `application-gimp`, `application-inkscape`, and `application-blender` worker
 class ApplicationWorker(BaseWorker):
     async def execute_gimp_operation(self, operation: str, params: dict):
         """Execute GIMP operation via graphics-mcp."""
-        result = await self.mcp_client.call_tool(
-            "graphics-mcp",
-            operation,
-            params
-        )
+        result = await self.mcp_client.call_tool("graphics-mcp", operation, params)
         return result
 ```
 

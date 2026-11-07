@@ -87,7 +87,9 @@ class TestDecoratorFactoryFailFast:
         with pytest.raises(ConfigurationError) as exc_info:
 
             @require_mcp_auth(rbac_manager=_FakeRBAC())
-            async def sample_tool(arg: str, user_id: str | None = None) -> dict[str, Any]:
+            async def sample_tool(
+                arg: str, user_id: str | None = None
+            ) -> dict[str, Any]:
                 return {"status": "ok"}
 
         # The error names the function so operators can locate the offender.
@@ -113,7 +115,9 @@ class TestDecoratorFactoryFailFast:
             rbac_manager=_FakeRBAC(),
             required_permission=Permission.READ_PLAN_INDEX,
         )
-        async def compliant_tool(arg: str, user_id: str | None = None) -> dict[str, Any]:
+        async def compliant_tool(
+            arg: str, user_id: str | None = None
+        ) -> dict[str, Any]:
             return {"status": "ok"}
 
         # The wrapper is applied; we just want to prove the factory ran

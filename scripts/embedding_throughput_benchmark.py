@@ -168,7 +168,9 @@ class BenchmarkSuite:
                 if ops_target:
                     pct = (result.operations_per_second / ops_target) * 100
                     status = "PASS" if pct >= 100 else "FAIL"
-                    print(f"  Target:        {ops_target:.2f} ops/s ({pct:.1f}%) [{status}]")
+                    print(
+                        f"  Target:        {ops_target:.2f} ops/s ({pct:.1f}%) [{status}]"
+                    )
 
         # Print summary
         summary = self._generate_summary()

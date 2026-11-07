@@ -218,7 +218,9 @@ class SessionBuddyPoller:
                 except asyncio.CancelledError:
                     self.logger.info("Polling loop cancelled")
                     break
-                except Exception as e:  # background task — broad catch is the documented contract
+                except (
+                    Exception
+                ) as e:  # background task — broad catch is the documented contract
                     self.logger.exception("Error in polling loop")
                     self._record_error(f"Polling loop error: {e}")
                     # Continue running despite errors
@@ -366,7 +368,9 @@ class SessionBuddyPoller:
             self.logger.error(f"Invalid response from {tool_name}: {e}")
             raise
 
-    def _convert_to_otel(self, tool_name: str, metric_data: dict[str, Any]) -> list[dict[str, Any]]:
+    def _convert_to_otel(
+        self, tool_name: str, metric_data: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Convert Session-Buddy metric data to OTel format.
 
         Args:
@@ -504,7 +508,9 @@ class SessionBuddyPoller:
 
         return metrics
 
-    def _convert_performance_metrics(self, data: dict[str, Any]) -> list[dict[str, Any]]:
+    def _convert_performance_metrics(
+        self, data: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Convert performance metrics to OTel metrics."""
         metrics = []
 
@@ -543,7 +549,9 @@ class SessionBuddyPoller:
 
         return metrics
 
-    async def _record_metrics(self, tool_name: str, otel_metrics: list[dict[str, Any]]) -> None:
+    async def _record_metrics(
+        self, tool_name: str, otel_metrics: list[dict[str, Any]]
+    ) -> None:
         """Record metrics to OpenTelemetry.
 
         Args:
@@ -586,7 +594,9 @@ class SessionBuddyPoller:
                 self.logger.debug(f"Recorded OTel metric: {metric_name} = {value}")
 
             except Exception as e:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                self.logger.warning(f"Failed to record metric {metric.get('name')}: {e}")
+                self.logger.warning(
+                    f"Failed to record metric {metric.get('name')}: {e}"
+                )
 
     def _record_error(self, error_message: str) -> None:
         """Record an error and update error counters.
@@ -635,7 +645,9 @@ class SessionBuddyPoller:
 
         # Wait for cooldown period (5 * interval)
         if self._circuit_breaker_opened_at:
-            cooldown_end = self._circuit_breaker_opened_at.timestamp() + (self.interval * 5)
+            cooldown_end = self._circuit_breaker_opened_at.timestamp() + (
+                self.interval * 5
+            )
             if datetime.now(UTC).timestamp() < cooldown_end:
                 return  # Still in cooldown
 

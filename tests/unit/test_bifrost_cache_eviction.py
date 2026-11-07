@@ -73,7 +73,7 @@ class FakeRedis:
                 continue
             try:
                 expires_at = float(raw)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             if expires_at <= cutoff:
                 del self.entries[key]
@@ -272,7 +272,10 @@ class TestResolveVectorStoreAddr:
         assert resolve_vector_store_addr(config) == ("example.internal", 6380)
 
     def test_missing_config_falls_back(self, tmp_path: Path) -> None:
-        assert resolve_vector_store_addr(tmp_path / "absent.json") == ("localhost", 6379)
+        assert resolve_vector_store_addr(tmp_path / "absent.json") == (
+            "localhost",
+            6379,
+        )
 
     def test_config_without_a_vector_store_falls_back(self, tmp_path: Path) -> None:
         config = tmp_path / "config.json"

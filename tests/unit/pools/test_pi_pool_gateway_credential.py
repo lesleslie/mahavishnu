@@ -80,7 +80,8 @@ def test_injected_credential_is_not_denylisted(
     monkeypatch.delenv(BODAI_VIRTUAL_KEY_ENV, raising=False)
 
     assert not any(
-        BODAI_VIRTUAL_KEY_ENV.startswith(prefix) for prefix in pi_pool._FORBIDDEN_ENV_PREFIXES
+        BODAI_VIRTUAL_KEY_ENV.startswith(prefix)
+        for prefix in pi_pool._FORBIDDEN_ENV_PREFIXES
     )
 
     env = _build_subprocess_env(env_allowlist=("PATH",))

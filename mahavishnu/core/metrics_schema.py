@@ -75,7 +75,9 @@ class ExecutionRecord(BaseModel):
 
     status: ExecutionStatus = Field(...)
 
-    latency_ms: int | None = Field(None, description="Execution duration in milliseconds")
+    latency_ms: int | None = Field(
+        None, description="Execution duration in milliseconds"
+    )
 
     error_type: str | None = Field(
         None, description="Error type/category (e.g., timeout, connection_error)"
@@ -105,9 +107,13 @@ class AdapterStats(BaseModel):
 
     date: str = Field(...)
 
-    success_rate: float = Field(..., ge=0.0, le=1.0, description="Success rate (0.0 to 1.0)")
+    success_rate: float = Field(
+        ..., ge=0.0, le=1.0, description="Success rate (0.0 to 1.0)"
+    )
 
-    total_executions: int = Field(..., ge=0, description="Total executions in this period")
+    total_executions: int = Field(
+        ..., ge=0, description="Total executions in this period"
+    )
 
     avg_latency_ms: float | None = Field(
         None, ge=0, description="Average execution latency in milliseconds"
@@ -131,7 +137,9 @@ class AdapterStats(BaseModel):
         None, ge=0, le=100, description="Adapter availability percentage"
     )
 
-    sample_size: int = Field(..., ge=1, description="Number of executions in this sample")
+    sample_size: int = Field(
+        ..., ge=1, description="Number of executions in this sample"
+    )
 
     confidence_interval: float | None = Field(
         None, ge=0, le=1.0, description="Statistical confidence (0-1)"
@@ -196,7 +204,8 @@ class RoutingDecision(BaseModel):
     """
 
     decision_id: str = Field(
-        default_factory=generate_config_id, description="UUID7 for this routing decision"
+        default_factory=generate_config_id,
+        description="UUID7 for this routing decision",
     )
 
     task_type: TaskType = Field(...)
@@ -240,7 +249,9 @@ class ABTest(BaseModel):
 
     end_date: str | None = Field(None, description="End date in YYYY-MM-DD")
 
-    status: str = Field(default="active", description="active, completed, rolled_back, cancelled")
+    status: str = Field(
+        default="active", description="active, completed, rolled_back, cancelled"
+    )
 
     traffic_split: dict[AdapterType, float] = Field(
         default_factory=dict, description="Percentage traffic to each adapter"
@@ -258,9 +269,13 @@ class ABTest(BaseModel):
         ..., ge=0, le=1.0, description="Statistical significance threshold (p-value)"
     )
 
-    results: dict[str, Any] | None = Field(None, description="Test results when complete")
+    results: dict[str, Any] | None = Field(
+        None, description="Test results when complete"
+    )
 
-    winner: AdapterType | None = Field(None, description="Winning adapter if experiment completed")
+    winner: AdapterType | None = Field(
+        None, description="Winning adapter if experiment completed"
+    )
 
     model_config = ConfigDict()
 
@@ -386,7 +401,10 @@ def calculate_confidence_interval(
     center = (success_rate + (z**2) / (2 * sample_size)) / denominator
     margin = (
         z
-        * math.sqrt((success_rate * (1 - success_rate) + (z**2) / (4 * sample_size)) / sample_size)
+        * math.sqrt(
+            (success_rate * (1 - success_rate) + (z**2) / (4 * sample_size))
+            / sample_size
+        )
         / denominator
     )
 

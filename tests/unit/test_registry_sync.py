@@ -120,7 +120,7 @@ class TestRegistryIntegrity:
         for manifest in (SETTINGS_DIR / "ecosystem.yaml", SETTINGS_DIR / "repos.yaml"):
             data = yaml.safe_load(manifest.read_text())
             # Walk all entries and assert no secret keys.
-            for entry in (data.get("repos") or []):
+            for entry in data.get("repos") or []:
                 assert not (set(entry.keys()) & secret_keys), entry
 
 

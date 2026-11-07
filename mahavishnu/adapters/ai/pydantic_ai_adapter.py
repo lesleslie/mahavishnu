@@ -83,13 +83,25 @@ class ModelConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    provider: str = Field(description="LLM provider (openai, anthropic, llama_server, etc.)")
-    model_name: str = Field(description="Model identifier (gpt-4, claude-sonnet-4-5, etc.)")
-    api_key: str | None = Field(default=None, description="API key (use env var instead)")
+    provider: str = Field(
+        description="LLM provider (openai, anthropic, llama_server, etc.)"
+    )
+    model_name: str = Field(
+        description="Model identifier (gpt-4, claude-sonnet-4-5, etc.)"
+    )
+    api_key: str | None = Field(
+        default=None, description="API key (use env var instead)"
+    )
     base_url: str | None = Field(default=None, description="Custom API base URL")
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="Sampling temperature")
-    max_tokens: int = Field(default=4096, ge=1, le=128000, description="Max output tokens")
-    timeout: int = Field(default=300, ge=10, le=3600, description="Request timeout in seconds")
+    temperature: float = Field(
+        default=0.7, ge=0.0, le=2.0, description="Sampling temperature"
+    )
+    max_tokens: int = Field(
+        default=4096, ge=1, le=128000, description="Max output tokens"
+    )
+    timeout: int = Field(
+        default=300, ge=10, le=3600, description="Request timeout in seconds"
+    )
 
     def to_model_string(self) -> str:
         """Convert to Pydantic-AI model string format."""
@@ -156,7 +168,9 @@ class AgentResult(BaseModel):
     tokens_used: int | None = Field(default=None, description="Total tokens consumed")
     latency_ms: int = Field(default=0, description="Execution latency in milliseconds")
     error: str | None = Field(default=None, description="Error message if failed")
-    fallback_triggered: bool = Field(default=False, description="Whether fallback model was used")
+    fallback_triggered: bool = Field(
+        default=False, description="Whether fallback model was used"
+    )
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         description="Execution timestamp",
@@ -309,12 +323,16 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             import pydantic_ai  # noqa: F401  # optional dependency for pydantic AI adapter
         except ImportError:
             self._pydantic_ai_available = False
-            logger.warning("pydantic-ai not installed. Install with: pip install pydantic-ai")
+            logger.warning(
+                "pydantic-ai not installed. Install with: pip install pydantic-ai"
+            )
         else:
             self._pydantic_ai_available = True
 
         primary_model_str = (
-            self.settings.primary_model.safe_string() if self.settings.primary_model else "None"
+            self.settings.primary_model.safe_string()
+            if self.settings.primary_model
+            else "None"
         )
         logger.info(
             "PydanticAIAdapter created (available=%s, primary_model=%s)",
@@ -533,7 +551,9 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     repos=repos,
                 )
 
-                latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
+                latency_ms = int(
+                    (datetime.now(UTC) - start_time).total_seconds() * 1000
+                )
                 result.latency_ms = latency_ms
 
                 return result.model_dump()
@@ -541,7 +561,9 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             except PydanticAIAdapterError:
                 raise
             except Exception as e:  # Adapter execute converts every underlying failure into a FAILED AgentResult with sanitized message  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.error("Agent execution failed: %s", self._sanitize_error_message(e))
+                logger.error(
+                    "Agent execution failed: %s", self._sanitize_error_message(e)
+                )
                 return AgentResult(
                     execution_id=execution_id,
                     status=AgentStatus.FAILED,
@@ -594,7 +616,9 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
         model_healthy = self.settings.primary_model is not None
 
         # Determine overall status
-        status = "degraded" if not model_healthy or self._failed_mcp_servers else "healthy"
+        status = (
+            "degraded" if not model_healthy or self._failed_mcp_servers else "healthy"
+        )
 
         return {
             "status": status,
@@ -671,9 +695,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             logger.info("Created agent '%s' with ID: %s", name, agent_id)
             return agent_id  # type: ignore[no-any-return]
 
-        except (
-            Exception
-        ) as e:  # Adapter create_agent wraps every failure as a typed PydanticAIAdapterError
+        except Exception as e:  # Adapter create_agent wraps every failure as a typed PydanticAIAdapterError
             raise PydanticAIAdapterError(
                 f"Failed to create agent: {self._sanitize_error_message(e)}",
                 code=ErrorCode.INTERNAL_ERROR,
@@ -704,7 +726,10 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             raise PydanticAIAdapterError(
                 f"Agent not found: {agent_id}",
                 code=ErrorCode.RESOURCE_NOT_FOUND,
-                details={"agent_id": agent_id, "available_agents": list(self._agents.keys())},
+                details={
+                    "agent_id": agent_id,
+                    "available_agents": list(self._agents.keys()),
+                },
             )
 
         # Validate prompt
@@ -724,7 +749,9 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                 # Execute agent
                 result = await agent.run(prompt)
 
-                latency_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
+                latency_ms = int(
+                    (datetime.now(UTC) - start_time).total_seconds() * 1000
+                )
 
                 # Extract output
                 output = result.output
@@ -747,7 +774,9 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                 )
 
             except Exception as e:  # Adapter execute_agent converts every underlying failure into a FAILED AgentResult  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.error("Agent execution failed: %s", self._sanitize_error_message(e))
+                logger.error(
+                    "Agent execution failed: %s", self._sanitize_error_message(e)
+                )
                 return AgentResult(
                     execution_id=execution_id,
                     status=AgentStatus.FAILED,
@@ -1043,7 +1072,9 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                     continue
 
         # All models failed
-        error_msg = self._sanitize_error_message(last_error) if last_error else "Unknown error"
+        error_msg = (
+            self._sanitize_error_message(last_error) if last_error else "Unknown error"
+        )
         return AgentResult(
             execution_id=execution_id,
             status=AgentStatus.FAILED,

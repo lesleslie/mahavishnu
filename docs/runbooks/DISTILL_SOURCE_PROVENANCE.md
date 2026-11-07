@@ -69,8 +69,8 @@ from mahavishnu.distill.distiller import distill_workflows
 
 distill_workflows(
     conn,
-    reviewer=ReviewerIdentity.from_env(),       # H6 gate
-    reviewer_allowlist=frozenset({"alice"}),   # H4 gate
+    reviewer=ReviewerIdentity.from_env(),  # H6 gate
+    reviewer_allowlist=frozenset({"alice"}),  # H4 gate
 )
 ```
 

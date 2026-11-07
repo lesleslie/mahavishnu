@@ -682,7 +682,9 @@ async def example_real_world_workflow():
         print(f"  Successful sessions: {stats['by_status']['OK']}")
         print(f"  Failed sessions: {stats['by_status']['ERROR']}")
         print(f"  Average duration: {stats['avg_duration_ms']:.2f}ms")
-        print(f"  Success rate: {stats['by_status']['OK'] / stats['total_traces'] * 100:.1f}%\n")
+        print(
+            f"  Success rate: {stats['by_status']['OK'] / stats['total_traces'] * 100:.1f}%\n"
+        )
 
         # Step 5: Recommendations
         print("Step 5: Recommendations")
@@ -730,7 +732,9 @@ async def main():
     print("  ✅ duckdb")
 
     if _importlib_util.find_spec("sentence_transformers") is None:
-        print("  ❌ sentence-transformers (install with: pip install sentence-transformers)")
+        print(
+            "  ❌ sentence-transformers (install with: pip install sentence-transformers)"
+        )
         return
     print("  ✅ sentence-transformers")
 

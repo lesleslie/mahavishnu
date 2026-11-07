@@ -152,7 +152,9 @@ class TestValidation:
         return migrator
 
     @pytest.mark.asyncio
-    async def test_validate_row_counts(self, migrator_with_mocks: DatabaseMigrator) -> None:
+    async def test_validate_row_counts(
+        self, migrator_with_mocks: DatabaseMigrator
+    ) -> None:
         """Test row count validation."""
         result = await migrator_with_mocks._validate_row_counts()
 
@@ -199,8 +201,12 @@ class TestMigratorCoverageBoost:
     async def test_run_phase_with_duration_and_failure(self) -> None:
         migrator = DatabaseMigrator(MigrationConfig())
         phase_func = AsyncMock()
-        with patch("mahavishnu.core.migrator.asyncio.sleep", new=AsyncMock()) as sleep_mock:
-            await migrator._run_phase(MigrationPhase.DUAL_WRITE, phase_func, duration_seconds=5)
+        with patch(
+            "mahavishnu.core.migrator.asyncio.sleep", new=AsyncMock()
+        ) as sleep_mock:
+            await migrator._run_phase(
+                MigrationPhase.DUAL_WRITE, phase_func, duration_seconds=5
+            )
         phase_func.assert_awaited_once()
         sleep_mock.assert_awaited_once_with(5)
         assert migrator.current_phase == MigrationPhase.DUAL_WRITE
@@ -215,14 +221,18 @@ class TestMigratorCoverageBoost:
         migrator = DatabaseMigrator(MigrationConfig())
         db_instance = MagicMock()
         db_instance.connect = AsyncMock()
-        with patch("mahavishnu.core.migrator.Database", return_value=db_instance) as db_cls:
+        with patch(
+            "mahavishnu.core.migrator.Database", return_value=db_instance
+        ) as db_cls:
             a = await migrator._connect_postgres()
             b = await migrator._connect_postgres()
         assert a is b
         db_cls.assert_called_once()
         db_instance.connect.assert_awaited_once()
 
-    def test_connect_sqlite_sets_row_factory_and_reuses_connection(self, tmp_path) -> None:
+    def test_connect_sqlite_sets_row_factory_and_reuses_connection(
+        self, tmp_path
+    ) -> None:
         db_path = tmp_path / "data" / "m.db"
         migrator = DatabaseMigrator(MigrationConfig(sqlite_path=str(db_path)))
         conn1 = migrator._connect_sqlite()
@@ -247,7 +257,9 @@ class TestMigratorCoverageBoost:
         migrator._validate_migration.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_verify_connections_postgres_disconnected_and_sqlite_error(self) -> None:
+    async def test_verify_connections_postgres_disconnected_and_sqlite_error(
+        self,
+    ) -> None:
         migrator = DatabaseMigrator(MigrationConfig())
         migrator._postgres = MagicMock()
         migrator._postgres.health_check = AsyncMock(return_value={"connected": False})
@@ -276,7 +288,9 @@ class TestMigratorCoverageBoost:
         assert await migrator._copy_table("t", cursor) == 5
 
     @pytest.mark.asyncio
-    async def test_validate_row_counts_mismatch_and_fetch_exception(self, tmp_path) -> None:
+    async def test_validate_row_counts_mismatch_and_fetch_exception(
+        self, tmp_path
+    ) -> None:
         migrator = DatabaseMigrator(MigrationConfig(sqlite_path=str(tmp_path / "v.db")))
         sqlite_conn = migrator._connect_sqlite()
         cur = sqlite_conn.cursor()
@@ -331,7 +345,9 @@ class TestMigratorCoverageBoost:
         assert result["sample_size"] == migrator.config.validation_sample_size
 
     @pytest.mark.asyncio
-    async def test_cleanup_and_cleanup_connections_and_rollback_branches(self, tmp_path) -> None:
+    async def test_cleanup_and_cleanup_connections_and_rollback_branches(
+        self, tmp_path
+    ) -> None:
         migrator = DatabaseMigrator(MigrationConfig(sqlite_path=str(tmp_path / "a.db")))
         sqlite_conn = migrator._connect_sqlite()
         migrator._sqlite_conn = sqlite_conn
@@ -355,7 +371,9 @@ class TestMigratorCoverageBoost:
         postgres_rollback.disconnect.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_verify_connections_success_and_copy_sqlite_to_postgres(self, tmp_path) -> None:
+    async def test_verify_connections_success_and_copy_sqlite_to_postgres(
+        self, tmp_path
+    ) -> None:
         migrator = DatabaseMigrator(MigrationConfig(sqlite_path=str(tmp_path / "c.db")))
         sqlite_conn = migrator._connect_sqlite()
         cur = sqlite_conn.cursor()
@@ -383,7 +401,9 @@ class TestMigratorCoverageBoost:
         assert await migrator._copy_table("t", cursor) == 0
 
     @pytest.mark.asyncio
-    async def test_migrate_with_validation_enabled_and_validate_success_path(self) -> None:
+    async def test_migrate_with_validation_enabled_and_validate_success_path(
+        self,
+    ) -> None:
         migrator = DatabaseMigrator(
             MigrationConfig(enable_dual_write=False, enable_validation=True)
         )
@@ -394,7 +414,9 @@ class TestMigratorCoverageBoost:
         migrator._validate_migration.assert_awaited_once()
 
         # Hit _enable_dual_read success branch with validation disabled
-        migrator_no_validation = DatabaseMigrator(MigrationConfig(enable_validation=False))
+        migrator_no_validation = DatabaseMigrator(
+            MigrationConfig(enable_validation=False)
+        )
         await migrator_no_validation._enable_dual_read()
 
         # Hit validation "passed" line

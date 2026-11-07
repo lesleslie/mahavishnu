@@ -39,14 +39,20 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+
 async def _read_bus_envelopes() -> list:
     """One-shot read from the bus. Empty list on any failure (no errors propagated)."""
-    repo_root = Path(os.environ.get('CLAUDE_PROJECT_DIR') or '/Users/les/Projects/mahavishnu')
+    repo_root = Path(
+        os.environ.get("CLAUDE_PROJECT_DIR") or "/Users/les/Projects/mahavishnu"
+    )
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     try:
         from mahavishnu.core.events.bodai_subscriber import read_bodai_events_since
-        redis_url = os.environ.get('MAHAVISHNU_BODAI_REDIS_URL', 'redis://localhost:6379/0')
+
+        redis_url = os.environ.get(
+            "MAHAVISHNU_BODAI_REDIS_URL", "redis://localhost:6379/0"
+        )
         return await read_bodai_events_since(
             last_id=None,
             count=100,
@@ -55,41 +61,43 @@ async def _read_bus_envelopes() -> list:
     except Exception:
         return []
 
+
 def main() -> int:
     try:
         envelopes = asyncio.run(_read_bus_envelopes())
     except Exception:
-        print('No Bodai events yet (bus read failed)')
+        print("No Bodai events yet (bus read failed)")
         return 0
 
     if not envelopes:
-        print('No Bodai events yet (bus is empty or unreachable)')
+        print("No Bodai events yet (bus is empty or unreachable)")
         return 0
 
     by_source: dict[str, list] = defaultdict(list)
     for _msg_id, envelope in envelopes:
         if not isinstance(envelope, dict):
             continue
-        headers = envelope.get('headers') or {}
-        source = headers.get('source', 'unknown')
+        headers = envelope.get("headers") or {}
+        source = headers.get("source", "unknown")
         by_source[source].append(envelope)
 
     for source in sorted(by_source):
-        print(f'## {source}')
-        print('')
-        print('| topic | payload summary | timestamp |')
-        print('|-------|-----------------|-----------|')
+        print(f"## {source}")
+        print("")
+        print("| topic | payload summary | timestamp |")
+        print("|-------|-----------------|-----------|")
         for e in by_source[source][-20:]:  # last 20 per source
-            topic = e.get('topic', '?')
-            ts = (e.get('headers') or {}).get('timestamp', '?')
-            payload = e.get('payload') or {}
+            topic = e.get("topic", "?")
+            ts = (e.get("headers") or {}).get("timestamp", "?")
+            payload = e.get("payload") or {}
             # Render payload as 'k=v, k=v' (truncate at 80 chars)
-            kv = ', '.join(f'{k}={v}' for k, v in list(payload.items())[:5])
+            kv = ", ".join(f"{k}={v}" for k, v in list(payload.items())[:5])
             if len(kv) > 80:
-                kv = kv[:77] + '...'
-            print(f'| {topic} | {kv} | {ts} |')
-        print('')
+                kv = kv[:77] + "..."
+            print(f"| {topic} | {kv} | {ts} |")
+        print("")
     return 0
+
 
 sys.exit(main())
 ```

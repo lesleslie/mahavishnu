@@ -291,7 +291,9 @@ def _probe_candidates(repo_path: Path) -> list[ProbeCandidate]:
         for child in repo_path.iterdir():
             if not child.is_dir() or child.name.startswith("."):
                 continue
-            if (child / "__init__.py").is_file() and child.name not in candidate_subtrees:
+            if (
+                child / "__init__.py"
+            ).is_file() and child.name not in candidate_subtrees:
                 candidate_subtrees.append(child.name)
     except OSError as exc:
         logger.debug("Could not enumerate %s: %s", repo_path, exc)
@@ -360,7 +362,9 @@ def _classify_entry_point(repo: str, candidates: list[ProbeCandidate]) -> str:
     paths = {c.relpath for c in candidates}
 
     # Phase 1 deliverable has landed.
-    if any("from mcp_common.server.launcher import launch" in c.text for c in candidates):
+    if any(
+        "from mcp_common.server.launcher import launch" in c.text for c in candidates
+    ):
         return "mcp_common.server.launcher (Phase 1)"
 
     # vishnu-specific wrapper.
@@ -565,9 +569,13 @@ def _gather_audit_set(
     # for paths (registry cross-checked).
     out: list[tuple[str, str, list[str]]] = []
     for repo_name in sorted(notes_by_repo):
-        path = ecosystem.get(repo_name, {}).get("path") or registry_paths.get(repo_name, "")
+        path = ecosystem.get(repo_name, {}).get("path") or registry_paths.get(
+            repo_name, ""
+        )
         if not path:
-            logger.warning("No path for repo=%s in ecosystem.yaml or registry", repo_name)
+            logger.warning(
+                "No path for repo=%s in ecosystem.yaml or registry", repo_name
+            )
         notes = notes_by_repo[repo_name]
         out.append((repo_name, path, notes))
     return out
@@ -661,7 +669,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.repo:
         wanted = args.repo.lower()
         audit_set = [
-            (name, path, notes) for (name, path, notes) in audit_set if wanted in name.lower()
+            (name, path, notes)
+            for (name, path, notes) in audit_set
+            if wanted in name.lower()
         ]
         if not audit_set:
             logger.error("No repo matched --repo=%s", args.repo)
@@ -683,7 +693,9 @@ def main(argv: list[str] | None = None) -> int:
 
     sys.stdout.write(_render_markdown_table(records))
     audited_names = {r.repo for r in records}
-    sys.stdout.write(_render_footer(records, _out_of_scope_repos(ecosystem, audited_names)))
+    sys.stdout.write(
+        _render_footer(records, _out_of_scope_repos(ecosystem, audited_names))
+    )
     return 0
 
 

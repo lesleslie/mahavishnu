@@ -15,7 +15,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mahavishnu.pools.base import PoolConfig, PoolMetrics, PoolStatus
-from mahavishnu.pools.runpod_public_pool import DEFAULT_RUNPOD_BASE_URL, RunPodPublicEndpointPool
+from mahavishnu.pools.runpod_public_pool import (
+    DEFAULT_RUNPOD_BASE_URL,
+    RunPodPublicEndpointPool,
+)
 
 
 def _make_pool_config(**overrides) -> PoolConfig:
@@ -139,7 +142,9 @@ class TestStart:
         assert kwargs["headers"]["Authorization"] == "Bearer rp-test-key"
 
     @pytest.mark.asyncio
-    async def test_start_sets_failed_on_exception(self, monkeypatch: pytest.MonkeyPatch):
+    async def test_start_sets_failed_on_exception(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setenv("RUNPOD_API_KEY", "rp-test-key")
         cfg = _make_pool_config()
         pool = RunPodPublicEndpointPool(config=cfg)
@@ -153,7 +158,9 @@ class TestStart:
             assert pool._status == PoolStatus.FAILED
 
     @pytest.mark.asyncio
-    async def test_start_raises_when_httpx_missing(self, monkeypatch: pytest.MonkeyPatch):
+    async def test_start_raises_when_httpx_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setenv("RUNPOD_API_KEY", "rp-test-key")
         cfg = _make_pool_config()
         pool = RunPodPublicEndpointPool(config=cfg)
@@ -293,7 +300,9 @@ class TestExecuteTask:
             mock_httpx.Client.return_value = fake_client
             await pool.start()
 
-            with caplog.at_level(logging.WARNING, logger="mahavishnu.pools.runpod_public_pool"):
+            with caplog.at_level(
+                logging.WARNING, logger="mahavishnu.pools.runpod_public_pool"
+            ):
                 result = await pool.execute_task({"prompt": "x"})
 
         assert result["status"] == "cancelled"
@@ -301,7 +310,9 @@ class TestExecuteTask:
         assert any("CANCELLED" in rec.message for rec in caplog.records)
 
     @pytest.mark.asyncio
-    async def test_generic_exception_maps_to_failed(self, monkeypatch: pytest.MonkeyPatch):
+    async def test_generic_exception_maps_to_failed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setenv("RUNPOD_API_KEY", "rp-test-key")
         cfg = _make_pool_config()
         pool = RunPodPublicEndpointPool(config=cfg)
@@ -376,7 +387,12 @@ class TestStop:
         pool._client = mock_client
         pool._status = PoolStatus.RUNNING
         pool._task_results.append(
-            {"worker_id": "wp-1", "output": "x", "status": "completed", "timestamp": 1.0}
+            {
+                "worker_id": "wp-1",
+                "output": "x",
+                "status": "completed",
+                "timestamp": 1.0,
+            }
         )
 
         await pool.stop()

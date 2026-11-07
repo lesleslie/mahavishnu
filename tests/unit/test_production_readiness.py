@@ -226,7 +226,9 @@ def test_config_resource_security_and_adapter_checks(
         base_url="http://localhost:8081",
     )
     assert (
-        ProductionReadinessChecker(_make_app(config=missing_field_config))._check_config_validity()
+        ProductionReadinessChecker(
+            _make_app(config=missing_field_config)
+        )._check_config_validity()
         is False
     )
 
@@ -309,7 +311,10 @@ def test_config_resource_security_and_adapter_checks(
         def adapters(self):
             raise RuntimeError("broken")
 
-    assert ProductionReadinessChecker(_BrokenAdaptersApp())._check_adapter_health() is False
+    assert (
+        ProductionReadinessChecker(_BrokenAdaptersApp())._check_adapter_health()
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -329,14 +334,19 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
         adapters={"adapter": _FakeAdapter()},
         repos=[],
     )
-    assert await ProductionReadinessChecker(no_repos)._check_workflow_execution() is True
+    assert (
+        await ProductionReadinessChecker(no_repos)._check_workflow_execution() is True
+    )
 
     no_adapters = _make_app(
         config=_make_config(repos_path=str(tmp_path / "repos.txt")),
         adapters={},
         repos=[str(tmp_path / "repo-a")],
     )
-    assert await ProductionReadinessChecker(no_adapters)._check_workflow_execution() is False
+    assert (
+        await ProductionReadinessChecker(no_adapters)._check_workflow_execution()
+        is False
+    )
 
     failing = _make_app(
         config=_make_config(repos_path=str(tmp_path / "repos.txt")),
@@ -344,7 +354,9 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
         repos=[str(tmp_path / "repo-a")],
         execute_workflow_result={"status": "failed"},
     )
-    assert await ProductionReadinessChecker(failing)._check_workflow_execution() is False
+    assert (
+        await ProductionReadinessChecker(failing)._check_workflow_execution() is False
+    )
 
     raising = _make_app(
         config=_make_config(repos_path=str(tmp_path / "repos.txt")),
@@ -352,7 +364,9 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
         repos=[str(tmp_path / "repo-a")],
         execute_workflow_error=RuntimeError("boom"),
     )
-    assert await ProductionReadinessChecker(raising)._check_workflow_execution() is False
+    assert (
+        await ProductionReadinessChecker(raising)._check_workflow_execution() is False
+    )
 
     suite_app = _make_app(
         config=_make_config(repos_path=str(tmp_path / "repos.txt")),
@@ -366,7 +380,9 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
     assert await suite._test_observation_logging() is True
     assert suite.test_results
 
-    no_adapter_suite = IntegrationTestSuite(_make_app(config=_make_config(), adapters={}, repos=[]))
+    no_adapter_suite = IntegrationTestSuite(
+        _make_app(config=_make_config(), adapters={}, repos=[])
+    )
     assert await no_adapter_suite._test_basic_workflow_execution() is True
 
     no_repo_suite = IntegrationTestSuite(
@@ -402,7 +418,9 @@ async def test_workflow_execution_and_integration_suite_paths(tmp_path: Path) ->
 
     assert (
         await IntegrationTestSuite(
-            _make_app(config=_make_config(), adapters={"adapter": object()}, repos=["repo"])
+            _make_app(
+                config=_make_config(), adapters={"adapter": object()}, repos=["repo"]
+            )
         )._test_observation_logging()
         is True
     )
@@ -474,10 +492,16 @@ async def test_suite_runners_and_benchmarks(
             {
                 "_check_config_validity": _sync_check("_check_config_validity", True),
                 "_check_adapter_health": _sync_check("_check_adapter_health", False),
-                "_check_repo_accessibility": _raising_check("_check_repo_accessibility"),
-                "_check_workflow_execution": _async_check("_check_workflow_execution", True),
+                "_check_repo_accessibility": _raising_check(
+                    "_check_repo_accessibility"
+                ),
+                "_check_workflow_execution": _async_check(
+                    "_check_workflow_execution", True
+                ),
                 "_check_resource_limits": _sync_check("_check_resource_limits", True),
-                "_check_security_settings": _sync_check("_check_security_settings", False),
+                "_check_security_settings": _sync_check(
+                    "_check_security_settings", False
+                ),
             },
         )
         checker = checker_cls(
@@ -501,7 +525,9 @@ async def test_suite_runners_and_benchmarks(
             },
         )
         suite = suite_cls(
-            _make_app(config=_make_config(), adapters={"adapter": object()}, repos=["repo"])
+            _make_app(
+                config=_make_config(), adapters={"adapter": object()}, repos=["repo"]
+            )
         )
 
         test_summary = await suite.run_all_tests()
@@ -541,13 +567,19 @@ async def test_suite_runners_and_benchmarks(
             return {"summary": {"performance_score": 92}, "benchmarks": {}}
 
         monkeypatch.setattr(
-            pr.ProductionReadinessChecker, "run_all_checks", _fake_run_all_checks, raising=True
+            pr.ProductionReadinessChecker,
+            "run_all_checks",
+            _fake_run_all_checks,
+            raising=True,
         )
         monkeypatch.setattr(
             pr.IntegrationTestSuite, "run_all_tests", _fake_run_all_tests, raising=True
         )
         monkeypatch.setattr(
-            pr.PerformanceBenchmark, "run_benchmarks", _fake_run_benchmarks, raising=True
+            pr.PerformanceBenchmark,
+            "run_benchmarks",
+            _fake_run_benchmarks,
+            raising=True,
         )
 
         first = await run_production_readiness_suite(app)
@@ -588,14 +620,17 @@ async def test_remaining_readiness_branches(
     repo_d = repo_root / "d"
     repo_c.mkdir(parents=True, exist_ok=True)
     repo_d.mkdir(parents=True, exist_ok=True)
-    all_accessible = ProductionReadinessChecker(_RepoErrorApp([str(repo_c), str(repo_d)]))
+    all_accessible = ProductionReadinessChecker(
+        _RepoErrorApp([str(repo_c), str(repo_d)])
+    )
     assert all_accessible._check_repo_accessibility() is True
     assert all_accessible.results["repo_accessibility"]["status"] == "PASS"
 
     empty_repo_checker = ProductionReadinessChecker(_RepoErrorApp([]))
     assert empty_repo_checker._check_repo_accessibility() is True
     assert (
-        empty_repo_checker.results["repo_accessibility"]["message"] == "No repositories configured"
+        empty_repo_checker.results["repo_accessibility"]["message"]
+        == "No repositories configured"
     )
 
     original_exists = pr.Path.exists
@@ -609,7 +644,9 @@ async def test_remaining_readiness_branches(
     boom_repo = repo_root / "boom"
     boom_repo.mkdir(parents=True, exist_ok=True)
     assert (
-        ProductionReadinessChecker(_RepoErrorApp([str(boom_repo)]))._check_repo_accessibility()
+        ProductionReadinessChecker(
+            _RepoErrorApp([str(boom_repo)])
+        )._check_repo_accessibility()
         is False
     )
 
@@ -619,7 +656,10 @@ async def test_remaining_readiness_branches(
         def get_repos(self):
             raise RuntimeError("repos")
 
-    assert ProductionReadinessChecker(_BrokenReposApp())._check_repo_accessibility() is False
+    assert (
+        ProductionReadinessChecker(_BrokenReposApp())._check_repo_accessibility()
+        is False
+    )
 
     class _ConfigErrorApp:
         @property
@@ -628,8 +668,13 @@ async def test_remaining_readiness_branches(
 
         adapters: dict[str, object] = {}
 
-    assert ProductionReadinessChecker(_ConfigErrorApp())._check_resource_limits() is False
-    assert ProductionReadinessChecker(_ConfigErrorApp())._check_security_settings() is False
+    assert (
+        ProductionReadinessChecker(_ConfigErrorApp())._check_resource_limits() is False
+    )
+    assert (
+        ProductionReadinessChecker(_ConfigErrorApp())._check_security_settings()
+        is False
+    )
 
     workflow_error = _make_app(
         config=_make_config(repos_path=str(tmp_path / "repos.txt")),
@@ -637,7 +682,10 @@ async def test_remaining_readiness_branches(
         repos=[str(repo_a)],
         execute_workflow_error=RuntimeError("workflow"),
     )
-    assert await ProductionReadinessChecker(workflow_error)._check_workflow_execution() is False
+    assert (
+        await ProductionReadinessChecker(workflow_error)._check_workflow_execution()
+        is False
+    )
 
     workflow_raise = _make_app(
         config=_make_config(repos_path=str(tmp_path / "repos.txt")),
@@ -647,7 +695,10 @@ async def test_remaining_readiness_branches(
     workflow_raise.execute_workflow = lambda *args, **kwargs: (_ for _ in ()).throw(
         RuntimeError("workflow")
     )
-    assert await IntegrationTestSuite(workflow_raise)._test_basic_workflow_execution() is False
+    assert (
+        await IntegrationTestSuite(workflow_raise)._test_basic_workflow_execution()
+        is False
+    )
 
     bench_error = _make_app(
         config=_make_config(),
@@ -666,7 +717,10 @@ async def test_remaining_readiness_branches(
         def get_repos(self):
             raise RuntimeError("repos")
 
-    assert await PerformanceBenchmark(_BenchErrorApp())._benchmark_workflow_execution() is None
+    assert (
+        await PerformanceBenchmark(_BenchErrorApp())._benchmark_workflow_execution()
+        is None
+    )
 
     no_repo_benchmark = PerformanceBenchmark(
         _make_app(config=_make_config(), adapters={"adapter": _FakeAdapter()}, repos=[])
@@ -680,7 +734,9 @@ async def test_remaining_readiness_branches(
     await concurrent_empty._benchmark_concurrent_workflows()
     assert concurrent_empty.benchmarks == {}
 
-    empty_runner = PerformanceBenchmark(_make_app(config=_make_config(), adapters={}, repos=[]))
+    empty_runner = PerformanceBenchmark(
+        _make_app(config=_make_config(), adapters={}, repos=[])
+    )
     summary = await empty_runner.run_benchmarks()
     assert summary["summary"]["performance_score"] == 100
 
@@ -693,9 +749,15 @@ async def test_remaining_readiness_branches(
             raise RuntimeError("repos")
 
     assert (
-        await PerformanceBenchmark(_RaisingRepoBenchApp())._benchmark_concurrent_workflows() is None
+        await PerformanceBenchmark(
+            _RaisingRepoBenchApp()
+        )._benchmark_concurrent_workflows()
+        is None
     )
-    assert await PerformanceBenchmark(_RaisingRepoBenchApp())._benchmark_repo_operations() is None
+    assert (
+        await PerformanceBenchmark(_RaisingRepoBenchApp())._benchmark_repo_operations()
+        is None
+    )
 
 
 def test_overall_assessment_thresholds() -> None:
@@ -703,22 +765,30 @@ def test_overall_assessment_thresholds() -> None:
     tests = {"summary": {"score_percentage": 95}}
     benchmarks = {"summary": {"performance_score": 95}}
     assert (
-        _calculate_overall_assessment(readiness, tests, benchmarks)["status"] == "PRODUCTION READY"
+        _calculate_overall_assessment(readiness, tests, benchmarks)["status"]
+        == "PRODUCTION READY"
     )
 
     readiness["summary"]["score_percentage"] = 80
     tests["summary"]["score_percentage"] = 80
     benchmarks["summary"]["performance_score"] = 80
-    assert _calculate_overall_assessment(readiness, tests, benchmarks)["status"] == "NEARLY READY"
+    assert (
+        _calculate_overall_assessment(readiness, tests, benchmarks)["status"]
+        == "NEARLY READY"
+    )
 
     readiness["summary"]["score_percentage"] = 60
     tests["summary"]["score_percentage"] = 60
     benchmarks["summary"]["performance_score"] = 60
     assert (
-        _calculate_overall_assessment(readiness, tests, benchmarks)["status"] == "NEEDS IMPROVEMENT"
+        _calculate_overall_assessment(readiness, tests, benchmarks)["status"]
+        == "NEEDS IMPROVEMENT"
     )
 
     readiness["summary"]["score_percentage"] = 40
     tests["summary"]["score_percentage"] = 40
     benchmarks["summary"]["performance_score"] = 40
-    assert _calculate_overall_assessment(readiness, tests, benchmarks)["status"] == "NOT READY"
+    assert (
+        _calculate_overall_assessment(readiness, tests, benchmarks)["status"]
+        == "NOT READY"
+    )

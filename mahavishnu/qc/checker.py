@@ -37,7 +37,9 @@ class QualityControl:
         self._base_url = config.qc.crackerjack_url
         self._mcp = CommonMCPClient(base_url=self._base_url, timeout=120.0)
 
-    async def _call_mcp(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    async def _call_mcp(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> dict[str, Any]:
         try:
             result = await self._mcp.call_tool(tool_name, arguments)
         except MCPServerError as exc:
@@ -76,7 +78,9 @@ class QualityControl:
             )
             # execute_crackerjack returns a JSON string under "result"
             result_str = raw.get("result", "{}")
-            cj_result = json.loads(result_str) if isinstance(result_str, str) else result_str
+            cj_result = (
+                json.loads(result_str) if isinstance(result_str, str) else result_str
+            )
 
             score = _score_from_result(cj_result, self.min_score)
             errors = cj_result.get("errors") or []  # type: ignore[var-annotated]
@@ -89,7 +93,9 @@ class QualityControl:
                     "issues_found": len(errors),
                     "details": errors[0]
                     if errors
-                    else (f"No issues in {repo}" if success else f"Issues found in {repo}"),
+                    else (
+                        f"No issues in {repo}" if success else f"Issues found in {repo}"
+                    ),
                 }
 
             return per_check, score

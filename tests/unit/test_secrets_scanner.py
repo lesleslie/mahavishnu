@@ -131,7 +131,9 @@ class TestDetectedSecret:
 
 class TestSecretScanResult:
     def test_no_secrets(self):
-        result = SecretScanResult(scanned_files=10, secrets_found=[], scan_duration_seconds=0.5)
+        result = SecretScanResult(
+            scanned_files=10, secrets_found=[], scan_duration_seconds=0.5
+        )
         assert result.has_secrets is False
         assert result.high_severity_count == 0
         assert result.medium_severity_count == 0
@@ -139,11 +141,19 @@ class TestSecretScanResult:
 
     def test_with_secrets(self):
         secrets = [
-            DetectedSecret(SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f1", "sk-x"),
-            DetectedSecret(SecretType.PASSWORD, SecretSeverity.LOW, 2, "", "/f2", "pass"),
-            DetectedSecret(SecretType.TOKEN, SecretSeverity.MEDIUM, 3, "", "/f3", "tok_xxx"),
+            DetectedSecret(
+                SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f1", "sk-x"
+            ),
+            DetectedSecret(
+                SecretType.PASSWORD, SecretSeverity.LOW, 2, "", "/f2", "pass"
+            ),
+            DetectedSecret(
+                SecretType.TOKEN, SecretSeverity.MEDIUM, 3, "", "/f3", "tok_xxx"
+            ),
         ]
-        result = SecretScanResult(scanned_files=5, secrets_found=secrets, scan_duration_seconds=1.0)
+        result = SecretScanResult(
+            scanned_files=5, secrets_found=secrets, scan_duration_seconds=1.0
+        )
         assert result.has_secrets is True
         assert result.high_severity_count == 1
         assert result.medium_severity_count == 1
@@ -153,7 +163,9 @@ class TestSecretScanResult:
         secrets = [
             DetectedSecret(SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f", "key"),
         ]
-        result = SecretScanResult(scanned_files=3, secrets_found=secrets, scan_duration_seconds=0.1)
+        result = SecretScanResult(
+            scanned_files=3, secrets_found=secrets, scan_duration_seconds=0.1
+        )
         d = result.to_dict()
         assert d["scanned_files"] == 3
         assert d["secrets_found"] == 1
@@ -225,7 +237,9 @@ class TestEstimateSeverity:
 
     def test_stripe_key_high(self, scanner):
         # Match Stripe pattern: sk-[alphanumeric 20+ chars]
-        sev = scanner._estimate_severity("sk-testapikey1234567890ab", SecretType.API_KEY)
+        sev = scanner._estimate_severity(
+            "sk-testapikey1234567890ab", SecretType.API_KEY
+        )
         assert sev == SecretSeverity.HIGH
 
     def test_aws_key_high(self, scanner):
@@ -279,11 +293,15 @@ class TestParseDetectSecretsOutput:
         assert result == []
 
     def test_scanning_line_ignored(self, scanner):
-        result = scanner._parse_detect_secrets_output("", "Scanning...\n", Path("/base"))
+        result = scanner._parse_detect_secrets_output(
+            "", "Scanning...\n", Path("/base")
+        )
         assert result == []
 
     def test_no_colon_ignored(self, scanner):
-        result = scanner._parse_detect_secrets_output("", "no colon here\n", Path("/base"))
+        result = scanner._parse_detect_secrets_output(
+            "", "no colon here\n", Path("/base")
+        )
         assert result == []
 
     def test_parse_valid_line(self, scanner):
@@ -349,14 +367,20 @@ class TestShouldBlockIndexing:
             return SecretsScanner(fail_on_secrets=True, block_on_high_severity=True)
 
     def test_no_secrets(self, scanner):
-        result = SecretScanResult(scanned_files=5, secrets_found=[], scan_duration_seconds=0.1)
+        result = SecretScanResult(
+            scanned_files=5, secrets_found=[], scan_duration_seconds=0.1
+        )
         should_block, reason = scanner.should_block_indexing(result)
         assert should_block is False
         assert "No secrets" in reason
 
     def test_high_severity_blocks(self, scanner):
-        secrets = [DetectedSecret(SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f", "key")]
-        result = SecretScanResult(scanned_files=5, secrets_found=secrets, scan_duration_seconds=0.1)
+        secrets = [
+            DetectedSecret(SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f", "key")
+        ]
+        result = SecretScanResult(
+            scanned_files=5, secrets_found=secrets, scan_duration_seconds=0.1
+        )
         should_block, reason = scanner.should_block_indexing(result)
         assert should_block is True
         assert "high severity" in reason
@@ -364,17 +388,27 @@ class TestShouldBlockIndexing:
     def test_fail_on_secrets_blocks(self):
         with patch.object(SecretsScanner, "_check_detect_secrets_installed"):
             scanner = SecretsScanner(fail_on_secrets=True, block_on_high_severity=False)
-        secrets = [DetectedSecret(SecretType.OTHER, SecretSeverity.LOW, 1, "", "/f", "x")]
-        result = SecretScanResult(scanned_files=1, secrets_found=secrets, scan_duration_seconds=0.1)
+        secrets = [
+            DetectedSecret(SecretType.OTHER, SecretSeverity.LOW, 1, "", "/f", "x")
+        ]
+        result = SecretScanResult(
+            scanned_files=1, secrets_found=secrets, scan_duration_seconds=0.1
+        )
         should_block, reason = scanner.should_block_indexing(result)
         assert should_block is True
         assert "fail_on_secrets" in reason
 
     def test_warn_only_allows(self):
         with patch.object(SecretsScanner, "_check_detect_secrets_installed"):
-            scanner = SecretsScanner(fail_on_secrets=False, block_on_high_severity=False)
-        secrets = [DetectedSecret(SecretType.OTHER, SecretSeverity.LOW, 1, "", "/f", "x")]
-        result = SecretScanResult(scanned_files=1, secrets_found=secrets, scan_duration_seconds=0.1)
+            scanner = SecretsScanner(
+                fail_on_secrets=False, block_on_high_severity=False
+            )
+        secrets = [
+            DetectedSecret(SecretType.OTHER, SecretSeverity.LOW, 1, "", "/f", "x")
+        ]
+        result = SecretScanResult(
+            scanned_files=1, secrets_found=secrets, scan_duration_seconds=0.1
+        )
         should_block, reason = scanner.should_block_indexing(result)
         assert should_block is False
         assert "allowed" in reason
@@ -434,7 +468,9 @@ class TestScanDirectory:
 class TestSecretRedactor:
     def test_redact_code(self):
         secrets = [
-            DetectedSecret(SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f", "sk-secret-key"),
+            DetectedSecret(
+                SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f", "sk-secret-key"
+            ),
         ]
         redactor = SecretRedactor(secrets)
         code = 'api_key = "sk-secret-key"\nprint("hello")'
@@ -445,8 +481,12 @@ class TestSecretRedactor:
 
     def test_redact_code_multiple_secrets(self):
         secrets = [
-            DetectedSecret(SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f", "key1"),
-            DetectedSecret(SecretType.PASSWORD, SecretSeverity.MEDIUM, 2, "", "/f", "pass1"),
+            DetectedSecret(
+                SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f", "key1"
+            ),
+            DetectedSecret(
+                SecretType.PASSWORD, SecretSeverity.MEDIUM, 2, "", "/f", "pass1"
+            ),
         ]
         redactor = SecretRedactor(secrets)
         code = "key=key1 pass=pass1"
@@ -466,7 +506,9 @@ class TestSecretRedactor:
 
     def test_redact_file(self, tmp_path):
         secrets = [
-            DetectedSecret(SecretType.TOKEN, SecretSeverity.HIGH, 1, "", "/f", "secret_tok"),
+            DetectedSecret(
+                SecretType.TOKEN, SecretSeverity.HIGH, 1, "", "/f", "secret_tok"
+            ),
         ]
         redactor = SecretRedactor(secrets)
         src = tmp_path / "config.py"
@@ -489,7 +531,9 @@ class TestSecretRedactor:
 class TestPreIndexValidator:
     async def test_validate_clean_repo(self, tmp_path):
         mock_scanner = MagicMock(spec=SecretsScanner)
-        scan_result = SecretScanResult(scanned_files=5, secrets_found=[], scan_duration_seconds=0.1)
+        scan_result = SecretScanResult(
+            scanned_files=5, secrets_found=[], scan_duration_seconds=0.1
+        )
         mock_scanner.scan_directory = AsyncMock(return_value=scan_result)
         mock_scanner.should_block_indexing.return_value = (False, "No secrets found")
 
@@ -500,12 +544,17 @@ class TestPreIndexValidator:
 
     async def test_validate_dirty_repo(self, tmp_path):
         mock_scanner = MagicMock(spec=SecretsScanner)
-        secrets = [DetectedSecret(SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f", "key")]
+        secrets = [
+            DetectedSecret(SecretType.API_KEY, SecretSeverity.HIGH, 1, "", "/f", "key")
+        ]
         scan_result = SecretScanResult(
             scanned_files=5, secrets_found=secrets, scan_duration_seconds=0.1
         )
         mock_scanner.scan_directory = AsyncMock(return_value=scan_result)
-        mock_scanner.should_block_indexing.return_value = (True, "Found 1 high severity secrets")
+        mock_scanner.should_block_indexing.return_value = (
+            True,
+            "Found 1 high severity secrets",
+        )
 
         validator = PreIndexValidator(scanner=mock_scanner)
         result = await validator.validate_repository(tmp_path)

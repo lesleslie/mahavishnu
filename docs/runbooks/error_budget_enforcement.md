@@ -44,9 +44,13 @@ def calculate_error_budget():
 
     return {
         "availability_remaining_minutes": availability_budget_remaining,
-        "availability_remaining_percent": (availability_budget_remaining / allowable_downtime) * 100,
+        "availability_remaining_percent": (
+            availability_budget_remaining / allowable_downtime
+        )
+        * 100,
         "error_budget_remaining_count": error_budget_remaining,
-        "error_budget_remaining_percent": (error_budget_remaining / allowable_errors) * 100,
+        "error_budget_remaining_percent": (error_budget_remaining / allowable_errors)
+        * 100,
     }
 ```
 

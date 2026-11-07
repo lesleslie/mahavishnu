@@ -42,8 +42,12 @@ class _FakeSettleRunRecord:
     worker_id: str = "worker-1"
     task_signature: str = "fix-import-order"
     state: str = "PROPOSED"
-    created_at: datetime = field(default_factory=lambda: datetime(2026, 9, 6, tzinfo=UTC))
-    updated_at: datetime = field(default_factory=lambda: datetime(2026, 9, 6, tzinfo=UTC))
+    created_at: datetime = field(
+        default_factory=lambda: datetime(2026, 9, 6, tzinfo=UTC)
+    )
+    updated_at: datetime = field(
+        default_factory=lambda: datetime(2026, 9, 6, tzinfo=UTC)
+    )
     bindings: tuple[Any, ...] = ()
 
 
@@ -66,7 +70,9 @@ def runner() -> CliRunner:
 # ---------------------------------------------------------------------------
 
 
-def test_settle_status_with_known_run_ref_prints_record_fields(app: typer.Typer, runner: CliRunner) -> None:
+def test_settle_status_with_known_run_ref_prints_record_fields(
+    app: typer.Typer, runner: CliRunner
+) -> None:
     """``settle status <run_ref>`` shows run_ref, state, worker_id, signature."""
     fake_record = _FakeSettleRunRecord(
         run_ref="abc123",
@@ -88,7 +94,9 @@ def test_settle_status_with_known_run_ref_prints_record_fields(app: typer.Typer,
     assert "refactor-auth-flow" in result.stdout
 
 
-def test_settle_status_with_unknown_run_ref_exits_nonzero(app: typer.Typer, runner: CliRunner) -> None:
+def test_settle_status_with_unknown_run_ref_exits_nonzero(
+    app: typer.Typer, runner: CliRunner
+) -> None:
     """``settle status <run_ref>`` exits non-zero and prints an error when the record is missing."""
     with patch(
         "mahavishnu.cli.settle_cli.load_record_sync",
@@ -105,7 +113,9 @@ def test_settle_status_with_unknown_run_ref_exits_nonzero(app: typer.Typer, runn
 # ---------------------------------------------------------------------------
 
 
-def test_settle_start_invokes_persist_initial_with_record(app: typer.Typer, runner: CliRunner) -> None:
+def test_settle_start_invokes_persist_initial_with_record(
+    app: typer.Typer, runner: CliRunner
+) -> None:
     """``settle start <run_ref> --worker <id> --task <sig>`` builds a SettleRunRecord and persists it."""
     from mahavishnu.settle.state_machine import SettleRunRecord, SettleState
 

@@ -93,7 +93,9 @@ def test_loader_load_invalid_yaml_raises(tmp_path: Path) -> None:
     path = tmp_path / "ecosystem.yaml"
     path.write_text(":\n- [")
     loader = EcosystemLoader(path)
-    with pytest.raises(ConfigurationError, match="Failed to load ecosystem configuration"):
+    with pytest.raises(
+        ConfigurationError, match="Failed to load ecosystem configuration"
+    ):
         loader.load()
 
 
@@ -101,7 +103,9 @@ def test_loader_load_validation_error_raises(tmp_path: Path) -> None:
     path = tmp_path / "ecosystem.yaml"
     _write_config(path, {"version": "1.0"})  # missing required fields
     loader = EcosystemLoader(path)
-    with pytest.raises(ConfigurationError, match="Failed to validate ecosystem configuration"):
+    with pytest.raises(
+        ConfigurationError, match="Failed to validate ecosystem configuration"
+    ):
         loader.load()
 
 
@@ -248,7 +252,9 @@ def test_validate_catalog_references_reports_invalid_role(tmp_path: Path) -> Non
 
     result = loader.validate_catalog_references()
 
-    assert result["errors"] == ["repo-a: role 'unknown-role' is not defined in roles catalog"]
+    assert result["errors"] == [
+        "repo-a: role 'unknown-role' is not defined in roles catalog"
+    ]
     assert result["warnings"] == []
 
 
@@ -277,7 +283,9 @@ def test_validate_catalog_metadata_reports_stale_catalog_and_missing_health_chec
     result = loader.validate_catalog_metadata()
 
     assert any("last_updated is" in warning for warning in result["warnings"])
-    assert any("missing health_check metadata" in warning for warning in result["warnings"])
+    assert any(
+        "missing health_check metadata" in warning for warning in result["warnings"]
+    )
     assert result["errors"] == []
 
 
@@ -367,13 +375,19 @@ def test_update_audit_timestamp_and_save(tmp_path: Path) -> None:
     loader = EcosystemLoader(path)
     loader.load()
 
-    loader.update_audit_timestamp("audit-me", "last_validated", "2026-04-08T00:00:00Z", "ok")
-    assert loader.config.mcp_servers[0].audit["last_validated"] == "2026-04-08T00:00:00Z"
+    loader.update_audit_timestamp(
+        "audit-me", "last_validated", "2026-04-08T00:00:00Z", "ok"
+    )
+    assert (
+        loader.config.mcp_servers[0].audit["last_validated"] == "2026-04-08T00:00:00Z"
+    )
     assert loader.config.mcp_servers[0].audit["notes"] == "ok"
 
     loader.save()
     reloaded = yaml.safe_load(path.read_text())
-    assert reloaded["mcp_servers"][0]["audit"]["last_validated"] == "2026-04-08T00:00:00Z"
+    assert (
+        reloaded["mcp_servers"][0]["audit"]["last_validated"] == "2026-04-08T00:00:00Z"
+    )
 
     with pytest.raises(ConfigurationError, match="MCP server not found"):
         loader.update_audit_timestamp("missing", "field", "value")

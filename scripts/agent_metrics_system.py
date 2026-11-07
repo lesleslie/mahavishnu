@@ -182,9 +182,15 @@ class AgentAnalyzer:
 
             report[agent] = {
                 "invocations": invocations,
-                "success_rate": stats["successes"] / invocations if invocations > 0 else 0,
-                "avg_tokens": stats["total_tokens"] / invocations if invocations > 0 else 0,
-                "avg_time_ms": stats["total_time_ms"] / invocations if invocations > 0 else 0,
+                "success_rate": stats["successes"] / invocations
+                if invocations > 0
+                else 0,
+                "avg_tokens": stats["total_tokens"] / invocations
+                if invocations > 0
+                else 0,
+                "avg_time_ms": stats["total_time_ms"] / invocations
+                if invocations > 0
+                else 0,
                 "satisfaction_rate": (
                     stats["positive_feedback"]
                     / (stats["positive_feedback"] + stats["negative_feedback"])
@@ -192,10 +198,14 @@ class AgentAnalyzer:
                     else None
                 ),
                 "top_errors": dict(
-                    sorted(stats["errors"].items(), key=lambda x: x[1], reverse=True)[:5]
+                    sorted(stats["errors"].items(), key=lambda x: x[1], reverse=True)[
+                        :5
+                    ]
                 ),
                 "top_tasks": dict(
-                    sorted(stats["task_types"].items(), key=lambda x: x[1], reverse=True)[:5]
+                    sorted(
+                        stats["task_types"].items(), key=lambda x: x[1], reverse=True
+                    )[:5]
                 ),
             }
 
@@ -377,7 +387,9 @@ def optimize(days: int):
     if opportunities.get("low_satisfaction"):
         click.echo("😞 Low User Satisfaction:")
         for item in opportunities["low_satisfaction"]:
-            click.echo(f"  - {item['agent']}: {item['satisfaction_rate']:.1%} satisfaction\n")
+            click.echo(
+                f"  - {item['agent']}: {item['satisfaction_rate']:.1%} satisfaction\n"
+            )
 
     if opportunities.get("recommendations"):
         click.echo("\n📋 Recommendations:")
@@ -390,7 +402,9 @@ def _print_text_report(report: dict):
     click.echo(f"\n=== Agent Performance Report ({report['period_days']} days) ===\n")
     click.echo(f"Total Invocations: {report['total_invocations']}\n")
 
-    agents = sorted(report["agents"].items(), key=lambda x: x[1]["invocations"], reverse=True)
+    agents = sorted(
+        report["agents"].items(), key=lambda x: x[1]["invocations"], reverse=True
+    )
 
     for agent_name, stats in agents:
         click.echo(f"Agent: {agent_name}")

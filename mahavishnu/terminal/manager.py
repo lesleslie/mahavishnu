@@ -193,7 +193,9 @@ class TerminalManager:
         old_adapter_name = old_adapter.adapter_name
         new_adapter_name = new_adapter.adapter_name
 
-        logger.info(f"Hot-switching adapter from {old_adapter_name} to {new_adapter_name}")
+        logger.info(
+            f"Hot-switching adapter from {old_adapter_name} to {new_adapter_name}"
+        )
 
         # Record history
         self._adapter_history.append(
@@ -211,7 +213,9 @@ class TerminalManager:
                 await self._migrate_sessions(old_adapter, new_adapter)
             except Exception as e:  # terminal manager — broad catch logs migration failure and continues with the adapter switch  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning(f"Session migration failed: {e}")
-                logger.info("Continuing with adapter switch (existing sessions orphaned)")
+                logger.info(
+                    "Continuing with adapter switch (existing sessions orphaned)"
+                )
 
         # Switch adapters
         self.adapter = new_adapter
@@ -221,7 +225,9 @@ class TerminalManager:
         # Call migration callback if registered
         if self._session_migration_callback:
             try:
-                await self._session_migration_callback(old_adapter_name, new_adapter_name)
+                await self._session_migration_callback(
+                    old_adapter_name, new_adapter_name
+                )
             except Exception as e:  # terminal manager — broad catch logs migration callback failure but does not abort the switch  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
                 logger.warning(f"Migration callback failed: {e}")
 
@@ -376,9 +382,7 @@ class TerminalManager:
             )
             return session_ids
 
-        except (
-            Exception
-        ) as e:  # terminal manager — broad catch logs session launch failure and re-raises
+        except Exception as e:  # terminal manager — broad catch logs session launch failure and re-raises
             logger.error(f"Failed to launch sessions: {e}")
             raise
 

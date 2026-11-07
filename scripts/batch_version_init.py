@@ -192,7 +192,12 @@ def main(dry_run: bool, agents_dir: Path):
             version_map[agent] = version
 
     # Track results
-    results = {"initialized": [], "already_versioned": [], "not_found": [], "errors": []}
+    results = {
+        "initialized": [],
+        "already_versioned": [],
+        "not_found": [],
+        "errors": [],
+    }
 
     click.echo("\n=== Agent Versioning Initialization ===\n")
 

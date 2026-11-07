@@ -322,7 +322,9 @@ def benchmark_search(db_path: str) -> dict[str, Any]:
 
         try:
             # Check data availability
-            result = conn.execute("SELECT COUNT(*), COUNT(embedding) FROM executions").fetchone()
+            result = conn.execute(
+                "SELECT COUNT(*), COUNT(embedding) FROM executions"
+            ).fetchone()
 
             if not result:
                 logger.error("No data found")
@@ -364,7 +366,9 @@ def benchmark_search(db_path: str) -> dict[str, Any]:
             exact_time = time.time() - start
             results["exact_search_time"] = exact_time
 
-            logger.info(f"Exact search: {exact_time:.4f} seconds, {len(exact_results)} results")
+            logger.info(
+                f"Exact search: {exact_time:.4f} seconds, {len(exact_results)} results"
+            )
 
             # Check if HNSW index exists
             index_exists = conn.execute(
@@ -394,7 +398,9 @@ def benchmark_search(db_path: str) -> dict[str, Any]:
             approx_time = time.time() - start
             results["approx_search_time"] = approx_time
 
-            logger.info(f"Approx search: {approx_time:.4f} seconds, {len(approx_results)} results")
+            logger.info(
+                f"Approx search: {approx_time:.4f} seconds, {len(approx_results)} results"
+            )
 
             # Calculate speedup
             if approx_time > 0:
@@ -407,7 +413,9 @@ def benchmark_search(db_path: str) -> dict[str, Any]:
             approx_ids = {r[0] for r in approx_results}
             overlap = len(exact_ids & approx_ids)
             recall = overlap / len(exact_ids) if exact_ids else 0
-            logger.info(f"Recall@10: {recall:.2%} ({overlap}/{len(exact_results)} common)")
+            logger.info(
+                f"Recall@10: {recall:.2%} ({overlap}/{len(exact_results)} common)"
+            )
 
             results["recall"] = recall
 
@@ -427,7 +435,9 @@ def main() -> int:
     Returns:
         Exit code (0 for success, 1 for failure)
     """
-    parser = argparse.ArgumentParser(description="HNSW index migration for learning database")
+    parser = argparse.ArgumentParser(
+        description="HNSW index migration for learning database"
+    )
     parser.add_argument(
         "action",
         choices=["upgrade", "benchmark", "generate-embeddings"],
@@ -438,7 +448,9 @@ def main() -> int:
         default=DEFAULT_DB_PATH,
         help=f"Path to database file (default: {DEFAULT_DB_PATH})",
     )
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
     parser.add_argument(
         "--limit",
         type=int,

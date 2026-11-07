@@ -21,7 +21,9 @@ def test_settings_accepts_workspace_root_override(tmp_path):
 
 
 def test_settings_resolves_rg_when_path_present(monkeypatch):
-    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/rg" if name == "rg" else None)
+    monkeypatch.setattr(
+        "shutil.which", lambda name: "/usr/bin/rg" if name == "rg" else None
+    )
     s = CrowSettings()
     assert s.rg_path == Path("/usr/bin/rg")
 

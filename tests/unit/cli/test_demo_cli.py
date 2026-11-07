@@ -50,14 +50,19 @@ def test_tmux_precondition_failure_lists_each(monkeypatch) -> None:
 
     result = runner.invoke(demo_app, ["tmux"])
     assert result.exit_code == 1
-    assert "Precondition failure" in result.stderr or "Precondition failure" in result.output
+    assert (
+        "Precondition failure" in result.stderr
+        or "Precondition failure" in result.output
+    )
     assert "tmux" in result.output
 
 
 def test_tmux_spawns_three_workers_by_default(monkeypatch, tmp_path) -> None:
     """Default ``workers=3`` is passed through."""
     monkeypatch.setattr(
-        demo_cli.shutil, "which", lambda n: "/usr/bin/x" if n in ("tmux", "claude") else None
+        demo_cli.shutil,
+        "which",
+        lambda n: "/usr/bin/x" if n in ("tmux", "claude") else None,
     )
     tm = MagicMock()
     monkeypatch.setattr(demo_cli, "_build_terminal_manager", lambda: tm)
@@ -165,7 +170,9 @@ def test_prefect_runs_with_default_flow_when_server_up(monkeypatch) -> None:
     settings_mock.prefect.work_pool = "mahavishnu"
     settings_mock.prefect.timeout_seconds = 60
     monkeypatch.setattr(demo_cli, "_default_settings_getter", lambda: settings_mock)
-    monkeypatch.setattr(demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200))
+    monkeypatch.setattr(
+        demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200)
+    )
 
     captured: dict = {}
 
@@ -199,7 +206,9 @@ def test_prefect_keep_flag_propagates(monkeypatch) -> None:
     settings_mock.prefect.work_pool = "default"
     settings_mock.prefect.timeout_seconds = 60
     monkeypatch.setattr(demo_cli, "_default_settings_getter", lambda: settings_mock)
-    monkeypatch.setattr(demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200))
+    monkeypatch.setattr(
+        demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200)
+    )
     captured: dict = {}
 
     async def fake_run(**kwargs: object) -> dict[str, object]:
@@ -227,7 +236,9 @@ def test_prefect_custom_flow_override(monkeypatch) -> None:
     settings_mock.prefect.work_pool = "default"
     settings_mock.prefect.timeout_seconds = 60
     monkeypatch.setattr(demo_cli, "_default_settings_getter", lambda: settings_mock)
-    monkeypatch.setattr(demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200))
+    monkeypatch.setattr(
+        demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200)
+    )
     captured: dict = {}
 
     async def fake_run(**kwargs: object) -> dict[str, object]:
@@ -277,7 +288,9 @@ def test_stub_subcommands_print_not_implemented_and_exit_zero() -> None:
     for stub in ["mock"]:
         result = runner.invoke(demo_app, [stub])
         assert result.exit_code == 0, f"{stub}: unexpected exit {result.exit_code}"
-        assert "not implemented" in result.output, f"{stub}: missing not-implemented text"
+        assert "not implemented" in result.output, (
+            f"{stub}: missing not-implemented text"
+        )
 
 
 def test_stub_subcommands_why_stub_flag_prints_implementation_cost() -> None:
@@ -416,7 +429,9 @@ def test_agno_demo_defaults_to_the_bounded_task_type(monkeypatch) -> None:
     assert captured["params"]["target"] == "mahavishnu/cli/demo_cli.py"
 
 
-def test_agno_demo_rejects_a_target_file_that_does_not_exist(monkeypatch, tmp_path) -> None:
+def test_agno_demo_rejects_a_target_file_that_does_not_exist(
+    monkeypatch, tmp_path
+) -> None:
     """A bounded task naming an unreadable file is worse than an unbounded one.
 
     The agent has nothing to read, falls back to exploring the
@@ -455,7 +470,9 @@ def test_hatchet_falls_back_to_the_embedded_engine_when_the_server_is_down(
     adapter against a real Hatchet engine -- instead of reporting a
     missing substrate.
     """
-    monkeypatch.setattr(demo_cli, "_check_hatchet_server_reachable", lambda url, t: ["unreachable"])
+    monkeypatch.setattr(
+        demo_cli, "_check_hatchet_server_reachable", lambda url, t: ["unreachable"]
+    )
     cfg = SimpleNamespace(server_url="localhost:7077", use_embedded=False)
 
     mode, detail = demo_cli._resolve_hatchet_mode(cfg, timeout=1.0)
@@ -468,10 +485,14 @@ def test_hatchet_precondition_does_not_demand_a_token_in_embedded_mode(
     monkeypatch,
 ) -> None:
     """The embedded engine issues its own token, so none is required."""
-    monkeypatch.setattr(demo_cli, "_check_hatchet_server_reachable", lambda url, t: ["unreachable"])
+    monkeypatch.setattr(
+        demo_cli, "_check_hatchet_server_reachable", lambda url, t: ["unreachable"]
+    )
     settings_mock = MagicMock()
     settings_mock.adapters.hatchet_enabled = True
-    settings_mock.hatchet = SimpleNamespace(server_url="localhost:7077", use_embedded=False)
+    settings_mock.hatchet = SimpleNamespace(
+        server_url="localhost:7077", use_embedded=False
+    )
     monkeypatch.setattr(demo_cli, "_default_settings_getter", lambda: settings_mock)
 
     failures = demo_cli._check_hatchet_preconditions(

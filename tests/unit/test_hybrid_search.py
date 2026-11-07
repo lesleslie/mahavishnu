@@ -79,12 +79,16 @@ class TestHybridSearchConfig:
 
     def test_invalid_semantic_weight(self):
         """Test that invalid semantic weight raises error."""
-        with pytest.raises(ValueError, match="semantic_weight must be between 0.0 and 1.0"):
+        with pytest.raises(
+            ValueError, match="semantic_weight must be between 0.0 and 1.0"
+        ):
             HybridSearchConfig(semantic_weight=1.5)
 
     def test_invalid_lexical_weight(self):
         """Test that invalid lexical weight raises error."""
-        with pytest.raises(ValueError, match="lexical_weight must be between 0.0 and 1.0"):
+        with pytest.raises(
+            ValueError, match="lexical_weight must be between 0.0 and 1.0"
+        ):
             HybridSearchConfig(lexical_weight=-0.1)
 
     def test_invalid_min_score(self):
@@ -168,7 +172,9 @@ class TestHybridSearchEngine:
             await engine.search("")
 
     @pytest.mark.asyncio
-    async def test_search_with_embedding(self, mock_pool, mock_embedding_service, search_config):
+    async def test_search_with_embedding(
+        self, mock_pool, mock_embedding_service, search_config
+    ):
         """Test hybrid search with embedding."""
         # Mock embedding service
         mock_embedding_service.embed.return_value = MagicMock(
@@ -196,7 +202,9 @@ class TestHybridSearchEngine:
         assert len(results) == 0
 
     @pytest.mark.asyncio
-    async def test_lexical_fallback(self, mock_pool, mock_embedding_service, search_config):
+    async def test_lexical_fallback(
+        self, mock_pool, mock_embedding_service, search_config
+    ):
         """Test lexical-only fallback when embedding fails."""
         # Mock embedding failure
         mock_embedding_service.embed.side_effect = Exception("Embedding failed")
@@ -219,7 +227,9 @@ class TestHybridSearchEngine:
         assert isinstance(results, list)
 
     @pytest.mark.asyncio
-    async def test_index_document(self, mock_pool, mock_embedding_service, search_config):
+    async def test_index_document(
+        self, mock_pool, mock_embedding_service, search_config
+    ):
         """Test document indexing."""
         doc_id = uuid4()
 
@@ -234,7 +244,9 @@ class TestHybridSearchEngine:
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock(return_value="INSERT 1")
         mock_conn.transaction = MagicMock(return_value=AsyncMock())
-        mock_conn.transaction.return_value.__aenter__ = MagicMock(return_value=mock_conn)
+        mock_conn.transaction.return_value.__aenter__ = MagicMock(
+            return_value=mock_conn
+        )
         mock_conn.transaction.return_value.__aexit__ = MagicMock(return_value=None)
 
         mock_pool.acquire.return_value.__aenter__ = MagicMock(return_value=mock_conn)

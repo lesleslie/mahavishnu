@@ -94,7 +94,17 @@ def _write(
     with sqlite3.connect(db) as con:
         con.execute(
             _INSERT,
-            (inc_number, "2026-10-23T07:20:55", provider, model, status, latency, user_agent, vk, metadata),
+            (
+                inc_number,
+                "2026-10-23T07:20:55",
+                provider,
+                model,
+                status,
+                latency,
+                user_agent,
+                vk,
+                metadata,
+            ),
         )
 
 
@@ -129,7 +139,9 @@ def test_baseline_survives_null_inc_number(logs_db: Path) -> None:
     assert baseline == 2, "rowid must serve as the monotonic watermark"
 
 
-def test_baseline_is_zero_when_store_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_baseline_is_zero_when_store_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(verify, "LOGS_DB", tmp_path / "nope.db")
     assert verify.log_baseline() == 0
 
@@ -156,7 +168,9 @@ def test_new_qwen_row_after_baseline_satisfies_gate(logs_db: Path) -> None:
     baseline = verify.log_baseline()
 
     _write(logs_db, provider="openai", model="gpt-5.4")
-    assert verify.find_qwen_row(baseline, user_agent=QWEN_AGENT) is None, "unrelated model must not satisfy the gate"
+    assert verify.find_qwen_row(baseline, user_agent=QWEN_AGENT) is None, (
+        "unrelated model must not satisfy the gate"
+    )
 
     _write(logs_db)
     hit = verify.find_qwen_row(baseline, user_agent=QWEN_AGENT)
@@ -247,7 +261,9 @@ def test_qwen_route_matching_is_exact(model: str, expected: bool) -> None:
         ("", False),
     ],
 )
-def test_claude_code_traffic_never_matches_the_qwen_agent(agent: str, expected: bool) -> None:
+def test_claude_code_traffic_never_matches_the_qwen_agent(
+    agent: str, expected: bool
+) -> None:
     """The agent prefix is what separates Qwen from this operator's own CC session."""
     request = verify.RoutedRequest(
         rowid=1,
@@ -305,7 +321,9 @@ def test_virtual_key_name_matches_the_demo_shim() -> None:
 def test_dispatch_failure_is_reported(monkeypatch: pytest.MonkeyPatch, capsys) -> None:
     """req: REQ-BIFROST-034 -- a failed dispatch must fail the gate."""
     monkeypatch.setattr(
-        verify, "_run", lambda *_a, **_k: verify.subprocess.CompletedProcess([], 7, "", "boom")
+        verify,
+        "_run",
+        lambda *_a, **_k: verify.subprocess.CompletedProcess([], 7, "", "boom"),
     )
     assert verify.dispatch() == 7
     assert "exited 7" in capsys.readouterr().err
@@ -313,7 +331,9 @@ def test_dispatch_failure_is_reported(monkeypatch: pytest.MonkeyPatch, capsys) -
 
 def test_dispatch_success_returns_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        verify, "_run", lambda *_a, **_k: verify.subprocess.CompletedProcess([], 0, "ok", "")
+        verify,
+        "_run",
+        lambda *_a, **_k: verify.subprocess.CompletedProcess([], 0, "ok", ""),
     )
     assert verify.dispatch() == 0
 
@@ -356,20 +376,26 @@ def test_gate_fails_closed_when_qwen_version_is_unreadable(
     _write(logs_db)
     monkeypatch.setattr(verify, "check_preconditions", lambda: None)
     monkeypatch.setattr(
-        verify, "_run", lambda *_a, **_k: verify.subprocess.CompletedProcess([], 1, "", "")
+        verify,
+        "_run",
+        lambda *_a, **_k: verify.subprocess.CompletedProcess([], 1, "", ""),
     )
 
     assert verify.run_gate(timeout=1) == verify.EXIT_PRECONDITION
 
 
-def test_gate_reports_no_log_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_gate_reports_no_log_store(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A store that disappears mid-gate yields EXIT_NO_LOG, not a hang."""
     target = tmp_path / "logs.db"
     sqlite3.connect(target).close()
     monkeypatch.setattr(verify, "LOGS_DB", target)
     monkeypatch.setattr(verify, "check_preconditions", lambda: None)
     monkeypatch.setattr(
-        verify, "_run", lambda *_a, **_k: verify.subprocess.CompletedProcess([], 0, "ok", "")
+        verify,
+        "_run",
+        lambda *_a, **_k: verify.subprocess.CompletedProcess([], 0, "ok", ""),
     )
     target.unlink()
 

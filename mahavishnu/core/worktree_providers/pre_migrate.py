@@ -204,7 +204,9 @@ def handle_to_jsonl_dict(handle: WorktreeHandle) -> dict[str, Any]:
     # WorktreeRef is an abstract base; the concrete subclasses
     # (LocalWorktreeRef, RemoteWorktreeRef) are dataclasses, so the
     # cast is structural, not narrowing through an unknown type.
-    d["storage_ref"] = asdict(cast("LocalWorktreeRef | RemoteWorktreeRef", handle.storage_ref))
+    d["storage_ref"] = asdict(
+        cast("LocalWorktreeRef | RemoteWorktreeRef", handle.storage_ref)
+    )
     # Convert nested Path objects to strings for JSON serialization.
     if "path" in d["storage_ref"]:
         d["storage_ref"]["path"] = str(d["storage_ref"]["path"])

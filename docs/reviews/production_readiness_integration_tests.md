@@ -190,7 +190,8 @@ except ImportError:
     # If Agno is not available, return a mock agent
     class MockAgent:
         async def run(self, *args, **kwargs):
-            return type('MockResponse', (), {'content': 'Mock response for testing'})()
+            return type("MockResponse", (), {"content": "Mock response for testing"})()
+
     return MockAgent()
 ```
 
@@ -225,6 +226,7 @@ try:
     from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Document
     from llama_index.embeddings.ollama import OllamaEmbedding
     from llama_index.llms.ollama import Ollama
+
     # ... real imports
     LLAMAINDEX_AVAILABLE = True
 except ImportError:

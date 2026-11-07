@@ -527,7 +527,10 @@ class OutputFormatter:
             columns=[
                 TableColumn("ID", "id", width=12),
                 TableColumn(
-                    "Title", "title", width=40, format_fn=lambda x: self.truncate_text(str(x), 40)
+                    "Title",
+                    "title",
+                    width=40,
+                    format_fn=lambda x: self.truncate_text(str(x), 40),
                 ),
                 TableColumn("Status", "status", width=12),
                 TableColumn("Priority", "priority", width=8),

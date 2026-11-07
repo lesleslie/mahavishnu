@@ -31,7 +31,9 @@ mahavishnu_adapter_executions_total{server="mahavishnu",adapter="prefect",status
 mahavishnu_adapter_executions_total{server="mahavishnu",adapter="agno",status="timeout"} 2
 """
 
-    def fake_urlopen(url: str, timeout: float = 2.0):  # pragma: no cover - signature shim
+    def fake_urlopen(
+        url: str, timeout: float = 2.0
+    ):  # pragma: no cover - signature shim
         return _FakeResponse(payload)
 
     monkeypatch.setattr(urllib_request, "urlopen", fake_urlopen)
@@ -51,13 +53,17 @@ mahavishnu_adapter_executions_total{server="mahavishnu",adapter="agno",status="t
     assert "llamaindex" in metrics
 
 
-def test_load_engine_metrics_from_prometheus_falls_back_to_workflow_counter(monkeypatch):
+def test_load_engine_metrics_from_prometheus_falls_back_to_workflow_counter(
+    monkeypatch,
+):
     payload = """
 mahavishnu_workflows_total{adapter="llamaindex",task_type="rag_query",status="completed"} 5
 mahavishnu_workflows_total{adapter="llamaindex",task_type="rag_query",status="failed"} 2
 """
 
-    def fake_urlopen(url: str, timeout: float = 2.0):  # pragma: no cover - signature shim
+    def fake_urlopen(
+        url: str, timeout: float = 2.0
+    ):  # pragma: no cover - signature shim
         return _FakeResponse(payload)
 
     monkeypatch.setattr(urllib_request, "urlopen", fake_urlopen)

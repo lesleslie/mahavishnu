@@ -22,7 +22,9 @@ if TYPE_CHECKING:
 
 
 def test_workflow_pool_worker_terminal_preconditions_pass_with_mock() -> None:
-    from mahavishnu.cli.demo_cli import _check_workflow_pool_worker_terminal_preconditions
+    from mahavishnu.cli.demo_cli import (
+        _check_workflow_pool_worker_terminal_preconditions,
+    )
 
     failures = _check_workflow_pool_worker_terminal_preconditions(
         adapter="mock",
@@ -31,8 +33,12 @@ def test_workflow_pool_worker_terminal_preconditions_pass_with_mock() -> None:
     assert failures == []
 
 
-def test_workflow_pool_worker_terminal_preconditions_pass_with_tmux_when_present() -> None:
-    from mahavishnu.cli.demo_cli import _check_workflow_pool_worker_terminal_preconditions
+def test_workflow_pool_worker_terminal_preconditions_pass_with_tmux_when_present() -> (
+    None
+):
+    from mahavishnu.cli.demo_cli import (
+        _check_workflow_pool_worker_terminal_preconditions,
+    )
 
     failures = _check_workflow_pool_worker_terminal_preconditions(
         adapter="tmux",
@@ -43,7 +49,9 @@ def test_workflow_pool_worker_terminal_preconditions_pass_with_tmux_when_present
 
 
 def test_workflow_pool_worker_terminal_preconditions_fail_when_tmux_missing() -> None:
-    from mahavishnu.cli.demo_cli import _check_workflow_pool_worker_terminal_preconditions
+    from mahavishnu.cli.demo_cli import (
+        _check_workflow_pool_worker_terminal_preconditions,
+    )
 
     failures = _check_workflow_pool_worker_terminal_preconditions(
         adapter="tmux",
@@ -53,8 +61,12 @@ def test_workflow_pool_worker_terminal_preconditions_fail_when_tmux_missing() ->
     assert any("tmux" in f for f in failures)
 
 
-def test_workflow_pool_worker_terminal_preconditions_fail_when_adapter_unsupported() -> None:
-    from mahavishnu.cli.demo_cli import _check_workflow_pool_worker_terminal_preconditions
+def test_workflow_pool_worker_terminal_preconditions_fail_when_adapter_unsupported() -> (
+    None
+):
+    from mahavishnu.cli.demo_cli import (
+        _check_workflow_pool_worker_terminal_preconditions,
+    )
 
     failures = _check_workflow_pool_worker_terminal_preconditions(
         adapter="crow",
@@ -63,7 +75,9 @@ def test_workflow_pool_worker_terminal_preconditions_fail_when_adapter_unsupport
     assert any("unsupported" in f for f in failures)
 
 
-def test_workflow_pool_worker_terminal_preconditions_fail_when_shepherd_workspace_uninitialized() -> None:
+def test_workflow_pool_worker_terminal_preconditions_fail_when_shepherd_workspace_uninitialized() -> (
+    None
+):
     """Shepherd precondition fires when the workspace marker ``.vcscore`` is missing.
 
     The triple-composition demo uses ``MahavishnuPool`` (the only pool
@@ -74,7 +88,9 @@ def test_workflow_pool_worker_terminal_preconditions_fail_when_shepherd_workspac
     """
     from pathlib import Path
 
-    from mahavishnu.cli.demo_cli import _check_workflow_pool_worker_terminal_preconditions
+    from mahavishnu.cli.demo_cli import (
+        _check_workflow_pool_worker_terminal_preconditions,
+    )
 
     failures = _check_workflow_pool_worker_terminal_preconditions(
         adapter="mock",
@@ -106,7 +122,9 @@ def test_workflow_multi_pool_handoff_preconditions_pass_with_pi_pi() -> None:
     assert failures == []
 
 
-def test_workflow_multi_pool_handoff_preconditions_fail_when_source_pool_unsupported() -> None:
+def test_workflow_multi_pool_handoff_preconditions_fail_when_source_pool_unsupported() -> (
+    None
+):
     from mahavishnu.cli.demo_cli import _check_workflow_multi_pool_handoff_preconditions
 
     failures = _check_workflow_multi_pool_handoff_preconditions(
@@ -117,7 +135,9 @@ def test_workflow_multi_pool_handoff_preconditions_fail_when_source_pool_unsuppo
     assert any("not supported" in f for f in failures)
 
 
-def test_workflow_multi_pool_handoff_preconditions_fail_when_target_pool_unsupported() -> None:
+def test_workflow_multi_pool_handoff_preconditions_fail_when_target_pool_unsupported() -> (
+    None
+):
     from mahavishnu.cli.demo_cli import _check_workflow_multi_pool_handoff_preconditions
 
     failures = _check_workflow_multi_pool_handoff_preconditions(
@@ -128,7 +148,9 @@ def test_workflow_multi_pool_handoff_preconditions_fail_when_target_pool_unsuppo
     assert any("not supported" in f for f in failures)
 
 
-def test_workflow_multi_pool_handoff_preconditions_fail_when_mahavishnu_target_lacks_tmux() -> None:
+def test_workflow_multi_pool_handoff_preconditions_fail_when_mahavishnu_target_lacks_tmux() -> (
+    None
+):
     from mahavishnu.cli.demo_cli import _check_workflow_multi_pool_handoff_preconditions
 
     failures = _check_workflow_multi_pool_handoff_preconditions(
@@ -156,7 +178,9 @@ def test_workflow_adapter_swap_preconditions_pass_with_distinct_adapters() -> No
     assert failures == []
 
 
-def test_workflow_adapter_swap_preconditions_pass_with_mock_mock_and_explicit_check() -> None:
+def test_workflow_adapter_swap_preconditions_pass_with_mock_mock_and_explicit_check() -> (
+    None
+):
     """Same-name adapters are rejected — exercise the rejection path explicitly."""
     from mahavishnu.cli.demo_cli import _check_workflow_adapter_swap_preconditions
 
@@ -194,7 +218,9 @@ def test_workflow_adapter_swap_preconditions_fail_when_tmux_missing() -> None:
     assert any("tmux" in f for f in failures)
 
 
-def test_workflow_adapter_swap_preconditions_fail_when_shepherd_workspace_uninitialized() -> None:
+def test_workflow_adapter_swap_preconditions_fail_when_shepherd_workspace_uninitialized() -> (
+    None
+):
     """Both Shepherd workspace probes fire when the marker is missing.
 
     The swap demo runs the same task through two pools back-to-back
@@ -257,7 +283,9 @@ def test_workflow_adapter_swap_preconditions_surfaces_both_shepherd_failures() -
 def test_workflow_pi_cascade_preconditions_pass_with_npx_present() -> None:
     from mahavishnu.cli.demo_cli import _check_workflow_pi_cascade_preconditions
 
-    failures = _check_workflow_pi_cascade_preconditions(npx_which=lambda _: "/usr/bin/npx")
+    failures = _check_workflow_pi_cascade_preconditions(
+        npx_which=lambda _: "/usr/bin/npx"
+    )
     assert failures == []
 
 
@@ -274,7 +302,9 @@ def test_workflow_pi_cascade_preconditions_fail_when_npx_missing() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_workflow_pi_then_local_preconditions_pass_when_npx_and_shepherd_present() -> None:
+def test_workflow_pi_then_local_preconditions_pass_when_npx_and_shepherd_present() -> (
+    None
+):
     from mahavishnu.cli.demo_cli import _check_workflow_pi_then_local_preconditions
 
     failures = _check_workflow_pi_then_local_preconditions(
@@ -294,7 +324,9 @@ def test_workflow_pi_then_local_preconditions_fail_when_npx_missing() -> None:
     assert any("npx" in f for f in failures)
 
 
-def test_workflow_pi_then_local_preconditions_fail_when_shepherd_workspace_uninitialized() -> None:
+def test_workflow_pi_then_local_preconditions_fail_when_shepherd_workspace_uninitialized() -> (
+    None
+):
     """Shepherd precondition fires for the LOCAL pool (PiPool doesn't use Shepherd)."""
     from pathlib import Path
 

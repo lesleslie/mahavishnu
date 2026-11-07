@@ -320,7 +320,9 @@ class ExternalIssueImporter:
         # Check label filter
         if self._config.label_filter:
             if not any(label in issue.labels for label in self._config.label_filter):
-                logger.debug(f"Skipping issue without required labels: {issue.external_id}")
+                logger.debug(
+                    f"Skipping issue without required labels: {issue.external_id}"
+                )
                 return False
 
         return True

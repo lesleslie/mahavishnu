@@ -163,17 +163,20 @@ ______________________________________________________________________
 
 ```python
 """Create subscription tokens for Mahavishnu."""
+
 import os
 from mahavishnu.core.subscription_auth import MultiAuthHandler
 from mahavishnu.core.config import MahavishnuSettings
 
 # Configure
-os.environ['MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'] = 'your_32char_secret_key_here_minimum'
+os.environ["MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"] = (
+    "your_32char_secret_key_here_minimum"
+)
 
 config = MahavishnuSettings(
     subscription_auth_enabled=True,
-    subscription_auth_secret=os.environ.get('MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'),
-    subscription_auth_expire_minutes=480  # 8 hours
+    subscription_auth_secret=os.environ.get("MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"),
+    subscription_auth_expire_minutes=480,  # 8 hours
 )
 
 # Initialize auth handler
@@ -181,8 +184,7 @@ auth_handler = MultiAuthHandler(config)
 
 # Example 1: Create Claude Code subscription token
 claude_token = auth_handler.create_claude_subscription_token(
-    user_id="claude_user_123",
-    scopes=["read", "execute", "workflow_manage"]
+    user_id="claude_user_123", scopes=["read", "execute", "workflow_manage"]
 )
 
 print("=" * 80)
@@ -198,7 +200,7 @@ print()
 # Example 2: Create Codex subscription token
 codex_token = auth_handler.create_codex_subscription_token(
     user_id="codex_user_456",
-    scopes=["read", "execute"]  # No workflow_manage for Codex
+    scopes=["read", "execute"],  # No workflow_manage for Codex
 )
 
 print("=" * 80)
@@ -215,7 +217,7 @@ print()
 custom_token = auth_handler.subscription_auth.create_subscription_token(
     user_id="custom_user_789",
     subscription_type="custom_subscription",
-    scopes=["read", "execute", "workflow_manage", "admin"]
+    scopes=["read", "execute", "workflow_manage", "admin"],
 )
 
 print("=" * 80)
@@ -287,10 +289,11 @@ auth_header = request.headers.get("Authorization")
 if not auth_header or not auth_header.startswith("Bearer "):
     raise AuthenticationError("Missing or invalid Authorization header")
 
-token = auth_header[len("Bearer "):]
+token = auth_header[len("Bearer ") :]
 
 # Decode token (without verification first)
 import jwt
+
 try:
     payload = jwt.decode(token, options={"verify_signature": False})
 except jwt.exceptions.DecodeError:
@@ -327,7 +330,7 @@ async def verify_subscription_token(self, token: str) -> SubscriptionTokenData:
         if not user_id or not subscription_type:
             raise AuthenticationError(
                 "Invalid subscription token: missing required fields",
-                details={"error": "user_id or subscription_type not found"}
+                details={"error": "user_id or subscription_type not found"},
             )
 
         # Create token data
@@ -335,14 +338,14 @@ async def verify_subscription_token(self, token: str) -> SubscriptionTokenData:
             user_id=user_id,
             subscription_type=subscription_type,
             exp=payload.get("exp"),
-            scopes=payload.get("scopes", [])
+            scopes=payload.get("scopes", []),
         )
 
         # Check expiration
         if datetime.utcnow().timestamp() > token_data.exp:
             raise AuthenticationError(
                 "Subscription token has expired",
-                details={"error": "Expired token", "exp": token_data.exp}
+                details={"error": "Expired token", "exp": token_data.exp},
             )
 
         return token_data
@@ -350,17 +353,15 @@ async def verify_subscription_token(self, token: str) -> SubscriptionTokenData:
     except jwt.exceptions.InvalidSignatureError:
         raise AuthenticationError(
             "Invalid subscription token signature",
-            details={"error": "Invalid signature"}
+            details={"error": "Invalid signature"},
         )
     except jwt.exceptions.DecodeError:
         raise AuthenticationError(
-            "Could not decode subscription token",
-            details={"error": "Decode error"}
+            "Could not decode subscription token", details={"error": "Decode error"}
         )
     except Exception as e:
         raise AuthenticationError(
-            f"Subscription authentication error: {str(e)}",
-            details={"error": str(e)}
+            f"Subscription authentication error: {str(e)}", details={"error": str(e)}
         )
 ```
 
@@ -375,8 +376,8 @@ if required_scope not in auth_result.get("scopes", []):
         f"Insufficient permissions: {required_scope} scope required",
         details={
             "required_scope": required_scope,
-            "available_scopes": auth_result.get("scopes", [])
-        }
+            "available_scopes": auth_result.get("scopes", []),
+        },
     )
 ```
 
@@ -390,19 +391,20 @@ ______________________________________________________________________
 
 ```python
 """MCP tools with subscription authentication (CORRECTED)."""
+
 from fastmcp import FastMCP
 from mahavishnu.core.subscription_auth import MultiAuthHandler
 import structlog
 
 logger = structlog.get_logger(__name__)
 
+
 def register_workflow_tools(mcp: FastMCP, app) -> None:
     """Register workflow tools with subscription auth."""
 
     @mcp.tool()
     async def mahavishnu_list_repos(
-        tag: str | None = None,
-        auth_header: str | None = None
+        tag: str | None = None, auth_header: str | None = None
     ) -> list[dict]:
         """List repositories with subscription authentication.
 
@@ -423,7 +425,7 @@ def register_workflow_tools(mcp: FastMCP, app) -> None:
         elif not auth_header:
             raise AuthenticationError(
                 "Authentication required: Missing Authorization header",
-                details={"suggestion": "Provide valid subscription token"}
+                details={"suggestion": "Provide valid subscription token"},
             )
         else:
             # Verify subscription token
@@ -434,35 +436,27 @@ def register_workflow_tools(mcp: FastMCP, app) -> None:
             if "read" not in auth_result.get("scopes", []):
                 raise AuthorizationError(
                     "Insufficient permissions: 'read' scope required",
-                    details={"available_scopes": auth_result.get("scopes", [])}
+                    details={"available_scopes": auth_result.get("scopes", [])},
                 )
 
             logger.info(
                 "Client authenticated",
                 method=auth_result.get("method"),
                 user=auth_result.get("user"),
-                subscription_type=auth_result.get("subscription_type")
+                subscription_type=auth_result.get("subscription_type"),
             )
 
         # Proceed with repository listing
         repos = app.get_repos(tag=tag)
 
         return [
-            {
-                "id": repo.id,
-                "name": repo.name,
-                "path": repo.path,
-                "tags": repo.tags
-            }
+            {"id": repo.id, "name": repo.name, "path": repo.path, "tags": repo.tags}
             for repo in repos
         ]
 
     @mcp.tool()
     async def mahavishnu_workflow_sweep(
-        adapter: str,
-        repos: list[str],
-        task: dict,
-        auth_header: str | None = None
+        adapter: str, repos: list[str], task: dict, auth_header: str | None = None
     ) -> dict:
         """Execute workflow sweep with subscription authentication.
 
@@ -493,21 +487,19 @@ def register_workflow_tools(mcp: FastMCP, app) -> None:
                         f"Insufficient permissions: '{scope}' scope required",
                         details={
                             "required_scopes": required_scopes,
-                            "available_scopes": auth_result.get("scopes", [])
-                        }
+                            "available_scopes": auth_result.get("scopes", []),
+                        },
                     )
 
             logger.info(
                 "Workflow sweep authorized",
                 method=auth_result.get("method"),
-                user=auth_result.get("user")
+                user=auth_result.get("user"),
             )
 
         # Proceed with workflow execution
         result = await app.execute_workflow(
-            task=task,
-            adapter_name=adapter,
-            repos=repos
+            task=task, adapter_name=adapter, repos=repos
         )
 
         return result
@@ -519,15 +511,17 @@ def register_workflow_tools(mcp: FastMCP, app) -> None:
 
 ```python
 """Mahavishnu integration in Qwen sessions (NO AUTH REQUIRED)."""
+
 from mahavishnu.core import MahavishnuApp
 import asyncio
 import os
+
 
 async def main():
     """Use Mahavishnu in Qwen (free tier, no auth)."""
 
     # Set Qwen mode (bypasses subscription checks)
-    os.environ['MAHAVISHNU_QWEN_MODE'] = 'true'
+    os.environ["MAHAVISHNU_QWEN_MODE"] = "true"
 
     # Initialize Mahavishnu (no auth needed)
     app = MahavishnuApp()
@@ -541,16 +535,17 @@ async def main():
     result = await app.execute_workflow(
         task={
             "type": "code_sweep",
-            "description": "Analyze code quality across backend repos"
+            "description": "Analyze code quality across backend repos",
         },
         adapter_name="langgraph",
-        repos=[repo.path for repo in repos]
+        repos=[repo.path for repo in repos],
     )
 
     print(f"Workflow completed: {result}")
 
     # Clean up
     await app.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -611,13 +606,13 @@ subscription_auth_expire_minutes: 480
 # Good: Minimal scopes for read-only operation
 read_only_token = auth_handler.create_claude_subscription_token(
     user_id="reader_user",
-    scopes=["read"]  # Only read permission
+    scopes=["read"],  # Only read permission
 )
 
 # Good: Specific scopes for workflow management
 workflow_token = auth_handler.create_claude_subscription_token(
     user_id="workflow_manager",
-    scopes=["read", "execute", "workflow_manage"]  # All needed scopes
+    scopes=["read", "execute", "workflow_manage"],  # All needed scopes
 )
 ```
 
@@ -627,7 +622,7 @@ workflow_token = auth_handler.create_claude_subscription_token(
 # DON'T DO THIS: Over-privileged token
 admin_token = auth_handler.create_claude_subscription_token(
     user_id="regular_user",
-    scopes=["read", "execute", "workflow_manage", "admin"]  # ❌ Admin not needed!
+    scopes=["read", "execute", "workflow_manage", "admin"],  # ❌ Admin not needed!
 )
 ```
 
@@ -647,15 +642,14 @@ async def rotate_token(user_id: str, old_token: str) -> str:
 
     # Create new token
     new_token = auth_handler.create_claude_subscription_token(
-        user_id=user_id,
-        scopes=old_data.get("scopes", ["read", "execute"])
+        user_id=user_id, scopes=old_data.get("scopes", ["read", "execute"])
     )
 
     logger.info(
         "Token rotated",
         user_id=user_id,
         old_token_exp=old_data.get("exp"),
-        new_token_exp=get_token_exp(new_token)
+        new_token_exp=get_token_exp(new_token),
     )
 
     return new_token
@@ -700,9 +694,7 @@ class TokenRevocationList:
 
 ```python
 async def authenticate_and_log(
-    auth_handler: MultiAuthHandler,
-    token: str,
-    request_metadata: dict
+    auth_handler: MultiAuthHandler, token: str, request_metadata: dict
 ) -> dict:
     """Authenticate with comprehensive audit logging."""
 
@@ -718,7 +710,7 @@ async def authenticate_and_log(
         scopes=auth_result.get("scopes"),
         client_ip=request_metadata.get("client_ip"),
         user_agent=request_metadata.get("user_agent"),
-        timestamp=datetime.utcnow().isoformat()
+        timestamp=datetime.utcnow().isoformat(),
     )
 
     # Store authentication event in database
@@ -728,7 +720,7 @@ async def authenticate_and_log(
         subscription_type=auth_result.get("subscription_type"),
         scopes=auth_result.get("scopes"),
         client_ip=request_metadata.get("client_ip"),
-        success=True
+        success=True,
     )
 
     return auth_result
@@ -768,8 +760,7 @@ print(f"Current time: {datetime.utcnow()}")
 
 ```python
 new_token = auth_handler.create_claude_subscription_token(
-    user_id="claude_user_123",
-    scopes=["read", "execute"]
+    user_id="claude_user_123", scopes=["read", "execute"]
 )
 ```
 
@@ -802,7 +793,7 @@ print(f"Available scopes: {result['scopes']}")
 ```python
 new_token = auth_handler.create_claude_subscription_token(
     user_id="claude_user_123",
-    scopes=["read", "execute", "workflow_manage"]  # Add workflow_manage
+    scopes=["read", "execute", "workflow_manage"],  # Add workflow_manage
 )
 ```
 
@@ -829,12 +820,11 @@ echo $MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET
 
 ```python
 # Ensure secret is set correctly
-os.environ['MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET'] = 'your_32char_secret_key_minimum'
+os.environ["MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET"] = "your_32char_secret_key_minimum"
 
 # Create new token
 token = auth_handler.create_claude_subscription_token(
-    user_id="claude_user_123",
-    scopes=["read", "execute"]
+    user_id="claude_user_123", scopes=["read", "execute"]
 )
 ```
 
@@ -857,8 +847,7 @@ jwt_token = jwt_auth.create_access_token({"sub": "user"})
 
 # CORRECT: Subscription token
 subscription_token = auth_handler.create_claude_subscription_token(
-    user_id="claude_user_123",
-    scopes=["read", "execute"]
+    user_id="claude_user_123", scopes=["read", "execute"]
 )
 ```
 

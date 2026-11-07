@@ -36,7 +36,10 @@ def categorize_agents(agents_dir: Path) -> dict[str, list[str]]:
             "description": "Advanced programming language specialists",
             "agents": [],
         },
-        "database-specialists": {"description": "Database and storage specialists", "agents": []},
+        "database-specialists": {
+            "description": "Database and storage specialists",
+            "agents": [],
+        },
         "frontend-specialists": {
             "description": "Frontend development and design specialists",
             "agents": [],
@@ -49,7 +52,10 @@ def categorize_agents(agents_dir: Path) -> dict[str, list[str]]:
             "description": "DevOps, deployment, and infrastructure specialists",
             "agents": [],
         },
-        "ai-ml-specialists": {"description": "AI, ML, and data science specialists", "agents": []},
+        "ai-ml-specialists": {
+            "description": "AI, ML, and data science specialists",
+            "agents": [],
+        },
         "security-testing": {
             "description": "Security, testing, and quality assurance specialists",
             "agents": [],
@@ -115,57 +121,105 @@ def categorize_agents(agents_dir: Path) -> dict[str, list[str]]:
             categories["project-frameworks"]["agents"].append(name)
         # Programming languages (advanced)
         elif any(
-            lang in tags for lang in ["go", "rust", "java", "cpp", "c", "c++", "flutter", "systems"]
+            lang in tags
+            for lang in ["go", "rust", "java", "cpp", "c", "c++", "flutter", "systems"]
         ):
             categories["programming-languages-advanced"]["agents"].append(name)
         # Databases
         elif any(
             db in tags
-            for db in ["database", "sql", "nosql", "redis", "postgresql", "mysql", "sqlite"]
+            for db in [
+                "database",
+                "sql",
+                "nosql",
+                "redis",
+                "postgresql",
+                "mysql",
+                "sqlite",
+            ]
         ):
             categories["database-specialists"]["agents"].append(name)
         # Data engineering (separate from general databases)
         elif any(
             data in tags
-            for data in ["data-science", "data-pipelines", "etl", "analytics", "experimentation"]
+            for data in [
+                "data-science",
+                "data-pipelines",
+                "etl",
+                "analytics",
+                "experimentation",
+            ]
         ):
             categories["ai-ml-specialists"]["agents"].append(name)
         # Frontend
         elif any(
             fe in tags
-            for fe in ["frontend", "css", "html", "ui", "ux", "accessibility", "responsive"]
+            for fe in [
+                "frontend",
+                "css",
+                "html",
+                "ui",
+                "ux",
+                "accessibility",
+                "responsive",
+            ]
         ):
             categories["frontend-specialists"]["agents"].append(name)
         # Backend
         elif any(
             be in tags
-            for be in ["backend", "api", "graphql", "grpc", "websocket", "authentication"]
+            for be in [
+                "backend",
+                "api",
+                "graphql",
+                "grpc",
+                "websocket",
+                "authentication",
+            ]
         ):
             categories["backend-specialists"]["agents"].append(name)
         # DevOps
         elif any(
             ops in tags
-            for ops in ["devops", "docker", "kubernetes", "terraform", "deployment", "cloud"]
+            for ops in [
+                "devops",
+                "docker",
+                "kubernetes",
+                "terraform",
+                "deployment",
+                "cloud",
+            ]
         ) or any(
             inc in tags
-            for inc in ["incidents", "oncall", "operations", "observability", "incident-response"]
+            for inc in [
+                "incidents",
+                "oncall",
+                "operations",
+                "observability",
+                "incident-response",
+            ]
         ):
             categories["devops-infrastructure"]["agents"].append(name)
         # AI/ML
         elif any(
-            ai in tags for ai in ["ai", "ml", "machine-learning", "mlops", "gemini", "vector"]
+            ai in tags
+            for ai in ["ai", "ml", "machine-learning", "mlops", "gemini", "vector"]
         ):
             categories["ai-ml-specialists"]["agents"].append(name)
         # Security/Testing/Compliance
         elif any(
-            sec in tags for sec in ["security", "testing", "qa", "audit", "compliance", "privacy"]
+            sec in tags
+            for sec in ["security", "testing", "qa", "audit", "compliance", "privacy"]
         ):
             categories["security-testing"]["agents"].append(name)
         # Mobile
         elif "mobile" in tags or "android" in tags or "ios" in tags:
             categories["frontend-specialists"]["agents"].append(name)
         # Templates/Tooling specialists
-        elif any(tool in tags for tool in ["jinja2", "templates", "pycharm", "plugins", "tooling"]):
+        elif any(
+            tool in tags
+            for tool in ["jinja2", "templates", "pycharm", "plugins", "tooling"]
+        ):
             categories["devops-infrastructure"]["agents"].append(name)
         # Documentation/Reference
         elif "reference" in tags or "documentation" in tags:
@@ -174,7 +228,9 @@ def categorize_agents(agents_dir: Path) -> dict[str, list[str]]:
         elif "mcp" in tags or "integration" in tags:
             categories["project-frameworks"]["agents"].append(name)
         # Customer/Support specialists
-        elif any(cs in tags for cs in ["customer-success", "support", "customer-experience"]):
+        elif any(
+            cs in tags for cs in ["customer-success", "support", "customer-experience"]
+        ):
             categories["leadership-management"]["agents"].append(name)
         else:
             # Truly uncategorized
@@ -201,7 +257,9 @@ def main():
     print(f"\n  Total: {total} agents\n")
 
     # Write categorization to file
-    output_file = Path("/Users/les/.claude/scripts/marketplace/agent-categorization.json")
+    output_file = Path(
+        "/Users/les/.claude/scripts/marketplace/agent-categorization.json"
+    )
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_file, "w") as f:

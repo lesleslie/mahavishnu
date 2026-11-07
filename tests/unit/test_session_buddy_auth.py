@@ -38,13 +38,17 @@ def cross_project_auth() -> CrossProjectAuth:
 
 
 @pytest.fixture
-def message_authenticator(config_with_secret: MahavishnuSettings) -> MessageAuthenticator:
+def message_authenticator(
+    config_with_secret: MahavishnuSettings,
+) -> MessageAuthenticator:
     """Return a ready-to-use MessageAuthenticator."""
     return MessageAuthenticator(config_with_secret)
 
 
 @pytest.fixture
-def authenticated_client(config_with_secret: MahavishnuSettings) -> AuthenticatedSessionBuddyClient:
+def authenticated_client(
+    config_with_secret: MahavishnuSettings,
+) -> AuthenticatedSessionBuddyClient:
     """Return a ready-to-use AuthenticatedSessionBuddyClient."""
     return AuthenticatedSessionBuddyClient(config_with_secret)
 
@@ -87,11 +91,15 @@ class TestSignMessage:
         sig_b = cross_project_auth.sign_message({"b": 2})
         assert sig_a != sig_b
 
-    def test_sort_keys_normalization(self, cross_project_auth: CrossProjectAuth) -> None:
+    def test_sort_keys_normalization(
+        self, cross_project_auth: CrossProjectAuth
+    ) -> None:
         """Signatures should be the same regardless of insertion order."""
         msg1 = {"z": 1, "a": 2}
         msg2 = {"a": 2, "z": 1}
-        assert cross_project_auth.sign_message(msg1) == cross_project_auth.sign_message(msg2)
+        assert cross_project_auth.sign_message(msg1) == cross_project_auth.sign_message(
+            msg2
+        )
 
     def test_matches_manual_hmac(self, cross_project_auth: CrossProjectAuth) -> None:
         msg = {"action": "test", "value": 123}
@@ -125,7 +133,9 @@ class TestVerifyMessage:
         msg = {"from": "mahavishnu", "content": "hello"}
         assert cross_project_auth.verify_message(msg, "bad_signature_value") is False
 
-    def test_tampered_message_rejected(self, cross_project_auth: CrossProjectAuth) -> None:
+    def test_tampered_message_rejected(
+        self, cross_project_auth: CrossProjectAuth
+    ) -> None:
         msg = {"from": "mahavishnu", "content": "hello"}
         sig = cross_project_auth.sign_message(msg)
         tampered = {"from": "mahavishnu", "content": "goodbye"}
@@ -272,7 +282,9 @@ class TestCreateAuthenticatedMessage:
         assert payload["from_project"] == "mahavishnu"
         assert payload["to_project"] == "session_buddy"
 
-    def test_message_contains_content(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_message_contains_content(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         content = {"action": "sweep", "repos": ["a", "b"]}
         result = message_authenticator.create_authenticated_message(
             from_project="mahavishnu",
@@ -281,7 +293,9 @@ class TestCreateAuthenticatedMessage:
         )
         assert result["message"]["content"] == content
 
-    def test_message_contains_timestamp(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_message_contains_timestamp(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         result = message_authenticator.create_authenticated_message(
             from_project="mahavishnu",
             to_project="session_buddy",
@@ -292,7 +306,9 @@ class TestCreateAuthenticatedMessage:
         ts = result["message"]["timestamp"]
         datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
-    def test_algorithm_is_hmac_sha256(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_algorithm_is_hmac_sha256(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         result = message_authenticator.create_authenticated_message(
             from_project="mahavishnu",
             to_project="session_buddy",
@@ -300,7 +316,9 @@ class TestCreateAuthenticatedMessage:
         )
         assert result["algorithm"] == "HMAC-SHA256"
 
-    def test_signature_is_hex_sha256(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_signature_is_hex_sha256(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         result = message_authenticator.create_authenticated_message(
             from_project="mahavishnu",
             to_project="session_buddy",
@@ -373,7 +391,9 @@ class TestVerifyAuthenticatedMessage:
         assert is_valid is False
         assert payload is None
 
-    def test_bad_signature_returns_false(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_bad_signature_returns_false(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         auth_msg = message_authenticator.create_authenticated_message(
             from_project="mahavishnu",
             to_project="session_buddy",
@@ -447,7 +467,9 @@ class TestVerifyAuthenticatedMessage:
         assert is_valid is True
         assert payload is not None
 
-    def test_recent_timestamp_accepted(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_recent_timestamp_accepted(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         auth_msg = message_authenticator.create_authenticated_message(
             from_project="mahavishnu",
             to_project="session_buddy",
@@ -456,7 +478,9 @@ class TestVerifyAuthenticatedMessage:
         is_valid, payload = message_authenticator.verify_authenticated_message(auth_msg)
         assert is_valid is True
 
-    def test_old_timestamp_rejected(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_old_timestamp_rejected(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         auth_msg = message_authenticator.create_authenticated_message(
             from_project="mahavishnu",
             to_project="session_buddy",
@@ -502,7 +526,9 @@ class TestVerifyAuthenticatedMessage:
         assert is_valid is False
         assert payload is None
 
-    def test_invalid_timestamp_rejected(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_invalid_timestamp_rejected(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         auth_msg = message_authenticator.create_authenticated_message(
             from_project="mahavishnu",
             to_project="session_buddy",
@@ -513,7 +539,9 @@ class TestVerifyAuthenticatedMessage:
         assert is_valid is False
         assert payload is None
 
-    def test_timestamp_with_z_suffix(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_timestamp_with_z_suffix(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         auth_msg = message_authenticator.create_authenticated_message(
             from_project="mahavishnu",
             to_project="session_buddy",
@@ -531,7 +559,9 @@ class TestVerifyAuthenticatedMessage:
         # so it returns (False, None) via the exception handler
         assert is_valid is False
 
-    def test_missing_timestamp_accepted(self, message_authenticator: MessageAuthenticator) -> None:
+    def test_missing_timestamp_accepted(
+        self, message_authenticator: MessageAuthenticator
+    ) -> None:
         """A message without a timestamp should still be valid (no replay check)."""
         payload_msg = {
             "from_project": "mahavishnu",
@@ -598,7 +628,9 @@ class TestIsCrossProjectAuthEnabled:
 class TestAuthenticatedSessionBuddyClientInit:
     """Tests for AuthenticatedSessionBuddyClient.__init__."""
 
-    def test_stores_config(self, authenticated_client: AuthenticatedSessionBuddyClient) -> None:
+    def test_stores_config(
+        self, authenticated_client: AuthenticatedSessionBuddyClient
+    ) -> None:
         assert authenticated_client.config.cross_project_auth_secret == VALID_SECRET
 
     def test_creates_message_authenticator(
@@ -606,7 +638,9 @@ class TestAuthenticatedSessionBuddyClientInit:
     ) -> None:
         assert isinstance(authenticated_client.authenticator, MessageAuthenticator)
 
-    def test_has_logger(self, authenticated_client: AuthenticatedSessionBuddyClient) -> None:
+    def test_has_logger(
+        self, authenticated_client: AuthenticatedSessionBuddyClient
+    ) -> None:
         assert authenticated_client.logger is not None
 
     def test_propagates_config_error(self) -> None:
@@ -855,8 +889,10 @@ class TestReceiveAuthenticatedMessage:
         old_ts = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
         auth_msg["message"]["timestamp"] = old_ts
         # Re-sign with the old timestamp
-        auth_msg["signature"] = authenticated_client.authenticator.authenticator.sign_message(
-            auth_msg["message"]
+        auth_msg["signature"] = (
+            authenticated_client.authenticator.authenticator.sign_message(
+                auth_msg["message"]
+            )
         )
         result = await authenticated_client.receive_authenticated_message(auth_msg)
         assert result["status"] == "invalid"
@@ -1004,8 +1040,12 @@ class TestRoundTrip:
 
     def test_different_secrets_cannot_verify_each_others_messages(self) -> None:
         """Messages signed with one secret cannot be verified with another."""
-        config_a = MahavishnuSettings(cross_project_auth_secret="secret_alpha_32chars_minimum_ok!!")
-        config_b = MahavishnuSettings(cross_project_auth_secret="secret_beta_32chars_minimum_ok!!!")
+        config_a = MahavishnuSettings(
+            cross_project_auth_secret="secret_alpha_32chars_minimum_ok!!"
+        )
+        config_b = MahavishnuSettings(
+            cross_project_auth_secret="secret_beta_32chars_minimum_ok!!!"
+        )
 
         auth_a = MessageAuthenticator(config_a)
         auth_b = MessageAuthenticator(config_b)

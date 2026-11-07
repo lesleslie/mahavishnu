@@ -71,13 +71,23 @@ def test_tool_version_registry_includes_contract_tools() -> None:
     """Tool versions should be published for the contract tools."""
     versions = collect_tool_versions()
 
-    for name in ("get_tool_versions", "mcp_list_tools", "mcp_test_connection", "mcp_get_metrics"):
+    for name in (
+        "get_tool_versions",
+        "mcp_list_tools",
+        "mcp_test_connection",
+        "mcp_get_metrics",
+    ):
         assert versions[name]
 
 
 def test_adapter_contracts_are_concrete_and_complete() -> None:
     """Concrete adapters should fully satisfy the lifecycle contract."""
-    adapters = [PrefectAdapter, AgnoAdapter, LlamaIndexAdapter, WorkerOrchestratorAdapter]
+    adapters = [
+        PrefectAdapter,
+        AgnoAdapter,
+        LlamaIndexAdapter,
+        WorkerOrchestratorAdapter,
+    ]
 
     for adapter_cls in adapters:
         assert is_concrete_adapter_contract(adapter_cls)

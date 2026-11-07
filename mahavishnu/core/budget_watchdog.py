@@ -489,7 +489,9 @@ async def run_watchdog_cycle(
 
         if not acquired:
             metrics.lease_lost += 1
-            logger.debug("budget.watchdog: lease held by another replica; skipping cycle")
+            logger.debug(
+                "budget.watchdog: lease held by another replica; skipping cycle"
+            )
             return WatchdogCycleResult(
                 lease_acquired=False,
                 records_scanned=0,
@@ -551,7 +553,9 @@ async def _acquire_lease_or_failopen(
     caller surfaces ``mcp_unavailable=True`` on the cycle result.
     """
     try:
-        acquired = await store.try_acquire_lease(lease_key, holder, ttl_seconds=lease_ttl_seconds)
+        acquired = await store.try_acquire_lease(
+            lease_key, holder, ttl_seconds=lease_ttl_seconds
+        )
     except (
         Exception  # noqa: BLE001  # background task — broad catch is the documented contract
     ) as exc:
@@ -648,7 +652,9 @@ async def _process_one_budget_record(
     except (
         Exception  # noqa: BLE001  # background task — broad catch is the documented contract
     ) as exc:
-        logger.warning("budget.usage_source failed for %s: %s", sm.record.workflow_id, exc)
+        logger.warning(
+            "budget.usage_source failed for %s: %s", sm.record.workflow_id, exc
+        )
         return False
     if usage is None:
         # Worker hasn't reported yet — skip this cycle.
@@ -666,7 +672,9 @@ async def _process_one_budget_record(
     except (
         Exception  # noqa: BLE001  # background task — broad catch is the documented contract
     ) as exc:
-        logger.warning("budget.mcp_unavailable persisting %s: %s", sm.record.workflow_id, exc)
+        logger.warning(
+            "budget.mcp_unavailable persisting %s: %s", sm.record.workflow_id, exc
+        )
     return dimension is not None
 
 
@@ -773,7 +781,9 @@ async def run_watchdog(
             except asyncio.CancelledError:
                 # Re-raise immediately — shutdown signal wins.
                 raise
-            except Exception:  # background task — broad catch is the documented contract
+            except (
+                Exception
+            ):  # background task — broad catch is the documented contract
                 logger.exception("budget.watchdog.unhandled")
             metrics.last_cycle_duration_ms = (
                 datetime.now(UTC) - cycle_start
@@ -832,7 +842,9 @@ class InMemoryBudgetStore:
             value = {
                 **value,
                 "ttl_seconds": ttl_seconds,
-                "expires_at": (self._now() + timedelta(seconds=ttl_seconds)).isoformat(),
+                "expires_at": (
+                    self._now() + timedelta(seconds=ttl_seconds)
+                ).isoformat(),
             }
         self._records[key] = value
         return value
@@ -869,7 +881,9 @@ class InMemoryBudgetStore:
             self._leases[lease_key] = {
                 "holder": holder,
                 "acquired_at": self._now().isoformat(),
-                "expires_at": (self._now() + timedelta(seconds=ttl_seconds)).isoformat(),
+                "expires_at": (
+                    self._now() + timedelta(seconds=ttl_seconds)
+                ).isoformat(),
             }
             return True
 
@@ -888,7 +902,9 @@ class InMemoryBudgetStore:
 
     def seed_record(self, record: BudgetRecord) -> None:
         """Place a record under the documented key shape."""
-        self._records[f"mahavishni://budgets/{record.workflow_id}.json"] = record.to_dict()
+        self._records[f"mahavishni://budgets/{record.workflow_id}.json"] = (
+            record.to_dict()
+        )
 
     @property
     def leases(self) -> dict[str, dict[str, Any]]:

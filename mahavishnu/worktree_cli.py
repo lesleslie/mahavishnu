@@ -236,7 +236,9 @@ def safety_status(
         typer.echo(
             f"   Is valid worktree: {'✅ Yes' if status.get('is_valid_worktree') else '❌ No'}"
         )
-        typer.echo(f"   Path is safe: {'✅ Yes' if status.get('path_safe') else '❌ No'}")
+        typer.echo(
+            f"   Path is safe: {'✅ Yes' if status.get('path_safe') else '❌ No'}"
+        )
 
         dependencies = status.get("dependencies", [])
         if dependencies:
@@ -300,21 +302,30 @@ def _configured_repos(repo_manager):
 @worktree_app.command("prune-merged")
 def prune_merged_worktrees(
     repo: str | None = typer.Option(
-        None, "--repo", "-r", help="Limit to one repo nickname (default: all configured repos)"
+        None,
+        "--repo",
+        "-r",
+        help="Limit to one repo nickname (default: all configured repos)",
     ),
     ttl_days: int = typer.Option(
         0, "--ttl-days", min=0, help="Only consider worktrees last touched > N days ago"
     ),
     include_dirty: bool = typer.Option(
-        False, "--include-dirty", help="Also remove merged worktrees with working-tree noise"
+        False,
+        "--include-dirty",
+        help="Also remove merged worktrees with working-tree noise",
     ),
     force_reason: str | None = typer.Option(
-        None, "--force-reason", help="Required when --include-dirty is set; logged to audit trail"
+        None,
+        "--force-reason",
+        help="Required when --include-dirty is set; logged to audit trail",
     ),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="List candidates without removing anything"
     ),
-    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON"),
+    json_output: bool = typer.Option(
+        False, "--json", help="Emit machine-readable JSON"
+    ),
     trigger: str = typer.Option("cli", "--trigger", hidden=True),
 ) -> None:
     """Prune worktrees whose branch is fully merged into main."""
@@ -355,7 +366,9 @@ def prune_merged_worktrees(
         candidates = []
         for repo_info in repos:
             if not getattr(repo_info, "nickname", None):
-                typer.echo(f"Repo has no canonical nickname: {repo_info.name}", err=True)
+                typer.echo(
+                    f"Repo has no canonical nickname: {repo_info.name}", err=True
+                )
                 raise typer.Exit(code=1)
             try:
                 found = find_merged_worktrees(
@@ -461,7 +474,9 @@ def prune_stale_metadata(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="List candidates without removing anything"
     ),
-    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON"),
+    json_output: bool = typer.Option(
+        False, "--json", help="Emit machine-readable JSON"
+    ),
 ):
     """Remove worktree metadata whose working tree is missing on disk.
 
@@ -525,7 +540,9 @@ def prune_stale_metadata(
                     {
                         "dry_run": dry_run,
                         "results": all_results,
-                        "total_removed": sum(r.get("removed_count", 0) for r in all_results),
+                        "total_removed": sum(
+                            r.get("removed_count", 0) for r in all_results
+                        ),
                     },
                     indent=2,
                 )
@@ -615,7 +632,9 @@ def list_sessions(
         return
 
     if not entries:
-        typer.echo(f"No sessions found (state={state}, older_than_days={older_than_days})")
+        typer.echo(
+            f"No sessions found (state={state}, older_than_days={older_than_days})"
+        )
         return
 
     typer.echo(f"📋 Sessions ({len(entries)}):")
@@ -723,7 +742,9 @@ def prune_abandoned(
 
 @worktree_app.command("scan")
 def scan_worktrees_cli(
-    repo: str = typer.Option("ALL", "--repo", help="ALL or path to a single repo to scan"),
+    repo: str = typer.Option(
+        "ALL", "--repo", help="ALL or path to a single repo to scan"
+    ),
     output_format: str = typer.Option(
         "text",
         "--format",

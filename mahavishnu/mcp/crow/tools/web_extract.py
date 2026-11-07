@@ -90,7 +90,9 @@ def _selectolax_extract(html: str, selector: str) -> str:
     return "\n\n".join(chunk for chunk in chunks if chunk)
 
 
-def _find_near_duplicates(paragraphs: list[str], threshold: float = 85.0) -> list[tuple[int, int]]:
+def _find_near_duplicates(
+    paragraphs: list[str], threshold: float = 85.0
+) -> list[tuple[int, int]]:
     """Find near-duplicate paragraph pairs using rapidfuzz.
 
     For each paragraph, compare against all others via ``fuzz.ratio``;
@@ -285,7 +287,11 @@ async def web_extract_batch(
     max_concurrent: int | None = None,
 ) -> list[ExtractResult]:
     """Fetch and extract multiple URLs concurrently."""
-    concurrency = max_concurrent if max_concurrent is not None else settings.max_concurrent_fetches
+    concurrency = (
+        max_concurrent
+        if max_concurrent is not None
+        else settings.max_concurrent_fetches
+    )
     sem = asyncio.Semaphore(concurrency)
 
     async def extract_one(u: str) -> ExtractResult:

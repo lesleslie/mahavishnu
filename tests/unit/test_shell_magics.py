@@ -29,9 +29,17 @@ def app():
     app = MagicMock()
     app.get_all_repos = MagicMock(
         return_value=[
-            {"path": "/tmp/repo1", "tags": ["python", "backend"], "description": "Repo 1"},
+            {
+                "path": "/tmp/repo1",
+                "tags": ["python", "backend"],
+                "description": "Repo 1",
+            },
             {"path": "/tmp/repo2", "tags": ["go", "backend"], "description": "Repo 2"},
-            {"path": "/tmp/repo3", "tags": ["python", "frontend"], "description": "Repo 3"},
+            {
+                "path": "/tmp/repo3",
+                "tags": ["python", "frontend"],
+                "description": "Repo 3",
+            },
         ]
     )
     return app
@@ -78,7 +86,9 @@ class TestMahavishnuMagicsInit:
 
     def test_init_calls_super(self, mock_shell):
         """Test that __init__ passes shell to parent class."""
-        with patch("mahavishnu.shell.magics.Magics.__init__", return_value=None) as mock_super:
+        with patch(
+            "mahavishnu.shell.magics.Magics.__init__", return_value=None
+        ) as mock_super:
             MahavishnuMagics(mock_shell)
             mock_super.assert_called_once_with(mock_shell)
 
@@ -222,14 +232,20 @@ class TestWorkflowMagic:
 
         with patch("mahavishnu.shell.magics.asyncio.run", return_value=workflow):
             magics.workflow("wf-1")
-        magics.workflow_formatter.format_workflow_detail.assert_called_once_with(workflow)
+        magics.workflow_formatter.format_workflow_detail.assert_called_once_with(
+            workflow
+        )
 
     def test_workflow_exception(self, magics, app, capsys):
         """Test that workflow prints error message on exception."""
         magics.set_app(app)
-        app.workflow_state_manager = _make_workflow_state_manager(exception=RuntimeError("boom"))
+        app.workflow_state_manager = _make_workflow_state_manager(
+            exception=RuntimeError("boom")
+        )
 
-        with patch("mahavishnu.shell.magics.asyncio.run", side_effect=RuntimeError("boom")):
+        with patch(
+            "mahavishnu.shell.magics.asyncio.run", side_effect=RuntimeError("boom")
+        ):
             magics.workflow("wf-1")
         captured = capsys.readouterr()
         assert "Error fetching workflow: boom" in captured.out
@@ -237,9 +253,13 @@ class TestWorkflowMagic:
     def test_workflow_strips_id(self, magics, app):
         """Test that workflow strips whitespace from the id argument."""
         magics.set_app(app)
-        app.workflow_state_manager = _make_workflow_state_manager(workflow={"id": "wf-1"})
+        app.workflow_state_manager = _make_workflow_state_manager(
+            workflow={"id": "wf-1"}
+        )
 
-        with patch("mahavishnu.shell.magics.asyncio.run", return_value={"id": "wf-1"}) as mock_run:
+        with patch(
+            "mahavishnu.shell.magics.asyncio.run", return_value={"id": "wf-1"}
+        ) as mock_run:
             magics.workflow("  wf-1  ")
             mock_run.assert_called_once()
             coroutine = mock_run.call_args[0][0]
@@ -261,4 +281,6 @@ class TestMagicRegistration:
 
     def test_magics_class_decorator(self):
         """Test that MahavishnuMagics is decorated with magics_class."""
-        assert hasattr(MahavishnuMagics, "__wrapped__") or issubclass(MahavishnuMagics, object)
+        assert hasattr(MahavishnuMagics, "__wrapped__") or issubclass(
+            MahavishnuMagics, object
+        )

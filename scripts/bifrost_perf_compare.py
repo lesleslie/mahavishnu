@@ -133,7 +133,9 @@ class RunMetrics:
     error: str | None = None
 
 
-def measure(base_url: str, api_key: str, model: str, prompt: str, timeout: float) -> RunMetrics:
+def measure(
+    base_url: str, api_key: str, model: str, prompt: str, timeout: float
+) -> RunMetrics:
     """Issue one streaming chat completion; capture timing + token estimate.
 
     Returns RunMetrics with ``error`` set on transport failure. Token
@@ -232,10 +234,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="A/B perf comparison across two upstream bases (Bifrost vs direct).",
     )
-    parser.add_argument("--label-a", default="a", help="Label for endpoint A (e.g. 'direct')")
+    parser.add_argument(
+        "--label-a", default="a", help="Label for endpoint A (e.g. 'direct')"
+    )
     parser.add_argument("--base-a", required=True, help="Base URL for endpoint A")
-    parser.add_argument("--label-b", default="b", help="Label for endpoint B (e.g. 'bifrost')")
-    parser.add_argument("--base-b", help="Base URL for endpoint B (omit for single-endpoint mode)")
+    parser.add_argument(
+        "--label-b", default="b", help="Label for endpoint B (e.g. 'bifrost')"
+    )
+    parser.add_argument(
+        "--base-b", help="Base URL for endpoint B (omit for single-endpoint mode)"
+    )
     parser.add_argument(
         "--api-key",
         default=os.environ.get("MINIMAX_API_KEY"),
@@ -258,7 +266,10 @@ def main() -> int:
         print("error: --api-key or $MINIMAX_API_KEY required", file=sys.stderr)
         return 2
     if not args.base_b:
-        print("hint: pass --base-b for an A/B run; single-endpoint mode otherwise", file=sys.stderr)
+        print(
+            "hint: pass --base-b for an A/B run; single-endpoint mode otherwise",
+            file=sys.stderr,
+        )
 
     bases: list[tuple[str, str]] = [(args.label_a, args.base_a)]
     if args.base_b:

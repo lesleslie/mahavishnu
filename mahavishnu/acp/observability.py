@@ -33,7 +33,11 @@ logger = logging.getLogger("mahavishnu.acp.observability")
 _OTEL_IMPORT_ERROR: Exception | None = None
 try:
     from opentelemetry import trace  # type: ignore[import-untyped]
-    from opentelemetry.trace import Status, StatusCode, Tracer  # type: ignore[import-untyped]
+    from opentelemetry.trace import (  # type: ignore[import-untyped]
+        Status,
+        StatusCode,
+        Tracer,
+    )
 
     _OTEL_AVAILABLE = True
 except ImportError as exc:  # pragma: no cover — exercised when OTel missing
@@ -75,7 +79,9 @@ def is_otel_active() -> bool:
         provider = trace.get_tracer_provider()
         # The default tracer provider is a no-op ProxyTracer; check if
         # it's been overridden with a real provider.
-        from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-untyped]
+        from opentelemetry.sdk.trace import (
+            TracerProvider,  # type: ignore[import-untyped]
+        )
 
         return isinstance(provider, TracerProvider)
     except Exception:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -119,7 +125,9 @@ def session_span(
         with tracer.start_as_current_span("mahavishnu.acp.session") as span:
             span.set_attribute("session.id", session_id)
             for k, v in (attributes or {}).items():
-                with suppress(Exception):  # OTel SDK rejects invalid attr values; defensive pass
+                with suppress(
+                    Exception
+                ):  # OTel SDK rejects invalid attr values; defensive pass
                     span.set_attribute(k, v)
             try:
                 yield state

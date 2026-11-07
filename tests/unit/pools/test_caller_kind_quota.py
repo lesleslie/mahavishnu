@@ -85,7 +85,9 @@ class TestCoerceCallerKindUnknownStrings:
     land in the canonical ``UNKNOWN`` bucket.
     """
 
-    def test_coerce_caller_kind_unknown_strings_normalize_to_unknown_bucket(self) -> None:
+    def test_coerce_caller_kind_unknown_strings_normalize_to_unknown_bucket(
+        self,
+    ) -> None:
         assert coerce_caller_kind("ultracode-rogue-1") is CallerKind.UNKNOWN
         assert coerce_caller_kind(None) is CallerKind.UNKNOWN
 

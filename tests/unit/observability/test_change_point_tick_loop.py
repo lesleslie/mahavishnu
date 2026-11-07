@@ -38,7 +38,9 @@ from mahavishnu.core import observability as obs
 def _config(cadence: float = 0.01) -> SimpleNamespace:
     """A config with the change-point block enabled and a fast cadence."""
     return SimpleNamespace(
-        observability=SimpleNamespace(metrics_enabled=False, otlp_endpoint="http://otel"),
+        observability=SimpleNamespace(
+            metrics_enabled=False, otlp_endpoint="http://otel"
+        ),
         changepoint=SimpleNamespace(
             enabled=True,
             sampler_cadence_seconds=cadence,
@@ -370,7 +372,9 @@ async def test_each_tick_records_a_evaluation_even_when_no_drift_fires() -> None
     finally:
         await manager.stop_change_point_tick_loop(task=task)
 
-    assert evaluations.total > 0, "no evaluation was recorded -- detector liveness is invisible"
+    assert evaluations.total > 0, (
+        "no evaluation was recorded -- detector liveness is invisible"
+    )
     assert active.total > 0, "the active flag was never set"
 
 

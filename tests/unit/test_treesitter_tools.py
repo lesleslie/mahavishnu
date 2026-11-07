@@ -139,7 +139,9 @@ class TestTreesitterQueryExceptions:
             "mahavishnu.mcp.tools.treesitter_tools._get_parser",
             side_effect=RuntimeError("query error"),
         ):
-            result = await tools["treesitter_query"]("/fake/file.py", "(function_definition)")
+            result = await tools["treesitter_query"](
+                "/fake/file.py", "(function_definition)"
+            )
         assert result["success"] is False
         assert result["matches"] == []
         assert "query error" in result["error"]
@@ -213,9 +215,12 @@ class TestTreesitterParseSuccess:
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
         with (
-            patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser),
             patch(
-                "mahavishnu.mcp.tools.treesitter_tools._ensure_grammar_loaded", return_value=True
+                "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+            ),
+            patch(
+                "mahavishnu.mcp.tools.treesitter_tools._ensure_grammar_loaded",
+                return_value=True,
             ),
             patch(
                 "mahavishnu.mcp.tools.treesitter_tools.SupportedLanguage"
@@ -226,17 +231,22 @@ class TestTreesitterParseSuccess:
         ):
             # Patch SupportedLanguage at module level
             with patch(
-                "mahavishnu.mcp.tools.treesitter_tools._ensure_grammar_loaded", return_value=True
+                "mahavishnu.mcp.tools.treesitter_tools._ensure_grammar_loaded",
+                return_value=True,
             ):
                 result = await tools["treesitter_parse"]("/fake/file.py")
         assert result["success"] is True
 
     @pytest.mark.asyncio
-    async def test_parse_success_returns_expected_keys(self, mock_parser_and_result) -> None:
+    async def test_parse_success_returns_expected_keys(
+        self, mock_parser_and_result
+    ) -> None:
         parser, _ = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_parse"]("/fake/file.py")
         assert "symbols_count" in result
         assert "imports_count" in result
@@ -245,11 +255,15 @@ class TestTreesitterParseSuccess:
 
 class TestTreesitterExtractSymbolsSuccess:
     @pytest.mark.asyncio
-    async def test_extract_success_returns_symbols(self, mock_parser_and_result) -> None:
+    async def test_extract_success_returns_symbols(
+        self, mock_parser_and_result
+    ) -> None:
         parser, _ = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_extract_symbols"]("/fake/file.py")
         assert result["success"] is True
         assert isinstance(result["symbols"], list)
@@ -260,7 +274,9 @@ class TestTreesitterExtractSymbolsSuccess:
         parser, _ = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_extract_symbols"](
                 "/fake/file.py", symbol_kinds=["function"]
             )
@@ -271,7 +287,9 @@ class TestTreesitterExtractSymbolsSuccess:
         parser, _ = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_extract_symbols"](
                 "/fake/file.py", symbol_kinds=["class"]
             )
@@ -284,7 +302,9 @@ class TestTreesitterCacheStatsSuccess:
         parser, _ = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_cache_stats"]()
         assert result["success"] is True
         assert result["hit_rate"] == 0.5
@@ -296,7 +316,9 @@ class TestTreesitterClearCacheSuccess:
         parser, _ = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_clear_cache"]()
         assert result["success"] is True
         assert result["entries_cleared"] == 7
@@ -306,11 +328,15 @@ class TestTreesitterFindUsagesSuccess:
     @pytest.mark.asyncio
     async def test_find_usages_parse_failure(self, mock_parser_and_result) -> None:
         parser, _ = mock_parser_and_result
-        fail_result = _make_parse_result(success=False, error="parse failed", symbols=[])
+        fail_result = _make_parse_result(
+            success=False, error="parse failed", symbols=[]
+        )
         parser.parse_file = AsyncMock(return_value=fail_result)
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_find_usages"]("/fake/file.py", "sym")
         assert result["success"] is False
         assert "parse failed" in result["error"]
@@ -320,8 +346,12 @@ class TestTreesitterFindUsagesSuccess:
         parser, _ = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
-            result = await tools["treesitter_find_usages"]("/fake/file.py", "nonexistent_sym")
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
+            result = await tools["treesitter_find_usages"](
+                "/fake/file.py", "nonexistent_sym"
+            )
         assert result["success"] is True
         assert result["definition"] is None
         assert result["usages"] == []
@@ -329,12 +359,18 @@ class TestTreesitterFindUsagesSuccess:
 
 class TestTreesitterQuerySuccess:
     @pytest.mark.asyncio
-    async def test_query_unknown_language_returns_error(self, mock_parser_and_result) -> None:
+    async def test_query_unknown_language_returns_error(
+        self, mock_parser_and_result
+    ) -> None:
         parser, _ = mock_parser_and_result
-        parser.detect_language = MagicMock(return_value=SimpleNamespace(value="unknown"))
+        parser.detect_language = MagicMock(
+            return_value=SimpleNamespace(value="unknown")
+        )
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_query"]("/fake/file.py", "(func)")
         assert result["success"] is False
         assert "Unknown language" in result["error"]
@@ -344,7 +380,9 @@ class TestTreesitterQuerySuccess:
         parser, _ = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_query"]("/fake/file.py", "(func)")
         assert result["success"] is True
         assert result["matches"] == []
@@ -352,22 +390,30 @@ class TestTreesitterQuerySuccess:
 
 class TestTreesitterBatchAnalyzeSuccess:
     @pytest.mark.asyncio
-    async def test_batch_empty_dir(self, tmp_path: Path, mock_parser_and_result) -> None:
+    async def test_batch_empty_dir(
+        self, tmp_path: Path, mock_parser_and_result
+    ) -> None:
         parser, _ = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_batch_analyze"](str(tmp_path))
         assert result["success"] is True
         assert result["files_analyzed"] == 0
 
     @pytest.mark.asyncio
-    async def test_batch_with_files(self, tmp_path: Path, mock_parser_and_result) -> None:
+    async def test_batch_with_files(
+        self, tmp_path: Path, mock_parser_and_result
+    ) -> None:
         (tmp_path / "a.py").write_text("x = 1")
         parser, parse_result = mock_parser_and_result
         mcp = _make_mock_mcp()
         tools = _register_and_get(mcp)
-        with patch("mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser):
+        with patch(
+            "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
+        ):
             result = await tools["treesitter_batch_analyze"](str(tmp_path))
         assert result["success"] is True
         assert result["files_analyzed"] == 1

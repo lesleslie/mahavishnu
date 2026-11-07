@@ -129,7 +129,9 @@ async def close_crow_stdio_client() -> None:
 def get_crow_session() -> _RawJsonRpcClient:
     """Return the shared raw JSON-RPC client. Raises if not initialised."""
     if _client is None:
-        raise RuntimeError("crow stdio client not initialized — server lifespan not running")
+        raise RuntimeError(
+            "crow stdio client not initialized — server lifespan not running"
+        )
     return _client
 
 

@@ -12,7 +12,9 @@ index_app = typer.Typer(help="Code graph indexing commands")
 @index_app.command("repo")
 def index_single_repo(
     repo: str = typer.Argument(help="Path to the repository"),
-    full: bool = typer.Option(False, "--full", help="Full re-index (ignore last indexed commit)"),
+    full: bool = typer.Option(
+        False, "--full", help="Full re-index (ignore last indexed commit)"
+    ),
     trigger: str = typer.Option("manual", "--trigger", help="Trigger type for logging"),
 ):
     """Index a single repository's code graph."""

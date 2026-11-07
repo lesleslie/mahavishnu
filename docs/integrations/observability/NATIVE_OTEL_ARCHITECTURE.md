@@ -76,6 +76,7 @@ service:
 from akosha.storage import HotStore
 from opentelemetry import trace
 
+
 class OtelIngester:
     """Ingest OTel traces into Akosha HotStore."""
 
@@ -103,7 +104,8 @@ class OtelIngester:
     async def search_traces(self, query: str, limit: int = 10):
         """Semantic search over traces."""
         from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer('all-MiniLM-L6-v2')
+
+        model = SentenceTransformer("all-MiniLM-L6-v2")
         query_embedding = model.encode(query).tolist()
 
         results = await self.hot_store.search_similar(
@@ -121,6 +123,7 @@ class OtelIngester:
 from fastmcp import FastMCP
 
 mcp = FastMCP("mahavishnu-otel")
+
 
 @mcp.tool()
 async def ingest_otel_traces(log_files: list[str]) -> dict:
@@ -148,6 +151,7 @@ async def ingest_otel_traces(log_files: list[str]) -> dict:
         "traces_ingested": traces_count,
         "storage_backend": "duckdb_hotstore",
     }
+
 
 @mcp.tool()
 async def search_otel_traces(query: str, limit: int = 10) -> list[dict]:
@@ -190,22 +194,19 @@ mahavishnu mcp start
 
 ```python
 # Via MCP
-await mcp.call_tool("ingest_otel_traces", {
-    "log_files": [
-        "/path/to/claude/session_1.json",
-        "/path/to/qwen/session_1.json"
-    ]
-})
+await mcp.call_tool(
+    "ingest_otel_traces",
+    {"log_files": ["/path/to/claude/session_1.json", "/path/to/qwen/session_1.json"]},
+)
 ```
 
 ### 4. Search Traces
 
 ```python
 # Semantic search
-results = await mcp.call_tool("search_otel_traces", {
-    "query": " Claude refused to answer about ",
-    "limit": 5
-})
+results = await mcp.call_tool(
+    "search_otel_traces", {"query": " Claude refused to answer about ", "limit": 5}
+)
 ```
 
 ## Benefits
@@ -235,6 +236,7 @@ docker run -d --name postgres-otel -p 5432:5432 pgvector/pgvector:pg16
 
 ```python
 from akosha.storage import HotStore
+
 hot_store = HotStore()  # Done!
 await hot_store.initialize()  # Instant!
 ```

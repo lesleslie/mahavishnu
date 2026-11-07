@@ -378,7 +378,9 @@ class TestSelfImprovementTools:
             },
         ]
 
-        completed = subprocess.CompletedProcess(args=["ruff"], returncode=0, stdout="", stderr="")
+        completed = subprocess.CompletedProcess(
+            args=["ruff"], returncode=0, stdout="", stderr=""
+        )
 
         with patch(
             "mahavishnu.mcp.tools.self_improvement_tools.subprocess.run",
@@ -459,7 +461,9 @@ class TestSelfImprovementToolsIntegration:
         mock_request = MagicMock()
         mock_request.id = "approval-001"
         mock_request.to_dict.return_value = {"id": "approval-001"}
-        mock_app_full.approval_manager.create_request = MagicMock(return_value=mock_request)
+        mock_app_full.approval_manager.create_request = MagicMock(
+            return_value=mock_request
+        )
 
         approval_result = await tools.request_approval(
             approval_type="version_bump",

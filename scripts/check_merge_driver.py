@@ -426,7 +426,9 @@ def _format_text(results: list[CheckResult]) -> str:
 
 def _format_json(results: list[CheckResult]) -> str:
     payload = {
-        "checks": [{"name": r.name, "state": r.state, "detail": r.detail} for r in results],
+        "checks": [
+            {"name": r.name, "state": r.state, "detail": r.detail} for r in results
+        ],
         "passed": sum(1 for r in results if r.state == "ok"),
         "total": len(results),
     }
@@ -434,7 +436,9 @@ def _format_json(results: list[CheckResult]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Pre-flight check for the mergiraf merge driver.")
+    parser = argparse.ArgumentParser(
+        description="Pre-flight check for the mergiraf merge driver."
+    )
     parser.add_argument(
         "--json",
         action="store_true",

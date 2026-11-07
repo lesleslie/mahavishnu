@@ -64,7 +64,9 @@ class TestAutomationManagerBackend:
     """Tests for backend selection."""
 
     @pytest.mark.asyncio
-    async def test_initialize_with_mock_backend(self, manager: AutomationManager, mock_backend):
+    async def test_initialize_with_mock_backend(
+        self, manager: AutomationManager, mock_backend
+    ):
         """Test that initialization works with a mock backend."""
         # Patch the backend selection to use our mock
         with patch.object(manager, "_select_backend"):
@@ -124,7 +126,9 @@ class TestAutomationManagerOperations:
         mock_backend.type_text.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_type_text_validates_security(self, manager: AutomationManager, mock_backend):
+    async def test_type_text_validates_security(
+        self, manager: AutomationManager, mock_backend
+    ):
         """Test that type_text validates security (blocks sensitive patterns)."""
         manager._backend = mock_backend
         manager._security = AutomationSecurity(manager.config)
@@ -146,7 +150,9 @@ class TestAutomationManagerOperations:
         mock_backend.screenshot.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_screenshot_with_region(self, manager: AutomationManager, mock_backend):
+    async def test_screenshot_with_region(
+        self, manager: AutomationManager, mock_backend
+    ):
         """Test taking a screenshot with a region."""
         manager._backend = mock_backend
         manager._security = AutomationSecurity(manager.config)
@@ -164,7 +170,9 @@ class TestAutomationManagerDryRun:
     @pytest.mark.asyncio
     async def test_dry_run_mode(self, mock_backend):
         """Test dry run mode with explicit dry_run=True parameter."""
-        config = AutomationConfig(dry_run_default=False, require_accessibility_check=False)
+        config = AutomationConfig(
+            dry_run_default=False, require_accessibility_check=False
+        )
         manager = AutomationManager(config=config)
         manager._backend = mock_backend
         manager._security = AutomationSecurity(config)
@@ -180,7 +188,9 @@ class TestAutomationManagerDryRun:
     @pytest.mark.asyncio
     async def test_dry_run_from_config(self, mock_backend):
         """Test dry run mode from config default."""
-        config = AutomationConfig(dry_run_default=True, require_accessibility_check=False)
+        config = AutomationConfig(
+            dry_run_default=True, require_accessibility_check=False
+        )
         manager = AutomationManager(config=config)
         manager._backend = mock_backend
         manager._security = AutomationSecurity(config)
@@ -238,7 +248,9 @@ class TestAutomationManagerStats:
         assert stats["operations_failed"] == 0
 
     @pytest.mark.asyncio
-    async def test_stats_recorded_on_success(self, manager: AutomationManager, mock_backend):
+    async def test_stats_recorded_on_success(
+        self, manager: AutomationManager, mock_backend
+    ):
         """Test that statistics are recorded on successful operations."""
         manager._backend = mock_backend
         manager._security = AutomationSecurity(manager.config)

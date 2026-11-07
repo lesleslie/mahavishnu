@@ -24,19 +24,25 @@ def validate_pattern(pattern: Pattern, library: PatternLibrary) -> list[str]:
             not pattern.id.startswith(expected_dir + "/")
             and pattern.id.split("/")[0] != expected_dir
         ):
-            issues.append(f"Pattern ID '{pattern.id}' doesn't match directory '{expected_dir}/'")
+            issues.append(
+                f"Pattern ID '{pattern.id}' doesn't match directory '{expected_dir}/'"
+            )
 
     # Required files have templates
     for f in pattern.get_files():
         if f.required and f.template and f.template not in pattern.templates:
-            issues.append(f"Required file '{f.path}' references missing template '{f.template}'")
+            issues.append(
+                f"Required file '{f.path}' references missing template '{f.template}'"
+            )
 
     # Slot paths within declared dirs
     all_dir_paths = {d.path.rstrip("/") for d in pattern.get_dirs()}
     for slot_name, slot in pattern.get_slots().items():
         slot_parent = _find_parent_dir(slot.path.rstrip("/"), all_dir_paths)
         if all_dir_paths and slot_parent is None:
-            issues.append(f"Slot '{slot_name}' path '{slot.path}' is outside all pattern dirs")
+            issues.append(
+                f"Slot '{slot_name}' path '{slot.path}' is outside all pattern dirs"
+            )
 
     # Jinja2 syntax validation
     env = Environment()
@@ -95,4 +101,6 @@ def _check_cycles(
     for dep_id in dep_ids:
         dep = library.get(dep_id)
         if dep:
-            _check_cycles(dep_id, dep.get_dependency_ids(), library, issues, visited, path)
+            _check_cycles(
+                dep_id, dep.get_dependency_ids(), library, issues, visited, path
+            )

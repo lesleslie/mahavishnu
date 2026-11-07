@@ -184,7 +184,9 @@ def test_resolve_cache_mode_survives_broken_settings(
     assert resolve_cache_mode() == "off"
 
 
-def test_resolve_virtual_key_prefers_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_virtual_key_prefers_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The environment wins over the credential store."""
     monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-from-env")
     assert resolve_virtual_key() == "sk-bf-from-env"
@@ -270,9 +272,7 @@ def test_the_bucket_is_never_the_shared_default(
     """
     monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
     cache_mode("semantic")
-    headers = build_gateway_headers(
-        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
-    )
+    headers = build_gateway_headers(LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER)
     assert headers[CACHE_KEY_HEADER] != DEFAULT_CACHE_BUCKET
 
 
@@ -282,12 +282,8 @@ def test_different_traffic_classes_get_different_buckets(
     """The same user turn over two protocol surfaces must not collide."""
     monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
     cache_mode("semantic")
-    worker = build_gateway_headers(
-        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
-    )
-    agno = build_gateway_headers(
-        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_AGNO_OPENAI
-    )
+    worker = build_gateway_headers(LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER)
+    agno = build_gateway_headers(LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_AGNO_OPENAI)
     assert worker[CACHE_KEY_HEADER] != agno[CACHE_KEY_HEADER]
 
 
@@ -297,13 +293,9 @@ def test_different_principals_get_different_buckets(
     """A second virtual key gets its own namespace, with no code change."""
     cache_mode("semantic")
     monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-key-one")
-    first = build_gateway_headers(
-        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
-    )
+    first = build_gateway_headers(LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER)
     monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-key-two")
-    second = build_gateway_headers(
-        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
-    )
+    second = build_gateway_headers(LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER)
     assert first[CACHE_KEY_HEADER] != second[CACHE_KEY_HEADER]
 
 
@@ -313,12 +305,8 @@ def test_the_bucket_is_stable_for_one_principal(
     """A derived bucket still has to be stable, or the cache never hits."""
     monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
     cache_mode("semantic")
-    first = build_gateway_headers(
-        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
-    )
-    second = build_gateway_headers(
-        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
-    )
+    first = build_gateway_headers(LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER)
+    second = build_gateway_headers(LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER)
     assert first[CACHE_KEY_HEADER] == second[CACHE_KEY_HEADER]
 
 
@@ -328,9 +316,7 @@ def test_the_credential_does_not_appear_in_the_bucket(
     """The bucket travels in a header that gets logged."""
     monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-super-secret-key")
     cache_mode("semantic")
-    headers = build_gateway_headers(
-        LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER
-    )
+    headers = build_gateway_headers(LOOPBACK_URL, traffic_class=TRAFFIC_CLASS_WORKER)
     assert "sk-bf-super-secret-key" not in headers[CACHE_KEY_HEADER]
 
 

@@ -17,8 +17,12 @@ import pytest
 # and pickling/identity checks see the real package path.
 # ---------------------------------------------------------------------------
 
-_METRICS_PATH = Path(__file__).resolve().parents[2] / "mahavishnu" / "websocket" / "metrics.py"
-_SPEC = importlib.util.spec_from_file_location("mahavishnu.websocket.metrics", _METRICS_PATH)
+_METRICS_PATH = (
+    Path(__file__).resolve().parents[2] / "mahavishnu" / "websocket" / "metrics.py"
+)
+_SPEC = importlib.util.spec_from_file_location(
+    "mahavishnu.websocket.metrics", _METRICS_PATH
+)
 assert _SPEC is not None and _SPEC.loader is not None
 metrics_mod = importlib.util.module_from_spec(_SPEC)
 # Register under both the dotted name and a sentinel name. The dotted name
@@ -648,7 +652,9 @@ class TestStartMetricsServer:
         if not PROMETHEUS_AVAILABLE:
             pytest.skip("prometheus_client not available")
         sentinel = object()
-        with patch.object(metrics_mod, "start_http_server", return_value=sentinel) as start:
+        with patch.object(
+            metrics_mod, "start_http_server", return_value=sentinel
+        ) as start:
             result = start_metrics_server(9099)
         assert result is sentinel
         start.assert_called_once_with(9099)

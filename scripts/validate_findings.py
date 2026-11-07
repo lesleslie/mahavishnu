@@ -22,11 +22,15 @@ import re
 import sys
 from pathlib import Path
 
-LINK_PATTERN = re.compile(r"\((?:\.\./)?audit-inventory/([\w-]+-cli-inventory\.json)#L(\d+)\)")
+LINK_PATTERN = re.compile(
+    r"\((?:\.\./)?audit-inventory/([\w-]+-cli-inventory\.json)#L(\d+)\)"
+)
 LINE_BUDGET = 250
 
 
-def _line_content_has_command(raw_lines: list[str], target_line: int, repo: str) -> bool:
+def _line_content_has_command(
+    raw_lines: list[str], target_line: int, repo: str
+) -> bool:
     """The cited line must contain a JSON command_path key (start of a command object)."""
     if target_line < 1 or target_line > len(raw_lines):
         return False
@@ -84,7 +88,9 @@ def validate(findings_path: Path) -> int:
             print(f"  {entry}", file=sys.stderr)
         return 1
 
-    print(f"OK: findings.md ({line_count} lines, ≤ {LINE_BUDGET}); all links resolve to commands")
+    print(
+        f"OK: findings.md ({line_count} lines, ≤ {LINE_BUDGET}); all links resolve to commands"
+    )
     return 0
 
 

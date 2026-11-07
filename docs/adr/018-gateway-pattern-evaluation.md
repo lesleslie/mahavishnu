@@ -422,8 +422,10 @@ stateful tools.**
 # mahavishnu/mcp/server_core.py — Phase 1.5 wiring
 from mcp_common.tools.dispatch import register_remote_tools
 from mcp_common.ide.pycharm_tools import (
-    pycharm_search_code_patterns, pycharm_find_usages,
-    pycharm_get_ide_diagnostics, pycharm_get_symbol_info,
+    pycharm_search_code_patterns,
+    pycharm_find_usages,
+    pycharm_get_ide_diagnostics,
+    pycharm_get_symbol_info,
     pycharm_health,
 )
 

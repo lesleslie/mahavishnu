@@ -21,7 +21,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-pytestmark = [pytest.mark.unit, pytest.mark.req(["REQ-CLONE-010", "REQ-CLONE-011", "REQ-CLONE-012", "REQ-CLONE-013"])]
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.req(
+        ["REQ-CLONE-010", "REQ-CLONE-011", "REQ-CLONE-012", "REQ-CLONE-013"]
+    ),
+]
 
 
 # ---- Valid unified diff fixtures -----------------------------------------
@@ -44,20 +49,14 @@ CONSUMING_DIFF_FROM_FOO = (
     "-from foo import Foo\n+from foo import Foo  # updated\n"
 )
 
-CONSUMING_DIFF_OLD_NEW = (
-    "--- a/c.py\n+++ b/c.py\n@@ -1 +1 @@\n-old\n+new\n"
-)
+CONSUMING_DIFF_OLD_NEW = "--- a/c.py\n+++ b/c.py\n@@ -1 +1 @@\n-old\n+new\n"
 
-CONSUMING_DIFF_INIT_NEW = (
-    "--- a/c.py\n+++ b/c.py\n@@ -1 +1 @@\n-init\n+new\n"
-)
+CONSUMING_DIFF_INIT_NEW = "--- a/c.py\n+++ b/c.py\n@@ -1 +1 @@\n-init\n+new\n"
 
 # Bad: targets existing c.py with non-matching context — git apply rejects
 # Brief defect: original `--- a/nonexistent.py\n+++ b/nonexistent.py\n@@ -0,0 +1 @@\n+x\n`
 # succeeds by CREATING the nonexistent file, which doesn't fail the consumer.
-CONSUMING_DIFF_BAD = (
-    "--- a/c.py\n+++ b/c.py\n@@ -1 +1 @@\n-different_content\n+new\n"
-)
+CONSUMING_DIFF_BAD = "--- a/c.py\n+++ b/c.py\n@@ -1 +1 @@\n-different_content\n+new\n"
 
 
 @pytest.fixture
@@ -66,10 +65,14 @@ def target_repo(tmp_path: Path) -> Path:
     repo.mkdir()
     subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
     subprocess.run(
-        ["git", "-C", str(repo), "config", "user.email", "test@example.com"], check=True, capture_output=True
+        ["git", "-C", str(repo), "config", "user.email", "test@example.com"],
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
-        ["git", "-C", str(repo), "config", "user.name", "Test"], check=True, capture_output=True
+        ["git", "-C", str(repo), "config", "user.name", "Test"],
+        check=True,
+        capture_output=True,
     )
     (repo / "foo.py").write_text("class Foo:\n    pass\n")
     subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
@@ -83,10 +86,14 @@ def consumer_repo(tmp_path: Path) -> Path:
     repo.mkdir()
     subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
     subprocess.run(
-        ["git", "-C", str(repo), "config", "user.email", "test@example.com"], check=True, capture_output=True
+        ["git", "-C", str(repo), "config", "user.email", "test@example.com"],
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
-        ["git", "-C", str(repo), "config", "user.name", "Test"], check=True, capture_output=True
+        ["git", "-C", str(repo), "config", "user.name", "Test"],
+        check=True,
+        capture_output=True,
     )
     (repo / "consumer.py").write_text("from foo import Foo\n")
     subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
@@ -128,7 +135,9 @@ class TestRunCloneRefactorDAG:
         # Setup: detect_cluster_members mocked to return [target_repo]
         with patch(
             "mahavishnu.workflows.clone_refactor_workflow.detect_cluster_members",
-            new=AsyncMock(return_value=[{"repo": str(target_repo), "match_score": 1.0}]),
+            new=AsyncMock(
+                return_value=[{"repo": str(target_repo), "match_score": 1.0}]
+            ),
         ):
             result = await run_clone_refactor_dag(
                 refactor_job_id="job-001",
@@ -155,11 +164,15 @@ class TestRunCloneRefactorDAG:
         # detect_cluster_members returns but before any consumer work.
         with patch(
             "mahavishnu.workflows.clone_refactor_workflow.detect_cluster_members",
-            new=AsyncMock(return_value=[{"repo": str(target_repo), "match_score": 1.0}]),
+            new=AsyncMock(
+                return_value=[{"repo": str(target_repo), "match_score": 1.0}]
+            ),
         ):
             with patch(
                 "mahavishnu.workflows.clone_refactor_workflow.write_canonical_symbol",
-                new=AsyncMock(side_effect=RuntimeError("write_canonical_symbol failed")),
+                new=AsyncMock(
+                    side_effect=RuntimeError("write_canonical_symbol failed")
+                ),
             ):
                 with pytest.raises(RuntimeError, match="write_canonical_symbol failed"):
                     await run_clone_refactor_dag(
@@ -173,7 +186,8 @@ class TestRunCloneRefactorDAG:
                     )
         # REQ-CLONE-010: terminal "failed" was written
         failed_calls = [
-            c for c in mock_backend.try_put_with_log_context.call_args_list
+            c
+            for c in mock_backend.try_put_with_log_context.call_args_list
             if c.kwargs.get("log_context", {}).get("step_name") == "failed"
         ]
         assert len(failed_calls) == 1
@@ -189,8 +203,16 @@ class TestRunCloneRefactorDAG:
         for r in (good1, good2, bad):
             r.mkdir()
             subprocess.run(["git", "init", str(r)], check=True, capture_output=True)
-            subprocess.run(["git", "-C", str(r), "config", "user.email", "x@x"], check=True, capture_output=True)
-            subprocess.run(["git", "-C", str(r), "config", "user.name", "X"], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-C", str(r), "config", "user.email", "x@x"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(r), "config", "user.name", "X"],
+                check=True,
+                capture_output=True,
+            )
             (r / "c.py").write_text("old\n")
             subprocess.run(["git", "-C", str(r), "add", "."], check=True)
             subprocess.run(["git", "-C", str(r), "commit", "-m", "init"], check=True)
@@ -225,8 +247,16 @@ class TestRunCloneRefactorDAG:
         for r in (good, bad):
             r.mkdir()
             subprocess.run(["git", "init", str(r)], check=True, capture_output=True)
-            subprocess.run(["git", "-C", str(r), "config", "user.email", "x@x"], check=True, capture_output=True)
-            subprocess.run(["git", "-C", str(r), "config", "user.name", "X"], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-C", str(r), "config", "user.email", "x@x"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(r), "config", "user.name", "X"],
+                check=True,
+                capture_output=True,
+            )
             (r / "c.py").write_text("old\n")
             subprocess.run(["git", "-C", str(r), "add", "."], check=True)
             subprocess.run(["git", "-C", str(r), "commit", "-m", "init"], check=True)
@@ -282,7 +312,8 @@ class TestRunCloneRefactorDAG:
         # REQ-CLONE-010: terminal "failed" was written
         # Find the call to try_put_with_log_context with step_name="failed"
         failed_calls = [
-            c for c in mock_backend.try_put_with_log_context.call_args_list
+            c
+            for c in mock_backend.try_put_with_log_context.call_args_list
             if c.kwargs.get("log_context", {}).get("step_name") == "failed"
         ]
         assert len(failed_calls) == 1
@@ -310,7 +341,9 @@ class TestRunCloneRefactorDAG:
                 },
             )
         log = subprocess.run(
-            ["git", "-C", str(consumer_repo), "log", "-1", "--format=%B"], capture_output=True, text=True
+            ["git", "-C", str(consumer_repo), "log", "-1", "--format=%B"],
+            capture_output=True,
+            text=True,
         )
         assert "refactor-job: 0193f5e2-7c8d-7abc-9def-1234567890ab" in log.stdout
 
@@ -320,13 +353,16 @@ class TestRunCloneRefactorDAG:
         # REQ-CLONE-013: GitCommitPermanentError must NOT trigger Prefect retry.
         # We verify by counting git_commit invocations — only 1 expected.
         from mahavishnu.workflows import _git_ops
+
         original_commit = _git_ops.git_commit
         call_count = 0
 
         async def counting_commit(*args, **kwargs):
             nonlocal call_count
             call_count += 1
-            raise _git_ops.GitCommitPermanentError(reason="test", stderr="x", exit_code=1)
+            raise _git_ops.GitCommitPermanentError(
+                reason="test", stderr="x", exit_code=1
+            )
 
         _git_ops.git_commit = counting_commit
         try:
@@ -356,7 +392,9 @@ class TestRunCloneRefactorDAG:
         backend.dag_key = lambda x: f"workflow/v1/{x}"
         backend.cluster_key = lambda x: f"cluster/v1/{x}"
         backend.in_flight_key = lambda x: f"cluster/v1/{x}/in_flight"
-        backend.try_put_with_log_context = AsyncMock(return_value=False)  # substrate always fails
+        backend.try_put_with_log_context = AsyncMock(
+            return_value=False
+        )  # substrate always fails
         backend.put = AsyncMock()
         backend.delete = AsyncMock()
         backend.get = AsyncMock(return_value=None)
@@ -387,17 +425,28 @@ class TestRunCloneRefactorDAG:
         consumer = tmp_path / "consumer"
         consumer.mkdir()
         subprocess.run(["git", "init", str(consumer)], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(consumer), "config", "user.email", "x@x"], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(consumer), "config", "user.name", "X"], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(consumer), "config", "user.email", "x@x"],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(consumer), "config", "user.name", "X"],
+            check=True,
+            capture_output=True,
+        )
         (consumer / "c.py").write_text("init\n")
         subprocess.run(["git", "-C", str(consumer), "add", "."], check=True)
         subprocess.run(["git", "-C", str(consumer), "commit", "-m", "init"], check=True)
 
         from mahavishnu.workflows import _git_ops
+
         original_commit = _git_ops.git_commit
 
         async def failing_commit(*args, **kwargs):
-            raise _git_ops.GitCommitPermanentError(reason="test", stderr="x", exit_code=1)
+            raise _git_ops.GitCommitPermanentError(
+                reason="test", stderr="x", exit_code=1
+            )
 
         _git_ops.git_commit = failing_commit
         try:
@@ -423,7 +472,9 @@ class TestRunCloneRefactorDAG:
 
         # Verify working tree is clean
         status = subprocess.run(
-            ["git", "-C", str(consumer), "status", "--porcelain"], capture_output=True, text=True
+            ["git", "-C", str(consumer), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
         )
         assert status.stdout == ""
 
@@ -513,6 +564,7 @@ class TestRunCloneRefactorDAG:
         GitCommitTransientError so Prefect retries up to retries=2.
         """
         from mahavishnu.workflows import _git_ops
+
         original_commit = _git_ops.git_commit
         call_count = 0
 
@@ -577,6 +629,7 @@ class TestRunCloneRefactorDAG:
         None and skip stash_pop entirely.
         """
         from mahavishnu.workflows import _git_ops
+
         original_stash_push = _git_ops.stash_push
         original_stash_pop = _git_ops.stash_pop
 
@@ -611,7 +664,10 @@ class TestRunCloneRefactorDAG:
                 )
             # C3 fix: at least one StashPopFailedError RepoCommit with captured SHA.
             stash_failures: list[tuple[str, object]] = []
-            if result.target_commit and result.target_commit.error_type == "StashPopFailedError":
+            if (
+                result.target_commit
+                and result.target_commit.error_type == "StashPopFailedError"
+            ):
                 stash_failures.append(("target", result.target_commit))
             for c in result.consumer_commits:
                 if c.error_type == "StashPopFailedError":

@@ -16,6 +16,7 @@ Production-ready resilience patterns for the MCP ecosystem.
 ```python
 from monitoring.resilience import circuit_breaker, retry
 
+
 @circuit_breaker(failure_threshold=5, recovery_timeout=60)
 @retry(max_attempts=3, backoff="exponential")
 async def call_external_api(url: str):
@@ -42,6 +43,7 @@ Add to `mahavishnu/core/adapters/base.py`:
 ```python
 from monitoring.resilience import resilient
 
+
 class OrchestratorAdapter:
     @resilient(
         failure_threshold=5,
@@ -61,6 +63,7 @@ Add to session storage operations in `session_buddy/storage.py`:
 ```python
 from monitoring.resilience import retry
 
+
 @retry(max_attempts=3, backoff="exponential")
 async def save_session(self, session_id: str, data: dict):
     # Database save operation
@@ -73,6 +76,7 @@ Add to `akosha/aggregation.py` for memory sync:
 
 ```python
 from monitoring.resilience import circuit_breaker
+
 
 @circuit_breaker(failure_threshold=3, recovery_timeout=60)
 async def sync_from_session_buddy(self, instance_url: str):
@@ -87,6 +91,7 @@ Add to `excalidraw_mcp/export.py`:
 ```python
 from monitoring.resilience import resilient
 
+
 @resilient(failure_threshold=3, max_attempts=2)
 async def export_to_png(self, elements: list) -> bytes:
     # Export operation using Playwright
@@ -99,6 +104,7 @@ Add to `mailgun_mcp/tools/messages.py`:
 
 ```python
 from monitoring.resilience import retry
+
 
 @retry(max_attempts=3, backoff="exponential")
 async def send_email(self, to: str, subject: str, body: str):
@@ -113,6 +119,7 @@ Add to `unifi_mcp/controllers.py`:
 ```python
 from monitoring.resilience import circuit_breaker
 
+
 @circuit_breaker(failure_threshold=5, recovery_timeout=30)
 async def list_devices(self):
     # UniFi API call
@@ -126,6 +133,7 @@ Add to `raindropio_mcp/client.py`:
 ```python
 from monitoring.resilience import resilient
 
+
 @resilient(failure_threshold=3, max_attempts=3)
 async def get_bookmarks(self, collection_id: int):
     # RaindropIO API call
@@ -138,9 +146,9 @@ async def get_bookmarks(self, collection_id: int):
 
 ```python
 @resilient(
-    failure_threshold=5,    # Open circuit after 5 failures
-    recovery_timeout=60,    # Wait 60s before recovery
-    max_attempts=3,         # Retry up to 3 times
+    failure_threshold=5,  # Open circuit after 5 failures
+    recovery_timeout=60,  # Wait 60s before recovery
+    max_attempts=3,  # Retry up to 3 times
     backoff="exponential",  # Exponential backoff: 1s, 2s, 4s
 )
 async def call_llm_api(prompt: str):
@@ -152,8 +160,8 @@ async def call_llm_api(prompt: str):
 
 ```python
 @retry(
-    max_attempts=2,         # Fewer retries for fast operations
-    backoff="linear",       # Predictable backoff
+    max_attempts=2,  # Fewer retries for fast operations
+    backoff="linear",  # Predictable backoff
 )
 async def execute_query(query: str):
     # Database queries should be fast
@@ -164,8 +172,8 @@ async def execute_query(query: str):
 
 ```python
 @circuit_breaker(
-    failure_threshold=3,    # Open circuit quickly
-    recovery_timeout=30,    # Short recovery time
+    failure_threshold=3,  # Open circuit quickly
+    recovery_timeout=30,  # Short recovery time
 )
 async def call_mcp_server(url: str, tool: str):
     # MCP server calls should fail fast if server is down
@@ -176,9 +184,9 @@ async def call_mcp_server(url: str, tool: str):
 
 ```python
 @resilient(
-    failure_threshold=10,   # More failures before opening
-    recovery_timeout=300,   # 5 minutes before recovery
-    max_attempts=5,         # More retries
+    failure_threshold=10,  # More failures before opening
+    recovery_timeout=300,  # 5 minutes before recovery
+    max_attempts=5,  # More retries
     backoff="exponential",
 )
 async def call_payment_gateway(amount: float):
@@ -198,6 +206,7 @@ from monitoring.metrics import (
     retry_success,
 )
 
+
 # Update circuit breaker metrics
 async def update_circuit_breaker_metrics(breaker: CircuitBreaker, name: str):
     circuit_breaker_state.labels(
@@ -209,11 +218,13 @@ async def update_circuit_breaker_metrics(breaker: CircuitBreaker, name: str):
         breaker_name=name,
     ).set(breaker.failure_count)
 
+
 # Update retry metrics
 async def on_retry_callback(attempt: int, exception: Exception):
     retry_attempts.labels(
         exception_type=type(exception).__name__,
     ).inc()
+
 
 async def on_retry_success():
     retry_success.labels().inc()
@@ -225,6 +236,7 @@ async def on_retry_success():
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 @circuit_breaker(failure_threshold=5, recovery_timeout=60)
 async def protected_function():
@@ -246,6 +258,7 @@ async def protected_function():
 ```python
 import pytest
 from monitoring.resilience import CircuitBreaker, CircuitBreakerError
+
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_opens():

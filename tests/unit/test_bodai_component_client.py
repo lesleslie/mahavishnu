@@ -97,7 +97,9 @@ class TestBodaiComponentMCPClientCalls:
         client._session = MagicMock()
         client._session.call_tool = AsyncMock(return_value={"result": "ok"})
 
-        result = await client.call_tool("query_local_traces", {"task_class": "code_generation"})
+        result = await client.call_tool(
+            "query_local_traces", {"task_class": "code_generation"}
+        )
 
         assert result == {"result": "ok"}
         client._ensure_session.assert_awaited_once()
@@ -114,11 +116,15 @@ class TestBodaiComponentMCPClientCalls:
             ({"result": [{"id": 4}]}, [{"id": 4}]),
         ],
     )
-    async def test_query_local_traces_accepts_known_shapes(self, payload, expected, monkeypatch):
+    async def test_query_local_traces_accepts_known_shapes(
+        self, payload, expected, monkeypatch
+    ):
         client = BodaiComponentMCPClient("http://localhost:8680/mcp")
         client.call_tool = AsyncMock(return_value=payload)
 
-        result = await client.query_local_traces("code_generation", time_range_minutes=15)
+        result = await client.query_local_traces(
+            "code_generation", time_range_minutes=15
+        )
 
         assert result == expected
         client.call_tool.assert_awaited_once_with(
@@ -126,7 +132,9 @@ class TestBodaiComponentMCPClientCalls:
             {"task_class": "code_generation", "time_range_minutes": 15},
         )
 
-    async def test_query_local_traces_returns_empty_for_unexpected_shape(self, monkeypatch):
+    async def test_query_local_traces_returns_empty_for_unexpected_shape(
+        self, monkeypatch
+    ):
         client = BodaiComponentMCPClient("http://localhost:8680/mcp")
         client.call_tool = AsyncMock(return_value="unexpected")
 

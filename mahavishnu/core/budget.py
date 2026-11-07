@@ -74,7 +74,9 @@ class BudgetDimension(StrEnum):
 
 
 # Terminal states never transition further.
-_TERMINAL_STATES: frozenset[BudgetState] = frozenset({BudgetState.EXCEEDED, BudgetState.COMPLETED})
+_TERMINAL_STATES: frozenset[BudgetState] = frozenset(
+    {BudgetState.EXCEEDED, BudgetState.COMPLETED}
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -227,11 +229,17 @@ class BudgetRecord:
             "spec": self.spec.to_dict(),
             "state": self.state.value,
             "usage": self.usage.to_dict() if self.usage is not None else None,
-            "started_at": (self.started_at.isoformat() if self.started_at is not None else None),
-            "exceeded_dimension": (
-                self.exceeded_dimension.value if self.exceeded_dimension is not None else None
+            "started_at": (
+                self.started_at.isoformat() if self.started_at is not None else None
             ),
-            "exceeded_at": (self.exceeded_at.isoformat() if self.exceeded_at is not None else None),
+            "exceeded_dimension": (
+                self.exceeded_dimension.value
+                if self.exceeded_dimension is not None
+                else None
+            ),
+            "exceeded_at": (
+                self.exceeded_at.isoformat() if self.exceeded_at is not None else None
+            ),
             "completed_at": (
                 self.completed_at.isoformat() if self.completed_at is not None else None
             ),
@@ -241,10 +249,16 @@ class BudgetRecord:
     def from_dict(cls, payload: dict[str, Any]) -> BudgetRecord:
         spec_payload = payload.get("spec") or {}
         spec = (
-            BudgetSpec.from_dict(spec_payload) if isinstance(spec_payload, dict) else BudgetSpec()
+            BudgetSpec.from_dict(spec_payload)
+            if isinstance(spec_payload, dict)
+            else BudgetSpec()
         )
         usage_payload = payload.get("usage")
-        usage = BudgetUsage.from_dict(usage_payload) if isinstance(usage_payload, dict) else None
+        usage = (
+            BudgetUsage.from_dict(usage_payload)
+            if isinstance(usage_payload, dict)
+            else None
+        )
         state_raw = payload.get("state") or BudgetState.PENDING.value
         try:
             state = BudgetState(state_raw)

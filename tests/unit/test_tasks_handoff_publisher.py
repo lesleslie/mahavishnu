@@ -116,7 +116,9 @@ async def test_the_handoff_completed_event_is_published() -> None:
         )
         await _drain()
 
-    completed = [e for e in adapter.enqueued if e.get("channel") == "task.handoff_completed"]
+    completed = [
+        e for e in adapter.enqueued if e.get("channel") == "task.handoff_completed"
+    ]
     assert completed, adapter.enqueued
     assert completed[0]["workflow_id"] == "wf-1"
 

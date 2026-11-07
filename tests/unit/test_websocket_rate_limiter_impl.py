@@ -31,7 +31,9 @@ def fake_time():
     advance the clock by assigning to fake_time[0].
     """
     fake = [1_000_000.0]
-    with patch("mahavishnu.websocket.rate_limiter.time.time", side_effect=lambda: fake[0]):
+    with patch(
+        "mahavishnu.websocket.rate_limiter.time.time", side_effect=lambda: fake[0]
+    ):
         yield fake
 
 
@@ -383,7 +385,9 @@ class TestTokenBucketRateLimiterStats:
         assert "last_update" in stats
         assert stats["rate_limit_events_last_minute"] == 0
 
-    def test_specific_connection_stats_for_unknown_returns_defaults(self, limiter, fake_time):
+    def test_specific_connection_stats_for_unknown_returns_defaults(
+        self, limiter, fake_time
+    ):
         """get_stats(unknown) returns a default-shaped dict (no exception)."""
         stats = limiter.get_stats("nonexistent")
 
@@ -468,7 +472,9 @@ class TestRateLimiterTimeInjection:
     ):
         """Refill math: tokens_remaining = drain_count + (elapsed × rate) - 1."""
         # Use a fresh limiter per case so the test is fully isolated
-        limiter = TokenBucketRateLimiter(rate=2.0, burst_size=4.0, cleanup_interval=300.0)
+        limiter = TokenBucketRateLimiter(
+            rate=2.0, burst_size=4.0, cleanup_interval=300.0
+        )
         # Consume exactly 1 token (4 → 3)
         limiter.check("c")
         # Advance the clock
@@ -481,7 +487,9 @@ class TestRateLimiterTimeInjection:
 
     def test_refill_caps_at_burst_size(self, fake_time):
         """Long idle periods do not refill past burst_size."""
-        limiter = TokenBucketRateLimiter(rate=2.0, burst_size=4.0, cleanup_interval=300.0)
+        limiter = TokenBucketRateLimiter(
+            rate=2.0, burst_size=4.0, cleanup_interval=300.0
+        )
         limiter.check("c")
         # Idle for 5 seconds → would add 10 tokens, but capped at burst_size 4.
         fake_time[0] += 5.0

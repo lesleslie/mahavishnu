@@ -148,7 +148,9 @@ class TestPoolLifecycleEvents:
     ):
         """Test broadcasting pool spawned event."""
         # Act
-        result = await broadcaster.broadcast_pool_spawned("pool_abc", sample_pool_config)
+        result = await broadcaster.broadcast_pool_spawned(
+            "pool_abc", sample_pool_config
+        )
 
         # Assert
         assert result is True
@@ -299,7 +301,9 @@ class TestWorkerEvents:
     ):
         """Test broadcasting worker status changed event."""
         # Act
-        result = await broadcaster.broadcast_worker_status_changed("pool_abc", "worker_1", "busy")
+        result = await broadcaster.broadcast_worker_status_changed(
+            "pool_abc", "worker_1", "busy"
+        )
 
         # Assert
         assert result is True
@@ -324,11 +328,16 @@ class TestTaskEvents:
     """Test task event broadcasting."""
 
     async def test_broadcast_task_assigned(
-        self, broadcaster: WebSocketBroadcaster, mock_websocket_server: MagicMock, sample_task: dict
+        self,
+        broadcaster: WebSocketBroadcaster,
+        mock_websocket_server: MagicMock,
+        sample_task: dict,
     ):
         """Test broadcasting task assigned event."""
         # Act
-        result = await broadcaster.broadcast_task_assigned("pool_abc", "worker_1", sample_task)
+        result = await broadcaster.broadcast_task_assigned(
+            "pool_abc", "worker_1", sample_task
+        )
 
         # Assert
         assert result is True
@@ -351,7 +360,9 @@ class TestTaskEvents:
     ):
         """Test broadcasting task completed event."""
         # Act
-        result = await broadcaster.broadcast_task_completed("pool_abc", "worker_1", sample_result)
+        result = await broadcaster.broadcast_task_completed(
+            "pool_abc", "worker_1", sample_result
+        )
 
         # Assert
         assert result is True
@@ -397,7 +408,9 @@ class TestErrorHandling:
         """Test broadcasting when server raises exception."""
         mock_server = MagicMock()
         mock_server.is_running = True
-        mock_server.broadcast_to_room = AsyncMock(side_effect=Exception("Connection error"))
+        mock_server.broadcast_to_room = AsyncMock(
+            side_effect=Exception("Connection error")
+        )
 
         broadcaster = WebSocketBroadcaster(websocket_server=mock_server)
 
@@ -554,6 +567,8 @@ class TestUtilityMethods:
 
         assert broadcaster._is_connection_error(Exception("Connection lost")) is True
         assert broadcaster._is_connection_error(Exception("WebSocket error")) is True
-        assert broadcaster._is_connection_error(Exception("Network unreachable")) is True
+        assert (
+            broadcaster._is_connection_error(Exception("Network unreachable")) is True
+        )
         assert broadcaster._is_connection_error(Exception("Value error")) is False
         assert broadcaster._is_connection_error(Exception("Random error")) is False

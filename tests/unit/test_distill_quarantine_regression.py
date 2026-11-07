@@ -89,7 +89,9 @@ def fake_repo_with_distilled(tmp_path: Path) -> Path:
 class TestRuntimeQuarantineInvariant:
     """The discovery glob MUST NOT yield quarantined modules."""
 
-    def test_quarantined_module_not_discoverable(self, fake_repo_with_distilled: Path) -> None:
+    def test_quarantined_module_not_discoverable(
+        self, fake_repo_with_distilled: Path
+    ) -> None:
         from mahavishnu.distill.discovery import (
             discover_workflows,
             iter_workflow_modules,
@@ -174,9 +176,14 @@ class TestCIGuardAcceptsQuarantinedFile:
     without complaint.
     """
 
-    def test_guard_accepts_quarantined_file(self, fake_repo_with_distilled: Path) -> None:
+    def test_guard_accepts_quarantined_file(
+        self, fake_repo_with_distilled: Path
+    ) -> None:
         guard = (
-            Path(__file__).resolve().parents[2] / "scripts" / "ci" / "check_workflow_quarantine.py"
+            Path(__file__).resolve().parents[2]
+            / "scripts"
+            / "ci"
+            / "check_workflow_quarantine.py"
         )
         assert guard.exists(), f"CI guard not found: {guard}"
         # Run the guard against the fake repo by chdir-ing.
@@ -220,7 +227,10 @@ class TestCIGuardRejectsBadTopLevelFile:
         )
 
         guard = (
-            Path(__file__).resolve().parents[2] / "scripts" / "ci" / "check_workflow_quarantine.py"
+            Path(__file__).resolve().parents[2]
+            / "scripts"
+            / "ci"
+            / "check_workflow_quarantine.py"
         )
         result = subprocess.run(
             [sys.executable, str(guard)],
@@ -257,7 +267,10 @@ class TestCIGuardRejectsBadTopLevelFile:
         )
 
         guard = (
-            Path(__file__).resolve().parents[2] / "scripts" / "ci" / "check_workflow_quarantine.py"
+            Path(__file__).resolve().parents[2]
+            / "scripts"
+            / "ci"
+            / "check_workflow_quarantine.py"
         )
         result = subprocess.run(
             [sys.executable, str(guard)],

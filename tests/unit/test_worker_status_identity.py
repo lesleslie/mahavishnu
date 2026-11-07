@@ -56,8 +56,8 @@ class TestWorkerStatusIdentity:
         # or stub ``WorkerStatus =``.
         forbidden_patterns = (
             "class WorkerStatus",  # class WorkerStatus(...)
-            "WorkerStatus = ",       # alias = CoreStatus.WorkerStatus
-            "WorkerStatus = ",       # stub assignment
+            "WorkerStatus = ",  # alias = CoreStatus.WorkerStatus
+            "WorkerStatus = ",  # stub assignment
         )
         for pattern in forbidden_patterns:
             assert pattern not in source, (
@@ -92,13 +92,16 @@ class TestWorkerStatusIdentity:
             line
             for line in (result.stdout or "").splitlines()
             if line.strip()
-            and not line.startswith(("a2a.py", "apple_container.py"))  # excluded dead files
+            and not line.startswith(
+                ("a2a.py", "apple_container.py")
+            )  # excluded dead files
         ]
 
         # Phase 5b allows ONLY mahavishnu/workers/__init__.py as a re-export;
         # any other importer is a regression.
         offenders = [
-            line for line in matches
+            line
+            for line in matches
             if not line.startswith("mahavishnu/workers/__init__.py:")
         ]
         assert not offenders, (
@@ -110,7 +113,9 @@ class TestWorkerStatusIdentity:
         # Sanity check: __init__.py retains the re-export per the package's
         # public surface decision.
         init_re_exports = [
-            line for line in matches if line.startswith("mahavishnu/workers/__init__.py:")
+            line
+            for line in matches
+            if line.startswith("mahavishnu/workers/__init__.py:")
         ]
         assert init_re_exports, (
             "workers/__init__.py must continue to re-export WorkerStatus"

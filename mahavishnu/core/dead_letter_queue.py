@@ -66,9 +66,7 @@ class RetryPolicy(StrEnum):
 
     NEVER = "never"  # Never retry - manual intervention only
     LINEAR = "linear"  # Linear backoff: 5min, 10min, 15min, ...
-    EXPONENTIAL = (
-        "exponential"  # Exponential backoff: 1min, 2min, 4min, 8min, ... (capped at 60min)
-    )
+    EXPONENTIAL = "exponential"  # Exponential backoff: 1min, 2min, 4min, 8min, ... (capped at 60min)
     IMMEDIATE = "immediate"  # Retry immediately on next processor cycle
 
 
@@ -119,7 +117,9 @@ class FailedTask:
             "retry_count": self.retry_count,
             "max_retries": self.max_retries,
             "retry_policy": self.retry_policy.value,
-            "next_retry_at": self.next_retry_at.isoformat() if self.next_retry_at else None,
+            "next_retry_at": self.next_retry_at.isoformat()
+            if self.next_retry_at
+            else None,
             "status": self.status.value,
             "metadata": self.metadata,
             "error_category": self.error_category,
@@ -255,7 +255,9 @@ class DeadLetterQueue:
             self._metrics = get_dlq_metrics()
         return self._metrics
 
-    def _calculate_next_retry(self, policy: RetryPolicy, retry_count: int) -> datetime | None:
+    def _calculate_next_retry(
+        self, policy: RetryPolicy, retry_count: int
+    ) -> datetime | None:
         """Calculate the next retry timestamp based on policy.
 
         Args:
@@ -324,7 +326,9 @@ class DeadLetterQueue:
         async with self._lock:
             # Check queue size
             if len(self._queue) >= self._max_size:
-                self._logger.error(f"Dead letter queue is full (max_size={self._max_size})")
+                self._logger.error(
+                    f"Dead letter queue is full (max_size={self._max_size})"
+                )
                 raise ValueError(
                     f"Dead letter queue is full (max_size={self._max_size}). "
                     f"Please manually process or archive tasks before adding more."
@@ -445,7 +449,9 @@ class DeadLetterQueue:
             },
         )
 
-    async def _persist_task(self, failed_task: FailedTask, *, strict: bool = False) -> str:
+    async def _persist_task(
+        self, failed_task: FailedTask, *, strict: bool = False
+    ) -> str:
         """Persist task to OpenSearch if available.
 
         Args:
@@ -481,7 +487,9 @@ class DeadLetterQueue:
                 id=failed_task.task_id,
                 body=failed_task.to_dict(),
             )
-        except Exception as e:  # background task — broad catch is the documented contract
+        except (
+            Exception
+        ) as e:  # background task — broad catch is the documented contract
             if strict:
                 self._logger.error(
                     f"DLQ fail-closed: OpenSearch write failed for {failed_task.task_id}: {e}"
@@ -555,13 +563,17 @@ class DeadLetterQueue:
                 try:
                     await self._process_ready_tasks(callback)
                     await asyncio.sleep(self._retry_interval_seconds)
-                except Exception:  # background task — broad catch is the documented contract
+                except (
+                    Exception
+                ):  # background task — broad catch is the documented contract
                     self._logger.exception("Error in retry processor loop")
                     # Wait before retrying to avoid tight error loop
                     await asyncio.sleep(10)
 
         self._retry_task = asyncio.create_task(retry_loop())
-        self._logger.info(f"Started DLQ retry processor (check_interval={check_interval_seconds}s)")
+        self._logger.info(
+            f"Started DLQ retry processor (check_interval={check_interval_seconds}s)"
+        )
 
     async def stop_retry_processor(self) -> None:
         """Stop the background retry processor.
@@ -740,7 +752,9 @@ class DeadLetterQueue:
 
         # Process outside lock using the configured callback
         if not self._retry_callback:
-            raise RuntimeError("No retry callback configured. Use start_retry_processor() first.")
+            raise RuntimeError(
+                "No retry callback configured. Use start_retry_processor() first."
+            )
 
         try:
             # Attempt retry
@@ -859,9 +873,15 @@ class DeadLetterQueue:
             Dictionary with queue metrics
         """
         async with self._lock:
-            pending_count = sum(1 for t in self._queue if t.status == DeadLetterStatus.PENDING)
-            retrying_count = sum(1 for t in self._queue if t.status == DeadLetterStatus.RETRYING)
-            exhausted_count = sum(1 for t in self._queue if t.status == DeadLetterStatus.EXHAUSTED)
+            pending_count = sum(
+                1 for t in self._queue if t.status == DeadLetterStatus.PENDING
+            )
+            retrying_count = sum(
+                1 for t in self._queue if t.status == DeadLetterStatus.RETRYING
+            )
+            exhausted_count = sum(
+                1 for t in self._queue if t.status == DeadLetterStatus.EXHAUSTED
+            )
 
             # Calculate error category distribution
             error_categories: dict[str, int] = {}
@@ -880,7 +900,9 @@ class DeadLetterQueue:
             return {
                 "queue_size": len(self._queue),
                 "max_size": self._max_size,
-                "utilization_percent": round(len(self._queue) / self._max_size * 100, 2),
+                "utilization_percent": round(
+                    len(self._queue) / self._max_size * 100, 2
+                ),
                 "status_breakdown": {
                     "pending": pending_count,
                     "retrying": retrying_count,

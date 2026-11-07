@@ -167,7 +167,10 @@ class SessionBuddyPool(BasePool):
                 pool_id = ""
 
             self._workers = (
-                {f"{pool_id}-worker-{i}": f"worker_{i}" for i in range(self.max_workers)}
+                {
+                    f"{pool_id}-worker-{i}": f"worker_{i}"
+                    for i in range(self.max_workers)
+                }
                 if pool_id
                 else {}
             )
@@ -332,7 +335,9 @@ class SessionBuddyPool(BasePool):
         to ``self._task_durations`` as a side effect.
         """
         for entry in batch_results:
-            status_value = entry.get("status", "unknown") if isinstance(entry, dict) else "unknown"
+            status_value = (
+                entry.get("status", "unknown") if isinstance(entry, dict) else "unknown"
+            )
             if status_value == "completed":
                 self._tasks_completed += 1
             else:
@@ -421,7 +426,9 @@ class SessionBuddyPool(BasePool):
 
             # Structured response handling.
             if not result.get("success"):
-                error_msg = result.get("error", "execute_batch_on_pool returned success=False")
+                error_msg = result.get(
+                    "error", "execute_batch_on_pool returned success=False"
+                )
                 raise MCPServerError(error_msg)
 
             # session-buddy returns results in input order; align by index.
@@ -429,7 +436,9 @@ class SessionBuddyPool(BasePool):
             if not isinstance(batch_results, list):
                 batch_results = []
 
-            task_results = self._stitch_results(tasks, batch_results, worker_id, duration)
+            task_results = self._stitch_results(
+                tasks, batch_results, worker_id, duration
+            )
             logger.info(
                 f"SessionBuddyPool {self.pool_id} executed {len(tasks)} tasks in {duration:.2f}s"
             )
@@ -549,7 +558,9 @@ class SessionBuddyPool(BasePool):
 
         # Calculate average task duration
         avg_duration = (
-            sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
+            sum(self._task_durations) / len(self._task_durations)
+            if self._task_durations
+            else 0.0
         )
 
         return PoolMetrics(
@@ -618,10 +629,14 @@ class SessionBuddyPool(BasePool):
                 return
 
             try:
-                await self._call_mcp_tool("delete_pool", {"pool_id": pool_id, "timeout": 5.0})
+                await self._call_mcp_tool(
+                    "delete_pool", {"pool_id": pool_id, "timeout": 5.0}
+                )
                 self._workers.clear()
                 self._status = PoolStatus.STOPPED
-                logger.info(f"SessionBuddyPool {self.pool_id} stopped (pool_id={pool_id})")
+                logger.info(
+                    f"SessionBuddyPool {self.pool_id} stopped (pool_id={pool_id})"
+                )
             except MCPServerError as e:
                 logger.error(f"Failed to stop SessionBuddyPool {self.pool_id}: {e}")
                 # Local cleanup happens regardless so the Mahavishnu-side

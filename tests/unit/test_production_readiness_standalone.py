@@ -57,7 +57,9 @@ def test_generate_report_formats_sections_and_details() -> None:
         recommendation="x",
         timestamp="2026-04-08T00:00:00",
         checks=[
-            ReadinessCheck("Security Audit", ReadinessStatus.PASS, "ok", duration_ms=1.2),
+            ReadinessCheck(
+                "Security Audit", ReadinessStatus.PASS, "ok", duration_ms=1.2
+            ),
             ReadinessCheck(
                 "Secrets Management",
                 ReadinessStatus.FAIL,
@@ -77,7 +79,9 @@ def test_generate_report_formats_sections_and_details() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_full_check_with_monkeypatched_checks(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_run_full_check_with_monkeypatched_checks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = ProductionReadinessChecker(Path("."))
 
     async def _pass(self) -> None:
@@ -107,7 +111,9 @@ async def test_run_full_check_with_monkeypatched_checks(monkeypatch: pytest.Monk
     ]
     funcs = [_pass, _warn, _fail]
     for i, name in enumerate(names):
-        monkeypatch.setattr(ProductionReadinessChecker, name, funcs[i % 3], raising=True)
+        monkeypatch.setattr(
+            ProductionReadinessChecker, name, funcs[i % 3], raising=True
+        )
 
     report = await checker.run_full_check()
     assert report.total_checks == 14
@@ -217,7 +223,9 @@ async def test_filesystem_based_checks_cover_pass_and_warn(
 
 
 @pytest.mark.asyncio
-async def test_secrets_scan_ignores_read_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_secrets_scan_ignores_read_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     alt_root = Path(f"/tmp/prs_cov_{uuid.uuid4().hex}")
     alt_root.mkdir(parents=True, exist_ok=True)
     checker = ProductionReadinessChecker(alt_root)
@@ -242,7 +250,9 @@ async def test_secrets_scan_ignores_read_errors(monkeypatch: pytest.MonkeyPatch)
 
 
 @pytest.mark.asyncio
-async def test_logging_check_warn_and_pass(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_logging_check_warn_and_pass(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     checker = ProductionReadinessChecker(tmp_path)
 
     real_import = __import__
@@ -262,7 +272,9 @@ async def test_logging_check_warn_and_pass(monkeypatch: pytest.MonkeyPatch, tmp_
 
 
 @pytest.mark.asyncio
-async def test_unit_test_check_branches(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_unit_test_check_branches(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     checker = ProductionReadinessChecker(tmp_path)
 
     # coverage >= 80 => PASS
@@ -376,20 +388,29 @@ async def test_remaining_warn_fail_and_main_branches(
         return report_ok
 
     monkeypatch.setattr(
-        ProductionReadinessChecker, "generate_report", lambda self, report: "x", raising=True
+        ProductionReadinessChecker,
+        "generate_report",
+        lambda self, report: "x",
+        raising=True,
     )
 
-    monkeypatch.setattr(ProductionReadinessChecker, "run_full_check", fake_fail, raising=True)
+    monkeypatch.setattr(
+        ProductionReadinessChecker, "run_full_check", fake_fail, raising=True
+    )
     with pytest.raises(SystemExit) as exc:
         await prs.main()
     assert exc.value.code == 1
 
-    monkeypatch.setattr(ProductionReadinessChecker, "run_full_check", fake_warn, raising=True)
+    monkeypatch.setattr(
+        ProductionReadinessChecker, "run_full_check", fake_warn, raising=True
+    )
     with pytest.raises(SystemExit) as exc:
         await prs.main()
     assert exc.value.code == 2
 
-    monkeypatch.setattr(ProductionReadinessChecker, "run_full_check", fake_ok, raising=True)
+    monkeypatch.setattr(
+        ProductionReadinessChecker, "run_full_check", fake_ok, raising=True
+    )
     with pytest.raises(SystemExit) as exc:
         await prs.main()
     assert exc.value.code == 0

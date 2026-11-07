@@ -265,7 +265,9 @@ class TestMenuInfo:
 
     @pytest.mark.unit
     def test_construction_with_all_fields(self):
-        child = MenuInfo(name="Save As", path=["File", "Save As"], shortcut="Cmd+Shift+S")
+        child = MenuInfo(
+            name="Save As", path=["File", "Save As"], shortcut="Cmd+Shift+S"
+        )
         menu = MenuInfo(
             name="File",
             path=["File"],

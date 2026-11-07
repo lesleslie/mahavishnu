@@ -107,7 +107,9 @@ class TestCheckSourcePurity:
         assert result.allowed is False
         assert result.purity is SourcePurity.REJECTED_UNATTRIBUTED
         # Forensic reason mentions the missing attribution.
-        assert "reviewer" in result.reason.lower() or "identity" in result.reason.lower()
+        assert (
+            "reviewer" in result.reason.lower() or "identity" in result.reason.lower()
+        )
 
     def test_allowlisted_reviewer_is_accepted(self) -> None:
         """Happy path: mahavishnu_workflow + reviewer in allowlist."""

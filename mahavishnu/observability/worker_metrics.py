@@ -53,6 +53,10 @@ class WorkerMetrics:
             out["attach_events"] = self._attach_events
             out["pool_share_numerator"] = self._pool_share_num
             out["pool_share_denominator"] = self._pool_share_den
-            ratio = self._pool_share_num / self._pool_share_den if self._pool_share_den > 0 else 0.0
+            ratio = (
+                self._pool_share_num / self._pool_share_den
+                if self._pool_share_den > 0
+                else 0.0
+            )
             out["pool_share_ratio"] = ratio
             return out

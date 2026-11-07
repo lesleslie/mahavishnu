@@ -49,7 +49,11 @@ class WorkerResult:
         """
         # Convert status string back to enum
         status_str = data.get("status", "unknown")
-        status = WorkerStatus(status_str) if isinstance(status_str, str) else data.get("status")
+        status = (
+            WorkerStatus(status_str)
+            if isinstance(status_str, str)
+            else data.get("status")
+        )
 
         raw_code = data.get("error_code")
         error_code = ErrorCode(raw_code) if raw_code is not None else None
@@ -77,7 +81,9 @@ class WorkerResult:
             "status": self.status.value,
             "output": self.output,
             "error": self.error,
-            "error_code": self.error_code.value if self.error_code is not None else None,
+            "error_code": self.error_code.value
+            if self.error_code is not None
+            else None,
             "exit_code": self.exit_code,
             "duration_seconds": self.duration_seconds,
             "metadata": self.metadata,
@@ -222,7 +228,8 @@ class BaseWorker(ABC):
         try:
             current_status = await self.status()
             return {
-                "healthy": current_status in (WorkerStatus.RUNNING, WorkerStatus.PENDING),
+                "healthy": current_status
+                in (WorkerStatus.RUNNING, WorkerStatus.PENDING),
                 "status": current_status.value,
                 "worker_type": self.worker_type,
                 "details": {},

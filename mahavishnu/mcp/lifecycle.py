@@ -137,7 +137,9 @@ def build_post_start_lifespan(server: Any) -> Any:
                 session_buddy_client=get_session_buddy_client(),
             )
             await sweeper.init()
-            sweeper_task = asyncio.create_task(sweeper.run_forever(), name="task_orphan_sweeper")
+            sweeper_task = asyncio.create_task(
+                sweeper.run_forever(), name="task_orphan_sweeper"
+            )
             server._task_orphan_sweeper = sweeper
             server._task_orphan_sweeper_task = sweeper_task
             logger.info("task_orphan_sweeper started (stream=bodai:events)")
@@ -194,7 +196,9 @@ def build_post_start_lifespan(server: Any) -> Any:
                 logger.error(f"Failed to start plan_index subsystem: {exc}")
                 # Don't crash — /health reports plan_index degraded.
 
-        plan_index_task = asyncio.create_task(_init_plan_index(), name="plan_index_init")
+        plan_index_task = asyncio.create_task(
+            _init_plan_index(), name="plan_index_init"
+        )
         server._plan_index_init_task = plan_index_task
 
         # change-point detector tick loop.
@@ -326,7 +330,9 @@ async def start_server(
 
             server.app.pool_manager = init_pool_manager(server.app)
         except Exception:  # MCP start — surface traceback, server stays up
-            logger.exception("Failed to initialize pool manager during mcp start — see traceback")
+            logger.exception(
+                "Failed to initialize pool manager during mcp start — see traceback"
+            )
 
     if getattr(server.app, "memory_aggregator", None) is None and getattr(
         server.app.config, "memory_aggregation_enabled", False
@@ -360,7 +366,9 @@ async def start_server(
     # the historical fallback for ``mahavishnu mcp start`` and tests
     # that don't pass one.
     effective_uvicorn_config = (
-        uvicorn_config if uvicorn_config is not None else {"timeout_graceful_shutdown": 30}
+        uvicorn_config
+        if uvicorn_config is not None
+        else {"timeout_graceful_shutdown": 30}
     )
     await server.server.run_http_async(
         host=host,

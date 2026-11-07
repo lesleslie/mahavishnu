@@ -74,7 +74,10 @@ def _emit_cache_availability_warning() -> None:
     sentinel = Path.home() / ".mahavishnu" / ".cache_warning_emitted"
     dedup_seconds = 3600
     try:
-        if sentinel.exists() and (time.time() - sentinel.stat().st_mtime) < dedup_seconds:
+        if (
+            sentinel.exists()
+            and (time.time() - sentinel.stat().st_mtime) < dedup_seconds
+        ):
             return
     except OSError:
         pass
@@ -137,7 +140,9 @@ class CanonicalEnvelope:
     tool_input: dict[str, Any] | None = None
     tool_use_id: str | None = None  # Claude `toolu_xxx`, Qwen `toolu_xxx`
     tool_call_id: str | None = None  # Qwen `call_xxx`, optional
-    permission_mode: str | None = None  # default|plan|acceptEdits|auto|dontAsk|bypassPermissions
+    permission_mode: str | None = (
+        None  # default|plan|acceptEdits|auto|dontAsk|bypassPermissions
+    )
     agent_id: str | None = None  # subagent fields
     agent_type: str | None = None
     effort: str | None = None  # `{ level: low|medium|high|xhigh|max }` (Claude-only)
@@ -324,7 +329,9 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
             else queued_publisher()
         )
         _drive(_init_and_publish())
-    except Exception as exc:  # hook bridge — publish failures are observed, not propagated
+    except (
+        Exception
+    ) as exc:  # hook bridge — publish failures are observed, not propagated
         if type(exc) in _PUBLISH_LOGGED_EXC_TYPES:
             # Identical failure mode already logged this process — keep
             # the hook log legible by demoting subsequent identical
@@ -353,7 +360,9 @@ def _publish(*, channel: str, envelope: CanonicalEnvelope) -> None:
                 feed = _health_monitor.get_feed("hook_bridge_feed")
                 if feed is not None:
                     feed.errors_total = getattr(feed, "errors_total", 0) + 1
-                    feed.publish_failures_total = getattr(feed, "publish_failures_total", 0) + 1
+                    feed.publish_failures_total = (
+                        getattr(feed, "publish_failures_total", 0) + 1
+                    )
         except ImportError, AttributeError:
             pass
         return

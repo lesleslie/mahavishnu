@@ -73,7 +73,9 @@ class SkillRegistry:
         return None
 
     def list_active(self) -> list[VersionRecord]:
-        return [r for r in self._versions.values() if r.state == SkillPromotionState.ACTIVE]
+        return [
+            r for r in self._versions.values() if r.state == SkillPromotionState.ACTIVE
+        ]
 
     def list_history(self, skill_id: str) -> list[VersionRecord]:
         return [r for r in self._history if r.skill_id == skill_id]
@@ -91,7 +93,9 @@ class SkillRegistry:
 
         target = self.get_version(skill_id, to_version)
         if target is None:
-            raise ValueError(f"Version '{to_version}' not found in history for skill '{skill_id}'")
+            raise ValueError(
+                f"Version '{to_version}' not found in history for skill '{skill_id}'"
+            )
 
         rollback = self._policy.rollback_skill(
             skill_id=skill_id,
@@ -129,7 +133,9 @@ class SkillRegistry:
 
     def evidence_history_preserved(self, skill_id: str) -> bool:
         evidence_ids = {
-            r.review.review_id for r in self.list_history(skill_id) if r.review is not None
+            r.review.review_id
+            for r in self.list_history(skill_id)
+            if r.review is not None
         }
         if not evidence_ids:
             return True

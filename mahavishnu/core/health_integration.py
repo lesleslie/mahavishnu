@@ -107,7 +107,10 @@ class AdapterHealthState:
             self.consecutive_successes += 1
 
             # Check for recovery
-            if not self.is_healthy and self.consecutive_successes >= config.recovery_threshold:
+            if (
+                not self.is_healthy
+                and self.consecutive_successes >= config.recovery_threshold
+            ):
                 self.is_healthy = True
                 self.last_state_change = datetime.now(UTC)
                 state_changed = True
@@ -124,7 +127,10 @@ class AdapterHealthState:
                 self.failure_history = self.failure_history[-10:]
 
             # Check for unhealthy threshold
-            if self.is_healthy and self.consecutive_failures >= config.unhealthy_threshold:
+            if (
+                self.is_healthy
+                and self.consecutive_failures >= config.unhealthy_threshold
+            ):
                 self.is_healthy = False
                 self.last_state_change = datetime.now(UTC)
                 state_changed = True
@@ -134,7 +140,9 @@ class AdapterHealthState:
                 )
         else:
             # Unknown status - log warning but don't change state
-            logger.warning(f"Adapter {self.adapter_name} returned unknown status: {status}")
+            logger.warning(
+                f"Adapter {self.adapter_name} returned unknown status: {status}"
+            )
 
         return state_changed
 
@@ -146,7 +154,9 @@ class AdapterHealthState:
             "current_status": self.current_health.get("status", "unknown"),
             "consecutive_failures": self.consecutive_failures,
             "consecutive_successes": self.consecutive_successes,
-            "last_check_time": self.last_check_time.isoformat() if self.last_check_time else None,
+            "last_check_time": self.last_check_time.isoformat()
+            if self.last_check_time
+            else None,
             "last_state_change": self.last_state_change.isoformat()
             if self.last_state_change
             else None,
@@ -361,7 +371,9 @@ class AdapterHealthMonitor:
 
             # Get or create health state
             if adapter_name not in self.health_states:
-                self.health_states[adapter_name] = AdapterHealthState(adapter_name=adapter_name)
+                self.health_states[adapter_name] = AdapterHealthState(
+                    adapter_name=adapter_name
+                )
 
             state = self.health_states[adapter_name]
             old_is_healthy = state.is_healthy
@@ -374,7 +386,9 @@ class AdapterHealthMonitor:
 
             # Handle state changes
             if state_changed:
-                await self._handle_health_state_change(adapter_name, old_is_healthy, state)
+                await self._handle_health_state_change(
+                    adapter_name, old_is_healthy, state
+                )
 
             # Record health check in counter
             if self._health_check_counter:
@@ -399,7 +413,9 @@ class AdapterHealthMonitor:
 
             # Update state with error
             if adapter_name not in self.health_states:
-                self.health_states[adapter_name] = AdapterHealthState(adapter_name=adapter_name)
+                self.health_states[adapter_name] = AdapterHealthState(
+                    adapter_name=adapter_name
+                )
 
             state = self.health_states[adapter_name]
             old_is_healthy = state.is_healthy
@@ -409,7 +425,9 @@ class AdapterHealthMonitor:
             self._update_prometheus_metrics(adapter_name, error_health, state)
 
             if state_changed:
-                await self._handle_health_state_change(adapter_name, old_is_healthy, state)
+                await self._handle_health_state_change(
+                    adapter_name, old_is_healthy, state
+                )
 
             return error_health
 
@@ -429,7 +447,9 @@ class AdapterHealthMonitor:
         from_state = "healthy" if old_is_healthy else "unhealthy"
         to_state = "healthy" if new_state.is_healthy else "unhealthy"
 
-        logger.info(f"Adapter {adapter_name} health state changed: {from_state} -> {to_state}")
+        logger.info(
+            f"Adapter {adapter_name} health state changed: {from_state} -> {to_state}"
+        )
 
         # Record state change in Prometheus
         if self._health_state_counter:
@@ -568,7 +588,9 @@ class AdapterHealthMonitor:
                 try:
                     await handler.send_alert(alert)
                 except Exception as e:  # one bad alert handler must not stop other handlers from firing  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                    logger.error(f"Alert handler {handler.__class__.__name__} failed: {e}")
+                    logger.error(
+                        f"Alert handler {handler.__class__.__name__} failed: {e}"
+                    )
 
             logger.info(f"Triggered health alert for {adapter_name}")
         except Exception as e:  # alert construction may fail (model validation); log and move on  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -594,7 +616,9 @@ class AdapterHealthMonitor:
                 # Clear cached preferences to force recalculation
                 # This will deprioritize unhealthy adapters
                 router._preferences.clear()
-                logger.info(f"Cleared StatisticalRouter cache due to {adapter_name} health change")
+                logger.info(
+                    f"Cleared StatisticalRouter cache due to {adapter_name} health change"
+                )
         except Exception as e:  # router singleton may be uninitialized; cache invalidation is advisory  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.debug(f"Failed to update router preferences: {e}")
 
@@ -639,7 +663,11 @@ class AdapterHealthMonitor:
                     INSERT OR REPLACE INTO adapter_health (adapter_name, health_data, updated_at)
                     VALUES (?, ?, ?)
                     """,
-                    (adapter_name, json.dumps(state.to_dict()), datetime.now(UTC).isoformat()),
+                    (
+                        adapter_name,
+                        json.dumps(state.to_dict()),
+                        datetime.now(UTC).isoformat(),
+                    ),
                 )
 
                 conn.commit()
@@ -674,9 +702,7 @@ class AdapterHealthMonitor:
                 except asyncio.CancelledError:
                     logger.info("Health monitor loop cancelled")
                     break
-                except (
-                    Exception
-                ):  # background monitor task — never crash the loop on a transient error
+                except Exception:  # background monitor task — never crash the loop on a transient error
                     logger.exception("Health monitor error")
                     await asyncio.sleep(check_interval)
 
@@ -713,8 +739,11 @@ class AdapterHealthMonitor:
             "healthy": healthy,
             "unhealthy": unhealthy,
             "health_percentage": (healthy / total * 100) if total > 0 else 100.0,
-            "adapters": {name: state.to_dict() for name, state in self.health_states.items()},
-            "monitor_running": self._monitor_task is not None and not self._monitor_task.done(),
+            "adapters": {
+                name: state.to_dict() for name, state in self.health_states.items()
+            },
+            "monitor_running": self._monitor_task is not None
+            and not self._monitor_task.done(),
             "config": {
                 "check_interval_seconds": self.config.check_interval_seconds,
                 "unhealthy_threshold": self.config.unhealthy_threshold,

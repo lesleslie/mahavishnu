@@ -8,7 +8,11 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from mahavishnu.core.app import MahavishnuApp
-from mahavishnu.core.backup_recovery import BackupInfo, BackupManager, DisasterRecoveryManager
+from mahavishnu.core.backup_recovery import (
+    BackupInfo,
+    BackupManager,
+    DisasterRecoveryManager,
+)
 
 
 @pytest.fixture

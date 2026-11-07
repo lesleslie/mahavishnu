@@ -186,7 +186,9 @@ def get_all_rate_limit_stats() -> dict[str, Any]:
         Dictionary with statistics for all tools
     """
     total_calls = sum(stats.get("total_calls", 0) for stats in _tool_stats.values())
-    total_rate_limited = sum(stats.get("rate_limited_calls", 0) for stats in _tool_stats.values())
+    total_rate_limited = sum(
+        stats.get("rate_limited_calls", 0) for stats in _tool_stats.values()
+    )
 
     return {
         "total_calls": total_calls,

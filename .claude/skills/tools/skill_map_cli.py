@@ -45,9 +45,14 @@ def get_graph(skills_dir: Path = None) -> SkillGraph:
 
 @app.command()
 def graph(
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
     format: str = typer.Option(
-        "mermaid", "--format", "-f", help="Export format (mermaid, graphviz, json, cytoscape)"
+        "mermaid",
+        "--format",
+        "-f",
+        help="Export format (mermaid, graphviz, json, cytoscape)",
     ),
     output: Path = typer.Option(None, "--output", "-o", help="Output file path"),
 ):
@@ -89,7 +94,9 @@ def graph(
 def path(
     start: str = typer.Argument(..., help="Starting skill name"),
     end: str = typer.Argument(..., help="Target skill name"),
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
     all_paths: bool = typer.Option(False, "--all", "-a", help="Find all paths"),
 ):
     """
@@ -108,7 +115,9 @@ def path(
             return
 
         table = Table(
-            title=f"All Paths: {start} → {end}", show_header=True, header_style="bold magenta"
+            title=f"All Paths: {start} → {end}",
+            show_header=True,
+            header_style="bold magenta",
         )
         table.add_column("Path", style="cyan")
         table.add_column("Length", style="green")
@@ -129,7 +138,9 @@ def path(
 
 @app.command()
 def clusters(
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Show skill clusters by system.
@@ -140,7 +151,9 @@ def clusters(
     graph = get_graph(skills_dir)
     clusters = detect_clusters(graph)
 
-    table = Table(title="Skill Clusters by System", show_header=True, header_style="bold magenta")
+    table = Table(
+        title="Skill Clusters by System", show_header=True, header_style="bold magenta"
+    )
     table.add_column("System", style="cyan")
     table.add_column("Skills", style="green")
     table.add_column("Count", style="yellow")
@@ -156,7 +169,9 @@ def clusters(
 
 @app.command()
 def orphans(
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Find orphaned skills with no relationships.
@@ -178,7 +193,11 @@ def orphans(
 
     for skill_name in orphans:
         skill = graph.skills[skill_name]
-        desc = skill.description[:60] + "..." if len(skill.description) > 60 else skill.description
+        desc = (
+            skill.description[:60] + "..."
+            if len(skill.description) > 60
+            else skill.description
+        )
         table.add_row(skill_name, skill.system, desc)
 
     console.print(table)
@@ -186,7 +205,9 @@ def orphans(
 
 @app.command()
 def central(
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
     top_n: int = typer.Option(10, "--top", "-n", help="Number of top skills to show"),
 ):
     """
@@ -200,7 +221,9 @@ def central(
     centrality = analyze_centrality(graph)
 
     table = Table(
-        title=f"Top {top_n} Central Skills", show_header=True, header_style="bold magenta"
+        title=f"Top {top_n} Central Skills",
+        show_header=True,
+        header_style="bold magenta",
     )
     table.add_column("Rank", style="dim")
     table.add_column("Skill", style="cyan")
@@ -210,7 +233,11 @@ def central(
 
     for i, (skill_name, score) in enumerate(centrality[:top_n], 1):
         skill = graph.skills[skill_name]
-        desc = skill.description[:50] + "..." if len(skill.description) > 50 else skill.description
+        desc = (
+            skill.description[:50] + "..."
+            if len(skill.description) > 50
+            else skill.description
+        )
         table.add_row(str(i), skill_name, skill.system, f"{score:.4f}", desc)
 
     console.print(table)
@@ -219,7 +246,9 @@ def central(
 @app.command()
 def prerequisites(
     skill_name: str = typer.Argument(..., help="Skill name"),
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Show prerequisites for a skill.
@@ -254,7 +283,9 @@ def prerequisites(
 @app.command()
 def dependents(
     skill_name: str = typer.Argument(..., help="Skill name"),
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Show skills that depend on a given skill.
@@ -289,7 +320,9 @@ def dependents(
 @app.command()
 def learn_order(
     skill_names: list[str] = typer.Argument(..., help="One or more skill names"),
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Order the given skills with prerequisites first.
@@ -315,7 +348,9 @@ def learn_order(
 
 @app.command()
 def stats(
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Show comprehensive statistics about the skill graph.
@@ -330,7 +365,9 @@ def stats(
 
 @app.command()
 def bridges(
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Find bridge skills (critical connections).
@@ -346,7 +383,9 @@ def bridges(
         return
 
     table = Table(
-        title="Bridge Skills (Critical Connections)", show_header=True, header_style="bold magenta"
+        title="Bridge Skills (Critical Connections)",
+        show_header=True,
+        header_style="bold magenta",
     )
     table.add_column("Source", style="cyan")
     table.add_column("Target", style="green")
@@ -359,7 +398,9 @@ def bridges(
 
 @app.command()
 def topics(
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
     top_n: int = typer.Option(10, "--top", "-n", help="Number of topics to show"),
 ):
     """
@@ -373,7 +414,9 @@ def topics(
     topics = find_central_topics(graph, top_n=top_n)
 
     table = Table(
-        title=f"Top {top_n} Central Topics", show_header=True, header_style="bold magenta"
+        title=f"Top {top_n} Central Topics",
+        show_header=True,
+        header_style="bold magenta",
     )
     table.add_column("Rank", style="dim")
     table.add_column("Skill", style="cyan")
@@ -388,8 +431,12 @@ def topics(
 @app.command()
 def similar(
     skill_name: str = typer.Argument(..., help="Skill name"),
-    limit: int = typer.Option(5, "--limit", "-l", help="Maximum number of similar skills"),
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    limit: int = typer.Option(
+        5, "--limit", "-l", help="Maximum number of similar skills"
+    ),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Find skills similar to a given skill by keyword overlap (Jaccard similarity).
@@ -417,7 +464,9 @@ def similar(
 
 @app.command()
 def matrix(
-    skills_dir: Path = typer.Option(None, "--skills-dir", "-s", help="Path to skills directory"),
+    skills_dir: Path = typer.Option(
+        None, "--skills-dir", "-s", help="Path to skills directory"
+    ),
 ):
     """
     Show system connection matrix.

@@ -208,7 +208,9 @@ class TestThompsonSamplingRouter:
         router.global_stats[RAGStrategy.NAIVE].update(success=True, latency_ms=500.0)
 
         # Get penalty
-        penalty = router._calculate_latency_penalty(router.global_stats[RAGStrategy.NAIVE])
+        penalty = router._calculate_latency_penalty(
+            router.global_stats[RAGStrategy.NAIVE]
+        )
         assert penalty > 0
         assert penalty <= 0.5  # max penalty is latency_weight
 
@@ -230,9 +232,13 @@ class TestThompsonSamplingRouter:
         for _ in range(10):
             strategy = await router.select_strategy(0.1)
             if strategy == RAGStrategy.NAIVE:
-                router.update(strategy, success=True, latency_ms=10.0, complexity_score=0.1)
+                router.update(
+                    strategy, success=True, latency_ms=10.0, complexity_score=0.1
+                )
             else:
-                router.update(strategy, success=False, latency_ms=100.0, complexity_score=0.1)
+                router.update(
+                    strategy, success=False, latency_ms=100.0, complexity_score=0.1
+                )
 
         # Check that NAIVE has better stats
         naive_stats = router.global_stats[RAGStrategy.NAIVE]

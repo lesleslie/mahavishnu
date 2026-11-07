@@ -7,7 +7,11 @@ import httpx2 as httpx
 import pytest
 
 from mahavishnu.core.status import WorkerStatus
-from mahavishnu.workers.openhands import OpenHandsClient, OpenHandsConfig, OpenHandsWorker
+from mahavishnu.workers.openhands import (
+    OpenHandsClient,
+    OpenHandsConfig,
+    OpenHandsWorker,
+)
 from tests.unit._httpx_test_helpers import patch_async_client
 
 _TARGET = "mahavishnu.workers.openhands"

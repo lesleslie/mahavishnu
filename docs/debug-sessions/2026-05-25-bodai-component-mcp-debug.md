@@ -62,14 +62,18 @@ import asyncio
 from mcp.client.streamable_http import streamable_http_client
 from mcp.client.session import ClientSession
 
+
 async def test():
-    ctx = streamable_http_client('http://localhost:8682/mcp', terminate_on_close=True)
+    ctx = streamable_http_client("http://localhost:8682/mcp", terminate_on_close=True)
     rs, ws, get_session_id = await ctx.__aenter__()
-    print(f'Session ID: {get_session_id()}')  # Shows None!
+    print(f"Session ID: {get_session_id()}")  # Shows None!
     session = ClientSession(rs, ws)
     await session.initialize()  # Hangs here
-    result = await session.call_tool('query_local_traces', {'system_id': 'mahavishnu', 'limit': 5})
+    result = await session.call_tool(
+        "query_local_traces", {"system_id": "mahavishnu", "limit": 5}
+    )
     await ctx.__aexit__(None, None, None)
+
 
 asyncio.run(test())
 ```

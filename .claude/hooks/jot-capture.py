@@ -16,6 +16,7 @@ routing to ``mahavishnu.bodai_hook_bridge.handle`` for bus publish +
 audit. The existing logic is preserved verbatim — bridge failure can
 never alter the authoritative exit code (spec §4.13.3).
 """
+
 from __future__ import annotations
 
 import json
@@ -39,7 +40,7 @@ def _safe_parse_payload() -> dict[str, object]:
         return {}
     try:
         data = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return {}
     return data if isinstance(data, dict) else {}
 
@@ -87,7 +88,9 @@ def main() -> int:
     # missing, etc.) must NEVER alter the authoritative exit code.
     try:
         handle(event_name=EVENT_NAME, harness="claude", payload=payload)
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100  # hook handler — broad catch is the documented contract
+    ):
         sys.stderr.write("Hook output: jot-capture bridge routing failed\n")
         sys.stderr.flush()
 
@@ -97,7 +100,9 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:  # hook handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+    except (
+        Exception  # noqa: BLE001, RUF100  # hook handler — broad catch is the documented contract
+    ):
         sys.stderr.write("Hook output: jot-capture wrapper unhandled error\n")
         sys.stderr.flush()
         sys.exit(0)

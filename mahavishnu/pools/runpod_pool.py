@@ -77,7 +77,9 @@ class RunPodPool(BasePool):
     def __init__(self, config: PoolConfig, pool_id: str | None = None) -> None:
         super().__init__(config, pool_id)
         self._endpoint: Any = None
-        self._task_results: collections.deque[dict[str, Any]] = collections.deque(maxlen=1000)
+        self._task_results: collections.deque[dict[str, Any]] = collections.deque(
+            maxlen=1000
+        )
         self._tasks_completed = 0
         self._tasks_failed = 0
         self._task_durations: list[float] = []
@@ -247,7 +249,9 @@ class RunPodPool(BasePool):
                 "duration": duration,
             }
 
-    async def execute_batch(self, tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    async def execute_batch(
+        self, tasks: list[dict[str, Any]]
+    ) -> dict[str, dict[str, Any]]:
         results = await asyncio.gather(*(self.execute_task(t) for t in tasks))
         return {str(i): r for i, r in enumerate(results)}
 
@@ -279,7 +283,9 @@ class RunPodPool(BasePool):
 
     async def get_metrics(self) -> PoolMetrics:
         avg_duration = (
-            sum(self._task_durations) / len(self._task_durations) if self._task_durations else 0.0
+            sum(self._task_durations) / len(self._task_durations)
+            if self._task_durations
+            else 0.0
         )
         # The serverless endpoint is one logical unit from this pool's
         # perspective — active == 1 when RUNNING, 0 otherwise.
@@ -310,7 +316,9 @@ class RunPodPool(BasePool):
             for r in self._task_results
         ]
         self._task_results.clear()
-        logger.info("Collected %d memory items from RunPodPool %s", len(items), self.pool_id)
+        logger.info(
+            "Collected %d memory items from RunPodPool %s", len(items), self.pool_id
+        )
         return items
 
     async def stop(self) -> None:

@@ -67,7 +67,9 @@ def resolve_workspace_path(path: str, workspace_root: Path) -> Path:
     try:
         resolved.relative_to(root)
     except ValueError as exc:
-        raise PermissionError(f"Path '{resolved}' is outside workspace root '{root}'") from exc
+        raise PermissionError(
+            f"Path '{resolved}' is outside workspace root '{root}'"
+        ) from exc
     return resolved
 
 
@@ -101,4 +103,6 @@ def validate_url(url: str) -> None:
     for _, _, _, _, sockaddr in addrs:
         ip = ipaddress.ip_address(sockaddr[0])
         if _is_blocked(ip):
-            raise PermissionError(f"URL resolves to private/reserved address {ip} — blocked (SSRF)")
+            raise PermissionError(
+                f"URL resolves to private/reserved address {ip} — blocked (SSRF)"
+            )

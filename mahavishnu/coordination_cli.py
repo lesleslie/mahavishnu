@@ -54,9 +54,13 @@ def add_repo_commands(app: typer.Typer) -> None:
 @coord_app.command("list-issues")
 def list_issues(
     status: str | None = typer.Option(None, "--status", "-s", help="Filter by status"),
-    priority: str | None = typer.Option(None, "--priority", "-p", help="Filter by priority"),
+    priority: str | None = typer.Option(
+        None, "--priority", "-p", help="Filter by priority"
+    ),
     repo: str | None = typer.Option(None, "--repo", "-r", help="Filter by repository"),
-    assignee: str | None = typer.Option(None, "--assignee", "-a", help="Filter by assignee"),
+    assignee: str | None = typer.Option(
+        None, "--assignee", "-a", help="Filter by assignee"
+    ),
 ):
     """List cross-repository issues with optional filtering."""
     mgr = CoordinationManager()
@@ -71,7 +75,9 @@ def list_issues(
             console.print(f"Valid values: {[s.value for s in IssueStatus]}")
             raise typer.Exit(code=1)
 
-    issues = mgr.list_issues(status=status_enum, priority=priority, repo=repo, assignee=assignee)
+    issues = mgr.list_issues(
+        status=status_enum, priority=priority, repo=repo, assignee=assignee
+    )
 
     if not issues:
         console.print("No issues found matching the criteria.")
@@ -143,12 +149,18 @@ def show_issue(
 @coord_app.command("create-issue")
 def create_issue(
     title: str = typer.Option(..., "--title", "-t", help="Issue title"),
-    description: str = typer.Option(..., "--description", "-d", help="Issue description"),
-    repos: str = typer.Option(..., "--repos", "-r", help="Comma-separated list of repositories"),
+    description: str = typer.Option(
+        ..., "--description", "-d", help="Issue description"
+    ),
+    repos: str = typer.Option(
+        ..., "--repos", "-r", help="Comma-separated list of repositories"
+    ),
     priority: str = typer.Option("medium", "--priority", "-p", help="Issue priority"),
     severity: str = typer.Option("normal", "--severity", help="Severity level"),
     assignee: str | None = typer.Option(None, "--assignee", "-a", help="Assignee"),
-    target: str | None = typer.Option(None, "--target", help="Target completion date (ISO 8601)"),
+    target: str | None = typer.Option(
+        None, "--target", help="Target completion date (ISO 8601)"
+    ),
 ):
     """Create a new cross-repository issue."""
     mgr = CoordinationManager()
@@ -252,7 +264,9 @@ def close_issue(
 def list_todos(
     status: str | None = typer.Option(None, "--status", "-s", help="Filter by status"),
     repo: str | None = typer.Option(None, "--repo", "-r", help="Filter by repository"),
-    assignee: str | None = typer.Option(None, "--assignee", "-a", help="Filter by assignee"),
+    assignee: str | None = typer.Option(
+        None, "--assignee", "-a", help="Filter by assignee"
+    ),
 ):
     """List todo items with optional filtering."""
     mgr = CoordinationManager()
@@ -336,7 +350,9 @@ def show_todo(
 @coord_app.command("create-todo")
 def create_todo(
     task: str = typer.Option(..., "--task", "-t", help="Task description"),
-    description: str = typer.Option(..., "--description", "-d", help="Detailed description"),
+    description: str = typer.Option(
+        ..., "--description", "-d", help="Detailed description"
+    ),
     repo: str = typer.Option(..., "--repo", "-r", help="Repository nickname"),
     estimate: float = typer.Option(..., "--estimate", "-e", help="Estimated hours"),
     priority: str = typer.Option("medium", "--priority", "-p", help="Task priority"),
@@ -460,8 +476,12 @@ def list_plans(
 
 @coord_app.command("list-deps")
 def list_deps(
-    consumer: str | None = typer.Option(None, "--consumer", "-c", help="Filter by consumer"),
-    provider: str | None = typer.Option(None, "--provider", "-p", help="Filter by provider"),
+    consumer: str | None = typer.Option(
+        None, "--consumer", "-c", help="Filter by consumer"
+    ),
+    provider: str | None = typer.Option(
+        None, "--provider", "-p", help="Filter by provider"
+    ),
 ):
     """List inter-repository dependencies."""
     mgr = CoordinationManager()
@@ -495,7 +515,9 @@ def list_deps(
 
 @coord_app.command("check-deps")
 def check_deps(
-    consumer: str | None = typer.Option(None, "--consumer", "-c", help="Filter by consumer"),
+    consumer: str | None = typer.Option(
+        None, "--consumer", "-c", help="Filter by consumer"
+    ),
 ):
     """Validate inter-repository dependencies."""
     mgr = CoordinationManager()
@@ -520,7 +542,9 @@ def check_deps(
             if dep.get("validation"):
                 val = dep["validation"]
                 val_color = "green" if val["passed"] else "red"
-                console.print(f"    Validation: [{val_color}]{val['passed']}[/{val_color}]")
+                console.print(
+                    f"    Validation: [{val_color}]{val['passed']}[/{val_color}]"
+                )
                 if val.get("details"):
                     console.print(f"    {val['details']}")
 
@@ -551,13 +575,17 @@ def repo_status(
         console.print(f"  [{todo.status.value}] {todo.id}: {todo.task}")
 
     # Dependencies
-    console.print(f"\n[bold]Outgoing Dependencies:[/bold] {len(status['dependencies_outgoing'])}")
+    console.print(
+        f"\n[bold]Outgoing Dependencies:[/bold] {len(status['dependencies_outgoing'])}"
+    )
     for dep in status["dependencies_outgoing"]:
         console.print(
             f"  {dep.consumer} → {dep.provider}: {dep.version_constraint} [{dep.status.value}]"
         )
 
-    console.print(f"\n[bold]Incoming Dependencies:[/bold] {len(status['dependencies_incoming'])}")
+    console.print(
+        f"\n[bold]Incoming Dependencies:[/bold] {len(status['dependencies_incoming'])}"
+    )
     for dep in status["dependencies_incoming"]:
         console.print(
             f"  {dep.consumer} → {dep.provider}: {dep.version_constraint} [{dep.status.value}]"
@@ -600,7 +628,9 @@ def blocking(
     if deps:
         console.print("\n[bold]Unsatisfied Dependencies:[/bold]")
         for dep in deps:
-            console.print(f"  {dep.id}: requires {dep.provider} {dep.version_constraint}")
+            console.print(
+                f"  {dep.id}: requires {dep.provider} {dep.version_constraint}"
+            )
 
 
 @coord_app.command("ecosystem-status")
@@ -654,7 +684,9 @@ def ecosystem_status() -> None:
 
 @coord_app.command("roadmap")
 def roadmap(
-    status: str | None = typer.Option(None, "--status", "-s", help="Filter by plan status"),
+    status: str | None = typer.Option(
+        None, "--status", "-s", help="Filter by plan status"
+    ),
 ) -> None:
     """Show active plans with milestone progress."""
     mgr = CoordinationManager()
@@ -675,7 +707,9 @@ def roadmap(
         console.print(f"  Repos: {', '.join(plan.repos)}")
         if plan.milestones:
             console.print(f"  Progress: {bar} {done}/{total}")
-            table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
+            table = Table(
+                show_header=True, header_style="bold", box=None, padding=(0, 2)
+            )
             table.add_column("Milestone")
             table.add_column("Status")
             table.add_column("Due")
@@ -698,7 +732,9 @@ def roadmap(
 @repo_app.command("list-tasks")
 def repo_list_tasks(
     status: str | None = typer.Option(None, "--status", "-s", help="Filter by status"),
-    repository: str | None = typer.Option(None, "--repo", "-r", help="Filter by repository"),
+    repository: str | None = typer.Option(
+        None, "--repo", "-r", help="Filter by repository"
+    ),
     limit: int = typer.Option(20, "--limit", "-l", help="Maximum results"),
 ):
     """List tasks from the orchestration database via TaskRepository.list_tasks()."""
@@ -798,7 +834,9 @@ def repo_list_runs(
 
 @repo_app.command("list-events")
 def repo_list_events(
-    task_id: str | None = typer.Option(None, "--task", "-t", help="Filter by task UUID"),
+    task_id: str | None = typer.Option(
+        None, "--task", "-t", help="Filter by task UUID"
+    ),
     actor: str | None = typer.Option(None, "--actor", "-a", help="Filter by actor"),
     limit: int = typer.Option(20, "--limit", "-l", help="Maximum results"),
 ):

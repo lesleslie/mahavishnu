@@ -55,7 +55,11 @@ def find_learning_path(
 
 
 def find_all_paths(
-    graph: SkillGraph, start_skill: str, end_skill: str, max_paths: int = 10, max_depth: int = 10
+    graph: SkillGraph,
+    start_skill: str,
+    end_skill: str,
+    max_paths: int = 10,
+    max_depth: int = 10,
 ) -> list[list[str]]:
     """
     Find all paths between two skills (up to max_paths).
@@ -117,7 +121,9 @@ def get_prerequisite_skills(graph: SkillGraph, skill_name: str) -> dict[str, lis
 
     skill = graph.skills[skill_name]
     direct_reqs = [
-        r.name for r in skill.related_skills if r.relationship_type.upper() == "REQUIRED"
+        r.name
+        for r in skill.related_skills
+        if r.relationship_type.upper() == "REQUIRED"
     ]
 
     # Find transitive prerequisites

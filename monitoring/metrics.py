@@ -47,7 +47,22 @@ http_request_duration_seconds = Histogram(
     "mcp_http_request_duration_seconds",
     "HTTP request latency",
     ["method", "endpoint"],
-    buckets=(0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0),
+    buckets=(
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.075,
+        0.1,
+        0.25,
+        0.5,
+        0.75,
+        1.0,
+        2.5,
+        5.0,
+        7.5,
+        10.0,
+    ),
 )
 
 http_requests_in_progress = Gauge(
@@ -290,7 +305,11 @@ mahavishnu_dependency_health_status = Gauge(
 cache_operations_total = Counter(
     "cache_operations_total",
     "Total cache operations",
-    ["cache_name", "operation", "result"],  # operation: get, set, delete; result: hit, miss, error
+    [
+        "cache_name",
+        "operation",
+        "result",
+    ],  # operation: get, set, delete; result: hit, miss, error
 )
 
 cache_size_bytes = Gauge(

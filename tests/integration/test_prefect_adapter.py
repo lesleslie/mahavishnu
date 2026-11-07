@@ -20,7 +20,9 @@ async def test_process_repository_dynamic_quality_score():
     repo_path = "/fake/repo"
 
     # Patch the code graph analyzer to return predictable results
-    with patch("mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer") as mock_analyzer_class:
+    with patch(
+        "mahavishnu.engines.prefect_adapter_impl.CodeGraphAnalyzer"
+    ) as mock_analyzer_class:
         # Setup mock analyzer
         mock_analyzer = MagicMock()
         mock_analyzer_class.return_value = mock_analyzer
@@ -81,11 +83,15 @@ async def test_process_repository_quality_check_integration():
     task_spec = {"type": "quality_check", "id": "qc_task"}
     repo_path = "/fake/repo"
 
-    with patch("mahavishnu.engines.prefect_adapter_impl._QualityControlImpl") as mock_qc_class:
+    with patch(
+        "mahavishnu.engines.prefect_adapter_impl._QualityControlImpl"
+    ) as mock_qc_class:
         # Setup mock QC
         mock_qc = MagicMock()
         mock_qc_class.return_value = mock_qc
-        mock_qc.check_repository = AsyncMock(return_value={"status": "passed", "score": 85})
+        mock_qc.check_repository = AsyncMock(
+            return_value={"status": "passed", "score": 85}
+        )
 
         # Execute
         result = await process_repository.fn(repo_path, task_spec)

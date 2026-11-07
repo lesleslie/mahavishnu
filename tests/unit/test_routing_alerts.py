@@ -57,13 +57,17 @@ class TestAlert:
 
     def test_default_timestamp_is_recent(self):
         before = datetime.now(UTC)
-        alert = Alert(alert_type=AlertType.COST_SPIKE, severity=AlertSeverity.INFO, message="test")
+        alert = Alert(
+            alert_type=AlertType.COST_SPIKE, severity=AlertSeverity.INFO, message="test"
+        )
         after = datetime.now(UTC)
         assert before <= alert.timestamp <= after
 
     def test_all_severity_values(self):
         for sev in AlertSeverity:
-            alert = Alert(alert_type=AlertType.ADAPTER_DEGRADATION, severity=sev, message="m")
+            alert = Alert(
+                alert_type=AlertType.ADAPTER_DEGRADATION, severity=sev, message="m"
+            )
             assert alert.severity.value in ("info", "warning", "critical")
 
     def test_all_type_values(self):
@@ -80,7 +84,9 @@ class TestAlert:
 class TestAlertHandler:
     async def test_base_raises_not_implemented(self):
         handler = AlertHandler()
-        alert = Alert(alert_type=AlertType.COST_SPIKE, severity=AlertSeverity.INFO, message="m")
+        alert = Alert(
+            alert_type=AlertType.COST_SPIKE, severity=AlertSeverity.INFO, message="m"
+        )
         with pytest.raises(NotImplementedError):
             await handler.send_alert(alert)
 
@@ -171,12 +177,18 @@ class TestRoutingAlertManagerCost:
 
 
 class TestRoutingAlertManagerHealth:
-    async def test_evaluate_adapter_health_mixed_stats(self, monkeypatch: pytest.MonkeyPatch):
+    async def test_evaluate_adapter_health_mixed_stats(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         mgr = RoutingAlertManager(handlers=[])
 
         stats_map = {
             AdapterType.PREFECT: None,
-            AdapterType.AGNO: {"success_rate": 0.92, "total_executions": 5, "failed_executions": 0},
+            AdapterType.AGNO: {
+                "success_rate": 0.92,
+                "total_executions": 5,
+                "failed_executions": 0,
+            },
             AdapterType.LLAMAINDEX: {
                 "success_rate": 0.75,
                 "total_executions": 20,
@@ -188,7 +200,8 @@ class TestRoutingAlertManagerHealth:
 
         async def _get_adapter_stats(adapter):
             return stats_map.get(
-                adapter, {"success_rate": 0.85, "total_executions": 20, "failed_executions": 3}
+                adapter,
+                {"success_rate": 0.85, "total_executions": 20, "failed_executions": 3},
             )
 
         tracker.get_adapter_stats.side_effect = _get_adapter_stats
@@ -220,7 +233,10 @@ class TestRoutingAlertManagerLoop:
             message="cost spike",
         )
         monkeypatch.setattr(
-            mgr, "evaluate_adapter_health", AsyncMock(return_value=[alert]), raising=True
+            mgr,
+            "evaluate_adapter_health",
+            AsyncMock(return_value=[alert]),
+            raising=True,
         )
 
         async def _sleep_once(_seconds):
@@ -234,7 +250,9 @@ class TestRoutingAlertManagerLoop:
         handler_fail.send_alert.assert_awaited_once_with(alert)
         assert mgr._last_evaluation is not None
 
-    async def test_evaluation_loop_handles_exception(self, monkeypatch: pytest.MonkeyPatch):
+    async def test_evaluation_loop_handles_exception(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         mgr = RoutingAlertManager(handlers=[], evaluation_interval_seconds=0)
 
         async def _sleep_once(_seconds):

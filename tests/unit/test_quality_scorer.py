@@ -41,7 +41,9 @@ class TestTechnicalDepth:
         assert score_technical_depth("") == 0.0
 
     def test_code_examples(self) -> None:
-        text = "## Example\n\n```python\nprint('hello')\n```\n\nUses `process()` function."
+        text = (
+            "## Example\n\n```python\nprint('hello')\n```\n\nUses `process()` function."
+        )
         score = score_technical_depth(text)
         assert score >= 0.5
 
@@ -479,7 +481,9 @@ class TestTopicCoverage:
         # word_count < 50 → 0.1; sections == 0 → 0.3; 0.5*0.1 + 0.5*0.3 = 0.2
         score = score_completeness(text)
         # Compare to a known comprehensive text
-        long_score = score_completeness("# Title\n\n" + " ".join("word" for _ in range(300)))
+        long_score = score_completeness(
+            "# Title\n\n" + " ".join("word" for _ in range(300))
+        )
         assert score < long_score
 
     def test_short_text(self) -> None:
@@ -523,7 +527,9 @@ class TestTopicCoverage:
 
     def test_many_sections(self) -> None:
         """More than 3 sections → 1.0."""
-        sections = "".join(f"\n\n## Section {i}\n\nContent for section {i}." for i in range(5))
+        sections = "".join(
+            f"\n\n## Section {i}\n\nContent for section {i}." for i in range(5)
+        )
         text = "# Title\n\n" + " ".join(f"word{i}" for i in range(300)) + sections
         # 6 sections (1 H1 + 5 H2) → 1.0
         score = score_completeness(text)
@@ -788,7 +794,9 @@ class TestScorerIssuesAndSuggestions:
         scorer = ContentQualityScorer()
         report = scorer.score(text, content_id="c")
         completeness = next(
-            m.score for m in report.metrics if m.name == QualityMetric.COMPLETENESS.value
+            m.score
+            for m in report.metrics
+            if m.name == QualityMetric.COMPLETENESS.value
         )
         if completeness < 0.50:
             assert any("prerequisites" in s for s in report.suggestions)

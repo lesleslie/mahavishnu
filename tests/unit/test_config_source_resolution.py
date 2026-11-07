@@ -50,7 +50,12 @@ FIELD_PROBES: list[tuple[str, str, str, str]] = [
     # Other in-mahavishnu.yaml subtrees:
     ("auth", "algorithm", "AUTH__ALGORITHM", "RS256"),
     ("prefect", "enabled", "PREFECT__ENABLED", "false"),
-    ("otel_ingester", "similarity_threshold", "OTEL_INGESTER__SIMILARITY_THRESHOLD", "0.5"),
+    (
+        "otel_ingester",
+        "similarity_threshold",
+        "OTEL_INGESTER__SIMILARITY_THRESHOLD",
+        "0.5",
+    ),
     ("pools", "min_workers", "POOLS__MIN_WORKERS", "7"),
     ("pools", "routing_strategy", "POOLS__ROUTING_STRATEGY", "round_robin"),
     ("qc", "min_score", "QC__MIN_SCORE", "42"),
@@ -60,18 +65,38 @@ FIELD_PROBES: list[tuple[str, str, str, str]] = [
     ("llm", "model", "LLM__MODEL", "test-model"),
     ("hatchet", "namespace", "HATCHET__NAMESPACE", "probe-ns"),
     ("oneiric_mcp", "base_url", "ONEIRIC_MCP__BASE_URL", "http://probe-mcp:8681/mcp"),
-    ("adapter_registry", "cache_ttl_seconds", "ADAPTER_REGISTRY__CACHE_TTL_SECONDS", "99"),
+    (
+        "adapter_registry",
+        "cache_ttl_seconds",
+        "ADAPTER_REGISTRY__CACHE_TTL_SECONDS",
+        "99",
+    ),
     (
         "mcp_state",
         "max_routing_buffer_age_seconds",
         "MCP_STATE__MAX_ROUTING_BUFFER_AGE_SECONDS",
         "120",
     ),
-    ("monitoring", "routing_metrics_enabled", "MONITORING__ROUTING_METRICS_ENABLED", "false"),
+    (
+        "monitoring",
+        "routing_metrics_enabled",
+        "MONITORING__ROUTING_METRICS_ENABLED",
+        "false",
+    ),
     ("monitoring", "routing_metrics_port", "MONITORING__ROUTING_METRICS_PORT", "11111"),
-    ("session_buddy_polling", "interval_seconds", "SESSION_BUDDY_POLLING__INTERVAL_SECONDS", "99"),
+    (
+        "session_buddy_polling",
+        "interval_seconds",
+        "SESSION_BUDDY_POLLING__INTERVAL_SECONDS",
+        "99",
+    ),
     ("learning", "enabled", "LEARNING__ENABLED", "true"),
-    ("integrations", "pydantic_ai_enabled", "INTEGRATIONS__PYDANTIC_AI_ENABLED", "true"),
+    (
+        "integrations",
+        "pydantic_ai_enabled",
+        "INTEGRATIONS__PYDANTIC_AI_ENABLED",
+        "true",
+    ),
 ]
 
 

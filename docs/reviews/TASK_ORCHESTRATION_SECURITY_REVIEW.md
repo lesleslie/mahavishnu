@@ -61,11 +61,7 @@ class WebhookValidator:
     def __init__(self, secret: str):
         self.secret = secret
 
-    def validate_github_signature(
-        self,
-        payload: bytes,
-        signature_header: str
-    ) -> bool:
+    def validate_github_signature(self, payload: bytes, signature_header: str) -> bool:
         """
         Validate GitHub webhook signature.
 
@@ -84,22 +80,13 @@ class WebhookValidator:
         import hashlib
 
         expected_signature = hmac.new(
-            self.secret.encode(),
-            payload,
-            hashlib.sha256
+            self.secret.encode(), payload, hashlib.sha256
         ).hexdigest()
 
         # Constant-time comparison (prevent timing attacks)
-        return hmac.compare_digest(
-            github_signature,
-            expected_signature
-        )
+        return hmac.compare_digest(github_signature, expected_signature)
 
-    def validate_gitlab_signature(
-        self,
-        payload: bytes,
-        token_header: str
-    ) -> bool:
+    def validate_gitlab_signature(self, payload: bytes, token_header: str) -> bool:
         """
         Validate GitLab webhook token.
 
@@ -108,10 +95,7 @@ class WebhookValidator:
         if not token_header:
             raise ValueError("Missing token header")
 
-        return hmac.compare_digest(
-            token_header,
-            self.secret
-        )
+        return hmac.compare_digest(token_header, self.secret)
 ```
 
 **Implementation Requirements**:
@@ -155,11 +139,12 @@ class ApprovalAuthority:
                 f"User {user_id} is not authorized to approve task proposals"
             )
 
+
 # Usage in OneWaySyncHandler
 async def approve_task_proposal(
     self,
     proposal_id: str,
-    approver_user_id: str  # REQUIRED: Who is approving
+    approver_user_id: str,  # REQUIRED: Who is approving
 ) -> Task:
     """User approves - convert proposal to real task."""
 
@@ -256,6 +241,7 @@ from mahavishnu.core.validators import PathValidator
 import re
 from typing import Dict, Any
 
+
 class TaskInputSanitizer:
     """Sanitize and validate task inputs to prevent injection attacks."""
 
@@ -263,10 +249,7 @@ class TaskInputSanitizer:
         self.path_validator = PathValidator()
         self.allowed_repos = None  # Load from repos.yaml
 
-    def sanitize_task_input(
-        self,
-        raw_input: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def sanitize_task_input(self, raw_input: Dict[str, Any]) -> Dict[str, Any]:
         """
         Sanitize all task inputs from NLP parser.
 
@@ -286,40 +269,29 @@ class TaskInputSanitizer:
             sanitized["title"] = self._sanitize_text(
                 raw_input["title"],
                 max_length=200,
-                allow_shell_chars=False  # Block ;, &, |, $, etc.
+                allow_shell_chars=False,  # Block ;, &, |, $, etc.
             )
 
         # Sanitize repository name (validate against whitelist)
         if "repository" in raw_input:
-            sanitized["repository"] = self._validate_repository(
-                raw_input["repository"]
-            )
+            sanitized["repository"] = self._validate_repository(raw_input["repository"])
 
         # Sanitize deadline (parse and validate)
         if "deadline" in raw_input:
-            sanitized["deadline"] = self._validate_deadline(
-                raw_input["deadline"]
-            )
+            sanitized["deadline"] = self._validate_deadline(raw_input["deadline"])
 
         # Sanitize priority (validate against enum)
         if "priority" in raw_input:
-            sanitized["priority"] = self._validate_priority(
-                raw_input["priority"]
-            )
+            sanitized["priority"] = self._validate_priority(raw_input["priority"])
 
         # Sanitize description (remove potential XSS)
         if "description" in raw_input:
-            sanitized["description"] = self._sanitize_html(
-                raw_input["description"]
-            )
+            sanitized["description"] = self._sanitize_html(raw_input["description"])
 
         return sanitized
 
     def _sanitize_text(
-        self,
-        text: str,
-        max_length: int = 500,
-        allow_shell_chars: bool = False
+        self, text: str, max_length: int = 500, allow_shell_chars: bool = False
     ) -> str:
         """
         Sanitize text input.
@@ -340,9 +312,7 @@ class TaskInputSanitizer:
             shell_chars = [";", "&", "|", "$", "`", "(", ")", "\n", "\r"]
             for char in shell_chars:
                 if char in text:
-                    raise ValueError(
-                        f"Text contains forbidden character: {char!r}"
-                    )
+                    raise ValueError(f"Text contains forbidden character: {char!r}")
 
         # Limit length
         if len(text) > max_length:
@@ -359,10 +329,10 @@ class TaskInputSanitizer:
         # Load allowed repositories
         if not self.allowed_repos:
             from mahavishnu.core.repo_manager import RepoManager
+
             repo_mgr = RepoManager()
             self.allowed_repos = {
-                repo.nickname or repo.name
-                for repo in repo_mgr.list_repos()
+                repo.nickname or repo.name for repo in repo_mgr.list_repos()
             }
 
         if repo_name not in self.allowed_repos:
@@ -387,13 +357,13 @@ class TaskInputSanitizer:
         ]
 
         import re
+
         if not any(re.match(pattern, deadline_str) for pattern in supported_patterns):
-            raise ValueError(
-                f"Deadline format not supported: {deadline_str}"
-            )
+            raise ValueError(f"Deadline format not supported: {deadline_str}")
 
         # Parse and validate date is in future
         from datetime import datetime, timedelta
+
         parsed_date = self._parse_relative_date(deadline_str)
 
         if parsed_date < datetime.now():
@@ -408,9 +378,7 @@ class TaskInputSanitizer:
         """Validate priority against allowed values."""
         allowed = {"low", "medium", "high", "critical"}
         if priority.lower() not in allowed:
-            raise ValueError(
-                f"Invalid priority: {priority}. Must be one of {allowed}"
-            )
+            raise ValueError(f"Invalid priority: {priority}. Must be one of {allowed}")
         return priority.lower()
 
     def _sanitize_html(self, text: str) -> str:
@@ -428,11 +396,9 @@ class TaskInputSanitizer:
         allowed_attrs = {"a": ["href"]}
 
         return bleach.clean(
-            text,
-            tags=allowed_tags,
-            attributes=allowed_attrs,
-            strip=True
+            text, tags=allowed_tags, attributes=allowed_attrs, strip=True
         )
+
 
 # Integration in TaskOrchestrator
 class TaskOrchestrator:
@@ -504,9 +470,9 @@ class TaskStore:
         FTS special characters: ", *, (, ), -, <, >
         """
         # Remove dangerous characters
-        dangerous = ['"', '*', '(', ')', '-', '<', '>']
+        dangerous = ['"', "*", "(", ")", "-", "<", ">"]
         for char in dangerous:
-            query = query.replace(char, '')
+            query = query.replace(char, "")
 
         # Limit query length
         if len(query) > 100:
@@ -540,15 +506,10 @@ class TaskOrchestrator:
     def __init__(self):
         self.secrets_scanner = SecretsScanner(
             fail_on_secrets=True,  # Block tasks with secrets
-            block_on_high_severity=True
+            block_on_high_severity=True,
         )
 
-    async def create_task(
-        self,
-        title: str,
-        description: str = "",
-        **kwargs
-    ) -> Task:
+    async def create_task(self, title: str, description: str = "", **kwargs) -> Task:
         """
         Create task with secret detection.
 
@@ -559,7 +520,8 @@ class TaskOrchestrator:
 
         # Create temporary file to scan
         import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             f.write(f"# {title}\n\n{description}")
             temp_path = f.name
 
@@ -586,9 +548,7 @@ class TaskOrchestrator:
 
         # Safe to create task
         return await self.task_store.create(
-            title=title,
-            description=description,
-            **kwargs
+            title=title, description=description, **kwargs
         )
 ```
 
@@ -612,8 +572,10 @@ ______________________________________________________________________
 from enum import Enum
 from typing import Set
 
+
 class TaskPermission(Enum):
     """Permissions for task operations."""
+
     CREATE = "task.create"
     READ = "task.read"
     UPDATE = "task.update"
@@ -623,12 +585,15 @@ class TaskPermission(Enum):
     APPROVE = "task.approve"  # Approve proposals
     ADMIN = "task.admin"
 
+
 class Role(Enum):
     """User roles."""
+
     ADMIN = "admin"
     MAINTAINER = "maintainer"
     DEVELOPER = "developer"
     VIEWER = "viewer"
+
 
 class AccessControl:
     """Enforce access control for task operations."""
@@ -667,9 +632,7 @@ class AccessControl:
         self.user_roles = user_roles
 
     def check_permission(
-        self,
-        user_id: str,
-        required_permission: TaskPermission
+        self, user_id: str, required_permission: TaskPermission
     ) -> bool:
         """Check if user has required permission."""
         user_role_set = self.user_roles.get(user_id, set())
@@ -682,16 +645,13 @@ class AccessControl:
 
         return False
 
-    def require_permission(
-        self,
-        user_id: str,
-        required_permission: TaskPermission
-    ):
+    def require_permission(self, user_id: str, required_permission: TaskPermission):
         """Raise exception if user lacks permission."""
         if not self.check_permission(user_id, required_permission):
             raise PermissionError(
                 f"User {user_id} lacks permission: {required_permission.value}"
             )
+
 
 # Usage in TaskOrchestrator
 class TaskOrchestrator:
@@ -701,20 +661,17 @@ class TaskOrchestrator:
     async def create_task(
         self,
         user_id: str,  # REQUIRED: Who is creating
-        description: str
+        description: str,
     ) -> Task:
         """Create task with permission check."""
 
         # ✅ Check user has CREATE permission
-        self.access_control.require_permission(
-            user_id,
-            TaskPermission.CREATE
-        )
+        self.access_control.require_permission(user_id, TaskPermission.CREATE)
 
         # Create task
         task = await self.task_store.create(
             created_by=user_id,  # Track creator
-            description=description
+            description=description,
         )
 
         # ✅ Log creation event
@@ -722,7 +679,7 @@ class TaskOrchestrator:
             event_type="task.created",
             user_id=user_id,
             task_id=task.id,
-            details={"description": description[:100]}  # Truncate for log
+            details={"description": description[:100]},  # Truncate for log
         )
 
         return task
@@ -763,10 +720,16 @@ async def create_task(self, **kwargs):
     """
     cursor = await self.db.execute(
         sql,
-        (kwargs["id"], kwargs["title"], kwargs["description"],
-         kwargs["status"], kwargs["priority"])
+        (
+            kwargs["id"],
+            kwargs["title"],
+            kwargs["description"],
+            kwargs["status"],
+            kwargs["priority"],
+        ),
     )
     await self.db.commit()
+
 
 # ❌ WRONG: String concatenation (SQL injection vulnerable)
 async def create_task_wrong(self, **kwargs):
@@ -805,31 +768,25 @@ ______________________________________________________________________
 # In worktree creation
 from mahavishnu.core.validators import PathValidator
 
+
 class TaskOrchestrator:
     def __init__(self):
         self.path_validator = PathValidator(
             allowed_base_dirs=self._get_worktree_base_dirs()
         )
 
-    async def create_worktree_for_task(
-        self,
-        task_id: str,
-        repository: str
-    ) -> Path:
+    async def create_worktree_for_task(self, task_id: str, repository: str) -> Path:
         """Create worktree with path validation."""
 
         # ✅ Validate repository path
         repo_path = self.path_validator.validate_repository_path(repository)
 
         # ✅ Sanitize worktree branch name
-        branch_name = PathValidator.sanitize_filename(
-            f"task-{task_id}-{task_title}"
-        )
+        branch_name = PathValidator.sanitize_filename(f"task-{task_id}-{task_title}")
 
         # Create worktree
         worktree_path = await self.worktree_coordinator.create_worktree(
-            repo_path=repo_path,
-            branch=branch_name
+            repo_path=repo_path, branch=branch_name
         )
 
         return worktree_path
@@ -858,8 +815,10 @@ from datetime import datetime
 from typing import Any, Optional
 import json
 
+
 class AuditEventType(Enum):
     """Types of audit events."""
+
     # Task lifecycle
     TASK_CREATED = "task.created"
     TASK_UPDATED = "task.updated"
@@ -881,6 +840,7 @@ class AuditEventType(Enum):
     # Data access
     TASK_VIEWED = "task.viewed"
     SEARCH_EXECUTED = "search.executed"
+
 
 class AuditEvent:
     """Structured audit event."""
@@ -917,6 +877,7 @@ class AuditEvent:
             "ip_address": self.ip_address,
             "user_agent": self.user_agent,
         }
+
 
 class AuditLogger:
     """Comprehensive audit logging system."""
@@ -956,25 +917,20 @@ class AuditLogger:
         # Implementation depends on storage (SQLite, Elasticsearch, etc.)
         pass
 
+
 # Integration in TaskOrchestrator
 class TaskOrchestrator:
     def __init__(self, audit_logger: AuditLogger):
         self.audit_logger = audit_logger
 
     async def create_task(
-        self,
-        user_id: str,
-        description: str,
-        ip_address: Optional[str] = None,
-        **kwargs
+        self, user_id: str, description: str, ip_address: Optional[str] = None, **kwargs
     ) -> Task:
         """Create task with audit logging."""
 
         # Create task
         task = await self.task_store.create(
-            created_by=user_id,
-            description=description,
-            **kwargs
+            created_by=user_id, description=description, **kwargs
         )
 
         # ✅ Log audit event
@@ -1026,11 +982,13 @@ from slowapi.util import get_remote_address
 
 limiter = Limiter(key_func=get_remote_address)
 
+
 # Apply rate limits
 @app.post("/api/tasks")
 @limiter.limit("10/minute")  # 10 tasks per minute per IP
 async def create_task(request: Request):
     pass
+
 
 @app.post("/api/webhooks/github")
 @limiter.limit("100/minute")  # 100 webhooks per minute
@@ -1124,6 +1082,7 @@ ______________________________________________________________________
 ```python
 # tests/integration/test_security.py
 
+
 class TestTaskSecurity:
     """Security test suite for task orchestration."""
 
@@ -1139,10 +1098,7 @@ class TestTaskSecurity:
         malicious_repo = "../../../etc/passwd"
 
         with pytest.raises(PathValidationError):
-            await task_orchestrator.create_task(
-                title="Test",
-                repository=malicious_repo
-            )
+            await task_orchestrator.create_task(title="Test", repository=malicious_repo)
 
     async def test_secrets_detection_in_description(self):
         """Test that secrets in descriptions are blocked."""
@@ -1152,8 +1108,7 @@ class TestTaskSecurity:
 
         with pytest.raises(ValueError, match="secrets"):
             await task_orchestrator.create_task(
-                title="Test",
-                description=description_with_api_key
+                title="Test", description=description_with_api_key
             )
 
     async def test_unauthorized_approval(self):
@@ -1162,8 +1117,7 @@ class TestTaskSecurity:
 
         with pytest.raises(PermissionError):
             await sync_handler.approve_task_proposal(
-                proposal_id="test-proposal",
-                approver_user_id=unauthorized_user
+                proposal_id="test-proposal", approver_user_id=unauthorized_user
             )
 
     async def test_webhook_signature_validation(self):
@@ -1174,7 +1128,7 @@ class TestTaskSecurity:
         response = await client.post(
             "/api/webhooks/github",
             data=invalid_payload,
-            headers={"X-Hub-Signature-256": invalid_signature}
+            headers={"X-Hub-Signature-256": invalid_signature},
         )
 
         assert response.status_code == 401

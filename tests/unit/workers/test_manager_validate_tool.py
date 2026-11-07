@@ -62,9 +62,7 @@ class TestMissingToolErrorContext:
 
         # Force shutil.which to treat the lookup as missing regardless of
         # what the real PATH contains.
-        monkeypatch.setattr(
-            shutil, "which", lambda name: None, raising=True
-        )
+        monkeypatch.setattr(shutil, "which", lambda name: None, raising=True)
 
         with pytest.raises(MahavishnuError) as exc_info:
             manager._validate_required_tool("claude")

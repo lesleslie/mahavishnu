@@ -64,7 +64,9 @@ class TestInitAndIdentity:
 
     def test_provider_name(self):
         # Instance method (matches WorktreeProvider abstract signature)
-        assert DirectGitWorktreeProvider().provider_name() == "DirectGitWorktreeProvider"
+        assert (
+            DirectGitWorktreeProvider().provider_name() == "DirectGitWorktreeProvider"
+        )
 
     def test_inherits_from_base(self):
         assert isinstance(DirectGitWorktreeProvider(), WorktreeProvider)
@@ -120,7 +122,9 @@ class TestCreateWorktree:
             "asyncio.create_subprocess_exec",
             AsyncMock(return_value=process),
         ) as mock_exec:
-            await p.create_worktree(Path("/r"), "newbranch", Path("/wt"), create_branch=True)
+            await p.create_worktree(
+                Path("/r"), "newbranch", Path("/wt"), create_branch=True
+            )
 
         cmd = mock_exec.call_args[0]
         # -b should be present but -B (uppercase) should NOT be present
@@ -134,7 +138,9 @@ class TestCreateWorktree:
             "asyncio.create_subprocess_exec",
             AsyncMock(return_value=process),
         ) as mock_exec:
-            await p.create_worktree(Path("/r"), "main", Path("/wt"), create_branch=False)
+            await p.create_worktree(
+                Path("/r"), "main", Path("/wt"), create_branch=False
+            )
 
         cmd = mock_exec.call_args[0]
         assert "-B" in cmd
@@ -146,7 +152,9 @@ class TestCreateWorktree:
             "asyncio.create_subprocess_exec",
             AsyncMock(return_value=process),
         ):
-            result = await p.create_worktree(Path("/r"), "br", Path("/wt"), create_branch=True)
+            result = await p.create_worktree(
+                Path("/r"), "br", Path("/wt"), create_branch=True
+            )
 
         assert result["success"] is True
         assert result["branch"] == "br"
@@ -285,7 +293,9 @@ class TestListWorktrees:
     async def test_skips_lines_with_too_few_parts(self):
         p = DirectGitWorktreeProvider()
         # Lines with < 4 parts are silently ignored
-        output = b"only_one\ntwo parts\nthree parts here\n/r/full path branch commit ok\n"
+        output = (
+            b"only_one\ntwo parts\nthree parts here\n/r/full path branch commit ok\n"
+        )
         process = _fake_process(stdout=output)
         with patch(
             "asyncio.create_subprocess_exec",
@@ -592,14 +602,10 @@ class TestCreateWorktreeHandleStreaming:
             (wt / "x.txt").write_text("y")
             return {"success": True}
 
-        monkeypatch.setattr(
-            local_mod, "_create_worktree_via_git", _fake_create_wt
-        )
+        monkeypatch.setattr(local_mod, "_create_worktree_via_git", _fake_create_wt)
 
         storage = _FakeStorage(capabilities=["stream"])
-        provider = LocalWorktreeProvider(
-            storage=storage, cache=_FakeCache()
-        )
+        provider = LocalWorktreeProvider(storage=storage, cache=_FakeCache())
         principal = _make_principal()
 
         handle = await provider.create_worktree_handle(
@@ -645,9 +651,7 @@ class TestCreateWorktreeHandleStreaming:
             (fake_wt / "x.txt").write_text("y")
             return {"success": True}
 
-        monkeypatch.setattr(
-            local_mod, "_create_worktree_via_git", _fake_create_wt
-        )
+        monkeypatch.setattr(local_mod, "_create_worktree_via_git", _fake_create_wt)
 
         captured: list[tuple] = []
 
@@ -698,9 +702,7 @@ class TestCreateWorktreeHandleStreaming:
             (fake_wt / "x.txt").write_text("y")
             return {"success": True}
 
-        monkeypatch.setattr(
-            local_mod, "_create_worktree_via_git", _fake_create_wt
-        )
+        monkeypatch.setattr(local_mod, "_create_worktree_via_git", _fake_create_wt)
 
         storage = _FakeStorage(capabilities=["stream"])
         provider = LocalWorktreeProvider(storage=storage)
@@ -715,7 +717,9 @@ class TestCreateWorktreeHandleStreaming:
                 base_ref="main",
                 principal=principal,
             )
-        assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG
+        assert (
+            exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_STORAGE_KEY_TOO_LONG
+        )
 
     async def test_create_worktree_handle_enforces_size_cap_mhv221(
         self, tmp_path, monkeypatch
@@ -741,9 +745,7 @@ class TestCreateWorktreeHandleStreaming:
             (fake_wt / "x.txt").write_text("y")
             return {"success": True}
 
-        monkeypatch.setattr(
-            local_mod, "_create_worktree_via_git", _fake_create_wt
-        )
+        monkeypatch.setattr(local_mod, "_create_worktree_via_git", _fake_create_wt)
 
         # Force the size guard to trip by making the stub report
         # MAX_BUNDLE_BYTES_STOPGAP + 1
@@ -760,9 +762,7 @@ class TestCreateWorktreeHandleStreaming:
         # ``from .storage_io import ... serialize_worktree_tar`` inside
         # the function body, so the original namespace is the right
         # target.
-        monkeypatch.setattr(
-            storage_io, "serialize_worktree_tar", _fake_serialize
-        )
+        monkeypatch.setattr(storage_io, "serialize_worktree_tar", _fake_serialize)
 
         storage = _FakeStorage(capabilities=["stream"])
         provider = LocalWorktreeProvider(storage=storage)
@@ -772,9 +772,7 @@ class TestCreateWorktreeHandleStreaming:
             await provider.create_worktree_handle(
                 repo="r", branch="b", base_ref="main", principal=principal
             )
-        assert (
-            exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_STOPGAP_TOO_LARGE
-        )
+        assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_STOPGAP_TOO_LARGE
 
 
 # ---------------------------------------------------------------------------
@@ -795,9 +793,7 @@ class TestFetchStreaming:
             payload = temp_path.read_bytes()
 
         # Bypass the on-disk materialization — return our prepared payload
-        storage = _FakeStorage(
-            capabilities=["stream"], stream_payload=payload
-        )
+        storage = _FakeStorage(capabilities=["stream"], stream_payload=payload)
 
         # Override the worktree base to land inside tmp_path
         target_base = tmp_path / "materialized"
@@ -845,9 +841,7 @@ class TestFetchStreaming:
         with storage_io.serialize_worktree_tar(wt) as (temp_path, _size, sha):
             payload = temp_path.read_bytes()
 
-        storage = _FakeStorage(
-            capabilities=["stream"], stream_payload=payload
-        )
+        storage = _FakeStorage(capabilities=["stream"], stream_payload=payload)
         monkeypatch.setattr(
             "mahavishnu.core.paths.get_worktree_base_path",
             lambda: tmp_path / "materialized",
@@ -889,9 +883,7 @@ class TestFetchStreaming:
         # sniff must catch this BEFORE the stream is handed to
         # deserialize_worktree_tar.
         gzip_magic = b"\x1f\x8b\x08\x00rest-of-gzip"
-        storage = _FakeStorage(
-            capabilities=["stream"], stream_payload=gzip_magic
-        )
+        storage = _FakeStorage(capabilities=["stream"], stream_payload=gzip_magic)
         monkeypatch.setattr(
             "mahavishnu.core.paths.get_worktree_base_path",
             lambda: tmp_path / "materialized",
@@ -926,9 +918,7 @@ class TestFetchStreaming:
 
         monkeypatch.setattr(builtins, "__import__", _fake_import)
 
-        storage = _FakeStorage(
-            capabilities=["stream"], stream_payload=b"\x00" * 64
-        )
+        storage = _FakeStorage(capabilities=["stream"], stream_payload=b"\x00" * 64)
         monkeypatch.setattr(
             "mahavishnu.core.paths.get_worktree_base_path",
             lambda: tmp_path / "materialized",
@@ -945,9 +935,7 @@ class TestFetchStreaming:
             await provider.fetch(handle)
         assert exc_info.value.error_code == ErrorCode.WORKTREE_BUNDLE_CODEC_UNAVAILABLE
 
-    async def test_fetch_raises_not_found_mhv222(
-        self, tmp_path, monkeypatch
-    ):
+    async def test_fetch_raises_not_found_mhv222(self, tmp_path, monkeypatch):
         from mahavishnu.core.errors import ErrorCode, WorktreeError
         from mahavishnu.core.worktree_providers import local as local_mod
 
@@ -983,20 +971,18 @@ class TestFetchStreaming:
 class TestHealthStreamingProbe:
     """``health()`` must probe streaming capability and warn (B-DI-03)."""
 
-    async def test_health_reports_streaming_capability_present(self, tmp_path, monkeypatch):
+    async def test_health_reports_streaming_capability_present(
+        self, tmp_path, monkeypatch
+    ):
         storage = _FakeStorage(capabilities=["stream"])
         provider = LocalWorktreeProvider(storage=storage)
-        monkeypatch.setattr(
-            "shutil.which", lambda _name: "/usr/bin/git"
-        )
+        monkeypatch.setattr("shutil.which", lambda _name: "/usr/bin/git")
 
         report = await provider.health()
         assert isinstance(report, HealthReport)
         assert bool(report) is True
         # No warning when streaming capability is present
-        assert all(
-            w["kind"] != "streaming_capability_missing" for w in report.warnings
-        )
+        assert all(w["kind"] != "streaming_capability_missing" for w in report.warnings)
 
     async def test_health_reports_streaming_capability_missing(
         self, tmp_path, monkeypatch
@@ -1004,9 +990,7 @@ class TestHealthStreamingProbe:
         # Adapter advertises no stream capability → warning expected
         storage = _FakeStorage(capabilities=["blob", "delete"])
         provider = LocalWorktreeProvider(storage=storage)
-        monkeypatch.setattr(
-            "shutil.which", lambda _name: "/usr/bin/git"
-        )
+        monkeypatch.setattr("shutil.which", lambda _name: "/usr/bin/git")
 
         report = await provider.health()
         kinds = [w["kind"] for w in report.warnings]
@@ -1017,15 +1001,11 @@ class TestHealthStreamingProbe:
     async def test_health_warns_when_no_storage(self, monkeypatch):
         # No storage at all → warning is added
         provider = LocalWorktreeProvider()
-        monkeypatch.setattr(
-            "shutil.which", lambda _name: "/usr/bin/git"
-        )
+        monkeypatch.setattr("shutil.which", lambda _name: "/usr/bin/git")
 
         report = await provider.health()
         assert isinstance(report, HealthReport)
-        assert any(
-            w["kind"] == "streaming_capability_missing" for w in report.warnings
-        )
+        assert any(w["kind"] == "streaming_capability_missing" for w in report.warnings)
 
 
 # ---------------------------------------------------------------------------

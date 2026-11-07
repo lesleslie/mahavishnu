@@ -78,7 +78,9 @@ class WorktreePruneResult:
     escalated: bool = False
 
 
-def _run_git(path: Path, *args: str, text: bool = False) -> subprocess.CompletedProcess[str]:
+def _run_git(
+    path: Path, *args: str, text: bool = False
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(path), *args],
         capture_output=True,
@@ -104,13 +106,20 @@ def classify_merge_status(
             exists = _run_git(worktree_path, "rev-parse", "--verify", "--quiet", branch)
             if exists.returncode != 0:
                 continue
-            ancestor = _run_git(worktree_path, "merge-base", "--is-ancestor", "HEAD", branch)
+            ancestor = _run_git(
+                worktree_path, "merge-base", "--is-ancestor", "HEAD", branch
+            )
             if ancestor.returncode == 0:
                 return "merged"
             if ancestor.returncode != 1:
                 return "undetermined"
             merges = _run_git(
-                worktree_path, "log", f"{branch}..HEAD", "--merges", "--oneline", text=True
+                worktree_path,
+                "log",
+                f"{branch}..HEAD",
+                "--merges",
+                "--oneline",
+                text=True,
             )
             if merges.returncode != 0:
                 return "undetermined"
@@ -218,12 +227,16 @@ async def find_merged_worktrees(
         if merge_status != "merged":
             continue
         dirty_status = _git_dirty_count(worktree_path)
-        if dirty_status == "undetermined" or (dirty_status == "dirty" and not include_dirty):
+        if dirty_status == "undetermined" or (
+            dirty_status == "dirty" and not include_dirty
+        ):
             continue
         head_sha = _git_head_sha(worktree_path)
         if head_sha is None:
             continue
-        last_touched_at = registry_lookup(str(worktree_path)) if registry_lookup else None
+        last_touched_at = (
+            registry_lookup(str(worktree_path)) if registry_lookup else None
+        )
         if ttl_days > 0 and last_touched_at:
             try:
                 touched = datetime.fromisoformat(last_touched_at)
@@ -286,7 +299,9 @@ class WorktreePruner:
         )
         results: list[WorktreePruneResult] = []
         for candidate in candidates:
-            results.append(await self._apply_candidate(candidate, force_reason, user_id))
+            results.append(
+                await self._apply_candidate(candidate, force_reason, user_id)
+            )
         self._log_audit_outcome(user_id, results, trigger)
         return results
 
@@ -303,8 +318,13 @@ class WorktreePruner:
         if any(candidate.merge_status != "merged" for candidate in candidates):
             raise ValueError("All candidates must have merge_status='merged'")
         if any(candidate.dirty_status == "undetermined" for candidate in candidates):
-            raise ValueError("Candidates with undetermined dirty status cannot be removed")
-        if any(candidate.dirty_status == "dirty" for candidate in candidates) and not force_reason:
+            raise ValueError(
+                "Candidates with undetermined dirty status cannot be removed"
+            )
+        if (
+            any(candidate.dirty_status == "dirty" for candidate in candidates)
+            and not force_reason
+        ):
             raise ValueError("force_reason is required for dirty candidates")
 
     async def _apply_candidate(
@@ -315,7 +335,9 @@ class WorktreePruner:
     ) -> WorktreePruneResult:
         """Run the per-candidate removal flow: re-validate, attempt, escalate."""
         if not self._candidate_unchanged(candidate):
-            return WorktreePruneResult(candidate, False, None, "candidate changed since discovery")
+            return WorktreePruneResult(
+                candidate, False, None, "candidate changed since discovery"
+            )
         try:
             return await self._remove_with_escalation(candidate, force_reason, user_id)
         except Exception as exc:  # per-candidate removal wrapper — broad catch to convert any failure into a structured PruneResult  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -373,7 +395,9 @@ class WorktreePruner:
     @staticmethod
     def _summarize_results(
         results: list[WorktreePruneResult],
-    ) -> tuple[list[WorktreePruneResult], list[WorktreePruneResult], list[str], list[str]]:
+    ) -> tuple[
+        list[WorktreePruneResult], list[WorktreePruneResult], list[str], list[str]
+    ]:
         """Partition results into (successful, failed, backup_paths, failed_paths).
 
         Pulled out so the audit-logging branch in ``remove`` reads top-down
@@ -392,10 +416,17 @@ class WorktreePruner:
         trigger: str,
     ) -> None:
         """Emit the appropriate audit-log line for the batch outcome."""
-        successful, failed, backup_paths, failed_paths = self._summarize_results(results)
+        successful, failed, backup_paths, failed_paths = self._summarize_results(
+            results
+        )
         if failed and successful:
             self._audit_logger.log_prune_merged_partial(
-                user_id, len(successful), len(failed), failed_paths, backup_paths, trigger
+                user_id,
+                len(successful),
+                len(failed),
+                failed_paths,
+                backup_paths,
+                trigger,
             )
             return
         if failed:

@@ -65,7 +65,12 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     # Imported only for static analysis. The runtime `else` branch below
     # handles the install / no-install cases.
-    from shepherd import AmbientWorldAccessRefused, EffectNotPermitted, GitRepo, ShepherdWorkspace
+    from shepherd import (
+        AmbientWorldAccessRefused,
+        EffectNotPermitted,
+        GitRepo,
+        ShepherdWorkspace,
+    )
 else:
     try:
         from shepherd import (
@@ -169,7 +174,9 @@ def probe_host_capability(placement: str = "auto") -> _CapabilityCheck:
         ValueError: When ``placement`` is not in :data:`_VALID_PLACEMENTS`.
     """
     if placement not in _VALID_PLACEMENTS:
-        raise ValueError(f"placement {placement!r} is not one of {sorted(_VALID_PLACEMENTS)}")
+        raise ValueError(
+            f"placement {placement!r} is not one of {sorted(_VALID_PLACEMENTS)}"
+        )
 
     host = sys.platform
     machine = platform.machine()
@@ -257,7 +264,9 @@ class ShepherdBackendWorker(BaseWorker):
         super().__init__(worker_type="shepherd")
         self.writable_root = Path(writable_root).resolve()
         self.workspace_cwd = (
-            Path(workspace_cwd).resolve() if workspace_cwd is not None else self.writable_root
+            Path(workspace_cwd).resolve()
+            if workspace_cwd is not None
+            else self.writable_root
         )
         self.placement = placement
         self.default_timeout = default_timeout
@@ -318,7 +327,8 @@ class ShepherdBackendWorker(BaseWorker):
             ) from exc
 
         self._workspace_id = (
-            getattr(self._workspace, "ref", None) or f"shepherd-{self.writable_root.name}"
+            getattr(self._workspace, "ref", None)
+            or f"shepherd-{self.writable_root.name}"
         )
         self._running = True
         self._status = WorkerStatus.RUNNING
@@ -398,7 +408,9 @@ class ShepherdBackendWorker(BaseWorker):
                 duration=duration,
             )
         except Exception as exc:
-            logger.exception("Shepherd execute failed for workspace %s", self._workspace_id)
+            logger.exception(
+                "Shepherd execute failed for workspace %s", self._workspace_id
+            )
             return WorkerResult(
                 worker_id=self._workspace_id or "unknown",
                 status=WorkerStatus.FAILED,
@@ -515,13 +527,18 @@ class ShepherdBackendWorker(BaseWorker):
         worker_id = self._workspace_id or "unknown"
         status_value = getattr(workspace_run, "status", None)
         record = getattr(workspace_run, "record", None)
-        body_status = getattr(getattr(record, "terminalization", None), "body_status", None)
+        body_status = getattr(
+            getattr(record, "terminalization", None), "body_status", None
+        )
         # Success requires agreement at both levels: the run reached a
         # successful terminal disposition *and* the task body ran to
         # completion. Either alone is ambiguous -- a ``retained`` run whose
         # body ``refused`` is a failure, and a ``completed`` body whose
         # world was ``discarded`` never produced a result anyone can read.
-        is_success = status_value in _SUCCESS_RUN_STATUSES and body_status == _SUCCESS_BODY_STATUS
+        is_success = (
+            status_value in _SUCCESS_RUN_STATUSES
+            and body_status == _SUCCESS_BODY_STATUS
+        )
         settled_ref = getattr(workspace_run, "run_ref", None)
         changeset_stat: dict[str, Any] | None = None
         try:
@@ -641,7 +658,9 @@ class ShepherdBackendWorker(BaseWorker):
             self._status = WorkerStatus.COMPLETED
             logger.info("Stopped shepherd worker: %s", self._workspace_id)
         except Exception as exc:
-            logger.exception("Failed to close shepherd workspace %s", self._workspace_id)
+            logger.exception(
+                "Failed to close shepherd workspace %s", self._workspace_id
+            )
             self._status = WorkerStatus.FAILED
             raise RuntimeError(f"Failed to close Shepherd workspace: {exc}") from exc
         finally:

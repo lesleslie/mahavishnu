@@ -194,7 +194,8 @@ class TestCanonicalSpecCompliance:
         assert "\\t" in escape_for_applescript("\t")
         # 5. Carriage return removed
         assert (
-            "cr" not in escape_for_applescript("\r").lower() or escape_for_applescript("\r") == ""
+            "cr" not in escape_for_applescript("\r").lower()
+            or escape_for_applescript("\r") == ""
         )
         # 6. Newline passed through (not escaped here)
         assert "\n" in escape_for_applescript("\n")

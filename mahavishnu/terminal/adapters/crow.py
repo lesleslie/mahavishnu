@@ -116,9 +116,7 @@ class CrowTerminalAdapter(TerminalAdapter):
                 "terminal",
                 {"command": command},
             )
-        except (
-            Exception
-        ) as e:  # terminal adapter — broad catch to wrap any crow-mcp failure into TerminalError
+        except Exception as e:  # terminal adapter — broad catch to wrap any crow-mcp failure into TerminalError
             raise TerminalError(
                 message=f"crow-mcp: failed to launch session: {e}",
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,
@@ -155,9 +153,7 @@ class CrowTerminalAdapter(TerminalAdapter):
                 "terminal",
                 {"command": command},
             )
-        except (
-            Exception
-        ) as e:  # terminal adapter — broad catch to wrap any crow-mcp failure into TerminalError
+        except Exception as e:  # terminal adapter — broad catch to wrap any crow-mcp failure into TerminalError
             raise TerminalError(
                 message=f"crow-mcp: failed to send command: {e}",
                 error_code=ErrorCode.CROW_MCP_UNAVAILABLE,

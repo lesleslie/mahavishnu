@@ -276,9 +276,11 @@ def test_qwen_actual_dispatch_emits_caller_id() -> None:
         "gate must discriminate Qwen from Claude Code by user agent"
     )
     # Exit-code contract: 0 pass / 1 fail / 2 precondition.
-    assert (verify.EXIT_PASS, verify.EXIT_FAIL, verify.EXIT_PRECONDITION) == (0, 1, 2), (
-        "gate must preserve the 0/1/2/3 exit-code contract"
-    )
+    assert (verify.EXIT_PASS, verify.EXIT_FAIL, verify.EXIT_PRECONDITION) == (
+        0,
+        1,
+        2,
+    ), "gate must preserve the 0/1/2/3 exit-code contract"
 
 
 def test_qwen_gate_preconditions_documented() -> None:
@@ -305,5 +307,9 @@ def test_qwen_gate_preconditions_documented() -> None:
     assert '"mahavishnu", "pool", "health"' in src, "gate must check the pool router"
     # Pass criterion: a Qwen-route row in the structured store, keyed on the
     # virtual key and the model only that route serves.
-    assert "virtual_key_name = ?" in src, "gate must attribute the row to our virtual key"
-    assert verify.QWEN_ROUTE_MODEL in src, "gate must discriminate on the Qwen-route model"
+    assert "virtual_key_name = ?" in src, (
+        "gate must attribute the row to our virtual key"
+    )
+    assert verify.QWEN_ROUTE_MODEL in src, (
+        "gate must discriminate on the Qwen-route model"
+    )

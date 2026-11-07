@@ -267,7 +267,9 @@ class SyncCoordinator:
 
         self._plans[plan.plan_id] = plan
 
-        logger.info(f"Created sync plan {plan.plan_id} with {len(sync_items)} items from {source}")
+        logger.info(
+            f"Created sync plan {plan.plan_id} with {len(sync_items)} items from {source}"
+        )
 
         return plan
 
@@ -360,11 +362,16 @@ class SyncCoordinator:
 
             try:
                 # Import via external importer
-                from mahavishnu.core.external_issue_importer import ExternalIssue, IssueSource
+                from mahavishnu.core.external_issue_importer import (
+                    ExternalIssue,
+                    IssueSource,
+                )
 
                 external = ExternalIssue(
                     external_id=item.external_id,
-                    source=IssueSource.GITHUB if item.source == "github" else IssueSource.GITLAB,
+                    source=IssueSource.GITHUB
+                    if item.source == "github"
+                    else IssueSource.GITLAB,
                     title=item.title,
                     description=item.description,
                     status="open",
@@ -448,7 +455,9 @@ class SyncCoordinator:
         Returns:
             List of pending SyncItems
         """
-        return [item for item in self._items.values() if item.status == SyncStatus.PENDING]
+        return [
+            item for item in self._items.values() if item.status == SyncStatus.PENDING
+        ]
 
     def get_approved_items(self) -> list[SyncItem]:
         """Get all approved items.
@@ -456,7 +465,9 @@ class SyncCoordinator:
         Returns:
             List of approved SyncItems
         """
-        return [item for item in self._items.values() if item.status == SyncStatus.APPROVED]
+        return [
+            item for item in self._items.values() if item.status == SyncStatus.APPROVED
+        ]
 
     def get_sync_summary(self) -> dict[str, int]:
         """Get sync summary statistics.

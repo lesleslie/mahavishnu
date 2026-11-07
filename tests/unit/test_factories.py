@@ -71,7 +71,9 @@ def _make_factory_fixture(name: str):
 
 
 mock_pool_manager_cls = pytest.fixture(_make_factory_fixture("PoolManager"))
-mock_websocket_server_cls = pytest.fixture(_make_factory_fixture("MahavishnuWebSocketServer"))
+mock_websocket_server_cls = pytest.fixture(
+    _make_factory_fixture("MahavishnuWebSocketServer")
+)
 mock_terminal_manager_cls = pytest.fixture(_make_factory_fixture("TerminalManager"))
 
 

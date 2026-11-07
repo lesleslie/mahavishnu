@@ -78,15 +78,15 @@ pip install kaleido
    # /tmp/generate_diagram.py
    import kaleido
 
-   with open('/tmp/arch_diagram.mmd', 'r') as f:
+   with open("/tmp/arch_diagram.mmd", "r") as f:
        mermaid_code = f.read()
 
    kaleido.render(
        mermaid_code,
-       output='png',
-       output_file='docs/diagrams/system-architecture.png',
+       output="png",
+       output_file="docs/diagrams/system-architecture.png",
        width=1600,
-       height=1200
+       height=1200,
    )
    ```
 

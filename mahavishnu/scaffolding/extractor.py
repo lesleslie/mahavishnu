@@ -72,7 +72,8 @@ class PatternExtractor:
 
         include_re = [re.compile(p) for p in (include_patterns or [r".*"])]
         exclude_re = [
-            re.compile(p) for p in (exclude_patterns or [r"^__pycache__$", r"^\.git$", r"^\.venv$"])
+            re.compile(p)
+            for p in (exclude_patterns or [r"^__pycache__$", r"^\.git$", r"^\.venv$"])
         ]
 
         dirs: list[dict] = []
@@ -147,7 +148,9 @@ class PatternExtractor:
                     ],
                     confidence=prevalence,
                     source_repos=[
-                        n for n in repo_structures if _dir_in_repo(dir_path, repo_structures[n])
+                        n
+                        for n in repo_structures
+                        if _dir_in_repo(dir_path, repo_structures[n])
                     ],
                 )
             )
@@ -187,7 +190,9 @@ def _find_common_subtrees(
         dir_path = file_path.rsplit("/", 1)[0] if "/" in file_path else ""
         if not dir_path:
             continue
-        count = sum(1 for files in repo_structures.values() if _dir_in_repo(dir_path, files))
+        count = sum(
+            1 for files in repo_structures.values() if _dir_in_repo(dir_path, files)
+        )
         prevalence = count / n_repos
         if prevalence >= min_prevalence:
             result[dir_path] = max(result.get(dir_path, 0), prevalence)

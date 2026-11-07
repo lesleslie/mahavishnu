@@ -67,9 +67,11 @@ from typing import Any
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
 
+
 @dataclass
 class AdapterResult:
     """Standard result type for adapter execution."""
+
     status: str  # "success", "failure", "partial"
     repos_processed: int
     repos_failed: int
@@ -77,6 +79,7 @@ class AdapterResult:
     metadata: dict[str, Any]
     errors: list[str] | None = None
     engine_specific: dict[str, Any] | None = None
+
 
 class OrchestratorAdapter(ABC):
     """Abstract base class for orchestrator adapters.
@@ -183,6 +186,7 @@ class OrchestratorAdapter(ABC):
 ```python
 from crewai import Crew, Agent, Task
 from typing import Any
+
 
 class CrewAIAdapter(OrchestratorAdapter):
     """Adapter for CrewAI orchestration engine.
@@ -448,6 +452,7 @@ class CrewAIAdapter(OrchestratorAdapter):
 from langgraph.graph import StateGraph
 from typing import TypedDict
 
+
 class LangGraphAdapter(OrchestratorAdapter):
     """Adapter for LangGraph orchestration engine.
 
@@ -677,6 +682,7 @@ class LangGraphAdapter(OrchestratorAdapter):
 
         with open(checkpoint_path, "r") as f:
             import json
+
             return json.load(f)
 
     async def resume_workflow(

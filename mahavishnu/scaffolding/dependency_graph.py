@@ -51,7 +51,9 @@ class PatternDependencyGraph:
         Raises CircularDependencyError if a cycle is detected.
         """
         # in_degree[node] = number of prerequisites for node
-        in_degree: dict[str, int] = {n: len(self._deps.get(n, set())) for n in self._nodes}
+        in_degree: dict[str, int] = {
+            n: len(self._deps.get(n, set())) for n in self._nodes
+        }
         # reverse[node] = list of nodes that depend on node
         reverse: dict[str, list[str]] = defaultdict(list)
         for dependent, prereqs in self._deps.items():

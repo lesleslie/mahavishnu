@@ -120,7 +120,9 @@ def find_profiles_py(repo_path: Path) -> Path | None:
     return None
 
 
-_ENV_VAR_KW_RE = re.compile(r"""profile_env_var\s*=\s*["']([A-Z][A-Z0-9_]*_TOOL_PROFILE)["']""")
+_ENV_VAR_KW_RE = re.compile(
+    r"""profile_env_var\s*=\s*["']([A-Z][A-Z0-9_]*_TOOL_PROFILE)["']"""
+)
 _ENV_VAR_DEFAULT_RE = re.compile(
     r"""def\s+get_active_profile\s*\(\s*env_var:\s*str\s*=\s*["']([A-Z][A-Z0-9_]*_TOOL_PROFILE)["']"""
 )
@@ -371,7 +373,9 @@ def render_doc(
         "2. Add the group to `STANDARD_REGISTRATIONS` or "
         "`FULL_REGISTRATIONS` in the repo's `profiles.py`."
     )
-    out.append("3. Re-run `python scripts/generate_tool_profiles_doc.py` to refresh this file.")
+    out.append(
+        "3. Re-run `python scripts/generate_tool_profiles_doc.py` to refresh this file."
+    )
     out.append("")
     out.append("## How to add a new Bodai-maintained `*-mcp`")
     out.append("")
@@ -415,7 +419,9 @@ def main(argv: list[str] | None = None) -> int:
         if profile_path is None:
             if tier in {"tier-a", "tier-b", "bodai-maintained"}:
                 # Missing source — should not happen for known adopters.
-                adopter_rows.append((repo_name, tier, "?", "—", "profiles.py not found"))
+                adopter_rows.append(
+                    (repo_name, tier, "?", "—", "profiles.py not found")
+                )
             else:
                 tier_c_rows.append((repo_name, "profiles.py not found", "?", "", ""))
             continue
@@ -429,7 +435,9 @@ def main(argv: list[str] | None = None) -> int:
         minimal = extract_groups(text, "MINIMAL_REGISTRATIONS")
         standard = extract_groups(text, "STANDARD_REGISTRATIONS")
         full = extract_groups(text, "FULL_REGISTRATIONS")
-        groups_repr = ", ".join(full) if full else f"{len(minimal)}/{len(standard)}/{len(full)}"
+        groups_repr = (
+            ", ".join(full) if full else f"{len(minimal)}/{len(standard)}/{len(full)}"
+        )
         if tier in {"tier-a", "tier-b", "bodai-maintained"}:
             if tier == "tier-a":
                 tier_a_groups[repo_name] = full
@@ -441,7 +449,9 @@ def main(argv: list[str] | None = None) -> int:
     args.output_path.parent.mkdir(parents=True, exist_ok=True)
     doc = render_doc(adopter_rows, tier_c_rows, tier_a_groups)
     args.output_path.write_text(doc, encoding="utf-8")
-    print(f"wrote {args.output_path} ({len(adopter_rows)} adopters, {len(tier_c_rows)} Tier-C)")
+    print(
+        f"wrote {args.output_path} ({len(adopter_rows)} adopters, {len(tier_c_rows)} Tier-C)"
+    )
     return 0
 
 

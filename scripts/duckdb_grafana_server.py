@@ -350,7 +350,9 @@ def main() -> int:
 
     if not db_path.exists():
         logger.error(f"Database not found: {db_path}")
-        logger.info("Generate test data with: python scripts/generate_test_learning_data.py")
+        logger.info(
+            "Generate test data with: python scripts/generate_test_learning_data.py"
+        )
         return 1
 
     try:

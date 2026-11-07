@@ -33,7 +33,9 @@ class SessionBuddy:
         self._base_url = config.pools.session_buddy_url
         self._mcp = CommonMCPClient(base_url=self._base_url, timeout=30.0)
 
-    async def _call_mcp(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    async def _call_mcp(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> dict[str, Any]:
         try:
             result = await self._mcp.call_tool(tool_name, arguments)
         except MCPServerError as exc:
@@ -67,14 +69,22 @@ class SessionBuddy:
                 "store_conversation_checkpoint",
                 {
                     "checkpoint_type": "workflow",
-                    **({"quality_score": quality_score} if quality_score is not None else {}),
+                    **(
+                        {"quality_score": quality_score}
+                        if quality_score is not None
+                        else {}
+                    ),
                 },
             )
             logger.debug(
-                "Checkpoint %s stored in Session-Buddy for session %s", checkpoint_id, session_id
+                "Checkpoint %s stored in Session-Buddy for session %s",
+                checkpoint_id,
+                session_id,
             )
         except (ExternalServiceError, TimeoutError) as exc:
-            logger.warning("Session-Buddy checkpoint create degraded: %s — returning local ID", exc)
+            logger.warning(
+                "Session-Buddy checkpoint create degraded: %s — returning local ID", exc
+            )
 
         return checkpoint_id
 
@@ -102,7 +112,11 @@ class SessionBuddy:
                 "store_conversation_checkpoint",
                 {
                     "checkpoint_type": f"workflow_{status}",
-                    **({"quality_score": int(quality_score)} if quality_score is not None else {}),
+                    **(
+                        {"quality_score": int(quality_score)}
+                        if quality_score is not None
+                        else {}
+                    ),
                 },
             )
             logger.debug(
@@ -119,7 +133,9 @@ class SessionBuddy:
         # Session-Buddy has no lookup-by-ID API — callers handle None.
         return None
 
-    async def restore_from_checkpoint(self, checkpoint_id: str) -> dict[str, Any] | None:
+    async def restore_from_checkpoint(
+        self, checkpoint_id: str
+    ) -> dict[str, Any] | None:
         # Session-Buddy has no restore-by-ID API — orchestration recovery uses local state.
         return None
 

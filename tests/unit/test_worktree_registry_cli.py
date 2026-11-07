@@ -5,6 +5,7 @@ zero direct CLI coverage. These tests pin their behavior end-to-end
 via Typer's ``CliRunner`` against a real ``SessionWorktreeRegistry``
 backed by ``tmp_path``.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -58,9 +59,9 @@ def _seed(
             for key, offset in mark_abandoned_after.items():
                 # Abandon with a backdated timestamp.
                 fake_now = (
-                    datetime.now(UTC) - offset
-                ).isoformat(timespec="milliseconds").replace(
-                    "+00:00", "Z"
+                    (datetime.now(UTC) - offset)
+                    .isoformat(timespec="milliseconds")
+                    .replace("+00:00", "Z")
                 )
                 # Bind fake_now as a default arg to capture the
                 # current iteration's value (B023).
@@ -119,7 +120,13 @@ def test_list_sessions_state_abandoned_filter(registry_path: Path) -> None:
 
     result = runner.invoke(
         worktree_app,
-        ["list-sessions", "--state", "abandoned", "--registry-path", str(registry_path)],
+        [
+            "list-sessions",
+            "--state",
+            "abandoned",
+            "--registry-path",
+            str(registry_path),
+        ],
     )
     assert result.exit_code == 0
     assert "a0c5d2a0" not in result.stdout
@@ -146,9 +153,12 @@ def test_list_sessions_older_than_days_filter(registry_path: Path) -> None:
         worktree_app,
         [
             "list-sessions",
-            "--state", "abandoned",
-            "--older-than-days", "5",
-            "--registry-path", str(registry_path),
+            "--state",
+            "abandoned",
+            "--older-than-days",
+            "5",
+            "--registry-path",
+            str(registry_path),
         ],
     )
     assert result.exit_code == 0
@@ -194,8 +204,14 @@ def test_prune_abandoned_dry_run_leaves_entries(
 
     result = runner.invoke(
         worktree_app,
-        ["prune-abandoned", "--older-than-days", "0", "--dry-run",
-         "--registry-path", str(registry_path)],
+        [
+            "prune-abandoned",
+            "--older-than-days",
+            "0",
+            "--dry-run",
+            "--registry-path",
+            str(registry_path),
+        ],
     )
     assert result.exit_code == 0
     assert "Dry run" in result.stdout
@@ -215,8 +231,13 @@ def test_prune_abandoned_removes_entries(registry_path: Path) -> None:
 
     result = runner.invoke(
         worktree_app,
-        ["prune-abandoned", "--older-than-days", "0",
-         "--registry-path", str(registry_path)],
+        [
+            "prune-abandoned",
+            "--older-than-days",
+            "0",
+            "--registry-path",
+            str(registry_path),
+        ],
     )
     assert result.exit_code == 0
     assert "Removed" in result.stdout
@@ -237,8 +258,13 @@ def test_prune_abandoned_does_not_remove_active(
 
     result = runner.invoke(
         worktree_app,
-        ["prune-abandoned", "--older-than-days", "0",
-         "--registry-path", str(registry_path)],
+        [
+            "prune-abandoned",
+            "--older-than-days",
+            "0",
+            "--registry-path",
+            str(registry_path),
+        ],
     )
     assert result.exit_code == 0
 
@@ -262,14 +288,20 @@ def test_prune_abandoned_older_than_days_filter(
 
     result = runner.invoke(
         worktree_app,
-        ["prune-abandoned", "--older-than-days", "5",
-         "--registry-path", str(registry_path)],
+        [
+            "prune-abandoned",
+            "--older-than-days",
+            "5",
+            "--registry-path",
+            str(registry_path),
+        ],
     )
     assert result.exit_code == 0
 
-    remaining = {e["session_id_short"] for e in SessionWorktreeRegistry(
-        path=registry_path
-    ).list_active(state=None)}
+    remaining = {
+        e["session_id_short"]
+        for e in SessionWorktreeRegistry(path=registry_path).list_active(state=None)
+    }
     assert remaining == {"new_entry"}
 
 
@@ -293,9 +325,10 @@ def test_prune_abandoned_default_is_seven_days(
     assert result.exit_code == 0
     assert "No abandoned sessions older than 7 days" in result.stdout
 
-    remaining = {e["session_id_short"] for e in SessionWorktreeRegistry(
-        path=registry_path
-    ).list_active(state=None)}
+    remaining = {
+        e["session_id_short"]
+        for e in SessionWorktreeRegistry(path=registry_path).list_active(state=None)
+    }
     assert "recent" in remaining
 
 
@@ -318,8 +351,13 @@ def test_prune_abandoned_never_removes_worktrees_on_disk(
 
     result = runner.invoke(
         worktree_app,
-        ["prune-abandoned", "--older-than-days", "0",
-         "--registry-path", str(registry_path)],
+        [
+            "prune-abandoned",
+            "--older-than-days",
+            "0",
+            "--registry-path",
+            str(registry_path),
+        ],
     )
     assert result.exit_code == 0
 
@@ -374,8 +412,15 @@ def test_prune_abandoned_json_dry_run_reports_would_remove(
 
     result = runner.invoke(
         worktree_app,
-        ["prune-abandoned", "--older-than-days", "0", "--dry-run", "--json",
-         "--registry-path", str(registry_path)],
+        [
+            "prune-abandoned",
+            "--older-than-days",
+            "0",
+            "--dry-run",
+            "--json",
+            "--registry-path",
+            str(registry_path),
+        ],
     )
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
@@ -396,8 +441,14 @@ def test_prune_abandoned_json_applies_when_not_dry_run(
 
     result = runner.invoke(
         worktree_app,
-        ["prune-abandoned", "--older-than-days", "0", "--json",
-         "--registry-path", str(registry_path)],
+        [
+            "prune-abandoned",
+            "--older-than-days",
+            "0",
+            "--json",
+            "--registry-path",
+            str(registry_path),
+        ],
     )
     assert result.exit_code == 0
     payload = json.loads(result.stdout)

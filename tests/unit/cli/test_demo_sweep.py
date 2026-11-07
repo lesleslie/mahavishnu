@@ -50,9 +50,9 @@ def test_classify_precondition_failure() -> None:
 
 
 def test_classify_real_timeout() -> None:
-    assert _classify_sweep_output("Timed out after 120s waiting for the flow run\n", 2) == (
-        VERDICT_TIMEOUT
-    )
+    assert _classify_sweep_output(
+        "Timed out after 120s waiting for the flow run\n", 2
+    ) == (VERDICT_TIMEOUT)
 
 
 def test_classify_traceback_with_timeout_source_line_is_error() -> None:
@@ -73,7 +73,10 @@ def test_classify_traceback_with_timeout_source_line_is_error() -> None:
 
 
 def test_classify_stub() -> None:
-    assert _classify_sweep_output("not implemented — see docs/plans/x.md\n", 0) == VERDICT_STUB
+    assert (
+        _classify_sweep_output("not implemented — see docs/plans/x.md\n", 0)
+        == VERDICT_STUB
+    )
 
 
 def test_classify_success_payload() -> None:
@@ -249,7 +252,10 @@ def test_deployment_entrypoint_is_colon_free() -> None:
     entrypoint = _deployment_entrypoint(
         "mahavishnu.engines.prefect_adapter_impl", "process_repositories_flow"
     )
-    assert entrypoint == "mahavishnu.engines.prefect_adapter_impl.process_repositories_flow"
+    assert (
+        entrypoint
+        == "mahavishnu.engines.prefect_adapter_impl.process_repositories_flow"
+    )
     assert ":" not in entrypoint
 
 

@@ -256,14 +256,13 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 
 # Setup
-resource = Resource.create({
-    "service.name": "my-app",
-    "telemetry.source": "custom"
-})
+resource = Resource.create({"service.name": "my-app", "telemetry.source": "custom"})
 provider = TracerProvider(resource=resource)
-provider.add_span_processor(BatchSpanProcessor(
-    OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
-))
+provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
+    )
+)
 trace.set_tracer_provider(provider)
 
 # Use

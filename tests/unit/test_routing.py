@@ -13,9 +13,17 @@ def test_classify_intent_defaults_and_pattern_matches() -> None:
 
     assert router.classify_intent("") == TaskType.WORKFLOW
     assert router.classify_intent("   ") == TaskType.WORKFLOW
-    assert router.classify_intent("urgent security patch required") == TaskType.CRITICAL_TASK
-    assert router.classify_intent("semantic search over documents") == TaskType.RAG_QUERY
-    assert router.classify_intent("interactive live websocket chat") == TaskType.INTERACTIVE_TASK
+    assert (
+        router.classify_intent("urgent security patch required")
+        == TaskType.CRITICAL_TASK
+    )
+    assert (
+        router.classify_intent("semantic search over documents") == TaskType.RAG_QUERY
+    )
+    assert (
+        router.classify_intent("interactive live websocket chat")
+        == TaskType.INTERACTIVE_TASK
+    )
     assert router.classify_intent("unknown gibberish phrase") == TaskType.WORKFLOW
 
 
@@ -35,7 +43,11 @@ def test_generate_fallback_chain_default_and_preferred() -> None:
         value = "unknown"
 
     unknown_chain = router.generate_fallback_chain(_Unknown())  # type: ignore[arg-type]
-    assert unknown_chain == [AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX]
+    assert unknown_chain == [
+        AdapterType.PREFECT,
+        AdapterType.AGNO,
+        AdapterType.LLAMAINDEX,
+    ]
 
 
 @pytest.mark.asyncio
@@ -43,7 +55,11 @@ async def test_get_adapter_scores_and_context_adjustments() -> None:
     router = routing.TaskRouter()
 
     base = await router.get_adapter_scores(TaskType.WORKFLOW)
-    assert base[AdapterType.PREFECT] > base[AdapterType.AGNO] > base[AdapterType.LLAMAINDEX]
+    assert (
+        base[AdapterType.PREFECT]
+        > base[AdapterType.AGNO]
+        > base[AdapterType.LLAMAINDEX]
+    )
 
     adjusted = await router.get_adapter_scores(
         TaskType.AI_TASK,
@@ -79,10 +95,14 @@ async def test_select_adapter_by_strategy() -> None:
     balanced = await router.select_adapter(TaskType.WORKFLOW)
     assert balanced == AdapterType.PREFECT
 
-    latency = await router.select_adapter(TaskType.AI_TASK, routing.RoutingStrategy.LATENCY)
+    latency = await router.select_adapter(
+        TaskType.AI_TASK, routing.RoutingStrategy.LATENCY
+    )
     assert latency in {AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX}
 
-    success = await router.select_adapter(TaskType.RAG_QUERY, routing.RoutingStrategy.SUCCESS_RATE)
+    success = await router.select_adapter(
+        TaskType.RAG_QUERY, routing.RoutingStrategy.SUCCESS_RATE
+    )
     assert success in {AdapterType.PREFECT, AdapterType.AGNO, AdapterType.LLAMAINDEX}
 
     # COST strategy currently uses existing scores directly.

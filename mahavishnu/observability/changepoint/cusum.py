@@ -222,10 +222,16 @@ class CUSUMDetector:
             self._score_low = 0.0
 
         self._samples_since_reset += 1
-        score = max(self._score_high, self._score_low) if self.two_sided else self._score_high
+        score = (
+            max(self._score_high, self._score_low)
+            if self.two_sided
+            else self._score_high
+        )
         detected = score >= self.threshold
         if self.two_sided:
-            direction: DirectionT = "up" if self._score_high >= self._score_low else "down"
+            direction: DirectionT = (
+                "up" if self._score_high >= self._score_low else "down"
+            )
         else:
             direction = "up" if detected else "unknown"
 

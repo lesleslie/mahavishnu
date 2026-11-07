@@ -52,7 +52,10 @@ class ScoringWeights:
         "success": 0.9,
         "speed": 0.1,
     }  # Background, minimize cost via throughput
-    CRITICAL: ClassVar[dict[str, float]] = {"success": 0.8, "speed": 0.2}  # Reliability over speed
+    CRITICAL: ClassVar[dict[str, float]] = {
+        "success": 0.8,
+        "speed": 0.2,
+    }  # Reliability over speed
 
 
 class ConfidenceLevel(StrEnum):
@@ -135,7 +138,9 @@ class ABTest:
     winner: str | None = None  # "A", "B", or "inconclusive"
     sample_size_a: int = 0
     sample_size_b: int = 0
-    metric_diffs: dict[str, float] = field(default_factory=dict)  # e.g., {"success_rate": 0.05}
+    metric_diffs: dict[str, float] = field(
+        default_factory=dict
+    )  # e.g., {"success_rate": 0.05}
 
 
 class StatisticalRouter:
@@ -231,13 +236,17 @@ class StatisticalRouter:
                 median_latency = np.median(latencies)
                 # 100ms = perfect (1.0), 10000ms = poor (0.0)
                 # Log scale: log10(100) = 2, log10(10000) = 4
-                latency_score = max(0.0, 1.0 - (np.log10(max(median_latency, 100)) - 2) / 2)
+                latency_score = max(
+                    0.0, 1.0 - (np.log10(max(median_latency, 100)) - 2) / 2
+                )
 
         # Get task-type-specific weights
         weights = self._get_weights_for_task(task_type)
 
         # Calculate combined score
-        combined_score = weights["success"] * success_rate + weights["speed"] * latency_score
+        combined_score = (
+            weights["success"] * success_rate + weights["speed"] * latency_score
+        )
 
         # Determine confidence level
         sample_count = stats["total_executions"]
@@ -321,7 +330,9 @@ class StatisticalRouter:
 
         scores = []
         for adapter in adapters:
-            score = await self.calculate_adapter_score(adapter, task_type, metrics_tracker)
+            score = await self.calculate_adapter_score(
+                adapter, task_type, metrics_tracker
+            )
             if score is None:
                 logger.debug(
                     f"No score for {adapter.value} on {task_type.value} (insufficient data)"
@@ -381,7 +392,9 @@ class StatisticalRouter:
                     f"({pref.confidence.value})"
                 )
             except Exception as e:  # per-task-type preference calc can fail on missing metrics; log and continue  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                logger.error(f"Failed to calculate preference for {task_type.value}: {e}")
+                logger.error(
+                    f"Failed to calculate preference for {task_type.value}: {e}"
+                )
 
         # Clear cache after recalculation
         self._preferences.clear()
@@ -501,7 +514,10 @@ class StatisticalRouter:
         test = self._ab_tests[experiment_id]
 
         if test.status != "running":
-            return {"status": "error", "error": f"Test not running, status={test.status}"}
+            return {
+                "status": "error",
+                "error": f"Test not running, status={test.status}",
+            }
 
         # Collect metrics for both variants
         # This would query actual execution data by variant
@@ -551,7 +567,9 @@ class StatisticalRouter:
         elif winner == "B":
             winning_pref = test.variant_b
         else:
-            logger.warning(f"Inconclusive test {experiment_id}, applying default variant A")
+            logger.warning(
+                f"Inconclusive test {experiment_id}, applying default variant A"
+            )
             winning_pref = test.variant_a
 
         winning_pref.ab_test_active = True
@@ -571,7 +589,9 @@ class StatisticalRouter:
             "experiment_id": experiment_id,
             "status": "completed",
             "winner": winner,
-            "applied_preference": winning_pref.adapters[0].value if winning_pref.adapters else None,
+            "applied_preference": winning_pref.adapters[0].value
+            if winning_pref.adapters
+            else None,
         }
 
     async def _recalculation_loop(self) -> None:
@@ -588,13 +608,17 @@ class StatisticalRouter:
                     days_until_sunday = 7  # Today is Sunday
 
                 next_sunday = now + timedelta(days=days_until_sunday)
-                next_sunday_3am = next_sunday.replace(hour=3, minute=0, second=0, microsecond=0)
+                next_sunday_3am = next_sunday.replace(
+                    hour=3, minute=0, second=0, microsecond=0
+                )
 
                 # Calculate seconds until recalculation
                 seconds_until_recalc = (next_sunday_3am - now).total_seconds()
 
                 if seconds_until_recalc > 0:
-                    logger.debug(f"Next recalculation in {seconds_until_recalc // 3600} hours")
+                    logger.debug(
+                        f"Next recalculation in {seconds_until_recalc // 3600} hours"
+                    )
                     await asyncio.sleep(seconds_until_recalc)
 
                 # Time to recalculate
@@ -609,7 +633,9 @@ class StatisticalRouter:
             except asyncio.CancelledError:
                 logger.info("Recalculation loop cancelled")
                 break
-            except Exception:  # background task — broad catch is the documented contract
+            except (
+                Exception
+            ):  # background task — broad catch is the documented contract
                 logger.exception("Recalculation error")
                 # Wait before retry
                 await asyncio.sleep(300)  # 5 minutes

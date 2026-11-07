@@ -109,7 +109,9 @@ def test_synthesize_handle_detached() -> None:
         "HEAD": "abcdef",
         # no 'branch' key — detached
     }
-    h = synthesize_handle("/Users/les/Projects/mahavishnu", entry, Principal.from_uid(7))
+    h = synthesize_handle(
+        "/Users/les/Projects/mahavishnu", entry, Principal.from_uid(7)
+    )
     assert h.branch == "detached-HEAD"
 
 
@@ -130,21 +132,41 @@ def test_pre_migration_discover_against_real_repo(tmp_path) -> None:
     wt2 = tmp_path / "wt2"
 
     # Init repo + first commit
-    subprocess.run(["git", "init", "--initial-branch=main", str(main)], check=True, capture_output=True)
-    subprocess.run(["git", "-C", str(main), "config", "user.email", "test@test"], check=True, capture_output=True)
-    subprocess.run(["git", "-C", str(main), "config", "user.name", "Test"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", str(main)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(main), "config", "user.email", "test@test"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(main), "config", "user.name", "Test"],
+        check=True,
+        capture_output=True,
+    )
     (main / "a.txt").write_text("hello\n")
-    subprocess.run(["git", "-C", str(main), "add", "a.txt"], check=True, capture_output=True)
-    subprocess.run(["git", "-C", str(main), "commit", "-m", "init"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(main), "add", "a.txt"], check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "-C", str(main), "commit", "-m", "init"],
+        check=True,
+        capture_output=True,
+    )
 
     # Add two worktrees
     subprocess.run(
         ["git", "-C", str(main), "worktree", "add", "-b", "feature/a", str(wt1)],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "-C", str(main), "worktree", "add", "-b", "feature/b", str(wt2)],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
 
     handles = pre_migration_discover(str(main), principal=Principal.from_uid(99))
@@ -170,12 +192,30 @@ def test_pre_migration_discover_default_principal(tmp_path) -> None:
     """No principal passed → defaults to Principal.current()."""
     main = tmp_path / "main"
     main.mkdir()
-    subprocess.run(["git", "init", "--initial-branch=main", str(main)], check=True, capture_output=True)
-    subprocess.run(["git", "-C", str(main), "config", "user.email", "t@t"], check=True, capture_output=True)
-    subprocess.run(["git", "-C", str(main), "config", "user.name", "T"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", str(main)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(main), "config", "user.email", "t@t"],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(main), "config", "user.name", "T"],
+        check=True,
+        capture_output=True,
+    )
     (main / "a.txt").write_text("hi\n")
-    subprocess.run(["git", "-C", str(main), "add", "a.txt"], check=True, capture_output=True)
-    subprocess.run(["git", "-C", str(main), "commit", "-m", "init"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(main), "add", "a.txt"], check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "-C", str(main), "commit", "-m", "init"],
+        check=True,
+        capture_output=True,
+    )
 
     handles = pre_migration_discover(str(main))  # no principal arg
     assert handles[0].principal.uid is not None  # Principal.current() worked

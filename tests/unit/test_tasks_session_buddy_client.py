@@ -74,7 +74,12 @@ def test_unwrap_returns_empty_for_junk() -> None:
     It surfaces as an empty task, which the caller's own validation
     rejects — a loud, typed failure rather than an opaque crash.
     """
-    assert _unwrap_tool_result(_FakeCallToolResult(content=[_FakeContentBlock("not json")])) == {}
+    assert (
+        _unwrap_tool_result(
+            _FakeCallToolResult(content=[_FakeContentBlock("not json")])
+        )
+        == {}
+    )
     assert _unwrap_tool_result(None) == {}
     assert _unwrap_tool_result("nonsense") == {}
 

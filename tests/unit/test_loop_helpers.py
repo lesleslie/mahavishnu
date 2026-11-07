@@ -199,6 +199,7 @@ async def test_detect_until_dry_per_iteration_timeout() -> None:
     ``asyncio.TimeoutError`` since Python 3.11). The wrapper captures
     the timeout, surfaces ``stopped_reason == "error"``, and returns.
     """
+
     async def slow_scan_fn() -> list[dict[str, Any]]:
         await asyncio.sleep(5)
         return [_finding(1)]

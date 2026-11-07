@@ -50,13 +50,17 @@ class OpenSearchLogAnalytics:
         self.config = config
         self.client = None
         self.log_index = getattr(config, "opensearch_log_index", "mahavishnu-logs")
-        self.workflow_index = getattr(config, "opensearch_workflow_index", "mahavishnu-workflows")
+        self.workflow_index = getattr(
+            config, "opensearch_workflow_index", "mahavishnu-workflows"
+        )
 
         if OPENSEARCH_AVAILABLE:
             try:
                 self.client = AsyncOpenSearch(
                     hosts=[
-                        config.opensearch.endpoint.replace("https://", "").replace("http://", "")
+                        config.opensearch.endpoint.replace("https://", "").replace(
+                            "http://", ""
+                        )
                     ],
                     http_auth=None,  # Add authentication if needed
                     use_ssl=config.opensearch.use_ssl,
@@ -141,7 +145,9 @@ class OpenSearchLogAnalytics:
                         }
                     }
                 }
-                await self.client.indices.create(index=self.workflow_index, body=mapping)
+                await self.client.indices.create(
+                    index=self.workflow_index, body=mapping
+                )
         except Exception as e:  # initialization best-effort — broad catch to log and continue  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning("Failed to create workflow index: %s", e)
 
@@ -226,10 +232,14 @@ class OpenSearchLogAnalytics:
                 search_body["query"]["bool"]["must"].append({"term": {"level": level}})  # type: ignore[invalid-index]
 
             if workflow_id:
-                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})  # type: ignore[invalid-index]
+                search_body["query"]["bool"]["must"].append(
+                    {"term": {"workflow_id": workflow_id}}
+                )  # type: ignore[invalid-index]
 
             if repo_path:
-                search_body["query"]["bool"]["must"].append({"term": {"repo_path": repo_path}})  # type: ignore[invalid-index]
+                search_body["query"]["bool"]["must"].append(
+                    {"term": {"repo_path": repo_path}}
+                )  # type: ignore[invalid-index]
 
             if start_time or end_time:
                 date_range = {}
@@ -237,7 +247,9 @@ class OpenSearchLogAnalytics:
                     date_range["gte"] = start_time
                 if end_time:
                     date_range["lte"] = end_time
-                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})  # type: ignore[invalid-index]
+                search_body["query"]["bool"]["must"].append(
+                    {"range": {"timestamp": date_range}}
+                )  # type: ignore[invalid-index]
 
             # If no filters, match all
             if not search_body["query"]["bool"]["must"]:  # type: ignore[invalid-index]
@@ -268,16 +280,24 @@ class OpenSearchLogAnalytics:
             search_body = {"query": {"bool": {"must": []}}, "size": size}
 
             if workflow_id:
-                search_body["query"]["bool"]["must"].append({"term": {"workflow_id": workflow_id}})  # type: ignore[invalid-index]
+                search_body["query"]["bool"]["must"].append(
+                    {"term": {"workflow_id": workflow_id}}
+                )  # type: ignore[invalid-index]
 
             if adapter:
-                search_body["query"]["bool"]["must"].append({"term": {"adapter": adapter}})  # type: ignore[invalid-index]
+                search_body["query"]["bool"]["must"].append(
+                    {"term": {"adapter": adapter}}
+                )  # type: ignore[invalid-index]
 
             if task_type:
-                search_body["query"]["bool"]["must"].append({"term": {"task_type": task_type}})  # type: ignore[invalid-index]
+                search_body["query"]["bool"]["must"].append(
+                    {"term": {"task_type": task_type}}
+                )  # type: ignore[invalid-index]
 
             if status:
-                search_body["query"]["bool"]["must"].append({"term": {"status": status}})  # type: ignore[invalid-index]
+                search_body["query"]["bool"]["must"].append(
+                    {"term": {"status": status}}
+                )  # type: ignore[invalid-index]
 
             if start_time or end_time:
                 date_range = {}
@@ -285,13 +305,17 @@ class OpenSearchLogAnalytics:
                     date_range["gte"] = start_time
                 if end_time:
                     date_range["lte"] = end_time
-                search_body["query"]["bool"]["must"].append({"range": {"timestamp": date_range}})  # type: ignore[invalid-index]
+                search_body["query"]["bool"]["must"].append(
+                    {"range": {"timestamp": date_range}}
+                )  # type: ignore[invalid-index]
 
             # If no filters, match all
             if not search_body["query"]["bool"]["must"]:  # type: ignore[invalid-index]
                 search_body["query"] = {"match_all": {}}
 
-            response = await self.client.search(index=self.workflow_index, body=search_body)
+            response = await self.client.search(
+                index=self.workflow_index, body=search_body
+            )
 
             return [hit["_source"] for hit in response["hits"]["hits"]]
         except Exception as e:  # search failure — broad catch to return empty results to caller  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -313,21 +337,31 @@ class OpenSearchLogAnalytics:
             # Get workflow status breakdown
             status_agg_response = await self.client.search(
                 index=self.workflow_index,
-                body={"size": 0, "aggs": {"status_breakdown": {"terms": {"field": "status"}}}},
+                body={
+                    "size": 0,
+                    "aggs": {"status_breakdown": {"terms": {"field": "status"}}},
+                },
             )
             status_breakdown = {
                 bucket["key"]: bucket["doc_count"]
-                for bucket in status_agg_response["aggregations"]["status_breakdown"]["buckets"]
+                for bucket in status_agg_response["aggregations"]["status_breakdown"][
+                    "buckets"
+                ]
             }
 
             # Get adapter breakdown
             adapter_agg_response = await self.client.search(
                 index=self.workflow_index,
-                body={"size": 0, "aggs": {"adapter_breakdown": {"terms": {"field": "adapter"}}}},
+                body={
+                    "size": 0,
+                    "aggs": {"adapter_breakdown": {"terms": {"field": "adapter"}}},
+                },
             )
             adapter_breakdown = {
                 bucket["key"]: bucket["doc_count"]
-                for bucket in adapter_agg_response["aggregations"]["adapter_breakdown"]["buckets"]
+                for bucket in adapter_agg_response["aggregations"]["adapter_breakdown"][
+                    "buckets"
+                ]
             }
 
             return {
@@ -354,11 +388,16 @@ class OpenSearchLogAnalytics:
             # Get log level breakdown
             level_agg_response = await self.client.search(
                 index=self.log_index,
-                body={"size": 0, "aggs": {"level_breakdown": {"terms": {"field": "level"}}}},
+                body={
+                    "size": 0,
+                    "aggs": {"level_breakdown": {"terms": {"field": "level"}}},
+                },
             )
             level_breakdown = {
                 bucket["key"]: bucket["doc_count"]
-                for bucket in level_agg_response["aggregations"]["level_breakdown"]["buckets"]
+                for bucket in level_agg_response["aggregations"]["level_breakdown"][
+                    "buckets"
+                ]
             }
 
             return {"total_logs": total_logs, "level_breakdown": level_breakdown}
@@ -369,7 +408,10 @@ class OpenSearchLogAnalytics:
     async def health_check(self) -> dict[str, Any]:
         """Check OpenSearch health."""
         if not self.client:
-            return {"status": "unavailable", "error": "OpenSearch client not initialized"}
+            return {
+                "status": "unavailable",
+                "error": "OpenSearch client not initialized",
+            }
 
         try:
             is_connected = await self.client.ping()
@@ -378,7 +420,9 @@ class OpenSearchLogAnalytics:
                     "status": "healthy",
                     "indices": {
                         "logs": await self.client.indices.exists(index=self.log_index),
-                        "workflows": await self.client.indices.exists(index=self.workflow_index),
+                        "workflows": await self.client.indices.exists(
+                            index=self.workflow_index
+                        ),
                     },
                 }
             else:
@@ -415,7 +459,11 @@ class OpenSearchIntegration:
         await self.analytics.log_event(
             level="INFO",
             message=f"Workflow {workflow_id} started with adapter {adapter}",
-            attributes={"workflow_id": workflow_id, "adapter": adapter, "task_type": task_type},
+            attributes={
+                "workflow_id": workflow_id,
+                "adapter": adapter,
+                "task_type": task_type,
+            },
             workflow_id=workflow_id,
             adapter=adapter,
         )
@@ -440,7 +488,11 @@ class OpenSearchIntegration:
         await self.analytics.log_event(
             level="INFO",
             message=f"Workflow {workflow_id} updated to status {status}",
-            attributes={"workflow_id": workflow_id, "status": status, "progress": progress},
+            attributes={
+                "workflow_id": workflow_id,
+                "status": status,
+                "progress": progress,
+            },
             workflow_id=workflow_id,
         )
 

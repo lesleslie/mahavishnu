@@ -402,7 +402,9 @@ class LoadTestRunner:
                     metric_name = data.get("metric", "")
                     point_data = data.get("data", {})
                     value = point_data.get("value", 0)
-                    timestamp_str = point_data.get("time", datetime.now(UTC).isoformat())
+                    timestamp_str = point_data.get(
+                        "time", datetime.now(UTC).isoformat()
+                    )
 
                     try:
                         timestamp = datetime.fromisoformat(timestamp_str)

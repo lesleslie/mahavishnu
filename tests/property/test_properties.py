@@ -59,7 +59,11 @@ from mahavishnu.core.permissions import (
     User,
 )
 from mahavishnu.core.rate_limit import RateLimitConfig, RateLimiter
-from mahavishnu.core.repo_models import Repository, RepositoryManifest, RepositoryMetadata
+from mahavishnu.core.repo_models import (
+    Repository,
+    RepositoryManifest,
+    RepositoryMetadata,
+)
 from mahavishnu.core.workflow_state import WorkflowState, WorkflowStatus
 
 # =============================================================================
@@ -95,12 +99,16 @@ class TestRepositoryProperties:
         name=simple_name_strategy,
         package=simple_package_strategy,
         description=st.text(
-            min_size=1, max_size=200, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=1,
+            max_size=200,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         tags=st.lists(simple_tag_strategy, min_size=1, max_size=5, unique=True),
     )
     @settings(max_examples=30, deadline=None)
-    def test_repository_validation_preserves_invariants(self, name, package, description, tags):
+    def test_repository_validation_preserves_invariants(
+        self, name, package, description, tags
+    ):
         """Test that repository validation maintains data integrity."""
         # Normalize inputs to match Pydantic patterns
         name = name.lower()[:50]  # Ensure within bounds
@@ -125,7 +133,8 @@ class TestRepositoryProperties:
             assert len(repo.tags) >= 1
             assert len(repo.tags) <= 10
             assert all(
-                tag.islower() or any(c.isdigit() or c in "_-" for c in tag) for tag in repo.tags
+                tag.islower() or any(c.isdigit() or c in "_-" for c in tag)
+                for tag in repo.tags
             )
         except ValueError:
             # Some generated inputs may not match Pydantic patterns, which is fine
@@ -149,7 +158,9 @@ class TestRepositoryProperties:
             unique_by=lambda r: (r.name, r.package, str(r.path)),
         )
     )
-    @settings(max_examples=20, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+    @settings(
+        max_examples=20, deadline=None, suppress_health_check=[HealthCheck.too_slow]
+    )
     def test_repository_manifest_uniqueness_invariant(self, repos):
         """Test that repository manifest enforces uniqueness constraints."""
         try:
@@ -163,7 +174,9 @@ class TestRepositoryProperties:
 
             assert len(paths) == len(set(paths)), "Repository paths must be unique"
             assert len(names) == len(set(names)), "Repository names must be unique"
-            assert len(packages) == len(set(packages)), "Repository packages must be unique"
+            assert len(packages) == len(set(packages)), (
+                "Repository packages must be unique"
+            )
         except ValueError:
             # Some generated inputs may not match Pydantic patterns
             pass
@@ -240,7 +253,9 @@ class TestRateLimitingProperties:
         assert allowed_count <= per_hour, (
             f"Allowed {allowed_count} requests, limit is {per_hour}/hour"
         )
-        assert allowed_count <= per_day, f"Allowed {allowed_count} requests, limit is {per_day}/day"
+        assert allowed_count <= per_day, (
+            f"Allowed {allowed_count} requests, limit is {per_day}/day"
+        )
 
     @given(
         burst_size=st.integers(min_value=1, max_value=20),
@@ -269,11 +284,15 @@ class TestRateLimitingProperties:
 
     @given(
         exempt_ips=st.sets(
-            st.text(min_size=7, max_size=15, alphabet="0123456789."), min_size=0, max_size=5
+            st.text(min_size=7, max_size=15, alphabet="0123456789."),
+            min_size=0,
+            max_size=5,
         ),
         test_ip=st.text(min_size=7, max_size=15, alphabet="0123456789."),
     )
-    @settings(max_examples=30, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+    @settings(
+        max_examples=30, deadline=None, suppress_health_check=[HealthCheck.too_slow]
+    )
     def test_exempt_clients_bypass_rate_limits(self, exempt_ips, test_ip):
         """Test that exempt clients bypass rate limiting."""
         # Generate valid IP-like strings (simplified for speed)
@@ -306,7 +325,9 @@ class TestRateLimitingProperties:
         requests_per_client=st.integers(min_value=1, max_value=30),
     )
     @settings(max_examples=20, deadline=None)
-    def test_rate_limiting_is_per_client(self, per_minute, num_clients, requests_per_client):
+    def test_rate_limiting_is_per_client(
+        self, per_minute, num_clients, requests_per_client
+    ):
         """Test that rate limiting is isolated per client."""
         limiter = RateLimiter(per_minute=per_minute)
 
@@ -370,7 +391,9 @@ class TestJWTAuthProperties:
 
     @given(
         secret=st.text(
-            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=32,
+            max_size=50,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         username=st.text(min_size=1, max_size=20),
         expire_minutes=st.integers(min_value=1, max_value=100),
@@ -389,13 +412,17 @@ class TestJWTAuthProperties:
 
     @given(
         secret=st.text(
-            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=32,
+            max_size=50,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         username=st.text(min_size=1, max_size=20),
         expire_minutes=st.integers(min_value=1, max_value=100),
     )
     @settings(max_examples=20, deadline=None)
-    def test_jwt_tokens_expire_after_configured_time(self, secret, username, expire_minutes):
+    def test_jwt_tokens_expire_after_configured_time(
+        self, secret, username, expire_minutes
+    ):
         """Test that JWT tokens expire at the correct time."""
         auth = JWTAuth(secret=secret, expire_minutes=expire_minutes)
 
@@ -415,7 +442,9 @@ class TestJWTAuthProperties:
 
     @given(
         secret=st.text(
-            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=32,
+            max_size=50,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         username=st.text(min_size=1, max_size=20),
     )
@@ -436,7 +465,9 @@ class TestJWTAuthProperties:
 
     @given(
         secret=st.text(
-            min_size=1, max_size=31, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=1,
+            max_size=31,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         username=st.text(min_size=1, max_size=20),
     )
@@ -453,7 +484,9 @@ class TestRBACProperties:
 
     @given(
         user_id=st.text(
-            min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=1,
+            max_size=20,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         repo=st.text(min_size=1, max_size=30),
         permissions=st.lists(
@@ -476,14 +509,20 @@ class TestRBACProperties:
             result1 = _run(rbac.check_permission(user_id, repo, permission))
             result2 = _run(rbac.check_permission(user_id, repo, permission))
 
-            assert result1 == result2, f"Permission check for {permission} is not idempotent"
+            assert result1 == result2, (
+                f"Permission check for {permission} is not idempotent"
+            )
             assert result1 is True, f"User should have permission {permission}"
 
     @given(
         user_id=st.text(
-            min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=1,
+            max_size=20,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
-        repos=st.lists(st.text(min_size=1, max_size=20), min_size=1, max_size=5, unique=True),
+        repos=st.lists(
+            st.text(min_size=1, max_size=20), min_size=1, max_size=5, unique=True
+        ),
     )
     @settings(max_examples=30, deadline=None)
     def test_restricted_role_only_allows_specified_repos(self, user_id, repos):
@@ -502,12 +541,18 @@ class TestRBACProperties:
 
         # Property: User should have permission for allowed repos
         for repo in repos:
-            has_permission = _run(rbac.check_permission(user_id, repo, Permission.READ_REPO))
-            assert has_permission is True, f"User should have READ_REPO permission for {repo}"
+            has_permission = _run(
+                rbac.check_permission(user_id, repo, Permission.READ_REPO)
+            )
+            assert has_permission is True, (
+                f"User should have READ_REPO permission for {repo}"
+            )
 
         # Property: User should not have permission for non-allowed repos
         forbidden_repo = "forbidden_repo_unique_name"
-        has_permission = _run(rbac.check_permission(user_id, forbidden_repo, Permission.READ_REPO))
+        has_permission = _run(
+            rbac.check_permission(user_id, forbidden_repo, Permission.READ_REPO)
+        )
         assert has_permission is False, (
             f"User should not have READ_REPO permission for {forbidden_repo}"
         )
@@ -523,13 +568,17 @@ class TestRBACProperties:
         rbac = RBACManager(config)
 
         # Property: Nonexistent users should have no permissions
-        has_permission = _run(rbac.check_permission(user_id, repo, Permission.READ_REPO))
+        has_permission = _run(
+            rbac.check_permission(user_id, repo, Permission.READ_REPO)
+        )
 
         assert has_permission is False, "Nonexistent user should have no permissions"
 
     @given(
         user_id=st.text(min_size=1, max_size=20),
-        repos=st.lists(st.text(min_size=1, max_size=20), min_size=0, max_size=5, unique=True),
+        repos=st.lists(
+            st.text(min_size=1, max_size=20), min_size=0, max_size=5, unique=True
+        ),
     )
     @settings(max_examples=20, deadline=None)
     def test_filter_repos_returns_subset(self, user_id, repos):
@@ -559,13 +608,19 @@ class TestCrossProjectAuthProperties:
 
     @given(
         secret=st.text(
-            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=32,
+            max_size=50,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         message=st.dictionaries(
             keys=st.text(
-                min_size=1, max_size=10, alphabet=st.characters(whitelist_categories=("L",))
+                min_size=1,
+                max_size=10,
+                alphabet=st.characters(whitelist_categories=("L",)),
             ),
-            values=st.one_of(st.text(min_size=1, max_size=10), st.integers(), st.booleans()),
+            values=st.one_of(
+                st.text(min_size=1, max_size=10), st.integers(), st.booleans()
+            ),
             min_size=1,
             max_size=5,
         ),
@@ -585,7 +640,9 @@ class TestCrossProjectAuthProperties:
 
     @given(
         secret=st.text(
-            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=32,
+            max_size=50,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         message=st.dictionaries(
             keys=st.text(min_size=1, max_size=10),
@@ -614,7 +671,9 @@ class TestCrossProjectAuthProperties:
 
     @given(
         secret=st.text(
-            min_size=32, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=32,
+            max_size=50,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
         message=st.dictionaries(
             keys=st.text(min_size=1, max_size=10),
@@ -645,7 +704,9 @@ class TestWorkflowStateProperties:
     @given(
         workflow_id=st.text(min_size=1, max_size=20),
         task_name=st.text(min_size=1, max_size=20),
-        repos=st.lists(st.text(min_size=1, max_size=20), min_size=1, max_size=5, unique=True),
+        repos=st.lists(
+            st.text(min_size=1, max_size=20), min_size=1, max_size=5, unique=True
+        ),
     )
     @settings(max_examples=30, deadline=None)
     def test_workflow_creation_initializes_state(self, workflow_id, task_name, repos):
@@ -717,7 +778,12 @@ class TestWorkflowStateProperties:
     @given(
         num_workflows=st.integers(min_value=1, max_value=10),
         status_filter=st.sampled_from(
-            [None, WorkflowStatus.PENDING, WorkflowStatus.RUNNING, WorkflowStatus.COMPLETED]
+            [
+                None,
+                WorkflowStatus.PENDING,
+                WorkflowStatus.RUNNING,
+                WorkflowStatus.COMPLETED,
+            ]
         ),
     )
     @settings(max_examples=20, deadline=None)
@@ -772,7 +838,11 @@ class TestConfigurationProperties:
     )
     @settings(max_examples=30, deadline=None)
     def test_configuration_respects_bounds(
-        self, max_concurrent_workflows, qc_min_score, checkpoint_interval, retry_max_attempts
+        self,
+        max_concurrent_workflows,
+        qc_min_score,
+        checkpoint_interval,
+        retry_max_attempts,
     ):
         """Test that configuration enforces declared bounds."""
         # Property: Configuration should accept values within bounds
@@ -803,7 +873,9 @@ class TestConfigurationProperties:
 
     @given(
         path_component=st.text(
-            min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L", "N"))
+            min_size=1,
+            max_size=20,
+            alphabet=st.characters(whitelist_categories=("L", "N")),
         ),
     )
     @settings(max_examples=20, deadline=None)

@@ -52,7 +52,9 @@ def mock_embedding_service():
     result = MagicMock()
     result.embeddings = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
     service_instance.embed = AsyncMock(return_value=result)
-    service_instance.get_available_providers = MagicMock(return_value=[EmbeddingProvider.FASTEMBED])
+    service_instance.get_available_providers = MagicMock(
+        return_value=[EmbeddingProvider.FASTEMBED]
+    )
 
     with patch(
         "mahavishnu.core.embeddings_oneiric.EmbeddingService",
@@ -217,7 +219,9 @@ class TestLayeredLoad:
 class TestGetEmbeddingConfig:
     """Lazy singleton caching."""
 
-    def test_first_call_creates_config(self, reset_global_config, clean_env, tmp_path, monkeypatch):
+    def test_first_call_creates_config(
+        self, reset_global_config, clean_env, tmp_path, monkeypatch
+    ):
         monkeypatch.chdir(tmp_path)
         cfg = get_embedding_config()
         assert isinstance(cfg, EmbeddingConfig)
@@ -245,7 +249,12 @@ class TestGetEmbeddingsWithOneiric:
         service.embed.assert_awaited_once_with(["hello", "world"])
 
     async def test_falls_back_to_default_config(
-        self, mock_embedding_service, reset_global_config, clean_env, tmp_path, monkeypatch
+        self,
+        mock_embedding_service,
+        reset_global_config,
+        clean_env,
+        tmp_path,
+        monkeypatch,
     ):
         monkeypatch.chdir(tmp_path)
         await get_embeddings_with_oneiric(["x"])
@@ -305,7 +314,12 @@ class TestOneiricEmbeddingsAdapter:
             assert adapter.is_available() is False
 
     def test_default_config_loaded_when_none_provided(
-        self, mock_embedding_service, reset_global_config, clean_env, tmp_path, monkeypatch
+        self,
+        mock_embedding_service,
+        reset_global_config,
+        clean_env,
+        tmp_path,
+        monkeypatch,
     ):
         monkeypatch.chdir(tmp_path)
         adapter = OneiricEmbeddingsAdapter()
@@ -319,7 +333,12 @@ class TestMCPToolGetEmbeddings:
     """The MCP-facing wrapper."""
 
     async def test_basic_call(
-        self, mock_embedding_service, reset_global_config, clean_env, tmp_path, monkeypatch
+        self,
+        mock_embedding_service,
+        reset_global_config,
+        clean_env,
+        tmp_path,
+        monkeypatch,
     ):
         monkeypatch.chdir(tmp_path)
         result = await mcp_tool_get_embeddings(["hello"])
@@ -329,7 +348,12 @@ class TestMCPToolGetEmbeddings:
         assert result["dimension"] == 3
 
     async def test_provider_override(
-        self, mock_embedding_service, reset_global_config, clean_env, tmp_path, monkeypatch
+        self,
+        mock_embedding_service,
+        reset_global_config,
+        clean_env,
+        tmp_path,
+        monkeypatch,
     ):
         monkeypatch.chdir(tmp_path)
         result = await mcp_tool_get_embeddings(["hello"], provider="openai")
@@ -337,14 +361,24 @@ class TestMCPToolGetEmbeddings:
         assert result["provider"] in ("openai", EmbeddingProvider.OPENAI.value)
 
     async def test_invalid_provider_raises(
-        self, mock_embedding_service, reset_global_config, clean_env, tmp_path, monkeypatch
+        self,
+        mock_embedding_service,
+        reset_global_config,
+        clean_env,
+        tmp_path,
+        monkeypatch,
     ):
         monkeypatch.chdir(tmp_path)
         with pytest.raises(ValueError, match="Invalid provider"):
             await mcp_tool_get_embeddings(["hello"], provider="bogus")
 
     async def test_model_override(
-        self, mock_embedding_service, reset_global_config, clean_env, tmp_path, monkeypatch
+        self,
+        mock_embedding_service,
+        reset_global_config,
+        clean_env,
+        tmp_path,
+        monkeypatch,
     ):
         monkeypatch.chdir(tmp_path)
         result = await mcp_tool_get_embeddings(["hello"], model="my-model")

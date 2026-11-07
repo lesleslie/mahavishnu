@@ -32,7 +32,13 @@ import logging
 import re
 from typing import Any, ClassVar
 
-from mahavishnu.core.task_store import Task, TaskListFilter, TaskPriority, TaskStatus, TaskStore
+from mahavishnu.core.task_store import (
+    Task,
+    TaskListFilter,
+    TaskPriority,
+    TaskStatus,
+    TaskStore,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -450,7 +456,9 @@ class CrossRepoSearch:
 
         # Filter by tags (ANY match)
         if criteria.tags:
-            filtered = [r for r in filtered if any(tag in r.task.tags for tag in criteria.tags)]
+            filtered = [
+                r for r in filtered if any(tag in r.task.tags for tag in criteria.tags)
+            ]
 
         return filtered
 

@@ -101,7 +101,9 @@ class SessionBuddyTaskClient:
         """
         return await self._call("tasks_get", {"task_id": task_id})
 
-    async def tasks_link_workflow(self, task_id: str, workflow_id: str) -> dict[str, Any]:
+    async def tasks_link_workflow(
+        self, task_id: str, workflow_id: str
+    ) -> dict[str, Any]:
         """Bind a workflow to a task through the typed link channel.
 
         This is the only channel that writes ``Task.workflow_id``. The

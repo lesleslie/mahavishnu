@@ -14,7 +14,11 @@ import typer
 import yaml
 
 from ..core.config import MahavishnuSettings
-from ..core.config_validator import ConfigValidationReport, ValidationResult, validate_config
+from ..core.config_validator import (
+    ConfigValidationReport,
+    ValidationResult,
+    validate_config,
+)
 from ..core.health import HealthChecker, HealthCheckResult, HealthStatus
 from ..core.skill_mcp_validator import validate_agent_dir, validate_skill_dir
 
@@ -141,7 +145,9 @@ def _validate_adapter_config(settings: MahavishnuSettings) -> list[ValidationRes
 
     if settings.adapters.agno_enabled:
         results.append(
-            _ensure_http_url(settings.agno.tools.mcp_server_url, "agno.tools.mcp_server_url")
+            _ensure_http_url(
+                settings.agno.tools.mcp_server_url, "agno.tools.mcp_server_url"
+            )
         )
 
     if settings.adapters.llamaindex_enabled:
@@ -169,7 +175,9 @@ def _validate_runtime_settings(settings: MahavishnuSettings) -> list[ValidationR
                 valid=False,
                 message=f"Configured repos path does not exist: {repos_path}",
                 path="repos_path",
-                suggestions=["Update repos_path or create the referenced repo manifest"],
+                suggestions=[
+                    "Update repos_path or create the referenced repo manifest"
+                ],
             )
         )
 
@@ -213,7 +221,9 @@ async def _validate_runtime_connectivity(
                 name,
                 url,
                 dependency.required,
-                asyncio.create_task(checker.check(url, timeout=dependency.timeout_seconds)),
+                asyncio.create_task(
+                    checker.check(url, timeout=dependency.timeout_seconds)
+                ),
             )
         )
 
@@ -225,7 +235,9 @@ async def _validate_runtime_connectivity(
                 url,
                 True,
                 asyncio.create_task(
-                    checker.check(url, timeout=settings.session_buddy_polling.timeout_seconds)
+                    checker.check(
+                        url, timeout=settings.session_buddy_polling.timeout_seconds
+                    )
                 ),
             )
         )
@@ -249,7 +261,9 @@ async def _validate_runtime_connectivity(
     gathered = await asyncio.gather(
         *(task for _, _, _, task in dependency_tasks), return_exceptions=True
     )
-    for (name, url, required, _), result in zip(dependency_tasks, gathered, strict=True):
+    for (name, url, required, _), result in zip(
+        dependency_tasks, gathered, strict=True
+    ):
         if isinstance(result, BaseException):
             checks.append(
                 RuntimeValidationCheck(
@@ -297,7 +311,9 @@ async def _validate_runtime_connectivity(
     return checks
 
 
-async def run_validation(config_dir: str | Path = "settings", full: bool = False) -> dict[str, Any]:
+async def run_validation(
+    config_dir: str | Path = "settings", full: bool = False
+) -> dict[str, Any]:
     """Run static and optional runtime configuration validation."""
     config_dir = Path(config_dir)
     static_report: ConfigValidationReport = validate_config(config_dir)
@@ -345,7 +361,9 @@ async def run_validation(config_dir: str | Path = "settings", full: bool = False
                 runtime_checks = await _validate_runtime_connectivity(settings)
 
     runtime_errors = [check for check in runtime_checks if not check.valid]
-    runtime_validation_errors = [result for result in runtime_validations if not result.valid]
+    runtime_validation_errors = [
+        result for result in runtime_validations if not result.valid
+    ]
     valid = static_report.valid and not runtime_errors and not runtime_validation_errors
 
     return {
@@ -460,7 +478,9 @@ def add_config_validation_commands(app: typer.Typer) -> None:
 
             try:
                 report = UnifiedConfig.validate(settings_dir=config_dir)
-            except Exception as exc:  # CLI entry point — broad catch is the documented contract
+            except (
+                Exception
+            ) as exc:  # CLI entry point — broad catch is the documented contract
                 typer.echo(f"[ERROR] Validation failed to run: {exc}", err=True)
                 raise typer.Exit(code=2) from exc
 
@@ -562,14 +582,20 @@ def check_skill_agent_drift(
     if agents_dir.exists():
         for name, agent_report in validate_agent_dir(agents_dir).items():
             for ref in agent_report.stale_refs:
-                report.errors.append(f"Agent {name}: stale MCP ref {ref!r} not in KNOWN_TOOLS")
+                report.errors.append(
+                    f"Agent {name}: stale MCP ref {ref!r} not in KNOWN_TOOLS"
+                )
             if agent_report.description_too_long:
-                report.warnings.append(f"Agent {name}: description exceeds 300 characters")
+                report.warnings.append(
+                    f"Agent {name}: description exceeds 300 characters"
+                )
 
     if skills_dir.exists():
         for rel_path, skill_report in validate_skill_dir(skills_dir).items():
             for ref in skill_report.stale_refs:
-                report.errors.append(f"Skill {rel_path}: stale MCP ref {ref!r} not in KNOWN_TOOLS")
+                report.errors.append(
+                    f"Skill {rel_path}: stale MCP ref {ref!r} not in KNOWN_TOOLS"
+                )
             for wrong in skill_report.wrong_ports:
                 report.errors.append(f"Skill {rel_path}: wrong port — {wrong}")
 

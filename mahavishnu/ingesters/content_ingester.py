@@ -264,7 +264,9 @@ class ContentIngester:
             # Create HTTP clients for MCP servers
             timeout = httpx.Timeout(30.0, connect=10.0)
             if self._akosha_client is None:
-                self._akosha_client = httpx.AsyncClient(base_url=self._akosha_url, timeout=timeout)
+                self._akosha_client = httpx.AsyncClient(
+                    base_url=self._akosha_url, timeout=timeout
+                )
             if self._crackerjack_client is None:
                 self._crackerjack_client = httpx.AsyncClient(
                     base_url=self._crackerjack_url, timeout=timeout
@@ -439,7 +441,9 @@ class ContentIngester:
         parsed = urllib.parse.urlparse(url)
 
         if parsed.scheme not in ("http", "https"):
-            raise ValueError(f"Blocked scheme: {parsed.scheme}. Only http and https are allowed.")
+            raise ValueError(
+                f"Blocked scheme: {parsed.scheme}. Only http and https are allowed."
+            )
 
         hostname = parsed.hostname
         if not hostname:
@@ -511,7 +515,9 @@ class ContentIngester:
 
             # Extract title
             title = (
-                metadata.get("title") or metadata.get("og:title") or metadata.get("twitter:title")
+                metadata.get("title")
+                or metadata.get("og:title")
+                or metadata.get("twitter:title")
             )
 
             return {
@@ -720,7 +726,8 @@ class ContentIngester:
 
             # Save to file
             safe_title = "".join(
-                c if c.isalnum() or c in (" ", "-", "_") else "_" for c in (title or "untitled")
+                c if c.isalnum() or c in (" ", "-", "_") else "_"
+                for c in (title or "untitled")
             )
             output_path = self._output_dir / f"{safe_title[:100]}.md"
             output_path.write_text(text, encoding="utf-8")
@@ -882,7 +889,9 @@ class ContentIngester:
             return result
 
         except Exception as e:  # File ingestion wraps any failure into an IngestionResult rather than propagating  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
-            self._log.error("file_ingestion_failed", file_path=str(file_path), error=str(e))
+            self._log.error(
+                "file_ingestion_failed", file_path=str(file_path), error=str(e)
+            )
             return IngestionResult(
                 success=False,
                 content_type=content_type,
@@ -907,7 +916,9 @@ class ContentIngester:
             return text
 
         except ImportError:
-            raise RuntimeError("pypdf not installed. Install with: uv pip install pypdf") from None
+            raise RuntimeError(
+                "pypdf not installed. Install with: uv pip install pypdf"
+            ) from None
 
     async def _read_epub(self, file_path: Path) -> str:
         """Extract text from EPUB file.

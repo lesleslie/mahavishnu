@@ -362,7 +362,9 @@ class TestCreateDeployment:
     """Tests for create_deployment method."""
 
     @pytest.mark.asyncio
-    async def test_create_deployment_success(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_create_deployment_success(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test successful deployment creation."""
         mock_flow = MagicMock()
         mock_flow.id = "flow-456"
@@ -442,7 +444,9 @@ class TestUpdateDeployment:
     """Tests for update_deployment method."""
 
     @pytest.mark.asyncio
-    async def test_update_deployment_pause(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_update_deployment_pause(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test pausing a deployment."""
         mock_deployment.paused = True
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
@@ -462,7 +466,9 @@ class TestUpdateDeployment:
         assert call_kwargs["paused"] is True
 
     @pytest.mark.asyncio
-    async def test_update_deployment_schedule(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_update_deployment_schedule(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test updating deployment schedule."""
         mock_prefect_client.update_deployment = AsyncMock(return_value=mock_deployment)
 
@@ -505,7 +511,9 @@ class TestGetDeployment:
     """Tests for get_deployment and get_deployment_by_name methods."""
 
     @pytest.mark.asyncio
-    async def test_get_deployment_by_id(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_get_deployment_by_id(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test getting deployment by ID."""
         mock_prefect_client.read_deployment = AsyncMock(return_value=mock_deployment)
 
@@ -520,16 +528,22 @@ class TestGetDeployment:
         mock_prefect_client.read_deployment.assert_called_once_with("deployment-123")
 
     @pytest.mark.asyncio
-    async def test_get_deployment_by_name(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_get_deployment_by_name(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test getting deployment by flow/deployment name."""
-        mock_prefect_client.read_deployment_by_name = AsyncMock(return_value=mock_deployment)
+        mock_prefect_client.read_deployment_by_name = AsyncMock(
+            return_value=mock_deployment
+        )
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)
         context_manager.__aexit__ = AsyncMock()
 
         with patch.object(adapter, "_get_client_context", return_value=context_manager):
-            result = await adapter.get_deployment_by_name("test-flow", "test-deployment")
+            result = await adapter.get_deployment_by_name(
+                "test-flow", "test-deployment"
+            )
 
         assert result.name == "test-deployment"
         mock_prefect_client.read_deployment_by_name.assert_called_once_with(
@@ -541,7 +555,9 @@ class TestListDeployments:
     """Tests for list_deployments method."""
 
     @pytest.mark.asyncio
-    async def test_list_all_deployments(self, adapter, mock_prefect_client, mock_deployment):
+    async def test_list_all_deployments(
+        self, adapter, mock_prefect_client, mock_deployment
+    ):
         """Test listing all deployments."""
         mock_prefect_client.read_deployments = AsyncMock(
             return_value=[mock_deployment, mock_deployment]
@@ -591,9 +607,13 @@ class TestTriggerFlowRun:
     """Tests for trigger_flow_run method."""
 
     @pytest.mark.asyncio
-    async def test_trigger_flow_run_success(self, adapter, mock_prefect_client, mock_flow_run):
+    async def test_trigger_flow_run_success(
+        self, adapter, mock_prefect_client, mock_flow_run
+    ):
         """Test triggering a flow run."""
-        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(return_value=mock_flow_run)
+        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(
+            return_value=mock_flow_run
+        )
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)
@@ -613,7 +633,9 @@ class TestTriggerFlowRun:
         self, adapter, mock_prefect_client, mock_flow_run
     ):
         """Test triggering flow run with idempotency key."""
-        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(return_value=mock_flow_run)
+        mock_prefect_client.create_flow_run_from_deployment = AsyncMock(
+            return_value=mock_flow_run
+        )
 
         context_manager = AsyncMock()
         context_manager.__aenter__ = AsyncMock(return_value=mock_prefect_client)
@@ -798,7 +820,9 @@ class TestExceptionMapping:
 
         request = MagicMock()
         response = MagicMock(status_code=500)
-        exc = PrefectHTTPStatusError("Internal server error", request=request, response=response)
+        exc = PrefectHTTPStatusError(
+            "Internal server error", request=request, response=response
+        )
         error = _map_prefect_exception(exc, "api_call")
 
         assert isinstance(error, PrefectError)

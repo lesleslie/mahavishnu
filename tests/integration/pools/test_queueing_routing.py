@@ -12,6 +12,7 @@ matrix expects. The integration test owns this output contract.
 
 Req: REQ-001, REQ-002, REQ-003, REQ-008 (verification).
 """
+
 from __future__ import annotations
 
 import json
@@ -31,11 +32,15 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-def _sample_poisson_interarrivals(lam: float, n: int, rng: random.Random) -> list[float]:
+def _sample_poisson_interarrivals(
+    lam: float, n: int, rng: random.Random
+) -> list[float]:
     return [rng.expovariate(lam) for _ in range(n)]
 
 
-def _sample_bursty_interarrivals(lam_base: float, lam_burst: float, burst_prob: float, n: int, rng: random.Random) -> list[float]:
+def _sample_bursty_interarrivals(
+    lam_base: float, lam_burst: float, burst_prob: float, n: int, rng: random.Random
+) -> list[float]:
     result: list[float] = []
     while len(result) < n:
         lam = lam_burst if rng.random() < burst_prob else lam_base
@@ -43,7 +48,9 @@ def _sample_bursty_interarrivals(lam_base: float, lam_burst: float, burst_prob: 
     return result
 
 
-def _sample_hyperexponential_services(probs: list[float], rates: list[float], mean: float, n: int, rng: random.Random) -> list[float]:
+def _sample_hyperexponential_services(
+    probs: list[float], rates: list[float], mean: float, n: int, rng: random.Random
+) -> list[float]:
     assert math.isclose(sum(probs), 1.0, abs_tol=1e-6)
     result: list[float] = []
     cdf: list[float] = []
@@ -63,7 +70,9 @@ def _sample_hyperexponential_services(probs: list[float], rates: list[float], me
     return result
 
 
-def _simulate_mm_c(arrivals: list[float], services: list[float], num_workers: int) -> list[float]:
+def _simulate_mm_c(
+    arrivals: list[float], services: list[float], num_workers: int
+) -> list[float]:
     """Simulate an M/M/c queue and return per-task wait times (before service)."""
     server_free_at: list[float] = [0.0] * num_workers
     waits: list[float] = []
@@ -77,7 +86,12 @@ def _simulate_mm_c(arrivals: list[float], services: list[float], num_workers: in
     return waits
 
 
-def _fit_and_predict(arrivals: list[float], services: list[float], num_workers: int, approximation: str = "kingman") -> float:
+def _fit_and_predict(
+    arrivals: list[float],
+    services: list[float],
+    num_workers: int,
+    approximation: str = "kingman",
+) -> float:
     q = MmcQueue.fit_from_observations(arrivals, services, num_workers=num_workers)
     return q.expected_wait_time(approximation=approximation)
 
@@ -127,8 +141,12 @@ class TestPoissonWorkload:
             )
 
         bench = {
-            "p95_error_poisson": sorted_errors[int(0.95 * len(sorted_errors))] if sorted_errors else 0.0,
-            "median_error_poisson": sorted_errors[len(sorted_errors) // 2] if sorted_errors else 0.0,
+            "p95_error_poisson": sorted_errors[int(0.95 * len(sorted_errors))]
+            if sorted_errors
+            else 0.0,
+            "median_error_poisson": sorted_errors[len(sorted_errors) // 2]
+            if sorted_errors
+            else 0.0,
             "rho": rho,
             "approximation": "kingman",
             "n_observations": n,
@@ -246,7 +264,10 @@ class TestPerShiftSizeDecomposition:
                 w = q.expected_wait_time("kingman")
             except Exception:  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 w = float("nan")
-            results[cv2_tier] = {"predicted_w_q": w, "mean_service": sum(services) / len(services)}
+            results[cv2_tier] = {
+                "predicted_w_q": w,
+                "mean_service": sum(services) / len(services),
+            }
         assert set(results.keys()) == {"cv2_low", "cv2_mid", "cv2_high"}
 
 

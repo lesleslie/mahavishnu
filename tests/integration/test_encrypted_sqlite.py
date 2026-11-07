@@ -96,8 +96,12 @@ async def test_encrypted_sqlite_basic_operations(temp_dir, encryption_key):
     await db.commit()
 
     # Insert data
-    db.execute("INSERT INTO users (name, email) VALUES (?, ?)", ("Alice", "alice@example.com"))
-    db.execute("INSERT INTO users (name, email) VALUES (?, ?)", ("Bob", "bob@example.com"))
+    db.execute(
+        "INSERT INTO users (name, email) VALUES (?, ?)", ("Alice", "alice@example.com")
+    )
+    db.execute(
+        "INSERT INTO users (name, email) VALUES (?, ?)", ("Bob", "bob@example.com")
+    )
     await db.commit()
 
     # Query data
@@ -416,7 +420,9 @@ async def test_verify_encrypted_database(temp_dir, encryption_key):
     assert is_valid is True
 
     # Verify with wrong key
-    is_valid_wrong = await verify_encrypted_database(db_path, "wrong_key_32_characters_____")
+    is_valid_wrong = await verify_encrypted_database(
+        db_path, "wrong_key_32_characters_____"
+    )
 
     assert is_valid_wrong is False
 

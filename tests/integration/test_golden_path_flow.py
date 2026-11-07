@@ -57,16 +57,22 @@ class RecordingMCP:
     def __init__(self) -> None:
         self.persisted: list[tuple[str, dict[str, object]]] = []
 
-    async def persist_workflow(self, workflow_id: str, payload: dict[str, object]) -> None:
+    async def persist_workflow(
+        self, workflow_id: str, payload: dict[str, object]
+    ) -> None:
         self.persisted.append(("workflow", {"workflow_id": workflow_id, **payload}))
 
     async def persist_pool(self, pool_id: str, payload: dict[str, object]) -> None:
         self.persisted.append(("pool", {"pool_id": pool_id, **payload}))
 
-    async def persist_routing_decision(self, task_id: str, payload: dict[str, object]) -> None:
+    async def persist_routing_decision(
+        self, task_id: str, payload: dict[str, object]
+    ) -> None:
         self.persisted.append(("routing", {"task_id": task_id, **payload}))
 
-    async def persist_approval(self, approval_id: str, payload: dict[str, object]) -> None:
+    async def persist_approval(
+        self, approval_id: str, payload: dict[str, object]
+    ) -> None:
         self.persisted.append(("approval", {"approval_id": approval_id, **payload}))
 
     async def recover_workflows(self) -> list[dict[str, object]]:
@@ -178,7 +184,9 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
     transcript.append(f"Coordination memory indexed the incident for {fixture.repo}.")
 
     checkpoint_id = "checkpoint-golden-path"
-    transcript.append(f"Session-Buddy checkpoint created for workflow {fixture.workflow_id}.")
+    transcript.append(
+        f"Session-Buddy checkpoint created for workflow {fixture.workflow_id}."
+    )
     await session_buddy.store_memory(
         collection="mahavishnu_coordination",
         content=f"Checkpoint created for {fixture.workflow_id}",
@@ -215,7 +223,9 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
         {"workflow_id": fixture.workflow_id, "correlation_id": fixture.correlation_id},
     )
 
-    transcript.append("Quality gate run delegated to Crackerjack and returned a blocking failure.")
+    transcript.append(
+        "Quality gate run delegated to Crackerjack and returned a blocking failure."
+    )
     transcript.append("Operator approval requested before fix execution is resumed.")
     approval_response = await approval_manager.respond(
         approval_id=approval.id,
@@ -267,7 +277,10 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
     assert session_checkpoint.updated[-1][1] == "completed"
     assert recovered["workflows"][0]["workflow_id"] == fixture.workflow_id
     assert recovered["routing"][0]["task_id"] == fixture.issue_id
-    assert search_results and search_results[0]["metadata"]["query"] == fixture.correlation_id
+    assert (
+        search_results
+        and search_results[0]["metadata"]["query"] == fixture.correlation_id
+    )
     assert fix_result.correlation_id == fixture.correlation_id
     assert fix_result.checkpoint_id == "checkpoint-golden-path"
     assert any("checkpoint" in line.lower() for line in fix_result.trace)

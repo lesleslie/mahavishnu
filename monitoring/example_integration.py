@@ -103,11 +103,15 @@ async def calculate_tool(operation: str, x: float, y: float):
     """
 
     # Create span for this tool execution
-    async with start_span("tool_execution", {"tool": "calculate", "operation": operation}):
+    async with start_span(
+        "tool_execution", {"tool": "calculate", "operation": operation}
+    ):
         try:
             # Add custom attributes to span
             add_span_attributes(
-                tool_name="calculate", operation_type=operation, input_values=f"x={x},y={y}"
+                tool_name="calculate",
+                operation_type=operation,
+                input_values=f"x={x},y={y}",
             )
 
             # Increment tool call counter (success)
@@ -161,12 +165,18 @@ async def execute_agent_task(
     # Create span for agent task
     async with start_span(
         "agent_task",
-        {"agent_type": agent_type, "adapter": adapter, "prompt_length": str(len(prompt))},
+        {
+            "agent_type": agent_type,
+            "adapter": adapter,
+            "prompt_length": str(len(prompt)),
+        },
     ):
         from monitoring.metrics import agent_task_duration_seconds, agent_tasks_total
 
         # Track agent task start
-        agent_tasks_total.labels(agent_type=agent_type, adapter=adapter, status="started").inc()
+        agent_tasks_total.labels(
+            agent_type=agent_type, adapter=adapter, status="started"
+        ).inc()
 
         start_time = time.time()
 
@@ -175,11 +185,13 @@ async def execute_agent_task(
             result = await simulate_agent_execution(agent_type, prompt, adapter)
 
             duration = time.time() - start_time
-            agent_task_duration_seconds.labels(agent_type=agent_type, adapter=adapter).observe(
-                duration
-            )
+            agent_task_duration_seconds.labels(
+                agent_type=agent_type, adapter=adapter
+            ).observe(duration)
 
-            agent_tasks_total.labels(agent_type=agent_type, adapter=adapter, status="success").inc()
+            agent_tasks_total.labels(
+                agent_type=agent_type, adapter=adapter, status="success"
+            ).inc()
 
             add_span_attributes(task_duration=str(duration))
 
@@ -187,11 +199,13 @@ async def execute_agent_task(
 
         except Exception as e:
             duration = time.time() - start_time
-            agent_task_duration_seconds.labels(agent_type=agent_type, adapter=adapter).observe(
-                duration
-            )
+            agent_task_duration_seconds.labels(
+                agent_type=agent_type, adapter=adapter
+            ).observe(duration)
 
-            agent_tasks_total.labels(agent_type=agent_type, adapter=adapter, status="error").inc()
+            agent_tasks_total.labels(
+                agent_type=agent_type, adapter=adapter, status="error"
+            ).inc()
 
             record_exception(e)
             raise
@@ -282,4 +296,10 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
 
-    uvicorn.run("example_monitoring:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    uvicorn.run(
+        "example_monitoring:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info",
+    )

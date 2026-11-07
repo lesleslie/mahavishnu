@@ -40,7 +40,9 @@ def _make_mock_readiness_components() -> dict[str, MagicMock]:
     tests.run_all_tests = AsyncMock(return_value={"status": "ok", "tests": []})
 
     benchmarks = MagicMock()
-    benchmarks.run_benchmarks = AsyncMock(return_value={"status": "ok", "latency_ms": 1.0})
+    benchmarks.run_benchmarks = AsyncMock(
+        return_value={"status": "ok", "latency_ms": 1.0}
+    )
 
     suite = AsyncMock(return_value={"status": "ok", "summary": "all green"})
 
@@ -124,7 +126,9 @@ class TestAddProductionCommands:
         app = typer.Typer()
         try:
             add_production_commands(app)
-            production_groups = [g for g in app.registered_groups if g.name == "production"]
+            production_groups = [
+                g for g in app.registered_groups if g.name == "production"
+            ]
             assert len(production_groups) == 1
             assert isinstance(production_groups[0].typer_instance, typer.Typer)
         finally:

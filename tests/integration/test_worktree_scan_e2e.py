@@ -1,4 +1,5 @@
 """E2E tests for `mahavishnu worktree scan` against real + corrupt manifests."""
+
 from __future__ import annotations
 
 import json
@@ -21,8 +22,14 @@ def test_real_repo_scan_yields_non_empty_report() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     result = subprocess.run(
         [
-            sys.executable, "-m", "mahavishnu.worktree_cli", "scan",
-            "--repo", "ALL", "--format", "json",
+            sys.executable,
+            "-m",
+            "mahavishnu.worktree_cli",
+            "scan",
+            "--repo",
+            "ALL",
+            "--format",
+            "json",
         ],
         capture_output=True,
         text=True,
@@ -61,8 +68,12 @@ def test_corrupt_manifest_exits_2(tmp_path: Path) -> None:
 
     result = subprocess.run(
         [
-            sys.executable, "-m", "mahavishnu.worktree_cli", "scan",
-            "--repo", str(tmp_path),
+            sys.executable,
+            "-m",
+            "mahavishnu.worktree_cli",
+            "scan",
+            "--repo",
+            str(tmp_path),
         ],
         capture_output=True,
         text=True,

@@ -85,14 +85,19 @@ for cross-session retrieval by calling the Session-Buddy MCP tool
 from the fields above):
 
 ```python
-mcp__session-buddy__store_reflection(
+mcp__session - buddy__store_reflection(
     content=(
         "Feature scapy-mcp-enrichment: state=built, "
         "built=yes, wired=no, "
         "blocker=5 BLOCKERs from ADR 0016 6-agent review must close before wired (feed observability, SLOs, doctor envelope, timeout batching, registry realignment), "
         "next=ship Plan 0a Task 1 (registry migration), then close BLOCKERs in 0016-multi-agent-review.md §Path Forward items 3-7 by 2026-09-13"
     ),
-    tags=["feature-tracking", "scapy-mcp-enrichment", "wire-up-state", "built-not-wired"],
+    tags=[
+        "feature-tracking",
+        "scapy-mcp-enrichment",
+        "wire-up-state",
+        "built-not-wired",
+    ],
 )
 ```
 

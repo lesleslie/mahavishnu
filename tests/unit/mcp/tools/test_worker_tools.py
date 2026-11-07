@@ -139,9 +139,7 @@ def mock_worker_manager() -> AsyncMock:
 
 
 @pytest.fixture
-def registered_mcp(
-    stub_mcp: _StubMCP, mock_worker_manager: AsyncMock
-) -> _StubMCP:
+def registered_mcp(stub_mcp: _StubMCP, mock_worker_manager: AsyncMock) -> _StubMCP:
     """Register worker tools on a stub MCP for inspection / invocation."""
     register_worker_tools(stub_mcp, mock_worker_manager)
     return stub_mcp
@@ -171,9 +169,7 @@ class TestRegistration:
     def test_all_nine_tools_registered(self, registered_mcp: _StubMCP) -> None:
         assert EXPECTED_TOOL_NAMES.issubset(set(registered_mcp.tools))
 
-    def test_registers_exactly_expected_tools(
-        self, registered_mcp: _StubMCP
-    ) -> None:
+    def test_registers_exactly_expected_tools(self, registered_mcp: _StubMCP) -> None:
         assert set(registered_mcp.tools) == EXPECTED_TOOL_NAMES
 
 
@@ -346,9 +342,7 @@ class TestWorkerExecuteBatch:
         self, registered_mcp: _StubMCP, mock_worker_manager: AsyncMock
     ) -> None:
         fn = registered_mcp.tools["worker_execute_batch"]
-        result = await fn(
-            worker_ids=["w_1", "w_2"], prompts=["a", "b"], timeout=300
-        )
+        result = await fn(worker_ids=["w_1", "w_2"], prompts=["a", "b"], timeout=300)
         assert isinstance(result, list)
         assert len(result) == 2
         assert result[0]["worker_id"] == "w_1"

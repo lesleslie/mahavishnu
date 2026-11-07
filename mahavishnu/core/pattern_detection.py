@@ -107,7 +107,9 @@ class PatternDetector:
 
         return result
 
-    def _detect_duration_patterns(self, tasks: list[dict[str, Any]]) -> list[TaskDurationPattern]:
+    def _detect_duration_patterns(
+        self, tasks: list[dict[str, Any]]
+    ) -> list[TaskDurationPattern]:
         """Detect duration patterns in tasks.
 
         Args:
@@ -139,7 +141,9 @@ class PatternDetector:
                 pattern = self._create_duration_pattern(
                     durations=durations,
                     repository=repo,
-                    sample_task_ids=[t["id"] for t in tasks if t.get("repository") == repo][:10],
+                    sample_task_ids=[
+                        t["id"] for t in tasks if t.get("repository") == repo
+                    ][:10],
                 )
                 patterns.append(pattern)
 
@@ -149,13 +153,17 @@ class PatternDetector:
                 pattern = self._create_duration_pattern(
                     durations=durations,
                     task_type=task_type,
-                    sample_task_ids=[t["id"] for t in tasks if task_type in t.get("tags", [])][:10],
+                    sample_task_ids=[
+                        t["id"] for t in tasks if task_type in t.get("tags", [])
+                    ][:10],
                 )
                 patterns.append(pattern)
 
         return patterns
 
-    def _detect_blocker_patterns(self, tasks: list[dict[str, Any]]) -> list[BlockerPattern]:
+    def _detect_blocker_patterns(
+        self, tasks: list[dict[str, Any]]
+    ) -> list[BlockerPattern]:
         """Detect recurring blocker patterns.
 
         Args:
@@ -185,13 +193,15 @@ class PatternDetector:
                 for task in blocked_tasks:
                     if resolved_time := task.get("blocked_resolved_at"):
                         if blocked_time := task.get("blocked_at"):
-                            delta = datetime.fromisoformat(resolved_time) - datetime.fromisoformat(
-                                blocked_time
-                            )
+                            delta = datetime.fromisoformat(
+                                resolved_time
+                            ) - datetime.fromisoformat(blocked_time)
                             resolution_times.append(delta.total_seconds() / 3600)
 
                 avg_resolution = (
-                    sum(resolution_times) / len(resolution_times) if resolution_times else None
+                    sum(resolution_times) / len(resolution_times)
+                    if resolution_times
+                    else None
                 )
 
                 pattern = BlockerPattern(
@@ -201,7 +211,13 @@ class PatternDetector:
                     affected_task_ids=[t["id"] for t in blocked_tasks[:20]],
                     affected_repositories=cast(
                         "list[str]",
-                        list({t.get("repository") for t in blocked_tasks if t.get("repository")}),
+                        list(
+                            {
+                                t.get("repository")
+                                for t in blocked_tasks
+                                if t.get("repository")
+                            }
+                        ),
                     ),
                     resolution_suggestions=self._get_resolution_suggestions(keyword),
                     avg_resolution_time_hours=avg_resolution,
@@ -242,7 +258,9 @@ class PatternDetector:
         total_tasks = len(tasks)
         for sequence, count in transitions.most_common(10):
             if count >= self.config.min_samples:
-                completion_prob = self._calculate_sequence_completion_prob(sequence, tasks)
+                completion_prob = self._calculate_sequence_completion_prob(
+                    sequence, tasks
+                )
 
                 pattern = CompletionSequencePattern(
                     sequence=list(sequence),
@@ -260,7 +278,9 @@ class PatternDetector:
             repo_transitions = Counter(repo_sequences)
             for sequence, count in repo_transitions.most_common(5):
                 if count >= self.config.min_samples:
-                    completion_prob = self._calculate_sequence_completion_prob(sequence, tasks)
+                    completion_prob = self._calculate_sequence_completion_prob(
+                        sequence, tasks
+                    )
 
                     pattern = CompletionSequencePattern(
                         sequence=list(sequence),
@@ -306,7 +326,9 @@ class PatternDetector:
 
         return sorted(matches, key=lambda m: m["match_score"], reverse=True)
 
-    def _calculate_match_score(self, task: dict[str, Any], pattern: DetectedPattern) -> float:
+    def _calculate_match_score(
+        self, task: dict[str, Any], pattern: DetectedPattern
+    ) -> float:
         """Calculate how well a task matches a pattern.
 
         Args:
@@ -322,10 +344,15 @@ class PatternDetector:
             duration_data = pattern.pattern_data
             if isinstance(duration_data, TaskDurationPattern):
                 # Check repository match (most important factor)
-                if duration_data.repository and task.get("repository") == duration_data.repository:
+                if (
+                    duration_data.repository
+                    and task.get("repository") == duration_data.repository
+                ):
                     base_score += 0.5
                 # Check type match
-                if duration_data.task_type and duration_data.task_type in task.get("tags", []):
+                if duration_data.task_type and duration_data.task_type in task.get(
+                    "tags", []
+                ):
                     base_score += 0.25
                 # Check priority match
                 if task.get("priority") in (duration_data.priority_range or []):
@@ -377,7 +404,9 @@ class PatternDetector:
             if isinstance(blocker_data, BlockerPattern):
                 predictions["blocker_probability"] = blocker_data.confidence
                 predictions["potential_blocker"] = blocker_data.blocker_keyword
-                predictions["resolution_suggestions"] = blocker_data.resolution_suggestions
+                predictions["resolution_suggestions"] = (
+                    blocker_data.resolution_suggestions
+                )
                 if blocker_data.avg_resolution_time_hours:
                     predictions["estimated_resolution_hours"] = (
                         blocker_data.avg_resolution_time_hours
@@ -389,10 +418,16 @@ class PatternDetector:
 
     def _get_task_duration_hours(self, task: dict[str, Any]) -> float | None:
         """Get task duration in hours."""
-        if (created := task.get("created_at")) and (completed := task.get("completed_at")):
-            created_dt = datetime.fromisoformat(created) if isinstance(created, str) else created
+        if (created := task.get("created_at")) and (
+            completed := task.get("completed_at")
+        ):
+            created_dt = (
+                datetime.fromisoformat(created) if isinstance(created, str) else created
+            )
             completed_dt = (
-                datetime.fromisoformat(completed) if isinstance(completed, str) else completed
+                datetime.fromisoformat(completed)
+                if isinstance(completed, str)
+                else completed
             )
             return (completed_dt - created_dt).total_seconds() / 3600
         return None
@@ -485,7 +520,9 @@ class PatternDetector:
         else:
             return PatternFrequency.VERY_FREQUENT
 
-    def _determine_severity(self, keyword: str, occurrence_count: int) -> PatternSeverity:
+    def _determine_severity(
+        self, keyword: str, occurrence_count: int
+    ) -> PatternSeverity:
         """Determine pattern severity."""
         # High severity for frequently occurring blockers
         if occurrence_count >= 10:

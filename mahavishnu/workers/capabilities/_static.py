@@ -54,6 +54,10 @@ def evaluate_static(
         if not _resolve(ctx.settings, key):
             missing.append(f"setting:{key}")
             checks.append(WorkerCheck("setting", "fail", key))
-    state = WorkerCapabilityState.READY if not missing else WorkerCapabilityState.CONFIGURED
+    state = (
+        WorkerCapabilityState.READY if not missing else WorkerCapabilityState.CONFIGURED
+    )
     reason = "static prerequisites satisfied" if not missing else ",".join(missing)
-    return WorkerCapabilityReport(worker_type, state, checks, missing, safe_reason=reason)
+    return WorkerCapabilityReport(
+        worker_type, state, checks, missing, safe_reason=reason
+    )

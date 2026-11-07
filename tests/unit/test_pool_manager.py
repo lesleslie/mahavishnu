@@ -26,7 +26,9 @@ class MockPool(BasePool):
     async def start(self) -> str:
         self._status = PoolStatus.RUNNING
         self._start_called = True
-        self._workers = {f"worker-{i}": f"worker_{i}" for i in range(self.config.min_workers)}
+        self._workers = {
+            f"worker-{i}": f"worker_{i}" for i in range(self.config.min_workers)
+        }
         return self.pool_id
 
     async def execute_task(self, task: dict) -> dict:
@@ -38,11 +40,16 @@ class MockPool(BasePool):
         }
 
     async def execute_batch(self, tasks: list[dict]) -> dict:
-        return {str(i): {"pool_id": self.pool_id, "status": "completed"} for i in range(len(tasks))}
+        return {
+            str(i): {"pool_id": self.pool_id, "status": "completed"}
+            for i in range(len(tasks))
+        }
 
     async def scale(self, target_worker_count: int) -> None:
         self._scale_target = target_worker_count
-        self._workers = {f"worker-{i}": f"worker_{i}" for i in range(target_worker_count)}
+        self._workers = {
+            f"worker-{i}": f"worker_{i}" for i in range(target_worker_count)
+        }
 
     async def health_check(self) -> dict:
         healthy = len(self._workers) >= self.config.min_workers
@@ -61,7 +68,12 @@ class MockPool(BasePool):
         )
 
     async def collect_memory(self) -> list:
-        return [{"content": f"memory from {self.pool_id}", "metadata": {"pool_id": self.pool_id}}]
+        return [
+            {
+                "content": f"memory from {self.pool_id}",
+                "metadata": {"pool_id": self.pool_id},
+            }
+        ]
 
     async def stop(self) -> None:
         self._status = PoolStatus.STOPPED
@@ -451,7 +463,9 @@ class TestPoolManager:
 
         # Old entry (2, "test-pool") still in heap - will be skipped by _get_least_loaded_pool
         heap_entries = [
-            (count, pid) for count, pid in pool_manager._worker_count_heap if pid == "test-pool"
+            (count, pid)
+            for count, pid in pool_manager._worker_count_heap
+            if pid == "test-pool"
         ]
         assert len(heap_entries) == 2
 
@@ -490,7 +504,9 @@ class TestPoolManager:
         assert pool_id == "test-pool"
 
     @pytest.mark.asyncio
-    async def test_get_least_loaded_pool_returns_none_when_heap_empty(self, pool_manager):
+    async def test_get_least_loaded_pool_returns_none_when_heap_empty(
+        self, pool_manager
+    ):
         """Test _get_least_loaded_pool() returns None when all entries stale."""
         # Add only stale entries
         heapq.heappush(pool_manager._worker_count_heap, (99, "stale-pool"))
@@ -614,7 +630,6 @@ class TestSpawnPoolTypes:
 
         assert captured_factory_kwargs["config"] == config
         assert pool_id == "session-buddy-pool-id"
-
 
     @pytest.mark.asyncio
     async def test_spawn_pool_creates_runpod_pool_type(
@@ -786,7 +801,11 @@ class TestPersistRoutingDecision:
         )
 
         await pool_manager._persist_routing_decision(
-            {"category": "code"}, "pool-1", PoolSelector.LEAST_LOADED, None, "least_loaded"
+            {"category": "code"},
+            "pool-1",
+            PoolSelector.LEAST_LOADED,
+            None,
+            "least_loaded",
         )
 
     @pytest.mark.asyncio
@@ -803,7 +822,11 @@ class TestPersistRoutingDecision:
         )
 
         await pool_manager._persist_routing_decision(
-            {"category": "code"}, "pool-1", PoolSelector.LEAST_LOADED, None, "least_loaded"
+            {"category": "code"},
+            "pool-1",
+            PoolSelector.LEAST_LOADED,
+            None,
+            "least_loaded",
         )
 
         mock_mcp.persist_routing_decision.assert_called_once()
@@ -824,7 +847,11 @@ class TestPersistRoutingDecision:
 
         # Should not raise
         await pool_manager._persist_routing_decision(
-            {"category": "code"}, "pool-1", PoolSelector.LEAST_LOADED, None, "least_loaded"
+            {"category": "code"},
+            "pool-1",
+            PoolSelector.LEAST_LOADED,
+            None,
+            "least_loaded",
         )
 
 
@@ -855,7 +882,9 @@ class TestRouteTaskGpuOverride:
         )
 
         # Create a regular pool
-        config = PoolConfig(name="mahavishnu-pool", pool_type="mahavishnu", min_workers=1)
+        config = PoolConfig(
+            name="mahavishnu-pool", pool_type="mahavishnu", min_workers=1
+        )
         mock_pool = MockPool(config, "mahavishnu-pool")
         await mock_pool.start()
         pool_manager._pools["mahavishnu-pool"] = mock_pool
@@ -892,7 +921,9 @@ class TestRouteTaskGpuOverride:
         )
 
         # Only mahavishnu pool exists
-        config = PoolConfig(name="mahavishnu-pool", pool_type="mahavishnu", min_workers=1)
+        config = PoolConfig(
+            name="mahavishnu-pool", pool_type="mahavishnu", min_workers=1
+        )
         mock_pool = MockPool(config, "mahavishnu-pool")
         await mock_pool.start()
         pool_manager._pools["mahavishnu-pool"] = mock_pool
@@ -918,7 +949,9 @@ class TestRouteTaskGpuOverride:
             message_bus=message_bus,
         )
 
-        config = PoolConfig(name="mahavishnu-pool", pool_type="mahavishnu", min_workers=1)
+        config = PoolConfig(
+            name="mahavishnu-pool", pool_type="mahavishnu", min_workers=1
+        )
         mock_pool = MockPool(config, "mahavishnu-pool")
         await mock_pool.start()
         pool_manager._pools["mahavishnu-pool"] = mock_pool
@@ -952,7 +985,9 @@ class TestRouteTaskGpuOverride:
             message_bus=message_bus,
         )
 
-        config = PoolConfig(name="mahavishnu-pool", pool_type="mahavishnu", min_workers=1)
+        config = PoolConfig(
+            name="mahavishnu-pool", pool_type="mahavishnu", min_workers=1
+        )
         mock_pool = MockPool(config, "mahavishnu-pool")
         await mock_pool.start()
         pool_manager._pools["mahavishnu-pool"] = mock_pool
@@ -1026,7 +1061,10 @@ class TestPoolManagerIntegration:
         # Execute multiple tasks concurrently
         tasks = [{"prompt": f"task-{i}"} for i in range(10)]
         results = await asyncio.gather(
-            *[pool_manager.route_task(t, pool_selector=PoolSelector.RANDOM) for t in tasks]
+            *[
+                pool_manager.route_task(t, pool_selector=PoolSelector.RANDOM)
+                for t in tasks
+            ]
         )
 
         assert len(results) == 10
@@ -1082,7 +1120,9 @@ class TestPoolManagerIntegration:
         assert stats["pools_with_queues"] >= 0
 
     @pytest.mark.asyncio
-    async def test_aggregate_results_handles_pool_exceptions(self, terminal_manager, session_buddy):
+    async def test_aggregate_results_handles_pool_exceptions(
+        self, terminal_manager, session_buddy
+    ):
         """Test aggregate_results() handles exceptions from individual pools."""
         pool_manager = PoolManager(
             terminal_manager=terminal_manager,
@@ -1108,7 +1148,9 @@ class TestPoolManagerIntegration:
 
 
 @pytest.mark.asyncio
-async def test_route_task_auto_spawn_reads_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_route_task_auto_spawn_reads_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """When auto_spawn=True and registry is empty, route_task reads sizing from settings."""
     pm = PoolManager(terminal_manager=MagicMock(), message_bus=MagicMock())
     pm._pools = {}  # force empty registry
@@ -1116,12 +1158,14 @@ async def test_route_task_auto_spawn_reads_settings(monkeypatch: pytest.MonkeyPa
     mock_spawn = AsyncMock(return_value="mock-pool-id")
     monkeypatch.setattr(pm, "spawn_pool", mock_spawn)
 
-    settings = MahavishnuSettings(pools=SettingsPoolConfig(
-        auto_spawn=True,
-        auto_spawn_type="mahavishnu",
-        auto_spawn_min_workers=2,
-        auto_spawn_max_workers=5,
-    ))
+    settings = MahavishnuSettings(
+        pools=SettingsPoolConfig(
+            auto_spawn=True,
+            auto_spawn_type="mahavishnu",
+            auto_spawn_min_workers=2,
+            auto_spawn_max_workers=5,
+        )
+    )
     monkeypatch.setattr("mahavishnu.core.config.get_settings", lambda: settings)
 
     with pytest.raises(Exception):

@@ -62,7 +62,10 @@ def add_docs_commands(app: typer.Typer) -> None:
             raise typer.Exit(1)
 
         if output not in ("text", "json", "markdown"):
-            typer.echo(f"Invalid output format: {output!r}. Use text, json, or markdown.", err=True)
+            typer.echo(
+                f"Invalid output format: {output!r}. Use text, json, or markdown.",
+                err=True,
+            )
             raise typer.Exit(1)
 
         catalog, catalog_issues, summaries = build_audit_report(ecosystem)
@@ -77,7 +80,9 @@ def add_docs_commands(app: typer.Typer) -> None:
                 catalog_issues=catalog_issues,
             )
         else:
-            rendered = render_text(summaries, catalog=catalog, catalog_issues=catalog_issues)
+            rendered = render_text(
+                summaries, catalog=catalog, catalog_issues=catalog_issues
+            )
 
         if write:
             write.parent.mkdir(parents=True, exist_ok=True)

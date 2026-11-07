@@ -92,7 +92,9 @@ class TestWorkflowExecutionUUID7Validation:
     def test_rejects_short_execution_id(self):
         """execution_id rejects too-short values."""
         with pytest.raises(ValidationError):
-            WorkflowExecution(execution_id="abc123", workflow_name="test", status="running")
+            WorkflowExecution(
+                execution_id="abc123", workflow_name="test", status="running"
+            )
 
     def test_accepts_valid_uuid7(self):
         """Valid 32-char UUID7 hex is accepted."""

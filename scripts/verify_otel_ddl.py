@@ -157,8 +157,14 @@ def main() -> int:
         "received_at_unix_nano DEFAULT backfills at INSERT",
         lambda: _assert_server_default(con),
     )
-    check("CONSTRAINT uq_span_identity UNIQUE is inline and active", lambda: _assert_unique(con))
-    check("ON CONFLICT (trace_id, span_id) DO NOTHING resolves", lambda: _assert_upsert(con))
+    check(
+        "CONSTRAINT uq_span_identity UNIQUE is inline and active",
+        lambda: _assert_unique(con),
+    )
+    check(
+        "ON CONFLICT (trace_id, span_id) DO NOTHING resolves",
+        lambda: _assert_upsert(con),
+    )
     check("ON CONFLICT DO NOTHING is a no-op on replay", lambda: _assert_dedup(con))
     check("cursor.rowcount returns affected count", lambda: _assert_rowcount(con))
     check("COPY to an inline path writes a file", lambda: _assert_copy_inline(con))

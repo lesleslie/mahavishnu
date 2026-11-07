@@ -25,7 +25,9 @@ def test_cannot_transition_reaped_to_running():
 
 
 def test_cannot_transition_completed_to_running():
-    assert not can_transition(WorkerLifecycleState.COMPLETED, WorkerLifecycleState.RUNNING)
+    assert not can_transition(
+        WorkerLifecycleState.COMPLETED, WorkerLifecycleState.RUNNING
+    )
 
 
 def test_detached_can_return_to_running():

@@ -28,5 +28,6 @@ def safe_error_for_user(message: str | None) -> str:
 
 def safe_dict(details: dict[str, Any] | None) -> dict[str, Any]:
     return {
-        k: safe_error_for_user(v) if isinstance(v, str) else v for k, v in (details or {}).items()
+        k: safe_error_for_user(v) if isinstance(v, str) else v
+        for k, v in (details or {}).items()
     }

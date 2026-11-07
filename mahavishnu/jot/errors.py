@@ -98,7 +98,9 @@ class JotLogUnwritableError(JotError):
     """
 
     def __init__(self, message: str, *, path: str = "<unknown>") -> None:
-        super().__init__(f"{message} (path={path})", error_id="ERROR_JOT_LOG_UNWRITABLE")
+        super().__init__(
+            f"{message} (path={path})", error_id="ERROR_JOT_LOG_UNWRITABLE"
+        )
         self.path = path
 
 

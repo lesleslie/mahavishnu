@@ -455,10 +455,14 @@ class TestBenchmarkSuite:
     def test_has_regression(self) -> None:
         """Check if suite has regression."""
         suite_no_regression = BenchmarkSuite(name="good")
-        suite_no_regression.add_benchmark("test", baseline=100.0, current=80.0, unit="ms")
+        suite_no_regression.add_benchmark(
+            "test", baseline=100.0, current=80.0, unit="ms"
+        )
 
         suite_with_regression = BenchmarkSuite(name="bad")
-        suite_with_regression.add_benchmark("test", baseline=100.0, current=120.0, unit="ms")
+        suite_with_regression.add_benchmark(
+            "test", baseline=100.0, current=120.0, unit="ms"
+        )
 
         assert suite_no_regression.has_regression is False
         assert suite_with_regression.has_regression is True
@@ -492,9 +496,7 @@ class TestBenchmarkSuite:
         """Load benchmark results."""
         suite = BenchmarkSuite(name="api_benchmarks")
 
-        results_json = (
-            '{"name": "loaded", "baseline_value": 100.0, "current_value": 80.0, "unit": "ms"}'
-        )
+        results_json = '{"name": "loaded", "baseline_value": 100.0, "current_value": 80.0, "unit": "ms"}'
         suite.add_benchmark_from_json(results_json)
 
         assert len(suite.benchmarks) == 1

@@ -75,7 +75,9 @@ class EventSchemaRegistry:
         """
         key = self._schema_key(schema.event_type, schema.version)
         if key in self._schemas:
-            raise ValueError(f"Schema already registered: {schema.event_type} v{schema.version}")
+            raise ValueError(
+                f"Schema already registered: {schema.event_type} v{schema.version}"
+            )
         self._schemas[key] = schema
         logger.debug(f"Registered schema: {key}")
 
@@ -100,9 +102,13 @@ class EventSchemaRegistry:
         # Check if schema is registered
         if key not in self._schemas:
             # Try finding any schema for this event type
-            type_keys = [k for k in self._schemas if k.startswith(f"{envelope.event_type}:")]
+            type_keys = [
+                k for k in self._schemas if k.startswith(f"{envelope.event_type}:")
+            ]
             if not type_keys:
-                errors.append(f"No schema registered for event_type '{envelope.event_type}'")
+                errors.append(
+                    f"No schema registered for event_type '{envelope.event_type}'"
+                )
                 return errors
 
             # Find the latest registered version for this type
@@ -130,7 +136,9 @@ class EventSchemaRegistry:
             if field_name in payload:
                 actual = type(payload[field_name]).__name__
                 if actual != expected_type:
-                    errors.append(f"Field '{field_name}': expected {expected_type}, got {actual}")
+                    errors.append(
+                        f"Field '{field_name}': expected {expected_type}, got {actual}"
+                    )
 
         return errors
 

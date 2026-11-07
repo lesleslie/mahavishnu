@@ -112,7 +112,11 @@ def call_tool_with_rbac(mcp_with_rbac: FastMCP) -> Any:
             {"status", "error_code"}
         ):
             return structured
-        if isinstance(structured, dict) and "result" in structured and len(structured) == 1:
+        if (
+            isinstance(structured, dict)
+            and "result" in structured
+            and len(structured) == 1
+        ):
             return structured["result"]
         return structured
 
@@ -132,7 +136,9 @@ class TestAuthGateE2E:
     def call_tool_unauthenticated(self, call_tool: Any) -> Any:
         """Bind ``call_tool`` to omit ``user_id`` (drives the AUTH path)."""
 
-        async def _bound(tool_name: str, arguments: dict[str, Any] | None = None) -> Any:
+        async def _bound(
+            tool_name: str, arguments: dict[str, Any] | None = None
+        ) -> Any:
             return await call_tool(tool_name, arguments, user_id=None)
 
         return _bound
@@ -241,10 +247,16 @@ class TestAuthGateRBACEnforcement:
         try:
             result = await server.call_tool("plan_list", args)
         except ToolError as exc:
-            envelope = {"status": "error", "error": str(exc), "error_code": "TOOL_ERROR"}
+            envelope = {
+                "status": "error",
+                "error": str(exc),
+                "error_code": "TOOL_ERROR",
+            }
         else:
             structured = getattr(result, "structured_content", None)
-            envelope = structured if isinstance(structured, dict) else {"raw": structured}
+            envelope = (
+                structured if isinstance(structured, dict) else {"raw": structured}
+            )
 
         assert envelope["status"] == "error"
         assert envelope["error_code"] == "AUTH_NOT_CONFIGURED"

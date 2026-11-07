@@ -70,7 +70,9 @@ def test_publish_workflow_started_builds_canonical_envelope() -> None:
     metadata = {"prompt": "Refactor module", "adapter": "prefect"}
 
     # Run via transport so we can inspect the persisted envelope
-    envelope = _make_envelope(TOPIC_WORKFLOW_STARTED, SOURCE, {"workflow_id": "wf_1", **metadata})
+    envelope = _make_envelope(
+        TOPIC_WORKFLOW_STARTED, SOURCE, {"workflow_id": "wf_1", **metadata}
+    )
 
     assert envelope.topic == "workflow.started"
     headers = _headers_of(envelope)
@@ -110,7 +112,12 @@ async def test_publish_workflow_started_invokes_recording_publisher() -> None:
     headers = _headers_of(envelope)
     assert headers.get("source") == "mahavishnu"
     # Reserved headers must appear exactly once each
-    for reserved in RESERVED_EVENT_HEADERS & {"event_id", "source", "version", "timestamp"}:
+    for reserved in RESERVED_EVENT_HEADERS & {
+        "event_id",
+        "source",
+        "version",
+        "timestamp",
+    }:
         assert headers.get(reserved), f"missing reserved header {reserved}"
 
 
@@ -177,7 +184,9 @@ async def test_publisher_swallows_exceptions(
     publisher = AsyncMock()
     publisher.publish.side_effect = RuntimeError("transport is down")
 
-    with caplog.at_level(logging.WARNING, logger="mahavishnu.core.events.mahavishnu_publisher"):
+    with caplog.at_level(
+        logging.WARNING, logger="mahavishnu.core.events.mahavishnu_publisher"
+    ):
         # Must NOT raise
         await publish_workflow_started("wf_x", {"p": "y"}, publisher=publisher)
         await publish_workflow_completed("wf_x", {"status": "ok"}, publisher=publisher)
@@ -186,7 +195,8 @@ async def test_publisher_swallows_exceptions(
     # Three WARNING-level records (one per call) -- logger.exception writes at ERROR by default;
     # we accept any non-INFO level here to be robust to logger configuration.
     error_or_warning = [
-        rec for rec in caplog.records
+        rec
+        for rec in caplog.records
         if rec.levelno >= logging.WARNING
         and rec.name == "mahavishnu.core.events.mahavishnu_publisher"
     ]
@@ -257,7 +267,9 @@ async def test_publisher_records_reserved_headers_exactly_once() -> None:
     for reserved in ("event_id", "source", "version", "timestamp"):
         # Exactly one occurrence of each reserved header (defensive vs. duplicate-header collisions).
         occurrences = sum(1 for key in headers if key == reserved)
-        assert occurrences == 1, f"reserved header {reserved} appeared {occurrences} times"
+        assert occurrences == 1, (
+            f"reserved header {reserved} appeared {occurrences} times"
+        )
     assert headers["source"] == SOURCE
     assert headers["version"] == EVENT_VERSION
 

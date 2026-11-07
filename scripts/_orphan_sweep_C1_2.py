@@ -23,8 +23,16 @@ PLAN_FM_TEMPLATE = (
 
 # Per-file status / role / topic assignment, derived from each file's body.
 ASSIGNMENTS = {
-    "docs/plans/2026-05-07-unified-config-design.md": ("active", "canonical", "mcp-design"),
-    "docs/plans/2026-07-16-dlq-fail-closed-wiring.md": ("shipped", "implementation", "persistence"),
+    "docs/plans/2026-05-07-unified-config-design.md": (
+        "active",
+        "canonical",
+        "mcp-design",
+    ),
+    "docs/plans/2026-07-16-dlq-fail-closed-wiring.md": (
+        "shipped",
+        "implementation",
+        "persistence",
+    ),
     "docs/plans/PREFECT_ADAPTER_COMPLETION_PLAN.md": (
         "complete",
         "historical",
@@ -35,30 +43,66 @@ ASSIGNMENTS = {
         "historical",
         "convergence-control-plane",
     ),
-    "docs/plans/REVIEW_architecture.md": ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/REVIEW_ecosystem.md": ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/REVIEW_implementation.md": ("complete", "historical", "convergence-control-plane"),
+    "docs/plans/REVIEW_architecture.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
+    "docs/plans/REVIEW_ecosystem.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
+    "docs/plans/REVIEW_implementation.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
     "docs/plans/REVIEW_implementation_v3.md": (
         "complete",
         "historical",
         "convergence-control-plane",
     ),
-    "docs/plans/REVIEW_plan_coherence.md": ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/REVIEW_serverless.md": ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/TLS_IMPLEMENTATION_SUMMARY.md": ("complete", "historical", "mcp-design"),
+    "docs/plans/REVIEW_plan_coherence.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
+    "docs/plans/REVIEW_serverless.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
+    "docs/plans/TLS_IMPLEMENTATION_SUMMARY.md": (
+        "complete",
+        "historical",
+        "mcp-design",
+    ),
     "docs/plans/llm-provider-reconfiguration-v2.md": (
         "complete",
         "historical",
         "routing-composition",
     ),
-    "docs/plans/mcp-connection-stability-plan.md": ("complete", "historical", "mcp-design"),
+    "docs/plans/mcp-connection-stability-plan.md": (
+        "complete",
+        "historical",
+        "mcp-design",
+    ),
     "docs/plans/2026-07-16-native-macos-automation-backend-plan.md": (
         "active",
         "implementation",
         "terminal",
     ),
-    "docs/plans/reviews/config-review.md": ("complete", "historical", "convergence-control-plane"),
-    "docs/plans/reviews/ops-review.md": ("complete", "historical", "convergence-control-plane"),
+    "docs/plans/reviews/config-review.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
+    "docs/plans/reviews/ops-review.md": (
+        "complete",
+        "historical",
+        "convergence-control-plane",
+    ),
     "docs/plans/reviews/security-review.md": (
         "complete",
         "historical",
@@ -80,7 +124,9 @@ def add_legacy_comment(text: str) -> str:
             # Extract the original status string for the comment.
             original = stripped.rstrip("\n")
             if "-- see YAML frontmatter" not in original:
-                lines[i] = original + "  <!-- legacy status — see YAML frontmatter -->\n"
+                lines[i] = (
+                    original + "  <!-- legacy status — see YAML frontmatter -->\n"
+                )
             break
     return "".join(lines)
 

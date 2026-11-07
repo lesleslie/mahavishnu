@@ -15,7 +15,9 @@ def test_capability_scopes_default_empty() -> None:
 
 
 def test_capability_scopes_validate_strings() -> None:
-    s = MahavishnuSettings.model_validate({
-        "capability_scopes": ["execute_capability", "list_capabilities"],
-    })
+    s = MahavishnuSettings.model_validate(
+        {
+            "capability_scopes": ["execute_capability", "list_capabilities"],
+        }
+    )
     assert "execute_capability" in s.capability_scopes

@@ -162,7 +162,9 @@ def _write_errors_line(errors_log: Path, line: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _log_error(op: str, exc: BaseException, ctx: dict[str, Any], jot_dir_path: Path | None) -> None:
+def _log_error(
+    op: str, exc: BaseException, ctx: dict[str, Any], jot_dir_path: Path | None
+) -> None:
     """Write a structured error record to errors.log. Fail-open on any failure.
 
     Args:
@@ -211,7 +213,9 @@ def _do_hook() -> int:
     try:
         stdin_payload = json.loads(stdin_text)
     except (json.JSONDecodeError, ValueError) as exc:
-        _log_error("stdin_parse", exc, {"stdin_prefix": stdin_text[:50]}, jot_dir_path=None)
+        _log_error(
+            "stdin_parse", exc, {"stdin_prefix": stdin_text[:50]}, jot_dir_path=None
+        )
         return 0
 
     prompt = stdin_payload.get("prompt", "")

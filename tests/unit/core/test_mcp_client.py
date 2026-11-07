@@ -133,7 +133,8 @@ class TestExecute:
             await client.execute("INSERT INTO foo (id) VALUES ($1)", {"id": "x"})
 
         assert (
-            "connect" in str(exc_info.value).lower() or "sql_proxy" in str(exc_info.value).lower()
+            "connect" in str(exc_info.value).lower()
+            or "sql_proxy" in str(exc_info.value).lower()
         )
 
     async def test_execute_aclose_closes_underlying_client(self):
@@ -154,7 +155,9 @@ class TestQuery:
         client = MCPThinClient("http://localhost")
         client._client = AsyncMock()
         client._client.call_tool = AsyncMock(
-            return_value={"rows": [{"id": "1", "name": "alpha"}, {"id": "2", "name": "beta"}]}
+            return_value={
+                "rows": [{"id": "1", "name": "alpha"}, {"id": "2", "name": "beta"}]
+            }
         )
 
         rows = await client.query("SELECT id, name FROM tenants")

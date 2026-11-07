@@ -217,12 +217,16 @@ def test_get_confidence_ceiling_cap_from_env(monkeypatch: pytest.MonkeyPatch):
     assert get_confidence_ceiling_cap() == 70
 
 
-def test_get_confidence_ceiling_cap_invalid_uses_default(monkeypatch: pytest.MonkeyPatch):
+def test_get_confidence_ceiling_cap_invalid_uses_default(
+    monkeypatch: pytest.MonkeyPatch,
+):
     monkeypatch.setenv("MAHAVISHNU_CONFIDENCE_CEILING", "not-a-number")
     assert get_confidence_ceiling_cap() == 85
 
 
-def test_get_confidence_ceiling_cap_clamps_out_of_range(monkeypatch: pytest.MonkeyPatch):
+def test_get_confidence_ceiling_cap_clamps_out_of_range(
+    monkeypatch: pytest.MonkeyPatch,
+):
     monkeypatch.setenv("MAHAVISHNU_CONFIDENCE_CEILING", "1.5")  # 150, clamped to 100
     assert get_confidence_ceiling_cap() == 100
     monkeypatch.setenv("MAHAVISHNU_CONFIDENCE_CEILING", "-0.5")  # -50, clamped to 0

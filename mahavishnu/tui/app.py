@@ -85,9 +85,15 @@ async def _get_report() -> EcosystemStatusReport | None:
         try:
             oneiric = getattr(settings, "oneiric_mcp", None)
             if oneiric:
-                mcp_url = getattr(oneiric, "url", None) or getattr(oneiric, "base_url", None)
+                mcp_url = getattr(oneiric, "url", None) or getattr(
+                    oneiric, "base_url", None
+                )
                 if mcp_url:
-                    service_configs["mcp"] = {"url": mcp_url, "required": False, "timeout_s": 3}
+                    service_configs["mcp"] = {
+                        "url": mcp_url,
+                        "required": False,
+                        "timeout_s": 3,
+                    }
         except (
             Exception  # noqa: BLE001
         ) as e:  # TUI handler — broad catch is the documented contract
@@ -96,7 +102,9 @@ async def _get_report() -> EcosystemStatusReport | None:
         app = get_app_from_context()
         return await EcosystemStatusService(
             service_configs=service_configs or None,
-            recovery_provider=app if app and hasattr(app, "get_recovery_summary") else None,
+            recovery_provider=app
+            if app and hasattr(app, "get_recovery_summary")
+            else None,
         ).generate_report()
     except (
         Exception  # noqa: BLE001
@@ -123,7 +131,9 @@ async def fetch_system_overview() -> dict[str, Any]:
         "total_adapters": len(adapters),
         "healthy_adapters": sum(1 for a in adapters.values() if a.status.value == "ok"),
         "recent_alerts": alerts.total_active if alerts else 0,
-        "generated_at": report.generated_at.isoformat() if report.generated_at else None,
+        "generated_at": report.generated_at.isoformat()
+        if report.generated_at
+        else None,
     }
 
 
@@ -205,7 +215,9 @@ async def fetch_recovery_summary() -> dict[str, Any]:
         "recovered_routing_decisions": recovery.recovered_routing_decisions,
         "mcp_available": recovery.mcp_available,
         "last_recovered_at": (
-            recovery.last_recovered_at.isoformat() if recovery.last_recovered_at else None
+            recovery.last_recovered_at.isoformat()
+            if recovery.last_recovered_at
+            else None
         ),
     }
 
@@ -296,9 +308,13 @@ async def fetch_session_summary() -> dict[str, Any]:
     if app is not None:
         session_buddy = getattr(app, "session_buddy", None)
         session_config = getattr(app, "config", None)
-        session_settings = getattr(session_config, "session", None) if session_config else None
+        session_settings = (
+            getattr(session_config, "session", None) if session_config else None
+        )
         enabled = bool(
-            getattr(session_buddy, "enabled", getattr(session_settings, "enabled", False))
+            getattr(
+                session_buddy, "enabled", getattr(session_settings, "enabled", False)
+            )
             if session_config
             else getattr(session_buddy, "enabled", False)
         )
@@ -500,14 +516,18 @@ def _read_cockpit_file(path: Path) -> dict[str, Any]:
     }
 
 
-async def fetch_file_views(paths: tuple[str, ...] = _COCKPIT_FILES) -> list[dict[str, Any]]:
+async def fetch_file_views(
+    paths: tuple[str, ...] = _COCKPIT_FILES,
+) -> list[dict[str, Any]]:
     views: list[dict[str, Any]] = []
     for rel_path in paths:
         views.append(_read_cockpit_file(Path.cwd() / rel_path))
     return views
 
 
-async def fetch_diff_views(paths: tuple[str, ...] = _COCKPIT_FILES) -> list[dict[str, Any]]:
+async def fetch_diff_views(
+    paths: tuple[str, ...] = _COCKPIT_FILES,
+) -> list[dict[str, Any]]:
     from mahavishnu.core.worktree_validation import WorktreePathValidator
 
     repo_root = Path.cwd()
@@ -516,7 +536,9 @@ async def fetch_diff_views(paths: tuple[str, ...] = _COCKPIT_FILES) -> list[dict
     for rel_path in paths:
         is_valid, error = validator.validate_worktree_path(str(repo_root / rel_path))
         if not is_valid:
-            diffs.append({"path": rel_path, "diff": "", "error": error or "invalid path"})
+            diffs.append(
+                {"path": rel_path, "diff": "", "error": error or "invalid path"}
+            )
             continue
         # ASYNC221: ``git diff`` is a subprocess call; offload it to a worker
         # thread so the event loop stays responsive while the diff resolves.
@@ -559,7 +581,9 @@ async def _probe_service(base_url: str) -> bool:
         Exception  # noqa: BLE001
     ):  # TUI handler — broad catch is the documented contract
         _tui_log.warning(
-            "Unexpected error probing %s — treating as unavailable", base_url, exc_info=True
+            "Unexpected error probing %s — treating as unavailable",
+            base_url,
+            exc_info=True,
         )
         return False
 
@@ -622,15 +646,23 @@ async def _fetch_health(base_url: str) -> dict[str, Any]:
                     "reason": f"HTTP {resp.status_code} — check credentials",
                 }
             if resp.status_code >= 500:
-                return {"available": False, "reason": f"HTTP {resp.status_code} — server error"}
+                return {
+                    "available": False,
+                    "reason": f"HTTP {resp.status_code} — server error",
+                }
             data = resp.json()
-            return {"available": True, **(data if isinstance(data, dict) else {"raw": str(data)})}
+            return {
+                "available": True,
+                **(data if isinstance(data, dict) else {"raw": str(data)}),
+            }
     except httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError:
         return {"available": False, "reason": "unreachable"}
     except (
         Exception  # noqa: BLE001
     ):  # TUI handler — broad catch is the documented contract
-        _tui_log.warning("Unexpected error fetching health from %s", base_url, exc_info=True)
+        _tui_log.warning(
+            "Unexpected error fetching health from %s", base_url, exc_info=True
+        )
         return {"available": False, "reason": "unexpected error"}
 
 
@@ -645,7 +677,12 @@ _SEVERITY_COLORS = {
     "info": "cyan",
     "debug": "dim",
 }
-_STATE_COLORS = {"draft": "yellow", "review": "cyan", "active": "green", "deprecated": "red"}
+_STATE_COLORS = {
+    "draft": "yellow",
+    "review": "cyan",
+    "active": "green",
+    "deprecated": "red",
+}
 
 
 def _severity_markup(severity: str) -> str:
@@ -660,9 +697,12 @@ def _state_markup(state: Any) -> str:
 
 
 def _status_color(status: str) -> str:
-    return {"ok": "green", "healthy": "green", "degraded": "yellow", "unknown": "dim"}.get(
-        status.lower(), "red"
-    )
+    return {
+        "ok": "green",
+        "healthy": "green",
+        "degraded": "yellow",
+        "unknown": "dim",
+    }.get(status.lower(), "red")
 
 
 # ---------------------------------------------------------------------------
@@ -762,7 +802,11 @@ class RoutingScreen(VerticalScroll):
         total = len(adapters)
         hit_rate = data.get("cache_hit_rate", 0.0)
         color = _status_color(
-            "ok" if healthy == total and total > 0 else "degraded" if healthy else "error"
+            "ok"
+            if healthy == total and total > 0
+            else "degraded"
+            if healthy
+            else "error"
         )
         self.query_one("#routing-summary", Static).update(
             f"[bold {color}]Healthy:[/] {healthy}/{total}   "
@@ -778,7 +822,10 @@ class RoutingScreen(VerticalScroll):
                 caps = ", ".join(a.get("capabilities", {}).keys()) or "-"
                 score = a.get("preference_score")
                 table.add_row(
-                    a["name"], status_str, str(round(score, 2)) if score is not None else "-", caps
+                    a["name"],
+                    status_str,
+                    str(round(score, 2)) if score is not None else "-",
+                    caps,
                 )
         else:
             table.add_row("[dim]No adapters registered[/]", "-", "-", "-")
@@ -805,7 +852,9 @@ class AlertsScreen(VerticalScroll):
         count_widget = self.query_one("#alerts-count", Static)
         total = len(alerts)
         color = "red" if total > 0 else "green"
-        count_widget.update(f"[bold {color}]{total} active alert{'s' if total != 1 else ''}[/]")
+        count_widget.update(
+            f"[bold {color}]{total} active alert{'s' if total != 1 else ''}[/]"
+        )
         table = self.query_one("#alerts-table", DataTable)
         table.clear()
         if alerts:
@@ -839,11 +888,17 @@ class ReviewsScreen(VerticalScroll):
         drafts = await fetch_skill_drafts()
         count = self.query_one("#reviews-count", Static)
         total = len(drafts)
-        review_count = sum(1 for d in drafts if str(d.get("state", "")).lower() == "review")
+        review_count = sum(
+            1 for d in drafts if str(d.get("state", "")).lower() == "review"
+        )
         color = "cyan" if review_count > 0 else "green"
         count.update(
             f"[bold {color}]{total} draft{'s' if total != 1 else ''}[/]"
-            + (f"   [bold cyan]{review_count} pending review[/]" if review_count else "")
+            + (
+                f"   [bold cyan]{review_count} pending review[/]"
+                if review_count
+                else ""
+            )
         )
         table = self.query_one("#reviews-table", DataTable)
         table.clear()
@@ -957,7 +1012,9 @@ class ApprovalsScreen(VerticalScroll):
         summary = self.query_one("#approvals-summary", Static)
         pending = sum(1 for request in approvals if not request.get("is_expired"))
         color = "cyan" if pending else "green"
-        summary.update(f"[bold {color}]{pending} pending approval{'s' if pending != 1 else ''}[/]")
+        summary.update(
+            f"[bold {color}]{pending} pending approval{'s' if pending != 1 else ''}[/]"
+        )
         table = self.query_one("#approvals-table", DataTable)
         table.clear()
         if approvals:
@@ -1123,10 +1180,14 @@ class AgnoScreen(VerticalScroll):
             for item in activity:
                 timestamp = str(item.get("timestamp") or "-")[:19].replace("T", " ")
                 details = (
-                    item.get("task") or item.get("success_count") or item.get("response_count")
+                    item.get("task")
+                    or item.get("success_count")
+                    or item.get("response_count")
                 )
                 if isinstance(details, dict):
-                    details = details.get("type") or details.get("operation") or str(details)
+                    details = (
+                        details.get("type") or details.get("operation") or str(details)
+                    )
                 table.add_row(
                     timestamp,
                     str(item.get("kind", "-")),
@@ -1234,7 +1295,9 @@ class BodaiComponentScreen(VerticalScroll):
         checks: dict[str, Any] = data.get("checks", {}) if available else {}
         if checks:
             for name, info in checks.items():
-                chk_status = info.get("status", "-") if isinstance(info, dict) else str(info)
+                chk_status = (
+                    info.get("status", "-") if isinstance(info, dict) else str(info)
+                )
                 detail = info.get("details", "") if isinstance(info, dict) else ""
                 chk_color = "green" if chk_status in ("ok", "healthy") else "red"
                 table.add_row(name, f"[{chk_color}]{chk_status}[/]", str(detail))
@@ -1258,7 +1321,9 @@ class DashboardApp(App):
     """
 
     TITLE = "Mahavishnu Dashboard"
-    SUB_TITLE = f"Auto-refresh every {_REFRESH_INTERVAL}s · Press R to refresh now · Q to quit"
+    SUB_TITLE = (
+        f"Auto-refresh every {_REFRESH_INTERVAL}s · Press R to refresh now · Q to quit"
+    )
 
     COMMANDS: ClassVar[set[type[Provider] | Callable[[], type[Provider]]]] = {
         MahavishnuCommandProvider
@@ -1372,7 +1437,9 @@ class DashboardApp(App):
                 try:
                     await tabs.add_pane(
                         TabPane(
-                            tab_label, BodaiComponentScreen(screen_label, tab_id, url), id=tab_id
+                            tab_label,
+                            BodaiComponentScreen(screen_label, tab_id, url),
+                            id=tab_id,
                         )
                     )
                 except (

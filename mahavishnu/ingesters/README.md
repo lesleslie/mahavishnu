@@ -84,7 +84,9 @@ from mahavishnu.ingesters.otel_ingester import create_otel_ingester
 
 # Create with custom HotStore path
 ingester = await create_otel_ingester(
-    hot_store_path="/path/to/traces.db", embedding_model="all-MiniLM-L6-v2", cache_size=2000
+    hot_store_path="/path/to/traces.db",
+    embedding_model="all-MiniLM-L6-v2",
+    cache_size=2000,
 )
 
 await ingester.ingest_trace(trace_data)

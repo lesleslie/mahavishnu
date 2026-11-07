@@ -12,7 +12,9 @@ from mahavishnu.qc.checker import QualityControl
 from tests.unit._httpx_test_helpers import make_response_handler, patch_async_client
 
 
-def _mock_config(enabled=True, min_score=80, crackerjack_url="http://localhost:8676/mcp"):
+def _mock_config(
+    enabled=True, min_score=80, crackerjack_url="http://localhost:8676/mcp"
+):
     config = MagicMock()
     config.qc.enabled = enabled
     config.qc.min_score = min_score
@@ -23,9 +25,16 @@ def _mock_config(enabled=True, min_score=80, crackerjack_url="http://localhost:8
     return config
 
 
-_SUCCESS_RESULT = json.dumps({"success": True, "errors": [], "warnings": [], "duration": 1.2})
+_SUCCESS_RESULT = json.dumps(
+    {"success": True, "errors": [], "warnings": [], "duration": 1.2}
+)
 _FAILURE_RESULT = json.dumps(
-    {"success": False, "errors": ["lint error 1", "type error 2"], "warnings": [], "duration": 2.0}
+    {
+        "success": False,
+        "errors": ["lint error 1", "type error 2"],
+        "warnings": [],
+        "duration": 2.0,
+    }
 )
 
 _TARGET = "mahavishnu.qc.checker"
@@ -80,10 +89,12 @@ class TestRunPreChecksSuccess:
         with patch.object(
             qc._mcp,
             "call_tool",
-            AsyncMock(side_effect=[
-                {"result": _SUCCESS_RESULT},
-                {"result": _FAILURE_RESULT},
-            ]),
+            AsyncMock(
+                side_effect=[
+                    {"result": _SUCCESS_RESULT},
+                    {"result": _FAILURE_RESULT},
+                ]
+            ),
         ):
             result = await qc.run_pre_checks(["/tmp/a", "/tmp/b"])
         assert result["score"] < 100

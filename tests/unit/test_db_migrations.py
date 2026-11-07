@@ -224,7 +224,9 @@ class TestMigrationPlan:
     def test_plan_is_empty(self) -> None:
         """Check if plan is empty."""
         empty_plan = MigrationPlan(migrations_to_run=[], migrations_to_rollback=[])
-        non_empty_plan = MigrationPlan(migrations_to_run=["001"], migrations_to_rollback=[])
+        non_empty_plan = MigrationPlan(
+            migrations_to_run=["001"], migrations_to_rollback=[]
+        )
 
         assert empty_plan.is_empty is True
         assert non_empty_plan.is_empty is False

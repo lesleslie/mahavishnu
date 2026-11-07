@@ -29,6 +29,7 @@ session_buddy_polling_interval_seconds: 30  # Poll every 30 seconds
 import asyncio
 from mahavishnu.core import MahavishnuApp
 
+
 async def main():
     # Initialize app (poller is auto-initialized if enabled in config)
     app = MahavishnuApp()
@@ -51,6 +52,7 @@ async def main():
     # Stop poller before shutdown
     await app.stop_poller()
 
+
 if __name__ == "__main__":
     asyncio.run(main())
 ```
@@ -60,6 +62,7 @@ if __name__ == "__main__":
 ```python
 import asyncio
 from mahavishnu.core import MahavishnuApp
+
 
 async def main():
     app = MahavishnuApp()
@@ -71,6 +74,7 @@ async def main():
         print(f"Poll cycle: {result['poll_cycle']}")
         print(f"Metrics collected: {result['metrics_collected']}")
         print(f"Errors: {result['errors']}")
+
 
 asyncio.run(main())
 ```
@@ -136,6 +140,7 @@ app = MahavishnuApp(config=config)
 from mahavishnu.core import MahavishnuApp
 from mahavishnu.integrations import SessionBuddyPoller
 
+
 async def poll_specific_metrics():
     app = MahavishnuApp()
 
@@ -159,6 +164,7 @@ async def poll_specific_metrics():
         # Stop poller
         await poller.stop()
 
+
 asyncio.run(poll_specific_metrics())
 ```
 
@@ -168,6 +174,7 @@ asyncio.run(poll_specific_metrics())
 import asyncio
 from mahavishnu.core import MahavishnuApp
 from mahavishnu.integrations.session_buddy_poller import PollerStatus
+
 
 async def monitor_poller():
     app = MahavishnuApp()
@@ -192,6 +199,7 @@ async def monitor_poller():
 
         await asyncio.sleep(10)
 
+
 asyncio.run(monitor_poller())
 ```
 
@@ -202,6 +210,7 @@ The poller automatically records metrics to OpenTelemetry. Here's how to access 
 ```python
 import asyncio
 from mahavishnu.core import MahavishnuApp
+
 
 async def otel_integration():
     app = MahavishnuApp()
@@ -225,6 +234,7 @@ async def otel_integration():
 
     await app.stop_poller()
 
+
 asyncio.run(otel_integration())
 ```
 
@@ -234,6 +244,7 @@ asyncio.run(otel_integration())
 import asyncio
 import logging
 from mahavishnu.core import MahavishnuApp
+
 
 async def poll_with_custom_error_handling():
     logging.basicConfig(level=logging.DEBUG)
@@ -260,6 +271,7 @@ async def poll_with_custom_error_handling():
                 # Implement custom recovery logic here
 
             await asyncio.sleep(30)
+
 
 asyncio.run(poll_with_custom_error_handling())
 ```
@@ -289,12 +301,11 @@ async def check_poller_health():
 
     # Health check criteria
     is_healthy = (
-        status.running and
-        not status.circuit_breaker_open and
-        status.errors == 0
+        status.running and not status.circuit_breaker_open and status.errors == 0
     )
 
     print(f"Poller healthy: {is_healthy}")
+
 
 asyncio.run(check_poller_health())
 ```
@@ -305,7 +316,9 @@ asyncio.run(check_poller_health())
 import logging
 
 # Enable poller debug logging
-logging.getLogger("mahavishnu.integrations.session_buddy_poller").setLevel(logging.DEBUG)
+logging.getLogger("mahavishnu.integrations.session_buddy_poller").setLevel(
+    logging.DEBUG
+)
 
 # Poller will now log:
 # - Each poll cycle start/end
@@ -361,6 +374,7 @@ if app.session_buddy_poller:
 ```python
 from mahavishnu.core import MahavishnuApp
 
+
 async def reset_circuit_breaker():
     app = MahavishnuApp()
     await app.start_poller()
@@ -376,6 +390,7 @@ async def reset_circuit_breaker():
         app.session_buddy_poller._consecutive_failures = 0
         print("Circuit breaker manually reset")
 
+
 asyncio.run(reset_circuit_breaker())
 ```
 
@@ -384,12 +399,16 @@ asyncio.run(reset_circuit_breaker())
 ```python
 from mahavishnu.core import MahavishnuApp
 
+
 async def debug_metrics():
     app = MahavishnuApp()
 
     # Enable debug logging
     import logging
-    logging.getLogger("mahavishnu.integrations.session_buddy_poller").setLevel(logging.DEBUG)
+
+    logging.getLogger("mahavishnu.integrations.session_buddy_poller").setLevel(
+        logging.DEBUG
+    )
 
     # Run a single poll cycle with verbose output
     if app.session_buddy_poller:
@@ -403,6 +422,7 @@ async def debug_metrics():
         # Check configuration
         print(f"\nConfigured metrics: {app.session_buddy_poller.metrics_to_collect}")
         print(f"Available tools: {app.session_buddy_poller.MCP_TOOLS}")
+
 
 asyncio.run(debug_metrics())
 ```

@@ -126,6 +126,7 @@ def test_instruments_survive_with_metrics_disabled(obs: Any) -> None:
         else:
             instrument.record(1.0)
 
+
 # ---------------------------------------------------------------------------
 # The toggle has to be settable from the environment
 # ---------------------------------------------------------------------------
@@ -155,7 +156,9 @@ def test_the_top_level_toggle_turns_the_reader_on(
     assert count_metric_readers == [1]
 
 
-def test_the_top_level_toggle_defaults_off(obs: Any, count_metric_readers: list[int]) -> None:
+def test_the_top_level_toggle_defaults_off(
+    obs: Any, count_metric_readers: list[int]
+) -> None:
     """With neither toggle set, nothing is exported."""
     from mahavishnu.core.config import ObservabilityConfig
 

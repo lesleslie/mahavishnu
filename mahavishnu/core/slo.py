@@ -62,7 +62,9 @@ logger = logging.getLogger(__name__)
 
 # Code freshness metrics
 code_index_freshness_seconds = Gauge(
-    "code_index_freshness_seconds", "Time since last successful index per repo", ["repo"]
+    "code_index_freshness_seconds",
+    "Time since last successful index per repo",
+    ["repo"],
 )
 
 code_index_freshness_slo_compliance = Gauge(
@@ -105,7 +107,9 @@ code_index_reindex_duration_seconds = Histogram(
 
 # Event delivery metrics
 code_index_events_published_total = Counter(
-    "code_index_events_published_total", "Total number of events published", ["event_type"]
+    "code_index_events_published_total",
+    "Total number of events published",
+    ["event_type"],
 )
 
 code_index_events_delivered_total = Counter(
@@ -184,7 +188,9 @@ class SLOCalculator:
                     }
                 )
 
-        compliance_pct = (compliant_count / total_count * 100) if total_count > 0 else 100
+        compliance_pct = (
+            (compliant_count / total_count * 100) if total_count > 0 else 100
+        )
 
         # Update Prometheus metric
         code_index_freshness_slo_compliance.labels(window_minutes=window_minutes).set(
@@ -225,10 +231,14 @@ class SLOCalculator:
         total_failure = sum(data["failure"] for data in poll_results.values())
         total_attempts = total_success + total_failure
 
-        success_rate = (total_success / total_attempts * 100) if total_attempts > 0 else 100
+        success_rate = (
+            (total_success / total_attempts * 100) if total_attempts > 0 else 100
+        )
 
         # Update Prometheus metric
-        code_index_poll_success_rate.labels(window_minutes=window_minutes).set(success_rate)
+        code_index_poll_success_rate.labels(window_minutes=window_minutes).set(
+            success_rate
+        )
 
         return {
             "success_rate_pct": round(success_rate, 2),
@@ -261,7 +271,8 @@ class SLOCalculator:
                 "availability_pct": 100.0,
                 "target_pct": target_pct,
                 "downtime_seconds": 0,
-                "downtime_budget_seconds": (window_hours * 3600) * (1 - target_pct / 100),
+                "downtime_budget_seconds": (window_hours * 3600)
+                * (1 - target_pct / 100),
                 "meets_slo": True,
             }
 
@@ -276,7 +287,8 @@ class SLOCalculator:
                 "availability_pct": 100.0,
                 "target_pct": target_pct,
                 "downtime_seconds": 0,
-                "downtime_budget_seconds": (window_hours * 3600) * (1 - target_pct / 100),
+                "downtime_budget_seconds": (window_hours * 3600)
+                * (1 - target_pct / 100),
                 "meets_slo": True,
             }
 
@@ -296,7 +308,9 @@ class SLOCalculator:
             downtime_periods.append((current_downtime_start, now))
 
         # Sum downtime
-        downtime_seconds = sum((end - start).total_seconds() for start, end in downtime_periods)
+        downtime_seconds = sum(
+            (end - start).total_seconds() for start, end in downtime_periods
+        )
 
         window_seconds = window_hours * 3600
         uptime_seconds = window_seconds - downtime_seconds
@@ -434,7 +448,9 @@ def _generate_recommendations(
             f"Consider optimizing re-index performance for {len(violating_repos)} repos."
         )
         for repo in violating_repos[:3]:  # Show top 3
-            recommendations.append(f"   - {repo['repo']}: {repo['age_minutes']:.1f} minutes stale")
+            recommendations.append(
+                f"   - {repo['repo']}: {repo['age_minutes']:.1f} minutes stale"
+            )
 
     # Polling recommendations
     if not polling.get("meets_slo", True):
@@ -450,8 +466,12 @@ def _generate_recommendations(
             f"⚠️ Availability SLO violated ({availability['availability_pct']}% < 99.9%). "
             f"Downtime: {downtime_secs / 60:.1f} minutes in last {availability.get('window_hours', 24)}h."
         )
-        recommendations.append("   → Implement auto-restart mechanism (systemd/supervisord)")
-        recommendations.append("   → Add health check probes with liveness/readiness endpoints")
+        recommendations.append(
+            "   → Implement auto-restart mechanism (systemd/supervisord)"
+        )
+        recommendations.append(
+            "   → Add health check probes with liveness/readiness endpoints"
+        )
 
     if recommendations:
         recommendations.insert(

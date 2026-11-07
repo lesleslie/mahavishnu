@@ -10,13 +10,17 @@ class TestTier1Secrets:
         assert "[REDACTED:secret:" in redact_text("aws_key=AKIAIOSFODNN7EXAMPLE")
 
     def test_github_pat_ghp_redacted(self) -> None:
-        assert "[REDACTED:secret:" in redact_text("token: ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789")
+        assert "[REDACTED:secret:" in redact_text(
+            "token: ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789"
+        )
 
     def test_openai_key_redacted(self) -> None:
         assert "[REDACTED:secret:" in redact_text("sk-aBcDeFgHiJkLmNoPqRsTuVwXyZ")
 
     def test_anthropic_key_redacted(self) -> None:
-        assert "[REDACTED:secret:" in redact_text("sk-ant-aBcDeFgHiJkLmNoPqRsTuVwXyZ0123")
+        assert "[REDACTED:secret:" in redact_text(
+            "sk-ant-aBcDeFgHiJkLmNoPqRsTuVwXyZ0123"
+        )
 
     def test_slack_xoxb_token_redacted(self) -> None:
         assert "[REDACTED:secret:" in redact_text("xoxb-12345-aBcDeFgHiJkLmNoPqRsTuVwX")
@@ -26,7 +30,9 @@ class TestTier1Secrets:
         assert "[REDACTED:secret:" in redact_text(jwt)
 
     def test_bearer_token_redacted(self) -> None:
-        assert "[REDACTED:secret:" in redact_text("Authorization: Bearer abc123_def-456.ghi")
+        assert "[REDACTED:secret:" in redact_text(
+            "Authorization: Bearer abc123_def-456.ghi"
+        )
 
     def test_secrets_are_not_destroyed_around_match(self) -> None:
         """Redaction must preserve surrounding text."""

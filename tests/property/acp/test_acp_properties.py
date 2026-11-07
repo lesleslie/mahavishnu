@@ -80,7 +80,12 @@ tool_call_update_st = st.builds(
     toolCallId=_task_id_st,
     status=_tool_status_st,
     title=st.one_of(st.none(), _text_st),
-    content=st.one_of(st.none(), st.lists(st.builds(TextContent, type=st.just("text"), text=_text_st), max_size=3)),
+    content=st.one_of(
+        st.none(),
+        st.lists(
+            st.builds(TextContent, type=st.just("text"), text=_text_st), max_size=3
+        ),
+    ),
 )
 
 status_update_st = st.builds(
@@ -132,6 +137,7 @@ _envelope_st = st.fixed_dictionaries(
 # Pydantic round-trip
 # ---------------------------------------------------------------------------
 
+
 class TestSessionUpdateRoundTrip:
     """Dump a generated SessionUpdate to JSON, re-parse, assert equality."""
 
@@ -170,6 +176,7 @@ class TestSessionUpdateRoundTrip:
 # ---------------------------------------------------------------------------
 # Synthesizer: no-crash + no-silent-drop
 # ---------------------------------------------------------------------------
+
 
 class TestSynthesizerProperties:
     """The synthesizer must never crash on adversarial envelopes, and must not
@@ -260,7 +267,15 @@ class TestSynthesizerProperties:
             assert isinstance(result, ToolCallUpdate)
             assert result.toolCallId == task_id
 
-    @given(payload_value=st.one_of(st.text(max_size=200), st.integers(), st.floats(allow_nan=False), st.booleans(), st.none()))
+    @given(
+        payload_value=st.one_of(
+            st.text(max_size=200),
+            st.integers(),
+            st.floats(allow_nan=False),
+            st.booleans(),
+            st.none(),
+        )
+    )
     @settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
     def test_unknown_topic_serializes_arbitrary_payload_to_text(
         self, payload_value: Any
@@ -282,6 +297,7 @@ class TestSynthesizerProperties:
 # ---------------------------------------------------------------------------
 # Pydantic invariants on adversarial input
 # ---------------------------------------------------------------------------
+
 
 class TestSessionUpdateInvariants:
     """Pydantic-level properties the wire format must satisfy on random input."""

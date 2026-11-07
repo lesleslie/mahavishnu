@@ -139,18 +139,18 @@ from mahavishnu.core import MahavishnuApp
 # Initialize app (DLQ is automatically integrated)
 app = MahavishnuApp()
 
+
 # Start DLQ retry processor
 async def retry_callback(task, repos):
     """Callback for retrying failed workflows."""
     return await app.execute_workflow(task, "llamaindex", repos)
 
+
 await app.start_dlq_processor()
 
 # Execute workflow (automatically enqueues on failure)
 result = await app.execute_workflow_parallel(
-    task={"type": "code_sweep"},
-    adapter_name="llamaindex",
-    repos=["/path/to/repo"]
+    task={"type": "code_sweep"}, adapter_name="llamaindex", repos=["/path/to/repo"]
 )
 
 # If workflow fails, it's automatically enqueued in DLQ
@@ -171,14 +171,11 @@ await app.dlq.enqueue(
     error="Connection timeout",
     retry_policy=RetryPolicy.EXPONENTIAL,
     max_retries=5,
-    metadata={"priority": "high"}
+    metadata={"priority": "high"},
 )
 
 # List all pending tasks
-pending_tasks = await app.dlq.list_tasks(
-    status=DeadLetterStatus.PENDING,
-    limit=100
-)
+pending_tasks = await app.dlq.list_tasks(status=DeadLetterStatus.PENDING, limit=100)
 
 # Get a specific task
 task = await app.dlq.get_task("wf_abc123")
@@ -259,6 +256,7 @@ app.dlq_integration.set_strategy(DLQIntegrationStrategy.SELECTIVE)
 from mahavishnu.core.dead_letter_queue import RetryPolicy
 from mahavishnu.core.resilience import ErrorCategory
 
+
 async def custom_enqueue_handler(task_id, task, repos, error):
     """Custom error handling with DLQ."""
     # Classify error
@@ -287,7 +285,7 @@ async def custom_enqueue_handler(task_id, task, repos, error):
         retry_policy=retry_policy,
         max_retries=max_retries,
         error_category=error_category.value,
-        metadata={"handler": "custom"}
+        metadata={"handler": "custom"},
     )
 
     return failed_task
@@ -307,7 +305,9 @@ if self.config.dlq_enabled:
 
     self.dlq = DeadLetterQueue(
         max_size=self.config.dlq_max_size,
-        opensearch_client=self.opensearch_integration.client if self.opensearch_integration else None,
+        opensearch_client=self.opensearch_integration.client
+        if self.opensearch_integration
+        else None,
         observability_manager=self.observability,
     )
 
@@ -354,10 +354,11 @@ dlq_retry_interval_seconds: int = Field(
     description="DLQ retry processor check interval in seconds (10-3600)",
 )
 
+
 @field_validator("dlq_default_retry_policy")
 @classmethod
 def validate_dlq_retry_policy(cls, v: str) -> str:
-    '''Validate DLQ retry policy value.'''
+    """Validate DLQ retry policy value."""
     valid_policies = ["never", "linear", "exponential", "immediate"]
     if v not in valid_policies:
         raise ValueError(
@@ -381,7 +382,9 @@ async def start_dlq_processor(self) -> None:
         return
 
     # Define retry callback
-    async def dlq_retry_callback(task: dict[str, Any], repos: list[str]) -> dict[str, Any]:
+    async def dlq_retry_callback(
+        task: dict[str, Any], repos: list[str]
+    ) -> dict[str, Any]:
         """Callback for DLQ retry attempts."""
         adapter_name = task.get("adapter", "llamaindex")
         return await self.execute_workflow_parallel(
@@ -400,6 +403,7 @@ async def start_dlq_processor(self) -> None:
         f"DLQ retry processor started "
         f"(interval={self.config.dlq_retry_interval_seconds}s)"
     )
+
 
 async def stop_dlq_processor(self) -> None:
     """Stop the DLQ retry processor."""
@@ -439,29 +443,13 @@ Fields:
 
 ```python
 # Find all exhausted tasks
-query = {
-    "query": {
-        "term": {"status.keyword": "exhausted"}
-    }
-}
+query = {"query": {"term": {"status.keyword": "exhausted"}}}
 
 # Find tasks by error category
-query = {
-    "query": {
-        "term": {"error_category.keyword": "transient"}
-    }
-}
+query = {"query": {"term": {"error_category.keyword": "transient"}}}
 
 # Find tasks ready for retry in next hour
-query = {
-    "query": {
-        "range": {
-            "next_retry_at": {
-                "lte": "now+1h"
-            }
-        }
-    }
-}
+query = {"query": {"range": {"next_retry_at": {"lte": "now+1h"}}}}
 ```
 
 ## Testing
@@ -537,7 +525,10 @@ exhausted_tasks = await app.dlq.list_tasks(status=DeadLetterStatus.EXHAUSTED)
 
 # Group by error category
 from collections import Counter
-error_categories = Counter(task.error_category for task in exhausted_tasks if task.error_category)
+
+error_categories = Counter(
+    task.error_category for task in exhausted_tasks if task.error_category
+)
 print("Error categories:", error_categories)
 
 # Common causes:
@@ -589,7 +580,10 @@ async def monitor_dlq():
             print(f"WARNING: {exhausted_count} exhausted tasks in DLQ!")
 
         # Alert if retry success rate is low
-        total_retries = stats["lifetime_stats"]["retry_success"] + stats["lifetime_stats"]["retry_failed"]
+        total_retries = (
+            stats["lifetime_stats"]["retry_success"]
+            + stats["lifetime_stats"]["retry_failed"]
+        )
         if total_retries > 0:
             success_rate = stats["lifetime_stats"]["retry_success"] / total_retries
             if success_rate < 0.5:
@@ -612,7 +606,7 @@ await dlq.enqueue(
         "business_unit": "payments",
         "slos": {"max_delay_minutes": 15},
         "on_call_team": "platform-team",
-    }
+    },
 )
 ```
 

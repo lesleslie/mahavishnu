@@ -509,7 +509,9 @@ class TestFlushBatch:
         mock_storage.batch_write = AsyncMock(return_value={"written": 1})
         t.storage_client = mock_storage
 
-        eid = await t.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        eid = await t.record_execution_start(
+            AdapterType.PREFECT, TaskType.AI_TASK, ["/path"]
+        )
         await t.record_execution_end(eid, success=True)
 
         result = await t._flush_batch()
@@ -525,7 +527,9 @@ class TestFlushBatch:
         mock_storage.batch_write = AsyncMock(side_effect=RuntimeError("DB down"))
         t.storage_client = mock_storage
 
-        eid = await t.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        eid = await t.record_execution_start(
+            AdapterType.PREFECT, TaskType.AI_TASK, ["/path"]
+        )
         await t.record_execution_end(eid, success=True)
 
         result = await t._flush_batch()
@@ -541,7 +545,9 @@ class TestFlushBatch:
         del mock_storage.batch_write
         t.storage_client = mock_storage
 
-        eid = await t.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        eid = await t.record_execution_start(
+            AdapterType.PREFECT, TaskType.AI_TASK, ["/path"]
+        )
         await t.record_execution_end(eid, success=True)
 
         result = await t._flush_batch()
@@ -550,7 +556,9 @@ class TestFlushBatch:
 
 class TestCalculateAggregates:
     async def test_calculate_aggregates(self, tracker):
-        await tracker.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        await tracker.record_execution_start(
+            AdapterType.PREFECT, TaskType.AI_TASK, ["/path"]
+        )
         await tracker.record_execution_end("test-id", success=True)
 
         result = await tracker._calculate_aggregates()
@@ -573,7 +581,9 @@ class TestAggregationLoop:
         tracker.storage_client = mock_storage
         tracker.aggregate_interval_ms = 1
 
-        await tracker.record_execution_start(AdapterType.PREFECT, TaskType.AI_TASK, ["/path"])
+        await tracker.record_execution_start(
+            AdapterType.PREFECT, TaskType.AI_TASK, ["/path"]
+        )
         await tracker.record_execution_end("test-id", success=True)
 
         # Let one aggregation cycle run

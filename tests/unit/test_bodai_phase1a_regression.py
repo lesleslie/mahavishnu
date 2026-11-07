@@ -176,14 +176,18 @@ def test_rollback_preserves_evidence_history():
     reg.register(d2, r2, activated_by="mahavishnu")
 
     history_before = reg.list_history(shared_id)
-    evidence_ids_before = {r.review.review_id for r in history_before if r.review is not None}
+    evidence_ids_before = {
+        r.review.review_id for r in history_before if r.review is not None
+    }
 
     reg.execute_rollback(shared_id, "1.0.0", "mahavishnu", "regression")
 
     assert reg.evidence_history_preserved(shared_id)
 
     history_after = reg.list_history(shared_id)
-    evidence_ids_after = {r.review.review_id for r in history_after if r.review is not None}
+    evidence_ids_after = {
+        r.review.review_id for r in history_after if r.review is not None
+    }
     assert evidence_ids_before == evidence_ids_after
 
 
@@ -206,7 +210,9 @@ def test_rollback_no_active_raises():
 
 def test_draft_cannot_skip_to_active():
     policy = SkillPromotionPolicy()
-    assert not policy.can_transition(SkillPromotionState.DRAFT, SkillPromotionState.ACTIVE)
+    assert not policy.can_transition(
+        SkillPromotionState.DRAFT, SkillPromotionState.ACTIVE
+    )
 
 
 def test_review_to_active_allowed():
@@ -216,7 +222,9 @@ def test_review_to_active_allowed():
 
 def test_active_to_draft_blocked():
     policy = SkillPromotionPolicy()
-    assert not policy.can_transition(SkillPromotionState.ACTIVE, SkillPromotionState.DRAFT)
+    assert not policy.can_transition(
+        SkillPromotionState.ACTIVE, SkillPromotionState.DRAFT
+    )
 
 
 def test_deprecated_is_terminal():

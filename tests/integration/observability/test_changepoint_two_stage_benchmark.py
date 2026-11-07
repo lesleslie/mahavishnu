@@ -8,6 +8,7 @@ two-stage architecture. See docs/plans/2026-09-10-bodai-math-initiatives-tier1.m
 
 Req: REQ-005 (two-stage extension verification).
 """
+
 from __future__ import annotations
 
 import json
@@ -49,7 +50,10 @@ def _quantile(sorted_values: list[float], q: float) -> float:
 
 
 def _benchmark_two_stage_warning_latency(
-    shift_size: float, n_trials: int = 30, n_baseline: int = 200, seed: int = 42,
+    shift_size: float,
+    n_trials: int = 30,
+    n_baseline: int = 200,
+    seed: int = 42,
 ) -> dict:
     import random
 
@@ -91,7 +95,9 @@ def _benchmark_two_stage_warning_latency(
 
 
 def _benchmark_two_stage_fp_per_quiet(
-    n_trials: int = 25, n_samples: int = 10_080, seed: int = 2026_09_10,
+    n_trials: int = 25,
+    n_samples: int = 10_080,
+    seed: int = 2026_09_10,
 ) -> dict:
     """§7 v3.1 gate: confirmed alerts on stationary noise ≤ 2 per 10,080 samples."""
     import random
@@ -159,7 +165,9 @@ class TestTwoStageBenchmark:
 
     def test_bench_json_two_stage_keys(self, tmp_path) -> None:
         """bench.json includes the two_stage keys the spec §9 validation matrix expects."""
-        warning_stats = _benchmark_two_stage_warning_latency(shift_size=0.5, n_trials=10)
+        warning_stats = _benchmark_two_stage_warning_latency(
+            shift_size=0.5, n_trials=10
+        )
         fp_stats = _benchmark_two_stage_fp_per_quiet(n_trials=10, n_samples=10_080)
         bench = {
             "two_stage_warning_latency_at_0_5_sigma": warning_stats.get(
@@ -168,7 +176,9 @@ class TestTwoStageBenchmark:
             "two_stage_confirmed_alert_latency_at_0_5_sigma": warning_stats.get(
                 "confirmed_median_latency", float("nan")
             ),
-            "two_stage_confirmed_alert_fp_per_10080_quiet_samples": fp_stats["mean_confirmed"],
+            "two_stage_confirmed_alert_fp_per_10080_quiet_samples": fp_stats[
+                "mean_confirmed"
+            ],
         }
         bench_path = tmp_path / "bench.json"
         bench_path.write_text(json.dumps(bench, indent=2), encoding="utf-8")
@@ -178,4 +188,6 @@ class TestTwoStageBenchmark:
             "two_stage_confirmed_alert_fp_per_10080_quiet_samples",
         ):
             assert key in loaded
-            assert math.isfinite(loaded[key]), f"{key} should be finite, got {loaded[key]}"
+            assert math.isfinite(loaded[key]), (
+                f"{key} should be finite, got {loaded[key]}"
+            )

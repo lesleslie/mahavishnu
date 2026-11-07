@@ -212,7 +212,7 @@ for cross-session retrieval by calling the Session-Buddy MCP tool
 `store_reflection` with the following shape:
 
 ```python
-mcp__session-buddy__store_reflection(
+mcp__session - buddy__store_reflection(
     content=(
         "Feature pi-pool-backend: state=wired, "
         "built=yes, wired=yes, "

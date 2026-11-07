@@ -27,7 +27,13 @@ from enum import StrEnum
 import logging
 from typing import Any
 
-from mahavishnu.core.task_store import Task, TaskListFilter, TaskPriority, TaskStatus, TaskStore
+from mahavishnu.core.task_store import (
+    Task,
+    TaskListFilter,
+    TaskPriority,
+    TaskStatus,
+    TaskStore,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +222,9 @@ class RepositoryDashboard:
             DashboardView with complete metrics
         """
         # Fetch all tasks for the repository
-        tasks = await self.task_store.list(TaskListFilter(repository=repo_name, limit=10000))
+        tasks = await self.task_store.list(
+            TaskListFilter(repository=repo_name, limit=10000)
+        )
 
         # Calculate distribution
         distribution = self._calculate_distribution(tasks)

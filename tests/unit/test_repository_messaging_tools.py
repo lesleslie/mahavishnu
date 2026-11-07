@@ -67,7 +67,9 @@ def _build_manager(
     manager.messenger = messenger or MagicMock()
 
     if process_changes_side_effect is not None:
-        manager.process_repository_changes = AsyncMock(side_effect=process_changes_side_effect)
+        manager.process_repository_changes = AsyncMock(
+            side_effect=process_changes_side_effect
+        )
     else:
         manager.process_repository_changes = AsyncMock(
             return_value=process_changes_return
@@ -75,7 +77,9 @@ def _build_manager(
         )
 
     if notify_status_side_effect is not None:
-        manager.notify_workflow_status = AsyncMock(side_effect=notify_status_side_effect)
+        manager.notify_workflow_status = AsyncMock(
+            side_effect=notify_status_side_effect
+        )
     else:
         manager.notify_workflow_status = AsyncMock(
             return_value=notify_status_return
@@ -120,7 +124,9 @@ def _registered_tools(manager: MagicMock | None = None):
     app.get_repos = MagicMock(return_value=["repo_x", "repo_y"])
     mcp_client = MagicMock()
 
-    patch_target = "mahavishnu.mcp.tools.repository_messaging_tools.RepositoryMessengerManager"
+    patch_target = (
+        "mahavishnu.mcp.tools.repository_messaging_tools.RepositoryMessengerManager"
+    )
     with patch(patch_target, return_value=manager or _build_manager()):
         rmt.register_repository_messaging_tools(server, app, mcp_client)
 
@@ -493,10 +499,14 @@ class TestNotifyRepositoryChanges:
 
     async def test_notify_changes_manager_error_status(self) -> None:
         """When the manager returns an error status, it should be propagated."""
-        manager = _build_manager(process_changes_return={"status": "error", "error": "no repos"})
+        manager = _build_manager(
+            process_changes_return={"status": "error", "error": "no repos"}
+        )
 
         with _registered_tools(manager) as tools:
-            result = await tools["notify_repository_changes"](repo_path="/path/to/repo", changes=[])
+            result = await tools["notify_repository_changes"](
+                repo_path="/path/to/repo", changes=[]
+            )
         assert result["status"] == "error"
 
     async def test_notify_changes_manager_raises(self) -> None:
@@ -504,7 +514,9 @@ class TestNotifyRepositoryChanges:
         manager = _build_manager(process_changes_side_effect=RuntimeError("oops"))
 
         with _registered_tools(manager) as tools:
-            result = await tools["notify_repository_changes"](repo_path="/path/to/repo", changes=[])
+            result = await tools["notify_repository_changes"](
+                repo_path="/path/to/repo", changes=[]
+            )
         assert result["status"] == "error"
         assert "Failed to notify" in result["error"]
 

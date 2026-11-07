@@ -150,7 +150,8 @@ class StrategyStats:
                 self.latency_ema = latency_ms
             else:
                 self.latency_ema = (
-                    self.latency_alpha * latency_ms + (1 - self.latency_alpha) * self.latency_ema
+                    self.latency_alpha * latency_ms
+                    + (1 - self.latency_alpha) * self.latency_ema
                 )
 
 
@@ -212,7 +213,8 @@ class ThompsonSamplingRouter:
             latency_weight: Weight for latency in score calculation (0-1)
         """
         self.bands = [
-            ComplexityBand(min_score=b[0], max_score=b[1]) for b in (bands or self.DEFAULT_BANDS)
+            ComplexityBand(min_score=b[0], max_score=b[1])
+            for b in (bands or self.DEFAULT_BANDS)
         ]
         self.exploration_bonus = exploration_bonus
         self.latency_weight = latency_weight
@@ -349,7 +351,9 @@ class ThompsonSamplingRouter:
     def get_stats(self) -> dict[str, Any]:
         """Get router statistics."""
         return {
-            "global_stats": {s.value: stats.to_dict() for s, stats in self.global_stats.items()},
+            "global_stats": {
+                s.value: stats.to_dict() for s, stats in self.global_stats.items()
+            },
             "bands": [
                 {
                     "range": f"{b.min_score:.1f}-{b.max_score:.1f}",

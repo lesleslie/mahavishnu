@@ -70,7 +70,9 @@ class TestRunRebuildCycleRealScan:
                 return_value=(1, 1, [{"path_hash": "h", "err": "boom"}]),
             ):
                 outcome: RebuildOutcome = await run_rebuild_cycle(
-                    store, rebuilder, repo_root=Path("/tmp/fake"),
+                    store,
+                    rebuilder,
+                    repo_root=Path("/tmp/fake"),
                 )
         assert outcome.cycles_total == 1
         assert outcome.successful_cycles_total == 0
@@ -84,7 +86,9 @@ class TestRunRebuildCycleRealScan:
             return_value=_fake_records(),
         ):
             outcome = await run_rebuild_cycle(
-                store, rebuilder, repo_root=Path("/tmp/fake"),
+                store,
+                rebuilder,
+                repo_root=Path("/tmp/fake"),
             )
         assert outcome.errors == 0
         assert outcome.successful_cycles_total == 1
@@ -96,14 +100,17 @@ class TestRunRebuildCycleRealScan:
         store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
         rebuilder = PlanIndexRebuilder()
         mcp = store._mcp  # type: ignore[attr-defined]
-        seed = [{"ts_ms": i, "op": "upsert", "err": "old", "ctx": {}} for i in range(25)]
+        seed = [
+            {"ts_ms": i, "op": "upsert", "err": "old", "ctx": {}} for i in range(25)
+        ]
         await mcp.put("plan_index/meta/recent_errors", json.dumps(seed))
         with patch(
             "mahavishnu.plan_index.cron_core.discover_records",
             return_value=_fake_records(),
         ):
             with patch.object(
-                rebuilder, "upsert_all",
+                rebuilder,
+                "upsert_all",
                 return_value=(0, 1, [{"path_hash": "h", "err": "boom"}]),
             ):
                 await run_rebuild_cycle(store, rebuilder, repo_root=Path("/tmp/fake"))

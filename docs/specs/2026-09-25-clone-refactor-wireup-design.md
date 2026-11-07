@@ -449,32 +449,39 @@ Raises typed exceptions (per REQ-CLONE-013 subtype split):
 ```python
 class GitApplyConflict(Exception):
     """Structured conflict from `git apply --check`. Never retried."""
+
     def __init__(self, diff_offset: int, conflict_marker: str, stderr: str) -> None:
         super().__init__(f"GitApplyConflict at diff_offset={diff_offset}")
         self.diff_offset = diff_offset
         self.conflict_marker = conflict_marker
         self.stderr = stderr
 
+
 class GitCommitFailed(Exception):
     """Base for both transient and permanent commit failures."""
+
     def __init__(self, stderr: str, exit_code: int) -> None:
         super().__init__(f"git commit failed (exit_code={exit_code}): {stderr}")
         self.stderr = stderr
         self.exit_code = exit_code
 
+
 class GitCommitTransient(GitCommitFailed):
     """Index lock contention or brief I/O. Retried up to retries=2 times.
     Emitted only when stderr matches known-transient patterns.
     """
+
     def __init__(self, reason: str, stderr: str) -> None:
         super().__init__(stderr, exit_code=-1)
         self.reason = reason
+
 
 class GitCommitPermanent(GitCommitFailed):
     """Permission denied, disk full, pre-commit hook failure, malformed
     message, missing user.email/user.name, repo in detached state. NOT
     retried — propagates immediately.
     """
+
     def __init__(self, reason: str, stderr: str, exit_code: int) -> None:
         super().__init__(stderr, exit_code=exit_code)
         self.reason = reason
@@ -496,10 +503,12 @@ async def git_apply(repo_path: Path, diff: str) -> None:
     # 4. on success, pipe diff via stdin to `git apply`
     ...
 
+
 async def git_commit(repo_path: Path, message: str) -> str:
     # `git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -F -`
     # pass message via stdin; parse stderr/exit_code per REQ-CLONE-013
     ...
+
 
 async def current_head_sha(repo_path: Path) -> str: ...
 ```
@@ -523,9 +532,11 @@ Seven changes:
 1. UUID7 import with **Python 3.14 guard** (per `bodai-pytest-binary-cwd.md` style):
    ```python
    import sys
+
    if sys.version_info >= (3, 14):
        from uuid import uuid7 as _new_uuid7
    else:
+
        def _new_uuid7() -> UUID:
            raise RuntimeError(
                "clone_refactor_group requires Python 3.14+ for uuid7(). "
@@ -539,6 +550,7 @@ Seven changes:
 ```python
 class ConcurrentDAGError(Exception):
     """Raised by cluster_state_claim when another DAG holds the claim."""
+
     def __init__(self, existing_job_id: str) -> None:
         super().__init__(f"cluster_id already has in-flight DAG {existing_job_id}")
         self.existing_job_id = existing_job_id
@@ -578,7 +590,10 @@ class MCPStateBackendError(Exception):
     try_put_with_log_context. The default put() still swallows (preserves
     existing callers' no-throw contract); only the new method raises.
     """
-    def __init__(self, key: str, reason: str, *, log_context: dict[str, Any] | None = None) -> None:
+
+    def __init__(
+        self, key: str, reason: str, *, log_context: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(f"MCPStateBackend put({key!r}) failed: {reason}")
         self.key = key
         self.reason = reason

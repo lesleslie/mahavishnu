@@ -17,7 +17,9 @@ from mahavishnu.core.state_backends.mcp import (
 )
 
 
-def _make_backend(enabled: bool = True, mcp_put: AsyncMock | None = None) -> MCPStateBackend:
+def _make_backend(
+    enabled: bool = True, mcp_put: AsyncMock | None = None
+) -> MCPStateBackend:
     """Build a MCPStateBackend with a mocked MCPClient.
 
     MCPClient is imported inside __init__, so patch the source module.
@@ -52,7 +54,9 @@ class TestMCPStateBackendPut:
 
         await backend.put("workflow/v1/abc", {"status": "running"})
 
-        mock_put.assert_awaited_once_with("workflow/v1/abc", {"status": "running"}, ttl=None)
+        mock_put.assert_awaited_once_with(
+            "workflow/v1/abc", {"status": "running"}, ttl=None
+        )
 
     @pytest.mark.asyncio
     async def test_put_is_noop_when_disabled(self):
@@ -214,7 +218,10 @@ class TestMCPStateBackendConvenienceMethods:
                 "ok": True,
                 "count": 2,
                 "items": [
-                    {"key": "pool/v1/pool-1", "value": json.dumps({"pool_id": "pool-1"})},
+                    {
+                        "key": "pool/v1/pool-1",
+                        "value": json.dumps({"pool_id": "pool-1"}),
+                    },
                     {"key": "pool/v1/pool-2", "value": json.dumps("not-a-dict")},
                 ],
             }
@@ -234,7 +241,9 @@ class TestMCPStateBackendConvenienceMethods:
                 "items": [
                     {
                         "key": "routing/v1/workflow/1",
-                        "value": json.dumps({"task_class": "workflow", "pool_id": "pool-1"}),
+                        "value": json.dumps(
+                            {"task_class": "workflow", "pool_id": "pool-1"}
+                        ),
                     },
                     {"key": "routing/v1/workflow/2", "value": json.dumps("not-a-dict")},
                 ],
@@ -262,7 +271,9 @@ class TestKeyConstructors:
         # because they have different semantic intent (DAG lifecycle vs. workflow execution).
         # Adding dag_key with the same return as workflow_key would shadow the static method.
         assert MCPStateBackend.dag_key("x") != MCPStateBackend.workflow_key("x") or (
-            MCPStateBackend.dag_key("x") == MCPStateBackend.workflow_key("x") == "workflow/v1/x"
+            MCPStateBackend.dag_key("x")
+            == MCPStateBackend.workflow_key("x")
+            == "workflow/v1/x"
         )
         # Both must return strings; verify exact format per spec §6.4
         assert MCPStateBackend.dag_key("refactor-123") == "workflow/v1/refactor-123"
@@ -272,7 +283,10 @@ class TestKeyConstructors:
 
     @pytest.mark.req(["REQ-CLONE-009"])
     def test_in_flight_key_returns_cluster_v1_in_flight(self) -> None:
-        assert MCPStateBackend.in_flight_key("cluster-abc") == "cluster/v1/cluster-abc/in_flight"
+        assert (
+            MCPStateBackend.in_flight_key("cluster-abc")
+            == "cluster/v1/cluster-abc/in_flight"
+        )
 
     def test_workflow_key_unchanged(self) -> None:
         # §6.4: do NOT redeclare workflow_key. Existing callers
@@ -314,14 +328,18 @@ class TestMCPStateBackendError:
 class TestTryPutWithLogContext:
     """REQ-CLONE-014: try_put_with_log_context returns bool, never raises, logs on failure."""
 
-    async def test_returns_true_on_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_returns_true_on_success(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         backend = MCPStateBackend(base_url="http://x")
 
         async def fake_put(key, value, ttl=None):
             return None
 
         monkeypatch.setattr(backend._client, "put", fake_put)
-        result = await backend.try_put_with_log_context("k", {"v": 1}, log_context={"step": "x"})
+        result = await backend.try_put_with_log_context(
+            "k", {"v": 1}, log_context={"step": "x"}
+        )
         assert result is True
 
     async def test_returns_false_on_substrate_exception(
@@ -339,20 +357,28 @@ class TestTryPutWithLogContext:
             result = await backend.try_put_with_log_context(
                 "k",
                 {"v": 1},
-                log_context={"dag_id": "d1", "step_name": "detect", "files_touched": ["a.py"]},
+                log_context={
+                    "dag_id": "d1",
+                    "step_name": "detect",
+                    "files_touched": ["a.py"],
+                },
             )
         assert result is False
         # REQ-CLONE-014: structured log fires AND carries dag_id/step_name/files_touched
         # SF-M3: assert against the structured payload, not just the message string.
         record = next(
-            r for r in caplog.records if "clone_refactor.substrate_silent_write" in r.message
+            r
+            for r in caplog.records
+            if "clone_refactor.substrate_silent_write" in r.message
         )
         record_dict = vars(record)
         assert record_dict.get("dag_id") == "d1"
         assert record_dict.get("step_name") == "detect"
         assert record_dict.get("files_touched") == ["a.py"]
 
-    async def test_never_raises_on_logging_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_never_raises_on_logging_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # SF-m2: enforce "NEVER raises" contract even when logger.warning raises.
         backend = MCPStateBackend(base_url="http://x")
 
@@ -365,7 +391,9 @@ class TestTryPutWithLogContext:
         def fake_warning(*args, **kwargs):
             raise RuntimeError("logger misconfigured")
 
-        monkeypatch.setattr("mahavishnu.core.state_backends.mcp.logger.warning", fake_warning)
+        monkeypatch.setattr(
+            "mahavishnu.core.state_backends.mcp.logger.warning", fake_warning
+        )
         result = await backend.try_put_with_log_context("k", {"v": 1})
         assert result is False  # still returns False, never raises
 
@@ -390,7 +418,9 @@ class TestTryPutWithLogContext:
             )
         assert result is False
         record = next(
-            r for r in caplog.records if "clone_refactor.substrate_silent_write" in r.message
+            r
+            for r in caplog.records
+            if "clone_refactor.substrate_silent_write" in r.message
         )
         # dag_id survives; reserved attrs were filtered
         assert vars(record).get("dag_id") == "ok"
@@ -401,7 +431,9 @@ class TestTryPutWithLogContext:
         )
 
     async def test_returns_false_when_disabled(self) -> None:
-        backend = MCPStateBackend(base_url="http://x", config=MCPStateConfig(enabled=False))
+        backend = MCPStateBackend(
+            base_url="http://x", config=MCPStateConfig(enabled=False)
+        )
         result = await backend.try_put_with_log_context("k", {"v": 1})
         assert result is False
 
@@ -444,8 +476,14 @@ class TestListPrefixReturnShape:
                 "ok": True,
                 "count": 2,
                 "items": [
-                    {"key": "workflow/v1/aaa", "value": json.dumps({"status": "queued"})},
-                    {"key": "workflow/v1/bbb", "value": json.dumps({"status": "completed"})},
+                    {
+                        "key": "workflow/v1/aaa",
+                        "value": json.dumps({"status": "queued"}),
+                    },
+                    {
+                        "key": "workflow/v1/bbb",
+                        "value": json.dumps({"status": "completed"}),
+                    },
                 ],
             }
 

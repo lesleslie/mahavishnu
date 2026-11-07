@@ -69,7 +69,8 @@ def test_parse_file_populates_source_field_with_line_slice(tmp_path: Path) -> No
     # ``CodeGraphAnalyzer`` may also surface a file-level node;
     # find the function specifically.
     func_nodes = [
-        n for n in nodes
+        n
+        for n in nodes
         if n.symbol_type == "function" and n.symbol_name == "needle_function"
     ]
     assert len(func_nodes) == 1, (

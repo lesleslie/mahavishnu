@@ -468,14 +468,18 @@ class TestFeatureDisabledError:
 
 class TestErrorTemplates:
     def test_task_create_validation(self):
-        err = ErrorTemplates.task_create_validation("My Task", "test-repo", ["title too short"])
+        err = ErrorTemplates.task_create_validation(
+            "My Task", "test-repo", ["title too short"]
+        )
         assert isinstance(err, ValidationError)
         assert err.details["title"] == "My Task"
         assert err.details["repository"] == "test-repo"
         assert "title too short" in err.details["issues"]
 
     def test_database_connection_failed(self):
-        err = ErrorTemplates.database_connection_failed("localhost", 5432, "Connection refused")
+        err = ErrorTemplates.database_connection_failed(
+            "localhost", 5432, "Connection refused"
+        )
         assert isinstance(err, DatabaseError)
         assert "localhost" in err.message
         assert err.details["host"] == "localhost"
@@ -492,7 +496,9 @@ class TestErrorTemplates:
         assert "/etc/config.yaml" in err.message
 
     def test_webhook_failed(self):
-        err = ErrorTemplates.webhook_failed("push", "Invalid signature", payload_id="abc")
+        err = ErrorTemplates.webhook_failed(
+            "push", "Invalid signature", payload_id="abc"
+        )
         assert isinstance(err, WebhookAuthError)
         assert err.details["payload_id"] == "abc"
 
@@ -522,7 +528,9 @@ class TestErrorTemplates:
         assert err.error_code == ErrorCode.AGNO_LLM_PROVIDER_ERROR
 
     def test_adapter_init_failed(self):
-        err = ErrorTemplates.adapter_init_failed("prefect", "No API key", missing_deps=["prefect"])
+        err = ErrorTemplates.adapter_init_failed(
+            "prefect", "No API key", missing_deps=["prefect"]
+        )
         assert isinstance(err, AdapterInitializationError)
         assert err.details["missing_deps"] == ["prefect"]
 
@@ -533,12 +541,16 @@ class TestErrorTemplates:
         assert err.details["config_issues"] == ["missing url"]
 
     def test_workflow_step_failed(self):
-        err = ErrorTemplates.workflow_step_failed("wf_1", "build", "Compile error", retry_count=3)
+        err = ErrorTemplates.workflow_step_failed(
+            "wf_1", "build", "Compile error", retry_count=3
+        )
         assert isinstance(err, WorkflowExecutionError)
         assert err.details["retry_count"] == 3
 
     def test_goal_team_creation_failed(self):
-        err = ErrorTemplates.goal_team_creation_failed("Build the API", "No agents available")
+        err = ErrorTemplates.goal_team_creation_failed(
+            "Build the API", "No agents available"
+        )
         assert isinstance(err, GoalTeamError)
         assert len(err.details["goal"]) <= 100
 
@@ -575,7 +587,9 @@ class TestGetContextualHelp:
         assert "docs.mahavishnu.org" in help_text
 
     def test_with_context(self):
-        help_text = get_contextual_help(ErrorCode.TASK_NOT_FOUND, context={"task_id": "abc"})
+        help_text = get_contextual_help(
+            ErrorCode.TASK_NOT_FOUND, context={"task_id": "abc"}
+        )
         assert "abc" in help_text
         assert "task_id" in help_text
 
@@ -617,7 +631,9 @@ class TestCreateErrorFromException:
 
     def test_custom_error_code(self):
         original = ConnectionError("timeout")
-        err = create_error_from_exception(original, error_code=ErrorCode.DATABASE_CONNECTION_ERROR)
+        err = create_error_from_exception(
+            original, error_code=ErrorCode.DATABASE_CONNECTION_ERROR
+        )
         assert err.error_code == ErrorCode.DATABASE_CONNECTION_ERROR
 
     def test_with_context(self):
@@ -692,7 +708,8 @@ class TestMahavishnuErrorInit:
         # Should pull from RECOVERY_GUIDANCE
         assert len(err.recovery) >= 1
         assert (
-            err.recovery == MahavishnuError.RECOVERY_GUIDANCE[ErrorCode.CONFIGURATION_ERROR.value]
+            err.recovery
+            == MahavishnuError.RECOVERY_GUIDANCE[ErrorCode.CONFIGURATION_ERROR.value]
         )
 
     def test_init_fallback_recovery_for_unknown_code(self):
@@ -823,7 +840,9 @@ class TestMahavishnuErrorStr:
 
     def test_str_format_matches_expected_pattern(self):
         """Verify the exact format structure of __str__."""
-        err = MahavishnuError("test", ErrorCode.VALIDATION_ERROR, recovery=["Step A", "Step B"])
+        err = MahavishnuError(
+            "test", ErrorCode.VALIDATION_ERROR, recovery=["Step A", "Step B"]
+        )
         s = str(err)
         # Format: [MHV-003] test\n\nRecovery steps:\n  1. Step A\n  2. Step B\n\nDocumentation: ...\n
         assert s.startswith("[MHV-003] test\n")
@@ -866,7 +885,9 @@ class TestValidationErrorExtended:
         assert err.details == {}
 
     def test_with_multiple_detail_fields(self):
-        err = ValidationError("bad", details={"field": "email", "value": "not-an-email"})
+        err = ValidationError(
+            "bad", details={"field": "email", "value": "not-an-email"}
+        )
         assert err.details["field"] == "email"
         assert err.details["value"] == "not-an-email"
 
@@ -987,7 +1008,9 @@ class TestWorkflowExecutionErrorExtended:
         assert err.details["adapter_name"] == "agno"
 
     def test_extra_details_merged(self):
-        err = WorkflowExecutionError("wf1", "fail", details={"retry_count": 5, "last_error": "OOM"})
+        err = WorkflowExecutionError(
+            "wf1", "fail", details={"retry_count": 5, "last_error": "OOM"}
+        )
         assert err.details["retry_count"] == 5
         assert err.details["last_error"] == "OOM"
         assert err.details["workflow_id"] == "wf1"
@@ -1202,7 +1225,9 @@ class TestFeatureDisabledErrorExtended:
         assert "feature_flags" in err.message
 
     def test_with_extra_details(self):
-        err = FeatureDisabledError("x", details={"config_path": "settings/mahavishnu.yaml"})
+        err = FeatureDisabledError(
+            "x", details={"config_path": "settings/mahavishnu.yaml"}
+        )
         assert err.details["config_path"] == "settings/mahavishnu.yaml"
 
     def test_error_code_value(self):
@@ -1367,7 +1392,9 @@ class TestErrorTemplatesExtended:
         assert err.details["reason"] == "OOM"
 
     def test_prefect_connection_failed_details(self):
-        err = ErrorTemplates.prefect_connection_failed("http://prefect:4200", "ECONNREFUSED")
+        err = ErrorTemplates.prefect_connection_failed(
+            "http://prefect:4200", "ECONNREFUSED"
+        )
         assert err.details["api_url"] == "http://prefect:4200"
         assert err.details["original_error"] == "ECONNREFUSED"
 
@@ -1378,7 +1405,9 @@ class TestErrorTemplatesExtended:
         assert err.details["reason"] == "timeout"
 
     def test_agno_llm_error_details(self):
-        err = ErrorTemplates.agno_llm_error("llama_server", "qwen3.5", "model not found")
+        err = ErrorTemplates.agno_llm_error(
+            "llama_server", "qwen3.5", "model not found"
+        )
         assert err.details["provider"] == "llama_server"
         assert err.details["model"] == "qwen3.5"
         assert err.details["reason"] == "model not found"
@@ -1413,7 +1442,9 @@ class TestErrorTemplatesExtended:
         assert "retry_count" not in err.details
 
     def test_goal_team_creation_failed_details(self):
-        err = ErrorTemplates.goal_team_creation_failed("Build a REST API", "No agents available")
+        err = ErrorTemplates.goal_team_creation_failed(
+            "Build a REST API", "No agents available"
+        )
         assert err.details["reason"] == "No agents available"
         assert len(err.details["goal"]) <= 100
 
@@ -1453,11 +1484,17 @@ class TestErrorTemplatesExtended:
             (ErrorTemplates.agno_agent_failed("a", "t", "r"), AgnoError),
             (ErrorTemplates.agno_llm_error("p", "m", "r"), AgnoError),
             (ErrorTemplates.adapter_init_failed("a", "r"), AdapterInitializationError),
-            (ErrorTemplates.workflow_step_failed("w", "s", "r"), WorkflowExecutionError),
+            (
+                ErrorTemplates.workflow_step_failed("w", "s", "r"),
+                WorkflowExecutionError,
+            ),
             (ErrorTemplates.goal_team_creation_failed("g", "r"), GoalTeamError),
             (ErrorTemplates.goal_too_short("g", 1), GoalParsingError),
             (ErrorTemplates.goal_too_long("g" * 5000, 100), GoalParsingError),
-            (ErrorTemplates.learning_feedback_failed("t", "f", "r"), LearningSystemError),
+            (
+                ErrorTemplates.learning_feedback_failed("t", "f", "r"),
+                LearningSystemError,
+            ),
         ]
         for err, expected_type in templates:
             assert isinstance(err, expected_type), (

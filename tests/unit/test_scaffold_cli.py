@@ -102,7 +102,9 @@ class TestPatternsList:
             lib.load_all()
             get_lib.return_value = lib
 
-            result = runner.invoke(app, ["patterns", "list", "--category", "components"])
+            result = runner.invoke(
+                app, ["patterns", "list", "--category", "components"]
+            )
             assert result.exit_code == 0
             assert "components/" in result.output
             assert "adapters/" not in result.output
@@ -120,7 +122,9 @@ class TestPatternsList:
             assert "adapters" in result.output
             assert "components" in result.output
 
-    def test_list_shows_dependencies_for_patterns_with_deps(self, patterns_root: Path) -> None:
+    def test_list_shows_dependencies_for_patterns_with_deps(
+        self, patterns_root: Path
+    ) -> None:
         """Patterns that declare dependencies get the (depends: N) hint."""
         with patch("mahavishnu.cli.scaffold_cli._get_library") as get_lib:
             lib = PatternLibrary(patterns_root)
@@ -204,7 +208,10 @@ class TestPatternsValidate:
         bad.id = "broken/thing"
         # Pretend this pattern has 2 validation issues
         with (
-            patch("mahavishnu.cli.scaffold_cli.validate_pattern", return_value=["err1", "err2"]),
+            patch(
+                "mahavishnu.cli.scaffold_cli.validate_pattern",
+                return_value=["err1", "err2"],
+            ),
             patch("mahavishnu.cli.scaffold_cli._get_library") as get_lib,
         ):
             lib = MagicMock()
@@ -225,9 +232,13 @@ class TestPatternsValidate:
 class TestPatternsSearch:
     """Tests for `mahavishnu patterns search`."""
 
-    def test_search_returns_matching_patterns(self, real_library: PatternLibrary) -> None:
+    def test_search_returns_matching_patterns(
+        self, real_library: PatternLibrary
+    ) -> None:
         """Search returns matching patterns by name/description/tags."""
-        with patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library):
+        with patch(
+            "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+        ):
             # Search for "admin" which is in tag and description
             result = runner.invoke(app, ["patterns", "search", "admin"])
             assert result.exit_code == 0
@@ -236,14 +247,20 @@ class TestPatternsSearch:
 
     def test_search_no_results(self, real_library: PatternLibrary) -> None:
         """Empty results print a 'no patterns matching' notice."""
-        with patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library):
+        with patch(
+            "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+        ):
             result = runner.invoke(app, ["patterns", "search", "zzz_no_such_token"])
             assert result.exit_code == 0
             assert "No patterns matching" in result.output
 
-    def test_search_with_source_repos_filter(self, real_library: PatternLibrary) -> None:
+    def test_search_with_source_repos_filter(
+        self, real_library: PatternLibrary
+    ) -> None:
         """--source-repos filters by source_repos containing the value."""
-        with patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library):
+        with patch(
+            "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+        ):
             result = runner.invoke(
                 app,
                 ["patterns", "search", "admin", "--source-repos", "splashstand"],
@@ -261,7 +278,9 @@ class TestScaffoldCommand:
 
     def test_dry_run_resolves_dependencies(self, real_library: PatternLibrary) -> None:
         """--dry-run prints the resolved pattern list without touching the filesystem."""
-        with patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library):
+        with patch(
+            "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+        ):
             result = runner.invoke(
                 app,
                 [
@@ -279,9 +298,13 @@ class TestScaffoldCommand:
             # Dependencies of adapters/admin are auto-resolved in the dry-run output
             assert "scaffolding/project" in result.output
 
-    def test_dry_run_unknown_pattern_exits_nonzero(self, real_library: PatternLibrary) -> None:
+    def test_dry_run_unknown_pattern_exits_nonzero(
+        self, real_library: PatternLibrary
+    ) -> None:
         """An unknown pattern id in --patterns yields a non-zero exit code."""
-        with patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library):
+        with patch(
+            "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+        ):
             result = runner.invoke(
                 app,
                 [
@@ -299,7 +322,9 @@ class TestScaffoldCommand:
         self, real_library: PatternLibrary, tmp_path: Path
     ) -> None:
         """A non-dry-run scaffold writes the project to the output directory."""
-        with patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library):
+        with patch(
+            "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+        ):
             output = tmp_path / "out"
             result = runner.invoke(
                 app,
@@ -324,9 +349,13 @@ class TestScaffoldCommand:
             # so a manifest/pyproject.toml file should appear under output.
             assert (output / "pyproject.toml").exists()
 
-    def test_scaffold_rejects_path_traversal(self, real_library: PatternLibrary) -> None:
+    def test_scaffold_rejects_path_traversal(
+        self, real_library: PatternLibrary
+    ) -> None:
         """Project names containing '/', '\\', or '..' are rejected."""
-        with patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library):
+        with patch(
+            "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+        ):
             result = runner.invoke(
                 app,
                 [
@@ -339,10 +368,14 @@ class TestScaffoldCommand:
             assert result.exit_code == 1
             assert "must not contain" in result.output
 
-    def test_scaffold_engine_value_error_exits_nonzero(self, real_library: PatternLibrary) -> None:
+    def test_scaffold_engine_value_error_exits_nonzero(
+        self, real_library: PatternLibrary
+    ) -> None:
         """A ValueError raised by the engine is converted to a CLI exit code 1."""
         with (
-            patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library),
+            patch(
+                "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+            ),
             patch("mahavishnu.cli.scaffold_cli.ScaffoldingEngine") as engine_cls,
         ):
             engine = engine_cls.return_value
@@ -370,7 +403,9 @@ class TestScaffoldValidate:
         self, real_library: PatternLibrary, tmp_path: Path
     ) -> None:
         """A freshly scaffolded project should validate cleanly."""
-        with patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library):
+        with patch(
+            "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+        ):
             # First scaffold
             scaffold_result = runner.invoke(
                 app,
@@ -389,7 +424,9 @@ class TestScaffoldValidate:
             assert (project / "pyproject.toml").exists()
 
             # Then validate it
-            validate_result = runner.invoke(app, ["scaffold-validate", "--project", str(project)])
+            validate_result = runner.invoke(
+                app, ["scaffold-validate", "--project", str(project)]
+            )
             assert validate_result.exit_code == 0, validate_result.output
             assert "is valid" in validate_result.output
 
@@ -398,7 +435,9 @@ class TestScaffoldValidate:
     ) -> None:
         """If the engine reports issues, the CLI exits with code 1."""
         with (
-            patch("mahavishnu.cli.scaffold_cli._get_library", return_value=real_library),
+            patch(
+                "mahavishnu.cli.scaffold_cli._get_library", return_value=real_library
+            ),
             patch("mahavishnu.cli.scaffold_cli.ScaffoldingEngine") as engine_cls,
         ):
             engine = engine_cls.return_value

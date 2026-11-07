@@ -107,7 +107,9 @@ class TestMahavishnuWebSocketServerConstruction:
         """A custom message_rate_limit is reflected in the rate limiter."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
-        server = MahavishnuWebSocketServer(pool_manager=mock_pool_manager, message_rate_limit=50)
+        server = MahavishnuWebSocketServer(
+            pool_manager=mock_pool_manager, message_rate_limit=50
+        )
 
         assert server.rate_limiter.rate == 50.0
         assert server.rate_limiter.burst_size == 75.0
@@ -209,7 +211,9 @@ class TestOnConnect:
         ws.send.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_on_connect_increments_metric(self, mock_pool_manager, _patch_metrics):
+    async def test_on_connect_increments_metric(
+        self, mock_pool_manager, _patch_metrics
+    ):
         """on_connect calls metrics.adjust_connections(1)."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
@@ -261,7 +265,9 @@ class TestOnDisconnect:
         leave.assert_awaited_once_with("conn-1")
 
     @pytest.mark.asyncio
-    async def test_on_disconnect_decrements_metric(self, mock_pool_manager, _patch_metrics):
+    async def test_on_disconnect_decrements_metric(
+        self, mock_pool_manager, _patch_metrics
+    ):
         """on_disconnect calls metrics.adjust_connections(-1)."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
@@ -363,7 +369,9 @@ class TestOnMessage:
     """Tests for the on_message dispatcher."""
 
     @pytest.mark.asyncio
-    async def test_request_message_dispatched_to_request_handler(self, mock_pool_manager):
+    async def test_request_message_dispatched_to_request_handler(
+        self, mock_pool_manager
+    ):
         """A REQUEST message invokes _handle_request, not _handle_event."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
@@ -814,7 +822,9 @@ class TestGetRateLimitStats:
         server = MahavishnuWebSocketServer(pool_manager=mock_pool_manager)
         sentinel = {"total_connections": 0, "rate": 100.0}
 
-        with patch.object(server.rate_limiter, "get_stats", return_value=sentinel) as stats:
+        with patch.object(
+            server.rate_limiter, "get_stats", return_value=sentinel
+        ) as stats:
             result = server.get_rate_limit_stats()
 
         stats.assert_called_once_with(None)
@@ -840,7 +850,9 @@ class TestEventEnvelopeBridge:
     """Tests for the event-envelope bridge into rooms."""
 
     @pytest.mark.asyncio
-    async def test_handle_event_envelope_delegates_to_event_bridge(self, mock_pool_manager):
+    async def test_handle_event_envelope_delegates_to_event_bridge(
+        self, mock_pool_manager
+    ):
         """handle_event_envelope calls self._event_bridge.handle()."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
@@ -864,7 +876,9 @@ class TestEventEnvelopeBridge:
         server = MahavishnuWebSocketServer(pool_manager=mock_pool_manager)
         sentinel = {"status": "broadcast"}
 
-        with patch.object(server._event_bridge, "handle", new=AsyncMock(return_value=sentinel)):
+        with patch.object(
+            server._event_bridge, "handle", new=AsyncMock(return_value=sentinel)
+        ):
             envelope = MagicMock(name="envelope")
             result = await server.handle(envelope)
 
@@ -969,7 +983,9 @@ class TestBroadcastHelpers:
         assert sent_event.event == event_type
 
     @pytest.mark.asyncio
-    async def test_broadcast_worker_status_changed_strips_pool_prefix(self, mock_pool_manager):
+    async def test_broadcast_worker_status_changed_strips_pool_prefix(
+        self, mock_pool_manager
+    ):
         """A 'pool:p1' id is normalized to 'p1' for both room and data."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
@@ -984,7 +1000,9 @@ class TestBroadcastHelpers:
         assert event_payload.data["pool_id"] == "p1"  # data has prefix stripped
 
     @pytest.mark.asyncio
-    async def test_broadcast_pool_status_changed_strips_pool_prefix(self, mock_pool_manager):
+    async def test_broadcast_pool_status_changed_strips_pool_prefix(
+        self, mock_pool_manager
+    ):
         """broadcast_pool_status_changed normalizes 'pool:' prefix in data."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
@@ -997,7 +1015,9 @@ class TestBroadcastHelpers:
         assert event_payload.data["pool_id"] == "p1"
 
     @pytest.mark.asyncio
-    async def test_broadcast_pool_status_changed_without_prefix(self, mock_pool_manager):
+    async def test_broadcast_pool_status_changed_without_prefix(
+        self, mock_pool_manager
+    ):
         """If 'pool:' prefix is missing, no error is raised."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
@@ -1049,7 +1069,9 @@ class TestBroadcastHelpers:
         assert user_room in rooms_called
 
     @pytest.mark.asyncio
-    async def test_team_broadcast_without_user_id_only_uses_global(self, mock_pool_manager):
+    async def test_team_broadcast_without_user_id_only_uses_global(
+        self, mock_pool_manager
+    ):
         """Without a user_id, the user-specific room is NOT broadcast to."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 
@@ -1117,7 +1139,9 @@ class TestBroadcastHelpers:
         server = MahavishnuWebSocketServer(pool_manager=mock_pool_manager)
 
         with patch.object(server, "broadcast_to_room", new=AsyncMock()) as broadcast:
-            await server.broadcast_routing_decision("ai_task", "prefect", ["cap1"], 12.345, False)
+            await server.broadcast_routing_decision(
+                "ai_task", "prefect", ["cap1"], 12.345, False
+            )
 
         call = broadcast.await_args
         assert call.args[0] == "adapters"
@@ -1142,7 +1166,9 @@ class TestBroadcastHelpers:
         assert payload.data["details"] == {"latency": 99}
 
     @pytest.mark.asyncio
-    async def test_adapter_health_changed_defaults_details_to_empty(self, mock_pool_manager):
+    async def test_adapter_health_changed_defaults_details_to_empty(
+        self, mock_pool_manager
+    ):
         """If details is None, an empty dict is used."""
         from mahavishnu.websocket.server import MahavishnuWebSocketServer
 

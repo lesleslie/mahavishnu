@@ -46,22 +46,21 @@ Every function requires full annotations — no bare untyped parameters.
 
 ```python
 # wrong
-def process(items, count):
-    ...
+def process(items, count): ...
+
 
 # correct
-def process(items: list[str], count: int) -> dict[str, int]:
-    ...
+def process(items: list[str], count: int) -> dict[str, int]: ...
 ```
 
 Use modern union syntax:
 
 ```python
-x: str | None = None          # not Optional[str]
-y: int | str = 0              # not Union[int, str]
-items: list[str] = []         # not List[str]
-config: dict[str, Any] = {}   # not Dict[str, Any]
-result = f"Hello {name}"      # not "Hello %s" % name
+x: str | None = None  # not Optional[str]
+y: int | str = 0  # not Union[int, str]
+items: list[str] = []  # not List[str]
+config: dict[str, Any] = {}  # not Dict[str, Any]
+result = f"Hello {name}"  # not "Hello %s" % name
 ```
 
 Async — annotate the inner return type:

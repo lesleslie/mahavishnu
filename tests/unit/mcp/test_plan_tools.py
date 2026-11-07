@@ -129,7 +129,9 @@ class TestRegisterPlanTools:
     def test_register_returns_none(self) -> None:
         """Registration with the default dev provider must not raise."""
         mcp = FakeMCP()
-        result = register_plan_tools(mcp, store_provider=plan_tools_default_store_provider)
+        result = register_plan_tools(
+            mcp, store_provider=plan_tools_default_store_provider
+        )
         assert result is None
 
     def test_decorators_callable(self) -> None:
@@ -197,7 +199,9 @@ class TestPlanListTool:
         assert matched["total"] == 1
         assert unmatched["total"] == 0
 
-    async def test_date_range_filter(self, tools: dict[str, Any], store: PlanIndexStore) -> None:
+    async def test_date_range_filter(
+        self, tools: dict[str, Any], store: PlanIndexStore
+    ) -> None:
         await store.upsert(_sample_record())
 
         inside = await tools["plan_list"](
@@ -228,7 +232,9 @@ class TestPlanShowTool:
         assert result["path"] == "docs/plans/x.md"
         assert result["status"] == "active"
 
-    async def test_missing_plan_raises_plan_not_found(self, tools: dict[str, Any]) -> None:
+    async def test_missing_plan_raises_plan_not_found(
+        self, tools: dict[str, Any]
+    ) -> None:
         with pytest.raises(PlanNotFoundError) as excinfo:
             await tools["plan_show"](plan_id="0" * 32, user_id="alice")
 
@@ -236,7 +242,9 @@ class TestPlanShowTool:
 
 
 class TestPlanSearchTool:
-    async def test_matches_on_title(self, tools: dict[str, Any], store: PlanIndexStore) -> None:
+    async def test_matches_on_title(
+        self, tools: dict[str, Any], store: PlanIndexStore
+    ) -> None:
         await store.upsert(_sample_record())
 
         result = await tools["plan_search"](query="routing", user_id="alice")
@@ -261,7 +269,9 @@ class TestPlanSearchTool:
 
 
 class TestPlanVitalsTool:
-    async def test_returns_vitals_shape(self, tools: dict[str, Any], store: PlanIndexStore) -> None:
+    async def test_returns_vitals_shape(
+        self, tools: dict[str, Any], store: PlanIndexStore
+    ) -> None:
         await store.upsert(_sample_record())
 
         result = await tools["plan_vitals"](user_id="alice")
@@ -313,7 +323,9 @@ class TestAuthEnvelope:
         assert result["error_code"] == "AUTH_REQUIRED"
 
     @pytest.mark.parametrize("tool_name", TOOL_NAMES)
-    async def test_tools_accept_user_id_kwarg(self, tools: dict[str, Any], tool_name: str) -> None:
+    async def test_tools_accept_user_id_kwarg(
+        self, tools: dict[str, Any], tool_name: str
+    ) -> None:
         """Each tool must declare ``user_id`` so the auth decorator can forward it."""
         fn = tools[tool_name]
         sig = inspect.signature(inspect.unwrap(fn))

@@ -406,7 +406,9 @@ class TestRepositoryDashboard:
         assert view.health == HealthIndicator.HEALTHY
 
     @pytest.mark.asyncio
-    async def test_dashboard_identifies_at_risk_tasks(self, mock_task_store: AsyncMock) -> None:
+    async def test_dashboard_identifies_at_risk_tasks(
+        self, mock_task_store: AsyncMock
+    ) -> None:
         """Dashboard identifies at-risk tasks."""
         now = datetime.now(UTC)
         tasks = [

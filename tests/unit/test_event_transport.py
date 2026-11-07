@@ -152,9 +152,7 @@ async def test_conversion_failure_publishes_nothing(
             reason="test_forced_failure",
         )
 
-    monkeypatch.setattr(
-        "mahavishnu.core.events.transport.to_oneiric_envelope", _raise
-    )
+    monkeypatch.setattr("mahavishnu.core.events.transport.to_oneiric_envelope", _raise)
     envelope = create_event_envelope(
         "workflow.started",
         "test_service",
@@ -182,9 +180,7 @@ async def test_legacy_write_mode_preserves_previous_shape() -> None:
 
     assert adapter.enqueued[0]["event_type"] == "workflow.started"
     assert adapter.enqueued[0]["envelope"] == envelope.to_json()
-    assert adapter.published == [
-        ("bodai:events:workflow.started", envelope.to_json())
-    ]
+    assert adapter.published == [("bodai:events:workflow.started", envelope.to_json())]
 
 
 @pytest.mark.asyncio
@@ -756,7 +752,9 @@ async def test_event_bus_consumer_subscribes_and_handles_pubsub_messages():
         "test_service",
         payload={"workflow_id": "wf-2"},
     ).to_json()
-    await consumer._on_pubsub_message("bodai:events:workflow.completed", payload.encode("utf-8"))
+    await consumer._on_pubsub_message(
+        "bodai:events:workflow.completed", payload.encode("utf-8")
+    )
 
     assert adapter.subscribed["pattern"] == "bodai:events:*"
     assert seen[-1].event_type == "workflow.completed"

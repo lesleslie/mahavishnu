@@ -219,7 +219,9 @@ def validate_sample(sample: dict, line_num: int) -> list[str]:
     # Check label
     label = sample.get("label")
     if label and label not in VALID_LABELS:
-        issues.append(f"  Line {line_num}: invalid label '{label}', expected one of {VALID_LABELS}")
+        issues.append(
+            f"  Line {line_num}: invalid label '{label}', expected one of {VALID_LABELS}"
+        )
 
     # Check source_type
     source_type = sample.get("source_type")
@@ -234,12 +236,18 @@ def validate_sample(sample: dict, line_num: int) -> list[str]:
     if isinstance(scores, dict):
         missing_dims = set(DIMENSIONS) - set(scores.keys())
         if missing_dims:
-            issues.append(f"  Line {line_num}: missing score dimensions: {sorted(missing_dims)}")
+            issues.append(
+                f"  Line {line_num}: missing score dimensions: {sorted(missing_dims)}"
+            )
         for dim, val in scores.items():
             if not isinstance(val, int) or not 1 <= val <= 5:
-                issues.append(f"  Line {line_num}: scores.{dim}={val} is not an integer in [1, 5]")
+                issues.append(
+                    f"  Line {line_num}: scores.{dim}={val} is not an integer in [1, 5]"
+                )
     elif scores is not None:
-        issues.append(f"  Line {line_num}: 'scores' must be a dict, got {type(scores).__name__}")
+        issues.append(
+            f"  Line {line_num}: 'scores' must be a dict, got {type(scores).__name__}"
+        )
 
     # Check label/scores consistency
     if isinstance(scores, dict) and label:
@@ -284,7 +292,9 @@ def compute_statistics(samples: list[dict]) -> dict:
         "has_code_count": 0,
         "mean_word_count": 0.0,
         "mean_content_length": 0.0,
-        "label_mean_scores": {label: dict.fromkeys(DIMENSIONS, 0.0) for label in VALID_LABELS},
+        "label_mean_scores": {
+            label: dict.fromkeys(DIMENSIONS, 0.0) for label in VALID_LABELS
+        },
         "label_counts": dict.fromkeys(VALID_LABELS, 0),
     }
 
@@ -342,7 +352,9 @@ def print_report(samples: list[dict], stats: dict) -> None:
 
     # Dataset overview
     print(f"  Total samples:  {n}")
-    print(f"  Code-heavy:     {stats['has_code_count']} ({100 * stats['has_code_count'] / n:.0f}%)")
+    print(
+        f"  Code-heavy:     {stats['has_code_count']} ({100 * stats['has_code_count'] / n:.0f}%)"
+    )
     print(f"  Avg word count: {stats['mean_word_count']:.0f}")
     print(f"  Avg content:    {stats['mean_content_length']:.0f} chars")
     print()
@@ -455,7 +467,9 @@ def run_automated_scoring(samples: list[dict]) -> None:
             auto_scores = {}
             auto_scores["readability"] = round(metrics_map.get("readability", 0.5) * 5)
             auto_scores["depth"] = round(metrics_map.get("technical_depth", 0.5) * 5)
-            auto_scores["completeness"] = round(metrics_map.get("completeness", 0.5) * 5)
+            auto_scores["completeness"] = round(
+                metrics_map.get("completeness", 0.5) * 5
+            )
             # Accuracy and relevance remain stub
             auto_scores["accuracy"] = score_accuracy(content)
             auto_scores["relevance"] = score_relevance(content, title)

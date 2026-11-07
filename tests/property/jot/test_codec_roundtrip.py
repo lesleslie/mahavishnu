@@ -47,6 +47,7 @@ def test_serialize_ends_with_newline(event: JotEvent) -> None:
 def test_serialize_produces_valid_json(event: JotEvent) -> None:
     """The serialized output (without newline) must be valid JSON."""
     import json
+
     line = serialize(event).rstrip("\n")
     parsed = json.loads(line)
     assert parsed["id"] == event.id

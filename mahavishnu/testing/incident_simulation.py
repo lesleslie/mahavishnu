@@ -381,7 +381,9 @@ class IncidentSimulator:
         for symptom in scenario.symptoms:
             print(f"   • {symptom}")
         print(f"\n🔗 Runbook: {scenario.runbook_reference}")
-        print(f"\n⏱️  Expected Mitigation: {scenario.expected_mitigation_time_minutes} minutes")
+        print(
+            f"\n⏱️  Expected Mitigation: {scenario.expected_mitigation_time_minutes} minutes"
+        )
         print(f"\n{'=' * 60}\n")
 
         for i, step in enumerate(scenario.steps, 1):

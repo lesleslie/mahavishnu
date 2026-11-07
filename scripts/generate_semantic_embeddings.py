@@ -87,7 +87,9 @@ def get_embedding_model(model_name: str = DEFAULT_MODEL):
 
             logger.info("Model loaded successfully")
             logger.info(f"  - Model: {model_name}")
-            logger.info(f"  - Dimensions: {_embedding_model.get_sentence_embedding_dimension()}")
+            logger.info(
+                f"  - Dimensions: {_embedding_model.get_sentence_embedding_dimension()}"
+            )
             logger.info(f"  - Max sequence length: {_embedding_model.max_seq_length}")
 
         except ImportError:
@@ -271,7 +273,9 @@ def generate_embeddings(
             logger.info(f"  - Skipped: {metrics['skipped']}")
             logger.info(f"  - Errors: {metrics['errors']}")
             logger.info(f"  - Duration: {metrics['duration_seconds']:.2f}s")
-            logger.info(f"  - Speed: {metrics['embeddings_per_second']:.1f} embeddings/s")
+            logger.info(
+                f"  - Speed: {metrics['embeddings_per_second']:.1f} embeddings/s"
+            )
 
             return metrics
 
@@ -338,7 +342,9 @@ def test_semantic_search(
             query_embedding = generate_embedding(query, model_name)
             results["embedding_time"] = time.time() - embed_start
 
-            logger.info(f"Query embedding generated in {results['embedding_time']:.4f}s")
+            logger.info(
+                f"Query embedding generated in {results['embedding_time']:.4f}s"
+            )
 
             # Perform semantic search
             search_start = time.time()
@@ -364,7 +370,14 @@ def test_semantic_search(
             logger.info(f"Found {len(search_results)} results")
 
             # Format results
-            for task_id, task_type, description, repo, success, distance in search_results:
+            for (
+                task_id,
+                task_type,
+                description,
+                repo,
+                success,
+                distance,
+            ) in search_results:
                 results["results"].append(
                     {
                         "task_id": str(task_id),
@@ -373,7 +386,9 @@ def test_semantic_search(
                         "repo": repo,
                         "success": success,
                         "distance": float(distance),
-                        "similarity": float(1.0 - distance),  # Convert distance to similarity
+                        "similarity": float(
+                            1.0 - distance
+                        ),  # Convert distance to similarity
                     }
                 )
 
@@ -456,7 +471,9 @@ Available Models:
         metavar="QUERY",
         help="Test semantic search with a query",
     )
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
 
     args = parser.parse_args()
 
@@ -467,7 +484,9 @@ Available Models:
     try:
         import sentence_transformers
 
-        logger.info(f"sentence-transformers version: {sentence_transformers.__version__}")
+        logger.info(
+            f"sentence-transformers version: {sentence_transformers.__version__}"
+        )
     except ImportError:
         logger.error("sentence-transformers not installed!")
         logger.error("Install with: uv pip install sentence-transformers")

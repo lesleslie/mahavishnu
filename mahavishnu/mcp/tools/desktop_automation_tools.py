@@ -93,7 +93,9 @@ def register_desktop_automation_tools(mcp: Any) -> None:
     @mcp.tool()
     async def automation_launch_app(
         bundle_id: Annotated[str, Field(description="Application bundle identifier")],
-        dry_run: Annotated[bool, Field(description="Simulate without executing")] = False,
+        dry_run: Annotated[
+            bool, Field(description="Simulate without executing")
+        ] = False,
     ) -> dict:
         """Launch an application by bundle identifier."""
         manager = get_manager()
@@ -202,7 +204,9 @@ def register_desktop_automation_tools(mcp: Any) -> None:
     @mcp.tool()
     async def automation_click_menu(
         bundle_id: Annotated[str, Field(description="Application bundle identifier")],
-        menu_path: Annotated[list[str], Field(description="Menu path (e.g., ['File', 'Save'])")],
+        menu_path: Annotated[
+            list[str], Field(description="Menu path (e.g., ['File', 'Save'])")
+        ],
     ) -> dict:
         """Navigate menu and click an item."""
         manager = get_manager()
@@ -229,7 +233,9 @@ def register_desktop_automation_tools(mcp: Any) -> None:
     @mcp.tool()
     async def automation_type_text(
         text: Annotated[str, Field(description="Text to type")],
-        interval: Annotated[float, Field(description="Delay between keystrokes")] = 0.05,
+        interval: Annotated[
+            float, Field(description="Delay between keystrokes")
+        ] = 0.05,
         dry_run: Annotated[bool, Field(description="Simulate")] = False,
     ) -> dict:
         """Type text at current cursor position."""
@@ -257,7 +263,9 @@ def register_desktop_automation_tools(mcp: Any) -> None:
     async def automation_click(
         x: Annotated[int, Field(description="X coordinate")],
         y: Annotated[int, Field(description="Y coordinate")],
-        button: Annotated[str, Field(description="Mouse button (left/right/middle)")] = "left",
+        button: Annotated[
+            str, Field(description="Mouse button (left/right/middle)")
+        ] = "left",
         clicks: Annotated[int, Field(description="Number of clicks")] = 1,
     ) -> dict:
         """Click at coordinates."""
@@ -311,7 +319,9 @@ def register_desktop_automation_tools(mcp: Any) -> None:
         manager = get_manager()
         await manager.initialize()
 
-        region_tuple = cast("tuple[int, int, int, int] | None", tuple(region) if region else None)
+        region_tuple = cast(
+            "tuple[int, int, int, int] | None", tuple(region) if region else None
+        )
         result = await manager.screenshot(region=region_tuple)
 
         if result.status == "success" and result.data:

@@ -6,6 +6,7 @@ counters are registered with the prometheus_client REGISTRY after
 each producer module is imported, and that the ``producer`` label
 accepts the three expected producer names.
 """
+
 from __future__ import annotations
 
 from prometheus_client import REGISTRY
@@ -55,18 +56,9 @@ def _ensure_producer_counters_registered():
 
 def test_producer_counters_registered_on_import() -> None:
     """Three cross-portfolio counters are registered after module import."""
-    assert (
-        "mahavishnu_producer_writes_attempted_total"
-        in REGISTRY._names_to_collectors
-    )
-    assert (
-        "mahavishnu_producer_writes_succeeded_total"
-        in REGISTRY._names_to_collectors
-    )
-    assert (
-        "mahavishnu_producer_writes_skipped_total"
-        in REGISTRY._names_to_collectors
-    )
+    assert "mahavishnu_producer_writes_attempted_total" in REGISTRY._names_to_collectors
+    assert "mahavishnu_producer_writes_succeeded_total" in REGISTRY._names_to_collectors
+    assert "mahavishnu_producer_writes_skipped_total" in REGISTRY._names_to_collectors
 
 
 def test_producer_counters_increment_via_labels() -> None:

@@ -17,7 +17,14 @@ def test_postgres_loader_maps_rows_and_closes() -> None:
     conn = AsyncMock()
     conn.fetch.side_effect = [
         [{"adapter": "new", "selected_count": 3}],
-        [{"adapter": "new", "execution_count": 5, "success_count": 4, "failure_count": 1}],
+        [
+            {
+                "adapter": "new",
+                "execution_count": 5,
+                "success_count": 4,
+                "failure_count": 1,
+            }
+        ],
     ]
     fake = SimpleNamespace(connect=AsyncMock(return_value=conn))
     with patch.dict("sys.modules", {"asyncpg": fake}):
@@ -27,13 +34,22 @@ def test_postgres_loader_maps_rows_and_closes() -> None:
 
 
 def test_postgres_loader_without_asyncpg() -> None:
-    with patch.dict("sys.modules", {"asyncpg": None}), pytest.raises(RuntimeError, match="asyncpg"):
+    with (
+        patch.dict("sys.modules", {"asyncpg": None}),
+        pytest.raises(RuntimeError, match="asyncpg"),
+    ):
         asyncio.run(m._load_engine_metrics_from_postgres("dsn", None))
 
 
 def test_prometheus_malformed_lines_and_labels() -> None:
     metrics = {"prefect": {"selected": 0, "executions": 0, "success": 0, "failure": 0}}
-    for line in ("garbage", "# comment", "", 'x{adapter="prefect"} nope', 'x{foo="bar"} 2'):
+    for line in (
+        "garbage",
+        "# comment",
+        "",
+        'x{adapter="prefect"} nope',
+        'x{foo="bar"} 2',
+    ):
         m._process_prometheus_line(line, metrics)
     assert metrics["prefect"]["executions"] == 0
     assert m._parse_labels('a="1", malformed,b = "2"') == {"a": "1", "b": "2"}
@@ -41,12 +57,15 @@ def test_prometheus_malformed_lines_and_labels() -> None:
 
 def test_collect_command_success_and_error(monkeypatch: pytest.MonkeyPatch) -> None:
     import scripts.collect_metrics as script
+
     monkeypatch.setattr(script, "main", lambda: 0, raising=False)
     with pytest.raises(SystemExit) as exc:
         m.collect_metrics(True, 75.0, True, "json")
     assert exc.value.code == 0
     assert "--create-issues" in m.sys.argv and "--store-metrics" in m.sys.argv
-    monkeypatch.setattr(script, "main", lambda: (_ for _ in ()).throw(RuntimeError("bad")))
+    monkeypatch.setattr(
+        script, "main", lambda: (_ for _ in ()).throw(RuntimeError("bad"))
+    )
     with pytest.raises(SystemExit) as exc:
         m.collect_metrics()
     assert exc.value.code == 1
@@ -54,56 +73,101 @@ def test_collect_command_success_and_error(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_report_success_and_error(monkeypatch: pytest.MonkeyPatch) -> None:
     import scripts.collect_metrics as script
+
     monkeypatch.setattr(script, "main", lambda: 0, raising=False)
     with pytest.raises(SystemExit) as exc:
         m.generate_report("markdown", Path("out.md"))
     assert exc.value.code == 0
-    monkeypatch.setattr(script, "main", lambda: (_ for _ in ()).throw(RuntimeError("bad")))
+    monkeypatch.setattr(
+        script, "main", lambda: (_ for _ in ()).throw(RuntimeError("bad"))
+    )
     with pytest.raises(SystemExit) as exc:
         m.generate_report()
     assert exc.value.code == 1
 
 
-
-
-def test_history_missing_empty_and_snapshots(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_history_missing_empty_and_snapshots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(Path, "cwd", classmethod(lambda cls: tmp_path))
     m.show_history()
-    d = tmp_path / "data" / "metrics"; d.mkdir(parents=True)
-    (d / "metrics_1.json").write_text(json.dumps({"timestamp":"2025-01-01T00:00:00Z","summary":{"avg_coverage":70,"repos_count":2,"total_files_tested":4}}))
-    (d / "metrics_2.json").write_text(json.dumps({"timestamp":"2025-01-02T00:00:00Z","summary":{"avg_coverage":75,"repos_count":2,"total_files_tested":5}}))
+    d = tmp_path / "data" / "metrics"
+    d.mkdir(parents=True)
+    (d / "metrics_1.json").write_text(
+        json.dumps(
+            {
+                "timestamp": "2025-01-01T00:00:00Z",
+                "summary": {
+                    "avg_coverage": 70,
+                    "repos_count": 2,
+                    "total_files_tested": 4,
+                },
+            }
+        )
+    )
+    (d / "metrics_2.json").write_text(
+        json.dumps(
+            {
+                "timestamp": "2025-01-02T00:00:00Z",
+                "summary": {
+                    "avg_coverage": 75,
+                    "repos_count": 2,
+                    "total_files_tested": 5,
+                },
+            }
+        )
+    )
     (d / "metrics_bad.json").write_text("not json")
     m.show_history(10)
 
 
 def test_dashboard_and_verify_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     import scripts.generate_metrics_dashboard as dashboard
+
     monkeypatch.setattr(dashboard, "main", lambda: 0, raising=False)
     with patch("webbrowser.open") as browser, pytest.raises(SystemExit) as exc:
         m.generate_dashboard("x.html", True)
-    assert exc.value.code == 0; browser.assert_called_once()
-    monkeypatch.setattr(dashboard, "main", lambda: (_ for _ in ()).throw(RuntimeError("bad")))
+    assert exc.value.code == 0
+    browser.assert_called_once()
+    monkeypatch.setattr(
+        dashboard, "main", lambda: (_ for _ in ()).throw(RuntimeError("bad"))
+    )
     with pytest.raises(SystemExit) as exc:
         m.generate_dashboard()
     assert exc.value.code == 1
-    with patch("scripts.verify_ecosystem_metrics.main", return_value=0), pytest.raises(typer.Exit) as exc:
+    with (
+        patch("scripts.verify_ecosystem_metrics.main", return_value=0),
+        pytest.raises(typer.Exit) as exc,
+    ):
         m.verify_endpoints(Path("i.yml"), Path("v.yml"), "json", 1.0, ["a", "b"])
     assert exc.value.exit_code == 0
 
 
 def test_engine_helpers_and_paths() -> None:
-    rows = m._build_engine_rows({"x": {"selected": 1, "executions": 2, "success": 1, "failure": 1}})
+    rows = m._build_engine_rows(
+        {"x": {"selected": 1, "executions": 2, "success": 1, "failure": 1}}
+    )
     assert rows[0]["success_rate_pct"] == 50.0
     with patch("mahavishnu.metrics_cli.console.print_json") as out:
-        m._render_engine_output(rows, "json", "prometheus", "url", None, ["warn"]); out.assert_called_once()
+        m._render_engine_output(rows, "json", "prometheus", "url", None, ["warn"])
+        out.assert_called_once()
     m._render_engine_output(rows, "table", "prometheus", "url", None, [])
-    with pytest.raises(typer.Exit): m._render_engine_output(rows, "bad", "x", "url", None, [])
-    with patch.object(m, "_load_engine_metrics_from_prometheus", return_value={"prefect": {"executions": 1, "success": 1}}):
+    with pytest.raises(typer.Exit):
+        m._render_engine_output(rows, "bad", "x", "url", None, [])
+    with patch.object(
+        m,
+        "_load_engine_metrics_from_prometheus",
+        return_value={"prefect": {"executions": 1, "success": 1}},
+    ):
         got = m._fetch_engine_metrics("prometheus", None, "url", None)
     assert got[1] == "prometheus"
-    with patch.object(m, "_resolve_postgres_dsn", return_value=None), pytest.raises(typer.Exit):
+    with (
+        patch.object(m, "_resolve_postgres_dsn", return_value=None),
+        pytest.raises(typer.Exit),
+    ):
         m.engine_metrics("invalid")
-    with pytest.raises(typer.Exit): m._fetch_engine_metrics("postgres", None, "url", None)
+    with pytest.raises(typer.Exit):
+        m._fetch_engine_metrics("postgres", None, "url", None)
 
 
 def test_bodai_helpers_and_loaders() -> None:
@@ -121,25 +185,61 @@ def test_bodai_helpers_and_loaders() -> None:
 
 def test_mcp_helpers_and_renderers() -> None:
     assert m._resolve_mcp_url("http://x/") == "http://x"
-    with patch.dict("os.environ", {"MAHAVISHNU_MCP_URL":"http://env/"}): assert m._resolve_mcp_url(None) == "http://env"
+    with patch.dict("os.environ", {"MAHAVISHNU_MCP_URL": "http://env/"}):
+        assert m._resolve_mcp_url(None) == "http://env"
     assert m._parse_since("all") is None and m._parse_since("30m") is not None
-    with pytest.raises(typer.Exit): m._parse_since("bad")
-    entries = [{"key":"verification/a","value":{"consensus":"reject","persisted":False,"timestamp":datetime.now(UTC).isoformat()}}, {"key":"verification/b","value":{}}]
+    with pytest.raises(typer.Exit):
+        m._parse_since("bad")
+    entries = [
+        {
+            "key": "verification/a",
+            "value": {
+                "consensus": "reject",
+                "persisted": False,
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
+        },
+        {"key": "verification/b", "value": {}},
+    ]
     with patch.object(m.console, "print_json") as out:
-        m._render_verification_output(entries, cutoff=None, output_format="json", mcp_url="u"); out.assert_called_once()
-    m._render_verification_output(entries, cutoff=None, output_format="table", mcp_url="u")
-    with pytest.raises(typer.Exit): m._render_verification_output([], cutoff=None, output_format="x", mcp_url="u")
+        m._render_verification_output(
+            entries, cutoff=None, output_format="json", mcp_url="u"
+        )
+        out.assert_called_once()
+    m._render_verification_output(
+        entries, cutoff=None, output_format="table", mcp_url="u"
+    )
+    with pytest.raises(typer.Exit):
+        m._render_verification_output([], cutoff=None, output_format="x", mcp_url="u")
     with patch.object(m.console, "print_json") as out:
-        m._render_dispatch_output([{"key":"routing/a","value":{"caller_kind":"cli","async_callback":True}}], cutoff=None, output_format="json", mcp_url="u"); out.assert_called_once()
+        m._render_dispatch_output(
+            [
+                {
+                    "key": "routing/a",
+                    "value": {"caller_kind": "cli", "async_callback": True},
+                }
+            ],
+            cutoff=None,
+            output_format="json",
+            mcp_url="u",
+        )
+        out.assert_called_once()
     m._render_dispatch_output([], cutoff=None, output_format="table", mcp_url="u")
-    with pytest.raises(typer.Exit): m._render_dispatch_output([], cutoff=None, output_format="x", mcp_url="u")
+    with pytest.raises(typer.Exit):
+        m._render_dispatch_output([], cutoff=None, output_format="x", mcp_url="u")
 
 
 def test_fetch_mcp_entries_and_commands() -> None:
     client = AsyncMock()
-    client.call_tool.return_value = [{"key":"a","value":{"x":1}}, {"bad":1}, "x"]
+    client.call_tool.return_value = [{"key": "a", "value": {"x": 1}}, {"bad": 1}, "x"]
     fake = SimpleNamespace(MCPClient=MagicMock(return_value=client))
     with patch.dict("sys.modules", {"mahavishnu.core.mcp_adapter": fake}):
-        assert asyncio.run(m._fetch_mcp_entries("u", "p")) == [{"key":"a","value":{"x":1}}]
-    with patch.object(m, "_fetch_mcp_entries", new=AsyncMock(return_value=[])), patch.object(m, "_resolve_mcp_url", return_value="u"):
-        m.verification_metrics("all", None, "table"); m.dispatch_metrics("all", None, "table")
+        assert asyncio.run(m._fetch_mcp_entries("u", "p")) == [
+            {"key": "a", "value": {"x": 1}}
+        ]
+    with (
+        patch.object(m, "_fetch_mcp_entries", new=AsyncMock(return_value=[])),
+        patch.object(m, "_resolve_mcp_url", return_value="u"),
+    ):
+        m.verification_metrics("all", None, "table")
+        m.dispatch_metrics("all", None, "table")

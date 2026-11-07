@@ -327,19 +327,23 @@ from mahavishnu.mcp.protocols.message_bus import MessageBus, MessageType
 # Create message bus
 bus = MessageBus(max_queue_size=1000)
 
+
 # Subscribe to messages
 async def handle_task_delegate(msg):
     print(f"Task from {msg.source_pool_id}: {msg.payload}")
 
+
 bus.subscribe(MessageType.TASK_DELEGATE, handle_task_delegate)
 
 # Publish message
-await bus.publish({
-    "type": "task_delegate",
-    "source_pool_id": "pool_abc",
-    "target_pool_id": "pool_def",
-    "task": {"prompt": "Process this"},
-})
+await bus.publish(
+    {
+        "type": "task_delegate",
+        "source_pool_id": "pool_abc",
+        "target_pool_id": "pool_def",
+        "task": {"prompt": "Process this"},
+    }
+)
 
 # Receive messages for specific pool
 msg = await bus.receive("pool_def", timeout=5.0)
@@ -485,18 +489,24 @@ pool_default_max_workers: 10
 
 ```python
 # Spawn pool
-result = await mcp.call_tool("pool_spawn", {
-    "pool_type": "mahavishnu",
-    "name": "local",
-    "min_workers": 2,
-    "max_workers": 5,
-})
+result = await mcp.call_tool(
+    "pool_spawn",
+    {
+        "pool_type": "mahavishnu",
+        "name": "local",
+        "min_workers": 2,
+        "max_workers": 5,
+    },
+)
 
 # Execute with auto-routing
-result = await mcp.call_tool("pool_route_execute", {
-    "prompt": "Write tests",
-    "pool_selector": "least_loaded",
-})
+result = await mcp.call_tool(
+    "pool_route_execute",
+    {
+        "prompt": "Write tests",
+        "pool_selector": "least_loaded",
+    },
+)
 
 # List pools
 pools = await mcp.call_tool("pool_list", {})
@@ -505,10 +515,13 @@ pools = await mcp.call_tool("pool_list", {})
 health = await mcp.call_tool("pool_health", {})
 
 # Search memory
-results = await mcp.call_tool("pool_search_memory", {
-    "query": "API implementation",
-    "limit": 50,
-})
+results = await mcp.call_tool(
+    "pool_search_memory",
+    {
+        "query": "API implementation",
+        "limit": 50,
+    },
+)
 ```
 
 ## Performance Considerations

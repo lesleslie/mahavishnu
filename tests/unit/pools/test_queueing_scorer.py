@@ -1,4 +1,5 @@
 """Tests for Phase 2 QueueingScorer + PoolManager queueing integration (REQ-002, REQ-003, REQ-008)."""
+
 from __future__ import annotations
 
 from collections import deque
@@ -387,7 +388,9 @@ class TestApplyQueueingPenalty:
         # pool_a (the affinity target). Use rho=0.5 so the model
         # returns a finite predicted wait (safe_expected_wait_time
         # treats rho >= 0.95 as inf).
-        buf_a = QueueingObservationBuffer(pool_id="pool_a", min_observations=2, min_seconds=0.0)
+        buf_a = QueueingObservationBuffer(
+            pool_id="pool_a", min_observations=2, min_seconds=0.0
+        )
         buf_a.arrivals = deque([2.0] * 10)  # arrival_rate=0.5/s
         buf_a.services = deque([1.0] * 10)  # service_rate=1/s -> rho=0.5
         buf_a.fitted_model = MmcQueue.fit_from_observations(
@@ -415,7 +418,9 @@ class TestApplyQueueingPenalty:
         mgr._pools["pool_b"] = object()
 
         # pool_a is idle; pool_b is overloaded. Inner picked pool_a.
-        buf_a = QueueingObservationBuffer(pool_id="pool_a", min_observations=2, min_seconds=0.0)
+        buf_a = QueueingObservationBuffer(
+            pool_id="pool_a", min_observations=2, min_seconds=0.0
+        )
         buf_a.arrivals = deque([10.0] * 10)
         buf_a.services = deque([0.1] * 10)
         buf_a.fitted_model = MmcQueue.fit_from_observations(
@@ -424,7 +429,9 @@ class TestApplyQueueingPenalty:
         buf_a.last_arrival_monotonic = 1.0
         mgr._queueing_buffers["pool_a"] = buf_a
 
-        buf_b = QueueingObservationBuffer(pool_id="pool_b", min_observations=2, min_seconds=0.0)
+        buf_b = QueueingObservationBuffer(
+            pool_id="pool_b", min_observations=2, min_seconds=0.0
+        )
         buf_b.arrivals = deque([0.1] * 10)
         buf_b.services = deque([0.1] * 10)
         buf_b.fitted_model = MmcQueue.fit_from_observations(

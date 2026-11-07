@@ -72,7 +72,9 @@ class FallbackModel(Model):
         super().__post_init__()
         primary = self.models[0] if self.models else None
         if primary is not None:
-            self.supports_native_structured_outputs = primary.supports_native_structured_outputs
+            self.supports_native_structured_outputs = (
+                primary.supports_native_structured_outputs
+            )
             self.supports_json_schema_outputs = primary.supports_json_schema_outputs
 
     def _require_models(self) -> list[Model]:
@@ -109,7 +111,9 @@ class FallbackModel(Model):
                 continue
             self._active = model
             return response
-        raise last_error if last_error else RuntimeError("FallbackModel has no providers")
+        raise (
+            last_error if last_error else RuntimeError("FallbackModel has no providers")
+        )
 
     async def ainvoke(self, *args: Any, **kwargs: Any) -> ModelResponse:
         """Asynchronously invoke the first provider that succeeds.
@@ -139,7 +143,9 @@ class FallbackModel(Model):
                 continue
             self._active = model
             return response
-        raise last_error if last_error else RuntimeError("FallbackModel has no providers")
+        raise (
+            last_error if last_error else RuntimeError("FallbackModel has no providers")
+        )
 
     def invoke_stream(self, *args: Any, **kwargs: Any) -> Iterator[ModelResponse]:
         """Stream from the first provider that produces a chunk.
@@ -183,9 +189,13 @@ class FallbackModel(Model):
             yield first
             yield from stream
             return
-        raise last_error if last_error else RuntimeError("FallbackModel has no providers")
+        raise (
+            last_error if last_error else RuntimeError("FallbackModel has no providers")
+        )
 
-    async def ainvoke_stream(self, *args: Any, **kwargs: Any) -> AsyncIterator[ModelResponse]:
+    async def ainvoke_stream(
+        self, *args: Any, **kwargs: Any
+    ) -> AsyncIterator[ModelResponse]:
         """Asynchronously stream from the first provider that produces a chunk.
 
         Args:
@@ -221,7 +231,9 @@ class FallbackModel(Model):
             async for chunk in stream:
                 yield chunk
             return
-        raise last_error if last_error else RuntimeError("FallbackModel has no providers")
+        raise (
+            last_error if last_error else RuntimeError("FallbackModel has no providers")
+        )
 
     def _parse_provider_response(self, response: Any, **kwargs: Any) -> ModelResponse:
         """Parse a provider response using the provider that produced it."""
