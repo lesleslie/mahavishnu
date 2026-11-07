@@ -1428,6 +1428,16 @@ class ObservabilityManager:
                 get_meter_provider().force_flush()  # ty: ignore[unresolved-attribute]
 
                 # Force flush traces
+                #
+                # This half is a BLOCKING export on the calling thread,
+                # bounded by the exporter's deadline (10s by default).
+                # It became blocking when the span processor moved from
+                # SimpleSpanProcessor -- whose force_flush was a no-op --
+                # to BatchSpanProcessor, whose force_flush exports
+                # synchronously. The metric half above was already
+                # blocking, so the flush path was never a fast path; this
+                # only runs on an operator-initiated flush (the
+                # flush_metrics tool), never on the request path.
                 from opentelemetry.trace import get_tracer_provider
 
                 get_tracer_provider().force_flush()  # ty: ignore[unresolved-attribute]
