@@ -300,7 +300,7 @@ def collect_metrics(
     # Import here to avoid circular dependency. Resolved at runtime via sys.path;
     # static analysis cannot see the empty-file script stubs at scripts/*.py.
     from scripts.collect_metrics import (
-        main as collect_main,  # ty: ignore[unresolved-import]  # type: ignore[misc]
+        main as collect_main,  # ty: ignore[import-not-found]  # type: ignore[misc]
     )
 
     # Set up sys.argv to pass arguments to the collect script
@@ -356,7 +356,7 @@ def generate_report(
     # For now, delegate to collect_metrics
     # TODO: Generate more comprehensive reports with historical data
     from scripts.collect_metrics import (
-        main as collect_main,  # ty: ignore[unresolved-import]  # type: ignore[misc]
+        main as collect_main,  # ty: ignore[import-not-found]  # type: ignore[misc]
     )
 
     sys.argv = ["collect_metrics", f"--output={format}"]
@@ -430,7 +430,7 @@ def show_status(
     # Collect coverage data. Resolved at runtime via sys.path; static analysis
     # cannot see the empty-file script stub at scripts/collect_metrics.py.
     from scripts.collect_metrics import (
-        get_coverage_from_file,  # ty: ignore[unresolved-import]  # type: ignore[misc]
+        get_coverage_from_file,  # ty: ignore[import-not-found]  # type: ignore[misc]
     )
 
     for repo_data in repos:
@@ -587,7 +587,7 @@ def generate_dashboard(
     # Import dashboard generator. Resolved at runtime via sys.path; static analysis
     # cannot see the empty-file script stub at scripts/generate_metrics_dashboard.py.
     from scripts.generate_metrics_dashboard import (
-        main as dashboard_main,  # ty: ignore[unresolved-import]  # type: ignore[misc]
+        main as dashboard_main,  # ty: ignore[import-not-found]  # type: ignore[misc]
     )
 
     # Set up sys.argv

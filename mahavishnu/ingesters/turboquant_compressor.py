@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     # Optional dependency — import only for static analysis, never at runtime.
-    from turboquant_pro import TurboQuantPGVector  # ty: ignore[unresolved-import]
+    from turboquant_pro import TurboQuantPGVector  # ty: ignore[import-not-found]
 
     TURBOQUANT_AVAILABLE = True
 else:

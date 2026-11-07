@@ -638,7 +638,7 @@ def add_config_inventory_commands(app: typer.Typer) -> None:
         import sys
 
         sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
-        from migrate_config_to_project import (  # ty: ignore[unresolved-import]
+        from migrate_config_to_project import (  # ty: ignore[import-not-found]
             MigrationRunner,
         )
 
@@ -660,7 +660,7 @@ def add_config_inventory_commands(app: typer.Typer) -> None:
         import sys
 
         sys.path.insert(0, str(_PROJECT_ROOT / "scripts"))
-        from migrate_config_to_project import (  # ty: ignore[unresolved-import]
+        from migrate_config_to_project import (  # ty: ignore[import-not-found]
             rollback,
         )
 

@@ -32,7 +32,7 @@ try:
             ProjectMessage,
         )
     except ImportError:  # pragma: no cover - exercised only on minimal installs
-        from messaging.types import (  # type: ignore[import-not-found]  # ty: ignore[unresolved-import]
+        from messaging.types import (  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
             MessageStatus,
             MessageType,
             Priority,

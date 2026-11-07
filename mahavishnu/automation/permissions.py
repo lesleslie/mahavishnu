@@ -92,7 +92,7 @@ class PermissionChecker:
             return True
 
         try:
-            from ApplicationServices import AXIsProcessTrusted  # ty: ignore[unresolved-import]
+            from ApplicationServices import AXIsProcessTrusted  # ty: ignore[import-not-found]
 
             return AXIsProcessTrusted()  # type: ignore[no-any-return]
         except ImportError:
@@ -118,7 +118,7 @@ class PermissionChecker:
         try:
             # Try to capture a 1x1 pixel to test permission
             # This is the most reliable way to check on macOS 10.15+
-            import Quartz  # ty: ignore[unresolved-import]
+            import Quartz  # ty: ignore[import-not-found]
 
             # Create a small image to test capture
             rect = Quartz.CGRectInfinite  # ty: ignore[unresolved-attribute]
@@ -211,7 +211,7 @@ class PermissionChecker:
             return True
 
         try:
-            from ApplicationServices import (  # ty: ignore[unresolved-import]
+            from ApplicationServices import (  # ty: ignore[import-not-found]
                 AXIsProcessTrustedWithOptions,
             )
 

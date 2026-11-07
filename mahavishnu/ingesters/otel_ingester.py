@@ -22,7 +22,7 @@ from mcp_common.clients.common_mcp_client import CommonMCPClient
 # Feature detection for embedding backends
 # Try sentence-transformers first (best quality), then fastembed (cross-platform)
 try:
-    from sentence_transformers import SentenceTransformer  # ty: ignore[unresolved-import]
+    from sentence_transformers import SentenceTransformer  # ty: ignore[import-not-found]
 
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
@@ -30,7 +30,7 @@ except ImportError:
     SentenceTransformer: type[Any] | None = None  # type: ignore[no-redef]
 
 try:
-    from fastembed import TextEmbedding  # ty: ignore[unresolved-import]
+    from fastembed import TextEmbedding  # ty: ignore[import-not-found]
 
     FASTEMBED_AVAILABLE = True
 except ImportError:
@@ -732,7 +732,7 @@ class OtelIngester:
             }
 
             # Create HotRecord
-            from akosha.models import HotRecord  # ty: ignore[unresolved-import]
+            from akosha.models import HotRecord  # ty: ignore[import-not-found]
 
             record = HotRecord(
                 system_id=system_id,

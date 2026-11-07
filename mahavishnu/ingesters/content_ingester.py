@@ -926,11 +926,19 @@ class ContentIngester:
 
             for item in book.get_items():
                 if item.get_type() == ITEM_DOCUMENT:
-                    content = item.get_content()
+                    raw_content = item.get_content()
                     # Extract text from HTML (simplified)
                     import re
 
-                    text = re.sub(r"<[^>]+>", "", content.decode("utf-8"))
+                    # ``get_content()`` yields bytes for some item types and
+                    # str for others. Calling ``.decode()`` on a str raises
+                    # AttributeError, so narrow before decoding.
+                    text_source = (
+                        raw_content.decode("utf-8")
+                        if isinstance(raw_content, bytes)
+                        else raw_content
+                    )
+                    text = re.sub(r"<[^>]+>", "", text_source)
                     chapters.append(text)
 
             return "\n\n".join(chapters)

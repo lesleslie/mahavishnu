@@ -438,7 +438,7 @@ async def _mcp_trigger_workflow(
     """
     try:
         # Imported lazily to avoid module-load cost when drain is unused.
-        from mahavishnu.mcp.server_core import trigger_workflow  # ty: ignore[unresolved-import]
+        from mahavishnu.mcp.server_core import trigger_workflow  # ty: ignore[import-not-found]
 
         result: dict[str, object] = await trigger_workflow(
             adapter=adapter,
@@ -456,7 +456,7 @@ async def _mcp_trigger_workflow(
 async def _mcp_get_workflow_status(workflow_id: str) -> dict[str, object]:
     """Thin wrapper over mahavishnu.mcp.server_core.get_workflow_status."""
     try:
-        from mahavishnu.mcp.server_core import get_workflow_status  # ty: ignore[unresolved-import]
+        from mahavishnu.mcp.server_core import get_workflow_status  # ty: ignore[import-not-found]
 
         result: dict[str, object] = await get_workflow_status(workflow_id=workflow_id)
         return result

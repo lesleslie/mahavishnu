@@ -807,7 +807,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         except Exception as e:  # OpenSearch client connect/handshake may fail; fall through to TurboVec  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.debug("OpenSearch vector store unavailable: %s", e)
             try:
-                from turbovec.integrations.llamaindex import (  # ty: ignore[unresolved-import]
+                from turbovec.integrations.llamaindex import (  # ty: ignore[import-not-found]
                     TurboVec,
                 )
 

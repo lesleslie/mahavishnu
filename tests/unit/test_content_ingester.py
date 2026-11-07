@@ -1457,6 +1457,35 @@ class TestReadPdf:
 # ContentIngester -- _read_epub
 # ---------------------------------------------------------------------------
 
+# ebooklib's own item-type constants. The real package is an optional
+# dependency, so the fakes below stand in for it.
+_ITEM_DOCUMENT = 9
+_ITEM_OTHER = 10
+
+
+class _FakeEpubItem:
+    """Minimal stand-in for ``ebooklib.epub.EpubItem``."""
+
+    def __init__(self, item_type: int, content: bytes | str) -> None:
+        self._item_type = item_type
+        self._content = content
+
+    def get_type(self) -> int:
+        return self._item_type
+
+    def get_content(self) -> bytes | str:
+        return self._content
+
+
+class _FakeEpubBook:
+    """Minimal stand-in for the object returned by ``epub.read_epub``."""
+
+    def __init__(self, items: list[_FakeEpubItem]) -> None:
+        self._items = items
+
+    def get_items(self) -> list[_FakeEpubItem]:
+        return self._items
+
 
 class TestReadEpub:
     """Tests for _read_epub."""
@@ -1476,6 +1505,40 @@ class TestReadEpub:
         assert "Chapter one text" in text
         assert "Chapter two text" in text
         assert "<p>" not in text
+
+    @pytest.mark.asyncio
+    async def test_read_epub_decodes_bytes_and_str_chapter_content(
+        self, tmp_path: Path
+    ):
+        """``get_content()`` yields bytes for some items and str for others.
+
+        Decoding unconditionally raised AttributeError on the str case,
+        which the older tests could not catch because they mocked
+        ``_read_epub`` wholesale and never ran the chapter loop.
+        """
+        ingester = ContentIngester(output_dir=str(tmp_path))
+
+        book = _FakeEpubBook(
+            [
+                _FakeEpubItem(_ITEM_DOCUMENT, b"<p>Chapter one</p>"),
+                _FakeEpubItem(_ITEM_DOCUMENT, "<p>Chapter two</p>"),
+                _FakeEpubItem(_ITEM_OTHER, b"<p>Ignored</p>"),
+            ]
+        )
+
+        fake_ebooklib = MagicMock()
+        fake_ebooklib.ITEM_DOCUMENT = _ITEM_DOCUMENT
+        fake_ebooklib.epub.read_epub.return_value = book
+
+        with patch.dict("sys.modules", {"ebooklib": fake_ebooklib}):
+            text = await ingester._read_epub(tmp_path / "test.epub")
+
+        assert "Chapter one" in text
+        assert "Chapter two" in text
+        # HTML tags stripped from both the bytes and the str chapter.
+        assert "<p>" not in text
+        # Non-document items are filtered out by item type.
+        assert "Ignored" not in text
 
     @pytest.mark.asyncio
     async def test_read_epub_import_error(self, tmp_path: Path):

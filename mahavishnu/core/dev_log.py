@@ -176,7 +176,7 @@ def _mirror_to_session_buddy(metadata: dict[str, Any], body: str, target: Path) 
     try:
         # Lazy import: the MCP client is only available in the running
         # server context. Tests stub this via monkeypatch.
-        from mcp__session_buddy import store_reflection  # ty: ignore[unresolved-import]
+        from mcp__session_buddy import store_reflection  # ty: ignore[import-not-found]
     except ImportError:
         # MCP client not available; per spec §4.3 record the failure
         # in the frontmatter and log to stderr.

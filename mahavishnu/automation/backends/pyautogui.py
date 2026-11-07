@@ -71,7 +71,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
     def is_available() -> bool:
         """Check if PyAutoGUI is available."""
         try:
-            import pyautogui  # noqa: F401  # ty: ignore[unresolved-import]  # optional dependency for pyautogui backend
+            import pyautogui  # noqa: F401  # ty: ignore[import-not-found]  # optional dependency for pyautogui backend
         except ImportError:
             return False
         return True
@@ -85,7 +85,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
         """Get or import pyautogui module."""
         if self._pyautogui is None:
             try:
-                import pyautogui  # ty: ignore[unresolved-import]
+                import pyautogui  # ty: ignore[import-not-found]
 
                 self._pyautogui = pyautogui
 
@@ -329,7 +329,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
             try:
                 # Try mss first (faster)
                 try:
-                    import mss  # ty: ignore[unresolved-import]
+                    import mss  # ty: ignore[import-not-found]
 
                     with mss.mss() as sct:
                         if region:
@@ -396,7 +396,7 @@ class PyAutoGUIBackend(DesktopAutomationBackend):
 
                 # Try to get additional screens with mss
                 try:
-                    import mss  # ty: ignore[unresolved-import]
+                    import mss  # ty: ignore[import-not-found]
 
                     with mss.mss() as sct:
                         for i, monitor in enumerate(sct.monitors[1:]):  # Skip all-in-one

@@ -14,7 +14,7 @@ import base64
 from typing import Annotated, Any, cast
 
 try:
-    from mcp_common.types import Field  # ty: ignore[unresolved-import]
+    from mcp_common.types import Field  # ty: ignore[import-not-found]
 except ImportError:
 
     class _FieldFallback:
