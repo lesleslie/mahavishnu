@@ -83,10 +83,10 @@ provider fails with `no_key_supports_model`.
      never escalated.
    - The security-review plugin's Sonnet fallback is never overridden back
      onto M3, so the "no verdict from the model" failure stays fixed.
-   - The session ratchet becomes harmless. An escalated session stops being
-     classified and reverts to the caller's model — which is today's
-     behaviour. The ratchet costs a *discount*, never correctness, so the
-     policy can never cost more than it does now.
+   - The session ratchet is harmless **for the tier**: an escalated session
+     stops being classified. It is *not* harmless for the model — see
+     "Session affinity" below. A session bound to the cheaper model on a
+     SIMPLE turn stays on it after it escalates.
 
 1. **One rule: `route-complexity-simple`, priority 3.** Routing rules are
    first-match-wins with the lower priority number evaluated first, and
@@ -131,6 +131,90 @@ provider fails with `no_key_supports_model`.
    satisfied, Task 3's three `task_router` selectors are dropped, and Task 4
    becomes an independent PR.
 
+## Measured behaviour (2026-11-07)
+
+Verified against the gateway's own request log (`~/.config/bifrost/logs.db`)
+after the rebootstrap, and with controlled probes against the Anthropic
+ingress. The figures below are for one closed hour — **04:52 to 05:52
+local** (`timestamp > '2026-11-07 12:52' AND timestamp <= '2026-11-07
+13:52'` in the log's UTC timestamps) — and exclude the probe sessions, so
+they are reproducible.
+
+**The classifier works.** 762 requests on the Claude Code path
+(`responses_stream`) carried a tier, with 100% coverage from two minutes
+after the restart onwards. The distribution was `MEDIUM` 504, `SIMPLE` 236,
+`COMPLEX` 22, over 14 sessions. The tier reaches the CEL engine:
+`route-complexity-simple` matched 236 times, `route-anthropic-native` took
+the rest.
+
+**Session mode works, and it is what makes the classifier affordable.** 741
+of the 762 tiered requests reused a stored tier (`complexity_mechanism:
+session`); only 21 called the decision model — **97% of tiered requests pay
+nothing for classification**.
+
+**The decision model is reached through Bifrost's `/v1/decisions`**, as
+designed. The routing metadata records `provider_used: typesafe,
+model_used: jev-1.14.0` on every classification.
+
+**The classifier is not free, and session mode is what bounds it.** On the
+Claude Code path the 25 decision calls cost 88,229 input tokens and 1,177
+output tokens in the hour — about 3,500 input tokens per call, and the
+input scales with the turn being classified. Session mode holds that at 3%
+of tiered requests; with `session.enabled: false` all 762 would pay it.
+
+The other 11 calls in the window came from **requests with no session id**
+(direct SDK clients — `python-urllib`, i.e. this repo's own probes and
+integration tests). They cost 125,421 input tokens on their own, about
+11,400 per call, because there is no session to cache a tier against and
+every one of them is classified from scratch. A caller that cannot send a
+session id pays the full price per request.
+
+### Session affinity
+
+Bifrost runs a second routing engine, `session-affinity`, *after* the
+routing rules. It binds `(session id, requested model)` to the provider and
+model the session was first served, and it wins over a rule's proposed
+model. Its own log says so:
+
+```text
+[routing-rule] Rule 'Simple Tasks → Concise Model' → matched, selected target
+    (weight=1.00): provider=minimax-anthropic, model=MiniMax-M3.1-Flash
+[session-affinity] Session stays on minimax-anthropic/MiniMax-M3 for
+    MiniMax-M3; routing proposed minimax-anthropic/MiniMax-M3.1-Flash
+```
+
+Two consequences, both measured:
+
+1. **The downgrade reaches almost nothing on live traffic.** Of 236
+   SIMPLE-tier requests, 230 stayed on `MiniMax-M3`. The six served by
+   `MiniMax-M3.1-Flash` were the `MiniMax-M3.1-Flash` request class of one
+   session, not downgrades. The sessions in the window were bound to
+   `MiniMax-M3` before the router was live, and affinity kept them there. A
+   *new* session whose first request for that model class classifies as
+   SIMPLE **is** downgraded — a controlled probe asked for `MiniMax-M3` and
+   was served `MiniMax-M3.1-Flash`, streaming and non-streaming alike.
+
+2. **An escalation does not restore the caller's model.** A session whose
+   first request was SIMPLE stays on `MiniMax-M3.1-Flash` after it
+   escalates. With a COMPLEX tier the routing rules correctly propose
+   `MiniMax-M3` — the caller's model — and affinity discards it:
+
+   ```text
+   [routing-rule] Session complexity escalated: effective=COMPLEX previous=SIMPLE
+   [routing-rule] Rule 'Anthropic-Native Claude Code Route' → matched, selected target
+       (weight=1.00): provider=minimax-anthropic, model=MiniMax-M3
+   [session-affinity] Session stays on minimax-anthropic/MiniMax-M3.1-Flash for
+       MiniMax-M3; routing proposed minimax-anthropic/MiniMax-M3
+   ```
+
+   So a complex turn can be served by the cheaper model. That is the
+   inverse of the property rule 3 claimed, and it is a quality risk rather
+   than a cost one.
+
+`session-affinity` is a built-in routing engine in the pinned v2.4.0
+transport. It is not a provider setting, not a plugin, and not a
+`governance_config` key — the store exposes no switch for it.
+
 ## Status
 
 Active. The configuration landed in `config/bifrost/config.template.json` on
@@ -168,16 +252,23 @@ admin-auth-gated). 30/30 config-contract tests pass, and the merge gate
 
 **Still open — the measurements, not the design:**
 
-- **The session-id arrival is unmeasured.** `complexity_mechanism: session` in
-  the request log is the signature that Claude Code is sending a session id.
-  If it never appears, session mode is a no-op on the harness path and the
-  intra-turn split returns; the fix is a per-session id on the request.
-  No request has yet been classified, so this is the first thing to check on
-  a live turn.
-- **The realised saving is unmeasured.** The ceiling is the token volume in
-  sessions that never escalate, and it has to be computed from the logs on
-  cost, not on request count — simple turns are short turns, and token volume
-  concentrates in the long, complex ones.
+- **The session-id arrival is now measured, and it works.** Claude Code does
+  send a session id: 452 of the 487 tiered requests reused a stored tier
+  (`complexity_mechanism: session`). The intra-turn split this record set out
+  to prevent does not happen.
+- **The realised saving is measured, and it is not yet positive.** In the
+  measured hour the classifier cost 89,406 tokens on the Claude Code path
+  (plus 125,421 more from session-less direct clients), and the model
+  downgrade it was bought with reached **no** live request: 230 of 236
+  SIMPLE-tier requests stayed on `MiniMax-M3`, because session affinity held
+  the sessions that were already bound. The saving accrues only as sessions
+  whose first request for a model class classifies as SIMPLE replace the
+  sessions already bound — a slow, traffic-shaped trickle, not a cut.
+  **This is the open decision**: as configured, the complexity router costs
+  tokens today and saves none. Either accept the classifier as observability
+  and price it, or remove the model target from the rule (which also removes
+  the escalation hazard) and disable the analyzer until session affinity can
+  be turned off.
 
 **Two operational notes that are not defects:**
 

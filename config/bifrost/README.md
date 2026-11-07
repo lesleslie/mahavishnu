@@ -637,12 +637,46 @@ per request class (`MiniMax-M3` for the opus and sonnet slots,
 would override that — and would override the security-review plugin's
 deliberate Sonnet fallback, which `MiniMax-M3`'s adaptive thinking truncates.
 
+**Session affinity overrules the model target.** Bifrost runs a second routing
+engine, `session-affinity`, after the routing rules. It binds
+`(session id, requested model)` to the provider and model the session was
+first served, and it wins over a rule's proposed model. Two consequences:
+
+- The downgrade only reaches a model class whose **first** request in a
+  session classified as SIMPLE. A session bound to `MiniMax-M3` before the
+  router was live stays on it, so most live traffic is not downgraded.
+- An escalation does **not** restore the caller's model. A session that
+  started SIMPLE stays on `MiniMax-M3.1-Flash` after it escalates, because
+  affinity discards the routing proposal.
+
+Read the engine's own log to see which way it went:
+
+```bash
+sqlite3 ~/.config/bifrost/logs.db \
+  "SELECT routing_engine_logs FROM logs
+    WHERE routing_rule_id='route-complexity-simple' ORDER BY timestamp DESC LIMIT 1"
+```
+
+`session-affinity` is a built-in engine in the pinned v2.4.0 transport — not
+a provider setting, not a plugin, and not a `governance_config` key. The
+store exposes no switch for it.
+
 **Observability.** The request log records `complexity_tier`,
 `complexity_mechanism` (`semantic`, `decision`, `llm`, `session`, or `skipped`)
 and `complexity_score`. The logs API filters on the first two:
 
 ```bash
 curl 'http://127.0.0.1:8471/api/logs?complexity_tiers=COMPLEX&complexity_mechanisms=decision'
+```
+
+The same fields are in the request log database, which needs no admin token:
+
+```bash
+sqlite3 ~/.config/bifrost/logs.db \
+  "SELECT timestamp, model, complexity_tier, complexity_mechanism,
+          routing_rule_id, routing_engines_used
+     FROM logs WHERE complexity_tier IS NOT NULL
+     ORDER BY timestamp DESC LIMIT 10"
 ```
 
 `complexity_mechanism: session` means a stored session tier was reused;
