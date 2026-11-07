@@ -1,10 +1,7 @@
 ---
 name: websocket-specialist
 description: >-
-  Use this agent when designing or implementing WebSocket transports, servers, and clients
-  — wiring a new WS server or upgrading an HTTP route to WS, authoring Socket.IO
-  rooms/namespaces/pubsub bridges, or diagnosing dropped frames / reconnection storms /
-  backpressure.
+  Use when designing or implementing WebSocket transports, servers, and clients — new WS servers, HTTP→WS upgrades, Socket.IO rooms/namespaces/pubsub bridges, or diagnosing dropped frames, reconnect storms, and backpressure.
 model: sonnet
 ---
 
@@ -26,3 +23,8 @@ Design and implement WebSocket transports, servers, and clients.
 - WebSocket route + connection manager with bounded concurrency.
 - Client SDK snippet (browsers, Node, or Python) reconnect example.
 - Perf notes (frame rate, message size, multiplexed channels).
+
+## Ecosystem
+
+- WebSocket transports, servers, and clients; Socket.IO rooms, namespaces, and pubsub bridges
+- Transport, payload, and backpressure patterns are in the body below.

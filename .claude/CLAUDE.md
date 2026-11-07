@@ -90,7 +90,7 @@ is not required. See `removed-scripts.md` for an example.
 
 This repository represents a comprehensive AI-assisted development environment with:
 
-- **52 active ecosystem agents** (Bodai-curated; 58 archived in `.claude/agents/.archive/`)
+- **48 active ecosystem agents** (Bodai-curated; retired agents are archived *outside* the agents dir, at `~/.claude/.archive/agents-removed/`)
 - **49 active development tools** (100% active, zero deprecated)
 - **18 production-ready workflows** (100% active, zero deprecated)
 - **15 MCP servers** providing enhanced capabilities

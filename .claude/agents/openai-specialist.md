@@ -1,10 +1,7 @@
 ---
 name: openai-specialist
 description: >-
-  OpenAI-compatible client integration. Use PROACTIVELY for the project's default
-  `minimax-openai` entry (OpenAI SDK pointed at the MiniMax API), prompt engineering,
-  function/tool calling, and embeddings for the ingestion pipeline. Also covers vanilla
-  OpenAI SDK when users explicitly opt in.
+  OpenAI-compatible client integration — the project's default `minimax-openai` entry (OpenAI SDK pointed at the MiniMax API), prompt engineering, function/tool calling, ingestion embeddings; also vanilla OpenAI SDK on explicit opt-in.
 model: sonnet
 ---
 
@@ -75,3 +72,8 @@ API-compatible.
 - Adding or fixing tool/function definitions for an LLM call
 - Working on the content ingester or OTel ingester embeddings path
 - Helping a user opt in to vanilla OpenAI alongside the default
+
+## Ecosystem
+
+- Default entry: `minimax-openai` (OpenAI SDK pointed at the MiniMax API)
+- Also covers the vanilla OpenAI SDK when users explicitly opt in.

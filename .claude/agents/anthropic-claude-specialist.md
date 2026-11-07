@@ -1,10 +1,7 @@
 ---
 name: anthropic-claude-specialist
 description: >-
-  Anthropic Claude integration via the project's multi-auth setup (Claude Code
-  subscription, Qwen fallback, custom JWT). Use PROACTIVELY for Claude features, prompt
-  caching, function/tool use, choosing between subscription and direct API, and migrating
-  between Claude model versions.
+  Anthropic Claude integration for the project's multi-auth setup (Claude Code subscription, Qwen fallback, custom JWT). Use PROACTIVELY for Claude features, prompt caching, function/tool use, auth-provider choice, and model-version migrations.
 model: opus
 ---
 
@@ -124,3 +121,8 @@ only when the user has a concrete reason.
 - Migrating between Claude model versions (Opus / Sonnet / Haiku)
 - Debugging auth resolution issues (subscription detection, JWT config,
   Qwen fallback behavior)
+
+## Ecosystem
+
+- Claude Code subscription detection, Qwen free-service fallback, custom JWT auth
+- Provider precedence and migration details are in the body below.

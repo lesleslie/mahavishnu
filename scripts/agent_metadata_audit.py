@@ -3,9 +3,13 @@
 Comprehensive Agent Metadata Audit Script
 """
 
+from __future__ import annotations
+
+import argparse
 from collections import Counter
 from pathlib import Path
 import re
+import sys
 
 
 def extract_frontmatter(content):
@@ -245,12 +249,90 @@ def check_instruction_quality(agents):
         print("  No significant quality issues detected")
 
 
+def find_dot_prefixed_agent_files(agents_dir):
+    """Find agent ``.md`` files that live inside a dot-prefixed subdirectory.
+
+    Claude Code scans agent directories *recursively*, so **every** ``.md`` file
+    under an agents directory is loaded as an agent — including files in a
+    dot-prefixed subdirectory that looks like an archive. Untracking those
+    files in git (or ignoring them) hides them from version control but not
+    from the loader.
+
+    This is the exact failure that let 49 retired agents sit in
+    ``.claude/agents/.archive/`` for four months while charging ~2.2k tokens
+    against every turn. See ``docs/decisions/agent-curation-strategy.md``.
+
+    Returns a list of ``(md_path, dot_directory)`` tuples.
+    """
+    root = Path(agents_dir)
+    if not root.is_dir():
+        return []
+    findings = []
+    for md in sorted(root.rglob("*.md")):
+        if not md.is_file():
+            continue
+        try:
+            relative = md.relative_to(root)
+        except ValueError:  # pragma: no cover - rglob always yields under root
+            continue
+        # Only the directory components matter: a dot-prefixed *file* name is
+        # a different (and much narrower) concern.
+        dot_dirs = [part for part in relative.parts[:-1] if part.startswith(".")]
+        if dot_dirs:
+            findings.append((md, dot_dirs[0]))
+    return findings
+
+
+def check_dot_prefixed_subdirectories(agents_dir):
+    """Check that no agent file is hidden in a dot-prefixed subdirectory.
+
+    Prints the offending files and returns the number of violations found.
+    """
+    print(f"\n=== DOT-PREFIXED SUBDIRECTORY SCAN ({agents_dir}) ===")
+    findings = find_dot_prefixed_agent_files(agents_dir)
+    if not findings:
+        print("  No agent files hidden in dot-prefixed subdirectories")
+        return 0
+    for md, dot_dir in findings:
+        print(f"  - {md}: inside '{dot_dir}/' — Claude Code still loads it as an agent")
+    print(
+        f"  {len(findings)} agent file(s) hidden in a dot-prefixed subdirectory.\n"
+        "  Move them outside the agents directory "
+        "(e.g. ~/.claude/.archive/agents-removed/)\n"
+        "  or delete them. Untracking or gitignoring them does NOT hide them from\n"
+        "  Claude Code — it scans the filesystem, not git."
+    )
+    return len(findings)
+
+
 def main():
     """Main entry point for the audit script."""
+    parser = argparse.ArgumentParser(
+        description="Audit Claude Code agent metadata and agent-directory layout."
+    )
+    parser.add_argument(
+        "--agents-dir",
+        default=None,
+        help="Project agents directory to audit (default: the repo's .claude/agents).",
+    )
+    parser.add_argument(
+        "--user-agents-dir",
+        default=None,
+        help="User-level agents directory to scan (default: ~/.claude/agents).",
+    )
+    parser.add_argument(
+        "--skip-user-agents-dir",
+        action="store_true",
+        help="Do not scan the user-level agents directory.",
+    )
+    args = parser.parse_args()
+
     # Derive the project agents directory from this script's location so
     # the audit runs against the repo's own agents (not the user's global
     # agents dir). Works from any clone of the project without config.
-    agents_dir = str(Path(__file__).resolve().parent.parent / ".claude" / "agents")
+    agents_dir = args.agents_dir or str(
+        Path(__file__).resolve().parent.parent / ".claude" / "agents"
+    )
     agents = load_agents(agents_dir)
 
     total = len(agents)
@@ -262,8 +344,31 @@ def main():
     check_naming_inconsistencies(agents)
     check_instruction_quality(agents)
 
+    # The checks above only see top-level agent files, so a file parked in a
+    # dot-prefixed subdirectory is invisible to them. Scan the filesystem
+    # recursively so the archive-in-the-scan-path failure cannot come back
+    # unnoticed.
+    violations = check_dot_prefixed_subdirectories(agents_dir)
+
+    user_agents_dir = args.user_agents_dir or str(Path.home() / ".claude" / "agents")
+    if (
+        not args.skip_user_agents_dir
+        and Path(user_agents_dir).is_dir()
+        and Path(user_agents_dir) != Path(agents_dir)
+    ):
+        violations += check_dot_prefixed_subdirectories(user_agents_dir)
+
     print("\n=== END OF AUDIT ===")
+
+    if violations:
+        print(
+            f"FAILED: {violations} agent file(s) hidden in dot-prefixed "
+            "subdirectories. Claude Code loads these as agents; move them out "
+            "of the agents directory."
+        )
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

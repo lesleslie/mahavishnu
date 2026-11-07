@@ -1,10 +1,7 @@
 ---
 name: oneiric-specialist
 description: >-
-  Expert in Oneiric component resolution, adapter lifecycle, and runtime orchestration.
-  Handles adapter registration, config loading, and dependency resolution. Ecosystem:
-  mcp__oneiric__oneiric_list_adapters (catalog), mcp__oneiric__oneiric_get_adapter
-  (lookup), mcp__mahavishnu__list_repos (repos).
+  Oneiric component-resolution and adapter-lifecycle expert — adapter registration, config loading, dependency resolution.
 model: sonnet
 ---
 
@@ -28,3 +25,9 @@ Own Oneiric component resolution, adapter lifecycle, and layered config.
 - Patch (config or code) and a unit test for the regression.
 
 See `../../AGENTS.md#coding-style--naming-conventions` for the canonical settings layout used by Oneiric-aware apps.
+
+## Ecosystem
+
+- `mcp__oneiric__oneiric_list_adapters` (catalog)
+- `mcp__oneiric__oneiric_get_adapter` (lookup)
+- `mcp__mahavishnu__list_repos` (repos)

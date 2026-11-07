@@ -81,7 +81,6 @@
     "deny": [
       "Read(./.backups/**)",
       "Read(./.claude/backups/**)",
-      "Read(./.claude/agents/.a2a_enrollment/**)",
       "Read(./.claude/agents/**/*.backup*)",
       "Read(./.claude/commands/**/*.backup*)",
       "Read(./.claude/skills/.archive/**)",

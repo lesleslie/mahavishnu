@@ -1,10 +1,7 @@
 ---
 name: mahavishnu-specialist
 description: >-
-  Expert in Mahavishnu orchestration platform. Routes tasks, manages workflows and adapter
-  configuration, diagnoses pool and routing issues. Ecosystem:
-  mcp__mahavishnu__pool_route_execute (task routing), mcp__mahavishnu__get_health (health
-  check), mcp__mahavishnu__trigger_workflow (workflow control).
+  Mahavishnu orchestration expert — routes tasks, manages workflows and adapter configuration, diagnoses pool and routing issues.
 model: sonnet
 ---
 
@@ -26,3 +23,9 @@ Run, route, and diagnose work on the Mahavishnu orchestration platform.
 - Routed job handle + workflow ID for the caller to track.
 - Health / readiness summary if anything is degraded.
 - Next-step suggestion if routing failed (selector, capacity, dep).
+
+## Ecosystem
+
+- `mcp__mahavishnu__pool_route_execute` (task routing)
+- `mcp__mahavishnu__get_health` (health check)
+- `mcp__mahavishnu__trigger_workflow` (workflow control)
