@@ -22,8 +22,8 @@ from mcp_common.clients.common_mcp_client import CommonMCPClient
 # Feature detection for embedding backends
 # Try sentence-transformers first (best quality), then fastembed (cross-platform)
 try:
-    from sentence_transformers import (
-        SentenceTransformer,  # ty: ignore[import-not-found]
+    from sentence_transformers import (  # ty: ignore[import-not-found]
+        SentenceTransformer,
     )
 
     SENTENCE_TRANSFORMERS_AVAILABLE = True

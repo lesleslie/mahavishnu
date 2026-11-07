@@ -548,9 +548,9 @@ class DatabaseMigrator:
 
             # PostgreSQL count
             try:
-                pg_count = await self._postgres.fetchval(
+                pg_count = await self._postgres.fetchval(  # ty: ignore[unresolved-attribute]
                     f"SELECT COUNT(*) FROM {table}"
-                )  # ty: ignore[unresolved-attribute]
+                )
             except Exception:  # table may not exist in PostgreSQL yet; record 0 and let the mismatch counter flag it  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 pg_count = 0  # Table might not exist yet
 

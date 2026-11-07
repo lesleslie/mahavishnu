@@ -92,8 +92,8 @@ class PermissionChecker:
             return True
 
         try:
-            from ApplicationServices import (
-                AXIsProcessTrusted,  # ty: ignore[import-not-found]
+            from ApplicationServices import (  # ty: ignore[import-not-found]
+                AXIsProcessTrusted,
             )
 
             return AXIsProcessTrusted()  # type: ignore[no-any-return]

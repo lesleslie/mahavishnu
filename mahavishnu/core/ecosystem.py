@@ -432,8 +432,10 @@ class EcosystemLoader:
         try:
             with self.config_path.open("w") as f:
                 yaml.dump(
-                    self._config.model_dump(mode="yaml"), f, default_flow_style=False
-                )  # ty: ignore[unresolved-attribute]
+                    self._config.model_dump(mode="yaml"),  # ty: ignore[unresolved-attribute]
+                    f,
+                    default_flow_style=False,
+                )
         except Exception as e:
             raise ConfigurationError(
                 message=f"Failed to save ecosystem configuration: {e}",
