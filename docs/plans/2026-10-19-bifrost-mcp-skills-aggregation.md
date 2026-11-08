@@ -1,16 +1,16 @@
 ---
-status: active
-role: implementation
+status: complete
+role: superseded
 kind: plan
 date: 2026-10-19
-last_reviewed: 2026-10-19
-superseded_by: null
+last_reviewed: 2026-11-07
+superseded_by: docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md
 blocks_on: []
 related:
+  - docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md
   - docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md
   - docs/specs/2026-10-15-bifrost-gateway-wiring-design.md
   - config/bifrost/README.md
-  - scripts/bifrost-ctl
   - ~/Library/LaunchAgents/ai.bifrost.gateway.plist
   - ~/.config/secrets.env
 replaces: null
@@ -19,6 +19,40 @@ title: "Bifrost MCP aggregation + Skills distribution — local single-VK plan"
 ---
 
 # Bifrost MCP aggregation + Skills distribution — local single-VK plan
+
+> **RETIRED 2026-11-07 — superseded by
+> `docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md`.**
+>
+> **Why this plan was retired** (verified 2026-11-07; full evidence in the
+> successor's §4.1–4.3):
+>
+> 1. **Its Phase 2 renames every tool.** Bifrost prefixes at discovery
+>    (`<client>-<tool>`); a FastMCP proxy mounts with `<prefix>_<tool>`. Neither
+>    reproduces the `__` separator — and the `__` segment is **Claude Code's
+>    config-entry namespace**, not a tool-name property, so no gateway can
+>    inject it per-tool. `mahavishnu/core/skill_mcp_validator.py` holds 105
+>    exact-match tool names in `KNOWN_TOOLS`; a rename breaks agent/skill
+>    validation, 268 code references, and 525 doc mentions.
+> 2. **Its Phase 2 reduces nothing.** The five Bodai servers expose **496**
+>    tools / 331 KB of schema. Aggregation delivers the same schemas to the
+>    prompt plus ~12 KB of extra prefix text. Only *subsetting* reduces it.
+> 3. **Its exit criterion was unreachable.** `claude mcp list` → exactly
+>    `["bifrost"]` cannot hold: `.mcp.json` has 17 entries and `~/.claude.json`
+>    4 more. Real outcome: 21 → 17.
+> 4. **Its Phase 3 is deferred, not done.** The Skills marketplace route
+>    returns 503 (`skills_external_client_url` unset), the repository has no
+>    authored skills, and `config/bifrost/config.json` is ignored while the
+>    SQLite `config_store` is authoritative — so Phase 3 as written would not
+>    have landed.
+> 5. **Its findings were stale.** Wrong port (8080 vs 8471), a "paused
+>    indefinitely" state resolved on 2026-10-30, a deleted `scripts/bifrost-ctl`,
+>    and oneiric listed as "N/A" when it is live on `:8681` over HTTP.
+>
+> **What survives**: the *cache-sharing* goal is real, but it lives on the
+> **LLM egress** path — mahavishnu already routes its internal LLM calls
+> through Bifrost's semantic cache (`ONEIRIC_BIFROST_CACHE_MODE=semantic`);
+> the other four servers do not. The successor plan wires that, and replaces
+> aggregation with configuration-time **profile groups**.
 
 > **Plan scope**: re-bootstrap local Bifrost from paused state; aggregate the 5
 > Bodai MCP servers behind one Bifrost `/mcp` endpoint per harness; activate
