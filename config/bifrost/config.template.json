@@ -238,6 +238,7 @@
       "config": {
         "cache_by_model": true,
         "cache_by_provider": true,
+        "cache_tool_call_responses": false,
         "cleanup_on_shutdown": true,
         "conversation_history_threshold": 16,
         "dimension": 1536,

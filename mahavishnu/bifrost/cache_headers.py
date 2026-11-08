@@ -16,14 +16,27 @@ Header                  Effect
 ======================  =====================================================
 ``x-bf-cache-key``      Selects the cache bucket. Without it *and* without the
                         plugin's ``default_cache_key``, caching never engages.
-``x-bf-cache-type``     Narrows the lookup to one path: ``direct`` (exact
-                        match) or ``semantic`` (vector similarity).
+``x-bf-cache-type``     Narrows the lookup to one path. ``direct`` (exact
+                        match) is the only value this module emits; omitting
+                        the header is Bifrost's default order -- direct
+                        first, semantic (vector similarity) as the fallback.
 ``x-bf-cache-no-store`` Suppresses the cache **write**.
 ======================  =====================================================
 
 Each mapping was confirmed empirically against the running gateway before
 being encoded here; see
 ``docs/plans/2026-10-29-bifrost-bodai-cache-wiring.md`` §4.4.
+
+**Omitting ``x-bf-cache-type`` is a third behaviour, not an absence of
+one.** Sending the header *limits* the lookup to a single path; leaving it
+off is Bifrost's documented default, which tries the direct path first and
+falls back to the semantic one. That order is the economically correct one:
+a direct match is a hash of the input and costs nothing beyond a vector
+store lookup, while a semantic match pays one embedding call. Measured on
+this gateway, the direct path also has no input-size ceiling -- it hashes
+rather than embeds -- so it still works on a request whose text is far too
+large to embed. Pinning a request to the semantic path therefore forfeits
+every exact repeat *and* leaves long requests with no lookup at all.
 
 Note the scope of the bucket. It used to be ``default`` for every caller,
 and the gateway's own ``default_cache_key`` was ``"default"``, so there was
@@ -154,6 +167,10 @@ def resolve_cache_mode() -> CacheMode:
     freezing the mode at router-construction time, so a mode change
     does not need a process restart to take effect.
 
+    An unrecognised value is treated as ``off``, never as "cache
+    everything": a typo in an environment variable must not widen the
+    retention surface.
+
     Returns:
         The configured cache mode.
     """
@@ -225,7 +242,9 @@ def _cache_headers_for(mode: CacheMode, bucket: str) -> dict[str, str]:
         carries the cache-bucket header, and the mode-specific header
         selects the lookup and write behaviour. ``off`` carries a bucket
         nothing was ever written to, so it neither reads nor writes --
-        see the module docstring.
+        see the module docstring. ``semantic`` carries no type header, so
+        the gateway runs its own default order: direct first, semantic as
+        the fallback.
     """
     headers: dict[str, str] = {}
     if mode == "off":
@@ -239,7 +258,16 @@ def _cache_headers_for(mode: CacheMode, bucket: str) -> dict[str, str]:
 
     key = bucket.strip() or DEFAULT_CACHE_BUCKET
     headers[CACHE_KEY_HEADER] = key
-    headers[CACHE_TYPE_HEADER] = "direct" if mode == "direct" else "semantic"
+    if mode == "direct":
+        headers[CACHE_TYPE_HEADER] = "direct"
+    # "semantic" sends no type header. Sending the header *limits* the
+    # lookup to a single path; omitting it is Bifrost's documented default
+    # -- the direct path first, the semantic path as the fallback. The
+    # direct path is the free one (a hash of the input, no embedding call)
+    # and the only one with no input-size ceiling, so pinning a request to
+    # the semantic path forfeits every exact repeat *and* leaves any
+    # request over the embedding model's input ceiling with no lookup at
+    # all. Semantic similarity caching is still on: it is the fallback.
     return headers
 
 
@@ -253,7 +281,10 @@ def build_cache_headers(mode: CacheMode, *, traffic_class: str = "") -> dict[str
     is in it.
 
     Args:
-        mode: One of ``off``, ``direct``, ``semantic``.
+        mode: One of ``off``, ``direct``, ``semantic``. ``semantic`` sends
+            no type header, so the gateway runs its own default order --
+            direct first, semantic as the fallback -- which is the only
+            way to reach both paths.
         traffic_class: What kind of traffic this is. Separates protocol
             surfaces within one principal's namespace.
 

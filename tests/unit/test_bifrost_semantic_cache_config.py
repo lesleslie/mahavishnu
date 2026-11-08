@@ -247,6 +247,37 @@ def test_semantic_cache_threshold_is_a_valid_cosine(
     )
 
 
+def test_claude_codes_exclusion_from_the_cache_holds(
+    plugin_config: dict[str, Any],
+) -> None:
+    """Claude Code engages no response cache, and that depends on *this*.
+
+    The Claude Code harness sends no ``x-bf-cache-key``, so it reaches the
+    cache only if the plugin's ``default_cache_key`` names one. With it
+    unset, ``resolveCacheKey`` returns false and the plugin exits before any
+    lookup or write -- which is exactly what keeps Claude Code out of the
+    response cache (and out of the cross-session bleed a shared bucket
+    allows).
+
+    Set a default and Claude Code would land in it, with every session on
+    the host in the same namespace. The two facts are coupled, so they are
+    asserted together: changing either one without the other breaks the
+    exclusion silently.
+    """
+    from mahavishnu.bifrost import models
+
+    assert not plugin_config.get("default_cache_key"), (
+        "the plugin sets default_cache_key, so the Claude Code harness -- which "
+        "sends no x-bf-cache-key -- falls into it instead of bypassing the "
+        "cache, and every session on the host shares that namespace"
+    )
+    assert models.CC_HARNESS.cache_enabled is False, (
+        "the Claude Code harness engages the response cache again; with the "
+        "bucket's default unset that is a per-session namespace, but the "
+        "cross-session bleed it was removed for is measured to still occur"
+    )
+
+
 def test_semantic_cache_has_no_default_cache_key(plugin_config: dict[str, Any]) -> None:
     """There must be no default bucket for a request that names none.
 
@@ -306,6 +337,13 @@ def test_conversation_history_threshold_is_set(plugin_config: dict[str, Any]) ->
     messages. Agentic clients resend the full transcript every turn,
     so the default of 3 disables the cache for nearly all real
     traffic.
+
+    The name reads the wrong way round. It is not "how many messages to
+    include in the cache key" -- it is "the point past which caching
+    stops". Bifrost's Helm chart docs still carry the older wording, and
+    upstream's own field reference says "skip caching when a
+    conversation has more than this many messages". Lowering it skips
+    *more* traffic, not less.
     """
     threshold = plugin_config.get("conversation_history_threshold")
     assert isinstance(threshold, int), (
@@ -315,4 +353,24 @@ def test_conversation_history_threshold_is_set(plugin_config: dict[str, Any]) ->
         f"conversation_history_threshold is {threshold}; Bifrost's default of 3 "
         "skips caching for any request with more than 3 messages, which disables "
         "the cache for essentially all agentic traffic"
+    )
+
+
+def test_tool_call_responses_are_not_cached(plugin_config: dict[str, Any]) -> None:
+    """Responses carrying client-executed tool calls must not be cached.
+
+    Upstream's default is ``cache_tool_call_responses: false``, and the
+    reason is the hazard this gateway would otherwise walk into: a
+    replayed tool call runs in a later caller's agent loop with arguments
+    chosen for someone else's prompt. The setting is pinned here rather
+    than left to the default so an upgrade cannot silently widen it.
+
+    Verified against the live store: 0 of the 67 entries in the
+    ``BifrostSemanticCachePlugin`` Redis namespace carry a client tool
+    call.
+    """
+    cache_tool_calls = plugin_config.get("cache_tool_call_responses", False)
+    assert cache_tool_calls is False, (
+        "cache_tool_call_responses is true; a replayed tool call runs in a later "
+        "caller's agent loop with arguments chosen for someone else's prompt"
     )

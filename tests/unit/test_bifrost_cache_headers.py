@@ -78,15 +78,40 @@ def no_credential_store(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(gateway_mod, "load_secrets_env", _boom)
 
 
-@pytest.mark.parametrize(
-    ("mode", "expected_type"),
-    [("direct", "direct"), ("semantic", "semantic")],
-)
-def test_cache_type_header_narrows_the_lookup(mode: str, expected_type: str) -> None:
-    """``direct`` / ``semantic`` map onto ``x-bf-cache-type``."""
-    headers = build_cache_headers(mode)  # type: ignore[arg-type]
-    assert headers[CACHE_TYPE_HEADER] == expected_type
+def test_direct_mode_narrows_the_lookup_to_the_exact_path() -> None:
+    """``direct`` maps onto ``x-bf-cache-type: direct``."""
+    headers = build_cache_headers("direct")  # type: ignore[arg-type]
+    assert headers[CACHE_TYPE_HEADER] == "direct"
     assert CACHE_NO_STORE_HEADER not in headers
+
+
+def test_semantic_mode_sends_no_cache_type_header() -> None:
+    """``semantic`` must omit ``x-bf-cache-type`` so the gateway runs both paths.
+
+    Sending the header *limits* the lookup to one path; omitting it is
+    Bifrost's documented default -- direct first, semantic as the fallback.
+    The direct path is the free one (a hash of the input, no embedding
+    call) and the only one with no input-size ceiling, so a request that
+    names it reaches a lookup that a semantic-pinned request cannot.
+    """
+    headers = build_cache_headers("semantic")  # type: ignore[arg-type]
+    assert CACHE_TYPE_HEADER not in headers
+    assert CACHE_KEY_HEADER in headers
+    assert CACHE_NO_STORE_HEADER not in headers
+
+
+def test_semantic_mode_still_engages_semantic_caching() -> None:
+    """Semantic similarity must remain reachable under ``semantic``.
+
+    Pinning to the semantic path forfeits every exact repeat *and*
+    leaves any request over the embedding model's 8192-token input
+    ceiling with no lookup at all. The default order keeps both, with
+    the free exact-match path first.
+    """
+    semantic = build_cache_headers("semantic")  # type: ignore[arg-type]
+    direct = build_cache_headers("direct")  # type: ignore[arg-type]
+    assert CACHE_TYPE_HEADER not in semantic
+    assert direct[CACHE_TYPE_HEADER] == "direct"
 
 
 def test_off_mode_suppresses_the_write() -> None:
@@ -159,10 +184,11 @@ def test_a_blank_traffic_class_still_yields_a_bucket() -> None:
     assert headers[CACHE_KEY_HEADER] != DEFAULT_CACHE_BUCKET
 
 
-def test_resolve_cache_mode_reads_the_settings(cache_mode: Any) -> None:
+@pytest.mark.parametrize("mode", ["off", "direct", "semantic"])
+def test_resolve_cache_mode_reads_the_settings(cache_mode: Any, mode: str) -> None:
     """The mode comes from the Oneiric Bifrost settings."""
-    cache_mode("semantic")
-    assert resolve_cache_mode() == "semantic"
+    cache_mode(mode)
+    assert resolve_cache_mode() == mode
 
 
 def test_resolve_cache_mode_falls_back_to_off(cache_mode: Any) -> None:
@@ -226,7 +252,9 @@ def test_gateway_headers_carry_the_virtual_key(
     cache_mode("semantic")
     headers = build_gateway_headers(LOOPBACK_URL)
     assert headers[VIRTUAL_KEY_HEADER] == "sk-bf-test-key"
-    assert headers[CACHE_TYPE_HEADER] == "semantic"
+    # The type header is absent: the gateway runs its own default order.
+    assert CACHE_TYPE_HEADER not in headers
+    assert CACHE_KEY_HEADER in headers
 
 
 def test_cache_headers_survive_a_missing_virtual_key(
@@ -343,7 +371,7 @@ def test_virtual_key_is_withheld_from_an_untrusted_transport(
     assert VIRTUAL_KEY_HEADER not in headers
     # The cache headers still apply -- they are a retention control, not
     # a credential.
-    assert headers[CACHE_TYPE_HEADER] == "semantic"
+    assert CACHE_KEY_HEADER in headers
 
 
 @pytest.mark.parametrize(

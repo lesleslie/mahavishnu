@@ -61,10 +61,12 @@ def _harness(key: str, settings_path: Path) -> models.HarnessDescriptor:
 #: The route line the Claude Code harness carries alongside the virtual key.
 _ROUTE_LINE = f"{models.ROUTE_HEADER}: {models.ROUTE_ANTHROPIC_NATIVE}"
 
-#: The cache-bucket line the Claude Code harness carries. The bucket is
-#: derived from the traffic class and the credential, so it is computed the
-#: same way here rather than hard-coded.
-_CACHE_LINE = f"x-bf-cache-key: {resolve_cache_bucket(models.CACHE_TRAFFIC_CLASS_CLAUDE_CODE, 'sk-vk-TEST')}"
+#: The cache-bucket line a harness that uses the gateway's response cache
+#: carries. The bucket is derived from the traffic class and the credential,
+#: so it is computed the same way here rather than hard-coded. Claude Code
+#: does not carry one -- see ``models.CC_HARNESS`` -- so Qwen is the harness
+#: that exercises the bucket.
+_QWEN_CACHE_LINE = f"x-bf-cache-key: {resolve_cache_bucket(models.CACHE_TRAFFIC_CLASS_QWEN_CODE, 'sk-vk-TEST')}"
 
 
 def _write(path: Path, body: dict[str, Any]) -> None:
@@ -104,7 +106,7 @@ def test_cc_writes_url_and_appends_virtual_key(
     env = _read(settings)["env"]
     assert env["ANTHROPIC_BASE_URL"] == "http://127.0.0.1:8471/anthropic"
     assert env["ANTHROPIC_CUSTOM_HEADERS"] == (
-        f"X-Other: keepme\nx-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}\n{_CACHE_LINE}"
+        f"X-Other: keepme\nx-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}"
     )
 
 
@@ -121,7 +123,7 @@ def test_cc_repeat_does_not_duplicate_header(
 
     assert (
         _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"]
-        == f"x-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}\n{_CACHE_LINE}"
+        == f"x-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}"
     )
 
 
@@ -305,7 +307,7 @@ def test_force_overwrites_existing_credential(
 
     assert (
         _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"]
-        == f"x-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}\n{_CACHE_LINE}"
+        == f"x-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}"
     )
 
 
@@ -994,17 +996,25 @@ def test_the_model_sink_removes_the_route_header(
     assert models.VIRTUAL_KEY_HEADER not in headers
 
 
-def test_cc_writes_its_own_cache_bucket(
-    tmp_path: Path, backup_dir: Path, vk: str
-) -> None:
-    """Claude Code must not land in the gateway's shared cache namespace.
+def test_cc_writes_no_cache_bucket(tmp_path: Path, backup_dir: Path, vk: str) -> None:
+    """Claude Code must not engage the gateway's response cache.
 
-    Without an ``x-bf-cache-key`` header a request falls back to the
-    plugin's ``default_cache_key`` -- one bucket for the whole fleet. The
-    semantic cache is configured to exclude the system prompt from the key,
-    and Claude Code's system prompt carries the date, working directory and
-    environment, so two sessions in that shared bucket that start from the
-    same instruction can be served each other's cached response.
+    Measured against this gateway over 48h: Claude Code carried 11,077 of
+    11,103 requests, and the response cache served 43 of them -- $2.60 a
+    month against a $4,832 bill. It cost every consulted request an
+    embedding round trip and failed 59% of them outright, because a
+    Claude Code turn carries more text than the embedding model's
+    8192-token input ceiling.
+
+    It also carried a correctness hazard the bucket could not close: the
+    bucket is one static string, every Claude Code session on the host
+    shares it, and Bifrost scopes entries by virtual key and *user* --
+    and Claude Code sends no user id. Two cross-session cache hits were
+    measured in 24h, one session served another's response.
+
+    The provider's prompt cache is a different layer and is untouched: it
+    caches the request's token prefix upstream and no header this toggle
+    writes reaches it.
     """
     settings = tmp_path / "settings.json"
     _write(
@@ -1013,11 +1023,43 @@ def test_cc_writes_its_own_cache_bucket(
 
     toggles.apply(_harness("cc", settings), "bifrost")
 
-    lines = _header_lines(_read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"])
-    assert _CACHE_LINE in lines
-    bucket = resolve_cache_bucket(models.CACHE_TRAFFIC_CLASS_CLAUDE_CODE, "sk-vk-TEST")
-    assert bucket != "default", "the shared namespace is exactly what this avoids"
-    assert bucket.startswith("claude-code:")
+    headers = _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"]
+    assert "x-bf-cache-key" not in headers
+    # The credential and the route signal are still needed.
+    assert "x-bf-vk: sk-vk-TEST" in headers
+    assert _ROUTE_LINE in headers
+
+
+def test_cc_removes_a_cache_bucket_left_by_an_earlier_version(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """A stale bucket header must be taken out, not left in place.
+
+    The header names a namespace on the gateway. With the plugin's
+    ``default_cache_key`` unset, a request that names no bucket does not
+    reach the cache at all -- so the header has to actually go, or the
+    harness keeps using a cache it was moved off.
+    """
+    settings = tmp_path / "settings.json"
+    stale = resolve_cache_bucket(models.CACHE_TRAFFIC_CLASS_CLAUDE_CODE, "sk-vk-TEST")
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
+                "ANTHROPIC_CUSTOM_HEADERS": (
+                    f"x-bf-vk: sk-vk-TEST\n{_ROUTE_LINE}\nx-bf-cache-key: {stale}"
+                ),
+            }
+        },
+    )
+
+    toggles.apply(_harness("cc", settings), "bifrost")
+
+    headers = _read(settings)["env"]["ANTHROPIC_CUSTOM_HEADERS"]
+    assert "x-bf-cache-key" not in headers
+    assert "x-bf-vk: sk-vk-TEST" in headers
+    assert _ROUTE_LINE in headers
 
 
 def test_the_cache_bucket_is_derived_from_the_credential(
@@ -1031,20 +1073,23 @@ def test_the_cache_bucket_is_derived_from_the_credential(
     old key populated.
     """
     settings = tmp_path / "settings.json"
-    _write(
-        settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}}
-    )
+    _write(settings, {"model": {"generationConfig": {"customHeaders": {}}}})
 
-    toggles.apply(_harness("cc", settings), "bifrost")
-    first = _cache_bucket(_read(settings))
+    def bucket() -> str:
+        return _read(settings)["model"]["generationConfig"]["customHeaders"][
+            "x-bf-cache-key"
+        ]
+
+    toggles.apply(_harness("qwen", settings), "bifrost")
+    first = bucket()
 
     monkeypatch.setenv(models.VIRTUAL_KEY_ENV, "sk-vk-ROTATED")
-    toggles.apply(_harness("cc", settings), "bifrost", force=True)
-    second = _cache_bucket(_read(settings))
+    toggles.apply(_harness("qwen", settings), "bifrost", force=True)
+    second = bucket()
 
     assert first != second
     assert second == resolve_cache_bucket(
-        models.CACHE_TRAFFIC_CLASS_CLAUDE_CODE, "sk-vk-ROTATED"
+        models.CACHE_TRAFFIC_CLASS_QWEN_CODE, "sk-vk-ROTATED"
     )
 
 
@@ -1057,18 +1102,21 @@ def test_direct_removes_the_cache_bucket(
     pointing at a gateway the harness is no longer talking to.
     """
     settings = tmp_path / "settings.json"
-    _write(
-        settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}}
+    _write(settings, {"model": {"generationConfig": {"customHeaders": {}}}})
+
+    toggles.apply(_harness("qwen", settings), "bifrost")
+    assert _read(settings)["model"]["generationConfig"]["customHeaders"][
+        "x-bf-cache-key"
+    ], "the bucket must be there before it can be removed"
+
+    toggles.apply(_harness("qwen", settings), "direct")
+
+    headers = (
+        _read(settings)
+        .get("model", {})
+        .get("generationConfig", {})
+        .get("customHeaders", {})
     )
-
-    toggles.apply(_harness("cc", settings), "bifrost")
-    assert _cache_bucket(_read(settings)), (
-        "the bucket must be there before it can be removed"
-    )
-
-    toggles.apply(_harness("cc", settings), "direct")
-
-    headers = _read(settings)["env"].get("ANTHROPIC_CUSTOM_HEADERS", "")
     assert "x-bf-cache-key" not in headers
     assert models.ROUTE_HEADER not in headers
     assert models.VIRTUAL_KEY_HEADER not in headers
@@ -1098,7 +1146,22 @@ def test_qwen_writes_to_the_generic_block_without_a_provider_entry(
 def test_status_reports_the_cache_bucket(
     tmp_path: Path, backup_dir: Path, vk: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """``cc-url status`` reports the bucket it finds."""
+    """``status`` reports the bucket a harness that uses the cache carries."""
+    settings = tmp_path / "settings.json"
+    _write(settings, {"model": {"generationConfig": {"customHeaders": {}}}})
+
+    toggles.apply(_harness("qwen", settings), "bifrost")
+    toggles.apply(_harness("qwen", settings), "status")
+
+    out = capsys.readouterr().out
+    assert "x-bf-cache-key header:" in out
+    assert "qwen-code:" in out
+
+
+def test_status_reports_that_claude_code_skips_the_response_cache(
+    tmp_path: Path, backup_dir: Path, vk: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The status line must say *why* the bucket is absent."""
     settings = tmp_path / "settings.json"
     _write(
         settings, {"env": {"ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic"}}
@@ -1108,8 +1171,8 @@ def test_status_reports_the_cache_bucket(
     toggles.apply(_harness("cc", settings), "status")
 
     out = capsys.readouterr().out
-    assert "x-bf-cache-key header:" in out
-    assert "claude-code:" in out
+    assert "x-bf-cache-key header: absent" in out
+    assert "response cache off" in out
 
 
 def test_status_reports_the_route_header(

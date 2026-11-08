@@ -81,6 +81,20 @@ class HarnessDescriptor:
             harness uses, or ``None`` to leave the bucket to the gateway's
             default. See
             :func:`mahavishnu.bifrost.cache_headers.resolve_cache_bucket`.
+            Ignored when ``cache_enabled`` is ``False``.
+        cache_enabled: Whether this harness's requests engage the gateway's
+            **response** cache at all.
+
+            ``False`` means the toggle writes no bucket header -- and with
+            the plugin's ``default_cache_key`` unset, a request that names
+            no bucket does not reach the cache at all, so the harness
+            neither reads from it nor writes to it.
+
+            This is a decision about the *response* cache only. The
+            provider's own prompt cache is a different layer that operates
+            on the request's token prefix, is unaffected by any header
+            this toggle writes, and on the agent path is the cache that
+            actually carries the traffic.
     """
 
     key: str
@@ -92,6 +106,7 @@ class HarnessDescriptor:
     restart_note: str
     route_header: tuple[str, str] | None = None
     cache_traffic_class: str | None = None
+    cache_enabled: bool = True
 
     @property
     def backup_path(self) -> Path:
@@ -118,10 +133,32 @@ CC_HARNESS = HarnessDescriptor(
     # Anthropic responses. The route header tells the gateway which provider
     # to use; without it the bare model name is ambiguous.
     route_header=(ROUTE_HEADER, ROUTE_ANTHROPIC_NATIVE),
-    # Claude Code gets its own cache bucket. It shares neither the fleet's
-    # namespace nor another harness's, and the bucket is derived from the
-    # credential rather than chosen, so it is never the shared default.
+    # Claude Code does NOT use the gateway's response cache. Measured over
+    # 48h against this gateway: Claude Code carried 11,077 of 11,103
+    # requests (99.8%), and the response cache served 43 of them -- worth
+    # $2.60 a month against a $4,832 monthly bill. Meanwhile every
+    # consulted request paid an embedding round trip (~950 ms, measured in
+    # the plugin's own logs), and 59% of them failed the embedding
+    # outright, because a Claude Code turn routinely carries more text than
+    # the embedding model's 8192-token input ceiling.
+    #
+    # It also carried a correctness hazard. The bucket is one static
+    # string in this file, so every Claude Code session on the host shares
+    # it, and Bifrost's identity scoping partitions entries by virtual key
+    # and user -- and Claude Code sends no user id, so all of its sessions
+    # land in one scope. Two cross-session cache hits were measured in 24h
+    # (both between this repo's own probe sessions): one session was served
+    # another's response.
+    #
+    # The provider's prompt cache is untouched by any of this. It caches
+    # the request's token prefix upstream and no header this toggle writes
+    # reaches it; on this path it is already serving 91-92% of input
+    # tokens from cache, 96-99% per request in steady state.
+    #
+    # The traffic class is kept so the toggle still recognises and strips
+    # a bucket header left by an earlier version.
     cache_traffic_class=CACHE_TRAFFIC_CLASS_CLAUDE_CODE,
+    cache_enabled=False,
 )
 
 QWEN_HARNESS = HarnessDescriptor(

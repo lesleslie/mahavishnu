@@ -119,10 +119,19 @@ def test_bodai_provider_carries_the_virtual_key(bodai_provider: Any) -> None:
 
 
 def test_bodai_provider_carries_the_cache_mode(bodai_provider: Any) -> None:
-    """``cache_mode`` reaches the request as a cache header."""
+    """``cache_mode`` reaches the request as a cache header.
+
+    The type header is deliberately absent: sending it limits the lookup
+    to a single path, and the gateway's own default order -- exact match
+    first, similarity as the fallback -- is the only one that reaches both.
+    """
     headers = bodai_provider._config.default_headers
-    assert headers.get("x-bf-cache-type") == "semantic", (
+    assert headers.get("x-bf-cache-key"), (
         f"cache_mode did not reach the request; headers were {_redact_headers(headers)}"
+    )
+    assert "x-bf-cache-type" not in headers, (
+        "the cache lookup is pinned to one path; the gateway's default order "
+        "reaches both and the exact-match path costs no embedding call"
     )
 
 

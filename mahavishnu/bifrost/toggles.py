@@ -196,6 +196,23 @@ def _upsert_header_line(raw: str | None, header: str, value: str) -> str:
     return "\n".join(kept)
 
 
+def _drop_header_lines(raw: str | None, prefixes: list[str]) -> str | None:
+    """Return ``raw`` with every line starting with one of ``prefixes`` gone.
+
+    Returns ``None`` when nothing is left, so the caller can drop the
+    setting entirely rather than leave it blank -- a blank
+    ``ANTHROPIC_CUSTOM_HEADERS`` is still a configured-looking value.
+    """
+    if not isinstance(raw, str):
+        return None
+    kept = [
+        line
+        for line in raw.splitlines()
+        if line.strip() and not any(line.strip().startswith(p) for p in prefixes)
+    ]
+    return "\n".join(kept) if kept else None
+
+
 def _upsert_custom_header(
     settings: dict[str, Any], harness: HarnessDescriptor, header: str, value: str
 ) -> None:
@@ -408,10 +425,80 @@ def _set_cache_header(
 def _read_cache_header(
     settings: dict[str, Any], harness: HarnessDescriptor
 ) -> str | None:
-    """Read this harness's cache-bucket header value, or ``None``."""
+    """Read this harness's cache-bucket header value, or ``None``.
+
+    The value is read even for a harness that does not use the response
+    cache, so a header left behind by an earlier version can be found and
+    removed.
+    """
     if harness.cache_traffic_class is None:
         return None
     return _read_custom_header(settings, harness, CACHE_KEY_HEADER)
+
+
+def _clear_cache_header(settings: dict[str, Any], harness: HarnessDescriptor) -> None:
+    """Remove the cache-bucket header from the sink this harness reads.
+
+    Only the bucket header goes. The virtual key and the route signal are
+    still wanted while the harness points at the gateway.
+    """
+    if harness.credential_sink == "env":
+        env = _env_block(settings)
+        kept = _drop_header_lines(
+            env.get(CC_CUSTOM_HEADERS_VAR), [f"{CACHE_KEY_HEADER}:"]
+        )
+        if kept is None:
+            env.pop(CC_CUSTOM_HEADERS_VAR, None)
+        else:
+            env[CC_CUSTOM_HEADERS_VAR] = kept
+        return
+
+    model = settings.get("model")
+    if not isinstance(model, dict):
+        return
+    _, entry = _active_provider(settings)
+    target = entry if entry is not None else model
+    candidates = [model] if target is model else [target, model]
+    for candidate in candidates:
+        generation = candidate.get("generationConfig")
+        if not isinstance(generation, dict):
+            continue
+        headers = generation.get("customHeaders")
+        if not isinstance(headers, dict):
+            continue
+        headers.pop(CACHE_KEY_HEADER, None)
+        if not headers:
+            generation.pop("customHeaders", None)
+
+
+def _sync_cache_header(
+    settings: dict[str, Any], harness: HarnessDescriptor, principal: str | None
+) -> str:
+    """Make the harness's cache-bucket header match what it should carry.
+
+    A harness that does not use the response cache must not carry the
+    header at all: with the plugin's ``default_cache_key`` unset, a
+    request that names no bucket does not reach the cache at all, which
+    is what keeps the harness out of it. A harness that does use the
+    cache carries a bucket derived from the credential that will
+    authenticate the request.
+
+    Returns:
+        A short description of the change, or ``""`` when nothing was
+        needed.
+    """
+    if harness.cache_traffic_class is None:
+        return ""
+    if not harness.cache_enabled:
+        if _read_cache_header(settings, harness) is None:
+            return ""
+        _clear_cache_header(settings, harness)
+        return f"{CACHE_KEY_HEADER}: removed"
+    bucket = resolve_cache_bucket(harness.cache_traffic_class, principal)
+    if _read_cache_header(settings, harness) == bucket:
+        return ""
+    _set_cache_header(settings, harness, principal)
+    return f"{CACHE_KEY_HEADER}: {bucket}"
 
 
 def _set_credential(
@@ -448,17 +535,11 @@ def _pop_credential(settings: dict[str, Any], harness: HarnessDescriptor) -> Non
 
     if harness.credential_sink == "env":
         env = _env_block(settings)
-        raw = env.get(CC_CUSTOM_HEADERS_VAR)
-        if isinstance(raw, str):
-            kept = [
-                ln
-                for ln in raw.splitlines()
-                if not any(ln.strip().startswith(prefix) for prefix in prefixes)
-            ]
-            if kept:
-                env[CC_CUSTOM_HEADERS_VAR] = "\n".join(kept)
-            else:
-                env.pop(CC_CUSTOM_HEADERS_VAR, None)
+        kept = _drop_header_lines(env.get(CC_CUSTOM_HEADERS_VAR), prefixes)
+        if kept is None:
+            env.pop(CC_CUSTOM_HEADERS_VAR, None)
+        else:
+            env[CC_CUSTOM_HEADERS_VAR] = kept
         return
 
     model = settings.get("model")
@@ -679,10 +760,17 @@ def _action_bifrost(
         if harness.cache_traffic_class is not None
         else None
     )
-    cache_installed = (
-        harness.cache_traffic_class is None
-        or _read_cache_header(settings, harness) == expected_bucket
-    )
+    current_bucket = _read_cache_header(settings, harness)
+    if not harness.cache_enabled:
+        # A harness that does not use the response cache is "installed"
+        # when no bucket header is present -- so a header left behind by an
+        # earlier version reads as something to remove, not something to
+        # keep in sync.
+        cache_installed = current_bucket is None
+    elif harness.cache_traffic_class is None:
+        cache_installed = True
+    else:
+        cache_installed = current_bucket == expected_bucket
     already_configured = (
         existing == url and _read_credential(settings, harness) == virtual_key
     )
@@ -723,19 +811,18 @@ def _action_bifrost(
             header, value = route_header
             _set_route_header(settings, harness)
             installed.append(f"{header}: {value}")
-        if harness.cache_traffic_class is not None and not cache_installed:
-            _set_cache_header(settings, harness, principal)
-            installed.append(
-                f"{CACHE_KEY_HEADER}: {_read_cache_header(settings, harness)}"
-            )
+        if not cache_installed:
+            change = _sync_cache_header(settings, harness, principal)
+            if change:
+                installed.append(change)
         if dry_run:
             typer.echo(
-                f"[dry-run] would install {', '.join(installed)} in {harness.settings_path}"
+                f"[dry-run] would apply {', '.join(installed)} in {harness.settings_path}"
             )
             return
         _write_settings(harness.settings_path, settings)
         for item in installed:
-            typer.echo(f"installed {item} in {harness.settings_path}")
+            typer.echo(f"applied {item} in {harness.settings_path}")
         if virtual_key is None:
             _warn_no_virtual_key(harness)
         typer.echo(f"note: {harness.restart_note}")
@@ -770,9 +857,10 @@ def _action_bifrost(
     # It travels with the route header because both are routing concerns
     # rather than credentials. The bucket follows the credential that will
     # actually authenticate the request: the virtual key when the toggle is
-    # writing one, otherwise the one already in the settings.
-    if harness.cache_traffic_class is not None and not cache_installed:
-        _set_cache_header(settings, harness, principal)
+    # writing one, otherwise the one already in the settings. A harness
+    # that does not use the response cache has the header removed instead.
+    if not cache_installed:
+        _sync_cache_header(settings, harness, principal)
 
     if dry_run:
         typer.echo(
@@ -942,7 +1030,12 @@ def _action_status(harness: HarnessDescriptor) -> None:
         )
     if harness.cache_traffic_class is not None:
         bucket = _read_cache_header(settings, harness)
-        typer.echo(f"{CACHE_KEY_HEADER} header: {bucket if bucket else 'absent'}")
+        if bucket:
+            typer.echo(f"{CACHE_KEY_HEADER} header: {bucket}")
+        elif harness.cache_enabled:
+            typer.echo(f"{CACHE_KEY_HEADER} header: absent")
+        else:
+            typer.echo(f"{CACHE_KEY_HEADER} header: absent (response cache off)")
     typer.echo(
         f"backup at {harness.backup_path}: {'yes' if harness.backup_path.exists() else 'no'}"
     )

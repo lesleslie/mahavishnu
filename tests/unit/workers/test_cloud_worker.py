@@ -274,20 +274,42 @@ class TestBuildFallbackChainGatewayHeaders:
     def test_cache_type_follows_the_configured_mode(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """``cache_mode`` reaches the request as ``x-bf-cache-type``."""
+        """``direct`` reaches the request as ``x-bf-cache-type: direct``."""
         _enable_bifrost(monkeypatch, routes=("qwen_route",))
         monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
-        monkeypatch.setenv("ONEIRIC_BIFROST_CACHE_MODE", "semantic")
+        monkeypatch.setenv("ONEIRIC_BIFROST_CACHE_MODE", "direct")
 
         captured = self._capture(monkeypatch)
         headers = captured[0].providers["minimax"]["default_headers"]
-        assert headers["x-bf-cache-type"] == "semantic"
+        assert headers["x-bf-cache-type"] == "direct"
         # The bucket is derived from the traffic class and the credential
         # the request presents, so it is not the shared default.
         assert headers["x-bf-cache-key"] == resolve_cache_bucket(
             TRAFFIC_CLASS_WORKER, "sk-bf-test-key"
         )
         assert headers["x-bf-cache-key"] != "default"
+
+    def test_semantic_mode_leaves_the_lookup_to_the_gateway(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``semantic`` must not pin the lookup to the semantic path.
+
+        Sending ``x-bf-cache-type`` limits the lookup to one path. Leaving
+        it off is Bifrost's documented default -- the free exact-match path
+        first, similarity as the fallback -- and the only order in which a
+        request over the embedding model's input ceiling still gets a
+        lookup at all.
+        """
+        _enable_bifrost(monkeypatch, routes=("qwen_route",))
+        monkeypatch.setenv("BIFROST_VIRTUAL_KEY", "sk-bf-test-key")
+        monkeypatch.setenv("ONEIRIC_BIFROST_CACHE_MODE", "semantic")
+
+        captured = self._capture(monkeypatch)
+        headers = captured[0].providers["minimax"]["default_headers"]
+        assert "x-bf-cache-type" not in headers
+        assert headers["x-bf-cache-key"] == resolve_cache_bucket(
+            TRAFFIC_CLASS_WORKER, "sk-bf-test-key"
+        )
 
     def test_off_mode_suppresses_the_cache_write(
         self, monkeypatch: pytest.MonkeyPatch
@@ -331,7 +353,7 @@ class TestBuildFallbackChainGatewayHeaders:
             TRAFFIC_CLASS_WORKER, None
         )
         assert headers["x-bf-cache-key"] != "default"
-        assert headers["x-bf-cache-type"] == "semantic"
+        assert "x-bf-cache-type" not in headers
 
 
 class TestDefaultModelIsNotRetired:

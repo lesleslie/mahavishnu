@@ -428,12 +428,27 @@ translated into the request headers by
 
 | `cache_mode` | Headers sent | Effect at the gateway |
 |---|---|---|
-| `off` | `x-bf-cache-no-store: true` | The response is **not written** to the cache. Reads still happen — Bifrost v1.5/v1.6 exposes no header that suppresses the read. |
-| `direct` | `x-bf-cache-type: direct` | Only the exact-match path is searched. |
-| `semantic` | `x-bf-cache-type: semantic` | Only the vector-similarity path is searched. |
+| `off` | `x-bf-cache-no-store: true` | The response is **not written** to the cache, and the request points at a bucket nothing was ever written to, so it cannot be served from one either. |
+| `direct` | `x-bf-cache-type: direct` | Only the exact-match path is searched. No embedding is generated, so this mode costs nothing beyond a vector-store lookup. |
+| `semantic` | *no type header* | The gateway's own default order: the exact-match path first, vector similarity as the fallback. Similarity caching is on — it is the fallback path. |
 
 Every mode also sends `x-bf-cache-key` to scope entries to a bucket
 (`default` unless a caller names another).
+
+> **Why `semantic` sends no type header.** Sending `x-bf-cache-type` *limits*
+> the lookup to a single path; omitting it is Bifrost's documented default,
+> which tries the direct path first and falls back to the semantic one. That
+> order is the economically correct one — a direct match is a hash of the
+> input and costs nothing beyond a vector-store lookup, while a semantic match
+> pays one embedding call — and it is the only order in which a request whose
+> text exceeds the embedding model's 8192-token input ceiling still gets a
+> lookup at all. The direct path hashes rather than embeds, so it has no
+> ceiling.
+>
+> Measured against this gateway: pinning a request to the semantic path gave
+> 514 of 869 consulted requests no lookup whatsoever (the embedding was
+> rejected outright) and forfeited every exact repeat. See
+> [The two caches](#the-two-caches).
 
 > **Callers within a traffic class still share a bucket.** The bucket
 > is derived — `<traffic-class>:<hash of the gateway virtual key>` — so it
@@ -448,35 +463,52 @@ Every mode also sends `x-bf-cache-key` to scope entries to a bucket
 > `BIFROST_VIRTUAL_KEY` separates the buckets without a code change.
 > Recorded as an open risk in the plan.
 
-**The harnesses' buckets.** `mahavishnu bifrost cc-url bifrost` writes
-`x-bf-cache-key: claude-code:<hash>` into Claude Code's
-`ANTHROPIC_CUSTOM_HEADERS`, and `mahavishnu bifrost qwen-url bifrost`
-writes `x-bf-cache-key: qwen-code:<hash>` into the matching Qwen provider
-entry's `generationConfig.customHeaders`. Both sit alongside `x-bf-vk` and
-`x-bf-route`. Without them, a harness's requests carry no bucket header and
-the plugin has no key to resolve — so with `default_cache_key` unset
-(upstream's default) the request does not reach the cache at all.
+**The harnesses' buckets.** `mahavishnu bifrost qwen-url bifrost` writes
+`x-bf-cache-key: qwen-code:<hash>` into the matching Qwen provider entry's
+`generationConfig.customHeaders`, alongside `x-bf-vk` and `x-bf-route`.
+Without it, a harness's requests carry no bucket header and the plugin has no
+key to resolve — so with `default_cache_key` unset (upstream's default) the
+request does not reach the cache at all.
 
-That last part is the reason it exists. Reproduced live on 2026-10-30: two
-requests with the *same* user turn and *different* system prompts — the
-shape of two Claude Code sessions in two directories — came back
-`cache_hit: true`, `hit_type: "direct"`, the same `cache_id`, served in
-1–47 ms instead of ~700 ms. The system prompt carries the date, working
-directory and environment, and the cache was configured to exclude it from
-the key, so without a bucket of its own one session could be served
-another's cached response.
+**Claude Code carries no bucket at all**, and that is deliberate. The bucket
+was introduced to stop two Claude Code sessions colliding — the shape was
+reproduced live on 2026-10-30: two requests with the *same* user turn and
+*different* system prompts came back `cache_hit: true`, `hit_type: "direct"`,
+the same `cache_id`, served in 1–47 ms instead of ~700 ms. But a bucket does
+not close that hole: it is one static string, so every Claude Code session on
+the host shares it, and Bifrost scopes cache entries by virtual key and
+*user* — and Claude Code sends no user id, so all of its sessions land in one
+scope. Two cross-session cache hits were measured in 24h on 2026-11-07: one
+session served another's response.
+
+Taking Claude Code out of the response cache closes that hole for good and
+costs almost nothing: over 48h the cache served 43 of Claude Code's 11,077
+requests — worth **$2.60 a month** against a **$4,832** monthly bill. The
+provider's prompt cache is a different layer, is unaffected by any header the
+toggle writes, and is already serving 91–92% of input tokens from cache on
+this path. See [The two caches](#the-two-caches).
+
+> **The exclusion depends on `default_cache_key` staying unset.** A request
+> that names no bucket reaches the cache only if the plugin's
+> `default_cache_key` names one — upstream's rule is that with neither set,
+> `resolveCacheKey` returns false and the plugin exits before any lookup or
+> write. Set a default and Claude Code would fall into it, with every session
+> on the host in one namespace. The two facts are coupled, so they are
+> asserted together in
+> `tests/unit/test_bifrost_semantic_cache_config.py::test_claude_codes_exclusion_from_the_cache_holds`.
+> The live store was checked on 2026-11-08: `config_plugins.config` carries no
+> `default_cache_key`.
 
 Two limits worth stating plainly:
 
-- **It separates Claude Code from the fleet, not from itself.** The bucket
-  is written once into `~/.claude/settings.json`, so every Claude Code
-  session on the host shares it. What keeps two sessions apart is the
-  system prompt, which the cache key now carries: it holds the working
-  directory, the date and the project instructions, so two sessions in
-  two directories hash to two different keys. The conversation history the
-  key also carries helps, and the gateway's
-  `conversation_history_threshold: 8` stops caching entirely past eight
-  messages, so a long session is not cached at all.
+- **It separates a harness from the fleet, not from itself.** The bucket is
+  written once into the harness's settings, so every session of that harness
+  on the host shares it. What keeps two sessions apart is the system prompt,
+  which the cache key carries: it holds the working directory, the date and
+  the project instructions, so two sessions in two directories hash to two
+  different keys. The conversation history the key also carries helps, and the
+  gateway's `conversation_history_threshold: 16` stops caching entirely past
+  sixteen messages, so a long session is not cached at all.
 - **A bucket is not an authorisation boundary.** The gateway does not check
   that the presented credential owns the bucket it names; the derivation is
   a convention that keeps this deployment honest, not an enforcement.
@@ -508,6 +540,62 @@ process environment. Verified by probing `caller_id`: a value set in
 > Mirror the variables into the service's plist
 > (`EnvironmentVariables`) — the same pattern the mahavishnu plist already
 > uses for `MAHAVISHNU_OTEL_METRICS_ENABLED`.
+
+### The two caches
+
+Bifrost's admin dashboard shows a cache hit rate per provider. That number
+and this gateway's own semantic cache measure **different layers**, and
+confusing them is what makes the second one look broken.
+
+| | Provider prompt cache | Gateway semantic cache |
+|---|---|---|
+| Caches | the request's **token prefix** | the whole **response** |
+| Key | a hash of a byte-stable prefix | an embedding, compared by cosine similarity |
+| Scoped by | the request itself | the operator's `x-bf-cache-key` bucket |
+| Saves | input tokens | the whole upstream call |
+| On a 250k-token agent request | works — only the tail is recomputed | the embedding is rejected; no lookup happens |
+| On an agent loop (the prompt changes every turn) | ~91–92% of input tokens | ~0.4% of requests |
+
+The provider cache is the one that matters on this path, and it needs nothing
+from us: Claude Code resends the same system prompt, tool definitions and
+transcript every turn, so the *front* of the request is stable by
+construction and the provider caches it. Measured over 48h on this gateway:
+
+| model | requests | prompt tokens | read from the provider cache |
+|---|---|---|---|
+| `MiniMax-M3` | 17,820 | 3,367,102,459 | 91.5% |
+| `MiniMax-M3.1-Flash` | 5,336 | 1,008,293,993 | 92.6% |
+
+Per request the steady state is 96–99%: each request's cached read is
+*exactly* the previous request's prompt count, so only the newest turn is
+recomputed.
+
+The gateway's semantic cache, meanwhile, served 43 requests in 24h — worth
+**$2.60 a month** against a **$4,832** monthly bill. Its ceiling, even if it
+hit every Claude Code request, is the output tokens alone (~$279/month), and
+that would need a 100% hit rate on requests whose prompts are all different.
+
+So a whole-response cache is the wrong tool for an agent loop and the prefix
+cache is the right one. The response cache earns its keep on the short,
+repetitive traffic the repo's own clients send — the Agno and worker paths —
+and is kept off the Claude Code path for that reason.
+
+> **The provider cache has a lever this gateway is not using.** Bifrost
+> supports a per-provider `prompt_cache` block whose `ttl` may be `"1h"` —
+> upstream's default is 5 minutes, which is the provider's default ephemeral
+> cache lifetime — and `cache_control_injection_points` to place breakpoints
+> on specific messages. Upstream's rule is "caller markers always win", and
+> Claude Code sends its own `cache_control` markers, so `auto_inject` is a
+> no-op while it does.
+>
+> The cliff is measurable here: the uncached fraction runs 8% within five
+> minutes of the previous request, 22% after ten, and 99.9% after thirty.
+> About 146 requests a day land past the cliff and re-process ~15.3M tokens.
+> Extending the TTL would bound that at roughly **$70/month** — but MiniMax
+> charges $0.375/M to *write* a cache against $0.30/M for uncached input, so
+> a re-written prefix that is read only once costs more than not caching it.
+> Whether Bifrost's injection would apply on top of Claude Code's markers, and
+> whether MiniMax honours a requested one-hour TTL, is **not yet tested**.
 
 ## Mahavishnu Worker Defaults
 
@@ -969,10 +1057,11 @@ Configured values and why each one is what it is:
 | `embedding_model` | `text-embedding-3-small` | 1536-dim; matches the Redis index exactly. |
 | `dimension` | `1536` | **Must** equal the model's native output size. The Redis `VECTOR` attribute is created with a fixed `dim` and RediSearch cannot resize it in place. |
 | `threshold` | `0.95` | Cosine floor for a similarity hit. `0.8` is Bifrost's generic default, tuned for single short prompts; here the embedding covers a whole conversation, so it is loose. `resolveCacheThreshold` takes `max(config, per-request)`, so a higher floor can only be raised. Retuned from `0.86` on 2026-11-01: all 8 measured legitimate paraphrases score ≥ `0.9545`, and the `0.870` same-session collision class now misses instead of serving the prior turn's response. |
-| `conversation_history_threshold` | `16` | Bifrost skips caching **entirely** — both layers — for requests with more than this many messages. Its default of `3` disables the cache for nearly all agentic traffic, which resends the full transcript every turn. Raised from `8` on 2026-11-01: 98.6% of the admitted population exceeds the embedding ceiling and therefore runs the safe direct path, so only 1.4% can reach the collision-prone semantic path. |
+| `conversation_history_threshold` | `16` | Bifrost skips caching **entirely** — both layers — for requests with more than this many messages. Its default of `3` disables the cache for nearly all agentic traffic, which resends the full transcript every turn. Raised from `8` on 2026-11-01: 98.6% of the admitted population exceeds the embedding ceiling and therefore runs the safe direct path, so only 1.4% can reach the collision-prone semantic path. That last part only holds because the client does **not** pin the lookup with `x-bf-cache-type` — see [`cache_mode`](#cache_mode). **The name reads the wrong way round:** it is the point *past which caching stops*, not a count of messages included in the key. Bifrost's Helm chart docs still carry the older wording, and lowering it skips *more* traffic, not less. |
 | `exclude_system_prompt` | `false` | **Upstream's default, and it is the safe one.** The system prompt carries the persona, the working directory, the date and the project instructions — the things that distinguish one session from another. Dropping it from the key lets two requests with identical messages but different system prompts share an entry, and one be served the other's cached response. That collision was reproduced live against this gateway before the setting was reverted. **Cost:** the system prompt now counts against the embedding model's input budget (see the 8192-token limit below), so a long session can fall off the *semantic* path sooner. The *direct* path hashes the input rather than embedding it, so it is unaffected. |
 | `default_cache_key` | *unset* | Upstream's default is empty, and it is the safe one: with no per-request `x-bf-cache-key` and no default, `resolveCacheKey` returns false and the plugin's pre-LLM hook exits before any lookup or write. Setting it to a fixed value puts every client that does not name a bucket into one shared namespace. Callers that want the cache name their own. |
 | `cache_by_model` / `cache_by_provider` | `true` | Keep model/provider in the filter so a cached response never crosses providers. |
+| `cache_tool_call_responses` | `false` | Upstream's default, pinned here so an upgrade cannot widen it. A replayed tool call runs in a later caller's agent loop with arguments chosen for someone else's prompt. Verified against the live store: 0 of the 67 entries in the `BifrostSemanticCachePlugin` Redis namespace carry a client tool call. |
 
 Two upstream requirements that are easy to miss:
 
@@ -981,11 +1070,19 @@ Two upstream requirements that are easy to miss:
    dispatching upstream. If `text-embedding-3-small` is absent from that list,
    every embedding attempt fails locally with `no_key_supports_model` and the
    request never reaches OpenAI — so no amount of upstream credit fixes it.
-1. **The embedding model has an 8192-token input limit.** The plugin embeds the
-   *entire* conversation with no truncation, so long agentic transcripts exceed
-   the limit and the embedding request is rejected. The plugin degrades
-   gracefully — it logs the skip and falls through to the upstream provider —
-   but those requests are never cached semantically.
+1. **The embedding model has an 8192-token input limit.** The plugin embeds
+   the request's key material with no truncation, and long agentic turns
+   exceed the limit — the embedding request comes back as
+   `Invalid 'input': maximum context length is 8192 tokens`. The plugin
+   degrades gracefully — it logs the skip and falls through to the upstream
+   provider — but those requests are never cached semantically.
+
+   Measured here (24h): 514 of the 869 consulted requests failed this way.
+   The embedded text is a *subset* of the request, not the request — a
+   request of 127,696 prompt tokens embedded without incident, while one of
+   9,047 tokens was rejected. The overflow is in the conversation content that
+   gets embedded (a large tool result, a long turn), **not** in the system
+   prompt, so `exclude_system_prompt` does not fix it.
 
 ### Verifying the cache
 
