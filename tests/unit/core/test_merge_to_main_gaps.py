@@ -33,6 +33,7 @@ from mahavishnu.core.merge_review_dispatcher import (
 from mahavishnu.core.merge_to_main import (
     EXIT_OK,
     _default_dispatcher,
+    _format_verdicts,
     _write_merge_log,
     parse_verdict,
     run_pipeline,
@@ -138,6 +139,32 @@ class TestReplyExtraction:
     def test_pool_success_payload_has_no_failure_message(self) -> None:
         payload = json.dumps({"status": "completed", "output": "the verdict"})
         assert _pool_failure_message(_parse_pool_result(payload)) is None
+
+
+class TestTheVerdictsAreReported:
+    """Spec §4.4 wants a stderr message naming the reviewer that failed."""
+
+    def test_each_reviewer_and_its_decision_is_named(self) -> None:
+        text = _format_verdicts(
+            [
+                {"agent": "python-pro", "decision": "pass", "note": "looks good"},
+                {"agent": "code-reviewer", "decision": "block", "note": "timed out"},
+            ]
+        )
+        assert "python-pro: pass" in text
+        assert "code-reviewer: block" in text
+
+    def test_the_reason_survives_into_the_report(self) -> None:
+        text = _format_verdicts(
+            [
+                {
+                    "agent": "code-reviewer",
+                    "decision": "block",
+                    "note": "the reviewer did not finish within the dispatch timeout",
+                }
+            ]
+        )
+        assert "did not finish within the dispatch timeout" in text
 
 
 class TestDispatcher:

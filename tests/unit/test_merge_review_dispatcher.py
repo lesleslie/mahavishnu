@@ -16,6 +16,7 @@ as a block.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Self
 
 import pytest
@@ -26,6 +27,7 @@ from mahavishnu.core.merge_review_dispatcher import (
     _extract_reply_text,
     _parse_pool_result,
     _pool_failure_message,
+    build_review_prompt,
     dispatch_review_async,
 )
 from mahavishnu.core.merge_to_main import parse_verdict
@@ -223,6 +225,38 @@ class TestTheReviewBudget:
         At 300 s the worker was cut off mid-review; the pool reported a
         timeout with a partial pane, the reply carried no verdict, and
         every merge blocked on a "malformed verdict" that was really a
-        reviewer that never finished.
+        reviewer that never finished. At 900 s the reviewer was still
+        reading the changed files, so the budget has to carry a full
+        read of the diff with room to spare.
         """
-        assert REVIEW_DISPATCH_TIMEOUT >= 900
+        assert REVIEW_DISPATCH_TIMEOUT >= 1800
+
+
+class TestTheReviewPrompt:
+    """The prompt has to bound the work, not just describe it.
+
+    A reviewer that runs the test suite spends its whole budget there:
+    the first reviewer on this branch spent ten of its fourteen minutes
+    in ``pytest`` runs, over a suite the merge pipeline runs again as
+    its own quality gate. The prompt says the suite is not the
+    reviewer's job.
+    """
+
+    def test_the_prompt_keeps_the_suite_out_of_the_review(self) -> None:
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+        assert "the merge pipeline runs the quality gate" in prompt
+
+    def test_the_prompt_keeps_the_reviewer_read_only(self) -> None:
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+        assert "do not modify" in prompt.lower()
+
+    def test_the_prompt_still_asks_for_the_verdict_block(self) -> None:
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+        assert "<verdict>" in prompt
+        assert "decision: pass|needs_adjustment|block" in prompt
+
+    def test_the_prompt_still_points_at_the_worktree(self) -> None:
+        """Whichever branch the diff takes, the reviewer is sent to the tree."""
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+        assert "Worktree: /tmp" in prompt
+        assert "worktree path above" in prompt

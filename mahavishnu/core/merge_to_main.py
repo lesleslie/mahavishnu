@@ -207,6 +207,20 @@ def run_review(
     return results
 
 
+def _format_verdicts(verdicts: list[dict[str, str]]) -> str:
+    """The reviewer verdicts, one line each, for the operator's stderr.
+
+    Spec §4.4 asks for a stderr message naming the reviewer that
+    failed. Without it a blocked merge says only "review failure": the
+    operator has to guess which reviewer was unhappy and why -- and a
+    reviewer that timed out looks exactly like one that had no opinion.
+    """
+    lines = ["[merge_to_main] stage 2 ensemble review:"]
+    for verdict in verdicts:
+        lines.append(f"  {verdict['agent']}: {verdict['decision']} - {verdict['note']}")
+    return "\n".join(lines)
+
+
 def aggregate_verdicts(verdicts: list[dict[str, str]]) -> str:
     """Apply the spec §4.4 verdict rule order (priority high to low).
 
@@ -1121,6 +1135,7 @@ def run_pipeline(
             dispatcher=_default_dispatcher,
         )
         verdict = aggregate_verdicts(verdicts)
+        print(_format_verdicts(verdicts), file=sys.stderr)
         if verdict in {"iterate", "block"}:
             return EXIT_REVIEW_FAILURE
 

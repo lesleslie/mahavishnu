@@ -55,8 +55,9 @@ DEFAULT_MCP_URL: str = "http://localhost:8680/mcp"
 #: answers. At 300 s the worker was cut off mid-review, the pool
 #: reported a timeout carrying a partial pane, and the reply had no
 #: verdict in it -- so every merge blocked on a "malformed verdict"
-#: that was really a reviewer that never finished.
-REVIEW_DISPATCH_TIMEOUT: float = 900.0
+#: that was really a reviewer that never finished. At 900 s the reviewer
+#: was still working through the changed files.
+REVIEW_DISPATCH_TIMEOUT: float = 1800.0
 
 #: Bound on the diff context embedded in the review prompt. A repo-wide
 #: format pass touches >1000 files; pasting the whole diff would blow
@@ -153,6 +154,12 @@ def build_review_prompt(branch: str, base: str, worktree_root: Path) -> str:
             "The diff could not be summarized automatically; read it from "
             "the worktree path above."
         )
+    parts.append(
+        "You are reviewing, not implementing: do not modify any file in "
+        "the worktree, and do not run the test suite -- the merge pipeline "
+        "runs the quality gate after this review. If a claim needs "
+        "confirming, run only the narrowest test that shows it."
+    )
     parts.append(
         "Return your verdict as exactly: "
         "<verdict>decision: pass|needs_adjustment|block note: ...</verdict>"
