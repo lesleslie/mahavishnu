@@ -39,7 +39,7 @@ Mahavishnu is repo-centric orchestration infrastructure optimized for the Bodai 
 - **Multi-pool orchestration**: Horizontal scaling across local, delegated, cloud workers
 - **WebSocket infrastructure**: Real-time workflow monitoring
 - **Content ingestion**: Webpages, blogs, books, OpenTelemetry traces
-- **MCP tools**: 161 tools registered on a `full`-profile server (27 inline core + 134 profile-gated across 39 profile-gated groups). Source holds 197 tool definitions; 43 of them live in three modules the server never imports.
+- **MCP tools**: 178 tools registered on a `full`-profile server (27 inline core + 150 profile-gated + `discover_tools`, across 39 profile-gated groups). Source holds 197 tool definitions; 43 of them live in three modules the server never imports.
 
 **Product posture**: Internal-first. MCP-first. Control-plane scope.
 
@@ -401,7 +401,7 @@ All MCP tools are registered in `mahavishnu/mcp/tools/` using FastMCP decorators
 
 Tools are gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable:
 
-- `full` (default): All 39 profile-gated groups + 27 inline core tools = 161 registered tools
+- `full` (default): All 39 profile-gated groups + 27 inline core tools + `discover_tools` = 178 registered tools
 - `standard`: Core 12 groups (terminal, pool, worker, messaging, git, session-buddy, coordination, ecosystem, health, capability, ...)
 - `minimal`: Health probes only
 
@@ -409,7 +409,7 @@ Profile configuration is in `mahavishnu/mcp/tools/profiles.py`. A `discover_tool
 
 ## Tool Preferences
 
-This project ships a Mahavishnu control plane with 161 MCP tools (134 profile-gated + 27 inline core) across 39 profile-gated groups. For non-trivial work, prefer Mahavishnu workers over direct local invocations.
+This project ships a Mahavishnu control plane with 178 MCP tools (150 profile-gated + 27 inline core) across 39 profile-gated groups. For non-trivial work, prefer Mahavishnu workers over direct local invocations.
 
 ### When to use Mahavishnu workers
 
@@ -775,10 +775,26 @@ Mahavishnu-specific guidance:
 - **MCP tools**: `mahavishnu/mcp/tools/` - Tool implementations
   - `mahavishnu/mcp/tools/pool_tools.py` - Pool management (10 tools)
   - `mahavishnu/mcp/tools/worker_tools.py` - Worker orchestration (8 tools)
-  - `mahavishnu/mcp/tools/coordination_tools.py` - Issues, todos, dependencies (13 tools)
+  - `mahavishnu/mcp/tools/coordination_tools.py` - Issues, todos, dependencies (15 tools; **not registered** — see the dead-module note below)
   - `mahavishnu/mcp/tools/repository_messaging_tools.py` - Inter-repo messaging (7 tools)
   - `mahavishnu/mcp/tools/otel_tools.py` - OpenTelemetry trace ingestion (4 tools)
   - `mahavishnu/mcp/tools/session_buddy_tools.py` - Session-Buddy integration (7 tools)
+
+#### Unregistered tool modules
+
+Three modules define tools that the server never registers — nothing
+outside their own unit tests imports them, so their tools are absent from
+`tools/list` and cannot be called:
+
+| Module | Tools | Status |
+|---|---|---|
+| `desktop_automation_tools.py` | 23 | Dead. Desktop automation is served by the `cmux-cua` MCP server (AX-native, background-safe); 4 of these are non-functional even if wired (`resize_window`, `move_window`, `list_menus`, `get_ui_elements`). |
+| `coordination_tools.py` | 15 | Dead. Backed by the `coordination:` block in `settings/ecosystem.yaml`, not by session-buddy. The todo half duplicates session-buddy's `tasks_*`; the issue half has no equivalent elsewhere. |
+| `learning_pipeline_tools.py` | 5 | Dead, and deliberately so — `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md` blocks the wiring branch on an authentication-identity fix. ADR 012 assigns the pipeline itself to mahavishnu. |
+
+`mcp__mahavishnu__get_tool_versions` still lists all 43 of these names
+(its registry has 206 entries against a live surface of 178), so treat
+that map as a historical inventory, not a live one.
 
 ### Pool Management
 

@@ -293,7 +293,7 @@ mahavishnu show-role orchestrator
 mahavishnu mcp start
 ```
 
-The CLI starts the MCP server on `http://127.0.0.1:8680` by default. The lower-level `FastMCPServer.start()` API defaults to port 3000 unless a port is supplied. The server's tool surface is built from 161 tools: 27 inline core tools plus 134 profile-gated tools across 39 profile groups. Tool exposure is controlled by `MAHAVISHNU_TOOL_PROFILE`: `full` (default), `standard`, or `minimal`.
+The CLI starts the MCP server on `http://127.0.0.1:8680` by default. The lower-level `FastMCPServer.start()` API defaults to port 3000 unless a port is supplied. The server's tool surface is built from 178 tools: 27 inline core tools plus 150 profile-gated tools (and the always-on `discover_tools` meta-tool) across 39 profile groups. Tool exposure is controlled by `MAHAVISHNU_TOOL_PROFILE`: `full` (default), `standard`, or `minimal`.
 
 ### 5. Use Admin Shell
 
@@ -511,7 +511,7 @@ See **Goal-Driven Teams Documentation** for complete guide with examples, skill 
 
 ## MCP Tools
 
-Mahavishnu's MCP server is built from **161 tools** (134 profile-gated + 27 inline core) across 39 tool groups (see `MAHAVISHNU_TOOL_PROFILE` for gating). The detailed inventory is maintained in the [MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md).
+Mahavishnu's MCP server is built from **178 tools** (150 profile-gated + 27 inline core) across 39 profile-gated groups (see `MAHAVISHNU_TOOL_PROFILE` for gating). The detailed inventory is maintained in the [MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md).
 
 ### Pool Management (10 tools)
 

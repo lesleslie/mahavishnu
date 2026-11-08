@@ -181,16 +181,36 @@ def init_terminal_manager(server: FastMCPServer | Any) -> TerminalManager | None
     access blew up with 'MahavishnuApp' object has no attribute
     'app' the moment the call was made with a MahavishnuApp
     instance.
+
+    The two shapes differ in where the config hangs, so both are
+    resolved here rather than at the call site:
+
+    - ``MahavishnuApp`` exposes ``.config`` directly.
+    - ``FastMCPServer`` exposes ``.app.config`` — it has no
+      top-level ``.config`` attribute.
+
+    Reading only ``server.config`` therefore returned None for every
+    ``FastMCPServer`` caller, which silently skipped the whole
+    ``terminal_*`` tool group (the group is gated on a non-None
+    terminal manager).
     """
     try:
-        # Defensive: server may be FastMCPServer (which has no `.config`) or
-        # MahavishnuApp (which does). The historical annotation was wrong.
+        # Defensive: server may be FastMCPServer (config under ``.app``)
+        # or MahavishnuApp (config at the top level). The historical
+        # annotation was wrong, so resolve both shapes.
         config = getattr(server, "config", None)
+        if config is None:
+            app = getattr(server, "app", None)
+            config = getattr(app, "config", None)
         if config is None:
             logger.warning("init_terminal_manager: server has no .config attribute")
             return None
         terminal_config = config.terminal
         mcp_client = getattr(server, "mcp_client", None)
+        if mcp_client is None:
+            # FastMCPServer keeps the client on its app, not on itself.
+            app = getattr(server, "app", None)
+            mcp_client = getattr(app, "mcp_client", None)
         adapter = _resolve_terminal_adapter(terminal_config, mcp_client)
 
         manager = TerminalManager(adapter, terminal_config)
@@ -965,6 +985,40 @@ def _register_kv_block(server: FastMCPServer) -> None:
     _register_kv_tools(server)
 
 
+def _register_audit_health_tools_block(server: FastMCPServer) -> None:
+    """Dispatch the fleet-wide audit_health group into the legacy path.
+
+    Like ``_register_search_block`` above: this wires a group into the
+    LEGACY ``register_profile_tools`` path (``_OPTIONAL_TOOL_BLOCKS``)
+    used by ``mahavishnu mcp start``. The W0 path's ``REGISTRATION_MAP``
+    in ``profiles.py`` is a parallel registration surface — both must
+    list this group, otherwise the CLI path silently drops it.
+
+    ``audit_health`` is in ``MAHAVISHNU_MANDATORY_GROUPS`` and in every
+    ``PROFILE_REGISTRATIONS`` tier, so the ``methods_set`` gate in
+    ``_register_optional_tools`` dispatches it at every tier.
+    """
+    _register_audit_health_tools(server)
+
+
+def _register_budget_tools_block(server: FastMCPServer) -> None:
+    """Dispatch the budget group into the legacy path.
+
+    STANDARD-tier (see ``_register_budget_tools``), so the ``methods_set``
+    gate keeps it off the MINIMAL profile, matching the W0 path.
+    """
+    _register_budget_tools(server)
+
+
+def _register_plan_tools_block(server: FastMCPServer) -> None:
+    """Dispatch the plan-index group into the legacy path.
+
+    FULL-tier (see ``_register_plan_tools``), so the ``methods_set`` gate
+    keeps it off MINIMAL and STANDARD, matching the W0 path.
+    """
+    _register_plan_tools(server)
+
+
 _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] = (
     ("_register_self_improvement_tools", _register_self_improvement_block),
     ("_register_clone_tools", _register_clone_block),
@@ -985,6 +1039,14 @@ _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] =
     # subsystem is operator-facing, not infrastructure-critical, so it
     # is not part of the MINIMAL profile.
     ("_register_eval_tools", _register_eval_tools_block),
+    # Fleet-wide audit_health. Mandatory tier — dispatched at every
+    # profile, matching MAHAVISHNU_MANDATORY_GROUPS.
+    ("_register_audit_health_tools", _register_audit_health_tools_block),
+    # Budget enforcement. STANDARD-tier, matching STANDARD_REGISTRATIONS.
+    ("_register_budget_tools", _register_budget_tools_block),
+    # Plan index (plan_list/show/search/vitals/rebuild_status).
+    # FULL-tier, matching FULL_REGISTRATIONS.
+    ("_register_plan_tools", _register_plan_tools_block),
 )
 
 

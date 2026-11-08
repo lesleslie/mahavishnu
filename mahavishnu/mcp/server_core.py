@@ -142,9 +142,30 @@ class FastMCPServer:
         self._register_auth_context_middleware()
 
         # Initialize terminal manager if enabled
+        #
+        # ``init_terminal_manager`` reads ``server.config`` (see
+        # ``mahavishnu/mcp/bootstrap.py``). This object is the
+        # ``FastMCPServer`` wrapper, which does NOT expose ``.config`` —
+        # it exposes ``.app.config``. Passing ``self`` therefore made the
+        # helper log "server has no .config attribute" and return None,
+        # so ``self.terminal_manager`` stayed None and the terminal group
+        # was skipped at every profile tier.
+        #
+        # The ``MahavishnuApp`` already built a manager for itself during
+        # ``initialize_runtime_services`` (``core/bootstrap.py``), which
+        # passes the app — and the app DOES expose ``.config``. Reuse that
+        # instance rather than constructing a second one: a second
+        # TerminalManager would hold a second terminal-adapter with its
+        # own session state, and the pool manager reads
+        # ``app.terminal_manager`` (see below), so the two would diverge.
         self.terminal_manager = None
         if self.app.config.terminal.enabled:
-            self.terminal_manager = _init_terminal_manager_helper(self)
+            self.terminal_manager = getattr(self.app, "terminal_manager", None)
+            if self.terminal_manager is None:
+                # The app did not build one (terminal disabled at app
+                # construction, or init failed). Fall back to building it
+                # from the app, which exposes ``.config``.
+                self.terminal_manager = _init_terminal_manager_helper(self.app)
 
             # Wire the terminal manager into the app slot that the
             # lifecycle's pool_manager bootstrap will read.
