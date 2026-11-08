@@ -50,6 +50,7 @@
   "run_disaster_recovery_check",
   "search_logs",
   "search_workflows",
+  "tasks_handoff_to_workflow",
   "trigger_test_alert",
   "trigger_workflow",
   "wait_for_all_dependencies",

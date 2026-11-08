@@ -95,6 +95,7 @@
   "send_quality_alert",
   "send_repository_message",
   "show_primitive_tool",
+  "tasks_handoff_to_workflow",
   "track_channel_session",
   "trigger_test_alert",
   "trigger_workflow",

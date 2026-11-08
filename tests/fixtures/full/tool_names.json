@@ -146,6 +146,7 @@
   "send_quality_alert",
   "send_repository_message",
   "show_primitive_tool",
+  "tasks_handoff_to_workflow",
   "team_from_goal",
   "track_channel_session",
   "treesitter_batch_analyze",
