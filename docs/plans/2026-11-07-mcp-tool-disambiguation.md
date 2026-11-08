@@ -663,12 +663,23 @@ aggregator can flatten two tools onto one name.
    `akosha-tool-naming-gap` decision recommends for the short term).
 1. Update `KNOWN_TOOLS`, agent frontmatter, skills, docs and tests in the
    same change — no aliases, per §2 Policy.
-1. Leave the shared-library names (`get_liveness`, `get_readiness`,
+1. Leave the shared names **unprefixed** — the twelve in
+   `docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md`:
+   the seven mcp-common baseline names (`get_liveness`, `get_readiness`,
    `health_check_all`, `health_check_service`, `wait_for_dependency`,
-   `wait_for_all_dependencies`, `discover_tools`) **unprefixed**. They are
-   one library fanned out across servers; prefixing them per server would
-   make the same mcp-common function register under four different names.
-   Record them in the guard's allowlist as the shared-baseline set.
+   `wait_for_all_dependencies`, `discover_tools`), plus `query_local_traces`
+   (the fleet-wide trace contract), `get_health` (each server's own
+   health), `pycharm_health` (all three proxy the same PyCharm MCP server),
+   and `track_channel_session` / `get_channel_sessions` (mahavishnu's
+   client speaks these to session-buddy over the wire). The first seven
+   are one library fanned out across servers; the other five are shared
+   contracts that mean the same thing on every server that has them.
+   Prefixing any of the twelve breaks a contract between servers, not just
+   a name. Record them in the guard's allowlist as the shared set.
+
+   *(Widened from seven to twelve on 2026-11-08: the first sweep drafts
+   renamed `query_local_traces`, `get_health` and `pycharm_health` along
+   with everything else.)*
 
 #### Integration Contract
 
@@ -802,27 +813,32 @@ prefix-matches on.
    See `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`,
    which records the same class of gap for `require_mcp_auth` and
    deliberately defers the fleet-wide fix.
-2. **Session-Buddy's all-systems path needs the semantic index.**
-   `query_local_traces(system_id=None)` searches the conversation DB with an
-   empty query, and the adapter's *text* path refuses an empty query
-   ("an empty query matches nothing") — so the all-systems result depends
-   on the embedding chain being up, and degrades to an empty list with only
-   an info-level log when it is not. The tool is not in the live surface, so
-   this is latent, but it needs either an explicit match-all path or a
-   warning that the path is index-dependent.
-3. **Session-Buddy's `query_local_traces` is never registered.**
-   `register_otel_trace_tools` is imported and re-exported by
-   `session_buddy/mcp/tools/__init__.py:71` but has no call site —
-   `session_buddy/server_optimized.py:746` mounts `register_memory_tools`,
-   `register_category_tools` and the rest, and not this one. The module was
-   added whole in `1fd8b45f` (2026-05-29) and has never been mounted, so
-   `mcp__session-buddy__query_local_traces` does not exist in any live
-   surface. Phase 1 aligned the implementation with the fleet contract;
-   **wiring it is a separate change**, because it adds a tool to a
-   225-tool server and wants the same review any surface addition gets.
-   The plan's own Process Discipline calls a built-but-unwired feature
-   unfinished, so this is the tracked remainder of Phase 1, not a
-   completed item.
+2. **Session-Buddy's all-systems path needs the semantic index.** — RESOLVED
+   (2026-11-08).
+   The tool was never in a live surface, so the index-dependent all-systems
+   path was latent. It is now mounted and rewritten: session-buddy's
+   `query_local_traces` no longer runs a similarity or text search at all.
+   It reads the store directly through a new adapter method
+   (`query_conversations_by_classification`), so the all-systems query is a
+   plain filtered read with no dependency on the embedding chain.
+3. **Session-Buddy's `query_local_traces` is never registered.** — RESOLVED
+   (2026-11-08, `33060bd1`).
+   The tool is mounted through `REGISTRATION_MAP` (so the profile dispatch
+   owns it — FULL tier, never double-registered) and the live FULL surface
+   is 226 tools. Wiring it exposed that the old implementation could not
+   have worked: it passed `system_id` to `search_conversations(query=...)`,
+   which is a CONTENT LIKE search rather than a provenance filter, and the
+   all-systems query passed an empty query, which the adapter's text path
+   treats as "matches nothing".
+
+   What session-buddy actually stores is now stated in the tool's own
+   description rather than left to be discovered: it has no local
+   OpenTelemetry span store. It emits spans to the fleet collector and keeps
+   its own records in the reflection database, so `task_class` matches a
+   memory classification (`facts`, `context`) and `system_id` matches the
+   working directory the writing session ran in. A `task_class` from the OTel
+   taxonomy matches nothing there, which is an accurate answer rather than a
+   bug.
 4. **The fleet-wide schema-parity guard (REQ-MCPTD-007) is still Phase 4.**
    Nothing currently stops the `query_local_traces` signatures drifting
    apart again — the guard that would is a Phase-4 deliverable.

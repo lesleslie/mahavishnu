@@ -58,6 +58,21 @@ component name.**
    same function under four names and break the guard's allowlist. These
    are the documented exception.
 
+   Rule 3 extends the same treatment to the shared-contract names that
+   are NOT from mcp-common. The full shared set is twelve names:
+
+   | Name | Servers | Why it stays shared |
+   |---|---|---|
+   | `get_liveness`, `get_readiness`, `health_check_all`, `health_check_service`, `wait_for_dependency`, `wait_for_all_dependencies`, `discover_tools` | 4 | one mcp-common library, fanned out |
+   | `query_local_traces` | 4 | the fleet-wide trace contract — one parameter envelope, one meaning |
+   | `get_health` | 3 | "how is this server?" — the same question on each server |
+   | `pycharm_health` | 3 | all three proxy the SAME PyCharm MCP server |
+   | `track_channel_session`, `get_channel_sessions` | 2 | mahavishnu's client speaks these to session-buddy over the wire |
+
+   A sweep that renames any of the twelve breaks a contract that exists
+   between servers, not just a name. The guard's allowlist is these
+   twelve; the sweep's rename maps exclude them.
+
 3. **Two tools that share a name MUST mean the same thing, or be renamed.**
    If the same name means different things on two servers, at least one is
    renamed to its component-scoped form. This is the rule that catches
@@ -79,6 +94,13 @@ component name.**
 Active. Phase 3 of `docs/plans/2026-11-07-mcp-tool-disambiguation.md` renames
 the three coincidental collisions; Phase 5 sweeps the remaining unprefixed
 tools. The fleet guard (Phase 4) enforces rules 2, 3 and 4 in CI.
+
+**Amendment (2026-11-08).** Rule 2's shared set was widened from seven names
+to twelve. The first sweep drafts renamed `query_local_traces`, `get_health`
+and `pycharm_health` along with everything else, which would have broken the
+trace contract on three servers and the health name on three more. The rule
+was always "same name ⇒ same meaning ⇒ shared"; the seven-name list was
+just the mcp-common subset of it.
 
 ## Related
 
