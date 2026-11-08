@@ -531,10 +531,16 @@ class ObservabilityManager:
             )
 
             # Record metrics
+            #
+            # ``workflow.id`` is deliberately NOT an attribute here: the id
+            # is unique per execution, so carrying it on a histogram
+            # mints one metric series per workflow, forever, multiplied by
+            # the bucket count in the backend. The id stays on the span
+            # (``start_workflow_trace``) and on the log channel; an
+            # id-bearing metric belongs there, not in a time series.
             self.workflow_duration_histogram.record(
                 duration,
                 attributes={
-                    "workflow.id": workflow_id,
                     "workflow.status": status,
                     "workflow.adapter": self.workflow_performance[workflow_id][
                         "adapter"
@@ -558,9 +564,15 @@ class ObservabilityManager:
     def record_repo_processing_time(
         self, repo_path: str, workflow_id: str, duration: float
     ):
-        """Record the time taken to process a repository."""
+        """Record the time taken to process a repository.
+
+        ``workflow.id`` is not an attribute here, for the same reason it
+        is not one on the workflow duration histogram: the id is unique per
+        execution, so it would mint a time series per workflow.
+        """
+        del workflow_id  # kept in the signature; the id belongs on the log channel
         self.repo_processing_duration_histogram.record(
-            duration, attributes={"repo.path": repo_path, "workflow.id": workflow_id}
+            duration, attributes={"repo.path": repo_path}
         )
 
     def get_logs(
@@ -631,7 +643,9 @@ class ObservabilityManager:
             self._metric_sampler = sampler  # type: ignore[attr-defined]
         return sampler
 
-    def _evaluate_change_point(self, metric_name: str, value: float):  # req: REQ-MATH-005
+    def _evaluate_change_point(
+        self, metric_name: str, value: float
+    ):  # req: REQ-MATH-005
         """Feed one observation to the change-point detector.
 
         Updates the detector's internal state and returns the

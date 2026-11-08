@@ -3237,7 +3237,7 @@ wheels = [
 
 [[package]]
 name = "mahavishnu"
-version = "0.38.0"
+version = "0.39.0"
 source = { editable = "." }
 dependencies = [
     { name = "agno" },
@@ -3655,7 +3655,7 @@ wheels = [
 
 [[package]]
 name = "mcp-common"
-version = "0.34.2"
+version = "0.34.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -3676,9 +3676,9 @@ dependencies = [
     { name = "typer" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/c5/c0aad9b3d080729845bfc614c69c9c208fe9e54df88a5aa99382e5fda23e/mcp_common-0.34.2.tar.gz", hash = "sha256:7f0e535b829c14f4a30c34bc69b222c0b37ab18f15a56b0ebfe800c95ae94243", size = 1076930, upload-time = "2026-11-01T07:02:24.853Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/34/81f29917c7bfca4b881ef55563d6a69121255f18953cdd2be2888da40791/mcp_common-0.34.3.tar.gz", hash = "sha256:b60c7fb0b997d8443ef098c40c9e64ec5508887d578c9119d7acfd335b939ed0", size = 1080852, upload-time = "2026-11-08T06:26:10.778Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/93/bfb83c3f4369cfa7d8aeb5481fcce757b905eba10c7c04f7d16dc557d0eb/mcp_common-0.34.2-py3-none-any.whl", hash = "sha256:4a2fe5891ba8b7e8854f1ab15f28133e0f52ea99f651034dc3cb85edf1fc6a32", size = 489717, upload-time = "2026-11-01T07:02:23.268Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/ac/dc65f72df79339cfa751515a03196d1bb79f1dfff7e8973a8dfb86dbab14/mcp_common-0.34.3-py3-none-any.whl", hash = "sha256:0bd8d50591d845fcf49f6deb11185f60debe107a1b3b63a5caab0d0cd1e095f8", size = 489707, upload-time = "2026-11-08T06:26:08.909Z" },
 ]
 
 [[package]]

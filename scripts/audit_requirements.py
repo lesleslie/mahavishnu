@@ -88,7 +88,9 @@ def _repo_names(decl: RequirementDecl) -> list[str]:
     """
     if not decl.implementation_repo:
         return []
-    return [part.strip() for part in decl.implementation_repo.split(",") if part.strip()]
+    return [
+        part.strip() for part in decl.implementation_repo.split(",") if part.strip()
+    ]
 
 
 @dataclass
@@ -182,7 +184,9 @@ def extract_declarations(plan_paths: list[Path]) -> list[RequirementDecl]:
                     title=str(item.get("title", "")),
                     description=str(item.get("description", "")),
                     implementation_repo=(
-                        str(impl_repo) if isinstance(impl_repo, str) and impl_repo else None
+                        str(impl_repo)
+                        if isinstance(impl_repo, str) and impl_repo
+                        else None
                     ),
                     plan_status=plan_status,
                     plan_role=plan_role,
@@ -621,7 +625,9 @@ def _print_human_report(report: AuditReport) -> None:
                 f"  - {r.requirement_id}  ({r.referencing_path}:{r.line}  {r.reference_kind})"
             )
     if report.external:
-        print("\n## External Requirements (declared here, implemented in a sibling repo)")
+        print(
+            "\n## External Requirements (declared here, implemented in a sibling repo)"
+        )
         for d in report.external:
             print(f"  - {d.requirement_id}  -> {d.implementation_repo}  {d.title}")
     if report.unverified:
@@ -635,7 +641,9 @@ def _print_human_report(report: AuditReport) -> None:
     if report.informal:
         print("\n## Informal References (bare REQ-NNN with no declaration)")
         for r in report.informal:
-            print(f"  - {r.requirement_id}  ({r.referencing_path}:{r.line}  {r.reference_kind})")
+            print(
+                f"  - {r.requirement_id}  ({r.referencing_path}:{r.line}  {r.reference_kind})"
+            )
 
 
 def _write_markdown_report(report: AuditReport, out: Path) -> None:

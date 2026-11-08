@@ -85,7 +85,9 @@ class SessionBuddyTaskClient:
         timeout: float = 30.0,
         token: str | None = None,
     ) -> None:
-        self._client = BodaiComponentMCPClient(base_url, timeout=timeout, token=token)  # req: REQ-TASKLINK-008
+        self._client = BodaiComponentMCPClient(
+            base_url, timeout=timeout, token=token
+        )  # req: REQ-TASKLINK-008
 
     @property
     def base_url(self) -> str:
