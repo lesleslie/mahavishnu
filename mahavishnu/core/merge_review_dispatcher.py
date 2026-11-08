@@ -161,8 +161,13 @@ def build_review_prompt(branch: str, base: str, worktree_root: Path) -> str:
         "confirming, run only the narrowest test that shows it."
     )
     parts.append(
-        "Return your verdict as exactly: "
-        "<verdict>decision: pass|needs_adjustment|block note: ...</verdict>"
+        "Reply with the verdict block and nothing outside it: "
+        "<verdict>decision: pass|needs_adjustment|block note: ...</verdict>, "
+        "with the note under 600 characters and the findings that justify "
+        "it inside the note. The pool captures the last screenful of your "
+        "reply, so prose in front of the block arrives with the block's "
+        "opening tag cut off -- and a verdict that arrives truncated "
+        "cannot be read."
     )
     return "\n\n".join(parts)
 

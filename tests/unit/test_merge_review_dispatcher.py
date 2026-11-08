@@ -255,6 +255,18 @@ class TestTheReviewPrompt:
         assert "<verdict>" in prompt
         assert "decision: pass|needs_adjustment|block" in prompt
 
+    def test_the_prompt_bounds_the_reply_to_the_capture_window(self) -> None:
+        """The pool captures the last screenful of the reply.
+
+        The capture is the pane's visible screen -- 24 rows -- so a
+        reply with prose in front of the verdict block arrives with the
+        block's opening tag cut off, and the verdict cannot be parsed.
+        The reply has to be the block, and it has to be short.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+        assert "nothing outside it" in prompt.lower()
+        assert "600 characters" in prompt
+
     def test_the_prompt_still_points_at_the_worktree(self) -> None:
         """Whichever branch the diff takes, the reviewer is sent to the tree."""
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
