@@ -13,8 +13,8 @@ requirements:
   description: The four duplicated tools whose descriptions are empty (crackerjack search_code, pycharm_health, query_local_traces; session-buddy search_code) are given descriptions satisfying the 6-criterion rubric in docs/decisions/tool-description-rubric.md.
   implementation_repo: crackerjack
 - id: REQ-MCPTD-002
-  title: Same-named tools expose an identical parameter contract across servers
-  description: The channel-session tools expose no parameter that the underlying store cannot filter by; the user_id fiction on both mahavishnu proxies is removed and the vestigial token parameter on session-buddy is removed.
+  title: Same-named tools document their parameter contract, including the auth parameters
+  description: The channel-session tools accept different auth parameters on each server — user_id is the principal mahavishnu's RBAC gate authorizes against (caller-supplied; require_mcp_auth prefers the middleware's session context when it has one), token is the signed credential session-buddy pops and validates. Both are consumed by the tool decorators rather than the tool bodies, so each tool's docstring states which parameter is the auth parameter and which are query filters.
   implementation_repo: session-buddy
 - id: REQ-MCPTD-003
   title: query_local_traces exposes one parameter contract across the fleet
@@ -238,24 +238,38 @@ per the deprecation plan in the fork's own module docstring (`health_check_servi
 `get_liveness` and `get_readiness` are slated for replacement by
 `ecosystem_status`). **A de-vendor must carry this forward, not drop it.**
 
-### 4.10 Two contract defects found in Class C
+### 4.10 Two contract divergences found in Class C
 
-**`user_id` is fiction.** Mahavishnu's `track_channel_session`
-(`mahavishnu/mcp/tools/session_buddy_tools.py:273`) and
-`get_channel_sessions` (same file, line 345) both accept a `user_id`
-parameter — and **never forward it**. The payload builder omits it entirely.
+> **Correction (2026-11-08).** An earlier draft of this section read the two
+> channel-session tool *bodies* and concluded that `user_id` was a dead filter
+> and `token` was vestigial. **Both conclusions were wrong**, and the plan
+> originally scheduled their removal. The parameters are load-bearing — they
+> are consumed by the *decorators*, not by the tool bodies:
+>
+> - Mahavishnu's `track_channel_session` and `get_channel_sessions` accept
+>   `user_id`, which `require_mcp_auth` reads as the **authenticated
+>   principal**. `mahavishnu/mcp/auth.py:183` resolves it from FastMCP
+>   Context state first, then falls back to `kwargs.get("user_id")`.
+>   Removing the parameter makes every call fail closed with
+>   "Authentication required: user_id parameter missing".
+> - Session-Buddy's `get_channel_sessions` accepts `token`, which
+>   `require_auth` **pops from the call kwargs** and validates as a signed
+>   credential (`session_buddy/mcp/auth.py:97-106`) before injecting the
+>   caller's `user_id` into the wrapped function. It is the credential.
+>
+> Neither is a filter, so neither silently returns unfiltered results. The
+> genuine divergence is that the two servers use **different auth contracts
+> for the same tool names** — mahavishnu takes a principal *name*,
+> session-buddy takes a signed *token*. That is an auth-model difference, not
+> a naming bug; it is recorded as a follow-up (§11) rather than "fixed" here.
+> The lesson generalises: **read the decorator before concluding a parameter
+> is unused.**
 
-Nothing downstream has a `user_id`: session-buddy's `ChannelSessionEvent`
-(`session_buddy/mcp/event_models.py:686`) carries `sender_id`, and
-`_store.query()` filters on `channel_type`, `channel_id`, `sender_id`,
-`session_scope` and `limit` only. So `user_id` is a filter that silently
-returns unfiltered results.
-
-**`token` is vestigial.** Session-Buddy's `get_channel_sessions`
-(`session_buddy/mcp/tools/session/channel_tracking_tools.py:265`) accepts
-`token` and never uses it — the function body ignores it and the decorator is
-`@require_auth()`, which resolves identity from request context, not from a
-parameter.
+**The `query_local_traces` divergence is real.** Four servers expose the
+same tool name with four different parameter contracts (akosha, crackerjack,
+mahavishnu, session-buddy). Unlike the channel-session parameters, nothing
+consumes these — they are plain query filters — so this one *is* unified in
+Phase 1.
 
 ### 4.11 Stale references found en route (adjacent, not naming)
 
@@ -343,45 +357,78 @@ exposes it.
 
 **Tasks:**
 
-1. **Remove the `user_id` fiction** from mahavishnu's `track_channel_session`
-   and `get_channel_sessions`
-   (`mahavishnu/mcp/tools/session_buddy_tools.py:273` and `:345`). Per §2
-   Policy, delete the parameter — do not map it, and do not keep a no-op
-   shadow. `sender_id` is the identity filter session-buddy actually supports.
-1. **Remove the vestigial `token` parameter** from session-buddy's
-   `get_channel_sessions`
-   (`session_buddy/mcp/tools/session/channel_tracking_tools.py:265`).
-   `@require_auth()` resolves identity from request context.
-1. **Unify `query_local_traces`.** Crackerjack and mahavishnu already agree
-   (`task_class` required, `system_id`, `time_range_minutes`, `limit`).
-   Akosha's variant (`start_time`/`end_time`/`dry_run`) is the richer one —
-   align crackerjack and mahavishnu **up** to it, so the fleet-wide contract
-   is the superset rather than the weaker pair. Update
-   `akosha/mcp/tools/otel_tools.py:31`, `crackerjack/mcp/tools/otel_tools.py:65`
-   and `mahavishnu/mcp/tools/otel_tools.py:257` together.
-1. Confirm the alignment direction with the Akosha fitness analyzer, which
-   polls mahavishnu's endpoint (`mahavishnu/mcp/tools/otel_tools.py:275`):
-   the analyzer's poll must keep working after the contract change.
+1. **Keep the channel-session auth parameters; document them instead.**
+   `user_id` on mahavishnu's proxies is the principal the RBAC gate
+   authorizes against (caller-supplied; see
+   `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`) — read by
+   `require_mcp_auth`; `token` on session-buddy's tool is the signed
+   credential `require_auth` pops and validates (§4.10). Both are consumed
+   by the decorators, so the tool bodies never see them. Update each
+   tool's docstring to say so, so a caller does not read `user_id` as a
+   query filter.
+1. **Unify `query_local_traces`.** Four servers expose the name with four
+   different contracts. The fleet-wide contract is akosha's richer set,
+   with `task_class` promoted to required:
+
+   ```python
+   query_local_traces(
+       task_class: str,
+       system_id: str | None = None,
+       start_time: str | None = None,   # ISO8601, absolute
+       end_time: str | None = None,     # ISO8601, absolute
+       limit: int = 100,
+       dry_run: bool = False,
+   ) -> list[dict]
+   ```
+
+   `time_range_minutes` is **removed** from the tool contract rather than
+   kept alongside the absolute window — two window conventions on one tool
+   is the dual-API smell §2 Policy rejects. The relative window survives
+   where it belongs, in the *client helpers*
+   (`mahavishnu/mcp/bodai_component_client.py:114` and
+   `akosha/mcp/client.py:58`), which convert it to an absolute window on the
+   wire. Update `akosha/mcp/tools/otel_tools.py:31`,
+   `crackerjack/mcp/tools/otel_tools.py:65`,
+   `mahavishnu/mcp/tools/otel_tools.py:257` and
+   `session_buddy/mcp/tools/memory/otel_trace_tools.py:78` together.
+1. **`dry_run` is a shape switch, not a scope switch.** It returns the raw
+   stored metadata instead of the full record and clamps `limit` — it does
+   **not** disable the `system_id` / `task_class` filters. Akosha's
+   pre-existing `dry_run` *did* disable them, and aligning the fleet
+   propagated that escape hatch to three more servers; a caller-supplied
+   flag that switches off scoping is a real weakness on a tool that carries
+   no authentication of its own. Rows outside a filter are reachable by
+   omitting `system_id`, which is the documented all-systems query.
+1. Confirm no caller is left on the old shape. The Akosha fitness analyzer
+   does **not** poll this tool — it reads the local `spans_substrate` table
+   (`akosha/processing/fitness_analyzer.py:160`), and its
+   `akosha/mcp/client.py` helper has no importers. The two helpers that do
+   exist (`akosha/mcp/client.py:59` and
+   `mahavishnu/mcp/bodai_component_client.py:115`) are the conversion
+   points, so the grep is over their *callers*, not over the fitness
+   analyzer.
 
 #### Integration Contract
 
-- **Triggered from**: `mcp__mahavishnu__track_channel_session` /
+- **Triggered from**: `mcp__akosha__query_local_traces` /
+  `mcp__crackerjack__query_local_traces` /
+  `mcp__mahavishnu__query_local_traces` (and its siblings on akosha,
+  crackerjack and session-buddy);
+  `mcp__mahavishnu__track_channel_session` /
   `mcp__mahavishnu__get_channel_sessions` (called by mahavishnu's
   `BodaiComponentMCPClient.call_tool` against session-buddy at
-  `mahavishnu/mcp/bodai_component_client.py:99`);
-  `mcp__akosha__query_local_traces` / `mcp__crackerjack__query_local_traces` /
-  `mcp__mahavishnu__query_local_traces` (polled by Akosha's fitness analyzer).
-- **Returns to / updates**: the channel-session store behind session-buddy's
-  `_ChannelSessionStore`, and each server's OTel trace store. The mahavishnu
-  proxy payload assembled at `session_buddy_tools.py:299-330`.
+  `mahavishnu/mcp/bodai_component_client.py:99`).
+- **Returns to / updates**: each server's OTel trace store; the
+  channel-session store behind session-buddy's `_ChannelSessionStore`.
 - **Demonstrable by**: `pytest tests/integration/mcp/test_channel_tracking.py`
-  in session-buddy passes with `token` removed; a mahavishnu
+  in session-buddy still passes with `token` present; a mahavishnu
   `get_channel_sessions` call with a `sender_id` returns only that sender's
   sessions; the fleet guard reports one `query_local_traces` schema across
-  three servers.
-- **Rollback signal**: the Akosha fitness analyzer's poll to mahavishnu's
-  `query_local_traces` returns zero traces where it previously returned
-  non-zero — that is a contract break in the superset direction.
+  all four servers.
+- **Rollback signal**: a caller of either client helper starts receiving an
+  "unexpected keyword argument" from the server — that is the wire contract
+  breaking in the superset direction. (There is no live consumer to watch,
+  so the tripwire is the error, not a trace count.)
 - **Observability added**: the guard records a per-tool parameter signature
   hash; a change to a shared tool's signature is visible in the guard's diff
   output rather than in a production trace-count change.
@@ -506,12 +553,23 @@ follow, so it adds no new vocabulary. The semantic distinction (system
 metrics vs skill usage; KG vs DuckPGQ; regex vs semantic) belongs in the
 **description**, which Phase 0 already writes.
 
-*Open question for review:* akosha does not prefix its other tools, so
-`akosha_find_path` sits alongside bare `search_code_patterns` and
-`analyze_trends`. Full akosha prefixing is a separate sweep (per the
-`akosha-tool-naming-gap` memory) and is out of scope here. If the reviewer
-prefers internal consistency within akosha over the picker benefit, the
-alternative is a semantic rename — see §9 Decision Rule.
+**Resolved (2026-11-08).** The operator chose the **component-prefix** form
+and extended the convention to **every Bodai-maintained repo**, not just the
+three that already follow it. The canonical rule is recorded in
+`docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md`.
+
+Consequences for this plan:
+
+- Akosha's remaining 37 bare tools become in scope for a fleet-wide sweep,
+  tracked as Phase 5 (§6) and as a follow-up in §11.
+- The rename table above is the **first tranche**: the three coincidental
+  collisions, renamed to `akosha_*` / `session_buddy_*` / `crackerjack_*`.
+- Every later tranche follows the same rule, so the fleet converges on one
+  convention rather than two.
+
+Akosha's internal inconsistency during the transition (prefixed
+`akosha_find_path` alongside bare `search_code_patterns`) is temporary and
+resolves when Phase 5 lands.
 
 #### Integration Contract
 
@@ -572,6 +630,46 @@ alternative is a semantic rename — see §9 Decision Rule.
   `mcp_tool_surface_violations` counter, so a rise is visible without
   reading CI output.
 
+### Phase 5: Fleet-wide component-prefix sweep
+
+**Goal:** every Bodai-maintained repo exposes only component-prefixed tool
+names, so the Claude Code TUI picker can filter by component and no future
+aggregator can flatten two tools onto one name.
+
+**Tasks:**
+
+1. Enumerate the repos in scope: mahavishnu, akosha, session-buddy,
+   crackerjack, oneiric, mcp-common, plus any other Bodai-maintained MCP
+   server. Confirm the list against `settings/repos.yaml` rather than
+   assuming.
+1. For each server, prefix every tool that is not already prefixed:
+   akosha's 37 bare tools are the largest tranche; mahavishnu, session-buddy
+   and crackerjack are mostly done already.
+1. Apply the rename as a **function-name** change plus the `@tool(name=...)`
+   override where the function name cannot move (the `name=` override is
+   non-breaking for callers that import the function, and is the form the
+   `akosha-tool-naming-gap` decision recommends for the short term).
+1. Update `KNOWN_TOOLS`, agent frontmatter, skills, docs and tests in the
+   same change — no aliases, per §2 Policy.
+1. Leave the shared-library names (`get_liveness`, `get_readiness`,
+   `health_check_all`, `health_check_service`, `wait_for_dependency`,
+   `wait_for_all_dependencies`, `discover_tools`) **unprefixed**. They are
+   one library fanned out across servers; prefixing them per server would
+   make the same mcp-common function register under four different names.
+   Record them in the guard's allowlist as the shared-baseline set.
+
+#### Integration Contract
+
+- **Triggered from**: each server's tool-registration path.
+- **Returns to / updates**: the `tools/list` payloads on every Bodai port;
+  `KNOWN_TOOLS`; agent frontmatter; the skill catalog.
+- **Demonstrable by**: the fleet guard reports every tool name as
+  component-prefixed, except the shared-baseline allowlist; typing
+  `/ak` in the Claude Code TUI picker surfaces akosha's tools.
+- **Rollback signal**: the guard reports a bare name outside the allowlist.
+- **Observability added**: the guard's `unprefixed_tools` count (outside the
+  allowlist) is asserted to be zero.
+
 ## 7. Required Code Changes
 
 ```
@@ -582,17 +680,20 @@ mcp-common/
 crackerjack/
   crackerjack/mcp/tools/pycharm_tools.py   # descriptions for search_code, pycharm_health
   crackerjack/mcp/tools/otel_tools.py      # description for query_local_traces; unify query_local_traces contract
+  crackerjack/tests/unit/mcp/test_otel_tools_query_local_traces.py  # dry_run forwarding pin
   crackerjack/mcp/tools/health_tools_wrapper.py  # update for renamed register_health_tools signature
 
 akosha/
   akosha/mcp/tools/otel_tools.py          # unify query_local_traces contract
+  akosha/mcp/client.py                     # relative window -> absolute window on the wire
+  akosha/tests/unit/test_mcp_client.py      # new — the helper's conversion had no test
   akosha/mcp/tools/akosha_tools.py         # rename detect_anomalies, find_path
   akosha/mcp/tools/__init__.py             # update register_health_tools call
   akosha/mcp/tools/pycharm_tools.py        # description for pycharm_health
 
 session-buddy/
   session_buddy/mcp/tools/memory/search_tools.py       # description + rename search_code
-  session_buddy/mcp/tools/session/channel_tracking_tools.py  # drop token; rename detect_anomalies, find_path
+  session_buddy/mcp/tools/session/channel_tracking_tools.py  # document token as the credential; rename detect_anomalies, find_path
   session_buddy/mcp/tools/skills/phase4_tools.py        # rename detect_anomalies
   session_buddy/mcp/tools/collaboration/knowledge_graph_tools.py  # rename find_path
   session_buddy/mcp/tools/monitoring/health_tools.py     # update register_health_tools call
@@ -600,9 +701,10 @@ session-buddy/
 
 mahavishnu/
   mahavishnu/mcp/tools/health_tools.py      # retire fork; mount mcp_common.health; keep 3 MV tools
-  mahavishnu/mcp/tools/session_buddy_tools.py  # drop user_id; align channel-session contract
+  mahavishnu/mcp/tools/session_buddy_tools.py  # document user_id as the principal; align channel-session contract
   mahavishnu/mcp/tools/otel_tools.py         # align query_local_traces contract
   mahavishnu/core/skill_mcp_validator.py     # update KNOWN_TOOLS for renames; add the 3 SB names
+  mahavishnu/mcp/tool_versions.py             # query_local_traces 1.0.0 -> 2.0.0 (removed field = MAJOR)
   scripts/check_mcp_tool_surface.py           # new — the fleet guard
   tests/fixtures/mcp_tool_surface/*.json      # new — checked-in tools/list responses
 ```
@@ -618,7 +720,7 @@ mahavishnu/
 | Crackerjack tool count | unchanged from 53 | `tools/list` probe on 8676 |
 | Session-Buddy tool count | unchanged from 225 | `tools/list` probe on 8678 |
 | `health_check_service` schema | param is `service_name` on all four servers | `tools/list` probe, 8676/8678/8680/8682 |
-| Channel-session contract | no `user_id` on MV; no `token` on SB | `tools/list` probe + `pytest tests/integration/mcp/test_channel_tracking.py` |
+| Channel-session contract | `user_id` still accepted on MV (the RBAC principal) and `token` on SB (the credential); each docstring says which is which | `tools/list` probe + `pytest tests/integration/mcp/test_channel_tracking.py` |
 | `query_local_traces` contract | one schema across akosha, crackerjack, mahavishnu | `tools/list` probe, 8676/8680/8682 |
 | Renamed tools | old names absent, new names present | `tools/list` probe, 8676/8678/8682 |
 | Agent frontmatter | every `mcp__*` ref resolves to a served tool | guard, frontmatter section |
@@ -658,23 +760,55 @@ This plan is done when **all** of the following hold:
 - **Then cut P4's live mode** and keep the fixture-backed test. The guard is
   what stops the next regression, but a fixture-only guard still catches
   duplicates introduced in a pull request.
-- **Never cut P1's `user_id` removal.** It is a live correctness defect: a
-  caller filtering by `user_id` silently receives unfiltered results. It is
-  small, and it is wrong today.
+- **Never cut P1's `query_local_traces` unification.** It is the one place
+  where the same tool name genuinely means four different things, and it
+  breaks a caller that learned one server's shape. It is also the change
+  with a live consumer — the Akosha fitness analyzer.
 - **Never cut P2's deprecation-shim parameterization.** Dropping it silently
   changes mahavishnu's operator-visible warnings.
 
-**If the reviewer prefers akosha-internal consistency over the TUI picker
-benefit** (the §6 Phase 3 open question), switch the three renames to a
-semantic scheme — `detect_metric_anomalies` / `detect_skill_anomalies`,
-`find_graph_path` / `find_entity_path`, `search_code_regex` /
-`search_code_semantic` — and update the guard's allowlist accordingly. The
-guard's invariant ("no bare name appears on two servers") holds under either
-scheme; only the naming form changes.
+**Naming scheme (resolved 2026-11-08).** The component-prefix form is
+settled: `akosha_detect_anomalies` / `session_buddy_detect_anomalies`,
+`akosha_find_path` / `session_buddy_find_path`,
+`crackerjack_search_code` / `session_buddy_search_code`. The semantic
+alternative (`detect_metric_anomalies`, `find_graph_path`,
+`search_code_regex`) is **not** used. The guard's invariant ("no bare name
+appears on two servers") holds under either scheme; only the naming form
+changes, and the prefix form is the one the Claude Code TUI picker
+prefix-matches on.
 
 ## 11. Follow-ups explicitly out of scope
 
-1. **Akosha's full component-prefix sweep** — akosha's other 37 tools remain
+1. **The trace tools have no authentication.** `query_local_traces` is
+   registered without an auth decorator on every server, so `system_id` and
+   `task_class` are **query filters, not authorization boundaries** — a
+   caller can already pass any `system_id` it likes. That is why Phase 1
+   keeps `system_id` optional (it is akosha's pre-existing, documented
+   reference contract) and only removes the `dry_run` escape hatch. If
+   per-caller scoping is wanted, it needs an authenticated principal and a
+   caller→system mapping — a separate piece of work, not a parameter change.
+   See `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`,
+   which records the same class of gap for `require_mcp_auth` and
+   deliberately defers the fleet-wide fix.
+2. **Session-Buddy's all-systems path needs the semantic index.**
+   `query_local_traces(system_id=None)` searches the conversation DB with an
+   empty query, and the adapter's *text* path refuses an empty query
+   ("an empty query matches nothing") — so the all-systems result depends
+   on the embedding chain being up, and degrades to an empty list with only
+   an info-level log when it is not. The tool is not in the live surface, so
+   this is latent, but it needs either an explicit match-all path or a
+   warning that the path is index-dependent.
+3. **The fleet-wide schema-parity guard (REQ-MCPTD-007) is still Phase 4.**
+   Nothing currently stops the four `query_local_traces` signatures drifting
+   apart again — the guard that would is a Phase-4 deliverable.
+4. **The channel-session auth contract divergence.** `track_channel_session`
+   and `get_channel_sessions` take different auth parameters on mahavishnu
+   (`user_id`, a principal name) than on session-buddy (`token`, a signed
+   credential). That is an auth-model difference, not a naming bug, and it
+   is why Phase 1 documents the parameters instead of unifying them. Worth
+   a separate decision on whether the two servers should converge on one
+   credential model. See §4.10.
+5. **Akosha's full component-prefix sweep** — akosha's other 37 tools remain
    bare. Tracked by the `akosha-tool-naming-gap` memory; a separate plan.
 1. **The stale `KNOWN_TOOLS` / frontmatter references** in §4.11 — the guard
    (§6 Phase 4) *reports* them; the cleanup is a separate change once

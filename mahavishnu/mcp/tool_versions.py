@@ -254,7 +254,7 @@ TOOL_VERSIONS: dict[str, str] = {
     "self_improvement_generate": "1.0.0",
     "self_improvement_status": "1.0.0",
     # OpenTelemetry local trace query (otel_tools.py)
-    "query_local_traces": "1.0.0",
+    "query_local_traces": "2.0.0",
     # PyCharm IDE tools (pycharm_tools.py)
     "pycharm_health": "1.0.0",
     "pycharm_run_diagnostics": "1.0.0",

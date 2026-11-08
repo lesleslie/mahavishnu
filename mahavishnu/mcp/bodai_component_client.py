@@ -17,6 +17,7 @@ all session lifecycle correctly.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -127,11 +128,18 @@ class BodaiComponentMCPClient:
         """
         # Bounds check: 1 minute minimum, 10080 minutes (1 week) maximum
         time_range_minutes = max(1, min(time_range_minutes, 10080))
+        # The wire contract is an absolute ISO8601 window (see the
+        # ``query_local_traces`` tool on every server that exposes it); the
+        # relative window is a client-side convenience, so convert here
+        # rather than widening the tool's parameter set.
+        window_end = datetime.now(UTC)
+        window_start = window_end - timedelta(minutes=time_range_minutes)
         result = await self.call_tool(
             "query_local_traces",
             {
                 "task_class": task_class,
-                "time_range_minutes": time_range_minutes,
+                "start_time": window_start.isoformat(),
+                "end_time": window_end.isoformat(),
             },
         )
         if isinstance(result, list):

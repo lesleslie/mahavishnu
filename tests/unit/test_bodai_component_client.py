@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 import sys
 from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock
@@ -127,10 +128,18 @@ class TestBodaiComponentMCPClientCalls:
         )
 
         assert result == expected
-        client.call_tool.assert_awaited_once_with(
-            "query_local_traces",
-            {"task_class": "code_generation", "time_range_minutes": 15},
-        )
+        client.call_tool.assert_awaited_once()
+        name, arguments = client.call_tool.await_args.args
+        assert name == "query_local_traces"
+        assert arguments["task_class"] == "code_generation"
+        # The wire contract is an absolute ISO8601 window; the relative
+        # window is converted client-side. Pin the exact argument SET: the
+        # removed `time_range_minutes` would be rejected by the server at
+        # runtime, and a per-key assertion would not catch it reappearing.
+        assert set(arguments) == {"task_class", "start_time", "end_time"}
+        start = datetime.fromisoformat(arguments["start_time"])
+        end = datetime.fromisoformat(arguments["end_time"])
+        assert end - start == timedelta(minutes=15)
 
     async def test_query_local_traces_returns_empty_for_unexpected_shape(
         self, monkeypatch

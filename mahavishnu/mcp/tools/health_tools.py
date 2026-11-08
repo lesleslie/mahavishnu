@@ -125,7 +125,16 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         timeout: int = 5,
         use_tls: bool = False,
     ) -> dict[str, Any]:
-        """Check health of a specific service."""
+        """Check the health of one service over HTTP.
+
+        Deprecated: prefer `health_check_all` for a bulk sweep, or
+        `mcp_test_connection` to probe one MCP server. Returns a dict with
+        `service_name`, `status` ("ok", "degraded", or "unhealthy"),
+        `latency_ms`, and `url`, plus `error` when the probe failed. Returns
+        `status` "unhealthy" when the endpoint does not answer within `timeout`
+        seconds. Side effect: none; performs one HTTP GET.
+        """
+        # Implements: REQ-MCPTD-001
         _warn_deprecated_tool("health_check_service", "health_check_all")
         from mahavishnu.core.config import HealthConfig
 
@@ -240,7 +249,17 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
     @mcp.tool()
     async def health_check_all() -> dict[str, Any]:
-        """Check health of all configured services."""
+        """Check the health of every configured service concurrently.
+
+        Returns a dict with `status` ("ok" or "unhealthy"), a `services` map of
+        per-service `status` and `latency_ms`, plus `total_services` and
+        `healthy_services`. Do NOT use to probe a single service — use
+        `mcp_test_connection` for that; `health_check_service` is deprecated
+        in favour of this tool. Returns `status` "ok" with an empty `services`
+        map when no dependencies are configured. Side effect: none; performs
+        one HTTP GET per configured service.
+        """
+        # Implements: REQ-MCPTD-001
         from mahavishnu.core.config import MahavishnuSettings
 
         settings = MahavishnuSettings()
@@ -392,7 +411,15 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
     # deprecated_replaced_by: ecosystem_status (CP2)
     @mcp.tool()
     async def get_liveness() -> dict[str, Any]:
-        """Get liveness status for this service."""
+        """Report whether this process is alive.
+
+        Deprecated: prefer `ecosystem_status`, which reports liveness for every
+        service in the fleet. Returns a dict with `status` ("ok"), `service`,
+        `version`, and `uptime_seconds`. Always reports "ok" while the process
+        is running — it does not probe dependencies, so a "ok" liveness does
+        not mean the service can accept work. Side effect: none.
+        """
+        # Implements: REQ-MCPTD-001
         _warn_deprecated_tool("get_liveness", "ecosystem_status")
         from mahavishnu.core.config import MahavishnuSettings
 
@@ -412,7 +439,16 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
     # deprecated_replaced_by: ecosystem_status (CP2)
     @mcp.tool()
     async def get_readiness() -> dict[str, Any]:
-        """Get readiness status for this service."""
+        """Report whether this service is ready to accept work.
+
+        Deprecated: prefer `ecosystem_status`, which reports readiness for every
+        service in the fleet. Returns a dict with `ready` (bool), `service`,
+        `dependencies` (per-dependency status), and `checks` (internal check
+        results). `ready` is false when a required dependency is unhealthy.
+        Do NOT use for liveness — use `get_liveness` for that. Side effect:
+        none; probes each configured dependency once.
+        """
+        # Implements: REQ-MCPTD-001
         _warn_deprecated_tool("get_readiness", "ecosystem_status")
         from mahavishnu.core.config import MahavishnuSettings
 

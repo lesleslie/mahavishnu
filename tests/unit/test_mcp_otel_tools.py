@@ -17,6 +17,7 @@ covered elsewhere.
 
 from __future__ import annotations
 
+import inspect
 import json
 import sys
 import types
@@ -407,26 +408,18 @@ class TestQueryLocalTracesValidation:
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_zero_time_range_returns_empty_list(self) -> None:
+    async def test_invalid_start_time_returns_empty_list(self) -> None:
         tools = _register()
         result = await tools["query_local_traces"](
-            task_class="code_generation", time_range_minutes=0
+            task_class="code_generation", start_time="not-a-timestamp"
         )
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_negative_time_range_returns_empty_list(self) -> None:
+    async def test_invalid_end_time_returns_empty_list(self) -> None:
         tools = _register()
         result = await tools["query_local_traces"](
-            task_class="code_generation", time_range_minutes=-1
-        )
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_too_large_time_range_returns_empty_list(self) -> None:
-        tools = _register()
-        result = await tools["query_local_traces"](
-            task_class="code_generation", time_range_minutes=10081
+            task_class="code_generation", end_time="not-a-timestamp"
         )
         assert result == []
 
@@ -445,6 +438,42 @@ class TestQueryLocalTracesValidation:
             task_class="code_generation", limit=1001
         )
         assert result == []
+
+
+# =============================================================================
+# query_local_traces: advertised contract
+# =============================================================================
+
+
+class TestQueryLocalTracesContract:
+    """The advertised input schema is pinned, not just the behaviour.
+
+    ``time_range_minutes`` was removed from the public tool in favour of an
+    absolute ISO8601 window. That is a breaking input-schema change, which
+    the tool-version registry's own policy calls MAJOR — so both the stamp
+    and the schema need a guard, the way the ``create_backup`` /
+    ``backup_id`` removal was guarded.
+    """
+
+    def test_signature_drops_time_range_minutes(self) -> None:
+        tools = _register()
+        params = inspect.signature(tools["query_local_traces"]).parameters  # type: ignore[arg-type]
+
+        assert "time_range_minutes" not in params
+        assert "start_time" in params
+        assert "end_time" in params
+        assert "dry_run" in params
+
+    def test_task_class_is_required(self) -> None:
+        tools = _register()
+        params = inspect.signature(tools["query_local_traces"]).parameters  # type: ignore[arg-type]
+
+        assert params["task_class"].default is inspect.Parameter.empty
+
+    def test_tool_version_is_major_bumped(self) -> None:
+        from mahavishnu.mcp.tool_versions import get_tool_version
+
+        assert get_tool_version("query_local_traces") == "2.0.0"
 
 
 # =============================================================================
@@ -529,6 +558,88 @@ class TestQueryLocalTracesSuccess:
         with patch.object(_FAKE_STORAGE, "HotStore", return_value=store):
             result = await tools["query_local_traces"](task_class="code_generation")
         assert result == []
+
+    @pytest.mark.asyncio
+    async def test_iso_window_is_forwarded_to_the_store(self) -> None:
+        tools = _register()
+        store = _FakeHotStore()
+        store.query_traces = AsyncMock(return_value=[])
+        with patch.object(_FAKE_STORAGE, "HotStore", return_value=store):
+            await tools["query_local_traces"](
+                task_class="code_generation",
+                start_time="2026-06-05T00:00:00+00:00",
+                end_time="2026-06-05T01:00:00+00:00",
+            )
+        kwargs = store.query_traces.await_args.kwargs
+        assert kwargs["start_time"] == "2026-06-05T00:00:00+00:00"
+        assert kwargs["end_time"] == "2026-06-05T01:00:00+00:00"
+
+    @pytest.mark.asyncio
+    async def test_offset_window_is_normalised_to_utc(self) -> None:
+        """An offset-bearing bound is converted before it reaches the store.
+
+        The trace table holds naive-UTC timestamps, so a bound that is not
+        converted would silently select the wrong window.
+        """
+        tools = _register()
+        store = _FakeHotStore()
+        store.query_traces = AsyncMock(return_value=[])
+        with patch.object(_FAKE_STORAGE, "HotStore", return_value=store):
+            await tools["query_local_traces"](
+                task_class="code_generation",
+                start_time="2026-06-05T02:00:00+02:00",
+                end_time="2026-06-05T03:00:00+02:00",
+            )
+        kwargs = store.query_traces.await_args.kwargs
+        assert kwargs["start_time"] == "2026-06-05T00:00:00+00:00"
+        assert kwargs["end_time"] == "2026-06-05T01:00:00+00:00"
+
+    @pytest.mark.asyncio
+    async def test_naive_window_is_read_as_utc(self) -> None:
+        """A bound without an offset is read as UTC."""
+        tools = _register()
+        store = _FakeHotStore()
+        store.query_traces = AsyncMock(return_value=[])
+        with patch.object(_FAKE_STORAGE, "HotStore", return_value=store):
+            await tools["query_local_traces"](
+                task_class="code_generation",
+                start_time="2026-06-05T00:00:00",
+                end_time="2026-06-05T01:00:00",
+            )
+        kwargs = store.query_traces.await_args.kwargs
+        assert kwargs["start_time"] == "2026-06-05T00:00:00+00:00"
+        assert kwargs["end_time"] == "2026-06-05T01:00:00+00:00"
+
+    @pytest.mark.asyncio
+    async def test_wildcard_system_id_means_every_system(self) -> None:
+        """``""`` and ``"*"`` are the "every system" sentinel, as on Akosha."""
+        tools = _register()
+        store = _FakeHotStore()
+        store.query_traces = AsyncMock(return_value=[])
+        with patch.object(_FAKE_STORAGE, "HotStore", return_value=store):
+            await tools["query_local_traces"](
+                task_class="code_generation", system_id="*"
+            )
+        kwargs = store.query_traces.await_args.kwargs
+        assert kwargs["system_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_dry_run_keeps_filters_and_clamps_limit(self) -> None:
+        """dry_run changes the output shape, never the scope."""
+        tools = _register()
+        store = _FakeHotStore()
+        store.query_traces = AsyncMock(return_value=[])
+        with patch.object(_FAKE_STORAGE, "HotStore", return_value=store):
+            await tools["query_local_traces"](
+                task_class="code_generation",
+                system_id="svc-a",
+                limit=500,
+                dry_run=True,
+            )
+        kwargs = store.query_traces.await_args.kwargs
+        assert kwargs["system_id"] == "svc-a"
+        assert kwargs["task_class"] == "code_generation"
+        assert kwargs["limit"] == 20
 
     @pytest.mark.asyncio
     async def test_falls_back_to_record_system_id(self) -> None:

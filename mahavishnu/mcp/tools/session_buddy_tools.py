@@ -289,7 +289,11 @@ def register_session_buddy_tools(
 
         Delegates to Session-Buddy's track_channel_session MCP tool.
         See docs/plans/session-buddy-multi-channel-spec.md for the full event schema.
+        `user_id` is the principal the RBAC gate authorizes against (it is
+        caller-supplied; the auth middleware may override it from session
+        context). `sender_id` identifies the end user within the channel.
         """
+        # Implements: REQ-MCPTD-002
         if event_type not in _VALID_EVENT_TYPES:
             return {
                 "status": "error",
@@ -353,7 +357,11 @@ def register_session_buddy_tools(
         """Query active or recent channel sessions tracked in Session-Buddy.
 
         All filter parameters are optional — omit to retrieve all sessions.
+        `user_id` is the principal the RBAC gate authorizes against (it is
+        caller-supplied; the auth middleware may override it from session
+        context). `sender_id` identifies the end user within the channel.
         """
+        # Implements: REQ-MCPTD-002
         if limit < 1 or limit > 200:
             return {"status": "error", "error": "limit must be between 1 and 200"}
 

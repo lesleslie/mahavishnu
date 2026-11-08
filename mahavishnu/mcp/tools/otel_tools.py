@@ -256,43 +256,90 @@ def register_otel_tools(server, app, mcp_client):
     @server.tool()
     async def query_local_traces(
         task_class: str,
-        time_range_minutes: int = 60,
         system_id: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
         limit: int = 100,
+        dry_run: bool = False,
     ) -> list[dict[str, Any]]:
-        """Query OTel traces by task_class and time range.
+        """Query OTel traces for a task class from this component's trace store.
 
-        This is the Bodai component endpoint that Akosha's fitness analyzer
-        polls to collect traces for fitness signal computation.
+        Filter by an absolute ISO8601 window: pass `start_time` and `end_time`
+        for a specific range, and omit both to search all history. Do NOT use
+        to fetch one trace by id — use `get_otel_trace` for that. Returns a list
+        of records normalized for the fitness analyzer: `outcome`,
+        `duration_ms`, `selector`, `component_name`, `task_class`, `timestamp`.
+        Returns an empty list when no trace matches, when the trace store is
+        unreachable, or when a parameter fails validation, so an empty result
+        does not distinguish "no matches" from "query failed" — read the
+        server log for the validation message. Set `dry_run` to get the raw
+        stored metadata instead of the normalized projection; that mode
+        clamps `limit` to 20 and keeps your `system_id` and `task_class`
+        filters in force. Side effect: none; reads the trace store only.
 
         Args:
             task_class: Task classification tag to filter on (e.g. "code_generation")
-            time_range_minutes: How far back to query (default 60 minutes)
-            system_id: Optional source system identifier (auto-detected if not provided)
+            system_id: Optional source system identifier; omit (or pass "" or
+                "*") to search every system
+            start_time: Optional ISO8601 start of the query window
+            end_time: Optional ISO8601 end of the query window
             limit: Maximum number of traces to return (default 100)
+            dry_run: When True, return the raw stored metadata instead of the
+                normalized projection, clamped to 20 records. The filters stay
+                in force -- this flag changes the output shape, not the scope.
 
         Returns:
             List of trace records with outcome, duration_ms, selector, component_name
         """
+        # Implements: REQ-MCPTD-003
         # Input validation (C3)
         if not task_class or not isinstance(task_class, str):
             logger.error("query_local_traces: task_class must be a non-empty string")
-            return []
-        if (
-            not isinstance(time_range_minutes, int)
-            or time_range_minutes <= 0
-            or time_range_minutes > 10080
-        ):
-            logger.error(
-                "query_local_traces: time_range_minutes must be 1-10080 (1 week max)"
-            )
             return []
         if not isinstance(limit, int) or limit <= 0 or limit > 1000:
             logger.error("query_local_traces: limit must be 1-1000")
             return []
 
         try:
-            from datetime import UTC, datetime, timedelta
+            from datetime import UTC, datetime
+
+            # Normalise the window to UTC before it reaches the store: the
+            # trace table holds naive-UTC timestamps, so an offset-bearing
+            # bound would otherwise be compared as if the offset were UTC.
+            window_start: str | None = None
+            window_end: str | None = None
+            for _label, _value in (("start_time", start_time), ("end_time", end_time)):
+                if _value is None:
+                    continue
+                try:
+                    _parsed = datetime.fromisoformat(_value)
+                except TypeError, ValueError:
+                    logger.error(
+                        "query_local_traces: %s must be an ISO8601 timestamp, got %r",
+                        _label,
+                        _value,
+                    )
+                    return []
+                if _parsed.tzinfo is None:
+                    _parsed = _parsed.replace(tzinfo=UTC)
+                else:
+                    _parsed = _parsed.astimezone(UTC)
+                if _label == "start_time":
+                    window_start = _parsed.isoformat()
+                else:
+                    window_end = _parsed.isoformat()
+
+            # ``dry_run`` is a *shape* switch, not a scope switch: it returns
+            # the raw stored metadata instead of the normalized projection and
+            # clamps the limit so a wide probe stays readable. It deliberately
+            # does NOT disable the caller's filters -- a caller-supplied flag
+            # that switches off scoping is an escape hatch on a public tool.
+            #
+            # ``""`` and ``"*`` mean "every system", the same sentinel the
+            # Akosha and Session-Buddy tools accept.
+            effective_system_id = None if system_id in (None, "", "*") else system_id
+            effective_task_class = task_class
+            effective_limit = min(limit, 20) if dry_run else limit
 
             # ``oneiric.adapters.vector.hot_store.HotStore`` is the substrate
             # *Protocol* (ADR 017) — a typing contract with no ``query_traces``
@@ -307,24 +354,21 @@ def register_otel_tools(server, app, mcp_client):
             # that ``OtelIngester`` writes into.
             from akosha.storage import HotStore
 
-            # Calculate start_time from time_range_minutes
-            end_time = datetime.now(UTC)
-            start_time = end_time - timedelta(minutes=time_range_minutes)
-
             # Initialize HotStore
             hot_store = HotStore(database_path=app.config.otel_ingester.hot_store_path)
             await hot_store.initialize()
 
             try:
                 # Use SQL WHERE filtering (query_traces) instead of zero-vector
-                # semantic search — pushes task_class, time_range, and system_id
-                # into the SQL WHERE clause for efficient attribute filtering (C2/H7)
+                # semantic search — pushes task_class, the time window, and
+                # system_id into the SQL WHERE clause for efficient attribute
+                # filtering (C2/H7)
                 results = await hot_store.query_traces(
-                    system_id=system_id,
-                    start_time=start_time.isoformat(),
-                    end_time=end_time.isoformat(),
-                    task_class=task_class,
-                    limit=limit,
+                    system_id=effective_system_id,
+                    start_time=window_start,
+                    end_time=window_end,
+                    task_class=effective_task_class,
+                    limit=effective_limit,
                 )
             finally:
                 # Always close hot_store, whether query succeeded or not (C1)
@@ -349,6 +393,19 @@ def register_otel_tools(server, app, mcp_client):
                         if isinstance(metadata_raw, dict)
                         else {}
                     )
+
+                if dry_run:
+                    # Diagnostic mode: return the raw stored metadata so an
+                    # operator can inspect the actual JSON shape rather than
+                    # the fitness-analyzer projection.
+                    normalized.append(
+                        {
+                            "system_id": r.get("system_id"),
+                            "timestamp": str(r.get("timestamp", "")),
+                            "metadata": metadata_raw,
+                        }
+                    )
+                    continue
 
                 normalized.append(
                     {

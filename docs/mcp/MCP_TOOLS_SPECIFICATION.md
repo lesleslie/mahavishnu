@@ -617,11 +617,11 @@ _5 tool(s)_
 
 #### `query_local_traces`
 
-**Signature:** `async def query_local_traces(task_class: str, time_range_minutes: int, system_id: str | None, limit: int)`
+**Signature:** `async def query_local_traces(task_class: str, system_id: str | None = None, start_time: str | None = None, end_time: str | None = None, limit: int = 100, dry_run: bool = False)`
 
 **Source:** `mahavishnu/mcp/tools/otel_tools.py:251`
 
-**Description:** Query OTel traces by task_class and time range.
+**Description:** Query OTel traces for a task class over an absolute ISO8601 window.
 
 #### `otel_ingester_stats`
 
