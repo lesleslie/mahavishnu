@@ -325,6 +325,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-11-07-archived-requirements-registry.md`](2026-11-07-archived-requirements-registry.md) | 2026-11-07 | `active` | `canonical` | `reference` | `archived-requirements-registry` | Archived requirements registry — declarations carried forward from retired plans |
 | [`docs/plans/2026-11-07-bifrost-complexity-accounting.md`](2026-11-07-bifrost-complexity-accounting.md) | 2026-11-07 | `active` | `implementation` |  | `bifrost-complexity-accounting` | Complexity-router accounting — price the classifier, watch the session binding |
 | [`docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md`](2026-11-07-mcp-profile-groups-and-shared-llm-egress.md) | 2026-11-07 | `active` | `implementation` |  | `mcp-profile-groups` | MCP profile groups + shared LLM egress — replacing MCP aggregation |
+| [`docs/plans/2026-11-07-mcp-tool-disambiguation.md`](2026-11-07-mcp-tool-disambiguation.md) | 2026-11-07 | `active` | `implementation` |  | `mcp-tool-disambiguation` | MCP Tool Disambiguation — unique, self-describing tool names across the Bodai core fleet |
 | [`docs/plans/2026-11-07-pyscn-complexity-refactor.md`](2026-11-07-pyscn-complexity-refactor.md) | 2026-11-07 | `complete` | `implementation` |  | `quality-gate-complexity` | Reduce pyscn complexity in four MCP/CLI hotspots |
 | [`docs/plans/2026-11-06-bifrost-readiness-budget-cold-start.md`](2026-11-06-bifrost-readiness-budget-cold-start.md) | 2026-11-06 | `complete` | `implementation` |  | `bifrost-readiness-budget` | Make the Bifrost readiness budget clear the observed cold start |
 | [`docs/plans/2026-11-05-config-that-nobody-reads.md`](2026-11-05-config-that-nobody-reads.md) | 2026-11-05 | `active` | `implementation` |  | `config-that-nobody-reads` | Config that nobody reads — a `settings/` sweep for the dead-knob pattern |
@@ -537,7 +538,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (166 entries)
+### `plan` (167 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -550,9 +551,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 5 | 66 | 2 | 2 | 17 | **92** |
-| `implementation` | 4 | 11 | 5 | 7 | 20 | **47** |
+| `implementation` | 4 | 12 | 5 | 7 | 20 | **48** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 34 | **34** |
 | `superseded` | · | · | · | · | 10 | **10** |
 
-| **Total** | **9** | **77** | **7** | **9** | **82** | **184** |
+| **Total** | **9** | **78** | **7** | **9** | **82** | **185** |
