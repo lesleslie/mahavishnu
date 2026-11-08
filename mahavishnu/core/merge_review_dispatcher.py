@@ -49,7 +49,14 @@ DEFAULT_MCP_URL: str = "http://localhost:8680/mcp"
 #: Wall-clock budget for a single review dispatch, in seconds. The pool
 #: route itself gets a slightly smaller budget so the MCP call has time
 #: to report a timeout rather than being cut off mid-flight.
-REVIEW_DISPATCH_TIMEOUT: float = 300.0
+#:
+#: A review of a multi-commit diff takes minutes, not seconds: the
+#: reviewer reads the diff, reads the files it touches, and only then
+#: answers. At 300 s the worker was cut off mid-review, the pool
+#: reported a timeout carrying a partial pane, and the reply had no
+#: verdict in it -- so every merge blocked on a "malformed verdict"
+#: that was really a reviewer that never finished.
+REVIEW_DISPATCH_TIMEOUT: float = 900.0
 
 #: Bound on the diff context embedded in the review prompt. A repo-wide
 #: format pass touches >1000 files; pasting the whole diff would blow
@@ -240,6 +247,11 @@ def _parse_pool_result(text: str) -> str:
 #: cannot take a prompt answers with this error.
 POOL_TASK_SHAPE_ERROR: str = "Task must specify 'task_ref' or 'command'"
 
+#: The one pool status that means the worker finished. Every other
+#: status -- ``failed``, ``timeout``, ``cancelled`` -- means the run
+#: did not produce a review, and a run without a review has no verdict.
+POOL_COMPLETED_STATUS: str = "completed"
+
 _TASK_SHAPE_REMEDY: str = (
     "the pool's worker substrate does not accept a 'prompt' task; "
     "shepherd-backed workers require 'command' or 'task_ref' "
@@ -247,30 +259,61 @@ _TASK_SHAPE_REMEDY: str = (
 )
 
 
-def _pool_failure_message(payload: str) -> str | None:
+def _pool_envelope(payload: Any) -> tuple[str, str] | None:
+    """The ``(status, error)`` pair from a pool response envelope.
+
+    The envelope is the pool's answer -- ``{"status": ..., "output":
+    ..., "error": ...}`` -- or an MCP wrapper nesting it under
+    ``"result"``. Returns ``None`` when the payload carries no status,
+    which means it is not an envelope at all.
+    """
+    if isinstance(payload, str):
+        stripped = payload.strip()
+        if not stripped.startswith("{"):
+            return None
+        try:
+            payload = json.loads(stripped)
+        except TypeError, ValueError:
+            return None
+    if not isinstance(payload, Mapping):
+        return None
+    status = payload.get("status")
+    if not isinstance(status, str):
+        nested = payload.get("result")
+        if isinstance(nested, Mapping):
+            return _pool_envelope(nested)
+        return None
+    error = payload.get("error")
+    return status, error.strip() if isinstance(error, str) else ""
+
+
+def _pool_failure_message(payload: Any) -> str | None:
     """Return an actionable message when the pool reported a failure.
 
-    The pool answers with ``{"status": "failed", "error": ...}`` rather
-    than raising. Surfacing that error verbatim — instead of letting the
-    caller's verdict parser report a generic "malformed" — is the
-    difference between an operator who knows what to fix and one who
-    thinks the reviewer crashed.
+    The pool answers with ``{"status": "completed", ...}`` when the
+    worker finished, and with the worker's own status otherwise --
+    ``failed``, ``timeout``, ``cancelled`` -- plus an ``error``. A run
+    that did not complete carries no verdict, so it has to read as an
+    explicit failure: the difference between an operator who knows the
+    reviewer timed out and one who thinks the reviewer crashed.
+
+    The status has to be read from the *envelope*. The worker's output
+    is a separate field of that envelope, and reducing the envelope to
+    that output first -- which is what the verdict path does -- throws
+    the status away.
     """
-    stripped = payload.strip()
-    if not stripped.startswith("{"):
+    envelope = _pool_envelope(payload)
+    if envelope is None:
         return None
-    try:
-        parsed = json.loads(stripped)
-    except TypeError, ValueError:
+    status, error = envelope
+    if status == POOL_COMPLETED_STATUS:
         return None
-    if not isinstance(parsed, Mapping):
-        return None
-    if parsed.get("status") != "failed":
-        return None
-    error = parsed.get("error")
-    if not isinstance(error, str) or not error.strip():
-        return None
-    message = error.strip()
+    message = error
+    if not message:
+        if status == "timeout":
+            message = "the reviewer did not finish within the dispatch timeout"
+        else:
+            message = f"the pool reported status {status!r}"
     if POOL_TASK_SHAPE_ERROR in message:
         return f"{message} — {_TASK_SHAPE_REMEDY}"
     return message
@@ -321,15 +364,17 @@ async def dispatch_review_async(
         )
 
     reply = _extract_reply_text(call_result)
-    parsed_reply = _parse_pool_result(reply)
-    failure = _pool_failure_message(parsed_reply)
+    failure = _pool_failure_message(reply)
     if failure is not None:
-        # The pool reached a worker but the worker refused the task. Turn
-        # it into an explicit block verdict carrying the reason, so the
+        # The pool reached a worker but the run did not finish. Turn it
+        # into an explicit block verdict carrying the reason, so the
         # operator sees *why* the review failed rather than a generic
-        # "malformed verdict" note.
+        # "malformed verdict" note. The check reads the envelope, not the
+        # worker's output: the status lives in the envelope, and the
+        # output -- which is where a cut-off review ends up -- has no
+        # status at all.
         return f"<verdict>decision: block note: {failure}</verdict>"
-    return _extract_agent_text(parsed_reply)
+    return _extract_agent_text(_parse_pool_result(reply))
 
 
 def dispatch_review(

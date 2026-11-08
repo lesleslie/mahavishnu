@@ -16,11 +16,17 @@ as a block.
 from __future__ import annotations
 
 import json
+from typing import Any, Self
+
+import pytest
 
 from mahavishnu.core.merge_review_dispatcher import (
+    REVIEW_DISPATCH_TIMEOUT,
     _extract_agent_text,
     _extract_reply_text,
     _parse_pool_result,
+    _pool_failure_message,
+    dispatch_review_async,
 )
 from mahavishnu.core.merge_to_main import parse_verdict
 
@@ -96,3 +102,127 @@ class TestTheVerdictBecomesParseable:
         verdict = parse_verdict(_extract_agent_text(_parse_pool_result(reply)))
         assert verdict["decision"] == "block"
         assert verdict["note"] == "not good"
+
+
+class TestTheFailureReasonSurvives:
+    """A run that did not finish must say why.
+
+    The pool's status lives in its *envelope*; the worker's output is a
+    separate field of that envelope. Reducing the envelope to the output
+    first -- which is what the verdict path does -- throws the status
+    away, and a reviewer that timed out then read as a "malformed
+    verdict": a review that was cut off looked like a review that had
+    no opinion.
+    """
+
+    def test_a_timeout_names_the_timeout(self) -> None:
+        envelope = json.dumps(
+            {
+                "pool_id": "mahavishnu_1",
+                "worker_id": "worker-1",
+                "status": "timeout",
+                "output": "partial stream, no verdict here",
+                "error": "CLI did not emit any completion marker within 300.0s",
+            }
+        )
+        message = _pool_failure_message(envelope)
+        assert message is not None
+        assert "completion marker" in message
+
+    def test_a_timeout_without_an_error_still_names_the_timeout(self) -> None:
+        message = _pool_failure_message(json.dumps({"status": "timeout"}))
+        assert message is not None
+        assert "timeout" in message.lower()
+
+    def test_a_failed_run_reports_its_error(self) -> None:
+        envelope = json.dumps(
+            {
+                "status": "failed",
+                "output": "partial stream, no verdict here",
+                "error": "the worker died",
+            }
+        )
+        assert _pool_failure_message(envelope) == "the worker died"
+
+    def test_a_completed_run_has_no_failure_message(self) -> None:
+        envelope = json.dumps({"status": "completed", "output": "the verdict"})
+        assert _pool_failure_message(envelope) is None
+
+    def test_the_envelope_is_checked_before_the_output_is_reduced(self) -> None:
+        """The status is in the envelope; the output has no status."""
+        envelope = json.dumps(
+            {
+                "status": "failed",
+                "output": "partial stream, no verdict here",
+                "error": "the worker died",
+            }
+        )
+        assert _parse_pool_result(envelope) == "partial stream, no verdict here"
+        assert _pool_failure_message(envelope) == "the worker died"
+
+
+class _FakeClient:
+    """A stand-in for ``CommonMCPClient`` that returns a fixed payload."""
+
+    def __init__(self, payload: str) -> None:
+        self._payload = payload
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return None
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> _CallResult:
+        assert name == "pool_route_execute"
+        assert arguments
+        return _CallResult(self._payload)
+
+
+class TestTheDispatchReportsWhyItFailed:
+    @pytest.mark.asyncio
+    async def test_a_timed_out_review_blocks_with_the_reason(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        envelope = json.dumps(
+            {
+                "pool_id": "mahavishnu_1",
+                "status": "timeout",
+                "output": "partial stream, no verdict here",
+                "error": "CLI did not emit any completion marker within 900.0s",
+            }
+        )
+        monkeypatch.setattr(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient",
+            lambda **kwargs: _FakeClient(envelope),
+        )
+        reply = await dispatch_review_async("python-pro", "review this")
+        verdict = parse_verdict(reply)
+        assert verdict["decision"] == "block"
+        assert "completion marker" in verdict["note"]
+
+    @pytest.mark.asyncio
+    async def test_a_finished_review_still_yields_its_verdict(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        envelope = _envelope(STREAM_FRAGMENT)
+        monkeypatch.setattr(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient",
+            lambda **kwargs: _FakeClient(envelope),
+        )
+        reply = await dispatch_review_async("python-pro", "review this")
+        verdict = parse_verdict(reply)
+        assert verdict["decision"] == "pass"
+        assert verdict["note"] == "smoke test"
+
+
+class TestTheReviewBudget:
+    def test_the_budget_outlasts_a_real_review(self) -> None:
+        """A review of a multi-commit diff takes minutes, not seconds.
+
+        At 300 s the worker was cut off mid-review; the pool reported a
+        timeout with a partial pane, the reply carried no verdict, and
+        every merge blocked on a "malformed verdict" that was really a
+        reviewer that never finished.
+        """
+        assert REVIEW_DISPATCH_TIMEOUT >= 900
