@@ -446,10 +446,9 @@ by access pattern: discovery, state, recall, monitor, health.
 
 | Tool | What it reads | Use when |
 |------|---------------|----------|
-| `list_issues` / `create_issue` / `update_issue` / `coord_close_issue` / `coord_get_issue` / `coord_get_blocking_issues` / `coord_list_issues` / `coord_update_issue` / `coord_get_repo_status` | `mahavishnu/core/coordination/manager.py` (in-memory) | Cross-repo blocker detection |
-| `list_todos` / `create_todo` / `update_todo` / `coord_complete_todo` / `coord_list_todos` / `coord_get_todo` | `task_store.py` (SQLite under `${DATA_DIR}`) | Goal-driven team todo tracking |
-| `list_dependencies` / `add_dependency` / `remove_dependency` / `coord_list_dependencies` / `coord_check_dependencies` | `dependency_graph.py` (in-process DAG) | Cross-repo dependency graph |
-| `get_dependency_graph` / `detect_circular_dependencies` / `get_critical_path` / `generate_mermaid_diagram` | Same DAG | Visualization + audit |
+| `list_issues` / `get_issue` / `create_issue` / `update_issue` / `delete_issue` / `list_todos` / `get_todo` / `list_dependencies` / `check_dependencies` / `get_blocking_issues` / `get_repo_status` / `get_ecosystem_status` (the `CoordinationManager` API, reached through the `mahavishnu coord` CLI) | the `coordination:` block in `settings/ecosystem.yaml` | Cross-repo blocker detection, issue and todo tracking |
+| `coord_*` (15 tools) — **not registered**; absent from `tools/list` | the same `coordination:` block | Reference only — the CLI covers the same ground |
+| `add_dependency` / `remove_dependency` / `get_dependency_graph` / `detect_circular_dependencies` / `get_critical_path` / `generate_mermaid_diagram` | `dependency_graph.py` (in-process DAG) | Cross-repo dependency graph, visualization + audit |
 
 ### Repository messaging / observability / monitoring
 

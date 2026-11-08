@@ -635,6 +635,15 @@ _5 tool(s)_
 
 _15 tool(s)_
 
+> **Not registered.** The 15 `coord_*` tools below are defined in
+> `mahavishnu/mcp/tools/coordination_tools.py` but that module is never
+> mounted, so none of them appear in `tools/list` and none can be called.
+> They are documented here because the code and its signatures are real;
+> do not write calls against them. The capability is live through the CLI:
+> `mahavishnu coord create-issue | close-issue | create-todo | complete-todo
+> | blocking | list-issues | list-todos`. See CLAUDE.md § "Unregistered tool
+> modules".
+
 #### `coord_list_issues`
 
 **Signature:** `async def coord_list_issues(status: str | None, priority: str | None, repo: str | None, assignee: str | None)`

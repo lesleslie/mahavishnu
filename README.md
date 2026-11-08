@@ -537,21 +537,20 @@ Mahavishnu's MCP server is built from **178 tools** (150 profile-gated + 27 inli
 - `worker_close` - Close specific worker
 - `worker_close_all` - Close all workers
 
-### Coordination (13 tools)
+### Coordination
 
-- `coord_list_issues` - List cross-repository issues
-- `coord_get_issue` - Get issue details
-- `coord_create_issue` - Create new issue
-- `coord_update_issue` - Update issue
-- `coord_close_issue` - Close issue
-- `coord_list_todos` - List todo items
-- `coord_get_todo` - Get todo details
-- `coord_create_todo` - Create todo
-- `coord_complete_todo` - Complete todo
-- `coord_get_blocking_issues` - Get blocking issues
-- `coord_check_dependencies` - Validate dependencies
-- `coord_get_repo_status` - Get repo status
-- `coord_list_plans` - List plans
+Cross-repo issues, todos, plans, and dependencies live in the `coordination:`
+block of `settings/ecosystem.yaml` and are driven by the CLI:
+
+```bash
+mahavishnu coord create-issue --title "..." --description "..." --repos mahavishnu
+mahavishnu coord blocking mahavishnu
+mahavishnu coord list-issues --repo mahavishnu
+```
+
+The `coord_*` MCP tools that mirror this CLI exist in
+`mahavishnu/mcp/tools/coordination_tools.py` but are **not registered** on
+the server — they are absent from `tools/list` and cannot be called.
 
 ### Repository Messaging (7 tools)
 

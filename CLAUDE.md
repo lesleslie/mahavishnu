@@ -788,7 +788,7 @@ outside their own unit tests imports them, so their tools are absent from
 
 | Module | Tools | Status |
 |---|---|---|
-| `coordination_tools.py` | 15 | Dead. Backed by the `coordination:` block in `settings/ecosystem.yaml`, not by session-buddy. The todo half duplicates session-buddy's `tasks_*`; the issue half has no equivalent elsewhere. |
+| `coordination_tools.py` | 15 | Dead. Backed by the `coordination:` block in `settings/ecosystem.yaml`, not by session-buddy. The todo half duplicates session-buddy's `tasks_*`; the issue half has no equivalent elsewhere. The capability itself is **live through the CLI** (`mahavishnu coord …`) — use that, not a `coord_*` MCP call. |
 | `learning_pipeline_tools.py` | 5 | Dead, and deliberately so — `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md` blocks the wiring branch on an authentication-identity fix. ADR 012 assigns the pipeline itself to mahavishnu. |
 
 `mcp__mahavishnu__get_tool_versions` still lists these 20 names, so treat
@@ -848,7 +848,7 @@ The CLI is split between the package root (cross-cutting subsystems) and `mahavi
 #### Package-root CLIs (cross-cutting subsystems)
 
 - **Backup CLI**: `mahavishnu/backup_cli.py` - Backup/recovery commands
-- **Coordination CLI**: `mahavishnu/coordination_cli.py` - Issues/todos/dependencies
+- **Coordination CLI**: `mahavishnu/coordination_cli.py` - Issues/todos/dependencies. This is the **live** path for cross-repo coordination; the `coord_*` MCP tools that mirror it are not registered.
 - **Ecosystem CLI**: `mahavishnu/ecosystem_cli.py` - Repository management
 - **Ingestion CLI**: `mahavishnu/ingestion_cli.py` - Content ingestion
 - **Metrics CLI**: `mahavishnu/metrics_cli.py` - Observability metrics
