@@ -1,9 +1,9 @@
 ---
-status: active
+status: partial
 role: implementation
 kind: plan
 date: 2026-10-30
-last_reviewed: 2026-10-30
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: task-workflow-backlink
 title: "Task → Workflow Back-Link — typed channel, durable dispatch, and wiring"
@@ -48,8 +48,15 @@ requirements:
 
 # Task → Workflow Back-Link — typed channel, durable dispatch, and wiring
 
+> **Status: partial** (verified 2026-11-08). The typed channel is landed
+> and registered — `tasks_link_workflow` in session-buddy, the shape-parity
+> gate, the sweeper's convergence, and the `session-buddy>=0.38.1` floor.
+> §9's first condition is not met: no live end-to-end transcript is
+> recorded (task → handoff → `tasks_get` with a populated `workflow_id`,
+> surviving a session-buddy restart).
+
 **Date:** 2026-10-30
-**Status:** active
+**Status:** partial
 **Owner:** Claude (session `fbc2e53b`)
 **Scope:** `session-buddy` (field owner) + `mahavishnu` (dispatch edge)
 **Design:** [`docs/specs/2026-10-30-task-workflow-backlink-design.md`](../specs/2026-10-30-task-workflow-backlink-design.md)

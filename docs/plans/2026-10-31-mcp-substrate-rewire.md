@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: canonical
 kind: plan
 date: 2026-10-31
-last_reviewed: 2026-10-31
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: mcp-substrate-rewire
 title: "Rewire the MCP substrate from the decommissioned service to the live owners"
@@ -23,6 +23,11 @@ requirements:
 ---
 
 # Rewire the MCP substrate from the decommissioned service to the live owners
+
+> **Status: complete** (verified 2026-11-08). All three phases landed
+> (`f4f2522a`, `a4084dcb`). Live re-verification: the four
+> `mahavishnu_kv_*` tools are registered (161 total) and a forged
+> `mahavishnu-internal` principal is denied with `AUTH_INVALID_IDENTITY`.
 
 ## 1. Outcome
 

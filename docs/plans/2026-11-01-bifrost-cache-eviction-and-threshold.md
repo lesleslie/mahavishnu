@@ -1,9 +1,9 @@
 ---
-status: active
+status: partial
 role: canonical
 kind: plan
 date: 2026-11-01
-last_reviewed: 2026-11-01
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: bifrost-cache-eviction-and-threshold
 title: "Bifrost cache eviction sweep and cache-tuning retune"
@@ -17,6 +17,13 @@ requirements:
 ---
 
 # Plan — Bifrost cache eviction sweep and cache-tuning retune
+
+> **Status: partial** (verified 2026-11-08). The sweep, the schedule and
+> the live config satisfy §9 conditions 1–3. Condition 4 is not met:
+> §4.6 is recorded in `config/bifrost/README.md`, but §4.5's band-separation
+> analysis — benefit band `0.9545–0.9784` against risk band
+> `0.9511/0.9798/0.9842`, and the threshold comparison showing no
+> similarity threshold separates the bands — is not.
 
 ## 1. Outcome
 

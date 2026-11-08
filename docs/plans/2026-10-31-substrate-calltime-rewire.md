@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: canonical
 kind: plan
 date: 2026-10-31
-last_reviewed: 2026-10-31
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: substrate-calltime-rewire
 title: "Bind the substrate call sites to the live store instead of a dead module lookup"
@@ -21,6 +21,11 @@ requirements:
 ---
 
 # Bind the substrate call sites to the live store instead of a dead module lookup
+
+> **Status: complete** (verified 2026-11-08). Both phases landed
+> (`44f0bb8b`, `38521852`, `bc9c330d`): `core/kv_store.py` and
+> `core/substrate.py` exist, `core/_mcp_substrate_compat.py` is deleted,
+> and `grep -rn "mcp_calltime" mahavishnu/` returns no hits.
 
 ## 1. Outcome
 

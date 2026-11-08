@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: plan
 date: 2026-10-27
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-08
 superseded_by: null
 blocks_on: []
 topic: substrate-otel
@@ -33,6 +33,12 @@ requirements:
 ---
 
 # OTLP MetricsService in the Bodai Substrate — Implementation Plan
+
+> **Status: complete** (verified 2026-11-08). The §9 rule holds: the OTLP
+> export is accepted by akosha, Prometheus scrapes it, and the stage-1
+> gate query behaves. One known gap stays open — `/v1/metrics` on akosha's
+> HTTP listener (the remaining half of REQ-M07 for
+> `protocol: "http/protobuf"`); the default gRPC path is unaffected.
 
 ## 1. Outcome
 

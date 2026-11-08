@@ -1,9 +1,9 @@
 ---
-status: active
+status: partial
 role: canonical
 kind: plan
 date: 2026-11-01
-last_reviewed: 2026-11-01
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: control-plane-consolidation
 title: "Control-plane consolidation — one registry, one envelope, one workflow lane"
@@ -54,10 +54,14 @@ requirements:
 
 # Control-plane consolidation — one registry, one envelope, one workflow lane
 
-> **Status: draft, pending multi-agent review.** This plan supersedes
+> **Status: partial** (verified 2026-11-08). Phase 1 of eight phases is
+> complete, and it lives on `feat/control-plane-consolidation` — 9 commits
+> ahead of `main` and unmerged; `main` has none of it. Phases 2–8 have not
+> started. The §6 checklist is 0/100 ticked on both branches and is not a
+> usable progress signal. This plan supersedes
 > `docs/plans/2026-11-01-terminal-cli-harness-demos-and-dispatch-trust.md`
-> and `docs/plans/2026-11-01-adapter-composition-executor.md`, both of which
-> are marked `superseded_by` this file.
+> and `docs/plans/2026-11-01-adapter-composition-executor.md`, both of
+> which are marked `superseded_by` this file.
 >
 > **Why superseding rather than adding:** both predecessor plans were
 > written before the code was traced, and both are wrong in ways that

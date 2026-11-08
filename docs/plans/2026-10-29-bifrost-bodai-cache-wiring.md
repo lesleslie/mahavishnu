@@ -1,9 +1,9 @@
 ---
-status: active
+status: partial
 role: canonical
 kind: plan
 date: 2026-10-29
-last_reviewed: 2026-10-29
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: bifrost-cache-wiring
 title: "Bifrost — Bodai Routing, Virtual-Key Auth, and cache_mode Wiring"
@@ -17,6 +17,14 @@ requirements:
 ---
 
 # Bifrost — Bodai Routing, Virtual-Key Auth, and `cache_mode` Wiring
+
+> **Status: partial** (verified 2026-11-08). Phases 1–4 landed
+> (`7b848268`): the gateway virtual key, the `LLAMA_SERVER_API_KEY`
+> resolution and the `cache_mode` headers are in place, and the two
+> unchecked operator steps are already satisfied. Phase 5 is not: the
+> capability probe still reads `BIFROST_VIRTUAL_KEY` from the environment
+> instead of `resolve_virtual_key()`, and `CloudWorker`'s docstring still
+> claims a reachability it does not have.
 
 ## 1. Outcome
 

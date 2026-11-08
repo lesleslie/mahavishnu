@@ -1,8 +1,8 @@
 ---
-status: active
+status: complete
 role: implementation
 date: 2026-10-29
-last_reviewed: 2026-10-29
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: agno-failover-gateway
 title: "Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key"
@@ -20,6 +20,11 @@ requirements:
 ---
 
 # Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key
+
+> **Status: complete** (verified 2026-11-08). All seven deliverables landed
+> in `e6441968` (2026-10-29); the §6 checklist was never ticked and is
+> stale. Open: §9's "the live adapter reports a `FallbackModel` over
+> `[MiniMax-via-Bifrost, llama-server]`" was not exercised live.
 
 Follow-up to `docs/plans/2026-10-29-agno-llm-provider-chain.md`. That plan
 made MiniMax the primary provider and llama-server the fallback **at model

@@ -1,9 +1,9 @@
 ---
-status: active
+status: partial
 role: implementation
 kind: plan
 date: 2026-10-12
-last_reviewed: 2026-10-18
+last_reviewed: 2026-11-08
 superseded_by: null
 blocks_on: []
 topic: mcpserver-settings-convention
@@ -13,6 +13,13 @@ title: "mcp-common CommonMCPClient + HealthFeedState Test Backfill"
 > **For agentic workers:** REQUIRED SUB-SKILL: `superpowers:test-driven-development` — write the failing test first for each module, then implement to green.
 
 # mcp-common CommonMCPClient + HealthFeedState Test Backfill
+
+> **Status: partial** (verified 2026-11-08). §9 conditions 1, 2 and 5
+> hold — 45 tests pass, both smoke scripts exit 0, and the umbrella plan
+> is closed. Condition 4 is not met: there is no CHANGELOG `[Unreleased]`
+> entry naming the backfill. The plan's explicit "not done" clause also
+> fires: `git grep Implements.REQ-00. mcp_common/health/` returns 0 hits,
+> and `tests/unit/health/test_feed.py` carries no `req` markers.
 
 **Goal:** close the Phase 1b test gap in the umbrella plan `docs/plans/2026-09-14-common-mcp-client-transport-unification.md`. Phase 1a shipped code without Phase 1b tests; this plan backfills the 20 planned tests + 2 standalone smoke scripts and **does not re-do work the umbrella already shipped**. Out of scope for this plan: URL default normalization (umbrella Phase 2), call-site migration (umbrella Phase 3), and the per-repo health aggregator migration (now under `docs/plans/2026-10-09-mcp-health-check-enrichment.md`, shipped 2026-10-09).
 

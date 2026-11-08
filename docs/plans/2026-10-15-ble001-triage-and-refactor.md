@@ -1,9 +1,9 @@
 ---
-status: active
+status: partial
 role: canonical
 kind: plan
 date: 2026-10-15
-last_reviewed: 2026-10-15
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: lint-coverage-gap
 title: "BLE001 Triage and Per-Site Refactor — close the coverage gap behind the durable defense"
@@ -25,6 +25,13 @@ title: "BLE001 Triage and Per-Site Refactor — close the coverage gap behind th
 > the user surfaced in the 2026-10-15 session. The general "audit
 > lifecycle" is owned by the `feature-delivery-lifecycle` workflow; this
 > plan does not change that.
+>
+> **Status: partial** (verified 2026-11-08). Phase 4 (the adjacent gate
+> cleanups) landed in `41e43ff4`. Phase 1's triage output
+> (`docs/ble001-triage.md`) does not exist, and Phase 2 has not started —
+> 738 `noqa: BLE001` directives remain against a target of ≤60, only 81 of
+> which carry a rationale. Phase 3's `TICKET-` justification gate is
+> unbuilt in both `crackerjack` and this repo.
 
 ## 1. Outcome
 

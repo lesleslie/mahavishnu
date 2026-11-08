@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: plan
 date: 2026-10-29
-last_reviewed: 2026-10-29
+last_reviewed: 2026-11-08
 superseded_by: null
 blocks_on: []
 topic: resolver
@@ -15,6 +15,11 @@ title: "Oneiric Resolver — Precedence Contract and Scope Deferrals (pointer to
 > **This is a pointer, not an implementation plan.** The work is specified in two
 > plans that live in the **oneiric** repository, because that is where the code
 > they change lives. Do not implement from this file — read the linked plans.
+>
+> **Status: complete** (verified 2026-11-08). This pointer's demonstrable-by
+> holds: both delegated plans are listed in `oneiric/docs/plans/PLAN_INDEX.md`.
+> The status table below is stale — Plan A is now `partial` and Plan B has not
+> started. The work itself lives in the oneiric repository.
 
 ## Purpose
 
@@ -27,7 +32,7 @@ find them. This file makes them discoverable from mahavishnu's plan index.
 
 | Plan | Location | Status | Tasks |
 |---|---|---|---|
-| Resolver precedence contract and empty-result explanation | `~/Projects/oneiric/docs/plans/2026-10-29-resolver-precedence-contract-and-empty-result-explanation.md` | `active` | 3 |
+| Resolver precedence contract and empty-result explanation | `~/Projects/oneiric/docs/plans/2026-10-29-resolver-precedence-contract-and-empty-result-explanation.md` | `partial` | 3 |
 | Resolver scope deferrals and reopening triggers | `~/Projects/oneiric/docs/plans/2026-10-29-resolver-scope-deferrals-and-triggers.md` | `active` | 3 |
 
 Committed in oneiric as `6fc38a3` ("docs(plans): add resolver precedence and scope-deferral plans").

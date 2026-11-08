@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: canonical
 kind: plan
 date: 2026-10-27
-last_reviewed: 2026-10-27
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: otel-producer-reporting
 title: "Producer Span Reporting — make the heartbeat roster mean something"
@@ -23,6 +23,12 @@ requirements:
 ---
 
 # Producer Span Reporting — make the heartbeat roster mean something
+
+> **Status: complete** (verified 2026-11-08). Landed across mcp-common
+> (`e06c78d`) and akosha (`33b3bb9`); all five plists carry the OTLP
+> endpoint. Live re-verification: `_service_liveness` spans arrive for all
+> five roster services at ~30s spacing. The §6 checklist is stale — every
+> named file landed.
 
 ## 1. Outcome
 

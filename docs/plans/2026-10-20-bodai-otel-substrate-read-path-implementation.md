@@ -1,9 +1,9 @@
 ---
-status: partial
+status: complete
 role: implementation
 kind: plan
 date: 2026-10-20
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: substrate-otel
 title: "Bodai OTel Substrate Read Path — Implementation Plan"
@@ -44,6 +44,10 @@ review: []
 > 2026-10-21, but R-5 has since landed (mahavishnu now writes to
 > `spans_substrate`). The runbook's precondition section is stale on that
 > point.
+>
+> **Status: complete** (verified 2026-11-08). All six tasks landed; the only
+> open item is the documentation-only R-4 sub-item above. The `blocked_by`
+> dependency is resolved — that plan is `complete`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > `superpowers:subagent-driven-development` (recommended) or

@@ -1,9 +1,9 @@
 ---
-status: active
+status: complete
 role: implementation
 kind: plan
 date: 2026-11-07
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-08
 superseded_by: null
 topic: bifrost-complexity-accounting
 title: "Complexity-router accounting — price the classifier, watch the session binding"
@@ -20,6 +20,11 @@ requirements:
 ---
 
 # Complexity-router accounting — price the classifier, watch the session binding
+
+> **Status: complete** (verified 2026-11-08). Shipped in `7ab4257a`; the
+> §9 rule holds. Re-verified live: `mahavishnu bifrost complexity-report
+> --hours 24` runs against the live store and reports the classifier's
+> spend and the session binding's overruns.
 
 ## 1. Outcome
 
