@@ -7,6 +7,9 @@ last_reviewed: 2026-11-06
 superseded_by: null
 topic: bifrost-readiness-budget
 title: "Make the Bifrost readiness budget clear the observed cold start"
+requirements:
+  - id: REQ-BIFROST-045
+    title: "Readiness budget clears the worst observed cold start"
 ---
 
 # Make the Bifrost readiness budget clear the observed cold start

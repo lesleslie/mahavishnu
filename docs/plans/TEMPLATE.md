@@ -39,13 +39,30 @@ script validates traceability — declared IDs must appear in code via
 `@pytest.mark.req(["REQ-NNN"])` (test marker). Every Phase's Integration Contract
 block MUST link back to the requirement IDs it fulfils.
 
-```yaml
-requirements:
-  - id: REQ-001
-    title: "Short noun-phrase"
-  - id: REQ-002
-    title: "..."
-```
+> **Where the declaration goes**: the **frontmatter** `requirements:` key is
+> authoritative — `audit_requirements.py` reads the frontmatter and nothing
+> else. A YAML block in this section is a mirror for human readers only; a
+> declaration that lives *only* here is invisible to the audit and shows up as a
+> **phantom** (referenced in code, never declared). See
+> `docs/plans/2026-11-06-bifrost-readiness-budget-cold-start.md` for the
+> corrected shape.
+>
+> Paste this into the plan's **frontmatter**, alongside `status`, `role`,
+> `date`, `last_reviewed`, and `topic`:
+>
+> ```yaml
+> requirements:
+>   - id: REQ-001
+>     title: "Short noun-phrase"
+>   - id: REQ-002
+>     title: "..."
+> ```
+>
+> **Do not put YAML comments in a plan's frontmatter.** The plan-index
+> generator derives a document's title from the first `# ` line in the *whole
+> file* (`scripts/regenerate_plan_index.py:_title_from_text`), so a comment
+> written as `# text` inside the frontmatter is read as an H1 and silently
+> replaces the title.
 
 ## 5. Implementation Phases
 ### Phase N: <name>
