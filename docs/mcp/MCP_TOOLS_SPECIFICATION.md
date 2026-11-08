@@ -4,10 +4,10 @@
 
 ## Overview
 
-Mahavishnu's MCP server exposes **197 tools** split across two layers:
+Mahavishnu's MCP server exposes **178 tools** on the `full` profile, split across two layers:
 
 - **27 inline core tools** registered in `mahavishnu/mcp/server_core.py` (always loaded)
-- **170 decorated/profile-gated tools** registered across 26 modules under `mahavishnu/mcp/tools/` (loaded per the active profile — `minimal`, `standard`, or `full`)
+- **150 profile-gated tools** registered across 39 profile-gated groups under `mahavishnu/mcp/tools/` (loaded per the active profile — `minimal`, `standard`, or `full`), plus the always-on `discover_tools` meta-tool
 
 This document is **generated from source**. The inventory script extracts `@mcp.tool`, `@server.tool`, `@app.tool`, and `mcp.tool()(name)` registrations; see `mahavishnu/mcp/tools/__init__.py` for the module list.
 
@@ -15,7 +15,7 @@ This document is **generated from source**. The inventory script extracts `@mcp.
 
 Tools are gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable:
 
-- `full` (default): all 197 tools loaded
+- `full` (default): all 178 tools loaded
 - `standard`: core 11 groups (terminal, pool, worker, messaging, git, session-buddy, coordination, ecosystem, health, capability, ...)
 - `minimal`: health probes only
 
@@ -1174,194 +1174,6 @@ _8 tool(s)_
 **Source:** `mahavishnu/mcp/tools/pycharm_tools.py:353`
 
 **Description:** List code inspections and problems for a file via PyCharm.
-
-### 21. Desktop Automation
-
-_23 tool(s)_
-
-#### `automation_check_permissions`
-
-**Signature:** `async def automation_check_permissions()`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:67`
-
-**Description:** Check automation permissions (accessibility, screen recording).
-
-#### `automation_status`
-
-**Signature:** `async def automation_status()`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:76`
-
-**Description:** Get automation manager status and statistics.
-
-#### `automation_launch_app`
-
-**Signature:** `async def automation_launch_app(bundle_id: Annotated[str, Field(description='Application bundle identifier')], dry_run: Annotated[bool, Field(description='Simulate without executing')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:94`
-
-**Description:** Launch an application by bundle identifier.
-
-#### `automation_quit_app`
-
-**Signature:** `async def automation_quit_app(bundle_id: Annotated[str, Field(description='Application bundle identifier')], force: Annotated[bool, Field(description='Force quit')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:106`
-
-**Description:** Quit an application.
-
-#### `automation_activate_app`
-
-**Signature:** `async def automation_activate_app(bundle_id: Annotated[str, Field(description='Application bundle identifier')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:118`
-
-**Description:** Activate (bring to front) an application.
-
-#### `automation_list_apps`
-
-**Signature:** `async def automation_list_apps()`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:129`
-
-**Description:** List all running applications.
-
-#### `automation_get_active_app`
-
-**Signature:** `async def automation_get_active_app()`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:138`
-
-**Description:** Get the currently active (frontmost) application.
-
-#### `automation_list_windows`
-
-**Signature:** `async def automation_list_windows(bundle_id: Annotated[str, Field(description='Application bundle identifier')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:151`
-
-**Description:** List all windows for an application.
-
-#### `automation_resize_window`
-
-**Signature:** `async def automation_resize_window(window_id: Annotated[str, Field(description='Window identifier')], width: Annotated[int, Field(description='New width in pixels')], height: Annotated[int, Field(description='New height in pixels')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:162`
-
-**Description:** Resize a window.
-
-#### `automation_move_window`
-
-**Signature:** `async def automation_move_window(window_id: Annotated[str, Field(description='Window identifier')], x: Annotated[int, Field(description='New X position')], y: Annotated[int, Field(description='New Y position')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:175`
-
-**Description:** Move a window to a new position.
-
-#### `automation_close_window`
-
-**Signature:** `async def automation_close_window(window_id: Annotated[str, Field(description='Window identifier')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:188`
-
-**Description:** Close a window.
-
-#### `automation_click_menu`
-
-**Signature:** `async def automation_click_menu(bundle_id: Annotated[str, Field(description='Application bundle identifier')], menu_path: Annotated[list[str], Field(description="Menu path (e.g., ['File', 'Save'])")])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:203`
-
-**Description:** Navigate menu and click an item.
-
-#### `automation_list_menus`
-
-**Signature:** `async def automation_list_menus(bundle_id: Annotated[str, Field(description='Application bundle identifier')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:215`
-
-**Description:** List all menus for an application.
-
-#### `automation_type_text`
-
-**Signature:** `async def automation_type_text(text: Annotated[str, Field(description='Text to type')], interval: Annotated[float, Field(description='Delay between keystrokes')], dry_run: Annotated[bool, Field(description='Simulate')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:230`
-
-**Description:** Type text at current cursor position.
-
-#### `automation_press_key`
-
-**Signature:** `async def automation_press_key(key: Annotated[str, Field(description='Key to press')], modifiers: Annotated[list[str] | None, Field(description="Modifiers (e.g., ['cmd', 'shift'])")])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:243`
-
-**Description:** Press a key with optional modifiers.
-
-#### `automation_click`
-
-**Signature:** `async def automation_click(x: Annotated[int, Field(description='X coordinate')], y: Annotated[int, Field(description='Y coordinate')], button: Annotated[str, Field(description='Mouse button (left/right/middle)')], clicks: Annotated[int, Field(description='Number of clicks')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:257`
-
-**Description:** Click at coordinates.
-
-#### `automation_drag`
-
-**Signature:** `async def automation_drag(start_x: Annotated[int, Field(description='Starting X coordinate')], start_y: Annotated[int, Field(description='Starting Y coordinate')], end_x: Annotated[int, Field(description='Ending X coordinate')], end_y: Annotated[int, Field(description='Ending Y coordinate')], duration: Annotated[float, Field(description='Duration in seconds')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:271`
-
-**Description:** Drag from one point to another.
-
-#### `automation_scroll`
-
-**Signature:** `async def automation_scroll(x: Annotated[int, Field(description='X coordinate')], y: Annotated[int, Field(description='Y coordinate')], dx: Annotated[int, Field(description='Horizontal scroll amount')], dy: Annotated[int, Field(description='Vertical scroll amount')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:286`
-
-**Description:** Scroll at coordinates.
-
-#### `automation_screenshot`
-
-**Signature:** `async def automation_screenshot(region: Annotated[list[int] | None, Field(description='Region [x, y, width, height] or None for full screen')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:304`
-
-**Description:** Capture a screenshot.
-
-#### `automation_list_screens`
-
-**Signature:** `async def automation_list_screens()`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:336`
-
-**Description:** List all connected displays.
-
-#### `automation_get_ui_elements`
-
-**Signature:** `async def automation_get_ui_elements(bundle_id: Annotated[str, Field(description='Application bundle identifier')], window_id: Annotated[str | None, Field(description='Window identifier or None for all')])`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:349`
-
-**Description:** Get UI elements for an application.
-
-#### `automation_get_security_config`
-
-**Signature:** `async def automation_get_security_config()`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:367`
-
-**Description:** Get security configuration (blocklist, allowlist, etc.).
-
-#### `automation_close`
-
-**Signature:** `async def automation_close()`
-
-**Source:** `mahavishnu/mcp/tools/desktop_automation_tools.py:375`
-
-**Description:** Close the automation manager and release resources.
 
 ### 22. Adapter Management
 

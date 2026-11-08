@@ -782,19 +782,33 @@ Mahavishnu-specific guidance:
 
 #### Unregistered tool modules
 
-Three modules define tools that the server never registers — nothing
+Two modules define tools that the server never registers — nothing
 outside their own unit tests imports them, so their tools are absent from
 `tools/list` and cannot be called:
 
 | Module | Tools | Status |
 |---|---|---|
-| `desktop_automation_tools.py` | 23 | Dead. Desktop automation is served by the `cmux-cua` MCP server (AX-native, background-safe); 4 of these are non-functional even if wired (`resize_window`, `move_window`, `list_menus`, `get_ui_elements`). |
 | `coordination_tools.py` | 15 | Dead. Backed by the `coordination:` block in `settings/ecosystem.yaml`, not by session-buddy. The todo half duplicates session-buddy's `tasks_*`; the issue half has no equivalent elsewhere. |
 | `learning_pipeline_tools.py` | 5 | Dead, and deliberately so — `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md` blocks the wiring branch on an authentication-identity fix. ADR 012 assigns the pipeline itself to mahavishnu. |
 
-`mcp__mahavishnu__get_tool_versions` still lists all 43 of these names
-(its registry has 206 entries against a live surface of 178), so treat
-that map as a historical inventory, not a live one.
+`mcp__mahavishnu__get_tool_versions` still lists these 20 names, so treat
+that map as a historical inventory, not a live one. The map is broadly
+out of sync: 183 entries against a live surface of 178, with 63 names
+advertised that no longer exist (these 20 plus 43 more whose names have
+drifted — `worker_execute` for `worker_run_with_settle`,
+`otel_ingest_trace` for `ingest_otel_traces`, `list_primitives` for
+`list_primitives_tool`, and so on) and 58 live tools missing from it
+entirely.
+
+Desktop automation used to sit in this list as a third dead module
+(23 tools). It was deleted on 2026-11-08: the capability is already
+served by the `cmux-cua` MCP server (AX-native, background-safe), and
+4 of the 23 were non-functional even if wired (`resize_window`,
+`move_window`, `list_menus`, `get_ui_elements`). The
+`mahavishnu/automation/` backend package remains — it is a shipped
+implementation under
+`docs/plans/2026-07-16-native-macos-automation-backend-plan.md`, not
+a tool module.
 
 ### Pool Management
 
