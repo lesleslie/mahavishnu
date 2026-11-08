@@ -157,6 +157,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - budget-watchdog: Expire the enforcement lease on its own `expires_at` stamp, so a replica that dies holding the lease no longer disables budget enforcement for every other replica
 - kv: Honour the `ttl` parameter — `mahavishnu_kv_put` forwards it and the store expires entries on read, in listings, and in counts
 
+### Build
+
+- deps: Add a 7-day dependency cooldown with CVE and tooling carve-outs
+
 ## [0.38.0] - 2026-11-01
 
 ### Added
