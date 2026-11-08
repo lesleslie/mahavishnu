@@ -265,11 +265,22 @@ per the deprecation plan in the fork's own module docstring (`health_check_servi
 > The lesson generalises: **read the decorator before concluding a parameter
 > is unused.**
 
-**The `query_local_traces` divergence is real.** Four servers expose the
-same tool name with four different parameter contracts (akosha, crackerjack,
+**The `query_local_traces` divergence is real.** Four implementations of the
+same tool name carry four different parameter contracts (akosha, crackerjack,
 mahavishnu, session-buddy). Unlike the channel-session parameters, nothing
 consumes these — they are plain query filters — so this one *is* unified in
 Phase 1.
+
+> **Correction (2026-11-08, post-merge).** Only **three** of the four are in
+> a live surface. Session-buddy's `register_otel_trace_tools` is exported and
+> unit-tested but never called from `session_buddy/server_optimized.py`, so
+> `mcp__session-buddy__query_local_traces` has never existed — confirmed
+> against the pre-merge inventory *and* the live `tools/list`. The divergence
+> is therefore real in the source and latent in the served surface. Phase 1
+> unified all four implementations; wiring session-buddy's is deliberately
+> **not** done here — it adds a tool to a 225-tool live server, which is a
+> surface change that wants its own review, not a side effect of a
+> contract-alignment phase. Tracked in §11.
 
 ### 4.11 Stale references found en route (adjacent, not naming)
 
@@ -366,8 +377,9 @@ exposes it.
    by the decorators, so the tool bodies never see them. Update each
    tool's docstring to say so, so a caller does not read `user_id` as a
    query filter.
-1. **Unify `query_local_traces`.** Four servers expose the name with four
-   different contracts. The fleet-wide contract is akosha's richer set,
+1. **Unify `query_local_traces`.** Four implementations of the name carry
+   four different contracts; three of them are in a live surface (see the
+   correction in §4.10). The fleet-wide contract is akosha's richer set,
    with `task_class` promoted to required:
 
    ```python
@@ -424,7 +436,7 @@ exposes it.
   in session-buddy still passes with `token` present; a mahavishnu
   `get_channel_sessions` call with a `sender_id` returns only that sender's
   sessions; the fleet guard reports one `query_local_traces` schema across
-  all four servers.
+  the servers that expose it.
 - **Rollback signal**: a caller of either client helper starts receiving an
   "unexpected keyword argument" from the server — that is the wire contract
   breaking in the superset direction. (There is no live consumer to watch,
@@ -798,22 +810,35 @@ prefix-matches on.
    an info-level log when it is not. The tool is not in the live surface, so
    this is latent, but it needs either an explicit match-all path or a
    warning that the path is index-dependent.
-3. **The fleet-wide schema-parity guard (REQ-MCPTD-007) is still Phase 4.**
-   Nothing currently stops the four `query_local_traces` signatures drifting
+3. **Session-Buddy's `query_local_traces` is never registered.**
+   `register_otel_trace_tools` is imported and re-exported by
+   `session_buddy/mcp/tools/__init__.py:71` but has no call site —
+   `session_buddy/server_optimized.py:746` mounts `register_memory_tools`,
+   `register_category_tools` and the rest, and not this one. The module was
+   added whole in `1fd8b45f` (2026-05-29) and has never been mounted, so
+   `mcp__session-buddy__query_local_traces` does not exist in any live
+   surface. Phase 1 aligned the implementation with the fleet contract;
+   **wiring it is a separate change**, because it adds a tool to a
+   225-tool server and wants the same review any surface addition gets.
+   The plan's own Process Discipline calls a built-but-unwired feature
+   unfinished, so this is the tracked remainder of Phase 1, not a
+   completed item.
+4. **The fleet-wide schema-parity guard (REQ-MCPTD-007) is still Phase 4.**
+   Nothing currently stops the `query_local_traces` signatures drifting
    apart again — the guard that would is a Phase-4 deliverable.
-4. **The channel-session auth contract divergence.** `track_channel_session`
+5. **The channel-session auth contract divergence.** `track_channel_session`
    and `get_channel_sessions` take different auth parameters on mahavishnu
    (`user_id`, a principal name) than on session-buddy (`token`, a signed
    credential). That is an auth-model difference, not a naming bug, and it
    is why Phase 1 documents the parameters instead of unifying them. Worth
    a separate decision on whether the two servers should converge on one
    credential model. See §4.10.
-5. **Akosha's full component-prefix sweep** — akosha's other 37 tools remain
+6. **Akosha's full component-prefix sweep** — akosha's other 37 tools remain
    bare. Tracked by the `akosha-tool-naming-gap` memory; a separate plan.
-1. **The stale `KNOWN_TOOLS` / frontmatter references** in §4.11 — the guard
+7. **The stale `KNOWN_TOOLS` / frontmatter references** in §4.11 — the guard
    (§6 Phase 4) *reports* them; the cleanup is a separate change once
    profile-gating is confirmed.
-1. **The `mcp__<server>__` namespace itself** — protected by the
+8. **The `mcp__<server>__` namespace itself** — protected by the
    `mcp-tool-namespace-is-config-entry` memory. Any future aggregator must
    preserve it or the 103 `KNOWN_TOOLS` entries, 268 executable/config
    references and 23 frontmatter hints all break at once.
