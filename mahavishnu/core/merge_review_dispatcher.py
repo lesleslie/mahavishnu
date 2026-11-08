@@ -32,6 +32,7 @@ from collections.abc import Mapping
 import json
 import logging
 import os
+import re
 import subprocess
 from typing import TYPE_CHECKING, Any
 
@@ -183,6 +184,37 @@ def _extract_reply_text(payload: Any) -> str:
     return str(payload)
 
 
+#: A worker runs Claude Code with ``--output-format stream-json``, so
+#: what the pool captures is a JSON fragment of that stream rather than
+#: prose. The agent's reply lives in the stream's ``"result"`` field,
+#: JSON-escaped. The pool captures a window of the stream, so the
+#: fragment's head may be cut -- the ``"result"`` field is what carries
+#: the answer.
+_SDK_RESULT_RE = re.compile(r'"result"\s*:\s*"((?:[^"\\]|\\.)*)"')
+
+
+def _extract_agent_text(worker_output: str) -> str:
+    """The agent's reply text from a worker's captured output.
+
+    Without this step the verdict block reaches the parser
+    JSON-escaped: the parser's pattern wants whitespace between
+    ``<verdict>`` and ``decision:``, and the escaped form has a literal
+    backslash-n. Every review then parsed as malformed -- and a
+    malformed verdict is a fail-loud ``block``, so a reviewer that
+    returned ``decision: pass`` gated the merge as a block.
+    """
+    match = _SDK_RESULT_RE.search(worker_output)
+    if match is None:
+        return worker_output
+    try:
+        decoded = json.loads(f'"{match.group(1)}"')
+    except TypeError, ValueError:
+        return worker_output
+    if not isinstance(decoded, str) or not decoded.strip():
+        return worker_output
+    return decoded
+
+
 def _parse_pool_result(text: str) -> str:
     """Extract the worker's reply from the pool result JSON, if present."""
     stripped = text.strip()
@@ -297,7 +329,7 @@ async def dispatch_review_async(
         # operator sees *why* the review failed rather than a generic
         # "malformed verdict" note.
         return f"<verdict>decision: block note: {failure}</verdict>"
-    return parsed_reply
+    return _extract_agent_text(parsed_reply)
 
 
 def dispatch_review(
