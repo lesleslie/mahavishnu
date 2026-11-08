@@ -79,9 +79,7 @@ async def coord_create_issue(
     mgr = _get_manager()
 
     # Generate issue ID
-    existing_issues = mgr.list_issues()
-    next_num = len(existing_issues) + 1
-    issue_id = f"ISSUE-{next_num:03d}"
+    issue_id = mgr.next_issue_id()
 
     # Validate priority
     try:
@@ -213,9 +211,7 @@ async def coord_create_todo(
     mgr = _get_manager()
 
     # Generate todo ID
-    existing_todos = mgr.list_todos()
-    next_num = len(existing_todos) + 1
-    todo_id = f"TODO-{next_num:03d}"
+    todo_id = mgr.next_todo_id()
 
     # Validate priority
     try:

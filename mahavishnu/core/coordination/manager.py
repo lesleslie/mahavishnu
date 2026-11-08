@@ -399,6 +399,67 @@ class CoordinationManager:
                 return issue
         return None
 
+    def next_issue_id(self) -> str:
+        """
+        Allocate the next issue ID.
+
+        The number comes from a counter persisted alongside the ledger, so a
+        deleted issue's ID is never handed out again. Legacy ``MHV-``
+        records bootstrap that counter on first use, keeping the legacy and
+        current namespaces in one numbering.
+
+        Returns:
+            An issue ID of the form ``ISSUE-001``.
+        """
+        return self._next_id("issue", "ISSUE", self._coordination.get("issues", []))
+
+    def next_todo_id(self) -> str:
+        """
+        Allocate the next todo ID.
+
+        Uses the same numbering rule as :meth:`next_issue_id`.
+
+        Returns:
+            A todo ID of the form ``TODO-001``.
+        """
+        return self._next_id("todo", "TODO", self._coordination.get("todos", []))
+
+    def _next_id(
+        self, counter_key: str, prefix: str, records: list[dict[str, Any]]
+    ) -> str:
+        """
+        Return ``{prefix}-{n:03d}`` for a number that was never used before.
+
+        The counter lives in the coordination block under ``counters``, so it
+        survives the load/save cycle and is not rewound when a record is
+        deleted. A ledger written before the counter existed bootstraps it
+        from the highest numeric suffix already in use.
+
+        Args:
+            counter_key: The ``counters`` sub-key for this sequence.
+            prefix: The ID prefix to allocate under (``ISSUE``, ``TODO``).
+            records: The ledger records whose IDs are already taken.
+
+        Returns:
+            An ID whose numeric suffix has never been allocated.
+        """
+        counters = self._coordination.setdefault("counters", {})
+
+        highest = 0
+        for record in records:
+            match = re.match(r"^[A-Za-z]+-(\d+)$", str(record.get("id", "")))
+            if match:
+                highest = max(highest, int(match.group(1)))
+
+        try:
+            current = int(counters.get(counter_key, 0) or 0)
+        except TypeError, ValueError:
+            current = 0
+
+        nxt = max(current, highest) + 1
+        counters[counter_key] = nxt
+        return f"{prefix}-{nxt:03d}"
+
     def create_issue(self, issue: CrossRepoIssue) -> None:
         """
         Create a new cross-repository issue.

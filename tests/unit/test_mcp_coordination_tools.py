@@ -56,6 +56,9 @@ def fake_manager():
     mgr.delete_issue = MagicMock()
     mgr.list_todos = MagicMock(return_value=[])
     mgr.get_todo = MagicMock(return_value=None)
+    # ID allocation lives on the manager; the tools delegate to it.
+    mgr.next_issue_id = MagicMock(return_value="ISSUE-001")
+    mgr.next_todo_id = MagicMock(return_value="TODO-001")
     mgr.list_plans = MagicMock(return_value=[])
     mgr.list_dependencies = MagicMock(return_value=[])
     mgr.get_blocking_issues = MagicMock(return_value=[])

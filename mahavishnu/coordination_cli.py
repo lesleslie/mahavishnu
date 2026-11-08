@@ -166,9 +166,7 @@ def create_issue(
     mgr = CoordinationManager()
 
     # Generate issue ID
-    existing_issues = mgr.list_issues()
-    next_num = len(existing_issues) + 1
-    issue_id = f"ISSUE-{next_num:03d}"
+    issue_id = mgr.next_issue_id()
 
     # Parse repos
     repo_list = [r.strip() for r in repos.split(",")]
@@ -238,6 +236,10 @@ def update_issue(
         console.print("[yellow]No updates specified[/yellow]")
         return
 
+    if mgr.get_issue(issue_id) is None:
+        console.print(f"[red]Issue {issue_id} not found[/red]")
+        raise typer.Exit(code=1)
+
     mgr.update_issue(issue_id, updates)
     mgr.save()
 
@@ -250,6 +252,10 @@ def close_issue(
 ):
     """Close an issue."""
     mgr = CoordinationManager()
+    if mgr.get_issue(issue_id) is None:
+        console.print(f"[red]Issue {issue_id} not found[/red]")
+        raise typer.Exit(code=1)
+
     mgr.update_issue(issue_id, {"status": "closed"})
     mgr.save()
     console.print(f"[green]Closed issue {issue_id}[/green]")
@@ -362,9 +368,7 @@ def create_todo(
     mgr = CoordinationManager()
 
     # Generate todo ID
-    existing_todos = mgr.list_todos()
-    next_num = len(existing_todos) + 1
-    todo_id = f"TODO-{next_num:03d}"
+    todo_id = mgr.next_todo_id()
 
     # Validate priority
     try:

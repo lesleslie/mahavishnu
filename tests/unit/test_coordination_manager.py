@@ -1784,6 +1784,137 @@ class TestCoordinationManagerMisc:
 
 
 # ===========================================================================
+# ID allocation
+# ===========================================================================
+
+
+class TestCoordinationManagerIdAllocation:
+    """``next_issue_id`` / ``next_todo_id`` must never reuse a retired number.
+
+    The allocator used to derive the number from the *count* of records, so
+    deleting an issue let the next one be handed the same ID.
+    """
+
+    def test_empty_ledger_starts_at_one(self, empty_path: str) -> None:
+        mgr = CoordinationManager(empty_path)
+        assert mgr.next_issue_id() == "ISSUE-001"
+        assert mgr.next_todo_id() == "TODO-001"
+
+    def test_number_comes_from_the_highest_suffix_not_the_count(
+        self, tmp_path: Path
+    ) -> None:
+        """Three issues numbered 001, 002, 009 must allocate ISSUE-010.
+
+        Counting the records would yield ISSUE-004, which is not a hole in
+        the sequence but is not the next number either.
+        """
+        path = tmp_path / "ecosystem.yaml"
+        path.write_text(
+            yaml.dump(
+                {
+                    "coordination": {
+                        "issues": [
+                            _issue(id="ISSUE-001"),
+                            _issue(id="ISSUE-002"),
+                            _issue(id="ISSUE-009"),
+                        ]
+                    }
+                }
+            )
+        )
+        assert CoordinationManager(path).next_issue_id() == "ISSUE-010"
+
+    def test_legacy_prefix_participates_in_the_same_numbering(
+        self, tmp_path: Path
+    ) -> None:
+        """The legacy ``MHV-`` records must not be numbered past."""
+        path = tmp_path / "ecosystem.yaml"
+        path.write_text(
+            yaml.dump(
+                {
+                    "coordination": {
+                        "issues": [_issue(id=f"MHV-{n:03d}") for n in range(1, 9)]
+                    }
+                }
+            )
+        )
+        assert CoordinationManager(path).next_issue_id() == "ISSUE-009"
+
+    def test_deleted_id_is_not_reused(self, tmp_path: Path) -> None:
+        """Deleting an issue must not free its number for the next issue."""
+        path = tmp_path / "ecosystem.yaml"
+        path.write_text(
+            yaml.dump({"coordination": {"issues": [_issue(id="ISSUE-001")]}})
+        )
+
+        mgr = CoordinationManager(path)
+        allocated = mgr.next_issue_id()
+        assert allocated == "ISSUE-002"
+
+        mgr.create_issue(
+            CrossRepoIssue(
+                id=allocated,
+                title="Sample",
+                description="Sample description",
+                status=IssueStatus.PENDING,
+                priority=Priority.MEDIUM,
+                severity="bug",
+                repos=["mahavishnu"],
+                created="2026-01-15T00:00:00",
+                updated="2026-01-15T00:00:00",
+                dependencies=[],
+                blocking=[],
+                assignee=None,
+                labels=[],
+                metadata={},
+            )
+        )
+        mgr.save()
+
+        # Delete it, then reload from disk — the counter must survive.
+        mgr.delete_issue(allocated)
+        mgr.save()
+
+        reloaded = CoordinationManager(path)
+        nxt = reloaded.next_issue_id()
+        assert nxt != allocated
+        assert int(nxt.rsplit("-", 1)[1]) > int(allocated.rsplit("-", 1)[1])
+
+    def test_counter_survives_a_save_and_reload(self, tmp_path: Path) -> None:
+        """The counter is persisted, not recomputed from the records."""
+        path = tmp_path / "ecosystem.yaml"
+        path.write_text(
+            yaml.dump({"coordination": {"issues": [_issue(id="ISSUE-001")]}})
+        )
+
+        mgr = CoordinationManager(path)
+        mgr.next_issue_id()
+        mgr.save()
+
+        reloaded = CoordinationManager(path)
+        assert reloaded._coordination.get("counters") == {"issue": 2}
+        assert reloaded.next_issue_id() == "ISSUE-003"
+
+    def test_ids_without_a_numeric_suffix_are_ignored(self, tmp_path: Path) -> None:
+        """A non-numeric ID must not break the allocator."""
+        path = tmp_path / "ecosystem.yaml"
+        path.write_text(
+            yaml.dump(
+                {
+                    "coordination": {
+                        "issues": [
+                            _issue(id="ISSUE-001"),
+                            _issue(id="LEGACY-ARCHIVE"),
+                            _issue(id=""),
+                        ]
+                    }
+                }
+            )
+        )
+        assert CoordinationManager(path).next_issue_id() == "ISSUE-002"
+
+
+# ===========================================================================
 # Run the file directly (informational only)
 # ===========================================================================
 

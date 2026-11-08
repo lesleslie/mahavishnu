@@ -350,7 +350,8 @@ class TestCreateIssue:
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_create_issue_success(self, MockMgr):
         mock_mgr = MockMgr.return_value
-        mock_mgr.list_issues.return_value = []  # No existing issues -> ISSUE-001
+        # The command delegates ID allocation to the manager.
+        mock_mgr.next_issue_id.return_value = "ISSUE-001"
         app = _make_app()
         result = runner.invoke(
             app,
@@ -452,6 +453,20 @@ class TestUpdateIssue:
         mock_mgr.update_issue.assert_not_called()
         mock_mgr.save.assert_not_called()
 
+    @patch("mahavishnu.coordination_cli.CoordinationManager")
+    def test_update_issue_not_found(self, MockMgr):
+        """A missing issue reports cleanly instead of raising."""
+        mock_mgr = MockMgr.return_value
+        mock_mgr.get_issue.return_value = None
+        app = _make_app()
+        result = runner.invoke(
+            app,
+            ["coord", "update-issue", "ISSUE-999", "--status", "closed"],
+        )
+        assert result.exit_code == 1
+        assert "ISSUE-999 not found" in result.output
+        mock_mgr.update_issue.assert_not_called()
+
 
 class TestCloseIssue:
     """Tests for the 'close-issue' command."""
@@ -465,6 +480,18 @@ class TestCloseIssue:
         assert "Closed issue ISSUE-001" in result.output
         mock_mgr.update_issue.assert_called_once_with("ISSUE-001", {"status": "closed"})
         mock_mgr.save.assert_called_once()
+
+    @patch("mahavishnu.coordination_cli.CoordinationManager")
+    def test_close_issue_not_found(self, MockMgr):
+        """A missing issue reports cleanly instead of raising."""
+        mock_mgr = MockMgr.return_value
+        mock_mgr.get_issue.return_value = None
+        app = _make_app()
+        result = runner.invoke(app, ["coord", "close-issue", "ISSUE-999"])
+        assert result.exit_code == 1
+        assert "ISSUE-999 not found" in result.output
+        mock_mgr.update_issue.assert_not_called()
+        mock_mgr.save.assert_not_called()
 
 
 # ===========================================================================
@@ -590,7 +617,8 @@ class TestCreateTodo:
     @patch("mahavishnu.coordination_cli.CoordinationManager")
     def test_create_todo_success(self, MockMgr):
         mock_mgr = MockMgr.return_value
-        mock_mgr.list_todos.return_value = []
+        # The command delegates ID allocation to the manager.
+        mock_mgr.next_todo_id.return_value = "TODO-001"
         mock_mgr._coordination = {"todos": []}
         app = _make_app()
         result = runner.invoke(

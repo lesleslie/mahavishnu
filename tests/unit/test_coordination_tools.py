@@ -13,6 +13,8 @@ Mocking strategy:
 from __future__ import annotations
 
 from datetime import datetime
+import re
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -159,6 +161,16 @@ def _make_plan(
     )
 
 
+def _next_mock_id(prefix: str, records: list[Any]) -> str:
+    """Mirror the real allocator's observable numbering for the mock."""
+    highest = 0
+    for record in records:
+        match = re.match(r"^[A-Za-z]+-(\d+)$", str(getattr(record, "id", "")))
+        if match:
+            highest = max(highest, int(match.group(1)))
+    return f"{prefix}-{highest + 1:03d}"
+
+
 def _mock_manager() -> MagicMock:
     """Create a mock CoordinationManager with _coordination dict."""
     mgr = MagicMock()
@@ -168,6 +180,18 @@ def _mock_manager() -> MagicMock:
         "dependencies": [],
         "plans": [],
     }
+    mgr.list_issues = MagicMock(return_value=[])
+    mgr.list_todos = MagicMock(return_value=[])
+    # The tools delegate ID allocation to the manager. The mock mirrors the
+    # real allocator's observable numbering so these tests stay focused on
+    # plumbing; the numbering itself is covered by
+    # test_coordination_manager.py::TestCoordinationManagerIdAllocation.
+    mgr.next_issue_id = MagicMock(
+        side_effect=lambda: _next_mock_id("ISSUE", mgr.list_issues())
+    )
+    mgr.next_todo_id = MagicMock(
+        side_effect=lambda: _next_mock_id("TODO", mgr.list_todos())
+    )
     return mgr
 
 

@@ -149,6 +149,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- coordination: Never reuse a retired issue or todo ID — the number now comes from a counter persisted alongside the ledger instead of from the record count, so deleting an issue could no longer hand its ID to the next one. The allocator lives on `CoordinationManager` and both the CLI and the (unregistered) MCP tools call it
+- coordination: `mahavishnu coord close-issue` and `update-issue` now report a missing issue as `Issue <id> not found` with exit code 1, instead of raising an uncaught `ConfigurationError` traceback
 - agents: Drop the stale `dispatch_to_pool` reference from the agent allowlists, picker descriptions, and CLAUDE.md
 - agents: Repair the `mahavishnu-orchestrator` frontmatter so the agent registers with a read-only tool allowlist
 - ecosystem-status: Correct the documented section names and surface unknown ones
