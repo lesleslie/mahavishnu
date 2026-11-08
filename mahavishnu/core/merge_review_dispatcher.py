@@ -56,8 +56,10 @@ DEFAULT_MCP_URL: str = "http://localhost:8680/mcp"
 #: reported a timeout carrying a partial pane, and the reply had no
 #: verdict in it -- so every merge blocked on a "malformed verdict"
 #: that was really a reviewer that never finished. At 900 s the reviewer
-#: was still working through the changed files.
-REVIEW_DISPATCH_TIMEOUT: float = 1800.0
+#: was still working through the changed files, and at 1800 s the
+#: domain specialist was still working through them: it made eighty
+#: tool calls at about twenty seconds each.
+REVIEW_DISPATCH_TIMEOUT: float = 3600.0
 
 #: Bound on the diff context embedded in the review prompt. A repo-wide
 #: format pass touches >1000 files; pasting the whole diff would blow
@@ -156,9 +158,11 @@ def build_review_prompt(branch: str, base: str, worktree_root: Path) -> str:
         )
     parts.append(
         "You are reviewing, not implementing: do not modify any file in "
-        "the worktree, and do not run the test suite -- the merge pipeline "
-        "runs the quality gate after this review. If a claim needs "
-        "confirming, run only the narrowest test that shows it."
+        "the worktree. Do not run pytest, crackerjack, tox, nox, or any "
+        "other test runner -- not even a single test file. The merge "
+        "pipeline runs the quality gate after this review, and a suite "
+        "run spends the budget the read needed. If a claim needs "
+        "confirming, read the code that shows it."
     )
     parts.append(
         "Reply with the verdict block and nothing outside it: "

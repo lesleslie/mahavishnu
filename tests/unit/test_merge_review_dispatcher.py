@@ -227,9 +227,11 @@ class TestTheReviewBudget:
         every merge blocked on a "malformed verdict" that was really a
         reviewer that never finished. At 900 s the reviewer was still
         reading the changed files, so the budget has to carry a full
-        read of the diff with room to spare.
+        read of the diff with room to spare. At 1800 s the domain
+        specialist was still reading them -- it made eighty tool calls
+        at about twenty seconds each.
         """
-        assert REVIEW_DISPATCH_TIMEOUT >= 1800
+        assert REVIEW_DISPATCH_TIMEOUT >= 3600
 
 
 class TestTheReviewPrompt:
@@ -244,7 +246,20 @@ class TestTheReviewPrompt:
 
     def test_the_prompt_keeps_the_suite_out_of_the_review(self) -> None:
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
-        assert "the merge pipeline runs the quality gate" in prompt
+        assert "merge pipeline runs the quality gate" in prompt
+
+    def test_the_prompt_names_the_runners_to_avoid(self) -> None:
+        """Naming them is what stops the agent that runs gates by habit.
+
+        The domain specialist's own agent definition tells it to run
+        the quality gates, so "do not run the test suite" alone did not
+        stop it: it ran five pytest invocations and burned the budget
+        on the pipeline's own work.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+        lowered = prompt.lower()
+        assert "pytest" in lowered
+        assert "crackerjack" in lowered
 
     def test_the_prompt_keeps_the_reviewer_read_only(self) -> None:
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
