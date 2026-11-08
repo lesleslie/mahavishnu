@@ -49,9 +49,10 @@ touched on 2026-10-04. Since then, two things happened:
    `RUF100` (unused-noqa) went from 239 → 912 markers (mostly stale).
 2. **New code added `subprocess.run(...)` calls without async wrapping or
    `check=` handling** — `PLW1510` regressed 32 → 42, `ASYNC221`
-   regressed 23 → 69. The biggest hot-spots are
-   `mahavishnu/workers/capabilities/_probes.py` and
-   `mahavishnu/automation/`. The `2026-10-12-ulid-surface-elimination.md`
+   regressed 23 → 69. The biggest hot-spot is
+   `mahavishnu/workers/capabilities/_probes.py`
+   (`mahavishnu/automation/` was the second, but it was removed
+   2026-11-08). The `2026-10-12-ulid-surface-elimination.md`
    uncommitted work introduced additional regressions before Phase 8
    merge stabilisation.
 

@@ -141,6 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- mcp: The dead desktop-automation surface — the `automation_*` MCP tools and the `mahavishnu/automation/` backend behind them. Neither was reachable: the tools were never registered, and the backend had no caller once the tool module was deleted. Desktop automation is served by the `cmux-cua` MCP server, which reads the accessibility tree directly instead of shelling out to `osascript` and `cliclick` per call. The `automation` and `automation-vision` optional dependency groups go with them
 - mcp: The `dispatch_to_pool` tool — `pool_route_execute` is the replacement for callers
 - ecosystem-status: The dead `include_details` parameter on the `ecosystem_status` tool — it was never read by the tool body, and `EcosystemStatusService.generate_report()` has no matching option
 - mcp: The `backup_id` parameter on the `create_backup` tool — it was accepted and silently discarded, so a caller that supplied one got a different id back; the backup manager assigns the id and returns it in the response (tool version bumped to `2.0.0`)

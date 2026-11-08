@@ -294,26 +294,6 @@ hatchet = [
     "hatchet-sdk>=1.42.1,<2",
 ]
 
-# Desktop automation
-# Note: pyatomac removed — fails to build on newer macOS SDKs (missing conversion.h).
-# pyautogui provides cross-platform mouse/keyboard/screenshot automation.
-# Note: ``pillow`` removed 2026-10-10 — creosote flagged it as an unused
-# dependency in the bloated venv, and a project-wide grep confirmed zero
-# ``from PIL`` / ``import PIL`` call sites. The pyautogui + mss combo handles
-# the screenshot work; remove pillow if you don't need direct PIL access.
-automation = [
-    "pyautogui>=0.9.54",
-    "mss>=10.2.0",
-]
-
-# Desktop automation with vision (OCR, image recognition)
-# Note: easyocr removed — it forces torch (2GB) which lacks macOS ARM64 wheels.
-# Use pytesseract + opencv-python instead. Install tesseract: brew install tesseract
-automation-vision = [
-    "pytesseract>=0.3.13",
-    "opencv-python>=5.0.0.93",
-]
-
 # Optional: Explicit in-memory vector store (TurboVec)
 vector = [
     "turbovec[llama-index]>=1.1.2",
@@ -742,8 +722,6 @@ exclude_deps = [
     "ty",  # used as an external CLI, not imported
     "tomli",  # py3.13 stdlib tomllib replacement; transitive on older resolvers
     "gitpython",  # used via `subprocess`-style wrappers and git CLI fallback
-    "opencv-python",  # desktop automation-vision group only
-    "pytesseract",  # desktop automation-vision group only
     "llama-cpp-python",  # local LLM provider; lazy-loaded by LLM router
     "bandit",
     "complexipy",

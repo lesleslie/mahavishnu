@@ -1,9 +1,9 @@
 ---
 status: shipped
-role: implementation
+role: historical
 topic: terminal
 date: 2026-07-16
-last_reviewed: 2026-10-18
+last_reviewed: 2026-11-08
 superseded_by: null
 blocks_on: []
 title: "Plan: Native macOS Automation Backend"
@@ -12,11 +12,20 @@ title: "Plan: Native macOS Automation Backend"
 
 # Plan: Native macOS Automation Backend
 
-> **Reclassified 2026-10-18:** Status is `shipped, implementation`. All 8 file-changes in §1 / §6 have landed on disk. `mahavishnu/automation/backends/native_macos.py` shipped (26 KB, modified 2026-10-15); `pyxa.py` and `atomac.py` deleted; `backends/__init__.py`, `capabilities.py`, `manager.py`, `__init__.py`, and `models.py` updated; tests migrated. Activation `de96341d` (2026-10-03) post-dated the implementation but landed before the body was updated — this reclassification closes the audit gap. Body retained below as the original work record.
+> **Archived 2026-11-08 — implementation removed.** The `mahavishnu/automation/`
+> package this plan delivered was deleted on 2026-11-08, along with its
+> `automation_*` MCP tool module and the `automation` /
+> `automation-vision` optional dependency groups. Desktop automation is
+> served by the `cmux-cua` MCP server, which is AX-native and
+> background-safe; this backend shelled out to `osascript` and `cliclick`
+> per call and was never wired to any entry point. The body below is
+> preserved as the record of what was built and why.
+>
+> **Reclassified 2026-10-18:** Status was `shipped, implementation`. All 8 file-changes in §1 / §6 have landed on disk. `mahavishnu/automation/backends/native_macos.py` shipped (26 KB, modified 2026-10-15); `pyxa.py` and `atomac.py` deleted; `backends/__init__.py`, `capabilities.py`, `manager.py`, `__init__.py`, and `models.py` updated; tests migrated. Activation `de96341d` (2026-10-03) post-dated the implementation but landed before the body was updated — this reclassification closes the audit gap. Body retained below as the original work record.
 
 ## Status
 
-Shipped 2026-10-15 (implementation on disk). Body preserved as the work record — the plan's scope, capability table, `_run_sync` and `_resolve_bundle_id` patterns, file-change list, and risks section describe the design that was actually implemented.
+Shipped 2026-10-15 (implementation on disk); implementation deleted 2026-11-08 (see the archive note above). Body preserved as the work record — the plan's scope, capability table, `_run_sync` and `_resolve_bundle_id` patterns, file-change list, and risks section describe the design that was actually implemented.
 
 ## Goal
 

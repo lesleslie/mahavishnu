@@ -180,6 +180,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/decisions/2026-11-08-bifrost-cache-layers.md`](../../docs/decisions/2026-11-08-bifrost-cache-layers.md) | 2026-11-08 | `active` | `canonical` | `decision` | `bifrost-cache-layers` | 2026-11-08-bifrost-cache-layers.md |
+| [`docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md`](../../docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md) | 2026-11-08 | `active` | `canonical` | `decision` | `mcp-tool-naming` | MCP Tool Names Carry a Component Prefix |
 | [`docs/decisions/2026-11-07-bifrost-complexity-router.md`](../../docs/decisions/2026-11-07-bifrost-complexity-router.md) | 2026-11-07 | `active` | `canonical` | `decision` | `bifrost-complexity-router` | 2026-11-07-bifrost-complexity-router.md |
 | [`docs/decisions/2026-11-05-external-skill-pattern-port.md`](../../docs/decisions/2026-11-05-external-skill-pattern-port.md) | 2026-11-05 | `active` | `canonical` |  | `convergence-control-plane` | Decision: Absorb External Agent-Skill Patterns; Do Not Install the Packs |
 | [`docs/decisions/2026-11-05-per-component-cold-storage-buckets.md`](../../docs/decisions/2026-11-05-per-component-cold-storage-buckets.md) | 2026-11-05 | `active` | `canonical` | `decision` | `per-component-cold-storage-buckets` | Per-component cold-storage buckets |
@@ -364,7 +365,6 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `complete` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
-| [`docs/plans/2026-07-16-native-macos-automation-backend-plan.md`](2026-07-16-native-macos-automation-backend-plan.md) | 2026-07-16 | `shipped` | `implementation` |  | `terminal` | Plan: Native macOS Automation Backend |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | `active` | `canonical` | `reference` | `convergence-control-plane` | Plans README |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | `active` | `canonical` | `template` | `routing-composition` | Plan Template — Integration-Contract Required |
 
@@ -464,13 +464,14 @@ Index pages or reference docs (README files). Permanent fixtures; never a work i
 | [`docs/specs/event-envelope-spec.md`](../../docs/specs/event-envelope-spec.md) | 2026-04-06 | Event Envelope Specification |
 | [`docs/specs/prometheus-metrics-inventory.md`](../../docs/specs/prometheus-metrics-inventory.md) | 2026-04-06 | Prometheus Metrics Inventory |
 
-### `decision` (69 entries)
+### `decision` (70 entries)
 
 Durable decision records — covers both ADRs in `docs/adr/` and repo-local policies in `docs/decisions/`.
 
 | Path | Date | Title |
 |---|---|---|
 | [`docs/decisions/2026-11-08-bifrost-cache-layers.md`](../../docs/decisions/2026-11-08-bifrost-cache-layers.md) | 2026-11-08 | 2026-11-08-bifrost-cache-layers.md |
+| [`docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md`](../../docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md) | 2026-11-08 | MCP Tool Names Carry a Component Prefix |
 | [`docs/decisions/2026-11-07-bifrost-complexity-router.md`](../../docs/decisions/2026-11-07-bifrost-complexity-router.md) | 2026-11-07 | 2026-11-07-bifrost-complexity-router.md |
 | [`docs/decisions/2026-11-05-per-component-cold-storage-buckets.md`](../../docs/decisions/2026-11-05-per-component-cold-storage-buckets.md) | 2026-11-05 | Per-component cold-storage buckets |
 | [`docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md`](../../docs/decisions/2026-11-05-simdjson-abi-bump-breaks-node.md) | 2026-11-05 | `simdjson` ABI bump breaks `node` — pin it, and rebuild node against it |
@@ -540,7 +541,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (167 entries)
+### `plan` (166 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -552,10 +553,10 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 5 | 60 | 6 | 2 | 20 | **93** |
-| `implementation` | 4 | 6 | 6 | 7 | 25 | **48** |
+| `canonical` | 5 | 61 | 6 | 2 | 20 | **94** |
+| `implementation` | 4 | 6 | 6 | 6 | 25 | **47** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 34 | **34** |
 | `superseded` | · | · | · | · | 10 | **10** |
 
-| **Total** | **9** | **66** | **12** | **9** | **90** | **186** |
+| **Total** | **9** | **67** | **12** | **8** | **90** | **186** |

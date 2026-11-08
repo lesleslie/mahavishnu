@@ -801,14 +801,15 @@ drifted — `worker_execute` for `worker_run_with_settle`,
 entirely.
 
 Desktop automation used to sit in this list as a third dead module
-(23 tools). It was deleted on 2026-11-08: the capability is already
-served by the `cmux-cua` MCP server (AX-native, background-safe), and
-4 of the 23 were non-functional even if wired (`resize_window`,
-`move_window`, `list_menus`, `get_ui_elements`). The
-`mahavishnu/automation/` backend package remains — it is a shipped
-implementation under
-`docs/plans/2026-07-16-native-macos-automation-backend-plan.md`, not
-a tool module.
+(23 tools). Both it and the `mahavishnu/automation/` backend package
+behind it were deleted on 2026-11-08: the capability is served by the
+`cmux-cua` MCP server (AX-native, background-safe), 4 of the 23 tools
+were non-functional even if wired (`resize_window`, `move_window`,
+`list_menus`, `get_ui_elements`), and the backend shelled out to
+`osascript` and `cliclick` per call where cmux-cua drives the
+accessibility tree directly. The backend's plan is archived at
+`docs/plans/.archive/2026-07-16-native-macos-automation-backend-plan.md`
+as `role: historical`.
 
 ### Pool Management
 

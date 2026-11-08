@@ -15,6 +15,12 @@ permissions / cache-field defect. All three are complete/historical.
 
 Each section preserves the original content verbatim.
 
+> **Note (2026-11-08):** the `mahavishnu/automation/` package and the
+> `tests/unit/automation/` suite these sections cite were deleted along
+> with the rest of the desktop-automation backend. The file and test
+> paths below are preserved as the record of where each fix landed at
+> the time; they no longer resolve.
+
 ---
 
 ## 1. Accessibility prompt (formerly `2026-09-05-permissions-accessibility-prompt.md`)

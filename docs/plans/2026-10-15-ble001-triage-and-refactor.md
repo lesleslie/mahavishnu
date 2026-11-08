@@ -82,7 +82,7 @@ project's existing `tests/**/*.py` per-file-ignore convention.
   the BLE001 diff and makes the gate verification harder to read.
 - **Refactoring BLE001-adjacent patterns** (`BLE001`-style broad
   `with contextlib.suppress(Exception):` calls, the equivalent
-  `try: ... except: pass` swallower in `mahavishnu/automation/`). These
+  `try: ... except: pass` swallower). These
   are tracked in the follow-up plan
   `docs/plans/2026-10-15-broad-exception-shape-audit.md` (to be created
   if scope is confirmed).
@@ -118,15 +118,15 @@ pre-defense run:
 - `mahavishnu/_main_cli.py:401` — `except Exception as e:` in a CLI
   top-level handler. The catch is correct here; the noqa should stay
   with an explicit contract rationale.
-- `mahavishnu/automation/backends/pyautogui.py:74` — broad catch in a
-  desktop-automation backend. **Likely needs refactor** — the
-  automation can enumerate the specific exceptions raised by the
-  pyautogui primitives it calls.
 - `mahavishnu/core/events/publisher.py:35` — comment said "code never
   reads it", but the next line (`logger = get_logger(__name__)`) **was**
   read by line 83 (`logger.exception(...)`). The original author
   confused `_capture_singleton` (truly dead) with `logger` (used).
   The fix was to keep the `logger` assignment; the noqa is correct.
+- ~~`mahavishnu/automation/backends/pyautogui.py:74`~~ — broad catch in a
+  desktop-automation backend. **Removed 2026-11-08** with the rest of
+  `mahavishnu/automation/`; the package is gone, so this site needs no
+  refactor.
 
 ### 4.3 A second failure mode: dead-code deletion
 
@@ -261,7 +261,7 @@ The work is broken into per-cluster PRs to keep the diff reviewable:
 | `mahavishnu/pools/*` | 4 | 30 sites |
 | `mahavishnu/jot/*` | 3 | 20 sites |
 | `mahavishnu/engines/*` + `adapters/*` | 6 | 50 sites |
-| `mahavishnu/automation/*` | 4 | 20 sites |
+| ~~`mahavishnu/automation/*`~~ | ~~4~~ | ~~20 sites~~ (removed 2026-11-08) |
 | `mahavishnu/integrations/*` | 2 | 10 sites |
 | `mahavishnu/workers/*` | 5 | 30 sites |
 | `mahavishnu/cli/*` (sub-CLI) | 3 | 20 sites |
