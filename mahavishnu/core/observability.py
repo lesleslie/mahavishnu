@@ -323,7 +323,7 @@ class ObservabilityManager:
             )
 
             # Tier 1 Phase 8: drift detection counter + detector-age gauge.
-            # REQ-005. Without these the §7 stage-1 gate has no
+            # REQ-MATH-005. Without these the §7 stage-1 gate has no
             # source-of-truth metric to query. See audit CRITICAL #1 /
             # observability CRITICAL #1.
             self.drift_detected_counter = self.meter.create_counter(
@@ -398,7 +398,7 @@ class ObservabilityManager:
             "mahavishnu.repo.processing.duration"
         )
         # Tier 1 Phase 8: drift detection counter + detector-age gauge.
-        # REQ-005. Without these the §7 stage-1 gate has no source-of-truth
+        # REQ-MATH-005. Without these the §7 stage-1 gate has no source-of-truth
         # metric to query. See audit CRITICAL #1 / observability CRITICAL #1.
         self.drift_detected_counter = self.meter.create_counter(
             "mahavishnu.observability.drift_detected_total"
@@ -631,7 +631,7 @@ class ObservabilityManager:
             self._metric_sampler = sampler  # type: ignore[attr-defined]
         return sampler
 
-    def _evaluate_change_point(self, metric_name: str, value: float):  # req: REQ-005
+    def _evaluate_change_point(self, metric_name: str, value: float):  # req: REQ-MATH-005
         """Feed one observation to the change-point detector.
 
         Updates the detector's internal state and returns the
@@ -643,7 +643,7 @@ class ObservabilityManager:
         The detector instance is cached on the manager and lazily
         created on the first non-disabled call.
 
-        Req: REQ-005
+        Req: REQ-MATH-005
         """
 
         if not self._changepoint_enabled():
@@ -707,7 +707,7 @@ class ObservabilityManager:
             self._on_drift_detected(metric_name, value, result)
         return result
 
-    def _evaluate_3sigma(self, metric_name: str, value: float):  # req: REQ-006
+    def _evaluate_3sigma(self, metric_name: str, value: float):  # req: REQ-MATH-006
         """Feed one observation to the 3-sigma reference detector.
 
         Uses a sliding-window mean/std over the
@@ -717,7 +717,7 @@ class ObservabilityManager:
         ``changepoint.reference_detector == "none"``, this method
         is a no-op (the reference is intentionally disabled).
 
-        Req: REQ-006
+        Req: REQ-MATH-006
         """
         import math
 
@@ -1300,7 +1300,7 @@ class ObservabilityManager:
     def _on_drift_warning(self, metric_name: str, value: float, result) -> None:
         """OTel span + counter emission for a drift WARNING (warn detector fired).
 
-        Two-stage extension of REQ-005: when changepoint.detector ==
+        Two-stage extension of REQ-MATH-005: when changepoint.detector ==
         "two_stage", the warn detector emits a soft "warning" event.
         The operator-visible OTel span is ``mahavishnu.observability.drift_warning``
         (distinct from the page-worthy ``drift_detected`` span). The Prometheus
@@ -1440,7 +1440,7 @@ class ObservabilityManager:
     ) -> None:
         """OTel span + counter emission for a CONFIRMED drift alert.
 
-        Two-stage extension of REQ-005: when the confirm detector fires
+        Two-stage extension of REQ-MATH-005: when the confirm detector fires
         within the correlation window of a warn, we emit the page-worthy
         ``mahavishnu.observability.drift_detected`` span (same name as the
         single-detector path so existing dashboards/alerts keep working).

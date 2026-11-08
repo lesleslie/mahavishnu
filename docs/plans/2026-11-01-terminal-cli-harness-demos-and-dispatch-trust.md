@@ -7,6 +7,34 @@ last_reviewed: 2026-11-01
 superseded_by: docs/plans/2026-11-01-control-plane-consolidation.md
 topic: worker-dispatch-trustworthiness
 title: "Terminal CLI harness demos and a trustworthy one-shot dispatch protocol"
+requirements:
+- id: REQ-TERMCLI-001
+  title: A demo terminal-claude command dispatches a prompt through a one-shot terminal-claude pool and
+    asserts the CLI's answer
+- id: REQ-TERMCLI-002
+  title: A demo terminal-qwen command dispatches a prompt through a one-shot terminal-qwen pool and asserts
+    the CLI's answer
+- id: REQ-TERMCLI-003
+  title: A demo terminal-codex command dispatches a prompt through a one-shot terminal-codex pool and
+    asserts the CLI's answer
+- id: REQ-TERMCLI-004
+  title: The three demos skip rather than fail when the CLI is absent, unauthenticated, or usage-limited
+- id: REQ-TERMCLI-005
+  title: The pool owns a dispatch state machine whose settled states are terminal and cannot be reversed
+    by a later poll
+- id: REQ-TERMCLI-006
+  title: A one-shot dispatch reports a non-zero CLI exit as FAILED, distinct from a successful settle
+- id: REQ-TERMCLI-007
+  title: A one-shot dispatch waits for an explicit readiness signal before it is reported as running
+- id: REQ-TERMCLI-008
+  title: The prompt the CLI read is verified against a digest the worker wrote, and a mismatch fails the
+    dispatch
+- id: REQ-TERMCLI-009
+  title: A demo composes an engine adapter with a terminal worker in one workflow and shows both legs
+    settling
+- id: REQ-TERMCLI-010
+  title: The workflow-pool-worker-terminal docstring describes the stages its implementation actually
+    contains
 ---
 
 > **SUPERSEDED (2026-11-01)** by
@@ -277,26 +305,33 @@ with an in-process fallback. Ours already matches.
 
 ```yaml
 requirements:
-  - id: REQ-001
-    title: "A demo terminal-claude command dispatches a prompt through a one-shot terminal-claude pool and asserts the CLI's answer"
-  - id: REQ-002
-    title: "A demo terminal-qwen command dispatches a prompt through a one-shot terminal-qwen pool and asserts the CLI's answer"
-  - id: REQ-003
-    title: "A demo terminal-codex command dispatches a prompt through a one-shot terminal-codex pool and asserts the CLI's answer"
-  - id: REQ-004
-    title: "The three demos skip rather than fail when the CLI is absent, unauthenticated, or usage-limited"
-  - id: REQ-005
-    title: "The pool owns a dispatch state machine whose settled states are terminal and cannot be reversed by a later poll"
-  - id: REQ-006
-    title: "A one-shot dispatch reports a non-zero CLI exit as FAILED, distinct from a successful settle"
-  - id: REQ-007
-    title: "A one-shot dispatch waits for an explicit readiness signal before it is reported as running"
-  - id: REQ-008
-    title: "The prompt the CLI read is verified against a digest the worker wrote, and a mismatch fails the dispatch"
-  - id: REQ-009
-    title: "A demo composes an engine adapter with a terminal worker in one workflow and shows both legs settling"
-  - id: REQ-010
-    title: "The workflow-pool-worker-terminal docstring describes the stages its implementation actually contains"
+- id: REQ-TERMCLI-001
+  title: A demo terminal-claude command dispatches a prompt through a one-shot terminal-claude pool and
+    asserts the CLI's answer
+- id: REQ-TERMCLI-002
+  title: A demo terminal-qwen command dispatches a prompt through a one-shot terminal-qwen pool and asserts
+    the CLI's answer
+- id: REQ-TERMCLI-003
+  title: A demo terminal-codex command dispatches a prompt through a one-shot terminal-codex pool and
+    asserts the CLI's answer
+- id: REQ-TERMCLI-004
+  title: The three demos skip rather than fail when the CLI is absent, unauthenticated, or usage-limited
+- id: REQ-TERMCLI-005
+  title: The pool owns a dispatch state machine whose settled states are terminal and cannot be reversed
+    by a later poll
+- id: REQ-TERMCLI-006
+  title: A one-shot dispatch reports a non-zero CLI exit as FAILED, distinct from a successful settle
+- id: REQ-TERMCLI-007
+  title: A one-shot dispatch waits for an explicit readiness signal before it is reported as running
+- id: REQ-TERMCLI-008
+  title: The prompt the CLI read is verified against a digest the worker wrote, and a mismatch fails the
+    dispatch
+- id: REQ-TERMCLI-009
+  title: A demo composes an engine adapter with a terminal worker in one workflow and shows both legs
+    settling
+- id: REQ-TERMCLI-010
+  title: The workflow-pool-worker-terminal docstring describes the stages its implementation actually
+    contains
 ```
 
 Marker placement (the `scripts/audit_requirements.py` gate reads these):

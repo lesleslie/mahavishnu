@@ -8,21 +8,16 @@ superseded_by: null
 topic: quality-gate-complexity
 title: "Reduce pyscn complexity in four MCP/CLI hotspots and clear the redundant-cast ty warning"
 requirements:
-  - id: REQ-CX-001
-    title: "pool_route_execute complexity at or below 25"
-    description: "Decompose mahavishnu/mcp/tools/pool_tools.py::register_pool_tools.pool_route_execute (measured 48) into single-concern helpers so the pyscn gate passes."
-  - id: REQ-CX-002
-    title: "team_from_goal complexity at or below 25"
-    description: "Decompose mahavishnu/mcp/tools/goal_team_tools.py::register_goal_team_tools.team_from_goal (measured 35) into single-concern helpers so the pyscn gate passes."
-  - id: REQ-CX-003
-    title: "prune_merged_worktrees._run complexity at or below 25"
-    description: "Decompose mahavishnu/worktree_cli.py::prune_merged_worktrees._run (measured 29) into single-concern helpers so the pyscn gate passes."
-  - id: REQ-CX-004
-    title: "cross_repo_search complexity at or below 25"
-    description: "Decompose mahavishnu/mcp/tools/search_tools.py::register_search_tools.cross_repo_search (measured 28) into single-concern helpers so the pyscn gate passes."
-  - id: REQ-CX-005
-    title: "No redundant bool cast in repository_surface"
-    description: "Remove the redundant cast('bool', ...) at mahavishnu/core/repository_surface.py:191 flagged by ty as redundant-cast."
+- id: REQ-CX-001
+  title: pool_route_execute complexity at or below 25
+- id: REQ-CX-002
+  title: team_from_goal complexity at or below 25
+- id: REQ-CX-003
+  title: prune_merged_worktrees._run complexity at or below 25
+- id: REQ-CX-004
+  title: cross_repo_search complexity at or below 25
+- id: REQ-CX-005
+  title: No redundant bool cast in repository_surface
 ---
 
 # Reduce pyscn complexity in four MCP/CLI hotspots
@@ -95,16 +90,16 @@ Baseline: `173 passed` across the seven affected test modules.
 
 ```yaml
 requirements:
-  - id: REQ-CX-001
-    title: "pool_route_execute complexity at or below 25"
-  - id: REQ-CX-002
-    title: "team_from_goal complexity at or below 25"
-  - id: REQ-CX-003
-    title: "prune_merged_worktrees._run complexity at or below 25"
-  - id: REQ-CX-004
-    title: "cross_repo_search complexity at or below 25"
-  - id: REQ-CX-005
-    title: "No redundant bool cast in repository_surface"
+- id: REQ-CX-001
+  title: pool_route_execute complexity at or below 25
+- id: REQ-CX-002
+  title: team_from_goal complexity at or below 25
+- id: REQ-CX-003
+  title: prune_merged_worktrees._run complexity at or below 25
+- id: REQ-CX-004
+  title: cross_repo_search complexity at or below 25
+- id: REQ-CX-005
+  title: No redundant bool cast in repository_surface
 ```
 
 ## 5. Implementation Phases

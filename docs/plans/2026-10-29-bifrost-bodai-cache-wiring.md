@@ -8,27 +8,12 @@ superseded_by: null
 topic: bifrost-cache-wiring
 title: "Bifrost — Bodai Routing, Virtual-Key Auth, and cache_mode Wiring"
 requirements:
-  - id: REQ-BIFROST-035
-    title: "Bifrost-routed Bodai calls authenticate with the gateway virtual key"
-    description: >-
-      A request that reaches the gateway carries the gateway virtual key in
-      x-bf-vk. The gateway rejects a provider key with "401 - virtual key is
-      required", so without the header every Bodai call fails and silently
-      falls through to the local provider.
-  - id: REQ-BIFROST-036
-    title: "The llama-server provider key resolves so the local provider is servable"
-    description: >-
-      The Bifrost config declares the local provider key as
-      env.LLAMA_SERVER_API_KEY. When that variable cannot be resolved the key
-      is dropped and every request for the local model fails with
-      no_key_supports_model, pushing the background and classify governance
-      rules onto the cloud provider.
-  - id: REQ-BIFROST-037
-    title: "cache_mode translates into x-bf-cache-* request headers"
-    description: >-
-      The off, direct and semantic cache modes reach the request as
-      x-bf-cache-no-store, x-bf-cache-type direct, and x-bf-cache-type
-      semantic respectively. The setting is no longer advisory-only.
+- id: REQ-BIFROST-035
+  title: Bifrost-routed Bodai calls authenticate with the gateway virtual key
+- id: REQ-BIFROST-036
+  title: The llama-server provider key resolves so the local provider is servable
+- id: REQ-BIFROST-037
+  title: cache_mode translates into x-bf-cache-* request headers
 ---
 
 # Bifrost — Bodai Routing, Virtual-Key Auth, and `cache_mode` Wiring
@@ -344,12 +329,12 @@ probe run deliberately, not inferred.
 
 ```yaml
 requirements:
-  - id: REQ-BIFROST-035
-    title: "Bifrost-routed Bodai calls authenticate with the gateway virtual key"
-  - id: REQ-BIFROST-036
-    title: "The llama-server provider key resolves so the local provider is servable"
-  - id: REQ-BIFROST-037
-    title: "cache_mode translates into x-bf-cache-* request headers"
+- id: REQ-BIFROST-035
+  title: Bifrost-routed Bodai calls authenticate with the gateway virtual key
+- id: REQ-BIFROST-036
+  title: The llama-server provider key resolves so the local provider is servable
+- id: REQ-BIFROST-037
+  title: cache_mode translates into x-bf-cache-* request headers
 ```
 
 ## 5. Implementation Phases

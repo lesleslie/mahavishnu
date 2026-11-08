@@ -1,6 +1,6 @@
 """Fixed-cadence metric sampler for change-point detection (Tier 1 Phase 6).
 
-# Implements: REQ-009
+# Implements: REQ-MATH-009
 
 The :class:`MetricSampler` produces a (ts, value) time series
 from :class:`~mahavishnu.core.observability.ObservabilityManager`'s
@@ -27,8 +27,8 @@ Design choices:
 * The sampler is metric-name-agnostic — a single instance can
   feed any number of metric series, keyed by name.
 
-Req: REQ-009
-"""  # Implements: REQ-009
+Req: REQ-MATH-009
+"""  # Implements: REQ-MATH-009
 
 from __future__ import annotations
 

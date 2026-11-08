@@ -1,6 +1,6 @@
 """3-sigma reference detector for the change-point integration (Phase 6).
 
-# Implements: REQ-006
+# Implements: REQ-MATH-006
 
 The :class:`AnomalyResult` dataclass carries the result of the
 3-sigma reference detector that runs in parallel with the
@@ -16,10 +16,10 @@ single-observation spikes; the change-point detector catches
 slow drifts. The integration layer runs both in parallel when
 ``changepoint.reference_detector == "three_sigma"`` (default).
 
-Req: REQ-006 (marker location chosen to satisfy
+Req: REQ-MATH-006 (marker location chosen to satisfy
 ``audit_requirements.py`` frontmatter scan — the marker must
 live in code or tests, not in plan body blocks).
-"""  # req: REQ-006
+"""  # req: REQ-MATH-006
 
 from __future__ import annotations
 

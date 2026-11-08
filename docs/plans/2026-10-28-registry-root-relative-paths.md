@@ -6,6 +6,17 @@ last_reviewed: 2026-10-28
 superseded_by: null
 topic: registry-paths
 title: "Registry path disclosure — root-relative paths in BODAI_REPO_REGISTRY.md"
+requirements:
+- id: REQ-REGISTRY-001
+  title: Generator renders registry paths relative to the projects root
+- id: REQ-REGISTRY-002
+  title: Published registry declares the projects-root resolution rule
+- id: REQ-REGISTRY-003
+  title: Registry consumers resolve relative paths against the projects root
+- id: REQ-REGISTRY-004
+  title: Published registry contains no absolute path or account name
+- id: REQ-REGISTRY-005
+  title: Registry catalog lists only fleet-member Python packages
 ---
 
 # Registry path disclosure — root-relative paths in `BODAI_REPO_REGISTRY.md`
@@ -113,16 +124,16 @@ The registry had already dropped that repo's row by hand on 2026-10-09
 
 ```yaml
 requirements:
-  - id: REQ-001
-    title: "Generator renders registry paths relative to the projects root"
-  - id: REQ-002
-    title: "Published registry declares the projects-root resolution rule"
-  - id: REQ-003
-    title: "Registry consumers resolve relative paths against the projects root"
-  - id: REQ-004
-    title: "Published registry contains no absolute path or account name"
-  - id: REQ-005
-    title: "Registry catalog lists only fleet-member Python packages"
+- id: REQ-REGISTRY-001
+  title: Generator renders registry paths relative to the projects root
+- id: REQ-REGISTRY-002
+  title: Published registry declares the projects-root resolution rule
+- id: REQ-REGISTRY-003
+  title: Registry consumers resolve relative paths against the projects root
+- id: REQ-REGISTRY-004
+  title: Published registry contains no absolute path or account name
+- id: REQ-REGISTRY-005
+  title: Registry catalog lists only fleet-member Python packages
 ```
 
 ## 5. Implementation Phases

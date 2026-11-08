@@ -8,33 +8,42 @@ superseded_by: null
 topic: task-workflow-backlink
 title: "Task → Workflow Back-Link — typed channel, durable dispatch, and wiring"
 requirements:
-  - id: REQ-001
-    title: "session-buddy exposes tasks_link_workflow as the sole writer of Task.workflow_id"
-    description: "A dedicated typed MCP tool writes the field; the generic UpdateTaskRequest.metadata bag cannot reach it."
-  - id: REQ-002
-    title: "The link is owner-scoped and link-once"
-    description: "tasks_link_workflow requires Permission.WRITE, passes the visibility filter, and refuses a second link to a different workflow_id."
-  - id: REQ-003
-    title: "The link records provenance"
-    description: "workflow_linked_at and workflow_linked_by are server-written first-class Task fields."
-  - id: REQ-004
-    title: "workflow_id is validated against the fleet's canonical pattern"
-    description: "^[A-Za-z0-9._-]{1,128}$ — the same pattern mahavishnu's _workflow_id_guard enforces."
-  - id: REQ-005
-    title: "Caller metadata can never reach a server-set field"
-    description: "Regression pin on the metadata bag's inability to forge workflow_id."
-  - id: REQ-006
-    title: "The handoff back-link step uses the typed channel"
-    description: "mahavishnu's step 3 calls tasks_link_workflow instead of tasks_update(metadata={...})."
-  - id: REQ-007
-    title: "The dispatch step produces a real workflow_id"
-    description: "Step 2 dispatches through the durable-workflow path, which is the only path that returns a workflow_id."
-  - id: REQ-008
-    title: "The handoff tool and the sweeper bind a real session-buddy client"
-    description: "Both seams are bound at registration/lifespan time instead of raising NotImplementedError or returning None."
-  - id: REQ-009
-    title: "The orphan sweeper converges"
-    description: "It skips an already-linked orphan and links an unlinked one exactly once."
+- id: REQ-TASKLINK-001
+  implementation_repo: session-buddy
+  title: session-buddy exposes tasks_link_workflow as the sole writer of Task.workflow_id
+  description: A dedicated typed MCP tool writes the field; the generic UpdateTaskRequest.metadata bag
+    cannot reach it.
+- id: REQ-TASKLINK-002
+  implementation_repo: session-buddy
+  title: The link is owner-scoped and link-once
+  description: tasks_link_workflow requires Permission.WRITE, passes the visibility filter, and refuses
+    a second link to a different workflow_id.
+- id: REQ-TASKLINK-003
+  implementation_repo: session-buddy
+  title: The link records provenance
+  description: workflow_linked_at and workflow_linked_by are server-written first-class Task fields.
+- id: REQ-TASKLINK-004
+  implementation_repo: session-buddy
+  title: workflow_id is validated against the fleet's canonical pattern
+  description: ^[A-Za-z0-9._-]{1,128}$ — the same pattern mahavishnu's _workflow_id_guard enforces.
+- id: REQ-TASKLINK-005
+  implementation_repo: session-buddy
+  title: Caller metadata can never reach a server-set field
+  description: Regression pin on the metadata bag's inability to forge workflow_id.
+- id: REQ-TASKLINK-006
+  title: The handoff back-link step uses the typed channel
+  description: mahavishnu's step 3 calls tasks_link_workflow instead of tasks_update(metadata={...}).
+- id: REQ-TASKLINK-007
+  title: The dispatch step produces a real workflow_id
+  description: Step 2 dispatches through the durable-workflow path, which is the only path that returns
+    a workflow_id.
+- id: REQ-TASKLINK-008
+  title: The handoff tool and the sweeper bind a real session-buddy client
+  description: Both seams are bound at registration/lifespan time instead of raising NotImplementedError
+    or returning None.
+- id: REQ-TASKLINK-009
+  title: The orphan sweeper converges
+  description: It skips an already-linked orphan and links an unlinked one exactly once.
 ---
 
 # Task → Workflow Back-Link — typed channel, durable dispatch, and wiring

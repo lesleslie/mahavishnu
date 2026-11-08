@@ -8,29 +8,41 @@ superseded_by: null
 topic: model-evaluation
 title: "Model Evaluation — Phase 1 Implementation Plan"
 requirements:
-  - id: REQ-EVAL-001
-    title: "Oneiric adapter discovery for eval extension points"
-  - id: REQ-EVAL-002
-    title: "EvalEngine primitive (Dataset, Scorer, Storage, ModelBackend ABCs/Protocols)"
-  - id: REQ-EVAL-003
-    title: "EvalEngine orchestration (composes extension points, returns EvalRunResult)"
-  - id: REQ-EVAL-004
-    title: "EvalPool as BasePool subclass with single virtual worker"
-  - id: REQ-EVAL-005
-    title: "MCP tool surface (eval_register_dataset, eval_run_suite, eval_get_run)"
-  - id: REQ-EVAL-006
-    title: "Settings via nested EvalSettings field on MahavishnuSettings"
-  - id: REQ-EVAL-007
-    title: "Dogfood golden set of 20-30 Mahavishnu-specific cases"
-  - id: REQ-EVAL-008
-    title: "Phase 1 wire-up (e2e tests, health feed, audit_orphans, plan promotion)"
-  - id: REQ-EVAL-009
-    title: "MarkdownReportWriter for human-readable run reports"
-  - id: REQ-EVAL-010
-    title: "CLI entry point `mahavishnu eval run-suite` for programmatic use without MCP"
-  - id: REQ-EVAL-011
-    title: "OTel child-span attribute cardinality bound (eval.* is a fixed schema)"
-
+- id: REQ-EVAL-001
+  title: Oneiric adapter discovery for eval extension points
+  file: mahavishnu/core/eval/_registry.py:1-80
+- id: REQ-EVAL-002
+  title: EvalEngine primitive (Dataset, Scorer, Storage, ModelBackend ABCs/Protocols)
+  file: mahavishnu/core/eval/engine.py:1-50, dataset.py:1-40, scorer.py:1-50, storage.py:1-50
+- id: REQ-EVAL-003
+  title: EvalEngine orchestration (composes extension points, returns EvalRunResult)
+  file: mahavishnu/core/eval/engine.py:50-250
+- id: REQ-EVAL-004
+  title: EvalPool as BasePool subclass with single virtual worker (discoverable; MCP tool bypasses in
+    Phase 1)
+  file: mahavishnu/pools/eval_pool.py:1-200
+- id: REQ-EVAL-005
+  title: MCP tool surface (eval_register_dataset, eval_run_suite, eval_get_run) via a profile-gated tools
+    module
+  file: mahavishnu/mcp/bootstrap.py:_register_eval_tools
+- id: REQ-EVAL-006
+  title: Settings via nested EvalSettings field on MahavishnuSettings; env var MAHAVISHNU_EVAL__*
+  file: mahavishnu/core/eval/settings.py:1-80, mahavishnu/core/config.py:eval-field
+- id: REQ-EVAL-007
+  title: Dogfood golden set of 20-30 Mahavishnu-specific cases
+  file: docs/eval/dogfood-v0.jsonl
+- id: REQ-EVAL-008
+  title: Phase 1 wire-up (e2e tests, health feed, audit_orphans, plan promotion)
+  file: mahavishnu/mcp/eval_feed.py + tests/integration/test_eval_*.py
+- id: REQ-EVAL-009
+  title: MarkdownReportWriter for human-readable run reports
+  file: mahavishnu/core/eval/report.py:1-100
+- id: REQ-EVAL-010
+  title: CLI entry point `mahavishnu eval run-suite` for programmatic use without MCP
+  file: mahavishnu/_main_cli.py + mahavishnu/cli/eval_cli.py
+- id: REQ-EVAL-011
+  title: OTel child-span attribute cardinality bound (eval.* is a fixed schema, not a free-form keyspace)
+  file: mahavishnu/core/eval/engine.py:run_suite + tests/integration/test_eval_cardinality.py
 ---
 
 # Model Evaluation — Phase 1 Implementation Plan
@@ -99,39 +111,41 @@ A developer can run a golden-set of cases covering **Mahavishnu-specific agent b
 
 ```yaml
 requirements:
-  - id: REQ-EVAL-001
-    title: "Oneiric adapter discovery for eval extension points"
-    file: "mahavishnu/core/eval/_registry.py:1-80"
-  - id: REQ-EVAL-002
-    title: "EvalEngine primitive (Dataset, Scorer, Storage, ModelBackend ABCs/Protocols)"
-    file: "mahavishnu/core/eval/engine.py:1-50, dataset.py:1-40, scorer.py:1-50, storage.py:1-50"
-  - id: REQ-EVAL-003
-    title: "EvalEngine orchestration (composes extension points, returns EvalRunResult)"
-    file: "mahavishnu/core/eval/engine.py:50-250"
-  - id: REQ-EVAL-004
-    title: "EvalPool as BasePool subclass with single virtual worker (discoverable; MCP tool bypasses in Phase 1)"
-    file: "mahavishnu/pools/eval_pool.py:1-200"
-  - id: REQ-EVAL-005
-    title: "MCP tool surface (eval_register_dataset, eval_run_suite, eval_get_run) via a profile-gated tools module"
-    file: "mahavishnu/mcp/bootstrap.py:_register_eval_tools"
-  - id: REQ-EVAL-006
-    title: "Settings via nested EvalSettings field on MahavishnuSettings; env var MAHAVISHNU_EVAL__*"
-    file: "mahavishnu/core/eval/settings.py:1-80, mahavishnu/core/config.py:eval-field"
-  - id: REQ-EVAL-007
-    title: "Dogfood golden set of 20-30 Mahavishnu-specific cases"
-    file: "docs/eval/dogfood-v0.jsonl"
-  - id: REQ-EVAL-008
-    title: "Phase 1 wire-up (e2e tests, health feed, audit_orphans, plan promotion)"
-    file: "mahavishnu/mcp/eval_feed.py + tests/integration/test_eval_*.py"
-  - id: REQ-EVAL-009
-    title: "MarkdownReportWriter for human-readable run reports"
-    file: "mahavishnu/core/eval/report.py:1-100"
-  - id: REQ-EVAL-010
-    title: "CLI entry point `mahavishnu eval run-suite` for programmatic use without MCP"
-    file: "mahavishnu/_main_cli.py + mahavishnu/cli/eval_cli.py"
-  - id: REQ-EVAL-011
-    title: "OTel child-span attribute cardinality bound (eval.* is a fixed schema, not a free-form keyspace)"
-    file: "mahavishnu/core/eval/engine.py:run_suite + tests/integration/test_eval_cardinality.py"
+- id: REQ-EVAL-001
+  title: Oneiric adapter discovery for eval extension points
+  file: mahavishnu/core/eval/_registry.py:1-80
+- id: REQ-EVAL-002
+  title: EvalEngine primitive (Dataset, Scorer, Storage, ModelBackend ABCs/Protocols)
+  file: mahavishnu/core/eval/engine.py:1-50, dataset.py:1-40, scorer.py:1-50, storage.py:1-50
+- id: REQ-EVAL-003
+  title: EvalEngine orchestration (composes extension points, returns EvalRunResult)
+  file: mahavishnu/core/eval/engine.py:50-250
+- id: REQ-EVAL-004
+  title: EvalPool as BasePool subclass with single virtual worker (discoverable; MCP tool bypasses in
+    Phase 1)
+  file: mahavishnu/pools/eval_pool.py:1-200
+- id: REQ-EVAL-005
+  title: MCP tool surface (eval_register_dataset, eval_run_suite, eval_get_run) via a profile-gated tools
+    module
+  file: mahavishnu/mcp/bootstrap.py:_register_eval_tools
+- id: REQ-EVAL-006
+  title: Settings via nested EvalSettings field on MahavishnuSettings; env var MAHAVISHNU_EVAL__*
+  file: mahavishnu/core/eval/settings.py:1-80, mahavishnu/core/config.py:eval-field
+- id: REQ-EVAL-007
+  title: Dogfood golden set of 20-30 Mahavishnu-specific cases
+  file: docs/eval/dogfood-v0.jsonl
+- id: REQ-EVAL-008
+  title: Phase 1 wire-up (e2e tests, health feed, audit_orphans, plan promotion)
+  file: mahavishnu/mcp/eval_feed.py + tests/integration/test_eval_*.py
+- id: REQ-EVAL-009
+  title: MarkdownReportWriter for human-readable run reports
+  file: mahavishnu/core/eval/report.py:1-100
+- id: REQ-EVAL-010
+  title: CLI entry point `mahavishnu eval run-suite` for programmatic use without MCP
+  file: mahavishnu/_main_cli.py + mahavishnu/cli/eval_cli.py
+- id: REQ-EVAL-011
+  title: OTel child-span attribute cardinality bound (eval.* is a fixed schema, not a free-form keyspace)
+  file: mahavishnu/core/eval/engine.py:run_suite + tests/integration/test_eval_cardinality.py
 ```
 
 **Cross-component dependencies** (per `wire-up-contract.md` §2 "additional requirements"):

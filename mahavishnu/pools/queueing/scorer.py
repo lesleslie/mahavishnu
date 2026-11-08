@@ -1,6 +1,6 @@
 """Per-pool queueing observation buffer feeding the M/M/c routing model.
 
-# Implements: REQ-002, REQ-008
+# Implements: REQ-MATH-002, REQ-MATH-008
 
 The :class:`QueueingObservationBuffer` is the per-pool ring buffer that
 holds ``(inter_arrival, service)`` pairs and produces fitted
@@ -15,7 +15,7 @@ implements full argmin-by-predicted-wait directly in
 ``_apply_queueing_penalty``; the additive-penalty pattern was not
 wired into production and the class was orphaned.
 
-Req: REQ-002, REQ-003 (the persistence extension), REQ-008 (the
+Req: REQ-MATH-002, REQ-MATH-003 (the persistence extension), REQ-MATH-008 (the
 arrival-timestamp instrumentation is in route_task, not here, but
 the buffer is populated by route_task).
 """
@@ -48,7 +48,7 @@ def _is_valid_observation(value: float) -> bool:
 class QueueingObservationBuffer:
     """Per-pool ring buffer of arrival and service time observations.
 
-    The buffer is filled by :func:`PoolManager.route_task` (REQ-008
+    The buffer is filled by :func:`PoolManager.route_task` (REQ-MATH-008
     instrumentation) and consumed by :meth:`QueueingScorer.fit_or_warmup`
     on the warmup cadence. When fewer than
     ``min_observations`` pairs are present, the buffer is in warmup

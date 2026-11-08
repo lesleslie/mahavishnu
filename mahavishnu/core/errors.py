@@ -178,7 +178,7 @@ class ErrorCode(StrEnum):
     REVIEWER_NOT_TRUSTED = "MHV-483"
 
     # Math signal errors (Tier 1 — queueing + change-point libraries).
-    # Req: REQ-001 (MmcQueue) and REQ-004 (CUSUM/PH) — the error contract
+    # Req: REQ-MATH-001 (MmcQueue) and REQ-MATH-004 (CUSUM/PH) — the error contract
     # shared by both pure-Python libraries.
     QUEUEING_MODEL_ERROR = "MHV-490"
     CHANGE_POINT_ERROR = "MHV-491"
@@ -2081,7 +2081,7 @@ class PiProtocolError(MahavishnuError):
 
 # ---------------------------------------------------------------------------
 # Math signal errors (Tier 1 — queueing + change-point libraries).
-# Req: REQ-001 (MmcQueue) and REQ-004 (CUSUM/PH) — shared contract for
+# Req: REQ-MATH-001 (MmcQueue) and REQ-MATH-004 (CUSUM/PH) — shared contract for
 # both pure-Python libraries under mahavishnu/pools/queueing/ and
 # mahavishnu/observability/changepoint/.
 # ---------------------------------------------------------------------------
@@ -2095,8 +2095,8 @@ class QueueingModelError(MahavishnuError):
     well-bounded; the failure mode is *model-specific* (e.g. ρ ≥ 1,
     empty observation sequence, NaN/Inf observation).
 
-    Req: REQ-001
-    """  # req: REQ-001
+    Req: REQ-MATH-001
+    """  # req: REQ-MATH-001
 
     def __init__(
         self,
@@ -2119,8 +2119,8 @@ class ChangePointError(MahavishnuError):
     re-raising. Both inherit from :class:`MahavishnuError` and share
     the math-signal recovery guidance in ``RECOVERY_GUIDANCE``.
 
-    Req: REQ-004
-    """  # req: REQ-004
+    Req: REQ-MATH-004
+    """  # req: REQ-MATH-004
 
     def __init__(
         self,

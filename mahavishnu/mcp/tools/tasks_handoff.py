@@ -502,7 +502,7 @@ def register_tasks_handoff_tools(
         return False
 
     @mcp.tool()
-    async def tasks_handoff_to_workflow(
+    async def tasks_handoff_to_workflow(  # req: REQ-TASKLINK-007
         task_id: Annotated[str, Field(pattern=TASK_ID_PATTERN)],
         adapter: _ADAPTER = "prefect",
         params: HandoffParams | None = None,
@@ -650,7 +650,7 @@ def register_tasks_handoff_tools(
                 )
 
             # ---- Step 3: bind the workflow to the task ----
-            # req: REQ-006, REQ-001
+            # req: REQ-TASKLINK-006, REQ-TASKLINK-001
             try:
                 await link_workflow(
                     task_id=task_id,

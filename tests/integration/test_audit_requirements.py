@@ -54,7 +54,8 @@ def test_audit_requirements_reports_clean_state() -> None:
 @pytest.mark.integration
 def test_audit_requirements_emits_expected_keys() -> None:
     """The JSON output must include declared / referenced / orphans / phantoms /
-    summary keys for downstream tooling (Session-Buddy, dashboards) to consume.
+    summary keys for downstream tooling (Session-Buddy, dashboards) to consume,
+    plus the non-fatal categories the audit now distinguishes.
     """
     result = subprocess.run(
         [sys.executable, "scripts/audit_requirements.py", "--json", "--dry-run"],
@@ -66,5 +67,59 @@ def test_audit_requirements_emits_expected_keys() -> None:
     # --dry-run exits 0 even with orphans/phantoms, so just check the shape.
     assert result.returncode in (0, 1)
     payload = json.loads(result.stdout)
-    for key in ("declared", "referenced", "orphans", "phantoms", "summary"):
+    for key in (
+        "declared",
+        "referenced",
+        "orphans",
+        "phantoms",
+        "external",
+        "unverified",
+        "unnamespaced",
+        "informal",
+        "summary",
+    ):
         assert key in payload, f"missing key {key!r} in audit JSON output"
+
+
+@pytest.mark.integration
+def test_audit_requirements_ignores_archived_plans() -> None:
+    """``docs/plans/.archive/`` is git-ignored, so the audit must not read it.
+
+    If it did, the verdict would depend on whether the machine happened to
+    archive those plans locally: a fresh clone would report phantoms that
+    this machine does not.
+    """
+    result = subprocess.run(
+        [sys.executable, "scripts/audit_requirements.py", "--json"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    payload = json.loads(result.stdout)
+    declared_paths = {d["source_path"] for d in payload["declared"]}
+    assert not any(".archive" in p for p in declared_paths), (
+        "the audit scanned archived plans; its verdict is machine-dependent"
+    )
+
+
+@pytest.mark.integration
+def test_audit_requirements_declares_only_namespaced_ids() -> None:
+    """Every declared requirement must carry a namespace.
+
+    A bare ``REQ-001`` collides across unrelated plans, so it cannot be
+    traced to one owner. The audit reports bare declarations as a worklist;
+    this test keeps the worklist empty.
+    """
+    result = subprocess.run(
+        [sys.executable, "scripts/audit_requirements.py", "--json"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    payload = json.loads(result.stdout)
+    unnamespaced = [d["requirement_id"] for d in payload["unnamespaced"]]
+    assert not unnamespaced, (
+        f"bare requirement IDs need a namespace (REQ-<PLAN>-<NNN>): {unnamespaced}"
+    )

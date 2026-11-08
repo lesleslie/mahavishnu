@@ -322,6 +322,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-11-07-archived-requirements-registry.md`](2026-11-07-archived-requirements-registry.md) | 2026-11-07 | `active` | `canonical` | `reference` | `archived-requirements-registry` | Archived requirements registry — declarations carried forward from retired plans |
 | [`docs/plans/2026-11-07-bifrost-complexity-accounting.md`](2026-11-07-bifrost-complexity-accounting.md) | 2026-11-07 | `active` | `implementation` |  | `bifrost-complexity-accounting` | Complexity-router accounting — price the classifier, watch the session binding |
 | [`docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md`](2026-11-07-mcp-profile-groups-and-shared-llm-egress.md) | 2026-11-07 | `active` | `implementation` |  | `mcp-profile-groups` | MCP profile groups + shared LLM egress — replacing MCP aggregation |
 | [`docs/plans/2026-11-07-pyscn-complexity-refactor.md`](2026-11-07-pyscn-complexity-refactor.md) | 2026-11-07 | `complete` | `implementation` |  | `quality-gate-complexity` | Reduce pyscn complexity in four MCP/CLI hotspots |
@@ -354,10 +355,10 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `active` | `canonical` |  | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
 | [`docs/plans/2026-10-14-decision-adapter-category.md`](2026-10-14-decision-adapter-category.md) | 2026-10-14 | `active` | `implementation` |  | `decision-adapter-category` | Decision Adapter Category Implementation Plan |
 | [`docs/plans/2026-10-12-mcp-common-test-backfill.md`](2026-10-12-mcp-common-test-backfill.md) | 2026-10-12 | `active` | `implementation` |  | `mcpserver-settings-convention` | mcp-common CommonMCPClient + HealthFeedState Test Backfill |
-| [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` |  | `ruff-cleanup-post-regrowth` | `replaces:` is a project-local convention: the predecessor plan |
+| [`docs/plans/2026-10-12-ruff-cleanup-post-regrowth.md`](2026-10-12-ruff-cleanup-post-regrowth.md) | 2026-10-12 | `partial` | `implementation` |  | `ruff-cleanup-post-regrowth` | Ruff Cleanup Post-Regrowth (2026-10-12) |
 | [`docs/plans/2026-10-03-eval-adapter-phase1.md`](2026-10-03-eval-adapter-phase1.md) | 2026-10-03 | `complete` | `implementation` |  | `model-evaluation` | Model Evaluation — Phase 1 Implementation Plan |
-| [`docs/plans/2026-09-20-delete-all-legacy-named-code.md`](2026-09-20-delete-all-legacy-named-code.md) | 2026-09-20 | `complete` | `implementation` |  | `delete-all-legacy-named-code` | Verified complete 2026-10-17 (crackerjack repo): |
-| [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `complete` | `umbrella` |  | `mcpserver-settings-convention` | `superseded_by` is document-level only (see the schema). This umbrella is |
+| [`docs/plans/2026-09-20-delete-all-legacy-named-code.md`](2026-09-20-delete-all-legacy-named-code.md) | 2026-09-20 | `complete` | `implementation` |  | `delete-all-legacy-named-code` | Plan: Delete all remaining legacy-named code |
+| [`docs/plans/2026-09-14-common-mcp-client-transport-unification.md`](2026-09-14-common-mcp-client-transport-unification.md) | 2026-09-14 | `complete` | `umbrella` |  | `mcpserver-settings-convention` | CommonMCPClient Transport Unification Across Bodai (v2) |
 | [`docs/plans/2026-08-31-zsh-modernization.md`](2026-08-31-zsh-modernization.md) | 2026-08-31 | `draft` | `canonical` |  | `config-consolidation` | Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship) |
 | [`docs/plans/2026-08-25-bodai-tui-shell-surface.md`](2026-08-25-bodai-tui-shell-surface.md) | 2026-08-25 | `shipped` | `implementation` |  | `bodai-tui-shell-surface` | Bodai TUI & Admin Shell Surface |
 | [`docs/plans/2026-07-11-phase-6-bodai-observability.md`](2026-07-11-phase-6-bodai-observability.md) | 2026-07-16 | `complete` | `implementation` |  | `observability` | Phase 6 — Bodai-Wide Observability Surfacing |
@@ -447,12 +448,13 @@ Scaffolding docs (TEMPLATE.md files). Permanent fixtures; never a work item.
 | [`docs/followups/TEMPLATE.md`](../../docs/followups/TEMPLATE.md) | 2026-07-21 | YYYY-MM-DD-<name> — followup |
 | [`docs/plans/TEMPLATE.md`](TEMPLATE.md) | 2026-07-16 | Plan Template — Integration-Contract Required |
 
-### `reference` (6 entries)
+### `reference` (7 entries)
 
 Index pages or reference docs (README files). Permanent fixtures; never a work item.
 
 | Path | Date | Title |
 |---|---|---|
+| [`docs/plans/2026-11-07-archived-requirements-registry.md`](2026-11-07-archived-requirements-registry.md) | 2026-11-07 | Archived requirements registry — declarations carried forward from retired plans |
 | [`docs/decisions/workflows/README.md`](../../docs/decisions/workflows/README.md) | 2026-10-11 | Workflow decisions |
 | [`docs/followups/README.md`](../../docs/followups/README.md) | 2026-07-16 | `docs/followups/` index |
 | [`docs/plans/README.md`](README.md) | 2026-07-16 | Plans README |
@@ -547,10 +549,10 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 5 | 65 | 2 | 2 | 17 | **91** |
+| `canonical` | 5 | 66 | 2 | 2 | 17 | **92** |
 | `implementation` | 4 | 11 | 5 | 7 | 20 | **47** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 34 | **34** |
 | `superseded` | · | · | · | · | 10 | **10** |
 
-| **Total** | **9** | **76** | **7** | **9** | **82** | **183** |
+| **Total** | **9** | **77** | **7** | **9** | **82** | **184** |

@@ -7,6 +7,25 @@ last_reviewed: 2026-11-07
 superseded_by: null
 topic: bifrost-cli-consolidation
 title: "Bifrost CLI Consolidation — one Typer app replacing seven scripts"
+requirements:
+- id: REQ-BIFROST-024
+  title: Single Typer sub-app exposes all Bifrost capabilities
+- id: REQ-BIFROST-025
+  title: Toggle implementation is harness-parameterised, not duplicated
+- id: REQ-BIFROST-026
+  title: Claude toggle writes ANTHROPIC_CUSTOM_HEADERS with x-bf-vk
+- id: REQ-BIFROST-027
+  title: Qwen toggle writes modelProviders customHeaders with x-bf-vk
+- id: REQ-BIFROST-028
+  title: Virtual key resolved from env/flag, never hardcoded in settings
+- id: REQ-BIFROST-029
+  title: BIFROST_CTL_NO_CC_URL_REWRITE enforced in the single toggle path
+- id: REQ-BIFROST-030
+  title: LaunchAgent plist invokes the migrated gateway module
+- id: REQ-BIFROST-031
+  title: Smoke checks are harness-parameterised
+- id: REQ-BIFROST-032
+  title: No references to retired script paths remain
 ---
 
 > **Implementation status (verified 2026-11-07).** Phases 1-3 are shipped and
@@ -155,24 +174,24 @@ duplicates (same `is_bifrost_url` / `read_settings_url` / `port_bound` /
 
 ```yaml
 requirements:
-  - id: REQ-BIFROST-024
-    title: "Single Typer sub-app exposes all Bifrost capabilities"
-  - id: REQ-BIFROST-025
-    title: "Toggle implementation is harness-parameterised, not duplicated"
-  - id: REQ-BIFROST-026
-    title: "Claude toggle writes ANTHROPIC_CUSTOM_HEADERS with x-bf-vk"
-  - id: REQ-BIFROST-027
-    title: "Qwen toggle writes modelProviders customHeaders with x-bf-vk"
-  - id: REQ-BIFROST-028
-    title: "Virtual key resolved from env/flag, never hardcoded in settings"
-  - id: REQ-BIFROST-029
-    title: "BIFROST_CTL_NO_CC_URL_REWRITE enforced in the single toggle path"
-  - id: REQ-BIFROST-030
-    title: "LaunchAgent plist invokes the migrated gateway module"
-  - id: REQ-BIFROST-031
-    title: "Smoke checks are harness-parameterised"
-  - id: REQ-BIFROST-032
-    title: "No references to retired script paths remain"
+- id: REQ-BIFROST-024
+  title: Single Typer sub-app exposes all Bifrost capabilities
+- id: REQ-BIFROST-025
+  title: Toggle implementation is harness-parameterised, not duplicated
+- id: REQ-BIFROST-026
+  title: Claude toggle writes ANTHROPIC_CUSTOM_HEADERS with x-bf-vk
+- id: REQ-BIFROST-027
+  title: Qwen toggle writes modelProviders customHeaders with x-bf-vk
+- id: REQ-BIFROST-028
+  title: Virtual key resolved from env/flag, never hardcoded in settings
+- id: REQ-BIFROST-029
+  title: BIFROST_CTL_NO_CC_URL_REWRITE enforced in the single toggle path
+- id: REQ-BIFROST-030
+  title: LaunchAgent plist invokes the migrated gateway module
+- id: REQ-BIFROST-031
+  title: Smoke checks are harness-parameterised
+- id: REQ-BIFROST-032
+  title: No references to retired script paths remain
 ```
 
 ## 5. Implementation Phases

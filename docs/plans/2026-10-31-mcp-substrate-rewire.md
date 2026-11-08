@@ -8,18 +8,18 @@ superseded_by: null
 topic: mcp-substrate-rewire
 title: "Rewire the MCP substrate from the decommissioned service to the live owners"
 requirements:
-  - id: REQ-SUB-001
-    title: "Substrate URL resolves to mahavishnu's own MCP server"
-  - id: REQ-SUB-002
-    title: "KV tools are registered at every tool profile tier"
-  - id: REQ-SUB-003
-    title: "Durable state reads and writes through the live KV tools"
-  - id: REQ-SUB-004
-    title: "No default or fallback points at the decommissioned port"
-  - id: REQ-SUB-005
-    title: "Analytics with no writer report the absence of a source"
-  - id: REQ-SUB-006
-    title: "The internal principal is granted only on a verified credential"
+- id: REQ-SUB-001
+  title: Substrate URL resolves to mahavishnu's own MCP server
+- id: REQ-SUB-002
+  title: KV tools are registered at every tool profile tier
+- id: REQ-SUB-003
+  title: Durable state reads and writes through the live KV tools
+- id: REQ-SUB-004
+  title: No default or fallback points at the decommissioned port
+- id: REQ-SUB-005
+  title: Analytics with no writer report the absence of a source
+- id: REQ-SUB-006
+  title: The internal principal is granted only on a verified credential
 ---
 
 # Rewire the MCP substrate from the decommissioned service to the live owners
@@ -282,18 +282,18 @@ refuses to attach the internal credential to a non-loopback URL
 
 ```yaml
 requirements:
-  - id: REQ-SUB-001
-    title: "Substrate URL resolves to mahavishnu's own MCP server"
-  - id: REQ-SUB-002
-    title: "KV tools are registered at every tool profile tier"
-  - id: REQ-SUB-003
-    title: "Durable state reads and writes through the live KV tools"
-  - id: REQ-SUB-004
-    title: "No default or fallback points at the decommissioned port"
-  - id: REQ-SUB-005
-    title: "Analytics with no writer report the absence of a source"
-  - id: REQ-SUB-006
-    title: "The internal principal is granted only on a verified credential"
+- id: REQ-SUB-001
+  title: Substrate URL resolves to mahavishnu's own MCP server
+- id: REQ-SUB-002
+  title: KV tools are registered at every tool profile tier
+- id: REQ-SUB-003
+  title: Durable state reads and writes through the live KV tools
+- id: REQ-SUB-004
+  title: No default or fallback points at the decommissioned port
+- id: REQ-SUB-005
+  title: Analytics with no writer report the absence of a source
+- id: REQ-SUB-006
+  title: The internal principal is granted only on a verified credential
 ```
 
 ## 5. Implementation Phases

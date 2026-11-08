@@ -6,6 +6,17 @@ last_reviewed: 2026-10-29
 superseded_by: null
 topic: agno-failover-gateway
 title: "Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key"
+requirements:
+- id: REQ-AGNO-006
+  title: The agno.llm block is authoritative over the legacy flat config shapes
+- id: REQ-AGNO-007
+  title: Per-call provider failover in the Agno agent loop
+- id: REQ-AGNO-008
+  title: A gateway-routed provider requests a model the gateway serves
+- id: REQ-AGNO-009
+  title: A fallback provider never inherits the primary's credential or endpoint
+- id: REQ-PIVK-006
+  title: The Pi pool resolves the Bifrost virtual key from the canonical source
 ---
 
 # Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key
@@ -143,16 +154,16 @@ implementation does not raise. Unrelated to LLM routing — left alone.
 
 ```yaml
 requirements:
-  - id: REQ-AGNO-006
-    title: "The agno.llm block is authoritative over the legacy flat config shapes"
-  - id: REQ-AGNO-007
-    title: "Per-call provider failover in the Agno agent loop"
-  - id: REQ-AGNO-008
-    title: "A gateway-routed provider requests a model the gateway serves"
-  - id: REQ-AGNO-009
-    title: "A fallback provider never inherits the primary's credential or endpoint"
-  - id: REQ-PI-006
-    title: "The Pi pool resolves the Bifrost virtual key from the canonical source"
+- id: REQ-AGNO-006
+  title: The agno.llm block is authoritative over the legacy flat config shapes
+- id: REQ-AGNO-007
+  title: Per-call provider failover in the Agno agent loop
+- id: REQ-AGNO-008
+  title: A gateway-routed provider requests a model the gateway serves
+- id: REQ-AGNO-009
+  title: A fallback provider never inherits the primary's credential or endpoint
+- id: REQ-PIVK-006
+  title: The Pi pool resolves the Bifrost virtual key from the canonical source
 ```
 
 ## 5. Implementation Phases

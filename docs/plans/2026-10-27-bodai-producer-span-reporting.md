@@ -7,6 +7,19 @@ last_reviewed: 2026-10-27
 superseded_by: null
 topic: otel-producer-reporting
 title: "Producer Span Reporting — make the heartbeat roster mean something"
+requirements:
+- id: REQ-SPAN-001
+  title: Shared producer tracing helper in mcp-common
+- id: REQ-SPAN-002
+  title: Periodic liveness span emitted by every rostered service
+- id: REQ-SPAN-003
+  title: Launchd plists set the substrate OTLP endpoint
+- id: REQ-SPAN-004
+  title: akosha's tracer provider carries its span processor
+- id: REQ-SPAN-005
+  title: akosha's service name matches the roster
+- id: REQ-SPAN-006
+  title: Boot timeout exceeds the measured time-to-healthy
 ---
 
 # Producer Span Reporting — make the heartbeat roster mean something
@@ -159,18 +172,18 @@ for the same reason — mahavishnu's boot is slow too.
 
 ```yaml
 requirements:
-  - id: REQ-001
-    title: "Shared producer tracing helper in mcp-common"
-  - id: REQ-002
-    title: "Periodic liveness span emitted by every rostered service"
-  - id: REQ-003
-    title: "Launchd plists set the substrate OTLP endpoint"
-  - id: REQ-004
-    title: "akosha's tracer provider carries its span processor"
-  - id: REQ-005
-    title: "akosha's service name matches the roster"
-  - id: REQ-006
-    title: "Boot timeout exceeds the measured time-to-healthy"
+- id: REQ-SPAN-001
+  title: Shared producer tracing helper in mcp-common
+- id: REQ-SPAN-002
+  title: Periodic liveness span emitted by every rostered service
+- id: REQ-SPAN-003
+  title: Launchd plists set the substrate OTLP endpoint
+- id: REQ-SPAN-004
+  title: akosha's tracer provider carries its span processor
+- id: REQ-SPAN-005
+  title: akosha's service name matches the roster
+- id: REQ-SPAN-006
+  title: Boot timeout exceeds the measured time-to-healthy
 ```
 
 ## 5. Implementation Phases

@@ -52,11 +52,36 @@ block MUST link back to the requirement IDs it fulfils.
 >
 > ```yaml
 > requirements:
->   - id: REQ-001
+>   - id: REQ-YOURPLAN-001
 >     title: "Short noun-phrase"
->   - id: REQ-002
+>   - id: REQ-YOURPLAN-002
 >     title: "..."
 > ```
+>
+> **Use a namespaced ID.** `REQ-<PLAN>-<NNN>`, where `<PLAN>` is a short
+> uppercase tag for this plan (`REQ-YOURPLAN-001`). A bare `REQ-001` is
+> ambiguous across the repo — five different plans declared one, with five
+> different meanings — so the audit reports bare IDs as a migration worklist
+> rather than failing on them. New work must use a namespace.
+>
+> **Implemented in a sibling repo?** Add `implementation_repo`:
+>
+> ```yaml
+> requirements:
+>   - id: REQ-YOURPLAN-003
+>     title: "Implemented in session-buddy"
+>     implementation_repo: session-buddy
+> ```
+>
+> The audit then looks for the marker in that repo (a sibling of the repo
+> root, or wherever `--external-repo NAME=PATH` points). It confirms the
+> requirement when it finds one and reports it as *unverified* when it does
+> not — a missing marker in the sibling is not a missing implementation.
+>
+> **Retiring a plan?** `docs/plans/.archive/` is git-ignored, so the audit
+> does not read it — a requirement declared only there is invisible on a
+> fresh clone. If its implementation is still live, carry it forward into
+> `docs/plans/2026-11-07-archived-requirements-registry.md`.
 >
 > **Do not put YAML comments in a plan's frontmatter.** The plan-index
 > generator derives a document's title from the first `# ` line in the *whole

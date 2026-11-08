@@ -1,6 +1,6 @@
 """Sequential change-point detectors for Mahavishnu observability (Tier 1 Phase 5).
 
-# Implements: REQ-004
+# Implements: REQ-MATH-004
 
 Exposes:
 

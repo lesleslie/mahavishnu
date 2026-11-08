@@ -7,6 +7,15 @@ last_reviewed: 2026-11-07
 superseded_by: null
 topic: bifrost-minimax-routing
 title: "Route Claude Code through Bifrost to MiniMax with genuine Anthropic responses"
+requirements:
+- id: REQ-BIFROST-038
+  title: Claude Code requests resolve to the Anthropic-native MiniMax provider
+- id: REQ-BIFROST-039
+  title: Reasoning returns as Anthropic thinking blocks, never inline
+- id: REQ-BIFROST-040
+  title: Worker OpenAI-compatible path is unaffected by the Claude Code route
+- id: REQ-BIFROST-041
+  title: Routing rule is applied to the authoritative config store
 ---
 
 # Route Claude Code through Bifrost to MiniMax with genuine Anthropic responses
@@ -344,14 +353,14 @@ is now table-driven over all three.
 
 ```yaml
 requirements:
-  - id: REQ-BIFROST-038
-    title: "Claude Code requests resolve to the Anthropic-native MiniMax provider"
-  - id: REQ-BIFROST-039
-    title: "Reasoning returns as Anthropic thinking blocks, never inline"
-  - id: REQ-BIFROST-040
-    title: "Worker OpenAI-compatible path is unaffected by the Claude Code route"
-  - id: REQ-BIFROST-041
-    title: "Routing rule is applied to the authoritative config store"
+- id: REQ-BIFROST-038
+  title: Claude Code requests resolve to the Anthropic-native MiniMax provider
+- id: REQ-BIFROST-039
+  title: Reasoning returns as Anthropic thinking blocks, never inline
+- id: REQ-BIFROST-040
+  title: Worker OpenAI-compatible path is unaffected by the Claude Code route
+- id: REQ-BIFROST-041
+  title: Routing rule is applied to the authoritative config store
 ```
 
 ## 5. Implementation Phases

@@ -1,6 +1,6 @@
 """CUSUM (Cumulative Sum) change-point detector.
 
-# Implements: REQ-004
+# Implements: REQ-MATH-004
 
 The :class:`CUSUMDetector` is the canonical Cumulative Sum detector
 of Page (1954) / Brook & Evans (1972). It is a sequential test that
@@ -137,8 +137,8 @@ class CUSUMDetector:
             report whichever score is larger. Default True (the
             Phase 6 spec calls for two-sided detection).
 
-    Req: REQ-004
-    """  # req: REQ-004
+    Req: REQ-MATH-004
+    """  # req: REQ-MATH-004
 
     __slots__ = (
         "_samples_since_reset",

@@ -6,6 +6,19 @@ last_reviewed: 2026-11-05
 superseded_by: null
 topic: agno-llm-routing
 title: "Agno LLM provider chain — MiniMax primary, llama-server as fallback"
+requirements:
+- id: REQ-AGNO-001
+  title: Agno LLM provider defaults to MiniMax
+- id: REQ-AGNO-002
+  title: llama-server reachable only as an ordered fallback
+- id: REQ-AGNO-003
+  title: base_url no longer defaults to the llama-server URL
+- id: REQ-AGNO-004
+  title: model_id resolves per provider and drops qwen2.5:7b
+- id: REQ-AGNO-005
+  title: Bifrost-routed calls authenticate with the gateway virtual key
+- id: REQ-AGNO-006
+  title: The agno.llm block is authoritative over the legacy flat config shapes
 ---
 
 # Agno LLM provider chain — MiniMax primary, llama-server as fallback
@@ -202,18 +215,18 @@ used instead.
 
 ```yaml
 requirements:
-  - id: REQ-AGNO-001
-    title: "Agno LLM provider defaults to MiniMax"
-  - id: REQ-AGNO-002
-    title: "llama-server reachable only as an ordered fallback"
-  - id: REQ-AGNO-003
-    title: "base_url no longer defaults to the llama-server URL"
-  - id: REQ-AGNO-004
-    title: "model_id resolves per provider and drops qwen2.5:7b"
-  - id: REQ-AGNO-005
-    title: "Bifrost-routed calls authenticate with the gateway virtual key"
-  - id: REQ-AGNO-006
-    title: "The agno.llm block is authoritative over the legacy flat config shapes"
+- id: REQ-AGNO-001
+  title: Agno LLM provider defaults to MiniMax
+- id: REQ-AGNO-002
+  title: llama-server reachable only as an ordered fallback
+- id: REQ-AGNO-003
+  title: base_url no longer defaults to the llama-server URL
+- id: REQ-AGNO-004
+  title: model_id resolves per provider and drops qwen2.5:7b
+- id: REQ-AGNO-005
+  title: Bifrost-routed calls authenticate with the gateway virtual key
+- id: REQ-AGNO-006
+  title: The agno.llm block is authoritative over the legacy flat config shapes
 ```
 
 ## 5. Implementation Phases

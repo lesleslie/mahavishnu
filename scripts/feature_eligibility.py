@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Feature eligibility check for Tier 2 / Phase D follow-ons.
 
-# Implements: REQ-007
+# Implements: REQ-MATH-007
 
 Codifies the data-volume and adoption triggers that decide when the
 deferred Tier 2 initiatives (optimal transport for Akosha, hyperbolic
@@ -455,7 +455,7 @@ def format_human_report(report: EligibilityReport) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Tier 2 / Phase D eligibility check (REQ-007). "
+            "Tier 2 / Phase D eligibility check (REQ-MATH-007). "
             "Reads MCP data sources and followup doc frontmatter; emits "
             "one-line-per-trigger status with summary line."
         )

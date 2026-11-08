@@ -25,7 +25,25 @@ title: "CommonMCPClient Transport Unification Across Bodai (v2)"
 #   historical evidence of the hard-cutover, not a migration candidate.
 # - Phase 4 /health aggregator unification superseded by
 #   docs/plans/.archive/2026-10-09-mcp-health-check-enrichment.md
-
+requirements:
+- id: REQ-TRANSPORT-001
+  title: CommonMCPClient extracted from akosha; streamable-HTTP JSON-RPC; session-ID lifecycle
+- id: REQ-TRANSPORT-002
+  title: HealthFeedState exposes last_error_at + errors_within_window rolling counter
+- id: REQ-TRANSPORT-003
+  title: aggregate_feed_states produces 4-value top-level status enum + reason_codes enum
+- id: REQ-TRANSPORT-004
+  title: All 84 production /tools/call sites replaced with CommonMCPClient
+- id: REQ-TRANSPORT-005
+  title: <COMPONENT>_MCP_URL defaults (4 prod + 17 test fixtures) end in /mcp
+- id: REQ-TRANSPORT-006
+  title: Each repo's /health aggregator delegates to aggregate_feed_states
+- id: REQ-TRANSPORT-007
+  title: Cumulative feed errors do not block /health=200 after halflife elapses
+- id: REQ-TRANSPORT-008
+  title: 'Empty-feed + ingester-running reports status: warming_up with reason_codes: [warming_up_empty_feed]'
+- id: REQ-TRANSPORT-009
+  title: 'Cross-repo smoke test: akosha → session-buddy via CommonMCPClient returns non-empty'
 ---
 
 > **Naming note (2026-10-30):** the retired standalone MCP server component is
@@ -254,24 +272,24 @@ is a documentation/wire-format change, not a feature.
 
 ```yaml
 requirements:
-  - id: REQ-001
-    title: "CommonMCPClient extracted from akosha; streamable-HTTP JSON-RPC; session-ID lifecycle"
-  - id: REQ-002
-    title: "HealthFeedState exposes last_error_at + errors_within_window rolling counter"
-  - id: REQ-003
-    title: "aggregate_feed_states produces 4-value top-level status enum + reason_codes enum"
-  - id: REQ-004
-    title: "All 84 production /tools/call sites replaced with CommonMCPClient"
-  - id: REQ-005
-    title: "<COMPONENT>_MCP_URL defaults (4 prod + 17 test fixtures) end in /mcp"
-  - id: REQ-006
-    title: "Each repo's /health aggregator delegates to aggregate_feed_states"
-  - id: REQ-007
-    title: "Cumulative feed errors do not block /health=200 after halflife elapses"
-  - id: REQ-008
-    title: "Empty-feed + ingester-running reports status: warming_up with reason_codes: [warming_up_empty_feed]"
-  - id: REQ-009
-    title: "Cross-repo smoke test: akosha → session-buddy via CommonMCPClient returns non-empty"
+- id: REQ-TRANSPORT-001
+  title: CommonMCPClient extracted from akosha; streamable-HTTP JSON-RPC; session-ID lifecycle
+- id: REQ-TRANSPORT-002
+  title: HealthFeedState exposes last_error_at + errors_within_window rolling counter
+- id: REQ-TRANSPORT-003
+  title: aggregate_feed_states produces 4-value top-level status enum + reason_codes enum
+- id: REQ-TRANSPORT-004
+  title: All 84 production /tools/call sites replaced with CommonMCPClient
+- id: REQ-TRANSPORT-005
+  title: <COMPONENT>_MCP_URL defaults (4 prod + 17 test fixtures) end in /mcp
+- id: REQ-TRANSPORT-006
+  title: Each repo's /health aggregator delegates to aggregate_feed_states
+- id: REQ-TRANSPORT-007
+  title: Cumulative feed errors do not block /health=200 after halflife elapses
+- id: REQ-TRANSPORT-008
+  title: 'Empty-feed + ingester-running reports status: warming_up with reason_codes: [warming_up_empty_feed]'
+- id: REQ-TRANSPORT-009
+  title: 'Cross-repo smoke test: akosha → session-buddy via CommonMCPClient returns non-empty'
 ```
 
 All 9 REQ IDs are referenced from at least one Phase's Integration

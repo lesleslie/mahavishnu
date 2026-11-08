@@ -8,8 +8,8 @@ superseded_by: null
 topic: bifrost-readiness-budget
 title: "Make the Bifrost readiness budget clear the observed cold start"
 requirements:
-  - id: REQ-BIFROST-045
-    title: "Readiness budget clears the worst observed cold start"
+- id: REQ-BIFROST-045
+  title: Readiness budget clears the worst observed cold start
 ---
 
 # Make the Bifrost readiness budget clear the observed cold start
@@ -80,8 +80,8 @@ why the regression was invisible to CI.
 
 ```yaml
 requirements:
-  - id: REQ-BIFROST-045
-    title: "Readiness budget clears the worst observed cold start"
+- id: REQ-BIFROST-045
+  title: Readiness budget clears the worst observed cold start
 ```
 
 ## 5. Implementation Phases

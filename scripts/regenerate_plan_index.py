@@ -247,9 +247,19 @@ def _coerce_date(value: Any) -> str:
 
 
 def _title_from_text(text: str, fallback: str) -> str:
-    """First level-1 heading text, or `fallback` (typically the filename
-    stem) when the document has no H1."""
-    for line in text.splitlines():
+    """First level-1 heading in the document BODY, or `fallback` (typically
+    the filename stem) when the document has no H1.
+
+    The frontmatter block is skipped. A YAML comment written as ``# text``
+    inside a plan's frontmatter is not a heading, and treating it as one
+    silently replaces the document's title in the index.
+    """
+    body = text
+    if text.startswith("---"):
+        fence = text.find("\n---", 3)
+        if fence != -1:
+            body = text[fence + 4 :]
+    for line in body.splitlines():
         stripped = line.strip()
         if stripped.startswith("# "):
             return stripped[2:].strip()
@@ -1275,7 +1285,9 @@ def main(argv: list[str] | None = None) -> int:
     # Local date, not UTC: every other date in the repo (doc frontmatter,
     # git commit timestamps) is local, and a UTC stamp flips to "tomorrow"
     # for any regeneration after 17:00 in a UTC-7/8 offset.
-    generated_at = datetime.date.today().isoformat()
+    # ``now().astimezone().date()`` is the same local date, but explicitly
+    # timezone-aware (DTZ011 rejects the naive ``date.today()``).
+    generated_at = datetime.datetime.now().astimezone().date().isoformat()
     rendered = _render_index(
         repo_root,
         stores,

@@ -1,6 +1,6 @@
 """M/M/c queueing model for Mahavishnu pool routing.
 
-# Implements: REQ-001
+# Implements: REQ-MATH-001
 
 The :class:`MmcQueue` class fits M/M/c parameters from observed
 inter-arrival and service times and produces expected-wait-time
@@ -136,8 +136,8 @@ class MmcQueue:
     router's hot path allocation-friendly (the scorer caches one
     model per pool and replaces it on a fit cadence).
 
-    Req: REQ-001
-    """  # req: REQ-001
+    Req: REQ-MATH-001
+    """  # req: REQ-MATH-001
 
     arrival_rate: float
     service_rate: float

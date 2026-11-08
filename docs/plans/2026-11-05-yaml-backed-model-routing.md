@@ -8,22 +8,22 @@ superseded_by: null
 topic: yaml-backed-model-routing
 title: "Make settings/models.yaml the live source of task-to-model routing"
 requirements:
-  - id: REQ-YAML-001
-    title: "Operator config is authoritative for task routing when present"
-  - id: REQ-YAML-002
-    title: "No TaskCategory loses its route when the operator config omits it"
-  - id: REQ-YAML-003
-    title: "Absent, unreadable, or malformed operator config degrades to the built-in table and says so"
-  - id: REQ-YAML-004
-    title: "The operator can point the loader at a non-default file"
-  - id: REQ-YAML-005
-    title: "A CI guard requires the operator config to cover every TaskCategory"
-  - id: REQ-YAML-006
-    title: "The built-in table is the only fallback and no second copy of the config ships"
-  - id: REQ-YAML-007
-    title: "No unread config key implies a live knob"
-  - id: REQ-YAML-008
-    title: "Documentation states which source is authoritative"
+- id: REQ-YAML-001
+  title: Operator config is authoritative for task routing when present
+- id: REQ-YAML-002
+  title: No TaskCategory loses its route when the operator config omits it
+- id: REQ-YAML-003
+  title: Absent, unreadable, or malformed operator config degrades to the built-in table and says so
+- id: REQ-YAML-004
+  title: The operator can point the loader at a non-default file
+- id: REQ-YAML-005
+  title: A CI guard requires the operator config to cover every TaskCategory
+- id: REQ-YAML-006
+  title: The built-in table is the only fallback and no second copy of the config ships
+- id: REQ-YAML-007
+  title: No unread config key implies a live knob
+- id: REQ-YAML-008
+  title: Documentation states which source is authoritative
 ---
 
 # Make `settings/models.yaml` the live source of task-to-model routing
@@ -115,22 +115,22 @@ import the in-code tables directly.
 
 ```yaml
 requirements:
-  - id: REQ-YAML-001
-    title: "Operator config is authoritative for task routing when present"
-  - id: REQ-YAML-002
-    title: "No TaskCategory loses its route when the operator config omits it"
-  - id: REQ-YAML-003
-    title: "Absent, unreadable, or malformed operator config degrades to the built-in table and says so"
-  - id: REQ-YAML-004
-    title: "The operator can point the loader at a non-default file"
-  - id: REQ-YAML-005
-    title: "A CI guard requires the operator config to cover every TaskCategory"
-  - id: REQ-YAML-006
-    title: "The built-in table is the only fallback and no second copy of the config ships"
-  - id: REQ-YAML-007
-    title: "No unread config key implies a live knob"
-  - id: REQ-YAML-008
-    title: "Documentation states which source is authoritative"
+- id: REQ-YAML-001
+  title: Operator config is authoritative for task routing when present
+- id: REQ-YAML-002
+  title: No TaskCategory loses its route when the operator config omits it
+- id: REQ-YAML-003
+  title: Absent, unreadable, or malformed operator config degrades to the built-in table and says so
+- id: REQ-YAML-004
+  title: The operator can point the loader at a non-default file
+- id: REQ-YAML-005
+  title: A CI guard requires the operator config to cover every TaskCategory
+- id: REQ-YAML-006
+  title: The built-in table is the only fallback and no second copy of the config ships
+- id: REQ-YAML-007
+  title: No unread config key implies a live knob
+- id: REQ-YAML-008
+  title: Documentation states which source is authoritative
 ```
 
 ## 5. Implementation Phases

@@ -133,6 +133,7 @@ def build_post_start_lifespan(server: Any) -> Any:
         # first health probe is live before the server starts serving.)
         sweeper_task: asyncio.Task | None = None
         try:
+            # req: REQ-TASKLINK-009
             sweeper = TaskOrphanSweeper(
                 session_buddy_client=get_session_buddy_client(),
             )

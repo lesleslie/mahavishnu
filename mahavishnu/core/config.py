@@ -3190,7 +3190,7 @@ class MahavishnuSettings(BaseSettings):
     # caller_quota:, verification:, worktree_providers: precedent)
     # so the documented env-var name MAHAVISHNU_CHANGEPOINT__<FIELD>
     # actually binds.
-    # Req: REQ-005, REQ-006, REQ-009
+    # Req: REQ-MATH-005, REQ-MATH-006, REQ-MATH-009
     changepoint: ChangepointConfig = Field(
         default_factory=ChangepointConfig,
         description="Change-point detection (CUSUM/Page-Hinkley + 3-sigma reference) on observability metrics.",

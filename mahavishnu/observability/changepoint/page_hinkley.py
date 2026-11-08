@@ -1,6 +1,6 @@
 """Page-Hinkley sequential change-point test.
 
-# Implements: REQ-004
+# Implements: REQ-MATH-004
 
 The :class:`PageHinkleyDetector` is the online-quadratic variant of
 CUSUM. The detector tracks the running mean of observations and a
@@ -53,8 +53,8 @@ class PageHinkleyDetector:
             deviation smaller than ``delta`` is floored to 0
             (Page-Hinkley's classical discount).
 
-    Req: REQ-004
-    """  # req: REQ-004
+    Req: REQ-MATH-004
+    """  # req: REQ-MATH-004
 
     __slots__ = (
         "_cumulative_deviation_high",

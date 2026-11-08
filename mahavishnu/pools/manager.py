@@ -165,7 +165,7 @@ class PoolManager:
         self.message_bus = message_bus or MessageBus(event_publisher=event_publisher)
         self._mcp_state = mcp_state
         # Tier 1 Phase 2: per-pool queueing observation buffer
-        # (REQ-008). Keyed by pool_id. Populated lazily by
+        # (REQ-MATH-008). Keyed by pool_id. Populated lazily by
         # _record_arrival once queueing is enabled in config.
         self._queueing_buffers: dict[str, Any] = {}
 
@@ -261,12 +261,12 @@ class PoolManager:
         predicted_wait_s: float | None = None,
         observed_wait_s: float | None = None,
         effective_selector: str | None = None,
-    ) -> None:  # req: REQ-003
+    ) -> None:  # req: REQ-MATH-003
         if self._mcp_state is None:
             return
         try:
             task_class = str(task.get("category") or task.get("type") or "unknown")
-            # REQ-003: extend the routing-decision record with
+            # REQ-MATH-003: extend the routing-decision record with
             # predicted_wait_s, observed_wait_s, effective_selector
             # so dashboards can compare the model to reality.
             record = {
@@ -681,7 +681,7 @@ class PoolManager:
         caller_kind: CallerKind | str = CallerKind.UNKNOWN,
         parent_session_id: str | None = None,
         auto_spawn: bool | None = False,
-    ) -> dict[str, Any]:  # req: REQ-008
+    ) -> dict[str, Any]:  # req: REQ-MATH-008
         """Route task to best pool based on selector strategy.
 
         Args:
@@ -831,7 +831,7 @@ class PoolManager:
             pool_id, reason, task, caller_pool_allowlist
         )
 
-        # REQ-008: record the inter-arrival time for this routing
+        # REQ-MATH-008: record the inter-arrival time for this routing
         # call so the per-pool observation buffer can fit an
         # MmcQueue. Pair with the observed service time on the
         # task_completed event downstream (see execute_on_pool
@@ -870,7 +870,7 @@ class PoolManager:
     def _record_arrival(self, pool_id: str) -> None:
         """Record one arrival timestamp on the per-pool observation buffer.
 
-        REQ-008: arrival-timestamp recording at the route boundary.
+        REQ-MATH-008: arrival-timestamp recording at the route boundary.
 
         C7: does NOT append a placeholder (inter_arrival, 1.0) pair
         anymore. The real service time is observed and paired with
@@ -1075,7 +1075,7 @@ class PoolManager:
 
         Implements the underlying method for the
         ``mcp__mahavishnu__pool_queueing_observations`` MCP tool
-        (REQ-008). The MCP tool registration is in
+        (REQ-MATH-008). The MCP tool registration is in
         ``mahavishnu/mcp/tools/``; this method is the in-process
         accessor.
 

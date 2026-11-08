@@ -7,6 +7,13 @@ last_reviewed: 2026-11-01
 superseded_by: null
 topic: bifrost-cache-eviction-and-threshold
 title: "Bifrost cache eviction sweep and cache-tuning retune"
+requirements:
+- id: REQ-BIFROST-042
+  title: Expired Bifrost cache entries are reclaimable without a gateway restart
+- id: REQ-BIFROST-043
+  title: The eviction sweep never removes a live entry or a non-Bifrost key
+- id: REQ-BIFROST-044
+  title: The cache tuning thresholds are justified by recorded measurement
 ---
 
 # Plan — Bifrost cache eviction sweep and cache-tuning retune
@@ -233,12 +240,12 @@ never exits is a failure.
 
 ```yaml
 requirements:
-  - id: REQ-BIFROST-042
-    title: "Expired Bifrost cache entries are reclaimable without a gateway restart"
-  - id: REQ-BIFROST-043
-    title: "The eviction sweep never removes a live entry or a non-Bifrost key"
-  - id: REQ-BIFROST-044
-    title: "The cache tuning thresholds are justified by recorded measurement"
+- id: REQ-BIFROST-042
+  title: Expired Bifrost cache entries are reclaimable without a gateway restart
+- id: REQ-BIFROST-043
+  title: The eviction sweep never removes a live entry or a non-Bifrost key
+- id: REQ-BIFROST-044
+  title: The cache tuning thresholds are justified by recorded measurement
 ```
 
 ## 5. Implementation Phases

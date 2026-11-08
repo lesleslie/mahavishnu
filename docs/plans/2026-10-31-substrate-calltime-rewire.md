@@ -8,16 +8,16 @@ superseded_by: null
 topic: substrate-calltime-rewire
 title: "Bind the substrate call sites to the live store instead of a dead module lookup"
 requirements:
-  - id: REQ-SUBSTR-001
-    title: "No call site resolves a substrate function by dynamic module lookup"
-  - id: REQ-SUBSTR-002
-    title: "The substrate and the KV tools share one store instance"
-  - id: REQ-SUBSTR-003
-    title: "Substrate writes persist and reads return the stored payload"
-  - id: REQ-SUBSTR-004
-    title: "Each call site's sync/async shape matches the substrate contract"
-  - id: REQ-SUBSTR-005
-    title: "A reader outside the server process reads through the server"
+- id: REQ-SUBSTR-001
+  title: No call site resolves a substrate function by dynamic module lookup
+- id: REQ-SUBSTR-002
+  title: The substrate and the KV tools share one store instance
+- id: REQ-SUBSTR-003
+  title: Substrate writes persist and reads return the stored payload
+- id: REQ-SUBSTR-004
+  title: Each call site's sync/async shape matches the substrate contract
+- id: REQ-SUBSTR-005
+  title: A reader outside the server process reads through the server
 ---
 
 # Bind the substrate call sites to the live store instead of a dead module lookup
@@ -206,16 +206,16 @@ This also keeps the write shape identical to the retired API's
 
 ```yaml
 requirements:
-  - id: REQ-SUBSTR-001
-    title: "No call site resolves a substrate function by dynamic module lookup"
-  - id: REQ-SUBSTR-002
-    title: "The substrate and the KV tools share one store instance"
-  - id: REQ-SUBSTR-003
-    title: "Substrate writes persist and reads return the stored payload"
-  - id: REQ-SUBSTR-004
-    title: "Each call site's sync/async shape matches the substrate contract"
-  - id: REQ-SUBSTR-005
-    title: "A reader outside the server process reads through the server"
+- id: REQ-SUBSTR-001
+  title: No call site resolves a substrate function by dynamic module lookup
+- id: REQ-SUBSTR-002
+  title: The substrate and the KV tools share one store instance
+- id: REQ-SUBSTR-003
+  title: Substrate writes persist and reads return the stored payload
+- id: REQ-SUBSTR-004
+  title: Each call site's sync/async shape matches the substrate contract
+- id: REQ-SUBSTR-005
+  title: A reader outside the server process reads through the server
 ```
 
 ## 6. Implementation Phases

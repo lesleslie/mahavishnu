@@ -1,6 +1,6 @@
 """Queueing-theory primitives for Mahavishnu pool routing (Tier 1 Phase 1 + 2).
 
-# Implements: REQ-001
+# Implements: REQ-MATH-001
 
 Exposes :class:`MmcQueue` — a stateless M/M/c queueing model that fits
 its parameters from observed inter-arrival and service times and
