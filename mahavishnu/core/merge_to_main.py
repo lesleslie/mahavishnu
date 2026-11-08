@@ -176,6 +176,8 @@ def run_review(
     generalist_pool: list[str],
     prompt: str,
     dispatcher: Callable[[str, str], str],
+    *,
+    attempts: int = 2,
 ) -> list[dict[str, str]]:
     """Run a 3-agent ensemble review (REQ-004, spec §4.4).
 
@@ -187,6 +189,14 @@ def run_review(
     Each agent's response is parsed via ``parse_verdict``; missing or
     malformed verdict blocks already fail-loud to ``decision='block'``.
 
+    A reviewer whose reply could not be *read* is retried once. A
+    review that never arrived is not a review that had no opinion: the
+    MCP server restarting mid-dispatch and the reviewer's CLI being
+    interrupted both read exactly like a reviewer with no opinion, and
+    both are worth one more attempt. A second failure still blocks, so
+    the gate is not weakened -- it is just no longer decided by a
+    dropped connection.
+
     Returns a list of three ``{'agent', 'decision', 'note'}`` dicts in
     dispatch order. The caller is responsible for applying the verdict
     rule order (any block → block; ≥2 pass → proceed; else iterate).
@@ -195,8 +205,18 @@ def run_review(
     selected = (domain_specialist, _CODE_QUALITY_AGENT, generalist)
     results: list[dict[str, str]] = []
     for agent in selected:
-        response = dispatcher(agent, prompt)
-        verdict = parse_verdict(response)
+        verdict = parse_verdict("")
+        for attempt in range(1, max(1, attempts) + 1):
+            response = dispatcher(agent, prompt)
+            verdict = parse_verdict(response)
+            if not verdict["note"].startswith("malformed"):
+                break
+            if attempt < attempts:
+                print(
+                    f"[merge_to_main] reviewer {agent!r} returned an unreadable "
+                    f"verdict ({verdict['note']}); retrying",
+                    file=sys.stderr,
+                )
         results.append(
             {
                 "agent": agent,

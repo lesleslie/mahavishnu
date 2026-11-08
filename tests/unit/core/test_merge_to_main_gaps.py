@@ -37,6 +37,7 @@ from mahavishnu.core.merge_to_main import (
     _write_merge_log,
     parse_verdict,
     run_pipeline,
+    run_review,
 )
 
 if TYPE_CHECKING:
@@ -165,6 +166,54 @@ class TestTheVerdictsAreReported:
             ]
         )
         assert "did not finish within the dispatch timeout" in text
+
+
+class TestAReviewThatCouldNotBeReadIsRetried:
+    """A review that never arrived is not a review that had no opinion.
+
+    Two environmental failures produced exactly the same "malformed
+    verdict" as a reviewer with no opinion: the MCP server restarted
+    mid-dispatch (the SSE stream ended without a response), and the
+    reviewer's CLI was interrupted before it answered. One retry turns
+    those back into ordinary reviews; a second failure still blocks.
+    """
+
+    def test_a_malformed_reply_is_retried_once(self) -> None:
+        calls: list[str] = []
+
+        def dispatcher(agent: str, prompt: str) -> str:
+            calls.append(agent)
+            if calls.count("python-pro") == 1:
+                return "the reviewer never answered"
+            return "<verdict>decision: pass note: ok</verdict>"
+
+        results = run_review("python-pro", ["generalist"], "prompt", dispatcher)
+        assert calls.count("python-pro") == 2
+        assert results[0]["decision"] == "pass"
+        assert results[0]["note"] == "ok"
+
+    def test_a_second_malformed_reply_blocks(self) -> None:
+        calls: list[str] = []
+
+        def dispatcher(agent: str, prompt: str) -> str:
+            calls.append(agent)
+            return "the reviewer never answered"
+
+        results = run_review("python-pro", ["generalist"], "prompt", dispatcher)
+        # Three reviewers, each retried once -- and the merge still
+        # blocks, because a review that cannot be read is a block.
+        assert len(calls) == 6
+        assert all(r["decision"] == "block" for r in results)
+
+    def test_a_readable_review_is_not_retried(self) -> None:
+        calls: list[str] = []
+
+        def dispatcher(agent: str, prompt: str) -> str:
+            calls.append(agent)
+            return "<verdict>decision: pass note: ok</verdict>"
+
+        run_review("python-pro", ["generalist"], "prompt", dispatcher)
+        assert len(calls) == 3
 
 
 class TestDispatcher:

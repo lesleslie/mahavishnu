@@ -287,3 +287,14 @@ class TestTheReviewPrompt:
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
         assert "Worktree: /tmp" in prompt
         assert "worktree path above" in prompt
+
+    def test_the_prompt_pins_every_path_to_the_worktree(self) -> None:
+        """The reviewer's shell starts in the wrong tree.
+
+        The pool launches the worker's CLI in the server's working
+        directory -- the main checkout -- not in the branch's worktree.
+        A reviewer that reads a relative path would review the code
+        that does not have the branch in it.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+        assert "working directory is not the worktree" in prompt

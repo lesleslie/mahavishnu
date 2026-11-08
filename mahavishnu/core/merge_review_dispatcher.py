@@ -165,6 +165,12 @@ def build_review_prompt(branch: str, base: str, worktree_root: Path) -> str:
         "confirming, read the code that shows it."
     )
     parts.append(
+        "Your shell's working directory is not the worktree -- it is the "
+        "main checkout, which does not have this branch in it. Read every "
+        "path under the worktree path above, spelled out in full; a "
+        "relative path reads code that is not under review."
+    )
+    parts.append(
         "Reply with the verdict block and nothing outside it: "
         "<verdict>decision: pass|needs_adjustment|block note: ...</verdict>, "
         "with the note under 600 characters and the findings that justify "
