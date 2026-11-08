@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: canonical
-kind: plan
+kind: spec
 date: 2026-10-14
-last_reviewed: 2026-10-19
+last_reviewed: 2026-11-07
 superseded_by: null
 blocks_on: []
 topic: decision-adapter-category
@@ -12,8 +12,21 @@ title: "Decision Adapter Category — Design Spec"
 
 # Decision Adapter Category — Design Spec
 
-**Status:** Draft. Phase 0 substrate PR targets Oneiric. Phase 1 Mahavishnu
-consumption gated on the `task_router.py` migration landing first.
+**Status:** Approved design contract (`kind: spec`, `status: active`). Phase 0
+substrate PR targets Oneiric. Phase 1 Mahavishnu consumption was gated on the
+`task_router.py` migration — since resolved (see
+`docs/plans/2026-10-14-decision-adapter-category.md`, amended 2026-11-07).
+
+> **Amendment — 2026-11-07.** The implementation plan was rescoped. Bifrost's
+> complexity router now classifies each request inside the gateway, where the
+> tier is already available to the CEL engine — which dissolves this spec's
+> central premise, that the orchestrator needs a decision-classifier substrate
+> *in order to route*. Task 1 narrows from **three** adapters (`decision/jev.py`,
+> `decision/decision3.py`, `decision/bge_tei_rerank.py`, over a direct
+> `typesafe-sdk` transport) to **one** adapter over the Bifrost transport, with
+> **Decision 3.0 and BGE/TEI deferred to a follow-up plan**. Treat the Jev +
+> BGE/TEI + Decision 3.0 material below as the deferred shape, not the current
+> one; the Oneiric `decision/` category contract itself still stands.
 
 **Authoritative substrate contract:** `oneiric.adapters.protocol.OneiricAdapter`
 (Protocol, structural) at `/Users/les/Projects/oneiric/oneiric/adapters/protocol.py:47-117`.

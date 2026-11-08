@@ -1272,7 +1272,10 @@ def main(argv: list[str] | None = None) -> int:
             "continuing with working-tree scan.\n"
         )
 
-    generated_at = datetime.datetime.now(UTC).date().isoformat()
+    # Local date, not UTC: every other date in the repo (doc frontmatter,
+    # git commit timestamps) is local, and a UTC stamp flips to "tomorrow"
+    # for any regeneration after 17:00 in a UTC-7/8 offset.
+    generated_at = datetime.date.today().isoformat()
     rendered = _render_index(
         repo_root,
         stores,

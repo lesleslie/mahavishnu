@@ -1,13 +1,45 @@
 ---
-status: draft
+status: partial
 role: implementation
 kind: plan
 date: 2026-10-21
-last_reviewed: 2026-10-21
+last_reviewed: 2026-11-07
 superseded_by: null
 topic: bifrost-cli-consolidation
 title: "Bifrost CLI Consolidation — one Typer app replacing seven scripts"
 ---
+
+> **Implementation status (verified 2026-11-07).** Phases 1-3 are shipped and
+> Phase 4 is shipped except for one requirement.
+>
+> - `mahavishnu/bifrost/` carries `models.py`, `toggles.py`, `lifecycle.py`,
+>   `gateway.py`, `policy.py`, and `verify.py` (REQ-BIFROST-024/025/029).
+> - The Typer app is registered in `mahavishnu/_main_cli.py:1571-1573` as
+>   `mahavishnu/cli/bifrost_cli.py` — **not** `mahavishnu/bifrost/cli.py` as
+>   §6 originally specified. `mahavishnu bifrost --help` lists `cc-url`,
+>   `qwen-url`, `policy`, `credential-source`, `start`, `stop`, `restart`,
+>   `rebootstrap`, `install`, `status`, `verify-gate` and the cache commands.
+> - All eight retired scripts are deleted; `settings/mahavishnu.yaml`,
+>   `pyproject.toml`, and `config/bifrost/README.md` carry no `scripts/bifrost*`
+>   reference; `docs/CLI_REFERENCE.md` has a `bifrost` section; the
+>   LaunchAgent plist's `ProgramArguments` invoke `mahavishnu bifrost`.
+> - The credential path (REQ-BIFROST-026/027/028) is live. `mahavishnu bifrost
+>   status` reports `x-bf-vk header: present` for **both** harnesses, and the
+>   gateway (pid 39902, `127.0.0.1:8471` LISTEN, ready file present) is
+>   serving `200` responses to `claude-cli` traffic — satisfying the §9
+>   condition that both harnesses complete a request with enforcement on.
+>
+> **Outstanding — REQ-BIFROST-031 (harness-parameterised smoke checks).** The
+> two `*_url_cutover_smoke.py` scripts were deleted without a merged
+> replacement: `mahavishnu/bifrost/` has no `smoke.py` and `bifrost_cli.py`
+> registers no `smoke` command. The operator gate is served by
+> `mahavishnu bifrost verify-gate` (REQ-BIFROST-034), so the *gate* has a home,
+> but the smoke scripts' request-through-Bifrost check does not.
+>
+> **Residue.** `docs/specs/2026-10-15-bifrost-gateway-wiring-design.md` and
+> `docs/specs/2026-10-20-bifrost-anthropic-baseurl-cutover-design.md` still
+> cite the retired script paths, and `scripts/bifrost_perf_compare.py` remains
+> (it was never one of the eight). Hence `partial`, not `complete`.
 
 ## 1. Outcome
 
@@ -255,38 +287,40 @@ outside this plan and the deprecation note.
 
 **New**
 
-- [ ] `mahavishnu/bifrost/__init__.py`
-- [ ] `mahavishnu/bifrost/models.py` — `HarnessDescriptor`
-- [ ] `mahavishnu/bifrost/toggles.py` — shared state machine + gate
-- [ ] `mahavishnu/bifrost/lifecycle.py` — port of `bifrost-ctl`
-- [ ] `mahavishnu/bifrost/gateway.py` — port of `bifrost-gateway.py`
-- [ ] `mahavishnu/bifrost/policy.py` — port of `bifrost-auth-policy`
-- [ ] `mahavishnu/bifrost/smoke.py` — merge of both smoke scripts
-- [ ] `mahavishnu/bifrost/cli.py` — Typer `bifrost_app`
-- [ ] `mahavishnu/bifrost/verify.py` — port of `verify_qwen_bifrost_gate.sh`
+- [x] `mahavishnu/bifrost/__init__.py`
+- [x] `mahavishnu/bifrost/models.py` — `HarnessDescriptor`
+- [x] `mahavishnu/bifrost/toggles.py` — shared state machine + gate
+- [x] `mahavishnu/bifrost/lifecycle.py` — port of `bifrost-ctl`
+- [x] `mahavishnu/bifrost/gateway.py` — port of `bifrost-gateway.py`
+- [x] `mahavishnu/bifrost/policy.py` — port of `bifrost-auth-policy`
+- [ ] `mahavishnu/bifrost/smoke.py` — merge of both smoke scripts — **never
+      shipped; REQ-BIFROST-031 outstanding**
+- [x] `mahavishnu/bifrost/cli.py` — Typer `bifrost_app` — shipped as
+      `mahavishnu/cli/bifrost_cli.py`
+- [x] `mahavishnu/bifrost/verify.py` — port of `verify_qwen_bifrost_gate.sh`
 
 **Modified**
 
-- [ ] `mahavishnu/_main_cli.py` — `app.add_typer(bifrost_app, name="bifrost")`
-- [ ] `config/launchd/ai.bifrost.gateway.plist` — `ProgramArguments`
-- [ ] `settings/mahavishnu.yaml` — script path references
-- [ ] `pyproject.toml` — script references
-- [ ] `config/bifrost/README.md` — usage rewritten against the CLI
-- [ ] `docs/CLI_REFERENCE.md` — add `bifrost` section
-- [ ] `tests/unit/test_bifrost_gateway_stdbuf.py` — new import path
-- [ ] `tests/unit/test_terminal_worker_settings.py` — new import path
-- [ ] `tests/integration/test_bifrost_routing_e2e.py` — new import path
+- [x] `mahavishnu/_main_cli.py` — `app.add_typer(bifrost_app, name="bifrost")`
+- [x] `config/launchd/ai.bifrost.gateway.plist` — `ProgramArguments`
+- [x] `settings/mahavishnu.yaml` — script path references
+- [x] `pyproject.toml` — script references
+- [x] `config/bifrost/README.md` — usage rewritten against the CLI
+- [x] `docs/CLI_REFERENCE.md` — add `bifrost` section
+- [x] `tests/unit/test_bifrost_gateway_stdbuf.py` — new import path
+- [x] `tests/unit/test_terminal_worker_settings.py` — new import path
+- [x] `tests/integration/test_bifrost_routing_e2e.py` — new import path
 
 **Deleted**
 
-- [ ] `scripts/bifrost-ctl`
-- [ ] `scripts/bifrost-gateway.py`
-- [ ] `scripts/bifrost-toggle-claude-url`
-- [ ] `scripts/bifrost-toggle-qwen-url`
-- [ ] `scripts/bifrost-auth-policy`
-- [ ] `scripts/bifrost_anthropic_url_cutover_smoke.py`
-- [ ] `scripts/bifrost_qwen_url_cutover_smoke.py`
-- [ ] `scripts/verify_qwen_bifrost_gate.sh`
+- [x] `scripts/bifrost-ctl`
+- [x] `scripts/bifrost-gateway.py`
+- [x] `scripts/bifrost-toggle-claude-url`
+- [x] `scripts/bifrost-toggle-qwen-url`
+- [x] `scripts/bifrost-auth-policy`
+- [x] `scripts/bifrost_anthropic_url_cutover_smoke.py`
+- [x] `scripts/bifrost_qwen_url_cutover_smoke.py`
+- [x] `scripts/verify_qwen_bifrost_gate.sh`
 
 ## 7. Validation Matrix
 
@@ -319,6 +353,12 @@ scripts, `ls scripts/bifrost*` is empty, no retired path is referenced, and
 both harnesses complete a request through Bifrost **with virtual-key
 enforcement still on**. Documentation polish may slip; the credential path
 (Phase 3) and the reference sweep (Phase 4) may not.
+
+**Verified 2026-11-07.** Three of the four conditions hold; the reference
+sweep holds for code, config, and `docs/CLI_REFERENCE.md` but not for two
+`docs/specs/` files, and REQ-BIFROST-031 (the merged `smoke` command) was
+never built. Status is `partial`: the consolidation is delivered, and the
+outstanding work is the one requirement plus the spec-file reference sweep.
 
 ## References
 

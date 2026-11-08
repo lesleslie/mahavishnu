@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: canonical
-kind: plan
+kind: spec
 date: 2026-10-19
-last_reviewed: 2026-10-20
+last_reviewed: 2026-11-07
 superseded_by: null
 blocks_on: []
 topic: substrate-otel
@@ -25,7 +25,21 @@ review:
 
 # Bodai OTel Substrate — v7
 
-**Status:** Draft v7; supersedes v6 (`.archive/2026-10-19-bodai-substrate-otel-v6.md`), v5, v4, v3, v2, and v1.
+**Status:** Approved design contract (`kind: spec`, `status: active`); supersedes v6 (`.archive/2026-10-19-bodai-substrate-otel-v6.md`), v5, v4, v3, v2, and v1.
+
+> **Note — 2026-11-07.** This spec's implementation plan
+> (`docs/plans/2026-10-19-bodai-substrate-otel-v7-implementation.md`, 12 tasks,
+> PR-0a → PR-A8) was deleted on 2026-10-28 by commit `8f149717` ("chore: bump
+> version to 0.37.0"), which removed five plan/design files and rewrote
+> `PLAN_INDEX.md` without mentioning it. It has been **restored** from git
+> history at `8f149717^` and marked `complete`: 11 of its 12 tasks shipped
+> (verified against oneiric, mcp-common, and akosha), and the twelfth — the
+> `admin otel retention` CLI group — was **dropped by operator decision** on
+> 2026-10-27, with the reasoning recorded in the task body. The retention sweep
+> landed instead as the `force_retention_sweep` MCP tool, and the
+> `OtelTraceIngester` poller was gated behind
+> `otel.receiver.trace_ingester_poller`, which ships `false` in
+> `settings/akosha.yaml:193`.
 **Date:** 2026-10-19
 **Stage:** Sub-spec A; companion to `2026-10-19-bodai-event-sourced-otel-architecture.md` (sub-spec B).
 **Repos in scope:** `oneiric` (substrate), `akosha` (receiver, DLQ, heartbeat watcher, canary, retention sweep), `mcp-common` (bridge release).

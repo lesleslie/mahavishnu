@@ -1,8 +1,9 @@
 ---
 status: draft
 role: canonical
+kind: spec
 date: 2026-10-19
-last_reviewed: 2026-10-19
+last_reviewed: 2026-11-07
 superseded_by: null
 blocks_on: []
 topic: event-sourced-otel

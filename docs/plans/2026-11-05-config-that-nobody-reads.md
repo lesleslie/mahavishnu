@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: implementation
 kind: plan
 date: 2026-11-05
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-07
 superseded_by: null
 topic: config-that-nobody-reads
 title: "Config that nobody reads — a settings/ sweep for the dead-knob pattern"
@@ -30,7 +30,12 @@ requirements:
 > This document records the sweep that was never run: **does the same pattern
 > recur elsewhere in `settings/`?** It does — in two whole files and nineteen
 > top-level keys of a third. The audit result is §4; the proposed remediation
-> is §5. **Nothing in §5 is implemented yet**; this plan is a proposal.
+> is §5. **Nothing in §5 is implemented yet** (re-verified 2026-11-07: no
+> dropped-key warning in `core/config.py`; `bifrost.route_qwen_code: true` still
+> live at `settings/mahavishnu.yaml:103`; `caller_quota` still `100`/`3600` in
+> YAML against `60`/`60` in `pools/manager.py:114-115`; `settings/embeddings.yaml`
+> and `settings/agno_teams/*.yaml` still present and still unread). The plan is
+> approved and the sweep is open work — status `active`.
 
 ## 1. Outcome
 

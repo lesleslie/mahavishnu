@@ -1,9 +1,9 @@
 ---
-status: draft
+status: active
 role: canonical
-kind: plan
+kind: spec
 date: 2026-10-20
-last_reviewed: 2026-10-20
+last_reviewed: 2026-11-07
 superseded_by: null
 blocks_on:
   - docs/specs/2026-10-19-bodai-substrate-otel-v7.md
@@ -17,9 +17,18 @@ review: []
 
 # Bodai OTel Substrate — Read Path
 
-**Status:** Draft. Sub-spec A′; companion to the v7 substrate spec.
+**Status:** Approved design contract (`kind: spec`, `status: active`). Sub-spec A′;
+companion to the v7 substrate spec.
 **Repos in scope:** `akosha` (query surface, MCP tools, fitness projection), `mahavishnu` (one producer repointed), `oneiric` (substrate access only — read-only).
-**Blocked on:** the v7 implementation plan. The receiver must be ingesting before anything can query it.
+**Blocked on:** the v7 substrate spec. The receiver must be ingesting before anything can query it.
+
+> **Note — 2026-11-07.** This spec's `depends_on:` pointed at
+> `docs/plans/2026-10-19-bodai-substrate-otel-v7-implementation.md`, which was
+> deleted on 2026-10-28 by commit `8f149717` ("chore: bump version to 0.37.0")
+> along with this spec's own implementation plan
+> (`docs/plans/2026-10-20-bodai-otel-substrate-read-path-implementation.md`).
+> Both have been **restored** from git history at `8f149717^` and the
+> `depends_on:` has been repointed at the restored plan.
 
 ---
 
