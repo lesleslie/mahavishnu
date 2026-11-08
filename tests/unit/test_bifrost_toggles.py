@@ -16,6 +16,7 @@ import typer
 
 from mahavishnu.bifrost import models, toggles
 from mahavishnu.bifrost.cache_headers import resolve_cache_bucket
+from mahavishnu.bifrost.complexity_report import CHEAP_MODEL
 
 
 @pytest.fixture(autouse=True)
@@ -1127,8 +1128,16 @@ def test_status_reports_the_route_header(
     assert models.ROUTE_ANTHROPIC_NATIVE in out
 
 
-def test_template_declares_the_anthropic_native_rule() -> None:
-    """The gateway template must carry the rule the route header matches.
+#: The rule the ``x-bf-route: anthropic_native`` header exists for.
+_ANTHROPIC_NATIVE_RULE_ID = "route-anthropic-native"
+
+#: The complexity router's rule: the same route header plus a tier test.
+#: It downgrades simple requests to the cheap model, on purpose.
+_COMPLEXITY_SIMPLE_RULE_ID = "route-complexity-simple"
+
+
+def _template_routing_rules() -> list[dict[str, Any]]:
+    """Read the routing rules out of the gateway config template.
 
     The template is only a seed -- ``config.db`` is authoritative at runtime
     -- but the two must not drift, or a fresh deployment routes differently
@@ -1140,9 +1149,14 @@ def test_template_declares_the_anthropic_native_rule() -> None:
         / "bifrost"
         / "config.template.json"
     )
-    rules = json.loads(template.read_text(encoding="utf-8"))["governance"][
+    return json.loads(template.read_text(encoding="utf-8"))["governance"][
         "routing_rules"
     ]
+
+
+def test_template_declares_the_anthropic_native_rule() -> None:
+    """The gateway template must carry the rule the route header matches."""
+    rules = _template_routing_rules()
 
     matches = [
         r
@@ -1151,7 +1165,20 @@ def test_template_declares_the_anthropic_native_rule() -> None:
     ]
     assert matches, f"no routing rule matches {models.ROUTE_ANTHROPIC_NATIVE!r}"
 
-    rule = matches[0]
+    # More than one rule references the route header: the complexity
+    # router's SIMPLE-tier rule adds ``&& complexity_tier == "SIMPLE"`` on
+    # top of it. Select by id -- the rule the header exists for -- not by
+    # position, or the SIMPLE rule's deliberate model pin fails an
+    # assertion that is about the other rule.
+    rule = next((r for r in rules if r.get("id") == _ANTHROPIC_NATIVE_RULE_ID), None)
+    assert rule is not None, (
+        f"the template has no routing rule with id {_ANTHROPIC_NATIVE_RULE_ID!r}"
+    )
+    assert models.ROUTE_ANTHROPIC_NATIVE in (rule.get("cel_expression") or ""), (
+        f"{_ANTHROPIC_NATIVE_RULE_ID!r} does not match the "
+        f"{models.ROUTE_ANTHROPIC_NATIVE!r} route header"
+    )
+
     assert rule["enabled"] is True
     # The provider is pinned -- that is what removes the ambiguity between
     # the two providers that both claim MiniMax-M3. The model is NOT
@@ -1165,3 +1192,26 @@ def test_template_declares_the_anthropic_native_rule() -> None:
         "identifier with it, moving Claude Code's haiku slot onto the "
         "heavy model"
     )
+
+
+def test_template_pins_a_model_only_for_the_simple_tier() -> None:
+    """The complexity router's SIMPLE rule pins the cheap model on purpose.
+
+    The rule above must not pin a model; this one must. Both reference the
+    same route header, and only the SIMPLE tier is meant to be downgraded
+    -- MEDIUM and COMPLEX keep the caller's model. A template that pinned
+    the cheap model for every tier would quietly serve every Claude Code
+    slot with the flash model.
+    """
+    rules = _template_routing_rules()
+
+    rule = next((r for r in rules if r.get("id") == _COMPLEXITY_SIMPLE_RULE_ID), None)
+    assert rule is not None, (
+        f"the template has no routing rule with id {_COMPLEXITY_SIMPLE_RULE_ID!r}"
+    )
+    assert rule["enabled"] is True
+    expression = rule.get("cel_expression") or ""
+    assert models.ROUTE_ANTHROPIC_NATIVE in expression
+    assert "SIMPLE" in expression
+    assert rule["targets"][0]["provider"] == "minimax-anthropic"
+    assert rule["targets"][0].get("model") == CHEAP_MODEL

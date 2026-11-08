@@ -53,7 +53,7 @@ credential does not own -- a change in Bifrost itself, not here. The
 system prompt carrying the discriminator is what closes that gap from
 this side.
 
-``off`` means *off*: neither a read nor a write. Bifrost v2.4.0 has no
+``off`` means *off*: neither a read nor a write. Bifrost v2.5.0 has no
 header that suppresses the read directly -- ``x-bf-cache-no-store`` is
 documented upstream as "skip writing the response to cache (still served
 from cache on hit)" -- but the bucket gives the same guarantee. The cache
@@ -189,7 +189,7 @@ def resolve_cache_mode() -> CacheMode:
 def _uncacheable_bucket() -> str:
     """Return a bucket name that no cache entry can ever live in.
 
-    Bifrost v2.4.0 has no header that suppresses a cache *read*: the
+    Bifrost v2.5.0 has no header that suppresses a cache *read*: the
     ``x-bf-cache-no-store`` header is documented upstream as "skip writing
     the response to cache (still served from cache on hit)". A bucket
     achieves the same thing, because the cache key participates in both

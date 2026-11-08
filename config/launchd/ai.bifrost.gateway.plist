@@ -37,7 +37,7 @@
              guard test in tests/unit/test_bifrost_transport_version.py
              asserts it. -->
         <key>BIFROST_TRANSPORT_VERSION</key>
-        <string>v2.4.0</string>
+        <string>v2.5.0</string>
     </dict>
 
     <key>RunAtLoad</key>

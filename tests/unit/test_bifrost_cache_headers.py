@@ -99,7 +99,7 @@ def test_off_mode_suppresses_the_write() -> None:
 def test_off_mode_cannot_be_served_from_a_cache() -> None:
     """``off`` must not be answered out of the cache.
 
-    Bifrost v2.4.0 has no header that suppresses a cache *read*:
+    Bifrost v2.5.0 has no header that suppresses a cache *read*:
     ``x-bf-cache-no-store`` is documented upstream as "skip writing the
     response to cache (still served from cache on hit)". A mode named
     ``off`` that still performs cross-session lookups is a retention

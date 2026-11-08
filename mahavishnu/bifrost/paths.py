@@ -35,7 +35,7 @@ BIFROST_BACKUP_DIR = BIFROST_CONFIG_DIR
 #: launchd's ``EnvironmentVariables`` replace the inherited environment, so
 #: an exported ``BIFROST_TRANSPORT_VERSION`` never reaches the launchd job,
 #: and ``install_plist()`` re-copies the repo plist over the installed one.
-BIFROST_TRANSPORT_VERSION = "v2.4.0"
+BIFROST_TRANSPORT_VERSION = "v2.5.0"
 
 #: Bifrost's structured request log. This -- not ``LOG_OUT`` -- is where the
 #: per-request record with virtual-key attribution actually lives. The stdout

@@ -227,7 +227,7 @@ Two consequences, both measured:
    first binding is. The rule only decides whether the session *starts* on
    the cheap model.
 
-`session-affinity` is a built-in routing engine in the pinned v2.4.0
+`session-affinity` is a built-in routing engine in the pinned v2.5.0
 transport. It is not a provider setting, not a plugin, and not a
 `governance_config` key — the store exposes no switch for it.
 
