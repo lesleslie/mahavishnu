@@ -393,20 +393,34 @@ def test_the_anthropic_native_rule_fallback_can_serve_the_same_request() -> None
     instead of degrading to a working answer.
     """
     providers = _providers()
-    for fallback in _rule("route-anthropic-native").get("fallbacks") or []:
+    fallbacks = _rule("route-anthropic-native").get("fallbacks") or []
+    assert fallbacks == [
+        "minimax-anthropic/MiniMax-M3.1-Flash",
+        "openai/gpt-5.4-mini",
+    ], "OpenAI GPT-5.4 mini should be the final Anthropic-route fallback"
+    for fallback in fallbacks:
         provider_id = fallback.split("/", 1)[0]
         provider = providers.get(provider_id)
         assert provider is not None, (
             f"fallback {fallback!r} names a provider the template does not configure"
         )
-        allowed = (provider.get("custom_provider_config") or {}).get(
-            "allowed_requests"
-        ) or {}
-        assert allowed.get("responses") is True, (
+        custom = provider.get("custom_provider_config") or {}
+        can_serve_responses = (
+            custom.get("allowed_requests", {}).get("responses") is True
+            if custom
+            else provider_id == "openai"
+        )
+        assert can_serve_responses, (
             f"fallback {fallback!r} points at a provider that does not allow the "
             f"'responses' request type, which is what the Anthropic route "
             f"produces -- the fallback cannot serve it"
         )
+    openai_models = {
+        model for key in providers["openai"]["keys"] for model in key["models"]
+    }
+    assert "gpt-5.4-mini" in openai_models, (
+        "the OpenAI fallback model must be present in the provider key allowlist"
+    )
 
 
 def test_claude_model_ids_are_aliased_on_both_minimax_providers() -> None:
@@ -712,17 +726,31 @@ def test_the_complexity_rule_fallback_can_serve_the_anthropic_route() -> None:
     instead of degrading to a working answer.
     """
     providers = _providers()
-    for fallback in _rule("route-complexity-simple").get("fallbacks") or []:
+    fallbacks = _rule("route-complexity-simple").get("fallbacks") or []
+    assert fallbacks == [
+        "minimax-anthropic/MiniMax-M3",
+        "openai/gpt-5.4-mini",
+    ], "GPT-5.4 mini should be the final SIMPLE-tier fallback"
+    for fallback in fallbacks:
         provider_id = fallback.split("/", 1)[0]
         provider = providers.get(provider_id)
         assert provider is not None, (
             f"fallback {fallback!r} names a provider the template does not configure"
         )
-        allowed = (provider.get("custom_provider_config") or {}).get(
-            "allowed_requests"
-        ) or {}
-        assert allowed.get("responses") is True, (
+        custom = provider.get("custom_provider_config") or {}
+        can_serve_responses = (
+            custom.get("allowed_requests", {}).get("responses") is True
+            if custom
+            else provider_id == "openai"
+        )
+        assert can_serve_responses, (
             f"fallback {fallback!r} points at a provider that does not allow "
             f"the 'responses' request type, which is what the Anthropic "
             f"route produces -- the fallback cannot serve it"
         )
+    openai_models = {
+        model for key in providers["openai"]["keys"] for model in key["models"]
+    }
+    assert "gpt-5.4-mini" in openai_models, (
+        "the OpenAI fallback model must be present in the provider key allowlist"
+    )

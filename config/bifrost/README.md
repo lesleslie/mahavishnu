@@ -27,6 +27,8 @@ Current status (verified live, 2026-10-30):
   is allowed with its own path override, and the key lists `MiniMax-M3` and
   `MiniMax-M3.1-Flash`. The store is authoritative and
   the template is only its seed — see "Custom Providers: Three Silent Traps".
+  The checked-in template now adds `openai/gpt-5.4-mini` after that MiniMax
+  fallback; the live store still needs the authenticated routing-rule update.
 - **Both harnesses route through the gateway, and both are verified.**
   `mahavishnu bifrost verify-gate` passes for Qwen Code
   (`provider=minimax-anthropic status=success via claude-cli/0.26.1`), and a
@@ -225,18 +227,34 @@ It also enforces Anthropic's thinking floor: with `thinking` enabled, the
 budget must be **at least 1024 tokens**. A request below that is rejected
 with `400 invalid_request_error: reasoning.max_tokens must be >= 1024 for anthropic`.
 
-**The `route-anthropic-native` rule's fallback is
-`minimax-anthropic/MiniMax-M3.1-Flash`** — the same provider on a different
-model. It has to be: the Anthropic ingress bridges every request to the
-`responses` request type, and the OpenAI-compatible `minimax-openai` provider
-only allows `chat_completion`, so it cannot serve this request at all. A
-chat-completions fallback there is inert, and the request fails hard instead
-of degrading.
+**The checked-in template's `route-anthropic-native` rule tries
+`minimax-anthropic/MiniMax-M3.1-Flash` and then `openai/gpt-5.4-mini`.** The
+Anthropic ingress bridges every request to Bifrost's `responses` request type.
+The MiniMax Anthropic provider can serve that route; the `minimax-openai`
+custom provider cannot because it allows only `chat_completion`. The native
+`openai` provider supports Responses, so GPT-5.4 mini can serve as the final
+fallback after the MiniMax attempt.
 
-A fallback on the same provider also means a below-1024 thinking budget
-still fails, rather than silently degrading to inline reasoning: both models
-speak the Anthropic protocol and enforce the same floor. Claude Code's own
-thinking budgets are 1024 and above, so it does not hit this.
+The live config store is authoritative. Its current `route-anthropic-native`
+fallback is still only `minimax-anthropic/MiniMax-M3.1-Flash`; the template
+does not update the running store by itself. Apply the template's fallback
+array to `PUT /api/routing/rules/route-anthropic-native` in the dashboard or
+with an authenticated API client:
+
+```json
+{
+  "fallbacks": [
+    "minimax-anthropic/MiniMax-M3.1-Flash",
+    "openai/gpt-5.4-mini"
+  ]
+}
+```
+
+Both MiniMax models enforce the Anthropic thinking floor of 1024 tokens. The
+OpenAI fallback is a protocol-translated availability path; Anthropic-native
+thinking signatures and Claude-specific behavior are not guaranteed there.
+Claude Code's own thinking budgets are 1024 and above, so the MiniMax route
+normally does not hit that limit.
 
 If reasoning appears inline in the assistant text, check the gateway's
 request log for the request's provider attribution before assuming the route
