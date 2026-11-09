@@ -228,23 +228,17 @@ budget must be **at least 1024 tokens**. A request below that is rejected
 with `400 invalid_request_error: reasoning.max_tokens must be >= 1024 for anthropic`.
 
 **The checked-in template's `route-anthropic-native` rule tries
-`minimax-anthropic/MiniMax-M3.1-Flash` and then `openai/gpt-5.4-mini`.** The
+`openai/gpt-5.4-mini`.** The
 Anthropic ingress bridges every request to Bifrost's `responses` request type.
-The MiniMax Anthropic provider can serve that route; the `minimax-openai`
-custom provider cannot because it allows only `chat_completion`. The native
-`openai` provider supports Responses, so GPT-5.4 mini can serve as the final
-fallback after the MiniMax attempt.
+The native `openai` provider supports Responses, so GPT-5.4 mini can serve as
+the fallback on that route.
 
 The live config store is authoritative. Its current `route-anthropic-native`
-fallback is still only `minimax-anthropic/MiniMax-M3.1-Flash`; the template
-does not update the running store by itself. Apply the template's fallback
-array to `PUT /api/routing/rules/route-anthropic-native` in the dashboard or
-with an authenticated API client:
+fallback is `openai/gpt-5.4-mini`, matching the checked-in template.
 
 ```json
 {
   "fallbacks": [
-    "minimax-anthropic/MiniMax-M3.1-Flash",
     "openai/gpt-5.4-mini"
   ]
 }
@@ -648,7 +642,8 @@ Current task mappings:
 - `long_context` or `longContext` -> `minimax-openai/MiniMax-M3`
 - `web_search` or `webSearch` -> `minimax-openai/MiniMax-M3.1-Flash`
 - `image` -> `minimax-openai/MiniMax-M3.1-Flash`
-- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3.1-Flash` (fallback `llama-server/qwen3-8b-q4_k_m`)
+- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3.1-Flash` (fallback `openai/gpt-5.6-luna`, then `llama-server/qwen3-8b-q4_k_m`)
+- `classify` or `extract` -> `minimax-openai/MiniMax-M3.1-Flash` (fallback `openai/gpt-5.6-luna`, then `llama-server/qwen3-8b-q4_k_m`)
 - `x-bf-route: anthropic_native` -> provider `minimax-anthropic`, model as sent by the caller (fallback `minimax-anthropic/MiniMax-M3.1-Flash`)
 
 The `anthropic_native` route is the only one the **header** rules can fire
@@ -663,9 +658,9 @@ present.
 A second route fires on the **complexity tier** rather than on a header:
 `route-complexity-simple` (priority 3) matches
 `headers["x-bf-route"] == "anthropic_native" && complexity_tier == "SIMPLE"`
-and targets `minimax-anthropic/MiniMax-M3.1-Flash`. The tier is computed
-inside the gateway, so this rule needs no header the caller does not already
-send — see "Complexity Router" below.
+and targets `minimax-anthropic/MiniMax-M3.1-Flash`, with `openai/gpt-5.6-luna`
+as the fallback. The tier is computed inside the gateway, so this rule needs
+no header the caller does not already send — see "Complexity Router" below.
 
 Two providers claim `MiniMax-M3`, so the route is what makes the choice
 unambiguous: `minimax-anthropic` reaches MiniMax over its Anthropic-native

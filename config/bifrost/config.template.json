@@ -245,7 +245,7 @@
         "description": "Route only the Simple tier to MiniMax-M3.1-Flash. The complexity analyzer classifies the request with TypeSafe Jev and publishes the result as the CEL variable complexity_tier; classification runs at all only because this rule references it. Deliberately downward-only: SIMPLE is the only tier with a target, so MEDIUM and COMPLEX keep the caller's model through route-anthropic-native. Pinning a model on the higher tiers would override Claude Code's per-slot selection and would move the haiku slot onto the heavy model. The header guard keeps this off direct-SDK callers: the security-review plugin asks for claude-opus-5-5 without the x-bf-route header and depends on its Sonnet fallback, which MiniMax-M3's adaptive thinking truncates. Priority 3 puts it ahead of route-anthropic-native at priority 5 -- routing rules are first-match-wins with the lower number evaluated first, and Claude Code sends x-bf-route on every request.",
         "enabled": true,
         "fallbacks": [
-          "openai/gpt-5.4-mini"
+          "openai/gpt-5.6-luna"
         ],
         "id": "route-complexity-simple",
         "name": "Simple Tasks → Concise Model",
@@ -282,7 +282,7 @@
         "description": "Route high-reasoning tasks to MiniMax's strongest text model.",
         "enabled": true,
         "fallbacks": [
-          "openai/gpt-5.3-codex"
+          "openai/gpt-5.4-mini"
         ],
         "id": "route-think",
         "name": "Think Tasks",
@@ -301,7 +301,7 @@
         "description": "Prefer the strongest MiniMax text model for explicitly labeled long-context work.",
         "enabled": true,
         "fallbacks": [
-          "openai/gpt-5.3-codex"
+          "openai/gpt-5.4-mini"
         ],
         "id": "route-long-context",
         "name": "Long Context Tasks",
@@ -355,10 +355,10 @@
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"background\" || headers[\"x-bf-route\"] == \"background\" || headers[\"x-bf-task\"] == \"cheap\" || headers[\"x-bf-route\"] == \"cheap\" || headers[\"x-bf-task\"] == \"high_throughput\" || headers[\"x-bf-route\"] == \"high_throughput\"",
-        "description": "Route low-priority background work to MiniMax-M3.1-Flash; fall back to the local llama-server (qwen3-8b-q4_k_m) when the cloud provider is unreachable. Phase G.",
+        "description": "Route low-priority background work to MiniMax-M3.1-Flash; fall back to GPT-5.6 Luna, then the local llama-server (qwen3-8b-q4_k_m) when the cloud provider is unreachable. Phase G.",
         "enabled": true,
         "fallbacks": [
-          "openai/gpt-5.4-mini",
+          "openai/gpt-5.6-luna",
           "llama-server/qwen3-8b-q4_k_m"
         ],
         "id": "route-background",
@@ -375,9 +375,10 @@
       },
       {
         "cel_expression": "headers[\"x-bf-task\"] == \"classify\" || headers[\"x-bf-route\"] == \"classify\" || headers[\"x-bf-task\"] == \"extract\" || headers[\"x-bf-route\"] == \"extract\"",
-        "description": "Route cheap classification and extraction tasks to MiniMax-M3.1-Flash; fall back to the local llama-server (qwen3-8b-q4_k_m) when the cloud provider is unreachable. Phase G.",
+        "description": "Route cheap classification and extraction tasks to MiniMax-M3.1-Flash; fall back to GPT-5.6 Luna, then the local llama-server (qwen3-8b-q4_k_m) when the cloud provider is unreachable. Phase G.",
         "enabled": true,
         "fallbacks": [
+          "openai/gpt-5.6-luna",
           "llama-server/qwen3-8b-q4_k_m"
         ],
         "id": "route-classify",
@@ -547,6 +548,7 @@
           "models": [
             "gpt-5.4",
             "gpt-5.4-mini",
+            "gpt-5.6-luna",
             "gpt-5.3-codex",
             "text-embedding-3-small"
           ],

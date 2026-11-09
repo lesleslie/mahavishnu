@@ -395,9 +395,8 @@ def test_the_anthropic_native_rule_fallback_can_serve_the_same_request() -> None
     providers = _providers()
     fallbacks = _rule("route-anthropic-native").get("fallbacks") or []
     assert fallbacks == [
-        "minimax-anthropic/MiniMax-M3.1-Flash",
         "openai/gpt-5.4-mini",
-    ], "OpenAI GPT-5.4 mini should be the final Anthropic-route fallback"
+    ], "OpenAI GPT-5.4 mini should be the Anthropic-route fallback"
     for fallback in fallbacks:
         provider_id = fallback.split("/", 1)[0]
         provider = providers.get(provider_id)
@@ -728,9 +727,8 @@ def test_the_complexity_rule_fallback_can_serve_the_anthropic_route() -> None:
     providers = _providers()
     fallbacks = _rule("route-complexity-simple").get("fallbacks") or []
     assert fallbacks == [
-        "minimax-anthropic/MiniMax-M3",
-        "openai/gpt-5.4-mini",
-    ], "GPT-5.4 mini should be the final SIMPLE-tier fallback"
+        "openai/gpt-5.6-luna",
+    ], "GPT-5.6 Luna should be the SIMPLE-tier fallback"
     for fallback in fallbacks:
         provider_id = fallback.split("/", 1)[0]
         provider = providers.get(provider_id)
@@ -751,6 +749,27 @@ def test_the_complexity_rule_fallback_can_serve_the_anthropic_route() -> None:
     openai_models = {
         model for key in providers["openai"]["keys"] for model in key["models"]
     }
-    assert "gpt-5.4-mini" in openai_models, (
+    assert "gpt-5.6-luna" in openai_models, (
         "the OpenAI fallback model must be present in the provider key allowlist"
     )
+
+
+def test_the_background_and_classify_routes_use_the_luna_fallback_chain() -> None:
+    """Cheap background routes should fall back to Luna before local inference.
+
+    The live store already uses GPT-5.6 Luna as the first OpenAI fallback for
+    these routes, which keeps the template aligned with the deployed config and
+    avoids drifting back to the older GPT-5.3 Codex fallback.
+    """
+    providers = _providers()
+    for route_id in ("route-background", "route-classify"):
+        fallbacks = _rule(route_id).get("fallbacks") or []
+        assert fallbacks == [
+            "openai/gpt-5.6-luna",
+            "llama-server/qwen3-8b-q4_k_m",
+        ], f"{route_id} should prefer GPT-5.6 Luna before local inference"
+        for fallback in fallbacks:
+            provider_id = fallback.split("/", 1)[0]
+            assert provider_id in providers, (
+                f"fallback {fallback!r} names a provider the template does not configure"
+            )
