@@ -40,6 +40,7 @@ _LOGS_SCHEMA = """
 CREATE TABLE logs (
     rowid_placeholder INTEGER,
     id TEXT,
+    parent_request_id TEXT,
     inc_number INTEGER,
     timestamp TEXT,
     provider TEXT,
@@ -53,9 +54,9 @@ CREATE TABLE logs (
 """
 
 _INSERT = """
-INSERT INTO logs (inc_number, timestamp, provider, model, status, latency,
-                  user_agent, virtual_key_name, metadata)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO logs (id, parent_request_id, inc_number, timestamp, provider, model,
+                  status, latency, user_agent, virtual_key_name, metadata)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
 
@@ -90,11 +91,15 @@ def _write(
     vk: str = verify.VIRTUAL_KEY_NAME,
     metadata: str | None = None,
     inc_number: int | None = None,
+    request_id: str = "request-id",
+    parent_request_id: str | None = None,
 ) -> None:
     with sqlite3.connect(db) as con:
         con.execute(
             _INSERT,
             (
+                request_id,
+                parent_request_id,
                 inc_number,
                 "2026-10-23T07:20:55",
                 provider,
@@ -218,6 +223,25 @@ def test_failed_request_does_not_satisfy_gate(logs_db: Path) -> None:
 
     _write(logs_db, status="error")
     assert verify.find_qwen_row(baseline, user_agent=QWEN_AGENT) is None
+
+
+def test_successful_fallback_child_satisfies_gate(logs_db: Path) -> None:
+    """A Qwen primary error followed by a successful fallback is valid proof."""
+    baseline = verify.log_baseline()
+    _write(logs_db, request_id="qwen-primary", status="error")
+
+    _write(
+        logs_db,
+        request_id="openai-fallback",
+        parent_request_id="qwen-primary",
+        provider="openai",
+        model="gpt-5.6-luna",
+        status="success",
+    )
+    hit = verify.find_qwen_row(baseline, user_agent=QWEN_AGENT)
+    assert hit is not None
+    assert hit.model == "gpt-5.6-luna"
+    assert hit.parent_request_id == "qwen-primary"
 
 
 # ---------------------------------------------------------------------------

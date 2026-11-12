@@ -137,6 +137,8 @@ class RoutedRequest:
     status: str
     latency: float | None
     user_agent: str
+    request_id: str | None = None
+    parent_request_id: str | None = None
 
     def describe(self) -> str:
         """One-line human summary for the operator."""
@@ -225,7 +227,8 @@ def find_routed_rows(
     """
     rows = _query(
         """
-        SELECT rowid, timestamp, provider, model, status, latency, user_agent
+        SELECT rowid, id, parent_request_id, timestamp, provider, model, status,
+               latency, user_agent
           FROM logs
          WHERE rowid > ?
            AND virtual_key_name = ?
@@ -243,8 +246,22 @@ def find_routed_rows(
             status=str(status or ""),
             latency=_as_float(latency),
             user_agent=str(user_agent or ""),
+            request_id=str(request_id) if request_id else None,
+            parent_request_id=(
+                str(parent_request_id) if parent_request_id else None
+            ),
         )
-        for rowid, timestamp, provider, model, status, latency, user_agent in rows
+        for (
+            rowid,
+            request_id,
+            parent_request_id,
+            timestamp,
+            provider,
+            model,
+            status,
+            latency,
+            user_agent,
+        ) in rows
     ]
 
 
@@ -298,10 +315,57 @@ def find_qwen_row(
     model: str = QWEN_ROUTE_MODEL,
     user_agent: str | None = None,
 ) -> RoutedRequest | None:
-    """Return the first post-baseline row proving the Qwen dispatch routed."""
-    for request in find_routed_rows(baseline, virtual_key_name):
+    """Return the first post-baseline row proving the Qwen dispatch routed.
+
+    A quota-exhausted primary is still a successful routing test when Bifrost
+    serves the request from a child fallback row. The child points back to the
+    Qwen-attributed primary through ``parent_request_id``.
+    """
+    successful = find_routed_rows(baseline, virtual_key_name)
+    if not successful or user_agent is None:
+        return None
+
+    rows = _query(
+        """
+        SELECT rowid, id, parent_request_id, timestamp, provider, model, status,
+               latency, user_agent
+          FROM logs
+         WHERE rowid > ?
+           AND virtual_key_name = ?
+           AND user_agent LIKE ?
+      ORDER BY rowid
+        """,
+        (baseline, virtual_key_name, f"{user_agent}%"),
+    )
+    all_qwen_rows = {
+        str(request_id): (
+            _as_int(rowid),
+            str(model_name or ""),
+            str(status or ""),
+        )
+        for (
+            rowid,
+            request_id,
+            parent_request_id,
+            timestamp,
+            provider,
+            model_name,
+            status,
+            latency,
+            row_user_agent,
+        ) in rows
+        if request_id
+    }
+
+    for request in successful:
         if is_qwen_route(request, model, user_agent):
             return request
+        if request.parent_request_id in all_qwen_rows:
+            _root_rowid, _root_model, root_status = all_qwen_rows[
+                request.parent_request_id
+            ]
+            if root_status != "success":
+                return request
     return None
 
 
