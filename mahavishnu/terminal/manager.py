@@ -39,8 +39,9 @@ def _resolve_worker_env(worker_type: str) -> dict[str, str]:
       ``ANTHROPIC_BASE_URL=<router.anthropic_base_url>`` so the
       Claude Code CLI itself routes through Bifrost's
       Anthropic-compatible endpoint at :8471/anthropic.
-    - For ``terminal-qwen`` workers when the router is routed
-      for ``RouteKind.QWEN_ROUTE``: inject the env var named by
+    - For OpenAI-compatible CLI workers (``terminal-qwen`` and
+      ``terminal-codex``) when the router is routed for
+      ``RouteKind.QWEN_ROUTE``: inject the env var named by
       ``router.qwen_env_var`` (default ``OPENAI_BASE_URL``)
       pointing at the Bifrost OpenAI-compatible provider at :8471.
       The router returns the bare gateway URL; the OpenAI SDK
@@ -70,7 +71,7 @@ def _resolve_worker_env(worker_type: str) -> dict[str, str]:
             # no suffix is needed — the gateway routes
             # ``<base>/anthropic/v1/messages`` internally.
             env["ANTHROPIC_BASE_URL"] = str(router._settings.anthropic_base_url)
-    elif worker_type == "terminal-qwen":
+    elif worker_type in {"terminal-qwen", "terminal-codex"}:
         if RouteKind.QWEN_ROUTE in router._settings.routes:
             # The OpenAI-compatible client (Qwen CLI's SDK) expects
             # the URL with the ``/v1`` suffix — the bare gateway URL

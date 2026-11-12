@@ -98,6 +98,22 @@ def test_qwen_code_default_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "OPENAI_BASE_URL" not in env
 
 
+def test_codex_code_inherits_openai_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex workers use the same OpenAI-compatible Bifrost surface as Qwen."""
+    _enable_bifrost(monkeypatch, routes=("qwen_route",))
+    env = _resolve_worker_env("terminal-codex")
+    assert env.get("OPENAI_BASE_URL") == "http://127.0.0.1:8471/v1"
+
+
+def test_codex_code_default_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Codex remains native when the OpenAI-compatible route is disabled."""
+    _enable_bifrost(monkeypatch, routes=("claude_route",))
+    env = _resolve_worker_env("terminal-codex")
+    assert "OPENAI_BASE_URL" not in env
+
+
 def test_qwen_env_var_field_override(monkeypatch: pytest.MonkeyPatch) -> None:
     """A custom ``qwen_env_var`` name (e.g. ``QWEN_BASE_URL``) is honored."""
     _enable_bifrost(monkeypatch, routes=("qwen_route",), qwen_env_var="QWEN_BASE_URL")

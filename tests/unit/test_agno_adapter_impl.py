@@ -309,7 +309,7 @@ class TestAgnoLLMConfigModel:
             LLMProvider.MINIMAX: "MiniMax-M3",
             LLMProvider.ANTHROPIC: "claude-sonnet-5-5",
             LLMProvider.OPENAI: "gpt-5.4",
-            LLMProvider.LLAMA_SERVER: "qwen3.5",
+            LLMProvider.LLAMA_SERVER: "qwen3-8b-q4_k_m",
         }
         for provider, model_id in expected.items():
             config = ImplAgnoLLMConfig(provider=provider)
@@ -679,7 +679,7 @@ class TestLLMProviderFactory:
         """Test llama-server (llama.cpp) model creation via OpenAI-compatible shim."""
         config = ImplAgnoLLMConfig(
             provider=LLMProvider.LLAMA_SERVER,
-            model_id="qwen3.5",
+            model_id="qwen3-8b-q4_k_m",
             base_url="http://localhost:8081",
             temperature=0.7,
             max_tokens=4096,
@@ -694,7 +694,7 @@ class TestLLMProviderFactory:
 
             mock_cls.assert_called_once()
             call_kwargs = mock_cls.call_args[1]
-            assert call_kwargs["id"] == "qwen3.5"
+            assert call_kwargs["id"] == "qwen3-8b-q4_k_m"
             assert call_kwargs["base_url"] == "http://localhost:8081"
             assert call_kwargs["api_key"] == "no-auth"
             assert call_kwargs["temperature"] == 0.7
@@ -794,7 +794,7 @@ class TestLLMProviderFactory:
 
             mock_cls.assert_called_once()
             call_kwargs = mock_cls.call_args[1]
-            assert call_kwargs["id"] == "qwen3.5"
+            assert call_kwargs["id"] == "qwen3-8b-q4_k_m"
             assert call_kwargs["base_url"] == "http://localhost:8081"
             assert model is mock_model
 
@@ -879,7 +879,7 @@ class TestLLMProviderChain:
                 factory.create_model()
 
                 call_kwargs = mock_cls.call_args[1]
-                assert call_kwargs["id"] == "qwen3.5"
+                assert call_kwargs["id"] == "qwen3-8b-q4_k_m"
 
     def test_explicit_model_id_is_kept_for_the_primary_provider(self) -> None:
         """An operator-pinned model id survives the chain resolution."""
