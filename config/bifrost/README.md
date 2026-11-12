@@ -11,7 +11,7 @@ Current status (verified live, 2026-10-30):
   `@maximhq/bifrost`'s native binary) has been resolved or worked around. The
   launchd job (`ai.bifrost.gateway`) and the Oneiric-secret-resolving
   `mahavishnu bifrost status` are healthy.
-- The transport binary is pinned to **v2.5.0** (upgraded from v2.4.0 on
+- The transport binary is pinned to **v2.5.1** (upgraded from v2.5.0 on
   2026-11-07) — see "Transport Version Pin" below. Verify with
   `curl -s http://127.0.0.1:8471/api/version`.
 - Live providers: `minimax-anthropic` (MiniMax's Anthropic-native
@@ -60,13 +60,13 @@ native `bifrost-http` binary from `downloads.getmaxim.ai` and resolves
 `latest` on every boot. The npm version number (1.6.x) is unrelated to the
 transport version that actually runs.
 
-The transport version is pinned to **v2.5.0** in two places that a CI guard
+The transport version is pinned to **v2.5.1** in two places that a CI guard
 test keeps in sync:
 
 - `mahavishnu/bifrost/paths.py` → `BIFROST_TRANSPORT_VERSION`
 - `config/launchd/ai.bifrost.gateway.plist` → `BIFROST_TRANSPORT_VERSION`
 
-The launcher receives `--transport-version=v2.5.0` and strips the flag before
+The launcher receives `--transport-version=v2.5.1` and strips the flag before
 exec'ing the binary.
 
 **To roll back on the launchd path**, edit `BIFROST_TRANSPORT_VERSION` in
@@ -526,7 +526,7 @@ Two limits worth stating plainly:
   a convention that keeps this deployment honest, not an enforcement.
 
 > **`off` means off.** It suppresses the cache *read* as well as the write.
-> Bifrost v2.5.0 has no header that suppresses a read —
+> Bifrost v2.5.1 has no header that suppresses a read —
 > `x-bf-cache-no-store` is documented upstream as "skip writing the response
 > to cache (still served from cache on hit)" — so the repo's `off` mode
 > points at a bucket nothing was ever written to. The cache key is encoded
@@ -765,7 +765,7 @@ sqlite3 ~/.config/bifrost/logs.db \
     WHERE routing_rule_id='route-complexity-simple' ORDER BY timestamp DESC LIMIT 1"
 ```
 
-`session-affinity` is a built-in engine in the pinned v2.5.0 transport — not
+`session-affinity` is a built-in engine in the pinned v2.5.1 transport — not
 a provider setting, not a plugin, and not a `governance_config` key. The
 store exposes no switch for it.
 
