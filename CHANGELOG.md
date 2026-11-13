@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- docs: Add the fleet-wide MCP surface guard and its offline snapshot test
+- mcp-common: Give the shared agent and skill factories non-empty tool descriptions
+- mcp: Add docstrings to the published MCP tool functions that qwen reported as invalid
 - agents: Drop the stale dispatch_to_pool reference
 - bifrost: Make the readiness budget clear the observed cold start
 - bifrost: Map the sonnet alias to the concise model so the review fallback lands

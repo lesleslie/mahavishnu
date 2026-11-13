@@ -789,17 +789,21 @@ outside its own unit tests imports it, so its tools are absent from
 |---|---|---|
 | `learning_pipeline_tools.py` | 5 | Dead, and deliberately so — `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md` blocks the wiring branch on an authentication-identity fix. ADR 012 assigns the pipeline itself to mahavishnu. |
 
-`mcp__mahavishnu__get_tool_versions` still lists these 5 names, so treat
-that map as a historical inventory, not a live one. The map is broadly
-out of sync: 155 entries against a live surface of 178, with 35 names
-advertised that no longer exist (these 5 plus 30 more whose names have
-drifted — `worker_execute` for `worker_run_with_settle`,
-`otel_ingest_trace` for `ingest_otel_traces`, `list_primitives` for
-`list_primitives_tool`, and so on) and 58 live tools missing from it
-entirely. There is no generator script behind the map or the two
-`docs/mcp/MCP_TOOLS_*.md` documents, so the drift has to be closed by
-hand or by the planned `scripts/check_mcp_tool_surface.py` guard
-(`docs/plans/2026-11-07-mcp-tool-disambiguation.md` Phase 4).
+`mcp__mahavishnu__get_tool_versions` no longer lists these 5 names.
+The map was out of sync until 2026-11-12: 155 entries against a live
+surface of 178, with 35 names advertised that no longer exist (`worker_execute`
+for `worker_run_with_settle`, `otel_ingest_trace` for
+`ingest_otel_traces`, `list_primitives` for `list_primitives_tool`,
+and so on) and 58 live tools missing from it entirely. It now holds
+exactly the 178 served names, and
+`scripts/check_mcp_tool_surface.py` keeps it that way: the script
+checks the fleet's `tools/list` for empty descriptions, duplicate bare
+names, registry drift and parameter-signature drift, and
+`tests/unit/test_mcp_tool_surface.py` runs the same analysis over a
+checked-in snapshot so CI catches the drift with the servers down.
+
+There is still no generator behind the two `docs/mcp/MCP_TOOLS_*.md`
+documents, so those need the same manual attention the map needed.
 
 Coordination used to sit in this list as a second dead module (15 tools).
 It was deleted on 2026-11-12: the tools were never registered, they
