@@ -1,7 +1,7 @@
 ---
 name: workflow-status
-description: Use ONLY when the user explicitly types `/mahavishnu:workflow-status` or selects this Skill from the picker to poll the status of a Mahavishnu-launched durable workflow. Do not auto-trigger. Routes through `mcp__mahavishnu__get_workflow_status` and explains the difference between durable Prefect flows, Agno agent loops, and LlamaIndex RAG pipelines so the user can pick the right polling cadence.
-allowed-tools: mcp__mahavishnu__get_workflow_status, mcp__mahavishnu__list_workflows, mcp__mahavishnu__trigger_workflow, Read, Bash(echo:*)
+description: Use ONLY when the user explicitly types `/mahavishnu:workflow-status` or selects this Skill from the picker to poll the status of a Mahavishnu-launched durable workflow. Do not auto-trigger. Routes through `mcp__mahavishnu__mahavishnu_get_workflow_status` and explains the difference between durable Prefect flows, Agno agent loops, and LlamaIndex RAG pipelines so the user can pick the right polling cadence.
+allowed-tools: mcp__mahavishnu__mahavishnu_get_workflow_status, mcp__mahavishnu__mahavishnu_list_workflows, mcp__mahavishnu__mahavishnu_trigger_workflow, Read, Bash(echo:*)
 ---
 
 # workflow-status
@@ -10,7 +10,7 @@ allowed-tools: mcp__mahavishnu__get_workflow_status, mcp__mahavishnu__list_workf
 
 This Skill is the right entry point when the user wants to check the
 status of a Mahavishnu-launched durable workflow — typically one
-launched via `trigger_workflow(adapter=...)` and now awaiting
+launched via `mahavishnu_trigger_workflow(adapter=...)` and now awaiting
 completion, failure, or operator attention. Common cases:
 
 - "What's the status of workflow `wf_abc123`?"
@@ -18,15 +18,15 @@ completion, failure, or operator attention. Common cases:
 - "Why is my Agno loop still running?"
 - "How many repos have completed the cross-repo review?"
 
-The Skill uses `mcp__mahavishnu__get_workflow_status(workflow_id)` as the
+The Skill uses `mcp__mahavishnu__mahavishnu_get_workflow_status(workflow_id)` as the
 primary entry point. When the user does not have a specific workflow_id
 but wants a fleet overview, the Skill falls back to
-`mcp__mahavishnu__list_workflows(status=..., limit=...)` and presents
+`mcp__mahavishnu__mahavishnu_list_workflows(status=..., limit=...)` and presents
 the recent-N table.
 
 ## What the tool does
 
-`mcp__mahavishnu__get_workflow_status(workflow_id, user_id=None)`
+`mcp__mahavishnu__mahavishnu_get_workflow_status(workflow_id, user_id=None)`
 returns the persisted state for one durable workflow. The shape covers
 the four lifecycle stages:
 
@@ -64,10 +64,10 @@ returned `task.adapter` field and applies the matching cadence.
 ## When NOT to use
 
 - For a synchronous single-task dispatch that has already returned,
-  use `mcp__mahavishnu__pool_route_execute` directly — there is no
+  use `mcp__mahavishnu__mahavishnu_pool_route_execute` directly — there is no
   workflow_id to poll.
 - For ad-hoc health checks, use `mcp__mahavishnu__get_health`.
-- For workflow cancellation, use `mcp__mahavishnu__cancel_workflow`
+- For workflow cancellation, use `mcp__mahavishnu__mahavishnu_cancel_workflow`
   (this Skill does not cancel; it only polls).
 
 ## Failure modes and how to handle them
@@ -80,17 +80,17 @@ returned `task.adapter` field and applies the matching cadence.
   `Permission.VIEW_WORKFLOW_STATUS`. Surface the gate and propose
   the user re-authenticate or escalate to an admin.
 - **`status: "failed"`** — surface the `errors` array and the
-  `failed_repos` count. Suggest `mcp__mahavishnu__cancel_workflow`
+  `failed_repos` count. Suggest `mcp__mahavishnu__mahavishnu_cancel_workflow`
   for sibling cancellation if the workflow is still partially
-  running, or `trigger_workflow` with adjusted `params` for retry.
+  running, or `mahavishnu_trigger_workflow` with adjusted `params` for retry.
 - **Mid-flight timeout (no terminal status after expected cadence)** —
   increase the poll interval, surface the elapsed wall time, and
-  propose `cancel_workflow` if the user wants to bail.
+  propose `mahavishnu_cancel_workflow` if the user wants to bail.
 
 ## Inputs the Skill expects
 
 - `workflow_id` (string, required) — the id returned by
-  `trigger_workflow`. The Skill validates the id shape before calling
+  `mahavishnu_trigger_workflow`. The Skill validates the id shape before calling
   to avoid a wasted round-trip.
 - Optional `user_id` for permission-scoped queries — passed verbatim.
 - Optional user signal about polling cadence preference ("check

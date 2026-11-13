@@ -24,7 +24,7 @@ mahavishnu_audit_health --all-repos`` by any operator or cron job, and the
 REQ-HC-004 (Phase 2) from
 ``docs/plans/2026-10-09-mcp-health-check-enrichment.md``:
 
-- ``mahavishnu mcp mahavishnu_audit_health --all-repos`` returns a JSON
+- ``mahavishnu mcp audit-health --all-repos`` returns a JSON
   report listing per-repo status + silent-degraded flags.
 - ``mcp__mahavishnu__mahavishnu_audit_health()`` (MCP tool) returns the same
   envelope so callers don't care which surface they hit.

@@ -1,7 +1,7 @@
 ---
 name: ecosystem-status
-description: Use ONLY when the user explicitly types `/mahavishnu:ecosystem-status` or selects this Skill from the picker to render a cross-component health snapshot of the Bodai ecosystem from Mahavishnu's vantage point. Do not auto-trigger. Routes through `mcp__mahavishnu__ecosystem_status` and explains the `sections` parameter plus the aggregate status so the user can interpret a partial report correctly.
-allowed-tools: mcp__mahavishnu__ecosystem_status, mcp__mahavishnu__get_health, mcp__mahavishnu__list_adapters, Read, Bash(echo:*)
+description: Use ONLY when the user explicitly types `/mahavishnu:ecosystem-status` or selects this Skill from the picker to render a cross-component health snapshot of the Bodai ecosystem from Mahavishnu's vantage point. Do not auto-trigger. Routes through `mcp__mahavishnu__mahavishnu_ecosystem_status` and explains the `sections` parameter plus the aggregate status so the user can interpret a partial report correctly.
+allowed-tools: mcp__mahavishnu__mahavishnu_ecosystem_status, mcp__mahavishnu__get_health, mcp__mahavishnu__mahavishnu_list_adapters, Read, Bash(echo:*)
 ---
 
 # ecosystem-status
@@ -18,14 +18,14 @@ publishes. Common cases:
 - "Show only the workflow and adapter sections of the ecosystem report."
 - "Surface the degraded components in the current ecosystem."
 
-The Skill uses `mcp__mahavishnu__ecosystem_status` as the primary entry
+The Skill uses `mcp__mahavishnu__mahavishnu_ecosystem_status` as the primary entry
 point. The tool's `sections` parameter accepts a list of section
 names so the user can request a focused slice (`["workflows", "alerts"]`)
 or the full snapshot (`sections=None`).
 
 ## What the tool does
 
-`mcp__mahavishnu__ecosystem_status(sections=None)` aggregates per-
+`mcp__mahavishnu__mahavishnu_ecosystem_status(sections=None)` aggregates per-
 component state across the Bodai fleet into a single report.
 
 The report always carries four envelope fields — `schema_version`,
@@ -91,9 +91,9 @@ recognized, and re-issue the request with a valid name from
 - For a single-component health check (e.g. just Mahavishnu itself),
   use `mcp__mahavishnu__get_health` — it is cheaper than the full
   ecosystem rollup.
-- For pool capacity alone, use `mcp__mahavishnu__pool_health`.
+- For pool capacity alone, use `mcp__mahavishnu__mahavishnu_pool_health`.
 - For adapter introspection alone, use
-  `mcp__mahavishnu__list_adapters`.
+  `mcp__mahavishnu__mahavishnu_list_adapters`.
 
 ## Degraded-adapter semantics
 
@@ -102,7 +102,7 @@ that specific adapter's calls will fail or fallback. The Skill
 explains the impact in plain language:
 
 - **Prefect degraded** — durable workflows cannot be dispatched;
-  call `trigger_workflow(adapter="prefect", ...)` will surface the
+  call `mahavishnu_trigger_workflow(adapter="prefect", ...)` will surface the
   degradation to the caller. Suggest retrying with `adapter="agno"`
   or `adapter="llamaindex"` if the user can shift the workload.
 - **LlamaIndex degraded** — RAG pipelines unavailable; ingestion
@@ -110,7 +110,7 @@ explains the impact in plain language:
   the substrate recovers.
 - **Agno degraded** — agent loops unavailable; multi-step reasoning
   workflows will fail. Suggest switching to a single-shot
-  `pool_route_execute` if the workload allows.
+  `mahavishnu_pool_route_execute` if the workload allows.
 
 ## Inputs the Skill expects
 

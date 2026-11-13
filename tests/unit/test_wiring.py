@@ -72,18 +72,21 @@ async def test_full_matches_golden_fixture(monkeypatch):
 
     # The always-on tools (health, lifecycle, list_repos, etc.) must be
     # present in every profile. These never register conditionally.
+    # The component-prefix convention (docs/decisions/2026-11-08-mcp-tool-
+    # component-prefix-convention.md) keeps the shared-contract names bare
+    # and prefixes the component-specific ones.
     always_on_required = {
         "get_health",
         "get_liveness",
         "get_readiness",
-        "list_repos",
-        "list_workflows",
-        "trigger_workflow",
-        "cancel_workflow",
-        "get_workflow_status",
-        "create_user",
-        "check_permission",
-        "list_adapters",
+        "mahavishnu_list_repos",
+        "mahavishnu_list_workflows",
+        "mahavishnu_trigger_workflow",
+        "mahavishnu_cancel_workflow",
+        "mahavishnu_get_workflow_status",
+        "mahavishnu_create_user",
+        "mahavishnu_check_permission",
+        "mahavishnu_list_adapters",
         "discover_tools",
     }
     missing_always_on = always_on_required - actual_set

@@ -1,8 +1,8 @@
 ---
 name: pool-router-agent
-description: Use when the user asks for pool-selector advice — which selector (least_loaded, round_robin, random, affinity) is right for the current workload. Do not auto-trigger. Reads pool_health, weights against the workload shape, and recommends a selector with the tradeoffs spelled out before any dispatch.
+description: Use when the user asks for pool-selector advice — which selector (least_loaded, round_robin, random, affinity) is right for the current workload. Do not auto-trigger. Reads mahavishnu_pool_health, weights against the workload shape, and recommends a selector with the tradeoffs spelled out before any dispatch.
 model: sonnet
-tools: mcp__mahavishnu__pool_health, mcp__mahavishnu__pool_list, Read
+tools: mcp__mahavishnu__mahavishnu_pool_health, mcp__mahavishnu__mahavishnu_pool_list, Read
 ---
 
 # pool-router-agent
@@ -12,7 +12,7 @@ tools: mcp__mahavishnu__pool_health, mcp__mahavishnu__pool_list, Read
 This agent owns the **selector strategy decision** for the Mahavishnu
 pool router. It does NOT dispatch — `mahavishnu-specialist` and
 `workflow-monitor` invoke this agent to get a selector recommendation,
-then they execute via `pool_route_execute`.
+then they execute via `mahavishnu_pool_route_execute`.
 
 Adjacent specialists and what this agent adds:
 
@@ -34,8 +34,8 @@ Right entry point when the user asks any of:
 
 ## What the agent reads
 
-The agent calls `mcp__mahavishnu__pool_health` and
-`mcp__mahavishnu__pool_list` to build a snapshot of pool state:
+The agent calls `mcp__mahavishnu__mahavishnu_pool_health` and
+`mcp__mahavishnu__mahavishnu_pool_list` to build a snapshot of pool state:
 
 - per-pool worker count (active / idle / busy)
 - per-pool health (`ok` / `degraded` / `unreachable`)

@@ -1,8 +1,8 @@
 ---
 name: workflow-monitor
-description: Use when the user asks for the status of a Mahavishnu-launched durable workflow or wants to interpret a workflow_id. Do not auto-trigger. Polls get_workflow_status, distinguishes Prefect flows from Agno agent loops and LlamaIndex RAG pipelines, and surfaces a partial-status flag when the workflow is mid-stage.
+description: Use when the user asks for the status of a Mahavishnu-launched durable workflow or wants to interpret a workflow_id. Do not auto-trigger. Polls mahavishnu_get_workflow_status, distinguishes Prefect flows from Agno agent loops and LlamaIndex RAG pipelines, and surfaces a partial-status flag when the workflow is mid-stage.
 model: sonnet
-tools: mcp__mahavishnu__get_workflow_status, mcp__mahavishnu__list_workflows, mcp__mahavishnu__cancel_workflow, Read
+tools: mcp__mahavishnu__mahavishnu_get_workflow_status, mcp__mahavishnu__mahavishnu_list_workflows, mcp__mahavishnu__mahavishnu_cancel_workflow, Read
 ---
 
 # workflow-monitor
@@ -33,9 +33,9 @@ Right entry point when the user asks any of:
 
 ## What the agent reads
 
-The agent calls `mcp__mahavishnu__list_workflows` to enumerate active
+The agent calls `mcp__mahavishnu__mahavishnu_list_workflows` to enumerate active
 and recently-completed workflows, then drills into specific ids via
-`mcp__mahavishnu__get_workflow_status`.
+`mcp__mahavishnu__mahavishnu_get_workflow_status`.
 
 The agent distinguishes three workflow types and explains each:
 
@@ -52,9 +52,9 @@ user can decide whether to wait, cancel, or re-dispatch.
 ## Edge cases
 
 - **Workflow not found**: surface the `not_found` envelope and offer
-  to call `list_workflows` for a recency-sorted list.
-- **Workflow stuck**: if `get_workflow_status` returns the same stage
-  across two polls, suggest `cancel_workflow` and re-dispatch via
+  to call `mahavishnu_list_workflows` for a recency-sorted list.
+- **Workflow stuck**: if `mahavishnu_get_workflow_status` returns the same stage
+  across two polls, suggest `mahavishnu_cancel_workflow` and re-dispatch via
   `mahavishnu-specialist`.
 - **Degraded adapter**: if the adapter reports degraded, the agent
   flags the underlying adapter (`akosha` / `oneiric` / etc.) rather than
