@@ -592,22 +592,121 @@ cache is the right one. The response cache earns its keep on the short,
 repetitive traffic the repo's own clients send — the Agno and worker paths —
 and is kept off the Claude Code path for that reason.
 
-> **The provider cache has a lever this gateway is not using.** Bifrost
-> supports a per-provider `prompt_cache` block whose `ttl` may be `"1h"` —
-> upstream's default is 5 minutes, which is the provider's default ephemeral
-> cache lifetime — and `cache_control_injection_points` to place breakpoints
-> on specific messages. Upstream's rule is "caller markers always win", and
-> Claude Code sends its own `cache_control` markers, so `auto_inject` is a
-> no-op while it does.
+> **Do not configure `prompt_cache` on a provider for Claude Code
+> traffic.** Bifrost's per-provider `prompt_cache` block (`auto_inject`,
+> `ttl`, `cache_control_injection_points`) is for clients that send **no**
+> cache markers — upstream's own words are *"Agentic clients such as Codex
+> send no cache markers"*, and *"Requests that already carry their own
+> `cache_control` or `prompt_cache_breakpoint` are never modified."*
+> Claude Code always carries its own markers, so the block is skipped
+> entirely, not merely overridden. No Codex traffic appears in this
+> gateway's logs either.
 >
-> The cliff is measurable here: the uncached fraction runs 8% within five
-> minutes of the previous request, 22% after ten, and 99.9% after thirty.
-> About 146 requests a day land past the cliff and re-process ~15.3M tokens.
-> Extending the TTL would bound that at roughly **$70/month** — but MiniMax
-> charges $0.375/M to *write* a cache against $0.30/M for uncached input, so
-> a re-written prefix that is read only once costs more than not caching it.
-> Whether Bifrost's injection would apply on top of Claude Code's markers, and
-> whether MiniMax honours a requested one-hour TTL, is **not yet tested**.
+> **The TTL lever is on the client, and it is already on the short
+> default.** Claude Code v2.1.323 reads `promptCacheTtl` /
+> `CLAUDE_CODE_PROMPT_CACHE_TTL` for the main conversation and
+> `subagentPromptCacheTtl` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL` for
+> everything else; both take `"5m"` or `"1h"`. Its own description of the
+> default is the point: *"Unset = automatic: 1 hour on a Claude
+> subscription within its usage limits, **5 minutes on an API key**,
+> Bedrock, Vertex or Foundry."* This gateway authenticates with a virtual
+> key — the API-key branch — so the effective TTL was always 5 minutes.
+>
+> It is left alone because the population it would serve has gone. The
+> original estimate (~146 requests a day past the 5-minute cliff, ~15.3M
+> tokens, ~$70/month) was measured against the 11-06…11-08 traffic of
+> 12–14k requests a day; the gateway now sees 20–300 a day, and only
+> **one request in two days** fell more than 30 minutes behind its
+> predecessor. At that volume the lever is worth ~$0/month. Re-open it if
+> traffic returns to fleet scale. Note the economics when it does: MiniMax
+> charges $0.375/M to *write* a cache against $0.30/M for uncached input
+> and $0.06/M to read it, so a re-written prefix must be read **twice**
+> inside the window to pay for itself.
+
+### Diagnosing the provider cache when it stalls
+
+Over seven days the provider cache is healthy — `MiniMax-M3` 27,067
+requests at **89.9%** of tokens, `MiniMax-M3.1-Flash` 10,872 at **91.1%**.
+But one `MiniMax-M3` session on 11-12 (40 requests, 15 minutes, session
+`b3591ab5`) collapsed and recovered *inside the same conversation*:
+
+| cached read | requests | meaning |
+|---|---|---|
+| ~110,000–118,800 | 12 | nearly the whole prefix was cached |
+| 5,632–9,216 | 7 | a partial prefix was cached |
+| exactly 128 | 21 | nothing of the request was cached |
+
+**The 128 is not a cache block.** A controlled probe against MiniMax's
+own endpoint shows a *fresh* 4,540-token request also reporting
+`cache_read_input_tokens = 128`, so 128 is MiniMax's own fixed server-side
+prefix, counted as read on every request. A reading of 128 therefore means
+**none of Claude Code's content was cached** — on a request twelve seconds
+after one that had 110,080 tokens cached.
+
+The partial readings cluster on two stable values (5,683 four times;
+8,985 twice): the signature of a cache breakpoint landing at a fixed
+position. A TTL expiry produces a *partial* read, not this alternation
+inside a 15-minute window, so this is not the TTL.
+
+The gateway cannot see the cause today, because the request bodies are
+hidden:
+
+```bash
+# 734 of the last 740 rows have content_hidden=1 and an empty raw_request.
+sqlite3 ~/.config/bifrost/logs.db \
+  "select count(*), sum(content_hidden=1), sum(raw_request is null or raw_request='') from logs"
+```
+
+The virtual key `bodai-pi-pool` carries `disable_content_logging = 1`,
+and every provider has `store_raw_request_response = 0`. To diagnose it:
+
+1. **Turn on content logging for a bounded window.** Set
+   `disable_content_logging = 0` on the virtual key (or send
+   `x-bf-disable-content-logging` per request), and set
+   `store_raw_request_response = 1` on the `minimax-anthropic` provider.
+   This writes full conversation bodies — system prompt, transcript, tool
+   results — into `~/.config/bifrost/logs.db` **unencrypted**. Keep the
+   window short, and delete the captured rows afterwards.
+2. **Capture one hit and one miss.** The `logs` table's `cache_read_tokens`
+   column tells you which is which: a full read is near the prompt count,
+   a miss is 128.
+3. **Diff the prefixes** of the two bodies. The first divergence point is
+   the cause. Work backwards from there: the system prompt (which carries
+   the date and the working directory), the tool definitions (which change
+   when a tool's schema is materialised), the transcript, or the provider's
+   own replica routing.
+4. **Turn content logging back off** and delete the captured rows.
+
+Do not guess at this from token counts alone — the same 128 appears for
+"the prefix changed" and "the provider never wrote a cache at all", and
+only the bodies separate them.
+
+> **Reading MiniMax's cache counters.** MiniMax's Anthropic-compatible
+> endpoint reports `cache_creation_input_tokens = 0` and
+> `cache_creation = null` **even when a write has plainly occurred** — a
+> probe at +90s read 27,535 of 27,347 tokens from cache on a request that
+> reported zero created tokens. So `created = 0` does not mean "no write
+> happened"; only `cache_read_input_tokens` is trustworthy. The gateway
+> leg populates `cache_creation` but also with zeros.
+
+> **The gateway is exonerated.** A seven-arm controlled probe (prefix size
+> × marker placement × requested TTL × direct-vs-gateway, read at +90s and
+> +9min) returned **identical usage on matching direct and gateway arms
+> at every round**. Bifrost passes `cache_control` through faithfully.
+> Two further findings from that probe:
+>
+> - **There is no minimum prefix size.** A 4,540-token prefix cached fine
+>   (4,608 read at +90s), so a short prefix is not the problem.
+> - **The cache lifetime is not deterministic.** The same nominal 5-minute
+>   arm survived 9 minutes in one variant and expired in another; the two
+>   1-hour arms disagreed with each other as well. Provider-side eviction
+>   or replica routing dominates the outcome, so **a TTL A/B cannot
+>   separate the requested TTL from that variance** — and the "5-minute
+>   cliff" is one observation of a distribution, not a fixed property.
+>
+> Note also that the gateway's Anthropic-compatible route is
+> **`/anthropic/v1/messages`**, not `/v1/messages` (which returns HTTP
+> 405).
 
 ## Mahavishnu Worker Defaults
 
