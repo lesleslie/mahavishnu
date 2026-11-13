@@ -139,6 +139,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- skills: The `auto-coordinate` skill is now tracked in the repo at `mahavishnu/.claude/skills/auto-coordinate/`, with `~/.claude/skills/auto-coordinate/SKILL.md` symlinked to it so cross-repo discovery is unchanged. It lived only in the global skills directory until now, which is why its contract could rot against the tool surface with no pull request, no review, and no CI catching it
+- testing: `tests/unit/test_skill_tool_contract.py` asserts that every MCP tool and every `mahavishnu coord` command named by any repo skill actually exists, checked against the checked-in profile fixtures rather than a running server. It also asserts that no skill names a `coord_*` MCP tool
+
 ### Removed
 
 - mcp: The `coord_*` MCP tools — the 15-tool `mahavishnu/mcp/tools/coordination_tools.py` module was never registered, so none of its tools ever appeared in `tools/list` or could be called. It was a 1:1 mirror of the `mahavishnu coord` CLI (16 commands to 15 tools) and re-implemented the CLI's write paths, so wiring it up would have meant two write paths into the same `coordination:` ledger. Its bare `coord_` prefix also violated the component-prefix convention (`docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md`). The coordination capability is unaffected: it lives in `settings/ecosystem.yaml` and is reached through `mahavishnu coord …` and `CoordinationManager`
