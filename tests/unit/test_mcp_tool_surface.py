@@ -137,12 +137,13 @@ def test_a_registry_phantom_is_reported(guard: ModuleType, surface: Any) -> None
     broken = copy.deepcopy(payload)
     broken["servers"]["mahavishnu"]["tools"] = [
         tool for tool in broken["servers"]["mahavishnu"]["tools"]
-        if tool["name"] != "get_tool_versions"
+        if tool["name"] != "mahavishnu_get_tool_versions"
     ]
 
     findings = guard.analyse(guard.load_fixture_from_payload(broken))
     assert any(
-        "get_tool_versions" in item for item in findings["version registry drift"]
+        "mahavishnu_get_tool_versions" in item
+        for item in findings["version registry drift"]
     ), "a registry entry no server serves must be reported as a phantom"
 
 
