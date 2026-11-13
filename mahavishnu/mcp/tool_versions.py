@@ -66,8 +66,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "terminal_list_adapters": "1.0.0",
     "terminal_current_adapter": "1.0.0",
     "terminal_switch_adapter": "1.0.0",
-    "terminal_launch_with_profile": "1.0.0",
-    "terminal_list_profiles": "1.0.0",
     # Pool tools (pool_tools.py)
     "pool_scale": "1.0.0",
     "pool_close": "1.0.0",
@@ -77,15 +75,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "pool_monitor": "1.0.0",
     "pool_search_memory": "1.0.0",
     # Worker tools (worker_tools.py)
-    "worker_spawn": "1.0.0",
-    "worker_execute": "1.0.0",
-    "worker_execute_batch": "1.0.0",
-    "worker_collect_results": "1.0.0",
-    "worker_list": "1.0.0",
-    "worker_close": "1.0.0",
-    "worker_close_all": "1.0.0",
-    "worker_health": "1.0.0",
-    "worker_monitor": "1.0.0",
     # Repository messaging tools (repository_messaging_tools.py)
     "send_repository_message": "1.0.0",
     "get_repository_messages": "1.0.0",
@@ -99,16 +88,10 @@ TOOL_VERSIONS: dict[str, str] = {
     "find_related_code": "1.0.0",
     "get_function_context": "1.0.0",
     "search_documentation": "1.0.0",
-    "store_code_graph_from_mahavishnu": "1.0.0",
     "list_project_messages": "1.0.0",
     "get_repository_health": "1.0.0",
     # OTel tools (otel_tools.py)
-    "otel_ingest_trace": "1.0.0",
-    "otel_search_traces": "1.0.0",
-    "otel_get_trace": "1.0.0",
-    "otel_get_stats": "1.0.0",
     # Health tools (health_tools.py)
-    "health_check": "1.0.0",
     "health_check_service": "1.0.0",
     "health_check_all": "1.0.0",
     "get_liveness": "1.0.0",
@@ -127,8 +110,6 @@ TOOL_VERSIONS: dict[str, str] = {
     # Tool discovery (server_core.py inline)
     "discover_tools": "1.0.0",
     # Primitive introspection (primitive_tools.py) -- Keystone keystone_show analog
-    "list_primitives": "1.0.0",
-    "show_primitive": "1.0.0",
     # Search tools (search_tools.py)
     "delete_document": "1.0.0",
     # OTel tools (otel_tools.py)
@@ -143,13 +124,8 @@ TOOL_VERSIONS: dict[str, str] = {
     "get_cross_project_patterns": "1.0.0",
     "get_git_velocity_dashboard": "1.0.0",
     # Goal-driven team tools (goal_team_tools.py)
-    "get_learning_stats": "1.0.0",
-    "get_learning_summary": "1.0.0",
-    "get_recommended_mode": "1.0.0",
     "list_team_skills": "1.0.0",
     "parse_goal": "1.0.0",
-    "record_team_outcome": "1.0.0",
-    "record_user_feedback": "1.0.0",
     "team_from_goal": "1.0.0",
     "send_project_message": "1.0.0",
     # Tree-sitter tools (treesitter_tools.py)
@@ -161,7 +137,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "treesitter_parse": "1.0.0",
     "treesitter_query": "1.0.0",
     # Worktree tools
-    "worktree_manage": "1.0.0",
     # Health tools - wait
     "wait_for_all_dependencies": "1.0.0",
     # Documentation indexing
@@ -172,20 +147,9 @@ TOOL_VERSIONS: dict[str, str] = {
     "ecosystem_routing_readiness": "1.0.0",
     # Workflow outcome tools (workflow_tools.py)
     "workflow_get_outcome_tool": "1.0.0",
-    # Learning pipeline tools (learning_pipeline_tools.py)
-    "get_pipeline_status": "1.0.0",
-    "list_evidence": "1.0.0",
-    "trigger_synthesis": "1.0.0",
-    "list_pending_drafts": "1.0.0",
-    "get_promotion_history": "1.0.0",
     # Primitive introspection wrappers (primitive_tools.py)
     "list_primitives_tool": "1.0.0",
     "show_primitive_tool": "1.0.0",
-    # OpenHands tools (openhands_tools.py)
-    "openhands_run": "1.0.0",
-    "openhands_status": "1.0.0",
-    "openhands_cancel": "1.0.0",
-    "openhands_health": "1.0.0",
     # Clone detection / refactor tools (clone_tools.py)
     "clone_detect_ecosystem": "1.0.0",
     "clone_refactor_group": "1.0.0",
@@ -214,9 +178,80 @@ TOOL_VERSIONS: dict[str, str] = {
     # Capability resolver/planner/executor tools (capability_tools.py)
     "execute_capability": "1.0.0",
     "list_capabilities": "1.0.0",
-    "explain_routing": "1.0.0",
     # MCP envelope reader (get_capability_result_tool.py)
     "get_capability_result": "1.0.0",
+    # Worker contract tools (worker_contract_tools.py)
+    "cancel_worker": "1.0.0",
+    "capture_output": "1.0.0",
+    "launch_worker": "1.0.0",
+    "send_input": "1.0.0",
+    "wait_for_state": "1.0.0",
+    "worker_revoke": "1.0.0",
+    "worker_run_with_settle": "1.0.0",
+    "worker_settle": "1.0.0",
+    "worker_status": "1.0.0",
+    # Pool tools (pool_tools.py) -- additions
+    "pool_bootstrap": "1.0.0",
+    "pool_route_execute": "1.0.0",
+    "pool_spawn": "1.0.0",
+    # OpenHands tools (openhands_tools.py) -- component-prefixed
+    "openhands_openhands_cancel": "1.0.0",
+    "openhands_openhands_health": "1.0.0",
+    "openhands_openhands_run": "1.0.0",
+    "openhands_openhands_status": "1.0.0",
+    # Jot inbox tools (jot_tools.py)
+    "jot_add": "1.0.0",
+    "jot_defer": "1.0.0",
+    "jot_delete": "1.0.0",
+    "jot_done": "1.0.0",
+    "jot_drain": "1.0.0",
+    "jot_dispatch": "1.0.0",
+    "jot_edit": "1.0.0",
+    "jot_export_markdown": "1.0.0",
+    "jot_list": "1.0.0",
+    "jot_reopen": "1.0.0",
+    "jot_resurface": "1.0.0",
+    "jot_retry": "1.0.0",
+    "jot_search": "1.0.0",
+    "jot_show": "1.0.0",
+    "jot_vitals": "1.0.0",
+    # Plan index tools (plan_tools.py)
+    "plan_capability": "1.0.0",
+    "plan_list": "1.0.0",
+    "plan_rebuild_status": "1.0.0",
+    "plan_search": "1.0.0",
+    "plan_show": "1.0.0",
+    "plan_vitals": "1.0.0",
+    # Capability resolver (capability_tools.py) -- additions
+    "resolve_capabilities": "1.0.0",
+    # Agent and skill catalogue tools (agents_tools.py, skill_tools.py)
+    "mahavishnu_get_agent": "1.0.0",
+    "mahavishnu_list_agents": "1.0.0",
+    "mahavishnu_get_skill": "1.0.0",
+    "mahavishnu_list_skills": "1.0.0",
+    # Ecosystem service registry and event log
+    "mahavishnu_get_publish_url": "1.0.0",
+    "mahavishnu_get_service": "1.0.0",
+    "mahavishnu_list_events": "1.0.0",
+    "mahavishnu_list_services": "1.0.0",
+    "mahavishnu_record_event": "1.0.0",
+    "mahavishnu_upsert_service": "1.0.0",
+    # Key-value state store (core/state_backends/mcp_kv.py)
+    "mahavishnu_kv_delete": "1.0.0",
+    "mahavishnu_kv_get": "1.0.0",
+    "mahavishnu_kv_list": "1.0.0",
+    "mahavishnu_kv_put": "1.0.0",
+    # Specialist dispatch (dispatch_specialist.py)
+    "mahavishnu_dispatch_specialist": "1.0.0",
+    "mahavishnu_list_specialists": "1.0.0",
+    # Budget enforcement (budget_tools.py)
+    "mahavishnu_budget_enforce": "1.0.0",
+    # Health audit (audit_health_tool.py)
+    "audit_health": "1.0.0",
+    # Cross-repo search (core/cross_repo_search.py)
+    "cross_repo_search": "1.0.0",
+    # Bodai task system dispatch edge (server_core.py inline)
+    "tasks_handoff_to_workflow": "1.0.0",
 }
 
 
