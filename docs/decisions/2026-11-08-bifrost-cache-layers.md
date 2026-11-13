@@ -229,40 +229,73 @@ at current traffic" but **not measurable with the tooling available**.
 Even at fleet scale, an A/B would have to control for eviction to mean
 anything.
 
-**Open, and newly separated from the TTL: an unstable provider cache
-inside a long session.** While measuring, one `MiniMax-M3` session on
-11-12 showed the provider cache collapsing and recovering *within the
-same conversation*. Over seven days the provider cache is healthy —
-`MiniMax-M3` 27,067 requests at **89.9%** of tokens, `MiniMax-M3.1-Flash`
-10,872 requests at **91.1%** — so this is not a fleet-wide regression.
-It is what one 40-request session looked like:
+**Open, and newly separated from the TTL: the provider cache misses
+whole requests below a prompt-size threshold.** While measuring, one
+`MiniMax-M3` session on 11-12 showed the provider cache collapsing and
+recovering *within the same conversation*. Over seven days the fault
+turns out to track **prompt size**, not the session, the model, or the
+TTL:
 
-| cached read | requests | meaning |
+| prompt size | `MiniMax-M3` hit rate | `MiniMax-M3.1-Flash` hit rate |
 |---|---|---|
-| ~110,000–118,800 | 12 | nearly the whole prefix was cached |
-| 5,632–9,216 | 7 | a partial prefix was cached |
-| exactly 128 | 21 | nothing of the request was cached |
+| < 60k tokens | 64% | 42% |
+| 60–120k | 57% | 67% |
+| 120–250k | 92% | 95% |
+| > 250k | 99% | 98% |
 
-The 128 is not a cache block at all: a controlled probe against
-MiniMax's own endpoint shows a *fresh* 4,540-token request also
-reporting `cache_read_input_tokens = 128`, so 128 is MiniMax's own
-fixed server-side prefix, counted as read on every request. A reading
-of 128 therefore means **none of Claude Code's content was cached** for
-that request — while the request twelve seconds earlier had 110,080
-tokens cached. The partial readings cluster on two stable values
-(5,683 four times; 8,985 twice), which is the signature of a cache
-breakpoint that lands at a fixed position in the request.
+The failures are **whole-request misses**, not partial ones: the cached
+read lands on 128–600 tokens, which is MiniMax's own fixed server-side
+prefix and nothing of Claude Code's content. A fresh 4,540-token
+request also reports 128, so 128 means "nothing of ours matched". In
+the 60–120k band those whole misses are 24.8% of requests and partial
+hits a further 18.2%, spread evenly through the day rather than
+clustered on any event. Above 120k the fault essentially disappears.
 
-A TTL expiry produces a *partial* read, not this alternation inside a
-15-minute window, so this is not the TTL either. The candidate
-mechanisms — a moving cache breakpoint, a mutated system prompt, a
-per-replica provider cache — cannot be separated without the request
-bodies, and the gateway cannot produce them today: the virtual key
-`bodai-pi-pool` has `disable_content_logging = 1`, so `raw_request` is
-empty and `content_hidden` is set on 734 of the last 740 rows. The
-diagnosis needs a bounded content-logging window; the recipe is in
-`config/bifrost/README.md` under "The two caches". Until it is run, the
-cause is unknown — treat the symptom as measured and the cause as open.
+**What the probes established.** A seven-arm controlled probe (prefix
+size × marker placement × requested TTL × direct-vs-gateway, read at
++90s and +9min) and a synthetic mutation ladder together show:
+
+- **Bifrost passes `cache_control` through faithfully.** Matching direct
+  and gateway arms returned *identical* usage at every round. The
+  gateway is not the fault.
+- **The cached amount is the shared-prefix boundary.** Moving a mutation
+  later in a synthetic request moved the cached boundary later in
+  lockstep (0 → 3,584 → 5,888 → 7,168 → 8,192 → 8,704). So a cached
+  read of 128 means the *first* block differed, and a read of ~9,000
+  means the system prompt matched and something after it did not.
+- **The lookup is reliable for unchanged content.** Sixteen byte-identical
+  requests hit 16/16.
+- **MiniMax never reports the write.** `cache_creation_input_tokens` is
+  `0` and `cache_creation` is `null` even when a write plainly
+  happened. Only `cache_read_input_tokens` is trustworthy.
+- **The cache lifetime is not deterministic.** The same nominal 5-minute
+  arm survived 9 minutes in one variant and expired in another, and the
+  two 1-hour arms disagreed with each other. Provider-side eviction or
+  replica routing dominates the outcome, so a TTL A/B cannot separate
+  the requested TTL from that variance. This is also why the "5-minute
+  cliff" was one observation of a distribution rather than a fixed
+  property.
+
+**Where the fault must live.** A whole-request miss in a
+prefix-keyed cache means the request's *leading* region differed — the
+system prompt or the tool set, both of which sit before the
+conversation. Claude Code rebuilds its system prompt per request and it
+carries per-machine dynamic sections (cwd, environment info, memory
+paths, `git status`); the CLI ships `--exclude-dynamic-system-prompt-sections`
+precisely to move those out of the system prompt, and its own help says
+that "improves cross-user prompt-cache reuse". That is the lever, and
+it is on the client side, not in Bifrost.
+
+It is not yet the *fix*. Two attempts to confirm it did not settle the
+question: the flag did not improve cross-invocation reuse in a scratch
+repository (two runs both floored), and the per-request headers
+`x-bf-disable-content-logging` and `x-bf-store-raw-request-response`
+cannot override the virtual key's `disable_content_logging = 1`, so the
+bodies stay hidden. **Naming the exact diverging bytes needs a bounded
+content-logging window**, which writes conversation bodies unencrypted
+into `~/.config/bifrost/logs.db` and therefore needs the operator's
+explicit go-ahead. Until that is run, the cause is narrowed to the
+request's leading region and no further.
 
 ## Related
 

@@ -625,61 +625,23 @@ and is kept off the Claude Code path for that reason.
 
 ### Diagnosing the provider cache when it stalls
 
-Over seven days the provider cache is healthy — `MiniMax-M3` 27,067
-requests at **89.9%** of tokens, `MiniMax-M3.1-Flash` 10,872 at **91.1%**.
-But one `MiniMax-M3` session on 11-12 (40 requests, 15 minutes, session
-`b3591ab5`) collapsed and recovered *inside the same conversation*:
+Over seven days the provider cache is healthy at scale and degrades
+below a prompt-size threshold. Hit rate by prompt size:
 
-| cached read | requests | meaning |
+| prompt size | `MiniMax-M3` | `MiniMax-M3.1-Flash` |
 |---|---|---|
-| ~110,000–118,800 | 12 | nearly the whole prefix was cached |
-| 5,632–9,216 | 7 | a partial prefix was cached |
-| exactly 128 | 21 | nothing of the request was cached |
+| < 60k tokens | 64% | 42% |
+| 60–120k | 57% | 67% |
+| 120–250k | 92% | 95% |
+| > 250k | 99% | 98% |
 
-**The 128 is not a cache block.** A controlled probe against MiniMax's
-own endpoint shows a *fresh* 4,540-token request also reporting
-`cache_read_input_tokens = 128`, so 128 is MiniMax's own fixed server-side
-prefix, counted as read on every request. A reading of 128 therefore means
-**none of Claude Code's content was cached** — on a request twelve seconds
-after one that had 110,080 tokens cached.
-
-The partial readings cluster on two stable values (5,683 four times;
-8,985 twice): the signature of a cache breakpoint landing at a fixed
-position. A TTL expiry produces a *partial* read, not this alternation
-inside a 15-minute window, so this is not the TTL.
-
-The gateway cannot see the cause today, because the request bodies are
-hidden:
-
-```bash
-# 734 of the last 740 rows have content_hidden=1 and an empty raw_request.
-sqlite3 ~/.config/bifrost/logs.db \
-  "select count(*), sum(content_hidden=1), sum(raw_request is null or raw_request='') from logs"
-```
-
-The virtual key `bodai-pi-pool` carries `disable_content_logging = 1`,
-and every provider has `store_raw_request_response = 0`. To diagnose it:
-
-1. **Turn on content logging for a bounded window.** Set
-   `disable_content_logging = 0` on the virtual key (or send
-   `x-bf-disable-content-logging` per request), and set
-   `store_raw_request_response = 1` on the `minimax-anthropic` provider.
-   This writes full conversation bodies — system prompt, transcript, tool
-   results — into `~/.config/bifrost/logs.db` **unencrypted**. Keep the
-   window short, and delete the captured rows afterwards.
-2. **Capture one hit and one miss.** The `logs` table's `cache_read_tokens`
-   column tells you which is which: a full read is near the prompt count,
-   a miss is 128.
-3. **Diff the prefixes** of the two bodies. The first divergence point is
-   the cause. Work backwards from there: the system prompt (which carries
-   the date and the working directory), the tool definitions (which change
-   when a tool's schema is materialised), the transcript, or the provider's
-   own replica routing.
-4. **Turn content logging back off** and delete the captured rows.
-
-Do not guess at this from token counts alone — the same 128 appears for
-"the prefix changed" and "the provider never wrote a cache at all", and
-only the bodies separate them.
+The failures are **whole-request misses**, not partial ones: the cached
+read lands on 128–600 tokens, which is MiniMax's own fixed server-side
+prefix and nothing of Claude Code's content. (A *fresh* 4,540-token
+request also reports 128, so 128 means "nothing of ours matched".) In
+the 60–120k band those whole misses are 24.8% of requests and partial
+hits a further 18.2%, spread evenly through the day rather than
+clustered on any event.
 
 > **Reading MiniMax's cache counters.** MiniMax's Anthropic-compatible
 > endpoint reports `cache_creation_input_tokens = 0` and
@@ -693,10 +655,15 @@ only the bodies separate them.
 > × marker placement × requested TTL × direct-vs-gateway, read at +90s and
 > +9min) returned **identical usage on matching direct and gateway arms
 > at every round**. Bifrost passes `cache_control` through faithfully.
-> Two further findings from that probe:
+> Three further findings from that probe and a synthetic mutation ladder:
 >
-> - **There is no minimum prefix size.** A 4,540-token prefix cached fine
->   (4,608 read at +90s), so a short prefix is not the problem.
+> - **The cached amount is the shared-prefix boundary.** Moving a mutation
+>   later in a synthetic request moved the cached boundary later in
+>   lockstep (0 → 3,584 → 5,888 → 7,168 → 8,192 → 8,704). A cached read
+>   of 128 means the *first* block differed; a read of ~9,000 means the
+>   system prompt matched and something after it did not.
+> - **The lookup is reliable for unchanged content.** Sixteen
+>   byte-identical requests hit 16/16.
 > - **The cache lifetime is not deterministic.** The same nominal 5-minute
 >   arm survived 9 minutes in one variant and expired in another; the two
 >   1-hour arms disagreed with each other as well. Provider-side eviction
@@ -707,6 +674,49 @@ only the bodies separate them.
 > Note also that the gateway's Anthropic-compatible route is
 > **`/anthropic/v1/messages`**, not `/v1/messages` (which returns HTTP
 > 405).
+
+**Where the fault must live.** A whole-request miss in a prefix-keyed
+cache means the request's *leading* region differed — the system prompt
+or the tool set, both of which sit before the conversation. Claude Code
+rebuilds its system prompt per request and it carries per-machine
+dynamic sections (cwd, environment info, memory paths, `git status`).
+The CLI ships `--exclude-dynamic-system-prompt-sections` precisely to
+move those out of the system prompt, and its own help says that
+"improves cross-user prompt-cache reuse". That is the lever, and it is
+on the client side.
+
+**To see the bodies** — the gateway cannot today:
+
+```bash
+# 734 of the last 740 rows have content_hidden=1 and an empty raw_request.
+sqlite3 ~/.config/bifrost/logs.db \
+  "select count(*), sum(content_hidden=1), sum(raw_request is null or raw_request='') from logs"
+```
+
+The virtual key `bodai-pi-pool` carries `disable_content_logging = 1`,
+and every provider has `store_raw_request_response = 0`. The per-request
+headers `x-bf-disable-content-logging` and `x-bf-store-raw-request-response`
+**cannot override the key-level setting** — verified by probe. To see
+the bodies:
+
+1. **Turn on content logging for a bounded window.** Set
+   `disable_content_logging = 0` on the virtual key and
+   `store_raw_request_response = 1` on the `minimax-anthropic` provider.
+   This writes full conversation bodies — system prompt, transcript, tool
+   results — into `~/.config/bifrost/logs.db` **unencrypted**. Keep the
+   window short, and delete the captured rows afterwards. **Get the
+   operator's explicit go-ahead first.**
+2. **Capture one hit and one miss.** The `logs` table's
+   `cache_read_tokens` column tells you which is which: a full read is
+   near the prompt count, a miss is 128.
+3. **Diff the prefixes** of the two bodies. The first divergence point is
+   the cause — expected in the system prompt's leading region or in the
+   tool set.
+4. **Turn content logging back off** and delete the captured rows.
+
+Do not guess at this from token counts alone — the same 128 appears for
+"the prefix changed" and "the provider never wrote a cache at all", and
+only the bodies separate them.
 
 ## Mahavishnu Worker Defaults
 
