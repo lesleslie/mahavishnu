@@ -9,14 +9,17 @@ Mahavishnu's MCP server exposes **178 tools** on the `full` profile, split acros
 - **27 inline core tools** registered in `mahavishnu/mcp/server_core.py` (always loaded)
 - **150 profile-gated tools** registered across 39 profile-gated groups under `mahavishnu/mcp/tools/` (loaded per the active profile — `minimal`, `standard`, or `full`), plus the always-on `discover_tools` meta-tool
 
-This document is **generated from source**. The inventory script extracts `@mcp.tool`, `@server.tool`, `@app.tool`, and `mcp.tool()(name)` registrations; see `mahavishnu/mcp/tools/__init__.py` for the module list.
+This document is **hand-maintained** — there is no generator script behind it, so the
+counts below drift when tools are added or removed. See `mahavishnu/mcp/tools/__init__.py`
+for the module list, and `docs/plans/2026-11-07-mcp-tool-disambiguation.md` Phase 4
+for the planned `scripts/check_mcp_tool_surface.py` guard that would catch the drift.
 
 ## Tool Profile Gating
 
 Tools are gated by the `MAHAVISHNU_TOOL_PROFILE` environment variable:
 
 - `full` (default): all 178 tools loaded
-- `standard`: core 11 groups (terminal, pool, worker, messaging, git, session-buddy, coordination, ecosystem, health, capability, ...)
+- `standard`: core 11 groups (terminal, pool, worker, messaging, git, session-buddy, ecosystem, health, capability, ...)
 - `minimal`: health probes only
 
 Profile configuration: `mahavishnu/mcp/tools/profiles.py`. A `discover_tools(query)` meta-tool is always registered so Claude can find unloaded tools.
@@ -631,131 +634,7 @@ _5 tool(s)_
 
 **Description:** Get statistics about the OTel trace ingester.
 
-### 11. Coordination (Issues, Todos, Plans)
-
-_15 tool(s)_
-
-#### `coord_list_issues`
-
-**Signature:** `async def coord_list_issues(status: str | None, priority: str | None, repo: str | None, assignee: str | None)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:30`
-
-**Description:** List cross-repository issues with optional filtering.
-
-#### `coord_get_issue`
-
-**Signature:** `async def coord_get_issue(issue_id: str)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:54`
-
-**Description:** Get detailed information about a specific issue.
-
-#### `coord_create_issue`
-
-**Signature:** `async def coord_create_issue(title: str, description: str, repos: list[str], priority: str, severity: str, assignee: str | None, target: str | None, labels: list[str] | None)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:66`
-
-**Description:** Create a new cross-repository issue.
-
-#### `coord_update_issue`
-
-**Signature:** `async def coord_update_issue(issue_id: str, status: str | None, priority: str | None)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:119`
-
-**Description:** Update an existing issue.
-
-#### `coord_close_issue`
-
-**Signature:** `async def coord_close_issue(issue_id: str)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:153`
-
-**Description:** Close an issue.
-
-#### `coord_list_todos`
-
-**Signature:** `async def coord_list_todos(status: str | None, repo: str | None, assignee: str | None)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:164`
-
-**Description:** List todo items with optional filtering.
-
-#### `coord_get_todo`
-
-**Signature:** `async def coord_get_todo(todo_id: str)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:187`
-
-**Description:** Get detailed information about a specific todo.
-
-#### `coord_create_todo`
-
-**Signature:** `async def coord_create_todo(task: str, description: str, repo: str, estimate_hours: float, priority: str, assignee: str | None, blocked_by: list[str] | None, labels: list[str] | None, acceptance_criteria: list[str] | None)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:199`
-
-**Description:** Create a new todo item.
-
-#### `coord_complete_todo`
-
-**Signature:** `async def coord_complete_todo(todo_id: str)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:254`
-
-**Description:** Mark a todo as completed.
-
-#### `coord_get_blocking_issues`
-
-**Signature:** `async def coord_get_blocking_issues(repo: str)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:272`
-
-**Description:** Get all issues blocking a specific repository.
-
-#### `coord_check_dependencies`
-
-**Signature:** `async def coord_check_dependencies(consumer: str | None)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:280`
-
-**Description:** Validate inter-repository dependencies.
-
-#### `coord_get_repo_status`
-
-**Signature:** `async def coord_get_repo_status(repo: str)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:290`
-
-**Description:** Get comprehensive coordination status for a repository.
-
-#### `coord_list_plans`
-
-**Signature:** `async def coord_list_plans(status: str | None, repo: str | None)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:311`
-
-**Description:** List cross-repository plans with optional filtering.
-
-#### `coord_list_dependencies`
-
-**Signature:** `async def coord_list_dependencies(consumer: str | None, provider: str | None, dependency_type: str | None)`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:322`
-
-**Description:** List inter-repository dependencies with optional filtering.
-
-#### `coord_get_ecosystem_status`
-
-**Signature:** `async def coord_get_ecosystem_status()`
-
-**Source:** `mahavishnu/mcp/tools/coordination_tools.py:336`
-
-**Description:** Get unified ecosystem coordination status.
-
-### 12. Repository Messaging
+### 11. Repository Messaging
 
 _7 tool(s)_
 
@@ -815,7 +694,7 @@ _7 tool(s)_
 
 **Description:** Send a quality alert to other repositories.
 
-### 13. Hybrid Search
+### 12. Hybrid Search
 
 _5 tool(s)_
 
@@ -859,7 +738,7 @@ _5 tool(s)_
 
 **Description:** Fan-out search across Akosha + Session-Buddy and aggregate results.
 
-### 14. Capability Resolution
+### 13. Capability Resolution
 
 _5 tool(s)_
 
@@ -903,7 +782,7 @@ _5 tool(s)_
 
 **Description:** Read back persisted envelopes for a trace_id (persistence: Oneiric; the legacy standalone MCP server was retired 2026-09-20).
 
-### 15. Clone Detection & Refactor
+### 14. Clone Detection & Refactor
 
 _4 tool(s)_
 
@@ -939,7 +818,7 @@ _4 tool(s)_
 
 **Description:** Return the stored `VerificationResult` for a given `proposal_id`.
 
-### 16. Learning Pipeline
+### 15. Learning Pipeline
 
 _5 tool(s)_
 
@@ -983,7 +862,7 @@ _5 tool(s)_
 
 **Description:** Get version and promotion history for a specific skill.
 
-### 17. Self-Improvement & Approvals
+### 16. Self-Improvement & Approvals
 
 _7 tool(s)_
 
@@ -1043,7 +922,7 @@ _7 tool(s)_
 
 **Description:** List recent self-improvement records with before/after failure rates.
 
-### 18. Goal Team
+### 17. Goal Team
 
 _3 tool(s)_
 
@@ -1071,7 +950,7 @@ _3 tool(s)_
 
 **Description:** List all available skills for goal-driven team creation.
 
-### 19. OpenHands
+### 18. OpenHands
 
 _4 tool(s)_
 
@@ -1107,7 +986,7 @@ _4 tool(s)_
 
 **Description:** Check whether the OpenHands service is reachable.
 
-### 20. PyCharm Integration
+### 19. PyCharm Integration
 
 _8 tool(s)_
 
@@ -1175,7 +1054,7 @@ _8 tool(s)_
 
 **Description:** List code inspections and problems for a file via PyCharm.
 
-### 22. Adapter Management
+### 20. Adapter Management
 
 _8 tool(s)_
 
@@ -1243,7 +1122,7 @@ _8 tool(s)_
 
 **Description:** List available adapters.
 
-### 23. Health & Liveness
+### 21. Health & Liveness
 
 _10 tool(s)_
 
@@ -1327,7 +1206,7 @@ _10 tool(s)_
 
 **Description:** Return a metrics snapshot for the running MCP server.
 
-### 24. Observability & Backup
+### 22. Observability & Backup
 
 _15 tool(s)_
 
@@ -1451,7 +1330,7 @@ _15 tool(s)_
 
 **Description:** Restore from a backup.
 
-### 25. User & Auth
+### 23. User & Auth
 
 _2 tool(s)_
 
@@ -1471,7 +1350,7 @@ _2 tool(s)_
 
 **Description:** Check if a user has a specific permission for a repository.
 
-### 26. Tool Discovery
+### 24. Tool Discovery
 
 _4 tool(s)_
 
@@ -1507,7 +1386,7 @@ _4 tool(s)_
 
 **Description:** Show full detail (docstring + input schema) for one primitive.
 
-### 27. Webhook
+### 25. Webhook
 
 _1 tool(s)_
 
@@ -1519,7 +1398,7 @@ _1 tool(s)_
 
 **Description:** Read back a stored `WebhookIngress` for `webhook_id`.
 
-### 28. Model Evaluation
+### 26. Model Evaluation
 
 _3 tool(s)_
 
@@ -1562,7 +1441,7 @@ path of the Markdown report it wrote.
 **Description:** Fetch a persisted evaluation run: its record, its case
 results, and its scores.
 
-### 29. Jot Type Reference
+### 27. Jot Type Reference
 
 This section is not a tool category — it documents the shapes returned by
 the Jot drain tools (which live under the parent category's broader

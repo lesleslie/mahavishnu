@@ -11,7 +11,7 @@ Current status (verified live, 2026-10-30):
   `@maximhq/bifrost`'s native binary) has been resolved or worked around. The
   launchd job (`ai.bifrost.gateway`) and the Oneiric-secret-resolving
   `mahavishnu bifrost status` are healthy.
-- The transport binary is pinned to **v2.5.0** (upgraded from v2.4.0 on
+- The transport binary is pinned to **v2.5.1** (upgraded from v2.5.0 on
   2026-11-07) — see "Transport Version Pin" below. Verify with
   `curl -s http://127.0.0.1:8471/api/version`.
 - Live providers: `minimax-anthropic` (MiniMax's Anthropic-native
@@ -27,6 +27,8 @@ Current status (verified live, 2026-10-30):
   is allowed with its own path override, and the key lists `MiniMax-M3` and
   `MiniMax-M3.1-Flash`. The store is authoritative and
   the template is only its seed — see "Custom Providers: Three Silent Traps".
+  The checked-in template now adds `openai/gpt-5.4-mini` after that MiniMax
+  fallback; the live store still needs the authenticated routing-rule update.
 - **Both harnesses route through the gateway, and both are verified.**
   `mahavishnu bifrost verify-gate` passes for Qwen Code
   (`provider=minimax-anthropic status=success via claude-cli/0.26.1`), and a
@@ -58,13 +60,13 @@ native `bifrost-http` binary from `downloads.getmaxim.ai` and resolves
 `latest` on every boot. The npm version number (1.6.x) is unrelated to the
 transport version that actually runs.
 
-The transport version is pinned to **v2.5.0** in two places that a CI guard
+The transport version is pinned to **v2.5.1** in two places that a CI guard
 test keeps in sync:
 
 - `mahavishnu/bifrost/paths.py` → `BIFROST_TRANSPORT_VERSION`
 - `config/launchd/ai.bifrost.gateway.plist` → `BIFROST_TRANSPORT_VERSION`
 
-The launcher receives `--transport-version=v2.5.0` and strips the flag before
+The launcher receives `--transport-version=v2.5.1` and strips the flag before
 exec'ing the binary.
 
 **To roll back on the launchd path**, edit `BIFROST_TRANSPORT_VERSION` in
@@ -225,18 +227,28 @@ It also enforces Anthropic's thinking floor: with `thinking` enabled, the
 budget must be **at least 1024 tokens**. A request below that is rejected
 with `400 invalid_request_error: reasoning.max_tokens must be >= 1024 for anthropic`.
 
-**The `route-anthropic-native` rule's fallback is
-`minimax-anthropic/MiniMax-M3.1-Flash`** — the same provider on a different
-model. It has to be: the Anthropic ingress bridges every request to the
-`responses` request type, and the OpenAI-compatible `minimax-openai` provider
-only allows `chat_completion`, so it cannot serve this request at all. A
-chat-completions fallback there is inert, and the request fails hard instead
-of degrading.
+**The checked-in template's `route-anthropic-native` rule tries
+`openai/gpt-5.4-mini`.** The
+Anthropic ingress bridges every request to Bifrost's `responses` request type.
+The native `openai` provider supports Responses, so GPT-5.4 mini can serve as
+the fallback on that route.
 
-A fallback on the same provider also means a below-1024 thinking budget
-still fails, rather than silently degrading to inline reasoning: both models
-speak the Anthropic protocol and enforce the same floor. Claude Code's own
-thinking budgets are 1024 and above, so it does not hit this.
+The live config store is authoritative. Its current `route-anthropic-native`
+fallback is `openai/gpt-5.4-mini`, matching the checked-in template.
+
+```json
+{
+  "fallbacks": [
+    "openai/gpt-5.4-mini"
+  ]
+}
+```
+
+Both MiniMax models enforce the Anthropic thinking floor of 1024 tokens. The
+OpenAI fallback is a protocol-translated availability path; Anthropic-native
+thinking signatures and Claude-specific behavior are not guaranteed there.
+Claude Code's own thinking budgets are 1024 and above, so the MiniMax route
+normally does not hit that limit.
 
 If reasoning appears inline in the assistant text, check the gateway's
 request log for the request's provider attribution before assuming the route
@@ -514,7 +526,7 @@ Two limits worth stating plainly:
   a convention that keeps this deployment honest, not an enforcement.
 
 > **`off` means off.** It suppresses the cache *read* as well as the write.
-> Bifrost v2.5.0 has no header that suppresses a read —
+> Bifrost v2.5.1 has no header that suppresses a read —
 > `x-bf-cache-no-store` is documented upstream as "skip writing the response
 > to cache (still served from cache on hit)" — so the repo's `off` mode
 > points at a bucket nothing was ever written to. The cache key is encoded
@@ -580,22 +592,191 @@ cache is the right one. The response cache earns its keep on the short,
 repetitive traffic the repo's own clients send — the Agno and worker paths —
 and is kept off the Claude Code path for that reason.
 
-> **The provider cache has a lever this gateway is not using.** Bifrost
-> supports a per-provider `prompt_cache` block whose `ttl` may be `"1h"` —
-> upstream's default is 5 minutes, which is the provider's default ephemeral
-> cache lifetime — and `cache_control_injection_points` to place breakpoints
-> on specific messages. Upstream's rule is "caller markers always win", and
-> Claude Code sends its own `cache_control` markers, so `auto_inject` is a
-> no-op while it does.
+> **Do not configure `prompt_cache` on a provider for Claude Code
+> traffic.** Bifrost's per-provider `prompt_cache` block (`auto_inject`,
+> `ttl`, `cache_control_injection_points`) is for clients that send **no**
+> cache markers — upstream's own words are *"Agentic clients such as Codex
+> send no cache markers"*, and *"Requests that already carry their own
+> `cache_control` or `prompt_cache_breakpoint` are never modified."*
+> Claude Code always carries its own markers, so the block is skipped
+> entirely, not merely overridden. No Codex traffic appears in this
+> gateway's logs either.
 >
-> The cliff is measurable here: the uncached fraction runs 8% within five
-> minutes of the previous request, 22% after ten, and 99.9% after thirty.
-> About 146 requests a day land past the cliff and re-process ~15.3M tokens.
-> Extending the TTL would bound that at roughly **$70/month** — but MiniMax
-> charges $0.375/M to *write* a cache against $0.30/M for uncached input, so
-> a re-written prefix that is read only once costs more than not caching it.
-> Whether Bifrost's injection would apply on top of Claude Code's markers, and
-> whether MiniMax honours a requested one-hour TTL, is **not yet tested**.
+> **The TTL lever is on the client, and it is already on the short
+> default.** Claude Code v2.1.323 reads `promptCacheTtl` /
+> `CLAUDE_CODE_PROMPT_CACHE_TTL` for the main conversation and
+> `subagentPromptCacheTtl` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL` for
+> everything else; both take `"5m"` or `"1h"`. Its own description of the
+> default is the point: *"Unset = automatic: 1 hour on a Claude
+> subscription within its usage limits, **5 minutes on an API key**,
+> Bedrock, Vertex or Foundry."* This gateway authenticates with a virtual
+> key — the API-key branch — so the effective TTL was always 5 minutes.
+>
+> It is left alone because the population it would serve has gone. The
+> original estimate (~146 requests a day past the 5-minute cliff, ~15.3M
+> tokens, ~$70/month) was measured against the 11-06…11-08 traffic of
+> 12–14k requests a day; the gateway now sees 20–300 a day, and only
+> **one request in two days** fell more than 30 minutes behind its
+> predecessor. At that volume the lever is worth ~$0/month. Re-open it if
+> traffic returns to fleet scale. Note the economics when it does: MiniMax
+> charges $0.375/M to *write* a cache against $0.30/M for uncached input
+> and $0.06/M to read it, so a re-written prefix must be read **twice**
+> inside the window to pay for itself.
+
+### Diagnosing the provider cache when it stalls
+
+**The provider cache misses whole requests because Claude Code's tool
+set changes inside a session.** The Anthropic cacheable prefix is
+built in the order **tools → system → messages**, and the `tools` array
+is at its front — so a tool added mid-session invalidates the *entire*
+cached prefix.
+
+Captured consecutive requests from one session:
+
+| request | tool count | tool characters | tool added |
+|---|---|---|---|
+| 002 | 12 | 30,339 | — |
+| 003 | 13 | 33,494 | `mcp__bodai__wake` (MCP server connected late) |
+| 006 | 14 | 41,233 | `Monitor` (deferred tool materialised on demand) |
+| 007 | 15 | 42,067 | `mcp__bodai__telepathy_receive` |
+
+The failures are **whole-request misses**, not partial ones: the cached
+read lands on 128–600 tokens, which is MiniMax's own fixed server-side
+prefix and nothing of Claude Code's content. (A *fresh* 4,540-token
+request also reports 128, so 128 means "nothing of ours matched".) With
+a stable tool set the cache is effectively perfect — one captured
+request read **81,083 of 81,084 tokens** back, 99.99%.
+
+Over seven days the whole-request miss rate falls as sessions get
+longer, which is a per-session re-warm amortised over more turns:
+
+| prompt size | requests | whole-request misses | miss rate | cost over 7 days |
+|---|---|---|---|---|
+| < 60k | 3,292 | 774 | 23.5% | $8.96 |
+| 60–120k | 10,035 | 2,354 | 23.5% | $58.13 |
+| 120–250k | 10,315 | 427 | 4.1% | $19.94 |
+| > 250k | 9,936 | 112 | 1.1% | $11.88 |
+
+**What the fleet actually loses, and to what.** Claude Code sends **two
+different request families** on this path, and they cache very
+differently. They separate by `object_type` in the gateway's log
+(streamed vs not) and are confirmed by their output profile: the
+conversation averages 721 output tokens and stops with `tool_calls`; the
+other averages 46 and stops with `length` — a verdict truncated at a
+capped budget.
+
+Over seven days on the MiniMax path:
+
+| family | requests | input tokens | cache read | whole-request misses | re-read | cost |
+|---|---|---|---|---|---|---|
+| conversation (streamed) | 23,914 | 5.03B | **97.7%** | 1,655 | 57.3M | $17.18 |
+| auxiliary (non-streamed) | 7,320 | 584M | **35.1%** | 3,041 | 218M | $65.37 |
+| all MiniMax | 31,234 | 5.61B | 91.1% | 4,696 | 280M | $83.97 |
+
+$83.97 over seven days is **$360 a month** at $0.30/M.
+
+The auxiliary family is the **auto-mode safety classifier**: a per-turn
+request carrying the security-review prompt and the pending tool call,
+with no tools of its own. Its dynamic content sits *inside* its own
+cacheable region, so it can only ever cache its stable head — 35.1%,
+against 97.7% for the conversation.
+
+**The tool-set churn is real, but it is the smaller half.** Of the
+conversation family's whole-request misses, 1,383 are *churn-shaped* —
+the previous request in the same session was under five minutes earlier,
+so the provider had no reason to have evicted — and 120 are
+eviction-shaped. The churn-shaped misses re-read 30.3M tokens.
+
+| | conversation cache read rate | churn re-read | cost |
+|---|---|---|---|
+| before | 97.66% | 30.3M tokens / 7d | $9.08 / 7d |
+| after | **98.26%** | ~0 | ~$0 |
+
+**$38.92 a month.**
+
+**The fix is in the harness, and it is landed.** Two levers, both
+client-side:
+
+1. **`CLAUDE_CODE_MCP_STARTUP_WAIT_MS=10000`** — set in
+   `~/.claude/settings.json`. Claude Code picks its MCP startup mode
+   from this value: unset, the mode is `"lifted"` — *do not wait for MCP
+   servers before the first turn* — and a positive value makes it
+   `"host_wait"`, waiting up to that many ms for the MCP hosts to
+   connect. With the tools present from request one, the `tools` array
+   never changes and the prefix never breaks.
+2. **`"alwaysLoad": true`** on an MCP server's entry in
+   `~/.claude.json` — set for `bodai`. Claude Code's own description:
+   *"all tools from this server are always included in the prompt and
+   never deferred behind tool search … As a side effect, true also
+   blocks startup until the server is connected."* This is the lever for
+   the deferred half: `Monitor` and `mcp__bodai__telepathy_receive`
+   were materialised on demand in the capture above.
+
+> **`CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS` is not this lever.** It bounds
+> how long a running MCP *tool call* may take before Claude Code moves
+> it to a background task. It says nothing about when the server
+> connects; the harness's existing `1000` is about call backgrounding.
+
+Bifrost's `prompt_cache` block cannot help any of this: it is skipped
+for any request that already carries its own `cache_control` markers,
+which every Claude Code request does.
+
+**What the fix does not reach: the auxiliary family.** 218M tokens,
+$65.37 per seven days, **$280 a month** — seven times the churn prize.
+No tool-set change touches it, because it carries no tool set of its
+own: its prefix changes because *its own* dynamic content moves. The
+only lever on it is not running the classifier at all, which is a
+security-posture decision, not a cache decision. That is the next open
+question, not a closed one.
+
+> **Reading MiniMax's cache counters.** MiniMax's Anthropic-compatible
+> endpoint reports `cache_creation_input_tokens = 0` and
+> `cache_creation = null` **even when a write has plainly occurred** — a
+> probe at +90s read 27,535 of 27,347 tokens from cache on a request that
+> reported zero created tokens. So `created = 0` does not mean "no write
+> happened"; only `cache_read_input_tokens` is trustworthy. The gateway
+> leg populates `cache_creation` but also with zeros.
+
+> **The gateway is exonerated.** A seven-arm controlled probe (prefix size
+> × marker placement × requested TTL × direct-vs-gateway, read at +90s and
+> +9min) returned **identical usage on matching direct and gateway arms
+> at every round**. Bifrost passes `cache_control` through faithfully.
+> Three further findings from that probe and a synthetic mutation ladder:
+>
+> - **The cached amount is the shared-prefix boundary.** Moving a mutation
+>   later in a synthetic request moved the cached boundary later in
+>   lockstep (0 → 3,584 → 5,888 → 7,168 → 8,192 → 8,704). A cached read
+>   of 128 means the *first* block differed; a read of ~9,000 means the
+>   system prompt matched and something after it did not.
+> - **The lookup is reliable for unchanged content.** Sixteen
+>   byte-identical requests hit 16/16.
+> - **The cache lifetime is not deterministic.** The same nominal 5-minute
+>   arm survived 9 minutes in one variant and expired in another; the two
+>   1-hour arms disagreed with each other as well. Provider-side eviction
+>   or replica routing dominates the outcome, so **a TTL A/B cannot
+>   separate the requested TTL from that variance** — and the "5-minute
+>   cliff" is one observation of a distribution, not a fixed property.
+>
+> Note also that the gateway's Anthropic-compatible route is
+> **`/anthropic/v1/messages`**, not `/v1/messages` (which returns HTTP
+> 405).
+
+**To see the bodies without changing the gateway.** The virtual key
+`bodai-pi-pool` carries `disable_content_logging = 1` and every provider
+carries `store_raw_request_response = 0`, so the gateway logs none of
+them; the per-request headers `x-bf-disable-content-logging` and
+`x-bf-store-raw-request-response` **cannot override the key-level
+setting** (verified by probe), and a direct write to the config store is
+not picked up because Bifrost holds its config in memory.
+
+The route that works is a **loopback capture proxy**: point Claude Code
+at `http://127.0.0.1:<port>/anthropic` with `--settings` for a
+scratch-repository run, and have the proxy forward each request
+unchanged to the gateway while writing the body to disk. Only the
+scratch session's bodies are recorded — no gateway configuration
+changes, no restart, and no other session's traffic. `settings.json`
+pins `ANTHROPIC_BASE_URL`, so the override has to come through
+`--settings`, not the process environment.
 
 ## Mahavishnu Worker Defaults
 
@@ -630,7 +811,8 @@ Current task mappings:
 - `long_context` or `longContext` -> `minimax-openai/MiniMax-M3`
 - `web_search` or `webSearch` -> `minimax-openai/MiniMax-M3.1-Flash`
 - `image` -> `minimax-openai/MiniMax-M3.1-Flash`
-- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3.1-Flash` (fallback `llama-server/qwen3-8b-q4_k_m`)
+- `background`, `cheap`, or `high_throughput` -> `minimax-openai/MiniMax-M3.1-Flash` (fallback `openai/gpt-5.6-luna`, then `llama-server/qwen3-8b-q4_k_m`)
+- `classify` or `extract` -> `minimax-openai/MiniMax-M3.1-Flash` (fallback `openai/gpt-5.6-luna`, then `llama-server/qwen3-8b-q4_k_m`)
 - `x-bf-route: anthropic_native` -> provider `minimax-anthropic`, model as sent by the caller (fallback `minimax-anthropic/MiniMax-M3.1-Flash`)
 
 The `anthropic_native` route is the only one the **header** rules can fire
@@ -645,9 +827,9 @@ present.
 A second route fires on the **complexity tier** rather than on a header:
 `route-complexity-simple` (priority 3) matches
 `headers["x-bf-route"] == "anthropic_native" && complexity_tier == "SIMPLE"`
-and targets `minimax-anthropic/MiniMax-M3.1-Flash`. The tier is computed
-inside the gateway, so this rule needs no header the caller does not already
-send — see "Complexity Router" below.
+and targets `minimax-anthropic/MiniMax-M3.1-Flash`, with `openai/gpt-5.6-luna`
+as the fallback. The tier is computed inside the gateway, so this rule needs
+no header the caller does not already send — see "Complexity Router" below.
 
 Two providers claim `MiniMax-M3`, so the route is what makes the choice
 unambiguous: `minimax-anthropic` reaches MiniMax over its Anthropic-native
@@ -752,7 +934,7 @@ sqlite3 ~/.config/bifrost/logs.db \
     WHERE routing_rule_id='route-complexity-simple' ORDER BY timestamp DESC LIMIT 1"
 ```
 
-`session-affinity` is a built-in engine in the pinned v2.5.0 transport — not
+`session-affinity` is a built-in engine in the pinned v2.5.1 transport — not
 a provider setting, not a plugin, and not a `governance_config` key. The
 store exposes no switch for it.
 

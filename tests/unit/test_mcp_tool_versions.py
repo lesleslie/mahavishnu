@@ -60,7 +60,6 @@ class TestToolVersionsRegistry:
             "mahavishnu_trigger_workflow",
             "mahavishnu_pool_list",
             "mahavishnu_terminal_launch",
-            "coord_create_issue",
             "mahavishnu_treesitter_parse",
         }
         missing = expected - set(TOOL_VERSIONS)

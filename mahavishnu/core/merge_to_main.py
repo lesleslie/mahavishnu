@@ -129,6 +129,55 @@ def make_review_state(
     }
 
 
+#: Control characters, including ESC (0x1b) which opens an ANSI escape.
+#: Newlines are excluded here on purpose -- they are handled by the
+#: whitespace collapse below, which turns them into a space rather than
+#: deleting them (deleting would join two words into one).
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+
+#: Credential-shaped substrings. A reviewer that copies a secret out of
+#: the diff under review would otherwise land it in the operator's log --
+#: a log the operator reads, greps and pastes from.
+_CREDENTIAL_RE = re.compile(
+    r"\b(?:sk|pk|ghp|gho|github_pat|xox[baprs])[-_][A-Za-z0-9_-]{12,}\b",
+    re.IGNORECASE,
+)
+
+#: The longest reviewer note printed to the operator's stderr. A note is
+#: model-authored free text, so its length is bounded: one reviewer must
+#: not be able to flood the log.
+MAX_NOTE_LENGTH: int = 500
+
+
+def sanitize_note(note: str, *, limit: int = MAX_NOTE_LENGTH) -> str:
+    """Make a reviewer's free-form note safe to print.
+
+    The note is the remainder of a reviewer's reply -- model-authored text
+    we did not write -- and it reaches the operator's stderr verbatim (see
+    ``_format_verdicts`` and the retry message in ``run_review``). So it
+    is made safe before it is trusted:
+
+    * control characters are stripped, so an ANSI escape cannot repaint
+      the terminal;
+    * credential-shaped substrings are masked, so a secret copied out of
+      the diff under review does not reach a log;
+    * whitespace is collapsed to one line, so a note carrying a newline
+      cannot forge a second verdict's log line;
+    * the length is capped, and a truncated note keeps a trailing ``...``
+      so a cut note is not mistaken for a whole one.
+
+    The note is *kept*, not dropped. It is what tells a reviewer that had
+    no opinion apart from one that never finished; dropping it would
+    regress the reason the note was surfaced in the first place.
+    """
+    cleaned = _CONTROL_CHAR_RE.sub(" ", note)
+    cleaned = _CREDENTIAL_RE.sub("<redacted>", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if len(cleaned) > limit:
+        cleaned = cleaned[:limit].rstrip() + "..."
+    return cleaned
+
+
 def parse_verdict(agent_text: str) -> dict[str, str]:
     """Parse `<verdict>decision: ...</verdict>` block from agent output.
 
@@ -136,6 +185,12 @@ def parse_verdict(agent_text: str) -> dict[str, str]:
     (fail-loud) so the merge gates on the parser. The 'note' field carries
     either the agent's explanation (on success) or a 'malformed: ...'
     string describing what was wrong (on failure).
+
+    The agent's explanation is model-authored free text, so it is
+    sanitized on the way in -- this is the only point where a note
+    enters the pipeline, so sanitizing here covers every consumer of a
+    verdict (the retry message, the operator-facing summary, and the
+    persisted review state).
     """
     match = VERDICT_RE.search(agent_text)
     if match is None:
@@ -144,7 +199,7 @@ def parse_verdict(agent_text: str) -> dict[str, str]:
             "note": "malformed: <verdict> block not found in agent response",
         }
     decision_raw = match.group(1).strip().lower()
-    note = (match.group(2) or "").strip()
+    note = sanitize_note((match.group(2) or "").strip())
     if decision_raw not in VALID_DECISIONS:
         return {
             "decision": "block",

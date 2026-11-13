@@ -232,6 +232,56 @@ def test_api_key_env_swaps_url_even_when_api_key_is_none() -> None:
     assert "PREFECT_API_URL" not in os.environ
 
 
+async def test_get_client_context_routes_prefect_settings_before_factory_creation() -> None:
+    """The Prefect settings object must be routed before ``get_client`` runs.
+
+    Prefect 3.9.1 snapshots ``PREFECT_API_URL`` through its settings layer,
+    so changing ``os.environ`` alone is not enough. If the adapter creates the
+    client factory before entering Prefect's temporary settings context, the SDK
+    sees the default ``None`` value and spawns an ephemeral server.
+    """
+    from prefect.settings import PREFECT_API_KEY, PREFECT_API_URL, temporary_settings
+
+    from mahavishnu.core.config import PrefectConfig
+
+    config = PrefectConfig(api_url="http://localhost:4200", api_key=None)
+    adapter = PrefectAdapter(config)
+
+    observed: dict[str, object] = {}
+
+    class FakeClient:
+        async def read_health(self) -> dict[str, str]:
+            return {"status": "healthy"}
+
+    class FakeClientFactory:
+        async def __aenter__(self) -> FakeClient:
+            return FakeClient()
+
+        async def __aexit__(
+            self,
+            exc_type: object,
+            exc: object,
+            tb: object,
+        ) -> None:
+            return None
+
+    def fake_get_client() -> FakeClientFactory:
+        observed["prefect_api_url"] = PREFECT_API_URL.value()
+        observed["prefect_api_key"] = PREFECT_API_KEY.value()
+        return FakeClientFactory()
+
+    with temporary_settings({PREFECT_API_KEY: "outer-key"}):
+        with patch(
+            "mahavishnu.engines.prefect_adapter_impl.get_client",
+            side_effect=fake_get_client,
+        ):
+            async with adapter._get_client_context() as client:
+                assert isinstance(client, FakeClient)
+
+    assert observed["prefect_api_url"] == "http://localhost:4200/api"
+    assert observed["prefect_api_key"] is None
+
+
 def test_api_key_env_canonicalizes_api_suffix_when_already_present() -> None:
     """If config ``api_url`` already ends in ``/api``, the env var must
     stay that way (idempotent — do NOT double-suffix)."""

@@ -13,22 +13,19 @@ substrate refuses tasks that don't declare any handle).
 
 from __future__ import annotations
 
+from pathlib import Path  # noqa: TC003
 
-from shepherd import GitRepo as _GitRepo
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from shepherd import GitRepo  # noqa: TC002
 
 
-def write_inside_grant(target: Path, _repo: _GitRepo) -> Path:
+def write_inside_grant(target: Path, _repo: GitRepo) -> Path:
     """Write a file inside the granted root; the substrate's Seatbelt /
     Landlock ruleset must allow the syscall."""
     target.write_text("inside-grant")
     return target
 
 
-def write_outside_grant(target: Path, _repo: _GitRepo) -> Path:
+def write_outside_grant(target: Path, _repo: GitRepo) -> Path:
     """Write a file outside the granted root; the substrate's jail must
     refuse the syscall."""
     target.write_text("outside-grant")

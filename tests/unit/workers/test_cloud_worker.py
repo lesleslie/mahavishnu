@@ -37,6 +37,10 @@ def _enable_bifrost(
 
     monkeypatch.setenv("ONEIRIC_BIFROST_ENABLED", "true")
     monkeypatch.setenv("ONEIRIC_BIFROST_ROUTES", ",".join(routes))
+    # The optional RunPod tier is an operator feature, not part of these
+    # Bifrost routing tests. Prevent a developer-shell environment variable
+    # from changing the asserted fallback chain.
+    monkeypatch.delenv("RUNPOD_PUBLIC_ENDPOINT_ID", raising=False)
     monkeypatch.delenv("BIFROST_ALLOW_REMOTE", raising=False)
     reset_router_for_tests()
 

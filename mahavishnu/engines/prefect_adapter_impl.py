@@ -778,38 +778,48 @@ class PrefectAdapter(OrchestratorAdapter):
         # Configure client for Prefect Cloud if workspace is specified.
         # Some test and sandbox environments can't start Prefect's local server
         # at all, so fall back to a lightweight HTTP shim for lifecycle checks.
-        try:
-            client_factory = get_client()
-        except Exception as exc:  # client factory fallback — broad catch to log shim warning and use lightweight shim  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            logger.warning(
-                "Falling back to lightweight Prefect client shim: %s",
-                exc,
-            )
+        from prefect.settings import PREFECT_API_KEY, PREFECT_API_URL, temporary_settings
 
-            class _PrefectClientShim:
-                def __init__(self, api_url: str) -> None:
-                    self.api_url = api_url
-                    self._compat_shim = True
+        api_url_base = self._resolved_api_url().rstrip("/")
+        if api_url_base.endswith("/api"):
+            sdk_api_url = api_url_base
+        else:
+            sdk_api_url = api_url_base + "/api"
 
-                async def read_health(self) -> Any:
-                    return {"status": "healthy", "api_url": self.api_url}
+        api_key = self.config.api_key
+        settings_overrides = {
+            PREFECT_API_URL: sdk_api_url,
+            PREFECT_API_KEY: api_key,
+        }
 
-                async def api_healthcheck(self) -> Any:
-                    return {"status": "healthy", "api_url": self.api_url}
+        with temporary_settings(settings_overrides):
+            try:
+                client_factory = get_client()
+            except Exception as exc:  # client factory fallback — broad catch to log shim warning and use lightweight shim  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+                logger.warning(
+                    "Falling back to lightweight Prefect client shim: %s",
+                    exc,
+                )
 
-            yield _PrefectClientShim(self._resolved_api_url())
-            return
+                class _PrefectClientShim:
+                    def __init__(self, api_url: str) -> None:
+                        self.api_url = api_url
+                        self._compat_shim = True
 
-        if isinstance(client_factory, Mock):
-            async with client_factory as client:
-                yield client
-            return
+                    async def read_health(self) -> Any:
+                        return {"status": "healthy", "api_url": self.api_url}
 
-        # Always wrap in the env-swap context so PREFECT_API_URL points at the
-        # configured server. The earlier "if self.config.api_key:" guard made
-        # URL routing optional, which caused the SDK to silently spin up an
-        # ephemeral server on :8285 when api_key was unset (Bug C, Oct 2026).
-        with self._api_key_env():
+                    async def api_healthcheck(self) -> Any:
+                        return {"status": "healthy", "api_url": self.api_url}
+
+                yield _PrefectClientShim(self._resolved_api_url())
+                return
+
+            if isinstance(client_factory, Mock):
+                async with client_factory as client:
+                    yield client
+                return
+
             async with client_factory as client:
                 yield client
 

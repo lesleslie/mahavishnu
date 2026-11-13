@@ -4,7 +4,6 @@ Covers:
 - CoordinationManager.get_ecosystem_status()
 - CoordinationMemory Akosha push and search_semantic()
 - _run_command_safe() pipe helper
-- coord_get_ecosystem_status MCP tool
 - ecosystem-status and roadmap CLI commands
 """
 

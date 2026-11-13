@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- docs: Add the fleet-wide MCP surface guard and its offline snapshot test
+- mcp-common: Give the shared agent and skill factories non-empty tool descriptions
+- mcp: Add docstrings to the published MCP tool functions that qwen reported as invalid
 - agents: Drop the stale dispatch_to_pool reference
 - bifrost: Make the readiness budget clear the observed cold start
 - bifrost: Map the sonnet alias to the concise model so the review fallback lands
@@ -139,8 +142,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- skills: The `auto-coordinate` skill is now tracked in the repo at `mahavishnu/.claude/skills/auto-coordinate/`, with `~/.claude/skills/auto-coordinate/SKILL.md` symlinked to it so cross-repo discovery is unchanged. It lived only in the global skills directory until now, which is why its contract could rot against the tool surface with no pull request, no review, and no CI catching it
+- testing: `tests/unit/test_skill_tool_contract.py` asserts that every MCP tool and every `mahavishnu coord` command named by any repo skill actually exists, checked against the checked-in profile fixtures rather than a running server. It also asserts that no skill names a `coord_*` MCP tool
+
 ### Removed
 
+- mcp: The `coord_*` MCP tools — the 15-tool `mahavishnu/mcp/tools/coordination_tools.py` module was never registered, so none of its tools ever appeared in `tools/list` or could be called. It was a 1:1 mirror of the `mahavishnu coord` CLI (16 commands to 15 tools) and re-implemented the CLI's write paths, so wiring it up would have meant two write paths into the same `coordination:` ledger. Its bare `coord_` prefix also violated the component-prefix convention (`docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md`). The coordination capability is unaffected: it lives in `settings/ecosystem.yaml` and is reached through `mahavishnu coord …` and `CoordinationManager`
 - mcp: The dead desktop-automation surface — the `automation_*` MCP tools and the `mahavishnu/automation/` backend behind them. Neither was reachable: the tools were never registered, and the backend had no caller once the tool module was deleted. Desktop automation is served by the `cmux-cua` MCP server, which reads the accessibility tree directly instead of shelling out to `osascript` and `cliclick` per call. The `automation` and `automation-vision` optional dependency groups go with them
 - mcp: The `dispatch_to_pool` tool — `pool_route_execute` is the replacement for callers
 - ecosystem-status: The dead `include_details` parameter on the `ecosystem_status` tool — it was never read by the tool body, and `EcosystemStatusService.generate_report()` has no matching option
@@ -149,6 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- mcp: `get_tool_versions` no longer advertises 28 names that no tool serves — the 15 `coord_*` names and the 13 mislabelled coordination/dependency-graph Python-API names that sat under a "coordination_tools.py" heading. The registry drops from 189 entries with 63 phantoms to 155 entries with 35
+- docs: The coordination section of `docs/CLI_REFERENCE.md` now shows the real command signatures — `create-issue` takes `--description`/`--repos` (not `--desc`/`--tag`), `create-todo` takes `--task`/`--repo`/`--estimate` (not `--title`/`--issue`), and `status`/`blocking` take a positional repo
 - coordination: Never reuse a retired issue or todo ID — the number now comes from a counter persisted alongside the ledger instead of from the record count, so deleting an issue could no longer hand its ID to the next one. The allocator lives on `CoordinationManager` and both the CLI and the (unregistered) MCP tools call it
 - coordination: `mahavishnu coord close-issue` and `update-issue` now report a missing issue as `Issue <id> not found` with exit code 1, instead of raising an uncaught `ConfigurationError` traceback
 - agents: Drop the stale `dispatch_to_pool` reference from the agent allowlists, picker descriptions, and CLAUDE.md
