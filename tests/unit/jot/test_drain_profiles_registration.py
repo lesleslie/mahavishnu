@@ -55,7 +55,7 @@ def test_full_registrations_grew_by_exactly_six() -> None:
     pre-drain + drain baseline; updates to the comment in profiles.py must
     keep this invariant.
     """
-    jot_entries = [name for name in FULL_REGISTRATIONS if name.startswith("jot_")]
+    jot_entries = [name for name in FULL_REGISTRATIONS if name.startswith(("jot_", "mahavishnu_jot_"))]
     assert len(jot_entries) == 14, (
         f"expected 14 jot_* entries in FULL_REGISTRATIONS, got {len(jot_entries)}: "
         f"{jot_entries!r}"
@@ -64,7 +64,7 @@ def test_full_registrations_grew_by_exactly_six() -> None:
 
 def test_registration_map_grew_by_exactly_six() -> None:
     """Same delta invariant for ``REGISTRATION_MAP``."""
-    jot_entries = [name for name in REGISTRATION_MAP if name.startswith("jot_")]
+    jot_entries = [name for name in REGISTRATION_MAP if name.startswith(("jot_", "mahavishnu_jot_"))]
     assert len(jot_entries) == 14, (
         f"expected 14 jot_* entries in REGISTRATION_MAP, got {len(jot_entries)}: "
         f"{jot_entries!r}"

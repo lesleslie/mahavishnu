@@ -139,10 +139,10 @@ async def test_mcp_trigger_workflow_wraps_substrate_exception_as_jot_dispatch_er
     """Lines 392-406: trigger_workflow raising → JotDispatchError with cause."""
     fake_trigger = AsyncMock(side_effect=RuntimeError("substrate blew up"))
     with patch(
-        "mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True
+        "mahavishnu.mcp.server_core.mahavishnu_trigger_workflow", fake_trigger, create=True
     ):
         with pytest.raises(JotDispatchError) as exc_info:
-            await _mcp_trigger_workflow("prefect", "mahavishnu_jot_dispatch", {"prompt": "x"})
+            await _mcp_trigger_workflow("prefect", "jot_dispatch", {"prompt": "x"})
     assert "RuntimeError" in str(exc_info.value)
     assert exc_info.value.__cause__ is not None
     assert isinstance(exc_info.value.__cause__, RuntimeError)
@@ -160,7 +160,7 @@ async def test_mcp_get_workflow_status_wraps_substrate_exception_as_jot_dispatch
     """Lines 411-420: get_workflow_status raising → JotDispatchError with cause."""
     fake_status = AsyncMock(side_effect=RuntimeError("status blew up"))
     with patch(
-        "mahavishnu.mcp.server_core.get_workflow_status", fake_status, create=True
+        "mahavishnu.mcp.server_core.mahavishnu_get_workflow_status", fake_status, create=True
     ):
         with pytest.raises(JotDispatchError) as exc_info:
             await _mcp_get_workflow_status("wf-123")
@@ -186,7 +186,7 @@ async def test_auto_retry_after_log_unreadable_returns_silently(
         MagicMock(side_effect=OSError("permission denied")),
     )
     fired = AsyncMock()
-    with patch("mahavishnu.mcp.server_core.trigger_workflow", fired, create=True):
+    with patch("mahavishnu.mcp.server_core.mahavishnu_trigger_workflow", fired, create=True):
         await _auto_retry_after("e1", backoff_s=0)
     fired.assert_not_called()
 
@@ -211,7 +211,7 @@ async def test_auto_retry_after_state_no_longer_failed_returns(
     # Manually mark this as DISPATCHED (not FAILED) by setting state via
     # the in-progress event instead of dispatch_failed.
     fired = AsyncMock()
-    with patch("mahavishnu.mcp.server_core.trigger_workflow", fired, create=True):
+    with patch("mahavishnu.mcp.server_core.mahavishnu_trigger_workflow", fired, create=True):
         await _auto_retry_after("e1", backoff_s=0)
     fired.assert_not_called()
 
@@ -233,7 +233,7 @@ async def test_auto_retry_after_budget_exhausted_returns(
         ),
     )
     fired = AsyncMock()
-    with patch("mahavishnu.mcp.server_core.trigger_workflow", fired, create=True):
+    with patch("mahavishnu.mcp.server_core.mahavishnu_trigger_workflow", fired, create=True):
         await _auto_retry_after("e1", backoff_s=0)
     fired.assert_not_called()
 
@@ -273,7 +273,7 @@ async def test_auto_retry_after_log_write_failed_on_budget_exhausted(
     failing_append = AsyncMock(side_effect=JotLogUnwritableError("disk full"))
     monkeypatch.setattr("mahavishnu.jot.drain._append_event", failing_append)
     with patch(
-        "mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True
+        "mahavishnu.mcp.server_core.mahavishnu_trigger_workflow", fake_trigger, create=True
     ):
         # Should not raise.
         await _auto_retry_after("e1", backoff_s=0)
@@ -314,7 +314,7 @@ async def test_auto_retry_after_event_append_failed_logs_and_returns(
     )
     monkeypatch.setattr("mahavishnu.jot.drain._append_event", failing_append)
     with patch(
-        "mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True
+        "mahavishnu.mcp.server_core.mahavishnu_trigger_workflow", fake_trigger, create=True
     ):
         # Must not raise.
         await _auto_retry_after("e1", backoff_s=0)
@@ -403,7 +403,7 @@ async def test_reconcile_status_fetch_raises_logs_and_returns(
     )  # 1s ago, well under timeout
     fake_status = AsyncMock(side_effect=RuntimeError("substrate error"))
     with patch(
-        "mahavishnu.mcp.server_core.get_workflow_status", fake_status, create=True
+        "mahavishnu.mcp.server_core.mahavishnu_get_workflow_status", fake_status, create=True
     ):
         # Must not raise.
         await _reconcile_if_in_flight(jot)

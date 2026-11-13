@@ -77,8 +77,8 @@ def _make_manager_mock() -> MagicMock:
     """Build a MagicMock that mimics DurableWorkerManager."""
     manager = MagicMock()
     manager.spawn = MagicMock()
-    manager.mahavishnu_send_input = MagicMock(return_value=True)
-    manager.mahavishnu_capture_output = MagicMock()
+    manager.send_input = MagicMock(return_value=True)
+    manager.capture_output = MagicMock()
     manager.status = MagicMock(return_value=None)
     manager.cancel = MagicMock(return_value=True)
     manager.reap = MagicMock()
@@ -414,18 +414,18 @@ def test_send_input_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.mahavishnu_send_input = MagicMock(return_value=True)
+    manager.send_input = MagicMock(return_value=True)
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(tools.mahavishnu_send_input("w-1", "hello", submit=False))
     assert out["accepted"] is True
-    manager.mahavishnu_send_input.assert_called_once_with("w-1", "hello", submit=False)
+    manager.send_input.assert_called_once_with("w-1", "hello", submit=False)
 
 
 def test_send_input_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.mahavishnu_send_input = MagicMock(return_value=False)
+    manager.send_input = MagicMock(return_value=False)
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(tools.mahavishnu_send_input("w-1", "hello"))
     assert out["accepted"] is False
@@ -456,7 +456,7 @@ def test_capture_output_returns_text(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.mahavishnu_capture_output = MagicMock(
+    manager.capture_output = MagicMock(
         return_value=_make_capture_output(text="hello", next_offset=42, truncated=True)
     )
     monkeypatch.setattr(tools, "_durable_manager", manager)
@@ -467,7 +467,7 @@ def test_capture_output_returns_text(monkeypatch: pytest.MonkeyPatch) -> None:
     assert out["next_offset"] == 42
     assert out["truncated"] is True
     assert out["pane_alive"] is True
-    manager.mahavishnu_capture_output.assert_called_once_with(
+    manager.capture_output.assert_called_once_with(
         "w-1", since_offset=10, max_bytes=2048
     )
 
@@ -478,7 +478,7 @@ def test_capture_output_strips_ansi_by_default(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.mahavishnu_capture_output = MagicMock(
+    manager.capture_output = MagicMock(
         return_value=_make_capture_output(text="\x1b[31mred\x1b[0m text")
     )
     monkeypatch.setattr(tools, "_durable_manager", manager)
@@ -492,7 +492,7 @@ def test_capture_output_handles_none_text(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.mahavishnu_capture_output = MagicMock(
+    manager.capture_output = MagicMock(
         return_value=SimpleNamespace(
             text=None, next_offset=99, truncated=False, pane_alive=True
         )
@@ -509,7 +509,7 @@ def test_capture_output_no_strip_when_text_empty(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.mahavishnu_capture_output = MagicMock(return_value=_make_capture_output(text=""))
+    manager.capture_output = MagicMock(return_value=_make_capture_output(text=""))
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(tools.mahavishnu_capture_output("w-1", strip_ansi=True))
     assert out["text"] == ""
@@ -803,7 +803,7 @@ def test_wait_for_state_with_output_capture(monkeypatch: pytest.MonkeyPatch) -> 
     record = _make_record(state=WorkerLifecycleState.READY)
     manager.status = MagicMock(return_value=record)
     capture = _make_capture_output(text="output chunk", next_offset=50)
-    manager.mahavishnu_capture_output = MagicMock(return_value=capture)
+    manager.capture_output = MagicMock(return_value=capture)
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(
         tools.mahavishnu_wait_for_state(
@@ -838,7 +838,7 @@ def test_wait_for_state_include_output_false(monkeypatch: pytest.MonkeyPatch) ->
         )
     )
     assert out["output_during_wait"] is None
-    manager.mahavishnu_capture_output.assert_not_called()
+    manager.capture_output.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

@@ -32,11 +32,11 @@ EXPECTED = {
 
 def test_fourteen_jot_tools_in_full_registrations() -> None:
     """All 14 jot tools registered in the FULL profile."""
-    found = {name for name in FULL_REGISTRATIONS if name.startswith("jot_")}
+    found = {name for name in FULL_REGISTRATIONS if name.startswith(("jot_", "mahavishnu_jot_"))}
     assert found == EXPECTED
 
 
 def test_fourteen_jot_tools_in_registration_map() -> None:
     """Each tool has a path in REGISTRATION_MAP."""
-    found = {name for name in REGISTRATION_MAP if name.startswith("jot_")}
+    found = {name for name in REGISTRATION_MAP if name.startswith(("jot_", "mahavishnu_jot_"))}
     assert found == EXPECTED

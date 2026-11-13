@@ -53,7 +53,7 @@ class TestToolVersions:
         assert get_tool_deprecation("mahavishnu_find_related_code") == "treesitter_tools"
         assert get_tool_deprecation("mahavishnu_index_documentation") == "code_index.index_repo"
         assert (
-            get_tool_deprecation("mahavishnu_search_documentation") == "search_tools.hybrid_search"
+            get_tool_deprecation("mahavishnu_search_documentation") == "search_tools.mahavishnu_hybrid_search"
         )
         assert get_tool_deprecation("mahavishnu_get_monitoring_dashboard") == "mahavishnu_ecosystem_status"
 

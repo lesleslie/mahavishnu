@@ -289,7 +289,7 @@ DEPRECATED_TOOLS: dict[str, str | None] = {
     "mahavishnu_index_code_graph": "code_index.index_repo",
     "mahavishnu_find_related_code": "treesitter_tools",
     "mahavishnu_index_documentation": "code_index.index_repo",
-    "mahavishnu_search_documentation": "search_tools.hybrid_search",
+    "mahavishnu_search_documentation": "search_tools.mahavishnu_hybrid_search",
     # Legacy monitoring dashboard is the new ecosystem_status aggregator.
     "mahavishnu_get_monitoring_dashboard": "mahavishnu_ecosystem_status",
 }
