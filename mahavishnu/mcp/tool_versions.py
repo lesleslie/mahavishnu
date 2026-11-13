@@ -66,8 +66,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "mahavishnu_terminal_list_adapters": "1.0.0",
     "mahavishnu_terminal_current_adapter": "1.0.0",
     "mahavishnu_terminal_switch_adapter": "1.0.0",
-    "terminal_launch_with_profile": "1.0.0",
-    "terminal_list_profiles": "1.0.0",
     # Pool tools (pool_tools.py)
     "mahavishnu_pool_scale": "1.0.0",
     "mahavishnu_pool_close": "1.0.0",
@@ -77,29 +75,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "mahavishnu_pool_monitor": "1.0.0",
     "mahavishnu_pool_search_memory": "1.0.0",
     # Worker tools (worker_tools.py)
-    "worker_spawn": "1.0.0",
-    "worker_execute": "1.0.0",
-    "worker_execute_batch": "1.0.0",
-    "worker_collect_results": "1.0.0",
-    "worker_list": "1.0.0",
-    "worker_close": "1.0.0",
-    "worker_close_all": "1.0.0",
-    "worker_health": "1.0.0",
-    "worker_monitor": "1.0.0",
-    # Coordination tools (coordination_tools.py)
-    "list_issues": "1.0.0",
-    "create_issue": "1.0.0",
-    "update_issue": "1.0.0",
-    "list_todos": "1.0.0",
-    "create_todo": "1.0.0",
-    "update_todo": "1.0.0",
-    "list_dependencies": "1.0.0",
-    "add_dependency": "1.0.0",
-    "remove_dependency": "1.0.0",
-    "get_dependency_graph": "1.0.0",
-    "detect_circular_dependencies": "1.0.0",
-    "get_critical_path": "1.0.0",
-    "generate_mermaid_diagram": "1.0.0",
     # Repository messaging tools (repository_messaging_tools.py)
     "mahavishnu_send_repository_message": "1.0.0",
     "mahavishnu_get_repository_messages": "1.0.0",
@@ -113,16 +88,10 @@ TOOL_VERSIONS: dict[str, str] = {
     "mahavishnu_find_related_code": "1.0.0",
     "mahavishnu_get_function_context": "1.0.0",
     "mahavishnu_search_documentation": "1.0.0",
-    "store_code_graph_from_mahavishnu": "1.0.0",
     "mahavishnu_list_project_messages": "1.0.0",
     "mahavishnu_get_repository_health": "1.0.0",
     # OTel tools (otel_tools.py)
-    "otel_ingest_trace": "1.0.0",
-    "otel_search_traces": "1.0.0",
-    "otel_get_trace": "1.0.0",
-    "otel_get_stats": "1.0.0",
     # Health tools (health_tools.py)
-    "health_check": "1.0.0",
     "health_check_service": "1.0.0",
     "health_check_all": "1.0.0",
     "get_liveness": "1.0.0",
@@ -141,8 +110,6 @@ TOOL_VERSIONS: dict[str, str] = {
     # Tool discovery (server_core.py inline)
     "discover_tools": "1.0.0",
     # Primitive introspection (primitive_tools.py) -- Keystone keystone_show analog
-    "list_primitives": "1.0.0",
-    "show_primitive": "1.0.0",
     # Search tools (search_tools.py)
     "mahavishnu_delete_document": "1.0.0",
     # OTel tools (otel_tools.py)
@@ -153,32 +120,12 @@ TOOL_VERSIONS: dict[str, str] = {
     "mahavishnu_search_otel_traces": "1.0.0",
     "mahavishnu_hybrid_search": "1.0.0",
     "mahavishnu_search_by_repository": "1.0.0",
-    # Coordination tools (coordination_tools.py - extended)
-    "coord_check_dependencies": "1.0.0",
-    "coord_close_issue": "1.0.0",
-    "coord_complete_todo": "1.0.0",
-    "coord_create_issue": "1.0.0",
-    "coord_create_todo": "1.0.0",
-    "coord_get_blocking_issues": "1.0.0",
-    "coord_get_issue": "1.0.0",
-    "coord_get_repo_status": "1.0.0",
-    "coord_get_todo": "1.0.0",
-    "coord_list_dependencies": "1.0.0",
-    "coord_list_issues": "1.0.0",
-    "coord_list_plans": "1.0.0",
-    "coord_list_todos": "1.0.0",
-    "coord_update_issue": "1.0.0",
     # Ecosystem/Git analytics tools
     "mahavishnu_get_cross_project_patterns": "1.0.0",
     "mahavishnu_get_git_velocity_dashboard": "1.0.0",
     # Goal-driven team tools (goal_team_tools.py)
-    "get_learning_stats": "1.0.0",
-    "get_learning_summary": "1.0.0",
-    "get_recommended_mode": "1.0.0",
     "mahavishnu_list_team_skills": "1.0.0",
     "mahavishnu_parse_goal": "1.0.0",
-    "record_team_outcome": "1.0.0",
-    "record_user_feedback": "1.0.0",
     "mahavishnu_team_from_goal": "1.0.0",
     "mahavishnu_send_project_message": "1.0.0",
     # Tree-sitter tools (treesitter_tools.py)
@@ -190,7 +137,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "mahavishnu_treesitter_parse": "1.0.0",
     "mahavishnu_treesitter_query": "1.0.0",
     # Worktree tools
-    "worktree_manage": "1.0.0",
     # Health tools - wait
     "wait_for_all_dependencies": "1.0.0",
     # Documentation indexing
@@ -201,22 +147,9 @@ TOOL_VERSIONS: dict[str, str] = {
     "mahavishnu_ecosystem_routing_readiness": "1.0.0",
     # Workflow outcome tools (workflow_tools.py)
     "mahavishnu_workflow_get_outcome_tool": "1.0.0",
-    # Coordination ecosystem status (coordination_tools.py)
-    "coord_get_ecosystem_status": "1.0.0",
-    # Learning pipeline tools (learning_pipeline_tools.py)
-    "get_pipeline_status": "1.0.0",
-    "list_evidence": "1.0.0",
-    "trigger_synthesis": "1.0.0",
-    "list_pending_drafts": "1.0.0",
-    "get_promotion_history": "1.0.0",
     # Primitive introspection wrappers (primitive_tools.py)
     "mahavishnu_list_primitives_tool": "1.0.0",
     "mahavishnu_show_primitive_tool": "1.0.0",
-    # OpenHands tools (openhands_tools.py)
-    "openhands_run": "1.0.0",
-    "openhands_status": "1.0.0",
-    "openhands_cancel": "1.0.0",
-    "openhands_health": "1.0.0",
     # Clone detection / refactor tools (clone_tools.py)
     "mahavishnu_clone_detect_ecosystem": "1.0.0",
     "mahavishnu_clone_refactor_group": "1.0.0",
@@ -245,9 +178,80 @@ TOOL_VERSIONS: dict[str, str] = {
     # Capability resolver/planner/executor tools (capability_tools.py)
     "mahavishnu_execute_capability": "1.0.0",
     "mahavishnu_list_capabilities": "1.0.0",
-    "explain_routing": "1.0.0",
     # MCP envelope reader (get_capability_result_tool.py)
     "mahavishnu_get_capability_result": "1.0.0",
+    # Worker contract tools (worker_contract_tools.py)
+    "mahavishnu_cancel_worker": "1.0.0",
+    "mahavishnu_capture_output": "1.0.0",
+    "mahavishnu_launch_worker": "1.0.0",
+    "mahavishnu_send_input": "1.0.0",
+    "mahavishnu_wait_for_state": "1.0.0",
+    "mahavishnu_worker_revoke": "1.0.0",
+    "mahavishnu_worker_run_with_settle": "1.0.0",
+    "mahavishnu_worker_settle": "1.0.0",
+    "mahavishnu_worker_status": "1.0.0",
+    # Pool tools (pool_tools.py) -- additions
+    "mahavishnu_pool_bootstrap": "1.0.0",
+    "mahavishnu_pool_route_execute": "1.0.0",
+    "mahavishnu_pool_spawn": "1.0.0",
+    # OpenHands tools (openhands_tools.py) -- component-prefixed
+    "mahavishnu_openhands_openhands_cancel": "1.0.0",
+    "mahavishnu_openhands_openhands_health": "1.0.0",
+    "mahavishnu_openhands_openhands_run": "1.0.0",
+    "mahavishnu_openhands_openhands_status": "1.0.0",
+    # Jot inbox tools (jot_tools.py)
+    "mahavishnu_jot_add": "1.0.0",
+    "mahavishnu_jot_defer": "1.0.0",
+    "mahavishnu_jot_delete": "1.0.0",
+    "mahavishnu_jot_done": "1.0.0",
+    "mahavishnu_jot_drain": "1.0.0",
+    "mahavishnu_jot_dispatch": "1.0.0",
+    "mahavishnu_jot_edit": "1.0.0",
+    "mahavishnu_jot_export_markdown": "1.0.0",
+    "mahavishnu_jot_list": "1.0.0",
+    "mahavishnu_jot_reopen": "1.0.0",
+    "mahavishnu_jot_resurface": "1.0.0",
+    "mahavishnu_jot_retry": "1.0.0",
+    "mahavishnu_jot_search": "1.0.0",
+    "mahavishnu_jot_show": "1.0.0",
+    "mahavishnu_jot_vitals": "1.0.0",
+    # Plan index tools (plan_tools.py)
+    "mahavishnu_plan_capability": "1.0.0",
+    "mahavishnu_plan_list": "1.0.0",
+    "mahavishnu_plan_rebuild_status": "1.0.0",
+    "mahavishnu_plan_search": "1.0.0",
+    "mahavishnu_plan_show": "1.0.0",
+    "mahavishnu_plan_vitals": "1.0.0",
+    # Capability resolver (capability_tools.py) -- additions
+    "mahavishnu_resolve_capabilities": "1.0.0",
+    # Agent and skill catalogue tools (agents_tools.py, skill_tools.py)
+    "mahavishnu_get_agent": "1.0.0",
+    "mahavishnu_list_agents": "1.0.0",
+    "mahavishnu_get_skill": "1.0.0",
+    "mahavishnu_list_skills": "1.0.0",
+    # Ecosystem service registry and event log
+    "mahavishnu_get_publish_url": "1.0.0",
+    "mahavishnu_get_service": "1.0.0",
+    "mahavishnu_list_events": "1.0.0",
+    "mahavishnu_list_services": "1.0.0",
+    "mahavishnu_record_event": "1.0.0",
+    "mahavishnu_upsert_service": "1.0.0",
+    # Key-value state store (core/state_backends/mcp_kv.py)
+    "mahavishnu_kv_delete": "1.0.0",
+    "mahavishnu_kv_get": "1.0.0",
+    "mahavishnu_kv_list": "1.0.0",
+    "mahavishnu_kv_put": "1.0.0",
+    # Specialist dispatch (dispatch_specialist.py)
+    "mahavishnu_dispatch_specialist": "1.0.0",
+    "mahavishnu_list_specialists": "1.0.0",
+    # Budget enforcement (budget_tools.py)
+    "mahavishnu_budget_enforce": "1.0.0",
+    # Health audit (audit_health_tool.py)
+    "mahavishnu_audit_health": "1.0.0",
+    # Cross-repo search (core/cross_repo_search.py)
+    "mahavishnu_cross_repo_search": "1.0.0",
+    # Bodai task system dispatch edge (server_core.py inline)
+    "mahavishnu_tasks_handoff_to_workflow": "1.0.0",
 }
 
 
@@ -285,8 +289,8 @@ DEPRECATED_TOOLS: dict[str, str | None] = {
     "mahavishnu_index_code_graph": "code_index.index_repo",
     "mahavishnu_find_related_code": "treesitter_tools",
     "mahavishnu_index_documentation": "code_index.index_repo",
-    "mahavishnu_search_documentation": "search_tools.mahavishnu_hybrid_search",
-    # Legacy monitoring dashboard is the new mahavishnu_ecosystem_status aggregator.
+    "mahavishnu_search_documentation": "search_tools.hybrid_search",
+    # Legacy monitoring dashboard is the new ecosystem_status aggregator.
     "mahavishnu_get_monitoring_dashboard": "mahavishnu_ecosystem_status",
 }
 
