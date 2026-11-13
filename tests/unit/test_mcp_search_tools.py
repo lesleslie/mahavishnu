@@ -95,11 +95,11 @@ class TestRegistration:
     def test_registers_all_five_tools(self, stub_mcp: _StubMCP) -> None:
         register_search_tools(stub_mcp)
         assert set(stub_mcp.tools) == {
-            "hybrid_search",
-            "index_document",
-            "delete_document",
-            "search_by_repository",
-            "cross_repo_search",
+            "mahavishnu_hybrid_search",
+            "mahavishnu_index_document",
+            "mahavishnu_delete_document",
+            "mahavishnu_search_by_repository",
+            "mahavishnu_cross_repo_search",
         }
 
     def test_module_exports_register(self) -> None:
@@ -134,7 +134,7 @@ class TestHybridSearchTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["hybrid_search"]
+        fn = stub_mcp.tools["mahavishnu_hybrid_search"]
         result = await fn(query="test", limit=5)
 
         assert isinstance(result, list)
@@ -159,7 +159,7 @@ class TestHybridSearchTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["hybrid_search"]
+        fn = stub_mcp.tools["mahavishnu_hybrid_search"]
         await fn(
             query="x",
             semantic_weight=0.2,
@@ -193,7 +193,7 @@ class TestHybridSearchTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["hybrid_search"]
+        fn = stub_mcp.tools["mahavishnu_hybrid_search"]
         with pytest.raises(RuntimeError, match="db down"):
             await fn(query="q")
 
@@ -223,7 +223,7 @@ class TestIndexDocumentTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["index_document"]
+        fn = stub_mcp.tools["mahavishnu_index_document"]
         result = await fn(
             doc_id="11111111-1111-1111-1111-111111111111",
             title="Hello",
@@ -258,7 +258,7 @@ class TestIndexDocumentTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["index_document"]
+        fn = stub_mcp.tools["mahavishnu_index_document"]
         with pytest.raises(ValueError, match="Invalid document UUID"):
             await fn(doc_id="not-a-uuid", title="T", content="c")
 
@@ -279,7 +279,7 @@ class TestIndexDocumentTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["index_document"]
+        fn = stub_mcp.tools["mahavishnu_index_document"]
         with pytest.raises(RuntimeError, match="write fail"):
             await fn(
                 doc_id="11111111-1111-1111-1111-111111111111",
@@ -313,7 +313,7 @@ class TestDeleteDocumentTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["delete_document"]
+        fn = stub_mcp.tools["mahavishnu_delete_document"]
         result = await fn(doc_id="11111111-1111-1111-1111-111111111111")
 
         assert result["success"] is True
@@ -337,7 +337,7 @@ class TestDeleteDocumentTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["delete_document"]
+        fn = stub_mcp.tools["mahavishnu_delete_document"]
         result = await fn(doc_id="11111111-1111-1111-1111-111111111111")
 
         assert result["success"] is True
@@ -360,7 +360,7 @@ class TestDeleteDocumentTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["delete_document"]
+        fn = stub_mcp.tools["mahavishnu_delete_document"]
         with pytest.raises(ValueError, match="Invalid document UUID"):
             await fn(doc_id="nope")
 
@@ -381,7 +381,7 @@ class TestDeleteDocumentTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["delete_document"]
+        fn = stub_mcp.tools["mahavishnu_delete_document"]
         with pytest.raises(RuntimeError, match="delete fail"):
             await fn(doc_id="11111111-1111-1111-1111-111111111111")
 
@@ -411,7 +411,7 @@ class TestSearchByRepositoryTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["search_by_repository"]
+        fn = stub_mcp.tools["mahavishnu_search_by_repository"]
         result = await fn(repository="mahavishnu", query="how to", limit=3)
 
         assert isinstance(result, list)
@@ -439,7 +439,7 @@ class TestSearchByRepositoryTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["search_by_repository"]
+        fn = stub_mcp.tools["mahavishnu_search_by_repository"]
         await fn(repository="mahavishnu", query="   ")
 
         kwargs = fake_engine.search.await_args.kwargs
@@ -465,6 +465,6 @@ class TestSearchByRepositoryTool:
         )
 
         register_search_tools(stub_mcp)
-        fn = stub_mcp.tools["search_by_repository"]
+        fn = stub_mcp.tools["mahavishnu_search_by_repository"]
         with pytest.raises(RuntimeError, match="search down"):
             await fn(repository="mahavishnu", query="hi")

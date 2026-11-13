@@ -44,7 +44,7 @@ class TestPlanListE2E:
         await store.upsert(_record(plan_id="a" * 32, status="active"))
         await store.upsert(_record(plan_id="b" * 32, status="shipped"))
 
-        result = await call_tool("plan_list", {"status": "active"})
+        result = await call_tool("mahavishnu_plan_list", {"status": "active"})
 
         assert isinstance(result, dict)
         assert {"plans", "total", "status"} <= set(result.keys())
@@ -59,8 +59,8 @@ class TestPlanListE2E:
         await store.upsert(_record(plan_id="c" * 32, topic="routing"))
         await store.upsert(_record(plan_id="d" * 32, topic="observability"))
 
-        matched = await call_tool("plan_list", {"topic": "routing"})
-        unmatched = await call_tool("plan_list", {"topic": "unrelated"})
+        matched = await call_tool("mahavishnu_plan_list", {"topic": "routing"})
+        unmatched = await call_tool("mahavishnu_plan_list", {"topic": "unrelated"})
 
         assert matched["total"] == 1
         assert {p["topic"] for p in matched["plans"]} == {"routing"}
@@ -75,14 +75,14 @@ class TestPlanListE2E:
         await store.upsert(_record(plan_id="f" * 32, title="B"))
         await store.upsert(_record(plan_id="1" * 32, title="C"))
 
-        result = await call_tool("plan_list", {})
+        result = await call_tool("mahavishnu_plan_list", {})
 
         assert result["total"] == 3
         assert {p["title"] for p in result["plans"]} == {"A", "B", "C"}
 
     async def test_list_empty_store_returns_zero_total(self, call_tool: Any) -> None:
         """An empty store returns ``total=0`` and ``plans=[]``."""
-        result = await call_tool("plan_list", {})
+        result = await call_tool("mahavishnu_plan_list", {})
 
         assert result["total"] == 0
         assert result["plans"] == []
@@ -92,7 +92,7 @@ class TestPlanListE2E:
         self, call_tool: Any
     ) -> None:
         """REQ-PLAN-010: missing ``user_id`` returns the envelope (no raise)."""
-        result = await call_tool("plan_list", {}, user_id=None)
+        result = await call_tool("mahavishnu_plan_list", {}, user_id=None)
 
         assert isinstance(result, dict)
         assert result["status"] == "error"

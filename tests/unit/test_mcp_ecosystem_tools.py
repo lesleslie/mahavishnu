@@ -133,9 +133,9 @@ def _patch_service(
 def test_register_attaches_three_tools(stub_mcp: _StubMCP) -> None:
     register_ecosystem_tools(stub_mcp)
     assert set(stub_mcp.tools) == {
-        "ecosystem_status",
-        "ecosystem_capabilities",
-        "ecosystem_routing_readiness",
+        "mahavishnu_ecosystem_status",
+        "mahavishnu_ecosystem_capabilities",
+        "mahavishnu_ecosystem_routing_readiness",
     }
     # Module export
     assert "register_ecosystem_tools" in et_module.__all__
@@ -153,7 +153,7 @@ async def test_ecosystem_status_contract_drops_include_details() -> None:
     server = FastMCP("ecosystem-tools-schema-test")
     register_ecosystem_tools(server)
 
-    tool = await server.get_tool("ecosystem_status")
+    tool = await server.get_tool("mahavishnu_ecosystem_status")
 
     # The wire contract: the schema every MCP client validates against.
     properties = tool.parameters.get("properties", {})
@@ -176,7 +176,7 @@ async def test_ecosystem_status_returns_full_report(
 ) -> None:
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_status"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_status"]
 
     result = await fn()
     assert result["schema_version"] == "1.0"
@@ -193,7 +193,7 @@ async def test_ecosystem_status_filters_sections(
 ) -> None:
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_status"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_status"]
 
     result = await fn(sections=["adapters", "alerts"])
     # Filtered response keeps envelope keys + only requested sections
@@ -213,7 +213,7 @@ async def test_ecosystem_status_reports_unknown_sections(
 ) -> None:
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_status"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_status"]
 
     result = await fn(sections=["nope", "missing"])
     # Unknown names are surfaced, never silently dropped. A caller that
@@ -245,7 +245,7 @@ async def test_ecosystem_status_returns_valid_sections_alongside_unknown(
 ) -> None:
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_status"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_status"]
 
     result = await fn(sections=["adapters", "pools"])
     # The valid half is delivered...
@@ -262,7 +262,7 @@ async def test_ecosystem_status_omits_diagnostics_when_all_sections_valid(
 ) -> None:
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_status"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_status"]
 
     result = await fn(sections=["adapters", "alerts"])
     assert "invalid_sections" not in result
@@ -283,7 +283,7 @@ async def test_ecosystem_status_passes_timeout_to_service(
 ) -> None:
     service_cls = _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_status"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_status"]
 
     await fn(timeout_per_section_ms=2500)
     kwargs = service_cls.call_args.kwargs
@@ -298,7 +298,7 @@ async def test_ecosystem_status_uses_app_as_recovery_provider(
     app = SimpleNamespace(get_recovery_summary=lambda: {"x": 1})
     service_cls = _patch_service(monkeypatch, fake_report, app=app)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_status"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_status"]
 
     await fn()
     assert service_cls.call_args.kwargs["recovery_provider"] is app
@@ -311,7 +311,7 @@ async def test_ecosystem_status_recovery_provider_none_when_no_app(
 ) -> None:
     service_cls = _patch_service(monkeypatch, fake_report, app=None)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_status"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_status"]
 
     await fn()
     assert service_cls.call_args.kwargs["recovery_provider"] is None
@@ -324,7 +324,7 @@ async def test_ecosystem_capabilities_returns_all(
 ) -> None:
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_capabilities"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_capabilities"]
 
     result = await fn()
     assert set(result) == {"code_generation", "code_review", "vector_search"}
@@ -338,7 +338,7 @@ async def test_ecosystem_capabilities_filters_case_insensitively(
 ) -> None:
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_capabilities"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_capabilities"]
 
     result = await fn(capability="CODE")
     # Both "code_generation" and "code_review" contain "code" (case-insensitive)
@@ -353,7 +353,7 @@ async def test_ecosystem_capabilities_filter_no_match(
 ) -> None:
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_capabilities"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_capabilities"]
 
     result = await fn(capability="zzz")
     assert result == {}
@@ -366,7 +366,7 @@ async def test_ecosystem_routing_readiness_classifies_adapters(
 ) -> None:
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_routing_readiness"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_routing_readiness"]
 
     result = await fn(task_class="CODE_GENERATION")
     assert result["task_class"] == "CODE_GENERATION"
@@ -392,7 +392,7 @@ async def test_ecosystem_routing_readiness_handles_null_degradation_trend(
     }
     _patch_service(monkeypatch, fake_report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_routing_readiness"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_routing_readiness"]
 
     result = await fn(task_class="X")
     assert result["available_adapters"]["p"]["degradation_trend"] is None
@@ -412,7 +412,7 @@ async def test_ecosystem_routing_readiness_no_healthy_adapters(
     )
     _patch_service(monkeypatch, report)
     register_ecosystem_tools(stub_mcp)
-    fn = stub_mcp.tools["ecosystem_routing_readiness"]
+    fn = stub_mcp.tools["mahavishnu_ecosystem_routing_readiness"]
 
     result = await fn(task_class="X")
     assert result["healthy_count"] == 0

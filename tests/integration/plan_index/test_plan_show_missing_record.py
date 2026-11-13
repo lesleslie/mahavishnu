@@ -32,7 +32,7 @@ class TestPlanShowMissingRecord:
         ``"Plan not found"`` — class-name substring is fragile across
         FastMCP versions, message-substring is not.
         """
-        result = await call_tool("plan_show", {"plan_id": "deadbeef" + "0" * 24})
+        result = await call_tool("mahavishnu_plan_show", {"plan_id": "deadbeef" + "0" * 24})
 
         assert isinstance(result, dict)
         assert result["status"] == "error"

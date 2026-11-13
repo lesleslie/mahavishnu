@@ -15,8 +15,8 @@ class TestToolVersions:
     def test_get_known_tool_version(self):
         from mahavishnu.mcp.tool_versions import get_tool_version
 
-        assert get_tool_version("list_repos") == "1.0.0"
-        assert get_tool_version("trigger_workflow") == "1.1.0"
+        assert get_tool_version("mahavishnu_list_repos") == "1.0.0"
+        assert get_tool_version("mahavishnu_trigger_workflow") == "1.1.0"
 
     def test_get_unknown_tool_returns_none(self):
         from mahavishnu.mcp.tool_versions import get_tool_version
@@ -44,18 +44,18 @@ class TestToolVersions:
             is_tool_deprecated,
         )
 
-        assert is_tool_deprecated("index_code_graph") is True
-        assert is_tool_deprecated("find_related_code") is True
-        assert is_tool_deprecated("index_documentation") is True
-        assert is_tool_deprecated("search_documentation") is True
-        assert is_tool_deprecated("get_monitoring_dashboard") is True
-        assert get_tool_deprecation("index_code_graph") == "code_index.index_repo"
-        assert get_tool_deprecation("find_related_code") == "treesitter_tools"
-        assert get_tool_deprecation("index_documentation") == "code_index.index_repo"
+        assert is_tool_deprecated("mahavishnu_index_code_graph") is True
+        assert is_tool_deprecated("mahavishnu_find_related_code") is True
+        assert is_tool_deprecated("mahavishnu_index_documentation") is True
+        assert is_tool_deprecated("mahavishnu_search_documentation") is True
+        assert is_tool_deprecated("mahavishnu_get_monitoring_dashboard") is True
+        assert get_tool_deprecation("mahavishnu_index_code_graph") == "code_index.index_repo"
+        assert get_tool_deprecation("mahavishnu_find_related_code") == "treesitter_tools"
+        assert get_tool_deprecation("mahavishnu_index_documentation") == "code_index.index_repo"
         assert (
-            get_tool_deprecation("search_documentation") == "search_tools.hybrid_search"
+            get_tool_deprecation("mahavishnu_search_documentation") == "search_tools.hybrid_search"
         )
-        assert get_tool_deprecation("get_monitoring_dashboard") == "ecosystem_status"
+        assert get_tool_deprecation("mahavishnu_get_monitoring_dashboard") == "mahavishnu_ecosystem_status"
 
 
 # ---------------------------------------------------------------------------

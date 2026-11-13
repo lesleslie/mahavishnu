@@ -98,7 +98,7 @@ def test_jot_drain_returns_drain_plan_dict() -> None:
         candidates=[_summary("a3f9c2"), _summary("b4e8d1")],
     )
     with mock.patch.object(drain_module, "drain_plan", return_value=plan) as mp:
-        result = jot_tools.jot_drain.fn(
+        result = jot_tools.mahavishnu_jot_drain.fn(
             query="urgent",
             limit=20,
             include_in_flight=False,
@@ -129,7 +129,7 @@ def test_jot_drain_default_query_is_none() -> None:
 
     plan = SimpleNamespace(query=None, candidates=[])
     with mock.patch.object(drain_module, "drain_plan", return_value=plan) as mp:
-        result = jot_tools.jot_drain.fn()
+        result = jot_tools.mahavishnu_jot_drain.fn()
 
     assert result["query"] is None
     assert result["candidates"] == []
@@ -155,7 +155,7 @@ def test_jot_dispatch_returns_dispatch_result_dict_with_dispatched_from_mcp() ->
         status="in_flight",
     )
     with mock.patch.object(drain_module, "dispatch_jot", return_value=res) as mp:
-        result = jot_tools.jot_dispatch.fn(handle="a3f9c2")
+        result = jot_tools.mahavishnu_jot_dispatch.fn(handle="a3f9c2")
 
     assert result == {
         "handle": "a3f9c2",
@@ -177,7 +177,7 @@ def test_jot_defer_returns_jot_summary_dict() -> None:
 
     deferred = replace(_summary("c5f7e0"), deferred_until=1_800_000_000_000)
     with mock.patch.object(drain_module, "defer_jot", return_value=deferred) as mp:
-        result = jot_tools.jot_defer.fn(
+        result = jot_tools.mahavishnu_jot_defer.fn(
             handle="c5f7e0",
             until_ms=1_800_000_000_000,
             reason="later",
@@ -197,7 +197,7 @@ def test_jot_defer_optional_reason() -> None:
 
     deferred = _summary("d6a8f1")
     with mock.patch.object(drain_module, "defer_jot", return_value=deferred) as mp:
-        jot_tools.jot_defer.fn(handle="d6a8f1", until_ms=1_800_000_000_000)
+        jot_tools.mahavishnu_jot_defer.fn(handle="d6a8f1", until_ms=1_800_000_000_000)
 
     mp.assert_called_once_with(
         handle="d6a8f1",
@@ -216,7 +216,7 @@ def test_jot_delete_returns_jot_summary_dict_with_deleted_true() -> None:
 
     deleted = replace(_summary("e7b9a2"), deleted=True)
     with mock.patch.object(drain_module, "delete_jot", return_value=deleted) as mp:
-        result = jot_tools.jot_delete.fn(handle="e7b9a2", reason="duplicate")
+        result = jot_tools.mahavishnu_jot_delete.fn(handle="e7b9a2", reason="duplicate")
 
     assert result["short_id"] == "e7b9a2"
     assert result["deleted"] is True
@@ -238,7 +238,7 @@ def test_jot_retry_returns_dispatch_result_dict_with_dispatched_from_mcp() -> No
         status="queued",
     )
     with mock.patch.object(drain_module, "retry_dispatch", return_value=res) as mp:
-        result = jot_tools.jot_retry.fn(handle="f8c0b3")
+        result = jot_tools.mahavishnu_jot_retry.fn(handle="f8c0b3")
 
     assert result == {
         "handle": "f8c0b3",
@@ -266,7 +266,7 @@ def test_jot_resurface_returns_list_of_summary_dicts() -> None:
         "surface_relevant",
         return_value=surface,
     ) as mp:
-        result = jot_tools.jot_resurface.fn(
+        result = jot_tools.mahavishnu_jot_resurface.fn(
             trigger="session_start",
             context_text="investigating",
             limit=3,
@@ -292,7 +292,7 @@ def test_jot_resurface_default_limit_is_three() -> None:
         "surface_relevant",
         return_value=surface,
     ) as mp:
-        jot_tools.jot_resurface.fn(trigger="tool_result", context_text="x")
+        jot_tools.mahavishnu_jot_resurface.fn(trigger="tool_result", context_text="x")
 
     mp.assert_called_once_with(
         trigger="tool_result",
@@ -312,12 +312,12 @@ def test_new_tool_names_appear_in_register_list() -> None:
     """The 6 new tool names must be in the registration list."""
     src = _jot_tools_path.read_text()
     for name in (
-        "jot_drain",
-        "jot_dispatch",
-        "jot_defer",
-        "jot_delete",
-        "jot_retry",
-        "jot_resurface",
+        "mahavishnu_jot_drain",
+        "mahavishnu_jot_dispatch",
+        "mahavishnu_jot_defer",
+        "mahavishnu_jot_delete",
+        "mahavishnu_jot_retry",
+        "mahavishnu_jot_resurface",
     ):
         assert name in src, f"{name} missing from jot_tools.py"
 
@@ -325,12 +325,12 @@ def test_new_tool_names_appear_in_register_list() -> None:
 def test_new_tools_expose_underlying_callable_via_fn() -> None:
     """Each wrapped FunctionTool exposes the original function via .fn."""
     for name in (
-        "jot_drain",
-        "jot_dispatch",
-        "jot_defer",
-        "jot_delete",
-        "jot_retry",
-        "jot_resurface",
+        "mahavishnu_jot_drain",
+        "mahavishnu_jot_dispatch",
+        "mahavishnu_jot_defer",
+        "mahavishnu_jot_delete",
+        "mahavishnu_jot_retry",
+        "mahavishnu_jot_resurface",
     ):
         tool = getattr(jot_tools, name)
         assert hasattr(tool, "fn"), f"{name} missing .fn accessor"

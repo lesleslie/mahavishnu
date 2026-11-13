@@ -39,7 +39,7 @@ class TestPlanSearchE2E:
         await store.upsert(_record("b" * 32, "Other Routing", "routing"))
         await store.upsert(_record("c" * 32, "Indexing", "indexing"))
 
-        result = await call_tool("plan_search", {"query": "routing"})
+        result = await call_tool("mahavishnu_plan_search", {"query": "routing"})
 
         assert isinstance(result, list)
         assert len(result) == 2
@@ -53,7 +53,7 @@ class TestPlanSearchE2E:
         await store.upsert(_record("d" * 32, "generic", "observability"))
 
         # Match by topic
-        matched = await call_tool("plan_search", {"query": "observability"})
+        matched = await call_tool("mahavishnu_plan_search", {"query": "observability"})
 
         assert len(matched) == 1
         assert matched[0]["topic"] == "observability"
@@ -64,7 +64,7 @@ class TestPlanSearchE2E:
         """Empty-string query short-circuits to ``[]`` rather than hitting the store."""
         await store.upsert(_record("e" * 32, "Present", "routing"))
 
-        result = await call_tool("plan_search", {"query": ""})
+        result = await call_tool("mahavishnu_plan_search", {"query": ""})
 
         assert result == []
 
@@ -74,7 +74,7 @@ class TestPlanSearchE2E:
         """A query with no matches returns ``[]`` (not an error envelope)."""
         await store.upsert(_record("f" * 32, "Bogus", "routing"))
 
-        result = await call_tool("plan_search", {"query": "zzz-no-match"})
+        result = await call_tool("mahavishnu_plan_search", {"query": "zzz-no-match"})
 
         assert isinstance(result, list)
         assert result == []
@@ -83,7 +83,7 @@ class TestPlanSearchE2E:
         self, call_tool: Any
     ) -> None:
         """REQ-PLAN-010: missing ``user_id`` returns envelope, not raise."""
-        result = await call_tool("plan_search", {"query": "routing"}, user_id=None)
+        result = await call_tool("mahavishnu_plan_search", {"query": "routing"}, user_id=None)
 
         assert isinstance(result, dict)
         assert result["status"] == "error"

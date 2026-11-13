@@ -142,7 +142,7 @@ async def test_mcp_trigger_workflow_wraps_substrate_exception_as_jot_dispatch_er
         "mahavishnu.mcp.server_core.trigger_workflow", fake_trigger, create=True
     ):
         with pytest.raises(JotDispatchError) as exc_info:
-            await _mcp_trigger_workflow("prefect", "jot_dispatch", {"prompt": "x"})
+            await _mcp_trigger_workflow("prefect", "mahavishnu_jot_dispatch", {"prompt": "x"})
     assert "RuntimeError" in str(exc_info.value)
     assert exc_info.value.__cause__ is not None
     assert isinstance(exc_info.value.__cause__, RuntimeError)

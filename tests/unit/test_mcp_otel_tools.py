@@ -148,11 +148,11 @@ class TestToolRegistration:
     def test_expected_tool_names_present(self) -> None:
         tools = _register()
         expected = {
-            "ingest_otel_traces",
-            "search_otel_traces",
-            "get_otel_trace",
+            "mahavishnu_ingest_otel_traces",
+            "mahavishnu_search_otel_traces",
+            "mahavishnu_get_otel_trace",
             "query_local_traces",
-            "otel_ingester_stats",
+            "mahavishnu_otel_ingester_stats",
         }
         assert expected <= set(tools.keys())
 
@@ -178,7 +178,7 @@ class TestIngestOtelTracesMixed:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
         ):
-            result = await tools["ingest_otel_traces"](
+            result = await tools["mahavishnu_ingest_otel_traces"](
                 log_files=[str(log_file)],
                 trace_data=[{"span": "from_api"}],
             )
@@ -196,7 +196,7 @@ class TestIngestOtelTracesMixed:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
         ):
-            result = await tools["ingest_otel_traces"](log_files=[str(log_file)])
+            result = await tools["mahavishnu_ingest_otel_traces"](log_files=[str(log_file)])
         assert result["traces_ingested"] == 1
         assert result["files_processed"] == 1
 
@@ -211,7 +211,7 @@ class TestIngestOtelTracesMixed:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
         ):
-            result = await tools["ingest_otel_traces"](log_files=[str(log_file)])
+            result = await tools["mahavishnu_ingest_otel_traces"](log_files=[str(log_file)])
         # The list contains 3 non-dict items, but the code only sets system_id
         # for dicts. ingest_batch is still called with all 3 items.
         assert result["traces_ingested"] == 3
@@ -227,7 +227,7 @@ class TestIngestOtelTracesMixed:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
         ):
-            result = await tools["ingest_otel_traces"](trace_data=[{"span": "x"}])
+            result = await tools["mahavishnu_ingest_otel_traces"](trace_data=[{"span": "x"}])
         assert result["traces_ingested"] == 0
         assert any("ingest failed" in e for e in result["errors"])
         assert result["status"] == "warning"
@@ -247,7 +247,7 @@ class TestIngestOtelTracesMixed:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
         ):
-            result = await tools["ingest_otel_traces"](log_files=[str(log_file)])
+            result = await tools["mahavishnu_ingest_otel_traces"](log_files=[str(log_file)])
         assert any("file ingest failed" in e for e in result["errors"])
 
     @pytest.mark.asyncio
@@ -260,7 +260,7 @@ class TestIngestOtelTracesMixed:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
         ):
-            result = await tools["ingest_otel_traces"](log_files=[str(log_file)])
+            result = await tools["mahavishnu_ingest_otel_traces"](log_files=[str(log_file)])
         assert any("Failed to process" in e for e in result["errors"])
 
 
@@ -285,7 +285,7 @@ class TestSearchOtelTracesThreshold:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
         ):
-            await tools["search_otel_traces"]("query")
+            await tools["mahavishnu_search_otel_traces"]("query")
         # threshold is not passed to search_traces in this implementation —
         # it's only used to configure the ingester. Verify no exception and
         # the query was forwarded.
@@ -299,7 +299,7 @@ class TestSearchOtelTracesThreshold:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
         ) as ingester_cls:
-            await tools["search_otel_traces"]("query", threshold=0.5)
+            await tools["mahavishnu_search_otel_traces"]("query", threshold=0.5)
         # The ingester should be constructed with similarity_threshold=0.5
         call_kwargs = ingester_cls.call_args.kwargs
         assert call_kwargs["similarity_threshold"] == 0.5
@@ -316,7 +316,7 @@ class TestSearchOtelTracesThreshold:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=ingester,
         ):
-            result = await tools["search_otel_traces"]("anything")
+            result = await tools["mahavishnu_search_otel_traces"]("anything")
         assert result == []
 
 
@@ -333,7 +333,7 @@ class TestGetOtelTraceImportError:
             patch.dict("sys.modules", {"mahavishnu.ingesters.otel_ingester": None}),
             patch("builtins.__import__", side_effect=ImportError("nope")),
         ):
-            result = await tools["get_otel_trace"]("trace-123")
+            result = await tools["mahavishnu_get_otel_trace"]("trace-123")
         assert result is None
 
 
@@ -350,7 +350,7 @@ class TestOtelIngesterStats:
         mock_store.initialize = AsyncMock()
         mock_store.close = AsyncMock()
         with patch("akosha.storage.HotStore", return_value=mock_store):
-            result = await tools["otel_ingester_stats"]()
+            result = await tools["mahavishnu_otel_ingester_stats"]()
         assert result["turboquant_compression"] is True
         assert result["turboquant_bits"] == 4
         assert result["embedding_model"] == "all-MiniLM-L6-v2"
@@ -362,7 +362,7 @@ class TestOtelIngesterStats:
         mock_store.initialize = AsyncMock()
         mock_store.close = AsyncMock()
         with patch("akosha.storage.HotStore", return_value=mock_store):
-            result = await tools["otel_ingester_stats"]()
+            result = await tools["mahavishnu_otel_ingester_stats"]()
         assert result["turboquant_compression"] is False
         assert result["turboquant_bits"] is None
 
@@ -373,7 +373,7 @@ class TestOtelIngesterStats:
         mock_store.initialize = AsyncMock()
         mock_store.close = AsyncMock()
         with patch("akosha.storage.HotStore", return_value=mock_store):
-            result = await tools["otel_ingester_stats"]()
+            result = await tools["mahavishnu_otel_ingester_stats"]()
         for key in (
             "storage_backend",
             "hot_store_path",

@@ -40,12 +40,12 @@ async def test_mcp_tool_inventory_includes_required_tools() -> None:
     inventory = await collect_mcp_tool_inventory()
 
     required = {
-        "list_repos",
-        "trigger_workflow",
-        "get_workflow_status",
+        "mahavishnu_list_repos",
+        "mahavishnu_trigger_workflow",
+        "mahavishnu_get_workflow_status",
         "get_health",
-        "get_monitoring_dashboard",
-        "get_tool_versions",
+        "mahavishnu_get_monitoring_dashboard",
+        "mahavishnu_get_tool_versions",
     }
 
     assert required.issubset(set(inventory))
@@ -59,9 +59,9 @@ async def test_health_tool_registration_includes_required_tools() -> None:
     inventory = await collect_health_tool_inventory()
 
     required = {
-        "mcp_list_tools",
-        "mcp_test_connection",
-        "mcp_get_metrics",
+        "mahavishnu_mcp_list_tools",
+        "mahavishnu_mcp_test_connection",
+        "mahavishnu_mcp_get_metrics",
     }
 
     assert required.issubset(set(inventory))
@@ -72,10 +72,10 @@ def test_tool_version_registry_includes_contract_tools() -> None:
     versions = collect_tool_versions()
 
     for name in (
-        "get_tool_versions",
-        "mcp_list_tools",
-        "mcp_test_connection",
-        "mcp_get_metrics",
+        "mahavishnu_get_tool_versions",
+        "mahavishnu_mcp_list_tools",
+        "mahavishnu_mcp_test_connection",
+        "mahavishnu_mcp_get_metrics",
     ):
         assert versions[name]
 

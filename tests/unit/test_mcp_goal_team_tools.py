@@ -157,7 +157,7 @@ class TestRegistration:
 
     def test_all_tools_registered(self, registered_mcp):
         """All 3 goal-team tools should be registered."""
-        expected = {"team_from_goal", "parse_goal", "list_team_skills"}
+        expected = {"mahavishnu_team_from_goal", "mahavishnu_parse_goal", "mahavishnu_list_team_skills"}
         assert expected.issubset(set(registered_mcp._tools.keys()))
 
 
@@ -175,7 +175,7 @@ class TestListTeamSkills:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await registered_mcp._tools["list_team_skills"]()
+            result = await registered_mcp._tools["mahavishnu_list_team_skills"]()
         assert result["success"] is True
         assert "skills" in result
         assert "count" in result
@@ -188,7 +188,7 @@ class TestListTeamSkills:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=False,
         ):
-            result = await registered_mcp._tools["list_team_skills"]()
+            result = await registered_mcp._tools["mahavishnu_list_team_skills"]()
         assert result["success"] is False
         assert result["skills"] == {}
         assert result["count"] == 0
@@ -209,7 +209,7 @@ class TestTeamFromGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=False,
         ):
-            result = await registered_mcp._tools["team_from_goal"](
+            result = await registered_mcp._tools["mahavishnu_team_from_goal"](
                 goal="this is a long enough goal to pass validation"
             )
         assert result["success"] is False
@@ -221,7 +221,7 @@ class TestTeamFromGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await registered_mcp._tools["team_from_goal"](goal="short")
+            result = await registered_mcp._tools["mahavishnu_team_from_goal"](goal="short")
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.GOAL_TOO_SHORT.value
 
@@ -231,7 +231,7 @@ class TestTeamFromGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await registered_mcp._tools["team_from_goal"](goal="x" * 1001)
+            result = await registered_mcp._tools["mahavishnu_team_from_goal"](goal="x" * 1001)
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.GOAL_TOO_LONG.value
 
@@ -241,7 +241,7 @@ class TestTeamFromGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await registered_mcp._tools["team_from_goal"](
+            result = await registered_mcp._tools["mahavishnu_team_from_goal"](
                 goal="a long enough goal to pass validation",
                 auto_run=True,
             )
@@ -255,7 +255,7 @@ class TestTeamFromGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await registered_mcp._tools["team_from_goal"](
+            result = await registered_mcp._tools["mahavishnu_team_from_goal"](
                 goal="a long enough goal to pass validation",
                 mode="not-a-mode",
             )
@@ -296,7 +296,7 @@ class TestTeamFromGoal:
                 return_value=factory,
             ),
         ):
-            result = await registered_mcp._tools["team_from_goal"](
+            result = await registered_mcp._tools["mahavishnu_team_from_goal"](
                 goal="a long enough goal to pass validation",
             )
         assert result["success"] is True
@@ -336,7 +336,7 @@ class TestTeamFromGoal:
                 return_value=factory,
             ),
         ):
-            result = await registered_mcp._tools["team_from_goal"](
+            result = await registered_mcp._tools["mahavishnu_team_from_goal"](
                 goal="a long enough goal to pass validation",
                 auto_run=True,
                 task="do the work",
@@ -379,7 +379,7 @@ class TestTeamFromGoal:
                 return_value=factory,
             ),
         ):
-            await registered_mcp._tools["team_from_goal"](
+            await registered_mcp._tools["mahavishnu_team_from_goal"](
                 goal="a long enough goal to pass validation"
             )
         # broadcast_team_parsed, broadcast_team_created should have been called
@@ -419,7 +419,7 @@ class TestTeamFromGoal:
                 return_value=factory,
             ),
         ):
-            result = await registered_mcp._tools["team_from_goal"](
+            result = await registered_mcp._tools["mahavishnu_team_from_goal"](
                 goal="a long enough goal to pass validation"
             )
         assert result["success"] is False
@@ -441,7 +441,7 @@ class TestParseGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=False,
         ):
-            result = await registered_mcp._tools["parse_goal"](
+            result = await registered_mcp._tools["mahavishnu_parse_goal"](
                 goal="a long enough goal to pass validation"
             )
         assert result["success"] is False
@@ -453,7 +453,7 @@ class TestParseGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await registered_mcp._tools["parse_goal"](goal="hi")
+            result = await registered_mcp._tools["mahavishnu_parse_goal"](goal="hi")
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.GOAL_TOO_SHORT.value
 
@@ -485,7 +485,7 @@ class TestParseGoal:
                 return_value=factory,
             ),
         ):
-            result = await registered_mcp._tools["parse_goal"](
+            result = await registered_mcp._tools["mahavishnu_parse_goal"](
                 goal="a long enough goal to pass validation"
             )
         assert result["success"] is True
@@ -536,7 +536,7 @@ class TestParseGoal:
             mock_engine = MagicMock()
             mock_engine.get_mode_recommendation = MagicMock(return_value=recommendation)
             mock_get_engine.return_value = mock_engine
-            result = await registered_mcp._tools["parse_goal"](
+            result = await registered_mcp._tools["mahavishnu_parse_goal"](
                 goal="a long enough goal to pass validation"
             )
         assert result["success"] is True
@@ -570,7 +570,7 @@ class TestParseGoal:
                 return_value=factory,
             ),
         ):
-            result = await registered_mcp._tools["parse_goal"](
+            result = await registered_mcp._tools["mahavishnu_parse_goal"](
                 goal="a long enough goal to pass validation"
             )
         assert result["success"] is False

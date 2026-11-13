@@ -264,8 +264,8 @@ async def test_opensearch_integration():
     assert hasattr(app.opensearch_integration, "log_workflow_start")
     assert hasattr(app.opensearch_integration, "log_workflow_completion")
     assert hasattr(app.opensearch_integration, "log_error")
-    assert hasattr(app.opensearch_integration, "search_logs")
-    assert hasattr(app.opensearch_integration, "search_workflows")
+    assert hasattr(app.opensearch_integration, "mahavishnu_search_logs")
+    assert hasattr(app.opensearch_integration, "mahavishnu_search_workflows")
 
 
 @pytest.mark.asyncio

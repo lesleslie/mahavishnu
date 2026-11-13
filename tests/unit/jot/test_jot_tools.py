@@ -67,7 +67,7 @@ def _capture(event_id: str, text: str, wall_ms: int) -> JotEvent:
 
 def test_jot_list_returns_list_of_typed_dicts(tmp_path: Path) -> None:
     _seed([_capture("a" * 32, "x", wall_ms=1)])
-    result = jot_tools.jot_list.fn(status=None, limit=50)  # access underlying fn
+    result = jot_tools.mahavishnu_jot_list.fn(status=None, limit=50)  # access underlying fn
     assert isinstance(result, list)
     assert isinstance(result[0], dict)
     assert set(result[0].keys()) >= {
@@ -81,13 +81,13 @@ def test_jot_list_returns_list_of_typed_dicts(tmp_path: Path) -> None:
 
 def test_jot_show_returns_typed_dict_with_ctx(tmp_path: Path) -> None:
     _seed([_capture("a" * 32, "hello", wall_ms=1)])
-    result = jot_tools.jot_show.fn(handle="a" * 6)
+    result = jot_tools.mahavishnu_jot_show.fn(handle="a" * 6)
     assert "ctx" in result
     assert "hlc" in result
 
 
 def test_jot_add_writes_capture_event(tmp_path: Path) -> None:
-    jot_tools.jot_add.fn(text="new jot")
+    jot_tools.mahavishnu_jot_add.fn(text="new jot")
     events = parse_events(default_log_path())
     assert events[-1].op == "capture"
     assert events[-1].text == "new jot"
@@ -102,7 +102,7 @@ def test_jot_add_returns_the_jot_it_just_created(tmp_path: Path) -> None:
     already holds one — which is every real session.
     """
     _seed([_capture("a" * 32, "older jot", wall_ms=1)])
-    result = jot_tools.jot_add.fn(text="new jot")
+    result = jot_tools.mahavishnu_jot_add.fn(text="new jot")
     assert result["text"] == "new jot"
     assert result["status"] == "open"
     assert result["id"] != "a" * 32
@@ -116,7 +116,7 @@ def test_jot_edit_returns_the_edited_jot(tmp_path: Path) -> None:
             _capture("b" * 32, "other jot", wall_ms=2),
         ]
     )
-    result = jot_tools.jot_edit.fn(handle="a" * 6, new_text="v2")
+    result = jot_tools.mahavishnu_jot_edit.fn(handle="a" * 6, new_text="v2")
     assert result["id"] == "a" * 32
     assert result["text"] == "v2"
 
@@ -129,7 +129,7 @@ def test_jot_done_returns_the_jot_it_marked_done(tmp_path: Path) -> None:
             _capture("b" * 32, "second", wall_ms=2),
         ]
     )
-    result = jot_tools.jot_done.fn(handle="a" * 6)
+    result = jot_tools.mahavishnu_jot_done.fn(handle="a" * 6)
     assert result["id"] == "a" * 32
     assert result["status"] == "done"
 
@@ -150,7 +150,7 @@ def test_jot_reopen_returns_the_jot_it_reopened(tmp_path: Path) -> None:
             _capture("b" * 32, "second", wall_ms=3),
         ]
     )
-    result = jot_tools.jot_reopen.fn(handle="a" * 6)
+    result = jot_tools.mahavishnu_jot_reopen.fn(handle="a" * 6)
     assert result["id"] == "a" * 32
     assert result["status"] == "open"
 
@@ -173,7 +173,7 @@ def test_jot_vitals_returns_counts(tmp_path: Path) -> None:
             ),
         ]
     )
-    result = jot_tools.jot_vitals.fn()
+    result = jot_tools.mahavishnu_jot_vitals.fn()
     assert result["open"] == 1
     assert result["done"] == 1
     assert result["dispatch_in_flight"] == 0
@@ -190,16 +190,16 @@ def test_jot_search_returns_substring_matches(tmp_path: Path) -> None:
             _capture("b" * 32, "investigate", wall_ms=2),
         ]
     )
-    result = jot_tools.jot_search.fn(query="fold", limit=20)
+    result = jot_tools.mahavishnu_jot_search.fn(query="fold", limit=20)
     assert len(result) == 1
     assert "refactor" in result[0]["text"]
 
 
 def test_jot_edit_done_reopen_round_trip(tmp_path: Path) -> None:
     _seed([_capture("a" * 32, "v1", wall_ms=1)])
-    jot_tools.jot_edit.fn(handle="a" * 6, new_text="v2")
-    jot_tools.jot_done.fn(handle="a" * 6)
-    jot_tools.jot_reopen.fn(handle="a" * 6)
+    jot_tools.mahavishnu_jot_edit.fn(handle="a" * 6, new_text="v2")
+    jot_tools.mahavishnu_jot_done.fn(handle="a" * 6)
+    jot_tools.mahavishnu_jot_reopen.fn(handle="a" * 6)
     events = parse_events(default_log_path())
     assert [e.op for e in events] == ["capture", "edit", "done", "reopen"]
     result = build_states(events, enrich=False)
@@ -213,7 +213,7 @@ def test_jot_edit_done_reopen_round_trip(tmp_path: Path) -> None:
 def test_jot_vitals_returns_zero_counts_when_no_states(tmp_path: Path) -> None:
     """When the log has no captured states, all counts are 0."""
     _seed([])
-    result = jot_tools.jot_vitals.fn()
+    result = jot_tools.mahavishnu_jot_vitals.fn()
     assert result["open"] == 0
     assert result["done"] == 0
     assert result["dispatch_in_flight"] == 0
@@ -271,4 +271,4 @@ def test_jot_tools_module_importable_without_fastmcp(tmp_path: Path) -> None:
 
     # Sanity: the module's plain functions are accessible (no .fn shim needed
     # because the wrap failed gracefully and the plain callable remains).
-    assert callable(mod.jot_list)
+    assert callable(mod.mahavishnu_jot_list)

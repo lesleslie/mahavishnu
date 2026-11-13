@@ -51,7 +51,7 @@ class _FakeMCPClient:
         if name == "oneiric_get_adapter_health":
             return {"success": True, "health": {"healthy": True}}
         if name == "oneiric_get_contract_info":
-            return {"ok": True, "tool_groups": {"adapter_registry": ["list_adapters"]}}
+            return {"ok": True, "tool_groups": {"adapter_registry": ["mahavishnu_list_adapters"]}}
         raise AssertionError(name)
 
 

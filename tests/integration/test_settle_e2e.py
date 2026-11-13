@@ -86,7 +86,7 @@ async def test_full_settle_lifecycle_apply(isolated_mcp_dir, fake_manager, monke
     monkeypatch.setattr(tools, "_settle_mcp", None)  # force dead-letter path
 
     # 1. Spawn worker + register settle record BEFORE file write.
-    launch = await tools.worker_run_with_settle(
+    launch = await tools.mahavishnu_worker_run_with_settle(
         task_signature="hello-world",
         bindings=[{"path": "hello.txt", "base": "hello\n"}],
     )
@@ -104,12 +104,12 @@ async def test_full_settle_lifecycle_apply(isolated_mcp_dir, fake_manager, monke
     assert record.state == SettleState.PROPOSED
 
     # 3. Observe PROPOSED state via select action.
-    selected = await tools.worker_settle(launch["run_ref"], "select")
+    selected = await tools.mahavishnu_worker_settle(launch["run_ref"], "select")
     assert selected["state"] == SettleState.SELECTED.value
     assert selected["legal_next"] == ["apply", "release", "discard"]
 
     # 4. Apply — git merge-file runs against the binding.base.
-    applied = await tools.worker_settle(
+    applied = await tools.mahavishnu_worker_settle(
         launch["run_ref"],
         "apply",
         bindings_content={"hello.txt": "hello world\n"},
@@ -130,16 +130,16 @@ async def test_full_settle_lifecycle_release(
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
 
-    launch = await tools.worker_run_with_settle(
+    launch = await tools.mahavishnu_worker_run_with_settle(
         task_signature="discard-me",
         bindings=[{"path": "x", "base": ""}],
     )
     assert launch["state"] == SettleState.PROPOSED.value
 
-    selected = await tools.worker_settle(launch["run_ref"], "select")
+    selected = await tools.mahavishnu_worker_settle(launch["run_ref"], "select")
     assert selected["state"] == SettleState.SELECTED.value
 
-    released = await tools.worker_settle(launch["run_ref"], "release")
+    released = await tools.mahavishnu_worker_settle(launch["run_ref"], "release")
     assert released["state"] == SettleState.RELEASED.value
     assert released["legal_next"] == []
 
@@ -153,17 +153,17 @@ async def test_apply_conflict_returns_structured_error(
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
 
-    launch = await tools.worker_run_with_settle(
+    launch = await tools.mahavishnu_worker_run_with_settle(
         task_signature="conflict-test",
         bindings=[{"path": "x", "base": "line1\nline2\nline3\n"}],
     )
     # Move to SELECTED first.
-    await tools.worker_settle(launch["run_ref"], "select")
+    await tools.mahavishnu_worker_settle(launch["run_ref"], "select")
 
     # Two divergent edits to the same base — git merge-file will flag a conflict.
     ours = "line1\nWORKER_EDITED\nline3\n"
     theirs = "line1\nUSER_EDITED\nline3\n"
-    result = await tools.worker_settle(
+    result = await tools.mahavishnu_worker_settle(
         launch["run_ref"],
         "apply",
         bindings_content={"x": ours},
@@ -186,11 +186,11 @@ async def test_illegal_transition_returns_error(
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
 
-    launch = await tools.worker_run_with_settle(
+    launch = await tools.mahavishnu_worker_run_with_settle(
         task_signature="illegal",
         bindings=[{"path": "x", "base": ""}],
     )
-    result = await tools.worker_settle(
+    result = await tools.mahavishnu_worker_settle(
         launch["run_ref"], "apply", bindings_content={"x": ""}
     )
     assert result["state"] == "illegal_transition"
@@ -231,7 +231,7 @@ async def test_persists_before_launch(isolated_mcp_dir, fake_manager, monkeypatc
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
 
-    launch = await tools.worker_run_with_settle(
+    launch = await tools.mahavishnu_worker_run_with_settle(
         task_signature="order-check",
         bindings=[{"path": "x", "base": ""}],
     )
@@ -248,11 +248,11 @@ async def test_invalid_action_returns_error(
     monkeypatch.setattr(tools, "_durable_manager", fake_manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
 
-    launch = await tools.worker_run_with_settle(
+    launch = await tools.mahavishnu_worker_run_with_settle(
         task_signature="bogus-action",
         bindings=[{"path": "x", "base": ""}],
     )
-    result = await tools.worker_settle(launch["run_ref"], "frobnicate")
+    result = await tools.mahavishnu_worker_settle(launch["run_ref"], "frobnicate")
     assert result["state"] == "invalid_action"
 
 
@@ -261,7 +261,7 @@ async def test_missing_run_ref_returns_error(monkeypatch):
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_settle_mcp", None)
-    result = await tools.worker_settle("settle-does-not-exist", "select")
+    result = await tools.mahavishnu_worker_settle("settle-does-not-exist", "select")
     assert result["state"] == "not_found"
 
 

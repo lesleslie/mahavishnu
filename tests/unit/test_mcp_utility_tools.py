@@ -29,20 +29,20 @@ class TestMCPUtilityTools:
         tools = await mcp_server.list_tools()
         tool_names = {tool.name for tool in tools}
 
-        assert {"mcp_list_tools", "mcp_test_connection", "mcp_get_metrics"}.issubset(
+        assert {"mahavishnu_mcp_list_tools", "mahavishnu_mcp_test_connection", "mahavishnu_mcp_get_metrics"}.issubset(
             tool_names
         )
 
     @pytest.mark.asyncio
     async def test_mcp_list_tools_returns_inventory(self, mcp_server):
         """mcp_list_tools should return a serialized inventory."""
-        result = await (await mcp_server.get_tool("mcp_list_tools")).fn()
+        result = await (await mcp_server.get_tool("mahavishnu_mcp_list_tools")).fn()
 
         assert result["status"] == "success"
         assert result["total_tools"] >= 3
         tool_names = {item["name"] for item in result["tools"]}
 
-        assert {"mcp_list_tools", "mcp_test_connection", "mcp_get_metrics"}.issubset(
+        assert {"mahavishnu_mcp_list_tools", "mahavishnu_mcp_test_connection", "mahavishnu_mcp_get_metrics"}.issubset(
             tool_names
         )
 
@@ -60,7 +60,7 @@ class TestMCPUtilityTools:
             "mahavishnu.mcp.tools.health_tools.HealthChecker.check",
             new=AsyncMock(return_value=fake_result),
         ):
-            result = await (await mcp_server.get_tool("mcp_test_connection")).fn(
+            result = await (await mcp_server.get_tool("mahavishnu_mcp_test_connection")).fn(
                 service_name="session-buddy", host="localhost", port=8678
             )
 
@@ -128,7 +128,7 @@ class TestMCPUtilityTools:
                 return_value=b"# HELP mcp_tool_calls_total Total MCP tool calls\nmcp_tool_calls_total 1\n",
             ),
         ):
-            result = await (await mcp_server.get_tool("mcp_get_metrics")).fn()
+            result = await (await mcp_server.get_tool("mahavishnu_mcp_get_metrics")).fn()
 
         assert result["status"] == "success"
         assert result["registered_tools"] >= 1

@@ -82,10 +82,10 @@ async def test_core_tools_are_listed(server):
     tools = await server.server.list_tools()
     tool_names = {tool.name for tool in tools}
 
-    assert "list_repos" in tool_names
-    assert "trigger_workflow" in tool_names
-    assert "get_workflow_status" in tool_names
-    assert "list_workflows" in tool_names
+    assert "mahavishnu_list_repos" in tool_names
+    assert "mahavishnu_trigger_workflow" in tool_names
+    assert "mahavishnu_get_workflow_status" in tool_names
+    assert "mahavishnu_list_workflows" in tool_names
     assert "get_health" in tool_names
 
 
@@ -94,7 +94,7 @@ async def test_list_repos_executes_via_fastmcp_call_tool(server, mock_app):
     """FastMCP should execute list_repos through the public call_tool surface."""
     mock_app.get_repos = Mock(return_value=["/repo1", "/repo2"])
 
-    result = await server.server.call_tool("list_repos", {"tag": "test_tag"})
+    result = await server.server.call_tool("mahavishnu_list_repos", {"tag": "test_tag"})
 
     assert result is not None
     assert hasattr(result, "content")
@@ -109,7 +109,7 @@ async def test_trigger_workflow_executes_via_fastmcp_call_tool(server, mock_app)
     )
 
     result = await server.server.call_tool(
-        "trigger_workflow",
+        "mahavishnu_trigger_workflow",
         {"adapter": "test_adapter", "task_type": "test_task", "params": {"test": True}},
     )
 
@@ -122,7 +122,7 @@ async def test_trigger_workflow_executes_via_fastmcp_call_tool(server, mock_app)
 async def test_get_workflow_status_executes_via_fastmcp_call_tool(server):
     """Workflow status lookup should use the current public tool interface."""
     result = await server.server.call_tool(
-        "get_workflow_status", {"workflow_id": "test_wf_123"}
+        "mahavishnu_get_workflow_status", {"workflow_id": "test_wf_123"}
     )
 
     assert result is not None
@@ -141,10 +141,10 @@ async def test_get_health_executes_via_fastmcp_call_tool(server):
 @pytest.mark.asyncio
 async def test_monitoring_dashboard_executes_via_fastmcp_call_tool(server):
     """Dashboard retrieval should surface the canonical ecosystem status payload."""
-    result = await server.server.call_tool("get_monitoring_dashboard", {})
+    result = await server.server.call_tool("mahavishnu_get_monitoring_dashboard", {})
 
     assert result is not None
     assert hasattr(result, "content")
     assert result.structured_content["status"] == "success"
-    assert "ecosystem_status" in result.structured_content
+    assert "mahavishnu_ecosystem_status" in result.structured_content
     assert "dashboard" not in result.structured_content

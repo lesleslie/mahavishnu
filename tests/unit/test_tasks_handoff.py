@@ -145,7 +145,7 @@ def registered_tool(
         session_buddy_client=fake_sb_client,
         workflow_dispatch_fn=fake_workflow_dispatch,
     )
-    return stub_mcp.tools["tasks_handoff_to_workflow"]
+    return stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
 
 # =============================================================================
@@ -238,7 +238,7 @@ class TestSessionBuddyDown:
             session_buddy_client=sb,
             workflow_dispatch_fn=fake_workflow_dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(TaskNotFoundError) as exc_info:
             await tool(task_id=_VALID_TASK_ID, adapter="prefect")
@@ -270,7 +270,7 @@ class TestDispatchFailure:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=pool_dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(RuntimeError, match="pool registry down"):
             await tool(task_id=_VALID_TASK_ID, adapter="prefect")
@@ -303,7 +303,7 @@ class TestStep3Failure:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=fake_workflow_dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(ConnectionError, match="session-buddy gone"):
             await tool(task_id=_VALID_TASK_ID, adapter="prefect")
@@ -342,7 +342,7 @@ class TestCancellation:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=pool_dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         task = asyncio.create_task(tool(task_id=_VALID_TASK_ID, adapter="prefect"))
         await asyncio.sleep(0.05)
@@ -383,7 +383,7 @@ class TestEmptyWorkflowId:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=pool_dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(WorkflowNotReturnedError) as exc_info:
             await tool(task_id=_VALID_TASK_ID, adapter="prefect")
@@ -421,7 +421,7 @@ class TestOrphanReasonDisambiguation:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=pool_a,
         )
-        tool_a = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool_a = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(RuntimeError, match="step-2 boom"):
             await tool_a(task_id=_VALID_TASK_ID, adapter="prefect")
@@ -449,7 +449,7 @@ class TestOrphanReasonDisambiguation:
             session_buddy_client=sb_b,
             workflow_dispatch_fn=pool_b,
         )
-        tool_b = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool_b = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(ConnectionError, match="step-3 boom"):
             await tool_b(task_id=_VALID_TASK_ID, adapter="prefect")
@@ -495,7 +495,7 @@ class TestContentValidation:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=fake_workflow_dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(ValueError, match="exceeds 4096 bytes"):
             await tool(task_id=_VALID_TASK_ID, adapter="prefect")
@@ -527,7 +527,7 @@ class TestRateLimit:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=fake_workflow_dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         # 10 successful calls (just below the cap).
         for _ in range(10):
@@ -644,7 +644,7 @@ class TestRepoScope:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=fake_workflow_dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(NoRepoScopeError) as exc:
             await tool(task_id=_VALID_TASK_ID, adapter="prefect")
@@ -705,7 +705,7 @@ class TestRepoScope:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=fake_workflow_dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(NoRepoScopeError):
             await tool(
@@ -759,7 +759,7 @@ class TestUnknownWorkflowId:
             session_buddy_client=fake_sb_client,
             workflow_dispatch_fn=dispatch,
         )
-        tool = stub_mcp.tools["tasks_handoff_to_workflow"]
+        tool = stub_mcp.tools["mahavishnu_tasks_handoff_to_workflow"]
 
         with pytest.raises(WorkflowNotReturnedError):
             await tool(task_id=_VALID_TASK_ID, adapter="prefect")

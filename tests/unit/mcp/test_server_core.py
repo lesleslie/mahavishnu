@@ -143,7 +143,7 @@ class TestListRepos:
         """Without pagination every repo is projected with exists=True."""
         mock_app.get_repos = MagicMock(return_value=["/a", "/b", "/c"])
 
-        fn = await tool("list_repos")
+        fn = await tool("mahavishnu_list_repos")
         result = await fn()
 
         assert result["total_count"] == 3
@@ -160,7 +160,7 @@ class TestListRepos:
         """Offset is applied before limit, and total_count stays unfiltered."""
         mock_app.get_repos = MagicMock(return_value=["/a", "/b", "/c", "/d"])
 
-        fn = await tool("list_repos")
+        fn = await tool("mahavishnu_list_repos")
         result = await fn(offset=1, limit=2)
 
         assert [r["path"] for r in result["repos"]] == ["/b", "/c"]
@@ -173,7 +173,7 @@ class TestListRepos:
         """The requested tag is echoed back in the response."""
         mock_app.get_repos = MagicMock(return_value=["/a"])
 
-        fn = await tool("list_repos")
+        fn = await tool("mahavishnu_list_repos")
         result = await fn(tag="backend")
 
         assert result["tag"] == "backend"
@@ -184,7 +184,7 @@ class TestListRepos:
         """A repo-catalog failure returns an empty, zeroed envelope."""
         mock_app.get_repos = MagicMock(side_effect=RuntimeError("repos.yaml missing"))
 
-        fn = await tool("list_repos")
+        fn = await tool("mahavishnu_list_repos")
         result = await fn()
 
         assert result["status"] == "error"
@@ -218,7 +218,7 @@ class TestTriggerWorkflow:
             }
         )
 
-        fn = await tool("trigger_workflow")
+        fn = await tool("mahavishnu_trigger_workflow")
         result = await fn(adapter="prefect", task_type="review", repos=["/x", "/y"])
 
         assert result["status"] == "completed"
@@ -236,7 +236,7 @@ class TestTriggerWorkflow:
             return_value={"workflow_id": "wf-timed", "status": "completed"}
         )
 
-        fn = await tool("trigger_workflow")
+        fn = await tool("mahavishnu_trigger_workflow")
         result = await fn(adapter="prefect", task_type="review", timeout=30)
 
         assert result["workflow_id"] == "wf-timed"
@@ -250,7 +250,7 @@ class TestTriggerWorkflow:
         mock_app.workflow_state_manager.create = AsyncMock()
         mock_app.workflow_state_manager.update = AsyncMock()
 
-        fn = await tool("trigger_workflow")
+        fn = await tool("mahavishnu_trigger_workflow")
         result = await fn(adapter="prefect", task_type="review", timeout=5)
 
         assert result["status"] == "failed"
@@ -279,7 +279,7 @@ class TestTriggerWorkflow:
         mock_app.workflow_state_manager.create = AsyncMock()
         mock_app.workflow_state_manager.update = AsyncMock()
 
-        fn = await tool("trigger_workflow")
+        fn = await tool("mahavishnu_trigger_workflow")
         result = await fn(adapter="agno", task_type="ingest")
 
         assert result["status"] == "failed"
@@ -301,7 +301,7 @@ class TestTriggerWorkflow:
         mock_app.execute_workflow_parallel = _Boom("adapter exploded")
         mock_app.workflow_state_manager.create = _Boom("state store dead")
 
-        fn = await tool("trigger_workflow")
+        fn = await tool("mahavishnu_trigger_workflow")
         result = await fn(adapter="agno", task_type="ingest")
 
         assert result["status"] == "failed"
@@ -315,7 +315,7 @@ class TestTriggerWorkflow:
             return_value={"workflow_id": "wf-1", "status": "queued"}
         )
 
-        fn = await tool("trigger_workflow")
+        fn = await tool("mahavishnu_trigger_workflow")
         result = await fn(adapter="prefect", task_type="code_review")
 
         assert result["workflow_id"] == "wf-1"
@@ -335,7 +335,7 @@ class TestTriggerWorkflow:
             }
         )
 
-        fn = await tool("trigger_workflow")
+        fn = await tool("mahavishnu_trigger_workflow")
         result = await fn(adapter="agno", task_type="ingest", tag="backend")
 
         assert result["repos_processed"] == 2
@@ -359,7 +359,7 @@ class TestPermissionGatedTools:
         )
         mock_app.rbac_manager.check_permission = AsyncMock(return_value=False)
 
-        fn = await tool("get_workflow_status")
+        fn = await tool("mahavishnu_get_workflow_status")
         result = await fn(workflow_id="wf-9", user_id="alice")
 
         assert result["status"] == "forbidden"
@@ -381,7 +381,7 @@ class TestPermissionGatedTools:
         )
         mock_app.rbac_manager.check_permission = AsyncMock(return_value=True)
 
-        fn = await tool("get_workflow_status")
+        fn = await tool("mahavishnu_get_workflow_status")
         result = await fn(workflow_id="wf-ok", user_id="bob")
 
         assert result["status"] == "completed"
@@ -395,7 +395,7 @@ class TestPermissionGatedTools:
         mock_app.workflow_state_manager.get = AsyncMock(return_value=None)
         mock_app.rbac_manager.check_permission = AsyncMock()
 
-        fn = await tool("get_workflow_status")
+        fn = await tool("mahavishnu_get_workflow_status")
         result = await fn(workflow_id="wf-missing", user_id="alice")
 
         assert result["status"] == "not_found"
@@ -408,7 +408,7 @@ class TestPermissionGatedTools:
         """A state-store failure returns status='error' with a timestamp."""
         mock_app.workflow_state_manager.get = _Boom("state store dead")
 
-        fn = await tool("get_workflow_status")
+        fn = await tool("mahavishnu_get_workflow_status")
         result = await fn(workflow_id="wf-1")
 
         assert result["status"] == "error"
@@ -423,7 +423,7 @@ class TestPermissionGatedTools:
             return_value=[{"id": "1"}, {"id": "2"}, {"id": "3"}]
         )
 
-        fn = await tool("list_workflows")
+        fn = await tool("mahavishnu_list_workflows")
         result = await fn(limit=5, offset=1)
 
         assert result["status"] == "success"
@@ -439,7 +439,7 @@ class TestPermissionGatedTools:
 
         mock_app.workflow_state_manager.list_workflows = AsyncMock(return_value=[])
 
-        fn = await tool("list_workflows")
+        fn = await tool("mahavishnu_list_workflows")
         result = await fn(status="completed")
 
         assert result["status"] == "success"
@@ -453,7 +453,7 @@ class TestPermissionGatedTools:
         """An unknown status is rejected and the valid set is listed."""
         mock_app.workflow_state_manager.list_workflows = AsyncMock()
 
-        fn = await tool("list_workflows")
+        fn = await tool("mahavishnu_list_workflows")
         result = await fn(status="quantum_superposition")
 
         assert result["status"] == "error"
@@ -467,7 +467,7 @@ class TestPermissionGatedTools:
         """LIST_WORKFLOWS denial returns an error envelope with empty list."""
         mock_app.rbac_manager.check_permission = AsyncMock(return_value=False)
 
-        fn = await tool("list_workflows")
+        fn = await tool("mahavishnu_list_workflows")
         result = await fn(user_id="carol")
 
         assert result["status"] == "error"
@@ -480,7 +480,7 @@ class TestPermissionGatedTools:
         """A state-manager explosion is converted to an error envelope."""
         mock_app.workflow_state_manager.list_workflows = _Boom("state down")
 
-        fn = await tool("list_workflows")
+        fn = await tool("mahavishnu_list_workflows")
         result = await fn()
 
         assert result["status"] == "error"
@@ -493,7 +493,7 @@ class TestPermissionGatedTools:
         mock_app.rbac_manager.check_permission = AsyncMock(return_value=False)
         mock_app.workflow_state_manager.update = AsyncMock()
 
-        fn = await tool("cancel_workflow")
+        fn = await tool("mahavishnu_cancel_workflow")
         result = await fn(workflow_id="wf-x", user_id="dave")
 
         assert result["status"] == "forbidden"
@@ -505,7 +505,7 @@ class TestPermissionGatedTools:
         """A successful cancel records the cancelled state and confirms."""
         mock_app.workflow_state_manager.update = AsyncMock()
 
-        fn = await tool("cancel_workflow")
+        fn = await tool("mahavishnu_cancel_workflow")
         result = await fn(workflow_id="wf-cancel")
 
         assert result["status"] == "cancelled"
@@ -520,7 +520,7 @@ class TestPermissionGatedTools:
         """An update failure surfaces as status='error', not a raise."""
         mock_app.workflow_state_manager.update = _Boom("cannot update")
 
-        fn = await tool("cancel_workflow")
+        fn = await tool("mahavishnu_cancel_workflow")
         result = await fn(workflow_id="wf-x")
 
         assert result["status"] == "error"
@@ -533,7 +533,7 @@ class TestPermissionGatedTools:
         mock_app.rbac_manager.check_permission = AsyncMock(return_value=False)
         mock_app.rbac_manager.create_user = AsyncMock()
 
-        fn = await tool("create_user")
+        fn = await tool("mahavishnu_create_user")
         result = await fn(user_id="new", roles=["viewer"], user_id_caller="not-admin")
 
         assert result["status"] == "forbidden"
@@ -548,7 +548,7 @@ class TestPermissionGatedTools:
         created = MagicMock(user_id="new", roles=[role])
         mock_app.rbac_manager.create_user = AsyncMock(return_value=created)
 
-        fn = await tool("create_user")
+        fn = await tool("mahavishnu_create_user")
         result = await fn(user_id="new", roles=["viewer"], allowed_repos=["/r"])
 
         assert result["status"] == "success"
@@ -561,7 +561,7 @@ class TestPermissionGatedTools:
         """An RBAC create failure returns status='error' with a message."""
         mock_app.rbac_manager.create_user = _Boom("duplicate user")
 
-        fn = await tool("create_user")
+        fn = await tool("mahavishnu_create_user")
         result = await fn(user_id="dupe", roles=["viewer"])
 
         assert result["status"] == "error"
@@ -580,7 +580,7 @@ class TestCheckPermissionTool:
 
         mock_app.rbac_manager.check_permission = AsyncMock(return_value=True)
 
-        fn = await tool("check_permission")
+        fn = await tool("mahavishnu_check_permission")
         result = await fn(user_id="alice", repo="/r", permission="read_repo")
 
         assert result["has_permission"] is True
@@ -593,7 +593,7 @@ class TestCheckPermissionTool:
         self, server: FastMCPServer, tool: Callable[[str], Any]
     ) -> None:
         """An unknown permission returns the valid set instead of raising."""
-        fn = await tool("check_permission")
+        fn = await tool("mahavishnu_check_permission")
         result = await fn(user_id="alice", repo="/r", permission="not_a_perm")
 
         assert result["status"] == "error"
@@ -606,7 +606,7 @@ class TestCheckPermissionTool:
         """An RBAC backend error yields has_permission=False, not a raise."""
         mock_app.rbac_manager.check_permission = _Boom("rbac offline")
 
-        fn = await tool("check_permission")
+        fn = await tool("mahavishnu_check_permission")
         result = await fn(user_id="alice", repo="/r", permission="read_repo")
 
         assert result["status"] == "error"
@@ -636,7 +636,7 @@ class TestObservabilityTools:
         )
         mock_app.observability.get_logs = MagicMock(return_value=[log] * 3)
 
-        fn = await tool("get_observability_metrics")
+        fn = await tool("mahavishnu_get_observability_metrics")
         result = await fn()
 
         assert result["status"] == "success"
@@ -650,7 +650,7 @@ class TestObservabilityTools:
         """A missing observability subsystem returns an error, not a raise."""
         mock_app.observability = None
 
-        fn = await tool("get_observability_metrics")
+        fn = await tool("mahavishnu_get_observability_metrics")
         result = await fn()
 
         assert "not initialized" in result["error"]
@@ -664,7 +664,7 @@ class TestObservabilityTools:
             side_effect=RuntimeError("metrics dead")
         )
 
-        fn = await tool("get_observability_metrics")
+        fn = await tool("mahavishnu_get_observability_metrics")
         result = await fn()
 
         assert "metrics dead" in result["error"]
@@ -677,7 +677,7 @@ class TestObservabilityTools:
             return_value=[{"m": "1"}]
         )
 
-        fn = await tool("search_logs")
+        fn = await tool("mahavishnu_search_logs")
         result = await fn(query="error", level="ERROR", size=5)
 
         assert result["status"] == "success"
@@ -691,7 +691,7 @@ class TestObservabilityTools:
         """An OpenSearch error yields an empty log list with status='error'."""
         mock_app.opensearch_integration.search_logs = _Boom("opensearch down")
 
-        fn = await tool("search_logs")
+        fn = await tool("mahavishnu_search_logs")
         result = await fn(query="x")
 
         assert result["status"] == "error"
@@ -705,7 +705,7 @@ class TestObservabilityTools:
             return_value=[{"workflow_id": "wf-1"}, {"workflow_id": "wf-2"}]
         )
 
-        fn = await tool("search_workflows")
+        fn = await tool("mahavishnu_search_workflows")
         result = await fn(adapter="prefect", status="completed")
 
         assert result["total_found"] == 2
@@ -717,7 +717,7 @@ class TestObservabilityTools:
         """A search failure returns an empty workflow list."""
         mock_app.opensearch_integration.search_workflows = _Boom("query failed")
 
-        fn = await tool("search_workflows")
+        fn = await tool("mahavishnu_search_workflows")
         result = await fn()
 
         assert result["status"] == "error"
@@ -726,8 +726,8 @@ class TestObservabilityTools:
     @pytest.mark.parametrize(
         ("tool_name", "backend_attr", "payload_key"),
         [
-            ("get_workflow_statistics", "get_workflow_stats", "statistics"),
-            ("get_log_statistics", "get_log_stats", "statistics"),
+            ("mahavishnu_get_workflow_statistics", "get_workflow_stats", "statistics"),
+            ("mahavishnu_get_log_statistics", "get_log_stats", "statistics"),
         ],
     )
     async def test_statistics_tools_success(
@@ -755,8 +755,8 @@ class TestObservabilityTools:
     @pytest.mark.parametrize(
         ("tool_name", "backend_attr"),
         [
-            ("get_workflow_statistics", "get_workflow_stats"),
-            ("get_log_statistics", "get_log_stats"),
+            ("mahavishnu_get_workflow_statistics", "get_workflow_stats"),
+            ("mahavishnu_get_log_statistics", "get_log_stats"),
         ],
     )
     async def test_statistics_tools_wrap_failure(
@@ -784,7 +784,7 @@ class TestObservabilityTools:
             return_value={"retries": 3}
         )
 
-        fn = await tool("get_recovery_metrics")
+        fn = await tool("mahavishnu_get_recovery_metrics")
         result = await fn()
 
         assert result["metrics"] == {"retries": 3}
@@ -795,7 +795,7 @@ class TestObservabilityTools:
         """A recovery-manager failure degrades to an empty metrics dict."""
         mock_app.error_recovery_manager.get_recovery_metrics = _Boom("no recovery")
 
-        fn = await tool("get_recovery_metrics")
+        fn = await tool("mahavishnu_get_recovery_metrics")
         result = await fn()
 
         assert result["status"] == "error"
@@ -807,7 +807,7 @@ class TestObservabilityTools:
         """Healing kicks off the monitor loop and reports success."""
         mock_app.error_recovery_manager.monitor_and_heal_workflows = AsyncMock()
 
-        fn = await tool("heal_workflows")
+        fn = await tool("mahavishnu_heal_workflows")
         result = await fn()
 
         assert result["status"] == "success"
@@ -821,7 +821,7 @@ class TestObservabilityTools:
             "heal failed"
         )
 
-        fn = await tool("heal_workflows")
+        fn = await tool("mahavishnu_heal_workflows")
         result = await fn()
 
         assert result["status"] == "error"
@@ -833,7 +833,7 @@ class TestObservabilityTools:
         """No observability subsystem is a warning, not an error."""
         mock_app.observability = None
 
-        fn = await tool("flush_metrics")
+        fn = await tool("mahavishnu_flush_metrics")
         result = await fn()
 
         assert result["status"] == "warning"
@@ -844,7 +844,7 @@ class TestObservabilityTools:
         """A healthy observability subsystem is flushed."""
         mock_app.observability.flush_metrics = AsyncMock()
 
-        fn = await tool("flush_metrics")
+        fn = await tool("mahavishnu_flush_metrics")
         result = await fn()
 
         assert result["status"] == "success"
@@ -856,7 +856,7 @@ class TestObservabilityTools:
         """A flush failure is caught at the MCP boundary."""
         mock_app.observability.flush_metrics = _Boom("flush failed")
 
-        fn = await tool("flush_metrics")
+        fn = await tool("mahavishnu_flush_metrics")
         result = await fn()
 
         assert result["status"] == "error"
@@ -900,7 +900,7 @@ class TestBackupTools:
             backup_module, "BackupManager", MagicMock(return_value=manager)
         )
 
-        fn = await tool("create_backup")
+        fn = await tool("mahavishnu_create_backup")
         result = await fn(backup_type="full")
 
         assert result["status"] == "success"
@@ -918,7 +918,7 @@ class TestBackupTools:
         The id is assigned by the backup manager and returned in the
         response instead.
         """
-        found = await schema_server.server.get_tool("create_backup")
+        found = await schema_server.server.get_tool("mahavishnu_create_backup")
         properties = found.to_mcp_tool().input_schema["properties"]
 
         assert "backup_type" in properties
@@ -939,7 +939,7 @@ class TestBackupTools:
             MagicMock(side_effect=RuntimeError("disk full")),
         )
 
-        fn = await tool("create_backup")
+        fn = await tool("mahavishnu_create_backup")
         result = await fn()
 
         assert result["status"] == "error"
@@ -961,7 +961,7 @@ class TestBackupTools:
             backup_module, "BackupManager", MagicMock(return_value=manager)
         )
 
-        fn = await tool("list_backups")
+        fn = await tool("mahavishnu_list_backups")
         result = await fn()
 
         assert result["total_count"] == 2
@@ -981,7 +981,7 @@ class TestBackupTools:
             backup_module, "BackupManager", MagicMock(return_value=manager)
         )
 
-        fn = await tool("list_backups")
+        fn = await tool("mahavishnu_list_backups")
         result = await fn()
 
         assert result["status"] == "error"
@@ -1008,7 +1008,7 @@ class TestBackupTools:
             backup_module, "BackupManager", MagicMock(return_value=manager)
         )
 
-        fn = await tool("restore_backup")
+        fn = await tool("mahavishnu_restore_backup")
         result = await fn(backup_id="bk-7")
 
         assert result["status"] == expected_status
@@ -1028,7 +1028,7 @@ class TestBackupTools:
             backup_module, "BackupManager", MagicMock(return_value=manager)
         )
 
-        fn = await tool("restore_backup")
+        fn = await tool("mahavishnu_restore_backup")
         result = await fn(backup_id="bk-7")
 
         assert result["status"] == "error"
@@ -1048,7 +1048,7 @@ class TestBackupTools:
             backup_module, "DisasterRecoveryManager", MagicMock(return_value=manager)
         )
 
-        fn = await tool("run_disaster_recovery_check")
+        fn = await tool("mahavishnu_run_disaster_recovery_check")
         result = await fn()
 
         assert result["status"] == "success"
@@ -1068,7 +1068,7 @@ class TestBackupTools:
             backup_module, "DisasterRecoveryManager", MagicMock(return_value=manager)
         )
 
-        fn = await tool("run_disaster_recovery_check")
+        fn = await tool("mahavishnu_run_disaster_recovery_check")
         result = await fn()
 
         assert result["status"] == "error"
@@ -1113,7 +1113,7 @@ class TestMonitoringTools:
             ecosystem_status, "EcosystemStatusService", MagicMock(return_value=service)
         )
 
-        fn = await tool("get_monitoring_dashboard")
+        fn = await tool("mahavishnu_get_monitoring_dashboard")
         result = await fn()
 
         assert result["status"] == "success"
@@ -1135,7 +1135,7 @@ class TestMonitoringTools:
             MagicMock(side_effect=RuntimeError("status svc down")),
         )
 
-        fn = await tool("get_monitoring_dashboard")
+        fn = await tool("mahavishnu_get_monitoring_dashboard")
         result = await fn()
 
         assert result["status"] == "error"
@@ -1147,7 +1147,7 @@ class TestMonitoringTools:
         """A missing monitoring service is reported, not raised."""
         mock_app.monitoring_service = None
 
-        fn = await tool("get_active_alerts")
+        fn = await tool("mahavishnu_get_active_alerts")
         result = await fn()
 
         assert result["status"] == "error"
@@ -1161,7 +1161,7 @@ class TestMonitoringTools:
             return_value=[_fake_alert("al-1"), _fake_alert("al-2")]
         )
 
-        fn = await tool("get_active_alerts")
+        fn = await tool("mahavishnu_get_active_alerts")
         result = await fn()
 
         assert result["count"] == 2
@@ -1176,7 +1176,7 @@ class TestMonitoringTools:
             "alert svc down"
         )
 
-        fn = await tool("get_active_alerts")
+        fn = await tool("mahavishnu_get_active_alerts")
         result = await fn()
 
         assert result["status"] == "error"
@@ -1187,7 +1187,7 @@ class TestMonitoringTools:
         """Acknowledging without a monitoring service is an error envelope."""
         mock_app.monitoring_service = None
 
-        fn = await tool("acknowledge_alert")
+        fn = await tool("mahavishnu_acknowledge_alert")
         result = await fn(alert_id="al-1", user="alice")
 
         assert result["status"] == "error"
@@ -1206,7 +1206,7 @@ class TestMonitoringTools:
         """The boolean ack result drives the response status."""
         mock_app.monitoring_service.acknowledge_alert = AsyncMock(return_value=ack_ok)
 
-        fn = await tool("acknowledge_alert")
+        fn = await tool("mahavishnu_acknowledge_alert")
         result = await fn(alert_id="al-1", user="alice")
 
         assert result["status"] == expected_status
@@ -1217,7 +1217,7 @@ class TestMonitoringTools:
         """An ack exception is converted to an error envelope."""
         mock_app.monitoring_service.acknowledge_alert = _Boom("ack failed")
 
-        fn = await tool("acknowledge_alert")
+        fn = await tool("mahavishnu_acknowledge_alert")
         result = await fn(alert_id="al-1", user="alice")
 
         assert result["status"] == "error"
@@ -1228,7 +1228,7 @@ class TestMonitoringTools:
         """No monitoring service means no test alert."""
         mock_app.monitoring_service = None
 
-        fn = await tool("trigger_test_alert")
+        fn = await tool("mahavishnu_trigger_test_alert")
         result = await fn()
 
         assert result["status"] == "error"
@@ -1239,7 +1239,7 @@ class TestMonitoringTools:
         """An unparsable severity is rejected before the alert is created."""
         mock_app.monitoring_service.alert_manager.trigger_alert = AsyncMock()
 
-        fn = await tool("trigger_test_alert")
+        fn = await tool("mahavishnu_trigger_test_alert")
         result = await fn(severity="apocalyptic")
 
         assert result["status"] == "error"
@@ -1256,7 +1256,7 @@ class TestMonitoringTools:
             return_value=_fake_alert("al-test")
         )
 
-        fn = await tool("trigger_test_alert")
+        fn = await tool("mahavishnu_trigger_test_alert")
         result = await fn(severity="HIGH", title="T", description="D")
 
         assert result["status"] == "success"
@@ -1276,7 +1276,7 @@ class TestMonitoringTools:
             "cannot trigger"
         )
 
-        fn = await tool("trigger_test_alert")
+        fn = await tool("mahavishnu_trigger_test_alert")
         result = await fn(severity="low")
 
         assert result["status"] == "error"
@@ -1311,7 +1311,7 @@ class TestAdapterAndHealthTools:
         adapter.get_health = AsyncMock(return_value={"status": "healthy"})
         mock_app.adapters = {adapter_name: adapter}
 
-        fn = await tool("list_adapters")
+        fn = await tool("mahavishnu_list_adapters")
         result = await fn()
 
         assert result["count"] == 1
@@ -1325,7 +1325,7 @@ class TestAdapterAndHealthTools:
         adapter.get_health = _Boom("adapter offline")
         mock_app.adapters = {"prefect": adapter}
 
-        fn = await tool("list_adapters")
+        fn = await tool("mahavishnu_list_adapters")
         result = await fn()
 
         info = result["adapters"]["prefect"]
@@ -1439,7 +1439,7 @@ class TestIntrospectionTools:
         """Called without a name, every known tool version is returned."""
         from mahavishnu.mcp.tool_versions import TOOL_VERSIONS
 
-        fn = await tool("get_tool_versions")
+        fn = await tool("mahavishnu_get_tool_versions")
         result = await fn()
 
         assert result["status"] == "success"
@@ -1454,7 +1454,7 @@ class TestIntrospectionTools:
 
         known = next(iter(TOOL_VERSIONS))
 
-        fn = await tool("get_tool_versions")
+        fn = await tool("mahavishnu_get_tool_versions")
         result = await fn(tool_name=known)
 
         assert result["status"] == "success"
@@ -1465,7 +1465,7 @@ class TestIntrospectionTools:
         self, server: FastMCPServer, tool: Callable[[str], Any]
     ) -> None:
         """An unregistered tool name yields status='not_found'."""
-        fn = await tool("get_tool_versions")
+        fn = await tool("mahavishnu_get_tool_versions")
         result = await fn(tool_name="definitely_not_a_registered_tool")
 
         assert result["status"] == "not_found"

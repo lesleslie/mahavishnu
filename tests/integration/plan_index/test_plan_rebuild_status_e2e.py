@@ -14,7 +14,7 @@ from typing import Any
 class TestPlanRebuildStatusE2E:
     async def test_rebuild_status_returns_typed_dict(self, call_tool: Any) -> None:
         """Empty substrate: required TypedDict keys are present."""
-        result = await call_tool("plan_rebuild_status", {})
+        result = await call_tool("mahavishnu_plan_rebuild_status", {})
 
         assert isinstance(result, dict)
         assert "cycles_total" in result
@@ -28,7 +28,7 @@ class TestPlanRebuildStatusE2E:
         self, call_tool: Any
     ) -> None:
         """With no last_rebuild_ms, the spec §6 staleness rule marks it stale."""
-        result = await call_tool("plan_rebuild_status", {})
+        result = await call_tool("mahavishnu_plan_rebuild_status", {})
 
         assert result["stale"] is True
         assert result["cycles_total"] == 0
@@ -46,7 +46,7 @@ class TestPlanRebuildStatusE2E:
         # Seed a lock-holder string that matches the documented format.
         await store._mcp.put("plan_index/meta/rebuild_lock/holder", "deadbeef/12345")
 
-        result = await call_tool("plan_rebuild_status", {})
+        result = await call_tool("mahavishnu_plan_rebuild_status", {})
 
         if result.get("lock_held_by"):
             assert re.match(r"^[a-f0-9]{8}/\d+$", result["lock_held_by"]), (
@@ -59,7 +59,7 @@ class TestPlanRebuildStatusE2E:
         self, call_tool: Any
     ) -> None:
         """REQ-PLAN-010: missing ``user_id`` returns envelope, not raise."""
-        result = await call_tool("plan_rebuild_status", {}, user_id=None)
+        result = await call_tool("mahavishnu_plan_rebuild_status", {}, user_id=None)
 
         assert isinstance(result, dict)
         assert result["status"] == "error"

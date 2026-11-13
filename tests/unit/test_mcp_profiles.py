@@ -116,8 +116,8 @@ class TestProfileRegistrations:
     def test_profile_mappings_use_list_values(self):
         """Each profile maps to a list of registration method names.
 
-        FULL tier also includes ``jot_*`` trampoline keys (Task 13 + sub-plan
-        3 Drain) which delegate to ``_register_jot_tools`` via the
+        FULL tier also includes ``mahavishnu_jot_*`` trampoline keys (Task 13
+        + sub-plan 3 Drain) which delegate to ``_register_jot_tools`` via the
         REGISTRATION_MAP. They are exempt from the ``_register_`` prefix
         check because they are idempotent re-decorate keys, not method names.
         """
@@ -125,7 +125,7 @@ class TestProfileRegistrations:
             assert isinstance(methods, list), f"{profile} should map to a list"
             for method in methods:
                 assert isinstance(method, str)
-                assert method.startswith(("_register_", "jot_"))
+                assert method.startswith(("_register_", "jot_", "mahavishnu_jot_"))
 
     def test_minimal_registration_maps_correctly(self):
         """MINIMAL profile maps to MINIMAL_REGISTRATIONS list."""

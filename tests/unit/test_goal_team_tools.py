@@ -205,7 +205,7 @@ class TestListTeamSkills:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             side_effect=lambda name: name != "enabled",
         ):
-            result = await _call_tool(mcp, "list_team_skills")
+            result = await _call_tool(mcp, "mahavishnu_list_team_skills")
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.FEATURE_DISABLED.value
         assert result["count"] == 0
@@ -219,7 +219,7 @@ class TestListTeamSkills:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             side_effect=lambda name: name == "enabled",
         ):
-            result = await _call_tool(mcp, "list_team_skills")
+            result = await _call_tool(mcp, "mahavishnu_list_team_skills")
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.FEATURE_DISABLED.value
 
@@ -235,7 +235,7 @@ class TestListTeamSkills:
             ),
             patch("mahavishnu.engines.goal_team_factory.SKILL_MAPPING", fake_skills),
         ):
-            result = await _call_tool(mcp, "list_team_skills")
+            result = await _call_tool(mcp, "mahavishnu_list_team_skills")
 
         assert result["success"] is True
         assert result["count"] == 2
@@ -256,7 +256,7 @@ class TestListTeamSkills:
             ),
             patch("mahavishnu.engines.goal_team_factory.SKILL_MAPPING", {}),
         ):
-            result = await _call_tool(mcp, "list_team_skills")
+            result = await _call_tool(mcp, "mahavishnu_list_team_skills")
 
         assert result["success"] is True
         assert result["count"] == 0
@@ -279,7 +279,7 @@ class TestListTeamSkills:
             ),
             patch("mahavishnu.engines.goal_team_factory.SKILL_MAPPING", BrokenDict()),
         ):
-            result = await _call_tool(mcp, "list_team_skills")
+            result = await _call_tool(mcp, "mahavishnu_list_team_skills")
 
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.INTERNAL_ERROR.value
@@ -304,7 +304,7 @@ class TestParseGoal:
             side_effect=lambda name: name != "enabled",
         ):
             result = await _call_tool(
-                mcp, "parse_goal", {"goal": "a valid goal text here"}
+                mcp, "mahavishnu_parse_goal", {"goal": "a valid goal text here"}
             )
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.FEATURE_DISABLED.value
@@ -318,7 +318,7 @@ class TestParseGoal:
             side_effect=lambda name: name == "enabled",
         ):
             result = await _call_tool(
-                mcp, "parse_goal", {"goal": "a valid goal text here"}
+                mcp, "mahavishnu_parse_goal", {"goal": "a valid goal text here"}
             )
         assert result["success"] is False
 
@@ -330,7 +330,7 @@ class TestParseGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await _call_tool(mcp, "parse_goal", {"goal": "too short"})
+            result = await _call_tool(mcp, "mahavishnu_parse_goal", {"goal": "too short"})
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.GOAL_TOO_SHORT.value
 
@@ -342,7 +342,7 @@ class TestParseGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await _call_tool(mcp, "parse_goal", {"goal": "   hi   "})
+            result = await _call_tool(mcp, "mahavishnu_parse_goal", {"goal": "   hi   "})
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.GOAL_TOO_SHORT.value
 
@@ -367,7 +367,7 @@ class TestParseGoal:
                 return_value=mock_factory,
             ),
         ):
-            result = await _call_tool(mcp, "parse_goal", {"goal": "0123456789"})
+            result = await _call_tool(mcp, "mahavishnu_parse_goal", {"goal": "0123456789"})
         assert result["success"] is True
 
     @pytest.mark.asyncio
@@ -396,7 +396,7 @@ class TestParseGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "parse_goal",
+                "mahavishnu_parse_goal",
                 {
                     "goal": "Review the authentication module for security vulnerabilities"
                 },
@@ -437,7 +437,7 @@ class TestParseGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "parse_goal",
+                "mahavishnu_parse_goal",
                 {
                     "goal": "Review the authentication module for security vulnerabilities"
                 },
@@ -490,7 +490,7 @@ class TestParseGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "parse_goal",
+                "mahavishnu_parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -535,7 +535,7 @@ class TestParseGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "parse_goal",
+                "mahavishnu_parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -576,7 +576,7 @@ class TestParseGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "parse_goal",
+                "mahavishnu_parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -619,7 +619,7 @@ class TestParseGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "parse_goal",
+                "mahavishnu_parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -667,7 +667,7 @@ class TestParseGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "parse_goal",
+                "mahavishnu_parse_goal",
                 {
                     "goal": "Review the authentication module for security issues",
                     "user_id": "user42",
@@ -706,7 +706,7 @@ class TestParseGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "parse_goal",
+                "mahavishnu_parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -732,7 +732,7 @@ class TestParseGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "parse_goal",
+                "mahavishnu_parse_goal",
                 {"goal": "Review the authentication module for security issues"},
             )
 
@@ -759,7 +759,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
         assert result["success"] is False
@@ -775,7 +775,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
         assert result["success"] is False
@@ -789,7 +789,7 @@ class TestTeamFromGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await _call_tool(mcp, "team_from_goal", {"goal": "short"})
+            result = await _call_tool(mcp, "mahavishnu_team_from_goal", {"goal": "short"})
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.GOAL_TOO_SHORT.value
 
@@ -802,7 +802,7 @@ class TestTeamFromGoal:
             "mahavishnu.mcp.tools.goal_team_tools.is_feature_enabled",
             return_value=True,
         ):
-            result = await _call_tool(mcp, "team_from_goal", {"goal": long_goal})
+            result = await _call_tool(mcp, "mahavishnu_team_from_goal", {"goal": long_goal})
         assert result["success"] is False
         assert result["error"]["code"] == ErrorCode.GOAL_TOO_LONG.value
 
@@ -835,7 +835,7 @@ class TestTeamFromGoal:
                 return_value=mock_factory,
             ),
         ):
-            result = await _call_tool(mcp, "team_from_goal", {"goal": goal})
+            result = await _call_tool(mcp, "mahavishnu_team_from_goal", {"goal": goal})
         assert result["success"] is True
 
     @pytest.mark.asyncio
@@ -848,7 +848,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -888,7 +888,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": False,
@@ -931,7 +931,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "name": "my_team",
@@ -978,7 +978,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -995,7 +995,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "mode": "invalid_mode",
@@ -1038,7 +1038,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "mode": mode,
@@ -1077,7 +1077,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "mode": "COORDINATE",
@@ -1123,7 +1123,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1175,7 +1175,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1220,7 +1220,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1276,7 +1276,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1342,7 +1342,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1403,7 +1403,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1456,7 +1456,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "user_id": "user1",
@@ -1514,7 +1514,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1550,7 +1550,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "short"},
             )
 
@@ -1584,7 +1584,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": long_goal},
             )
 
@@ -1612,7 +1612,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "auto_run": True,
@@ -1642,7 +1642,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "mode": "bad_mode",
@@ -1681,7 +1681,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1707,7 +1707,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1739,7 +1739,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1784,7 +1784,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1838,7 +1838,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1884,7 +1884,7 @@ class TestTeamFromGoal:
             # Should not raise despite LLM factory failure
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -1920,7 +1920,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {
                     "goal": "Build a REST API endpoint for user management",
                     "name": "custom_name",
@@ -1950,7 +1950,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "short", "user_id": "alice"},
             )
 
@@ -1995,7 +1995,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "Build a REST API endpoint for user management"},
             )
 
@@ -2022,7 +2022,7 @@ class TestTeamFromGoal:
         ):
             result = await _call_tool(
                 mcp,
-                "team_from_goal",
+                "mahavishnu_team_from_goal",
                 {"goal": "short"},
             )
 
@@ -2045,9 +2045,9 @@ class TestRegistration:
         mcp = _register_tools_with_mocks()
         tools = await mcp.list_tools()
         tool_names = {t.name for t in tools}
-        assert "team_from_goal" in tool_names
-        assert "parse_goal" in tool_names
-        assert "list_team_skills" in tool_names
+        assert "mahavishnu_team_from_goal" in tool_names
+        assert "mahavishnu_parse_goal" in tool_names
+        assert "mahavishnu_list_team_skills" in tool_names
         assert len(tool_names) == 3
 
     @pytest.mark.asyncio

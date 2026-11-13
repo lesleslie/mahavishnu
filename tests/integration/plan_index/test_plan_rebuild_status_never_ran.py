@@ -18,7 +18,7 @@ from typing import Any
 class TestPlanRebuildStatusNeverRan:
     async def test_fresh_mcp_reports_stale(self, call_tool: Any) -> None:
         """No rebuilder has fired; the tool surfaces the "never ran" envelope."""
-        result = await call_tool("plan_rebuild_status", {})
+        result = await call_tool("mahavishnu_plan_rebuild_status", {})
 
         assert result["cycles_total"] == 0
         assert result["successful_cycles_total"] == 0
@@ -45,7 +45,7 @@ class TestPlanRebuildStatusNeverRan:
         recent_ms = int(time.time() * 1000) - 60 * 1000  # 60s ago
         await store._mcp.put("plan_index/meta/last_rebuild_ms", str(recent_ms))
 
-        result = await call_tool("plan_rebuild_status", {})
+        result = await call_tool("mahavishnu_plan_rebuild_status", {})
 
         assert result["stale"] is False
         assert result["last_rebuild_ms"] == recent_ms

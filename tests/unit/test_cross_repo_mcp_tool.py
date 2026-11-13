@@ -57,7 +57,7 @@ class TestRegisterSearchTools:
 
         app = _DummyFastMCP()
         register_search_tools(app)  # type: ignore[arg-type]
-        assert "cross_repo_search" in app.registered
+        assert "mahavishnu_cross_repo_search" in app.registered
 
     def test_cross_repo_search_is_coroutine(self) -> None:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
@@ -66,7 +66,7 @@ class TestRegisterSearchTools:
         register_search_tools(app)  # type: ignore[arg-type]
         import inspect
 
-        assert inspect.iscoroutinefunction(app.registered["cross_repo_search"])
+        assert inspect.iscoroutinefunction(app.registered["mahavishnu_cross_repo_search"])
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ def _akosha_capability_payload() -> dict[str, Any]:
             {
                 "repo": "mahavishnu",
                 "kind": "tool",
-                "name": "pool_route_execute",
+                "name": "mahavishnu_pool_route_execute",
                 "score": 0.92,
             },
             {
@@ -145,7 +145,7 @@ class TestCrossRepoSearchInvocation:
 
         app = _DummyFastMCP()
         register_search_tools(app)  # type: ignore[arg-type]
-        fn = app.registered["cross_repo_search"]
+        fn = app.registered["mahavishnu_cross_repo_search"]
         with pytest.raises(ValueError):
             await fn(query="foo", scope="bogus")
 
@@ -155,7 +155,7 @@ class TestCrossRepoSearchInvocation:
 
         app = _DummyFastMCP()
         register_search_tools(app)  # type: ignore[arg-type]
-        fn = app.registered["cross_repo_search"]
+        fn = app.registered["mahavishnu_cross_repo_search"]
         with pytest.raises(ValueError):
             await fn(query="foo", limit=9999)
 
@@ -166,7 +166,7 @@ class TestCrossRepoSearchInvocation:
 
         app = _DummyFastMCP()
         register_search_tools(app)  # type: ignore[arg-type]
-        fn = app.registered["cross_repo_search"]
+        fn = app.registered["mahavishnu_cross_repo_search"]
 
         fake_client = _FakeCommonMCPClient(
             {
@@ -216,7 +216,7 @@ class TestCrossRepoSearchInvocation:
 
         app = _DummyFastMCP()
         register_search_tools(app)  # type: ignore[arg-type]
-        fn = app.registered["cross_repo_search"]
+        fn = app.registered["mahavishnu_cross_repo_search"]
 
         fake_client = _FakeCommonMCPClient(
             {
@@ -252,14 +252,14 @@ class TestCrossRepoSearchInvocation:
 
         app = _DummyFastMCP()
         register_search_tools(app)  # type: ignore[arg-type]
-        fn = app.registered["cross_repo_search"]
+        fn = app.registered["mahavishnu_cross_repo_search"]
 
         akosha_payload = {
             "results": [
                 {
                     "repo": "mahavishnu",
                     "kind": "tool",
-                    "name": "pool_route_execute",
+                    "name": "mahavishnu_pool_route_execute",
                     "score": 0.5,
                 }
             ]
@@ -379,14 +379,14 @@ class TestStreamChannelBroadcast:
 
         app = _DummyFastMCP()
         register_search_tools(app)  # type: ignore[arg-type]
-        fn = app.registered["cross_repo_search"]
+        fn = app.registered["mahavishnu_cross_repo_search"]
 
         akosha_payload = {
             "results": [
                 {
                     "repo": "mahavishnu",
                     "kind": "tool",
-                    "name": "pool_route_execute",
+                    "name": "mahavishnu_pool_route_execute",
                     "score": 0.9,
                 }
             ]
@@ -453,7 +453,7 @@ class TestQueryHashStability:
 
         app = _DummyFastMCP()
         register_search_tools(app)  # type: ignore[arg-type]
-        fn = app.registered["cross_repo_search"]
+        fn = app.registered["mahavishnu_cross_repo_search"]
 
         fake_client = _FakeCommonMCPClient(
             {
@@ -495,7 +495,7 @@ class TestQueryHashStability:
 
         app = _DummyFastMCP()
         register_search_tools(app)  # type: ignore[arg-type]
-        fn = app.registered["cross_repo_search"]
+        fn = app.registered["mahavishnu_cross_repo_search"]
 
         fake_client = _FakeCommonMCPClient(
             {

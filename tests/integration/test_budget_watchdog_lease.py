@@ -475,7 +475,7 @@ class TestBudgetEnforceTool:
         mcp = _StubMCP()
         register_pool_tools(mcp, pool_manager=AsyncMock(), budget_store=store)
 
-        fn = mcp.tools["budget_enforce"]
+        fn = mcp.tools["mahavishnu_budget_enforce"]
         result = await fn(
             workflow_id="wf-tool",
             budget_tokens=5_000,
@@ -499,7 +499,7 @@ class TestBudgetEnforceTool:
 
         mcp = _StubMCP()
         register_pool_tools(mcp, pool_manager=AsyncMock())
-        fn = mcp.tools["budget_enforce"]
+        fn = mcp.tools["mahavishnu_budget_enforce"]
         result = await fn(workflow_id="wf-no-store", budget_tokens=100)
         assert result["status"] == "unconfigured"
 
@@ -509,7 +509,7 @@ class TestBudgetEnforceTool:
         store = InMemoryBudgetStore()
         mcp = _StubMCP()
         register_pool_tools(mcp, pool_manager=AsyncMock(), budget_store=store)
-        fn = mcp.tools["budget_enforce"]
+        fn = mcp.tools["mahavishnu_budget_enforce"]
         # All three dims None → state-machine refuses to start.
         result = await fn(workflow_id="wf-empty")
         assert result["status"] == "failed"

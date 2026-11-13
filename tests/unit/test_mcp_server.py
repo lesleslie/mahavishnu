@@ -202,7 +202,7 @@ class TestToolRegistration:
         tool_names = [tool.name for tool in tools]
 
         # Tool should be registered
-        assert "list_repos" in tool_names
+        assert "mahavishnu_list_repos" in tool_names
 
     @pytest.mark.asyncio
     async def test_trigger_workflow_tool_registered(self, server):
@@ -211,7 +211,7 @@ class TestToolRegistration:
         tool_names = [tool.name for tool in tools]
 
         # Check for trigger_workflow tool
-        assert "trigger_workflow" in tool_names
+        assert "mahavishnu_trigger_workflow" in tool_names
 
     @pytest.mark.asyncio
     async def test_get_workflow_status_tool_registered(self, server):
@@ -219,7 +219,7 @@ class TestToolRegistration:
         tools = await server.server.list_tools()
         tool_names = [tool.name for tool in tools]
 
-        assert "get_workflow_status" in tool_names
+        assert "mahavishnu_get_workflow_status" in tool_names
 
     @pytest.mark.asyncio
     async def test_list_workflows_tool_registered(self, server):
@@ -227,7 +227,7 @@ class TestToolRegistration:
         tools = await server.server.list_tools()
         tool_names = [tool.name for tool in tools]
 
-        assert "list_workflows" in tool_names
+        assert "mahavishnu_list_workflows" in tool_names
 
     @pytest.mark.asyncio
     async def test_cancel_workflow_tool_registered(self, server):
@@ -235,7 +235,7 @@ class TestToolRegistration:
         tools = await server.server.list_tools()
         tool_names = [tool.name for tool in tools]
 
-        assert "cancel_workflow" in tool_names
+        assert "mahavishnu_cancel_workflow" in tool_names
 
     @pytest.mark.asyncio
     async def test_create_user_tool_registered(self, server):
@@ -243,7 +243,7 @@ class TestToolRegistration:
         tools = await server.server.list_tools()
         tool_names = [tool.name for tool in tools]
 
-        assert "create_user" in tool_names
+        assert "mahavishnu_create_user" in tool_names
 
     @pytest.mark.asyncio
     async def test_check_permission_tool_registered(self, server):
@@ -251,7 +251,7 @@ class TestToolRegistration:
         tools = await server.server.list_tools()
         tool_names = [tool.name for tool in tools]
 
-        assert "check_permission" in tool_names
+        assert "mahavishnu_check_permission" in tool_names
 
     @pytest.mark.asyncio
     async def test_get_health_tool_registered(self, server):
@@ -267,7 +267,7 @@ class TestToolRegistration:
         tools = await server.server.list_tools()
         tool_names = [tool.name for tool in tools]
 
-        assert "list_adapters" in tool_names
+        assert "mahavishnu_list_adapters" in tool_names
 
 
 # =============================================================================
@@ -285,7 +285,7 @@ class TestToolExecutionSuccess:
         server.app.get_repos = MagicMock(return_value=["/repo1", "/repo2", "/repo3"])
 
         # Use FastMCP's call_tool method
-        result = await server.server.call_tool("list_repos", {})
+        result = await server.server.call_tool("mahavishnu_list_repos", {})
 
         # FastMCP returns a CallToolResult with content
         assert result is not None
@@ -298,13 +298,13 @@ class TestToolExecutionSuccess:
         server.app.get_repos = MagicMock(return_value=["/repo1"])
 
         before = mcp_tool_calls_total.labels(
-            tool_name="list_repos", status="success"
+            tool_name="mahavishnu_list_repos", status="success"
         )._value.get()
 
-        await server.server.call_tool("list_repos", {})
+        await server.server.call_tool("mahavishnu_list_repos", {})
 
         after = mcp_tool_calls_total.labels(
-            tool_name="list_repos", status="success"
+            tool_name="mahavishnu_list_repos", status="success"
         )._value.get()
         assert after == before + 1
 
@@ -317,7 +317,7 @@ class TestToolExecutionSuccess:
             )
         )
 
-        result = await server.server.call_tool("list_repos", {"tag": "python"})
+        result = await server.server.call_tool("mahavishnu_list_repos", {"tag": "python"})
 
         assert result is not None
         assert hasattr(result, "content")
@@ -329,7 +329,7 @@ class TestToolExecutionSuccess:
             return_value=["/repo1", "/repo2", "/repo3", "/repo4", "/repo5"]
         )
 
-        result = await server.server.call_tool("list_repos", {"limit": 2, "offset": 1})
+        result = await server.server.call_tool("mahavishnu_list_repos", {"limit": 2, "offset": 1})
 
         assert result is not None
         assert hasattr(result, "content")
@@ -340,7 +340,7 @@ class TestToolExecutionSuccess:
         server.app.get_repos = MagicMock(return_value=["/repo1", "/repo2"])
 
         result = await server.server.call_tool(
-            "trigger_workflow",
+            "mahavishnu_trigger_workflow",
             {
                 "adapter": "prefect",
                 "task_type": "code_sweep",
@@ -360,7 +360,7 @@ class TestToolExecutionSuccess:
         )
 
         result = await server.server.call_tool(
-            "trigger_workflow",
+            "mahavishnu_trigger_workflow",
             {
                 "adapter": "agno",
                 "task_type": "quality_check",
@@ -378,7 +378,7 @@ class TestToolExecutionSuccess:
         server.app.get_repos = MagicMock(return_value=["/repo1", "/repo2", "/repo3"])
 
         result = await server.server.call_tool(
-            "trigger_workflow",
+            "mahavishnu_trigger_workflow",
             {
                 "adapter": "prefect",
                 "task_type": "test",
@@ -434,7 +434,7 @@ class TestToolExecutionSuccess:
         server.app.execute_workflow_parallel = AsyncMock(return_value=call_result)
 
         result = await server.server.call_tool(
-            "trigger_workflow",
+            "mahavishnu_trigger_workflow",
             {
                 "adapter": "agno",
                 "task_type": "code_sweep",
@@ -455,7 +455,7 @@ class TestToolExecutionSuccess:
         server.app.workflow_state_manager.get = AsyncMock(return_value=None)
 
         result = await server.server.call_tool(
-            "get_workflow_status", {"workflow_id": "nonexistent"}
+            "mahavishnu_get_workflow_status", {"workflow_id": "nonexistent"}
         )
 
         assert result is not None
@@ -478,7 +478,7 @@ class TestToolExecutionSuccess:
         )
 
         result = await server.server.call_tool(
-            "get_workflow_status", {"workflow_id": "wf_123"}
+            "mahavishnu_get_workflow_status", {"workflow_id": "wf_123"}
         )
 
         assert result is not None
@@ -488,11 +488,11 @@ class TestToolExecutionSuccess:
     async def test_tool_metrics_record_error_payloads(self, server):
         """Error-shaped tool payloads should be classified as tool errors."""
         before = mcp_tool_calls_total.labels(
-            tool_name="check_permission", status="error"
+            tool_name="mahavishnu_check_permission", status="error"
         )._value.get()
 
         await server.server.call_tool(
-            "check_permission",
+            "mahavishnu_check_permission",
             {
                 "user_id": "test_user",
                 "repo": "test_repo",
@@ -501,7 +501,7 @@ class TestToolExecutionSuccess:
         )
 
         after = mcp_tool_calls_total.labels(
-            tool_name="check_permission", status="error"
+            tool_name="mahavishnu_check_permission", status="error"
         )._value.get()
         assert after == before + 1
 
@@ -510,7 +510,7 @@ class TestToolExecutionSuccess:
         """Test list_workflows when no workflows exist."""
         server.app.workflow_state_manager.list_workflows = AsyncMock(return_value=[])
 
-        result = await server.server.call_tool("list_workflows", {})
+        result = await server.server.call_tool("mahavishnu_list_workflows", {})
 
         assert result is not None
         assert hasattr(result, "content")
@@ -521,7 +521,7 @@ class TestToolExecutionSuccess:
 
         server.app.workflow_state_manager.list_workflows = AsyncMock(return_value=[])
 
-        result = await server.server.call_tool("list_workflows", {"status": "running"})
+        result = await server.server.call_tool("mahavishnu_list_workflows", {"status": "running"})
 
         # Should not raise error for valid status
         assert result is not None
@@ -531,7 +531,7 @@ class TestToolExecutionSuccess:
     async def test_list_workflows_invalid_status(self, server):
         """Test list_workflows with invalid status."""
         result = await server.server.call_tool(
-            "list_workflows", {"status": "invalid_status"}
+            "mahavishnu_list_workflows", {"status": "invalid_status"}
         )
 
         assert result is not None
@@ -541,7 +541,7 @@ class TestToolExecutionSuccess:
     async def test_cancel_workflow_success(self, server):
         """Test successful workflow cancellation."""
         result = await server.server.call_tool(
-            "cancel_workflow", {"workflow_id": "wf_123"}
+            "mahavishnu_cancel_workflow", {"workflow_id": "wf_123"}
         )
 
         assert result is not None
@@ -557,7 +557,7 @@ class TestToolExecutionSuccess:
         server.app.rbac_manager.create_user = AsyncMock(return_value=mock_user)
 
         result = await server.server.call_tool(
-            "create_user",
+            "mahavishnu_create_user",
             {
                 "user_id": "user_123",
                 "roles": ["admin", "developer"],
@@ -574,7 +574,7 @@ class TestToolExecutionSuccess:
         server.app.rbac_manager.check_permission = AsyncMock(return_value=True)
 
         result = await server.server.call_tool(
-            "check_permission",
+            "mahavishnu_check_permission",
             {"user_id": "user_123", "repo": "/repo1", "permission": "READ_REPO"},
         )
 
@@ -585,7 +585,7 @@ class TestToolExecutionSuccess:
     async def test_check_permission_invalid(self, server):
         """Test permission check with invalid permission."""
         result = await server.server.call_tool(
-            "check_permission",
+            "mahavishnu_check_permission",
             {
                 "user_id": "user_123",
                 "repo": "/repo1",
@@ -606,7 +606,7 @@ class TestToolExecutionSuccess:
             return_value=[MagicMock(timestamp=datetime.now(UTC))]
         )
 
-        result = await server.server.call_tool("get_observability_metrics", {})
+        result = await server.server.call_tool("mahavishnu_get_observability_metrics", {})
 
         assert result is not None
         assert hasattr(result, "content")
@@ -616,7 +616,7 @@ class TestToolExecutionSuccess:
         """Test getting metrics when observability not initialized."""
         server.app.observability = None
 
-        result = await server.server.call_tool("get_observability_metrics", {})
+        result = await server.server.call_tool("mahavishnu_get_observability_metrics", {})
 
         assert result is not None
         assert hasattr(result, "content")
@@ -624,7 +624,7 @@ class TestToolExecutionSuccess:
     @pytest.mark.asyncio
     async def test_list_adapters(self, server):
         """Test listing available adapters."""
-        result = await server.server.call_tool("list_adapters", {})
+        result = await server.server.call_tool("mahavishnu_list_adapters", {})
 
         assert result is not None
         assert hasattr(result, "content")
@@ -653,7 +653,7 @@ class TestToolExecutionErrors:
         """Test list_repos handles exceptions gracefully."""
         server.app.get_repos = MagicMock(side_effect=Exception("Database error"))
 
-        result = await server.server.call_tool("list_repos", {})
+        result = await server.server.call_tool("mahavishnu_list_repos", {})
 
         # Should return error in result
         assert result is not None
@@ -666,7 +666,7 @@ class TestToolExecutionErrors:
         server.app.execute_workflow_parallel = AsyncMock(side_effect=TimeoutError())
 
         result = await server.server.call_tool(
-            "trigger_workflow",
+            "mahavishnu_trigger_workflow",
             {
                 "adapter": "prefect",
                 "task_type": "code_sweep",
@@ -687,7 +687,7 @@ class TestToolExecutionErrors:
         )
 
         result = await server.server.call_tool(
-            "trigger_workflow", {"adapter": "agno", "task_type": "test", "params": {}}
+            "mahavishnu_trigger_workflow", {"adapter": "agno", "task_type": "test", "params": {}}
         )
 
         assert result is not None
@@ -701,7 +701,7 @@ class TestToolExecutionErrors:
         )
 
         result = await server.server.call_tool(
-            "get_workflow_status", {"workflow_id": "wf_123"}
+            "mahavishnu_get_workflow_status", {"workflow_id": "wf_123"}
         )
 
         assert result is not None
@@ -712,7 +712,7 @@ class TestToolExecutionErrors:
         """Test list_workflows with permission check."""
         server.app.rbac_manager.check_permission = AsyncMock(return_value=False)
 
-        result = await server.server.call_tool("list_workflows", {})
+        result = await server.server.call_tool("mahavishnu_list_workflows", {})
 
         assert result is not None
         assert hasattr(result, "content")
@@ -723,7 +723,7 @@ class TestToolExecutionErrors:
         server.app.rbac_manager.check_permission = AsyncMock(return_value=False)
 
         result = await server.server.call_tool(
-            "cancel_workflow", {"workflow_id": "wf_123"}
+            "mahavishnu_cancel_workflow", {"workflow_id": "wf_123"}
         )
 
         assert result is not None
@@ -735,7 +735,7 @@ class TestToolExecutionErrors:
         server.app.rbac_manager.check_permission = AsyncMock(return_value=False)
 
         result = await server.server.call_tool(
-            "create_user", {"user_id": "new_user", "roles": ["developer"]}
+            "mahavishnu_create_user", {"user_id": "new_user", "roles": ["developer"]}
         )
 
         assert result is not None
@@ -750,7 +750,7 @@ class TestToolExecutionErrors:
         )
 
         result = await server.server.call_tool(
-            "create_user", {"user_id": "existing_user", "roles": ["admin"]}
+            "mahavishnu_create_user", {"user_id": "existing_user", "roles": ["admin"]}
         )
 
         assert result is not None
@@ -887,7 +887,7 @@ class TestJSONRPCProtocol:
         """Test that tools return JSON-serializable responses compatible with JSON-RPC."""
         server.app.get_repos = MagicMock(return_value=["/repo1"])
 
-        result = await server.server.call_tool("list_repos", {})
+        result = await server.server.call_tool("mahavishnu_list_repos", {})
 
         # FastMCP returns CallToolResult with content list
         assert result is not None
@@ -899,7 +899,7 @@ class TestJSONRPCProtocol:
         """Test that error responses follow MCP error format."""
         server.app.get_repos = MagicMock(side_effect=Exception("Test error"))
 
-        result = await server.server.call_tool("list_repos", {})
+        result = await server.server.call_tool("mahavishnu_list_repos", {})
 
         # Error responses should have content
         assert result is not None
@@ -920,7 +920,7 @@ class TestConcurrentExecution:
         server.app.get_repos = MagicMock(return_value=["/repo1", "/repo2"])
 
         # Execute multiple calls concurrently
-        tasks = [server.server.call_tool("list_repos", {}) for _ in range(5)]
+        tasks = [server.server.call_tool("mahavishnu_list_repos", {}) for _ in range(5)]
 
         results = await asyncio.gather(*tasks)
 
@@ -938,7 +938,7 @@ class TestConcurrentExecution:
         # Execute multiple workflow triggers concurrently
         tasks = [
             server.server.call_tool(
-                "trigger_workflow",
+                "mahavishnu_trigger_workflow",
                 {"adapter": "prefect", "task_type": "test", "params": {}},
             )
             for _ in range(3)

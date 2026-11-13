@@ -421,22 +421,22 @@ class TestPoolToolRegistration:
         # of the Stage 3b unblocker — see
         # ``docs/plans/2026-10-12-pool-tools-debt-and-shepherd-registry.md``.
         expected_tools = [
-            "pool_list",
-            "pool_spawn",
-            "pool_bootstrap",
-            "pool_monitor",
-            "pool_scale",
-            "pool_close",
-            "pool_close_all",
-            "pool_health",
-            "pool_search_memory",
-            "pool_route_execute",
+            "mahavishnu_pool_list",
+            "mahavishnu_pool_spawn",
+            "mahavishnu_pool_bootstrap",
+            "mahavishnu_pool_monitor",
+            "mahavishnu_pool_scale",
+            "mahavishnu_pool_close",
+            "mahavishnu_pool_close_all",
+            "mahavishnu_pool_health",
+            "mahavishnu_pool_search_memory",
+            "mahavishnu_pool_route_execute",
         ]
 
         for tool in expected_tools:
             assert tool in registered_tools, f"Tool {tool} was not registered"
 
-        assert "budget_enforce" not in registered_tools, (
+        assert "mahavishnu_budget_enforce" not in registered_tools, (
             "budget_enforce must live in budget_tools, not pool_tools"
         )
 
@@ -462,7 +462,7 @@ def _capture_pool_route_execute(mock_pool_manager):
     mcp.tool = registering_decorator
     register_pool_tools(mcp, mock_pool_manager)
 
-    return captured["pool_route_execute"]
+    return captured["mahavishnu_pool_route_execute"]
 
 
 class TestPoolRouteExecuteTool:

@@ -183,7 +183,7 @@ async def _call_tool(
 
 @pytest.fixture
 def call_tool(mcp: FastMCP) -> Any:
-    """Async-style callable: ``await call_tool('plan_list', {'status': 'active'})``.
+    """Async-style callable: ``await call_tool('mahavishnu_plan_list', {'status': 'active'})``.
 
     Exposed as a fixture (rather than a pytest-asyncio helper) to avoid
     a fixture-loop with pytest-asyncio's ``@pytest.mark.asyncio`` wiring

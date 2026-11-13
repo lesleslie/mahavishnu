@@ -31,7 +31,7 @@ def test_get_capability_result_reads_envelopes_from_mcp() -> None:
     register_get_capability_result(server, mcp=mcp)
 
     tools = asyncio.run(server.list_tools())
-    assert any(t.name == "get_capability_result" for t in tools)
+    assert any(t.name == "mahavishnu_get_capability_result" for t in tools)
 
 
 async def test_get_capability_result_returns_dict_with_envelopes() -> None:
@@ -49,7 +49,7 @@ async def test_get_capability_result_returns_dict_with_envelopes() -> None:
     register_get_capability_result(server, mcp=mcp)
 
     tools = await server.list_tools()
-    tool = next(t for t in tools if t.name == "get_capability_result")
+    tool = next(t for t in tools if t.name == "mahavishnu_get_capability_result")
 
     trace_id = TraceId("a" * 32)
     result = await tool.fn(trace_id=trace_id)
@@ -76,7 +76,7 @@ async def test_get_capability_result_returns_pending_when_no_envelopes() -> None
     register_get_capability_result(server, mcp=mcp)
 
     tools = await server.list_tools()
-    tool = next(t for t in tools if t.name == "get_capability_result")
+    tool = next(t for t in tools if t.name == "mahavishnu_get_capability_result")
 
     trace_id = TraceId("a" * 32)
     result = await tool.fn(trace_id=trace_id)
@@ -111,7 +111,7 @@ async def test_get_capability_result_fails_loudly_when_mcp_call_raises() -> None
     register_get_capability_result(server, mcp=mcp)
 
     tools = await server.list_tools()
-    tool = next(t for t in tools if t.name == "get_capability_result")
+    tool = next(t for t in tools if t.name == "mahavishnu_get_capability_result")
 
     trace_id = TraceId("a" * 32)
     with pytest.raises(MahavishnuError, match="mcp unavailable"):
@@ -133,7 +133,7 @@ async def test_get_capability_result_fails_loudly_when_mcp_is_none() -> None:
     register_get_capability_result(server, mcp=None)  # type: ignore[arg-type]
 
     tools = await server.list_tools()
-    tool = next(t for t in tools if t.name == "get_capability_result")
+    tool = next(t for t in tools if t.name == "mahavishnu_get_capability_result")
 
     trace_id = TraceId("a" * 32)
     with pytest.raises((AttributeError, TypeError)):

@@ -96,17 +96,17 @@ def registered_mcp(stub_mcp: _StubMCP, mock_pool_manager: AsyncMock) -> _StubMCP
 
 
 EXPECTED_TOOL_NAMES = {
-    "pool_list",
-    "pool_spawn",
-    "pool_bootstrap",
-    "pool_monitor",
-    "pool_scale",
-    "pool_close",
-    "pool_close_all",
-    "pool_health",
-    "pool_search_memory",
-    "budget_enforce",
-    "pool_route_execute",
+    "mahavishnu_pool_list",
+    "mahavishnu_pool_spawn",
+    "mahavishnu_pool_bootstrap",
+    "mahavishnu_pool_monitor",
+    "mahavishnu_pool_scale",
+    "mahavishnu_pool_close",
+    "mahavishnu_pool_close_all",
+    "mahavishnu_pool_health",
+    "mahavishnu_pool_search_memory",
+    "mahavishnu_budget_enforce",
+    "mahavishnu_pool_route_execute",
 }
 
 
@@ -136,7 +136,7 @@ class TestPoolList:
     async def test_returns_pool_list(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        fn = registered_mcp.tools["pool_list"]
+        fn = registered_mcp.tools["mahavishnu_pool_list"]
         pools = await fn()
         assert pools == [
             {"pool_id": "pool_1", "pool_type": "mahavishnu", "status": "active"},
@@ -147,7 +147,7 @@ class TestPoolList:
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
         mock_pool_manager.list_pools = AsyncMock(return_value=[])
-        fn = registered_mcp.tools["pool_list"]
+        fn = registered_mcp.tools["mahavishnu_pool_list"]
         assert await fn() == []
 
     async def test_exception_returns_empty_list(
@@ -156,7 +156,7 @@ class TestPoolList:
         mock_pool_manager.list_pools = AsyncMock(
             side_effect=RuntimeError("list failed")
         )
-        fn = registered_mcp.tools["pool_list"]
+        fn = registered_mcp.tools["mahavishnu_pool_list"]
         assert await fn() == []
 
 
@@ -171,7 +171,7 @@ class TestPoolMonitor:
     async def test_returns_all_pools_when_pool_ids_is_none(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        fn = registered_mcp.tools["pool_monitor"]
+        fn = registered_mcp.tools["mahavishnu_pool_monitor"]
         metrics = await fn()
         assert "pool_1" in metrics
         assert "pool_2" in metrics
@@ -181,7 +181,7 @@ class TestPoolMonitor:
     async def test_passes_specific_pool_ids(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        fn = registered_mcp.tools["pool_monitor"]
+        fn = registered_mcp.tools["mahavishnu_pool_monitor"]
         await fn(pool_ids=["pool_1"])
         mock_pool_manager.aggregate_results.assert_awaited_with(["pool_1"])
 
@@ -191,7 +191,7 @@ class TestPoolMonitor:
         mock_pool_manager.aggregate_results = AsyncMock(
             side_effect=RuntimeError("monitor failed")
         )
-        fn = registered_mcp.tools["pool_monitor"]
+        fn = registered_mcp.tools["mahavishnu_pool_monitor"]
         assert await fn() == {}
 
 
@@ -206,7 +206,7 @@ class TestPoolScale:
     async def test_scale_success(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        fn = registered_mcp.tools["pool_scale"]
+        fn = registered_mcp.tools["mahavishnu_pool_scale"]
         result = await fn(pool_id="pool_1", target_workers=10)
         assert result["status"] == "scaled"
         assert result["pool_id"] == "pool_1"
@@ -217,7 +217,7 @@ class TestPoolScale:
     async def test_pool_not_found(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        fn = registered_mcp.tools["pool_scale"]
+        fn = registered_mcp.tools["mahavishnu_pool_scale"]
         result = await fn(pool_id="nope", target_workers=5)
         assert result["status"] == "failed"
         assert "not found" in result["error"]
@@ -229,7 +229,7 @@ class TestPoolScale:
         mock_pool_manager._pools["pool_1"].scale = AsyncMock(
             side_effect=NotImplementedError("fixed at 3")
         )
-        fn = registered_mcp.tools["pool_scale"]
+        fn = registered_mcp.tools["mahavishnu_pool_scale"]
         result = await fn(pool_id="pool_1", target_workers=10)
         assert result["status"] == "failed"
         assert "does not support scaling" in result["error"]
@@ -240,7 +240,7 @@ class TestPoolScale:
         mock_pool_manager._pools["pool_1"].scale = AsyncMock(
             side_effect=RuntimeError("scale exploded")
         )
-        fn = registered_mcp.tools["pool_scale"]
+        fn = registered_mcp.tools["mahavishnu_pool_scale"]
         result = await fn(pool_id="pool_1", target_workers=10)
         assert result["status"] == "failed"
         assert "scale exploded" in result["error"]
@@ -257,7 +257,7 @@ class TestPoolClose:
     async def test_close_success(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        fn = registered_mcp.tools["pool_close"]
+        fn = registered_mcp.tools["mahavishnu_pool_close"]
         result = await fn(pool_id="pool_1")
         assert result == {"pool_id": "pool_1", "status": "closed"}
         mock_pool_manager.close_pool.assert_awaited_with("pool_1")
@@ -268,7 +268,7 @@ class TestPoolClose:
         mock_pool_manager.close_pool = AsyncMock(
             side_effect=RuntimeError("close failed")
         )
-        fn = registered_mcp.tools["pool_close"]
+        fn = registered_mcp.tools["mahavishnu_pool_close"]
         result = await fn(pool_id="pool_1")
         assert result["status"] == "failed"
         assert "close failed" in result["error"]
@@ -286,7 +286,7 @@ class TestPoolCloseAll:
     async def test_close_all_with_pools(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        fn = registered_mcp.tools["pool_close_all"]
+        fn = registered_mcp.tools["mahavishnu_pool_close_all"]
         result = await fn()
         assert result == {"pools_closed": 2, "status": "all_closed"}
         mock_pool_manager.close_all.assert_awaited_once()
@@ -295,7 +295,7 @@ class TestPoolCloseAll:
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
         mock_pool_manager.list_pools = AsyncMock(return_value=[])
-        fn = registered_mcp.tools["pool_close_all"]
+        fn = registered_mcp.tools["mahavishnu_pool_close_all"]
         result = await fn()
         assert result == {"pools_closed": 0, "status": "all_closed"}
 
@@ -305,7 +305,7 @@ class TestPoolCloseAll:
         mock_pool_manager.close_all = AsyncMock(
             side_effect=RuntimeError("close all failed")
         )
-        fn = registered_mcp.tools["pool_close_all"]
+        fn = registered_mcp.tools["mahavishnu_pool_close_all"]
         result = await fn()
         assert result["status"] == "failed"
         assert result["pools_closed"] == 0
@@ -323,7 +323,7 @@ class TestPoolHealth:
     async def test_health_success(
         self, registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
     ) -> None:
-        fn = registered_mcp.tools["pool_health"]
+        fn = registered_mcp.tools["mahavishnu_pool_health"]
         result = await fn()
         assert result == {"status": "healthy", "pools_active": 2}
 
@@ -333,7 +333,7 @@ class TestPoolHealth:
         mock_pool_manager.health_check = AsyncMock(
             side_effect=RuntimeError("health failed")
         )
-        fn = registered_mcp.tools["pool_health"]
+        fn = registered_mcp.tools["mahavishnu_pool_health"]
         result = await fn()
         assert result["status"] == "unhealthy"
         assert "health failed" in result["error"]
@@ -361,7 +361,7 @@ class TestPoolSearchMemory:
             "mahavishnu.mcp.tools.pool_tools.MemoryAggregator",
             return_value=mock_aggregator,
         ):
-            fn = registered_mcp.tools["pool_search_memory"]
+            fn = registered_mcp.tools["mahavishnu_pool_search_memory"]
             results = await fn(query="API", limit=50)
         assert results == [
             {"content": "API implementation code", "score": 0.95},
@@ -384,7 +384,7 @@ class TestPoolSearchMemory:
             "mahavishnu.mcp.tools.pool_tools.MemoryAggregator",
             return_value=mock_aggregator,
         ):
-            fn = registered_mcp.tools["pool_search_memory"]
+            fn = registered_mcp.tools["mahavishnu_pool_search_memory"]
             assert await fn(query="x") == []
 
     async def test_returns_empty_when_aggregator_unavailable(
@@ -393,7 +393,7 @@ class TestPoolSearchMemory:
         """If MemoryAggregator failed to import, the tool guards
         against ``aggregator_cls is None`` and returns ``[]``."""
         with patch("mahavishnu.mcp.tools.pool_tools.MemoryAggregator", None):
-            fn = registered_mcp.tools["pool_search_memory"]
+            fn = registered_mcp.tools["mahavishnu_pool_search_memory"]
             assert await fn(query="x") == []
 
 
@@ -435,7 +435,7 @@ async def test_pool_spawn_idempotent_returns_existing(
     mock_pool_manager._pools_by_name = {"existing-pool": "pid-123"}
     mock_pool_manager.spawn_pool = AsyncMock()  # must NOT be called
 
-    result = await registered_mcp.tools["pool_spawn"](
+    result = await registered_mcp.tools["mahavishnu_pool_spawn"](
         name="existing-pool", pool_type="mahavishnu"
     )
     assert result["status"] == "exists"
@@ -451,7 +451,7 @@ async def test_pool_spawn_warns_when_sizing_ignored_for_non_mahavishnu(
     mock_pool_manager._pools_by_name = {}  # no existing pool
     mock_pool_manager.spawn_pool = AsyncMock(return_value="pid-new")
 
-    result = await registered_mcp.tools["pool_spawn"](
+    result = await registered_mcp.tools["mahavishnu_pool_spawn"](
         name="new-sb-pool",
         pool_type="session-buddy",
         min_workers=5,
@@ -469,7 +469,7 @@ async def test_pool_spawn_rejects_unknown_pool_type(
     registered_mcp: _StubMCP, mock_pool_manager: AsyncMock
 ) -> None:
     """Unknown pool types fail with status='failed' and a clear error."""
-    result = await registered_mcp.tools["pool_spawn"](
+    result = await registered_mcp.tools["mahavishnu_pool_spawn"](
         name="bogus", pool_type="nonexistent-pool-type"
     )
     assert result["status"] == "failed"
@@ -512,7 +512,7 @@ async def test_pool_route_execute_auto_spawn_default_from_config(
         side_effect=RuntimeError("stub: route_task reached")
     )
 
-    pool_route_execute = registered_mcp.tools["pool_route_execute"]
+    pool_route_execute = registered_mcp.tools["mahavishnu_pool_route_execute"]
     # The real PoolManager.route_task is what reads `_pools` and calls
     # spawn_pool. But on a mock_pool_manager, route_task is itself a mock.
     # So the cleanest assertion is: route_task was invoked with auto_spawn=True
@@ -538,7 +538,7 @@ async def test_pool_bootstrap_no_op_when_pool_exists(
     mock_pool_manager.health_check = AsyncMock(return_value={"pools_active": 1})
     mock_pool_manager.spawn_pool = AsyncMock()  # must NOT be called
 
-    result = await registered_mcp.tools["pool_bootstrap"]()
+    result = await registered_mcp.tools["mahavishnu_pool_bootstrap"]()
     assert result["status"] == "skipped"
     assert result["pools_active_before"] == 1
     mock_pool_manager.spawn_pool.assert_not_called()
@@ -553,7 +553,7 @@ async def test_pool_bootstrap_spawns_when_registry_empty(
     mock_pool_manager.health_check = AsyncMock(return_value={"pools_active": 0})
     mock_pool_manager.spawn_pool = AsyncMock(return_value="auto-id")
 
-    result = await registered_mcp.tools["pool_bootstrap"]()
+    result = await registered_mcp.tools["mahavishnu_pool_bootstrap"]()
     assert result["status"] == "spawned"
     assert result["pool_id"] == "auto-id"
     assert result["pools_active_before"] == 0
@@ -570,6 +570,6 @@ async def test_pool_bootstrap_returns_failed_on_spawn_error(
     mock_pool_manager.health_check = AsyncMock(return_value={"pools_active": 0})
     mock_pool_manager.spawn_pool = AsyncMock(side_effect=RuntimeError("spawn failed"))
 
-    result = await registered_mcp.tools["pool_bootstrap"]()
+    result = await registered_mcp.tools["mahavishnu_pool_bootstrap"]()
     assert result["status"] == "failed"
     assert "spawn failed" in result["error"]

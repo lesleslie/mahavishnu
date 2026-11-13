@@ -142,7 +142,7 @@ class TestTreesitterParse:
 
     def test_parses_with_explicit_language(self, registered, fake_parser):
         """Explicit language is honoured when the value is in the enum."""
-        tool = registered.tools["treesitter_parse"]
+        tool = registered.tools["mahavishnu_treesitter_parse"]
         result = _run(tool(file_path="/tmp/foo.py", language="python"))
         assert result["success"] is True
         assert result["file_path"] == "/tmp/foo.py"
@@ -151,7 +151,7 @@ class TestTreesitterParse:
 
     def test_invalid_language_falls_back_to_unknown(self, registered, fake_parser):
         """Invalid language string falls back to UNKNOWN enum value."""
-        tool = registered.tools["treesitter_parse"]
+        tool = registered.tools["mahavishnu_treesitter_parse"]
         result = _run(tool(file_path="/tmp/foo.py", language="klingon"))
         assert result["success"] is True
         # parse_file was called with whatever language was resolved
@@ -159,7 +159,7 @@ class TestTreesitterParse:
 
     def test_detects_language_when_unspecified(self, registered, fake_parser):
         """Without language, parser.detect_language is consulted."""
-        tool = registered.tools["treesitter_parse"]
+        tool = registered.tools["mahavishnu_treesitter_parse"]
         result = _run(tool(file_path="/tmp/foo.py"))
         assert result["success"] is True
         fake_parser.detect_language.assert_called_once()
@@ -171,7 +171,7 @@ class TestTreesitterParse:
         fake_parser.parse_file = AsyncMock(
             return_value=_make_parse_result(success=False, error="parse failed")
         )
-        tool = registered.tools["treesitter_parse"]
+        tool = registered.tools["mahavishnu_treesitter_parse"]
         result = _run(tool(file_path="/tmp/foo.py"))
         assert result["success"] is False
         assert result["error"] == "parse failed"
@@ -181,7 +181,7 @@ class TestTreesitterParse:
         fake_parser.parse_file = AsyncMock(side_effect=RuntimeError("boom"))
         tt._parser = fake_parser
         register_treesitter_tools(stub_mcp)
-        tool = stub_mcp.tools["treesitter_parse"]
+        tool = stub_mcp.tools["mahavishnu_treesitter_parse"]
         result = _run(tool(file_path="/tmp/foo.py"))
         assert result["success"] is False
         assert "boom" in result["error"]
@@ -202,7 +202,7 @@ class TestTreesitterExtractSymbols:
                 symbols=[_make_symbol("a"), _make_symbol("b")]
             )
         )
-        tool = registered.tools["treesitter_extract_symbols"]
+        tool = registered.tools["mahavishnu_treesitter_extract_symbols"]
         result = _run(tool(file_path="/tmp/foo.py"))
         assert result["success"] is True
         assert result["total_symbols"] == 2
@@ -218,7 +218,7 @@ class TestTreesitterExtractSymbols:
         fake_parser.parse_file = AsyncMock(
             return_value=_make_parse_result(symbols=syms)
         )
-        tool = registered.tools["treesitter_extract_symbols"]
+        tool = registered.tools["mahavishnu_treesitter_extract_symbols"]
         result = _run(tool(file_path="/tmp/foo.py", symbol_kinds=["function"]))
         assert result["success"] is True
         assert result["total_symbols"] == 2
@@ -233,7 +233,7 @@ class TestTreesitterExtractSymbols:
         fake_parser.parse_file = AsyncMock(
             return_value=_make_parse_result(symbols=[sym])
         )
-        tool = registered.tools["treesitter_extract_symbols"]
+        tool = registered.tools["mahavishnu_treesitter_extract_symbols"]
         result = _run(tool(file_path="/tmp/foo.py"))
         assert result["symbols"][0]["docstring"].endswith("...")
         assert len(result["symbols"][0]["docstring"]) < 200
@@ -242,7 +242,7 @@ class TestTreesitterExtractSymbols:
         fake_parser.parse_file = AsyncMock(side_effect=ValueError("nope"))
         tt._parser = fake_parser
         register_treesitter_tools(stub_mcp)
-        tool = stub_mcp.tools["treesitter_extract_symbols"]
+        tool = stub_mcp.tools["mahavishnu_treesitter_extract_symbols"]
         result = _run(tool(file_path="/tmp/foo.py"))
         assert result["success"] is False
         assert "nope" in result["error"]
@@ -259,7 +259,7 @@ class TestTreesitterFindUsages:
     def test_symbol_not_in_definition(self, registered, fake_parser):
         """When the symbol isn't in the definition file, return definition=None and empty usages."""
         fake_parser.parse_file = AsyncMock(return_value=_make_parse_result(symbols=[]))
-        tool = registered.tools["treesitter_find_usages"]
+        tool = registered.tools["mahavishnu_treesitter_find_usages"]
         result = _run(tool(file_path="/tmp/foo.py", symbol_name="missing"))
         assert result["success"] is True
         assert result["definition"] is None
@@ -271,7 +271,7 @@ class TestTreesitterFindUsages:
         fake_parser.parse_file = AsyncMock(
             return_value=_make_parse_result(success=False, error="bad")
         )
-        tool = registered.tools["treesitter_find_usages"]
+        tool = registered.tools["mahavishnu_treesitter_find_usages"]
         result = _run(tool(file_path="/tmp/foo.py", symbol_name="x"))
         assert result["success"] is False
         assert "bad" in result["error"]
@@ -289,7 +289,7 @@ class TestTreesitterFindUsages:
             return_value=_make_parse_result(symbols=[_make_symbol("foo")])
         )
         # detect_language returns python
-        tool = registered.tools["treesitter_find_usages"]
+        tool = registered.tools["mahavishnu_treesitter_find_usages"]
         result = _run(
             tool(
                 file_path=str(definition),
@@ -309,7 +309,7 @@ class TestTreesitterFindUsages:
         fake_parser.parse_file = AsyncMock(side_effect=OSError("disk full"))
         tt._parser = fake_parser
         register_treesitter_tools(stub_mcp)
-        tool = stub_mcp.tools["treesitter_find_usages"]
+        tool = stub_mcp.tools["mahavishnu_treesitter_find_usages"]
         result = _run(tool(file_path="/tmp/foo.py", symbol_name="x"))
         assert result["success"] is False
 
@@ -327,7 +327,7 @@ class TestTreesitterQuery:
         unknown_lang = MagicMock()
         unknown_lang.value = "unknown"
         fake_parser.detect_language = MagicMock(return_value=unknown_lang)
-        tool = registered.tools["treesitter_query"]
+        tool = registered.tools["mahavishnu_treesitter_query"]
         result = _run(tool(file_path="/tmp/foo.py", query="(function_definition)"))
         assert result["success"] is False
         assert result["error"] == "Unknown language"
@@ -335,7 +335,7 @@ class TestTreesitterQuery:
 
     def test_query_returns_placeholder_response(self, registered, fake_parser):
         """A successful parse returns a tip that custom queries need direct API access."""
-        tool = registered.tools["treesitter_query"]
+        tool = registered.tools["mahavishnu_treesitter_query"]
         result = _run(tool(file_path="/tmp/foo.py", query="(function_definition)"))
         assert result["success"] is True
         assert result["matches"] == []
@@ -346,7 +346,7 @@ class TestTreesitterQuery:
         fake_parser.parse_file = AsyncMock(
             return_value=_make_parse_result(success=False, error="parse failed")
         )
-        tool = registered.tools["treesitter_query"]
+        tool = registered.tools["mahavishnu_treesitter_query"]
         result = _run(tool(file_path="/tmp/foo.py", query="(x)"))
         assert result["success"] is False
         assert result["error"] == "parse failed"
@@ -355,7 +355,7 @@ class TestTreesitterQuery:
         fake_parser.parse_file = AsyncMock(side_effect=RuntimeError("boom"))
         tt._parser = fake_parser
         register_treesitter_tools(stub_mcp)
-        tool = stub_mcp.tools["treesitter_query"]
+        tool = stub_mcp.tools["mahavishnu_treesitter_query"]
         result = _run(tool(file_path="/tmp/foo.py", query="(x)"))
         assert result["success"] is False
 
@@ -377,7 +377,7 @@ class TestTreesitterBatchAnalyze:
                 symbols=[_make_symbol("x")], imports=[MagicMock()]
             )
         )
-        tool = registered.tools["treesitter_batch_analyze"]
+        tool = registered.tools["mahavishnu_treesitter_batch_analyze"]
         result = _run(tool(directory=str(tmp_path), file_pattern="*.py"))
         assert result["success"] is True
         assert result["files_analyzed"] == 3
@@ -389,7 +389,7 @@ class TestTreesitterBatchAnalyze:
         """max_files=2 only parses the first 2 files."""
         for i in range(5):
             (tmp_path / f"f{i}.py").write_text("x = 1\n")
-        tool = registered.tools["treesitter_batch_analyze"]
+        tool = registered.tools["mahavishnu_treesitter_batch_analyze"]
         result = _run(tool(directory=str(tmp_path), file_pattern="*.py", max_files=2))
         assert result["files_analyzed"] == 2
 
@@ -404,7 +404,7 @@ class TestTreesitterBatchAnalyze:
             return _make_parse_result(symbols=[_make_symbol()])
 
         fake_parser.parse_file = AsyncMock(side_effect=parse_side_effect)
-        tool = registered.tools["treesitter_batch_analyze"]
+        tool = registered.tools["mahavishnu_treesitter_batch_analyze"]
         result = _run(tool(directory=str(tmp_path), file_pattern="*.py"))
         assert result["success"] is True
         assert result["error_count"] == 1
@@ -419,7 +419,7 @@ class TestTreesitterBatchAnalyze:
             raise OSError("disk")
 
         fake_parser.parse_file = AsyncMock(side_effect=parse_side_effect)
-        tool = registered.tools["treesitter_batch_analyze"]
+        tool = registered.tools["mahavishnu_treesitter_batch_analyze"]
         result = _run(tool(directory=str(tmp_path), file_pattern="*.py"))
         assert result["success"] is True
         assert result["error_count"] == 1
@@ -434,7 +434,7 @@ class TestTreesitterBatchAnalyze:
         fake_parser.parse_file = AsyncMock(side_effect=RuntimeError("boom"))
         tt._parser = fake_parser
         register_treesitter_tools(stub_mcp)
-        tool = stub_mcp.tools["treesitter_batch_analyze"]
+        tool = stub_mcp.tools["mahavishnu_treesitter_batch_analyze"]
         result = _run(tool(directory="/tmp"))
         assert result["success"] is True
         assert result["error_count"] >= 1
@@ -450,7 +450,7 @@ class TestTreesitterCacheStats:
     """Tests for treesitter_cache_stats tool."""
 
     def test_returns_parser_stats(self, registered, fake_parser):
-        tool = registered.tools["treesitter_cache_stats"]
+        tool = registered.tools["mahavishnu_treesitter_cache_stats"]
         result = _run(tool())
         assert result["success"] is True
         assert result["hits"] == 5
@@ -461,7 +461,7 @@ class TestTreesitterCacheStats:
         fake_parser.get_cache_stats = MagicMock(side_effect=RuntimeError("boom"))
         tt._parser = fake_parser
         register_treesitter_tools(stub_mcp)
-        tool = stub_mcp.tools["treesitter_cache_stats"]
+        tool = stub_mcp.tools["mahavishnu_treesitter_cache_stats"]
         result = _run(tool())
         assert result["success"] is False
 
@@ -475,7 +475,7 @@ class TestTreesitterClearCache:
     """Tests for treesitter_clear_cache tool."""
 
     def test_returns_entries_cleared(self, registered, fake_parser):
-        tool = registered.tools["treesitter_clear_cache"]
+        tool = registered.tools["mahavishnu_treesitter_clear_cache"]
         result = _run(tool())
         assert result["success"] is True
         assert result["entries_cleared"] == 42
@@ -485,7 +485,7 @@ class TestTreesitterClearCache:
         fake_parser.clear_cache = MagicMock(side_effect=RuntimeError("boom"))
         tt._parser = fake_parser
         register_treesitter_tools(stub_mcp)
-        tool = stub_mcp.tools["treesitter_clear_cache"]
+        tool = stub_mcp.tools["mahavishnu_treesitter_clear_cache"]
         result = _run(tool())
         assert result["success"] is False
 

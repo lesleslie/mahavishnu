@@ -158,7 +158,7 @@ class TestWebhookToolsRBAC:
         self, webhook_mcp: _StubMCP
     ) -> None:
         """rbac_manager omitted → fail-closed AUTH_NOT_CONFIGURED even with user_id."""
-        tool = webhook_mcp.tools["webhook_replay_tool"]
+        tool = webhook_mcp.tools["mahavishnu_webhook_replay_tool"]
         result = await tool(webhook_id="wh-1", user_id="alice", token="a.b.c")
         assert isinstance(result, dict)
         assert result["status"] == "error"
@@ -172,7 +172,7 @@ class TestWebhookToolsRBAC:
         fake = _FakeRBAC(allow=True)
         mcp = _StubMCP()
         webhook_tools.register_webhook_tools(mcp, rbac_manager=fake)
-        tool = mcp.tools["webhook_replay_tool"]
+        tool = mcp.tools["mahavishnu_webhook_replay_tool"]
 
         result = await tool(webhook_id="wh-1", token="a.b.c")
 
@@ -190,7 +190,7 @@ class TestWebhookToolsRBAC:
         fake = _FakeRBAC(allow=False)
         mcp = _StubMCP()
         webhook_tools.register_webhook_tools(mcp, rbac_manager=fake)
-        tool = mcp.tools["webhook_replay_tool"]
+        tool = mcp.tools["mahavishnu_webhook_replay_tool"]
 
         result = await tool(webhook_id="wh-1", user_id="intruder", token="a.b.c")
 
@@ -210,7 +210,7 @@ class TestWorkflowToolsRBAC:
     async def test_rbac_manager_none_returns_auth_not_configured(
         self, workflow_mcp: _StubMCP
     ) -> None:
-        tool = workflow_mcp.tools["workflow_get_outcome_tool"]
+        tool = workflow_mcp.tools["mahavishnu_workflow_get_outcome_tool"]
         result = await tool(workflow_id="wf-abc", user_id="alice")
         assert isinstance(result, dict)
         assert result["status"] == "error"
@@ -223,7 +223,7 @@ class TestWorkflowToolsRBAC:
         fake = _FakeRBAC(allow=True)
         mcp = _StubMCP()
         workflow_tools.register_workflow_tools(mcp, rbac_manager=fake)
-        tool = mcp.tools["workflow_get_outcome_tool"]
+        tool = mcp.tools["mahavishnu_workflow_get_outcome_tool"]
 
         result = await tool(workflow_id="wf-abc")
 
@@ -239,7 +239,7 @@ class TestWorkflowToolsRBAC:
         fake = _FakeRBAC(allow=False)
         mcp = _StubMCP()
         workflow_tools.register_workflow_tools(mcp, rbac_manager=fake)
-        tool = mcp.tools["workflow_get_outcome_tool"]
+        tool = mcp.tools["mahavishnu_workflow_get_outcome_tool"]
 
         result = await tool(workflow_id="wf-abc", user_id="intruder")
 
@@ -263,7 +263,7 @@ class TestCapabilityToolsRBAC:
     async def test_rbac_manager_none_returns_auth_not_configured(
         self, capability_mcp: _StubMCP
     ) -> None:
-        tool = capability_mcp.tools["resolve_capabilities"]
+        tool = capability_mcp.tools["mahavishnu_resolve_capabilities"]
         result = await tool(
             requires=["worker:bash"], prompt="echo hello", user_id="alice"
         )
@@ -280,7 +280,7 @@ class TestCapabilityToolsRBAC:
         capability_tools.register_capability_tools(
             mcp, _capability_settings(), rbac_manager=fake
         )
-        tool = mcp.tools["resolve_capabilities"]
+        tool = mcp.tools["mahavishnu_resolve_capabilities"]
 
         result = await tool(requires=["worker:bash"], prompt="echo hello")
 
@@ -298,7 +298,7 @@ class TestCapabilityToolsRBAC:
         capability_tools.register_capability_tools(
             mcp, _capability_settings(), rbac_manager=fake
         )
-        tool = mcp.tools["resolve_capabilities"]
+        tool = mcp.tools["mahavishnu_resolve_capabilities"]
 
         result = await tool(
             requires=["worker:bash"], prompt="echo hello", user_id="intruder"
@@ -331,7 +331,7 @@ class TestSessionBuddyToolsRBAC:
     async def test_rbac_manager_none_returns_auth_not_configured(
         self, session_buddy_mcp: _StubMCP
     ) -> None:
-        tool = session_buddy_mcp.tools["index_code_graph"]
+        tool = session_buddy_mcp.tools["mahavishnu_index_code_graph"]
         result = await tool(project_path="/tmp/proj", user_id="alice")
         assert isinstance(result, dict)
         assert result["status"] == "error"
@@ -349,7 +349,7 @@ class TestSessionBuddyToolsRBAC:
             mcp_client=MagicMock(),
             rbac_manager=fake,
         )
-        tool = mcp.tools["index_code_graph"]
+        tool = mcp.tools["mahavishnu_index_code_graph"]
 
         result = await tool(project_path="/tmp/proj")
 
@@ -370,7 +370,7 @@ class TestSessionBuddyToolsRBAC:
             mcp_client=MagicMock(),
             rbac_manager=fake,
         )
-        tool = mcp.tools["index_code_graph"]
+        tool = mcp.tools["mahavishnu_index_code_graph"]
 
         result = await tool(project_path="/tmp/proj", user_id="intruder")
 
@@ -390,7 +390,7 @@ class TestGitAnalyticsToolsRBAC:
     async def test_rbac_manager_none_returns_auth_not_configured(
         self, git_analytics_mcp: _StubMCP
     ) -> None:
-        tool = git_analytics_mcp.tools["get_cross_project_patterns"]
+        tool = git_analytics_mcp.tools["mahavishnu_get_cross_project_patterns"]
         result = await tool(days_back=7, user_id="alice")
         assert isinstance(result, dict)
         assert result["status"] == "error"
@@ -405,7 +405,7 @@ class TestGitAnalyticsToolsRBAC:
         git_analytics.register_git_analytics_tools(
             mcp, MagicMock(name="mcp_client"), rbac_manager=fake
         )
-        tool = mcp.tools["get_cross_project_patterns"]
+        tool = mcp.tools["mahavishnu_get_cross_project_patterns"]
 
         result = await tool(days_back=7)
 
@@ -423,7 +423,7 @@ class TestGitAnalyticsToolsRBAC:
         git_analytics.register_git_analytics_tools(
             mcp, MagicMock(name="mcp_client"), rbac_manager=fake
         )
-        tool = mcp.tools["get_cross_project_patterns"]
+        tool = mcp.tools["mahavishnu_get_cross_project_patterns"]
 
         result = await tool(days_back=7, user_id="intruder")
 

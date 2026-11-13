@@ -31,17 +31,17 @@ def metrics() -> Iterator[WorkerMetrics]:
 
 
 def test_metrics_increment_per_tool(metrics: WorkerMetrics) -> None:
-    metrics.record("launch_worker")
-    metrics.record("launch_worker")
-    metrics.record("worker_status")
+    metrics.record("mahavishnu_launch_worker")
+    metrics.record("mahavishnu_launch_worker")
+    metrics.record("mahavishnu_worker_status")
     snapshot = metrics.snapshot()
-    assert snapshot["launch_worker"] == 2
-    assert snapshot["worker_status"] == 1
+    assert snapshot["mahavishnu_launch_worker"] == 2
+    assert snapshot["mahavishnu_worker_status"] == 1
     assert snapshot["total"] == 3
 
 
 def test_metrics_attach_command_attach_count(metrics: WorkerMetrics) -> None:
-    metrics.record("worker_revoke")
+    metrics.record("mahavishnu_worker_revoke")
     metrics.record_attach()
     metrics.record_attach()
     snapshot = metrics.snapshot()

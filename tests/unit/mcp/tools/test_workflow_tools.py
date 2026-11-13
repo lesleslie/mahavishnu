@@ -175,10 +175,10 @@ async def test_register_workflow_tools_registers_tool() -> None:
     tools = await mcp.list_tools()
     tool_names = {t.name for t in tools}
     # FastMCP derives tool name from the inline function's __name__
-    assert "workflow_get_outcome_tool" in tool_names
+    assert "mahavishnu_workflow_get_outcome_tool" in tool_names
 
     # And: the registered coroutine is async, matching the FastMCP contract.
-    tool = next(t for t in tools if t.name == "workflow_get_outcome_tool")
+    tool = next(t for t in tools if t.name == "mahavishnu_workflow_get_outcome_tool")
     assert asyncio.iscoroutinefunction(tool.fn)
 
 
@@ -190,7 +190,7 @@ async def test_registered_tool_delegates_to_module_function() -> None:
     mcp = FastMCP(name="test-workflow-tools")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(
-        t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool"
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_workflow_get_outcome_tool"
     )
     result = await tool.fn(workflow_id="wf-e2e", user_id="viewer-1")
     assert isinstance(result, WorkflowOutcome)
@@ -242,7 +242,7 @@ async def test_registered_tool_rejects_path_traversal(
     mcp = FastMCP(name="test-workflow-tools-traversal")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(
-        t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool"
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_workflow_get_outcome_tool"
     )
 
     result = await tool.fn(workflow_id="../../etc/passwd", user_id="viewer-1")
@@ -271,7 +271,7 @@ async def test_workflow_get_outcome_tool_rejects_without_user_id(
     mcp = FastMCP(name="test-workflow-tools-auth")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(
-        t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool"
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_workflow_get_outcome_tool"
     )
 
     result = await tool.fn(workflow_id="wf-1")
@@ -300,7 +300,7 @@ async def test_workflow_get_outcome_tool_passes_with_user_id(
     mcp = FastMCP(name="test-workflow-tools-auth-ok")
     register_workflow_tools(mcp, rbac_manager=_fake_rbac_manager())
     tool = next(
-        t for t in await mcp.list_tools() if t.name == "workflow_get_outcome_tool"
+        t for t in await mcp.list_tools() if t.name == "mahavishnu_workflow_get_outcome_tool"
     )
 
     result = await tool.fn(workflow_id="wf-ok", user_id="viewer-1")

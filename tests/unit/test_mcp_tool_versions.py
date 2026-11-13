@@ -56,12 +56,12 @@ class TestToolVersionsRegistry:
         instead.
         """
         expected = {
-            "list_repos",
-            "trigger_workflow",
-            "pool_list",
-            "terminal_launch",
+            "mahavishnu_list_repos",
+            "mahavishnu_trigger_workflow",
+            "mahavishnu_pool_list",
+            "mahavishnu_terminal_launch",
             "coord_create_issue",
-            "treesitter_parse",
+            "mahavishnu_treesitter_parse",
         }
         missing = expected - set(TOOL_VERSIONS)
         assert not missing, f"Missing tools in registry: {missing}"
@@ -84,11 +84,11 @@ class TestGetToolVersion:
 
     def test_returns_version_for_known_tool(self):
         """A registered tool should return its semver string."""
-        assert get_tool_version("list_repos") == "1.0.0"
+        assert get_tool_version("mahavishnu_list_repos") == "1.0.0"
 
     def test_returns_monitoring_dashboard_v2(self):
         """get_monitoring_dashboard was bumped to v2.0.0."""
-        assert get_tool_version("get_monitoring_dashboard") == "2.0.0"
+        assert get_tool_version("mahavishnu_get_monitoring_dashboard") == "2.0.0"
 
     def test_returns_none_for_unknown_tool(self):
         """An unknown tool name should return None, not raise."""
@@ -131,18 +131,18 @@ class TestToolDeprecation:
     def test_deprecated_code_intel_tools_listed(self):
         """Session-Buddy code-intel tools have replacement guidance."""
         for name in (
-            "index_code_graph",
-            "find_related_code",
-            "index_documentation",
-            "search_documentation",
+            "mahavishnu_index_code_graph",
+            "mahavishnu_find_related_code",
+            "mahavishnu_index_documentation",
+            "mahavishnu_search_documentation",
         ):
             assert is_tool_deprecated(name), f"{name} should be marked deprecated"
             assert get_tool_deprecation(name) is not None
 
     def test_non_deprecated_tool_returns_none(self):
         """A tool that is not deprecated should return None from get_tool_deprecation."""
-        assert get_tool_deprecation("list_repos") is None
-        assert is_tool_deprecated("list_repos") is False
+        assert get_tool_deprecation("mahavishnu_list_repos") is None
+        assert is_tool_deprecated("mahavishnu_list_repos") is False
 
     def test_unknown_tool_is_not_deprecated(self):
         """Unknown tools should not be flagged as deprecated."""

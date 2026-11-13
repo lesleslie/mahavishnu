@@ -155,7 +155,7 @@ def test_list_capabilities_is_ungated_and_returns_registrations() -> None:
     server = FastMCP("test-list")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
 
-    tool = _tool(server, "list_capabilities")
+    tool = _tool(server, "mahavishnu_list_capabilities")
     result = asyncio.run(tool.fn())
 
     assert isinstance(result, dict)
@@ -173,7 +173,7 @@ def test_resolve_capabilities_short_circuits_when_feature_flag_off() -> None:
     settings = _settings(capability_enabled=False, capability_scopes=["alice"])
     server = FastMCP("test-feat")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "resolve_capabilities")
+    tool = _tool(server, "mahavishnu_resolve_capabilities")
 
     result = asyncio.run(
         tool.fn(requires=["engine:durable-flow"], prompt="x", user_id="alice")
@@ -187,7 +187,7 @@ def test_plan_capability_short_circuits_when_feature_flag_off() -> None:
     settings = _settings(capability_enabled=False, capability_scopes=["alice"])
     server = FastMCP("test-feat-plan")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "plan_capability")
+    tool = _tool(server, "mahavishnu_plan_capability")
 
     result = asyncio.run(
         tool.fn(
@@ -205,7 +205,7 @@ def test_execute_capability_short_circuits_when_feature_flag_off() -> None:
     settings = _settings(capability_enabled=False, capability_scopes=["alice"])
     server = FastMCP("test-feat-exec")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "execute_capability")
+    tool = _tool(server, "mahavishnu_execute_capability")
 
     result = asyncio.run(
         tool.fn(
@@ -235,7 +235,7 @@ def test_resolve_capabilities_requires_user_id() -> None:
     settings = _settings(capability_scopes=["alice"])
     server = FastMCP("test-no-user")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "resolve_capabilities")
+    tool = _tool(server, "mahavishnu_resolve_capabilities")
 
     result = asyncio.run(
         tool.fn(requires=["engine:durable-flow"], prompt="x", user_id=None)
@@ -249,7 +249,7 @@ def test_resolve_capabilities_rejects_user_outside_allow_list() -> None:
     settings = _settings(capability_scopes=["alice"])
     server = FastMCP("test-bad-user")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "resolve_capabilities")
+    tool = _tool(server, "mahavishnu_resolve_capabilities")
 
     result = asyncio.run(
         tool.fn(
@@ -266,7 +266,7 @@ def test_plan_capability_rejects_user_outside_allow_list() -> None:
     settings = _settings(capability_scopes=["alice"])
     server = FastMCP("test-bad-user-plan")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "plan_capability")
+    tool = _tool(server, "mahavishnu_plan_capability")
 
     result = asyncio.run(
         tool.fn(
@@ -283,7 +283,7 @@ def test_execute_capability_rejects_user_outside_allow_list() -> None:
     settings = _settings(capability_scopes=["alice"])
     server = FastMCP("test-bad-user-exec")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "execute_capability")
+    tool = _tool(server, "mahavishnu_execute_capability")
 
     result = asyncio.run(
         tool.fn(
@@ -310,7 +310,7 @@ def test_empty_scope_allow_list_accepts_any_authenticated_user() -> None:
     )
     server = FastMCP("test-empty-scopes")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "resolve_capabilities")
+    tool = _tool(server, "mahavishnu_resolve_capabilities")
 
     # With an empty scope list, "alice" passes the gate. The resolve call
     # then either returns candidates (status=ok) or [] (status=ok, count=0)
@@ -339,7 +339,7 @@ def test_plan_capability_returns_execution_dag_shape() -> None:
     )
     server = FastMCP("test-e2e-plan")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "plan_capability")
+    tool = _tool(server, "mahavishnu_plan_capability")
 
     result = asyncio.run(
         tool.fn(
@@ -365,7 +365,7 @@ def test_execute_capability_returns_capability_execution_result_shape() -> None:
     )
     server = FastMCP("test-e2e-exec")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "execute_capability")
+    tool = _tool(server, "mahavishnu_execute_capability")
 
     result = asyncio.run(
         tool.fn(
@@ -391,7 +391,7 @@ def test_resolve_capabilities_returns_candidates_when_match() -> None:
     )
     server = FastMCP("test-e2e-resolve")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "resolve_capabilities")
+    tool = _tool(server, "mahavishnu_resolve_capabilities")
 
     result = asyncio.run(
         tool.fn(
@@ -415,7 +415,7 @@ def test_resolve_capabilities_rejects_unknown_selector() -> None:
     )
     server = FastMCP("test-bad-sel")
     register_capability_tools(server, settings, rbac_manager=_fake_rbac_manager())
-    tool = _tool(server, "resolve_capabilities")
+    tool = _tool(server, "mahavishnu_resolve_capabilities")
 
     result = asyncio.run(
         tool.fn(

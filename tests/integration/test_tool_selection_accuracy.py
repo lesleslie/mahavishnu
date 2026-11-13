@@ -51,16 +51,16 @@ SERVER_CORE_PATH = (
 # The list is closed — adding a new tool to this set requires updating
 # the BEFORE_DOCSTRINGS / AFTER_EXPECTATIONS tables below.
 TOP_10_TOOLS: tuple[str, ...] = (
-    "list_repos",
-    "list_workflows",
-    "get_observability_metrics",
-    "get_workflow_statistics",
-    "list_adapters",
-    "list_backups",
-    "get_log_statistics",
-    "get_recovery_metrics",
-    "get_monitoring_dashboard",
-    "get_active_alerts",
+    "mahavishnu_list_repos",
+    "mahavishnu_list_workflows",
+    "mahavishnu_get_observability_metrics",
+    "mahavishnu_get_workflow_statistics",
+    "mahavishnu_list_adapters",
+    "mahavishnu_list_backups",
+    "mahavishnu_get_log_statistics",
+    "mahavishnu_get_recovery_metrics",
+    "mahavishnu_get_monitoring_dashboard",
+    "mahavishnu_get_active_alerts",
 )
 
 
@@ -69,19 +69,19 @@ TOP_10_TOOLS: tuple[str, ...] = (
 # These are the baseline against which the rubric-compliance delta is measured.
 # ---------------------------------------------------------------------------
 BEFORE_DOCSTRINGS: dict[str, str] = {
-    "list_repos": "List repositories with optional filtering and pagination.",
-    "list_workflows": "List workflows with optional filtering.",
-    "get_observability_metrics": "Get current observability metrics from the system.",
-    "get_workflow_statistics": "Get workflow statistics and analytics.",
-    "list_adapters": "List available adapters.",
-    "list_backups": "List all available backups.",
-    "get_log_statistics": "Get log statistics and analytics.",
-    "get_recovery_metrics": "Get metrics about error recovery and resilience operations.",
-    "get_monitoring_dashboard": (
+    "mahavishnu_list_repos": "List repositories with optional filtering and pagination.",
+    "mahavishnu_list_workflows": "List workflows with optional filtering.",
+    "mahavishnu_get_observability_metrics": "Get current observability metrics from the system.",
+    "mahavishnu_get_workflow_statistics": "Get workflow statistics and analytics.",
+    "mahavishnu_list_adapters": "List available adapters.",
+    "mahavishnu_list_backups": "List all available backups.",
+    "mahavishnu_get_log_statistics": "Get log statistics and analytics.",
+    "mahavishnu_get_recovery_metrics": "Get metrics about error recovery and resilience operations.",
+    "mahavishnu_get_monitoring_dashboard": (
         "Get comprehensive monitoring dashboard data.\n\n"
         "    Compatibility wrapper around the canonical ecosystem status report.\n    "
     ),
-    "get_active_alerts": "Get all active (non-acknowledged) alerts.",
+    "mahavishnu_get_active_alerts": "Get all active (non-acknowledged) alerts.",
 }
 
 
@@ -93,61 +93,61 @@ BEFORE_DOCSTRINGS: dict[str, str] = {
 TASK_SUITE: tuple[dict[str, Any], ...] = (
     {
         "query": "Show me the list of all repositories we have configured.",
-        "ground_truth": "list_repos",
+        "ground_truth": "mahavishnu_list_repos",
         "expected_keywords": ("repositories", "registry", "filter"),
         "negative_anti_keywords": ("scan", "contents"),
     },
     {
         "query": "What workflows are currently running?",
-        "ground_truth": "list_workflows",
+        "ground_truth": "mahavishnu_list_workflows",
         "expected_keywords": ("workflows", "status"),
         "negative_anti_keywords": ("trigger", "new"),
     },
     {
         "query": "I need to see the recent log error rates.",
-        "ground_truth": "get_log_statistics",
+        "ground_truth": "mahavishnu_get_log_statistics",
         "expected_keywords": ("log statistics", "error rates"),
         "negative_anti_keywords": ("individual log lines",),
     },
     {
         "query": "Are there any production alerts firing right now?",
-        "ground_truth": "get_active_alerts",
+        "ground_truth": "mahavishnu_get_active_alerts",
         "expected_keywords": ("alerts", "firing"),
         "negative_anti_keywords": ("acknowledge", "resolve"),
     },
     {
         "query": "Which orchestrator adapters are currently registered?",
-        "ground_truth": "list_adapters",
+        "ground_truth": "mahavishnu_list_adapters",
         "expected_keywords": ("adapters", "health"),
         "negative_anti_keywords": ("dispatch work", "pool_route"),
     },
     {
         "query": "Show me the latest system backups.",
-        "ground_truth": "list_backups",
+        "ground_truth": "mahavishnu_list_backups",
         "expected_keywords": ("backups",),
         "negative_anti_keywords": ("create a backup", "restore"),
     },
     {
         "query": "Give me an aggregate of workflow performance metrics.",
-        "ground_truth": "get_workflow_statistics",
+        "ground_truth": "mahavishnu_get_workflow_statistics",
         "expected_keywords": ("aggregate workflow statistics",),
         "negative_anti_keywords": ("enumerate specific workflows",),
     },
     {
         "query": "Show me the high-level ecosystem health dashboard.",
-        "ground_truth": "get_monitoring_dashboard",
+        "ground_truth": "mahavishnu_get_monitoring_dashboard",
         "expected_keywords": ("ecosystem status report",),
         "negative_anti_keywords": ("per-tool metrics",),
     },
     {
         "query": "What does our observability subsystem currently report?",
-        "ground_truth": "get_observability_metrics",
+        "ground_truth": "mahavishnu_get_observability_metrics",
         "expected_keywords": ("observability snapshot",),
         "negative_anti_keywords": ("historical metrics",),
     },
     {
         "query": "How often has error recovery kicked in this week?",
-        "ground_truth": "get_recovery_metrics",
+        "ground_truth": "mahavishnu_get_recovery_metrics",
         "expected_keywords": ("recovery", "metrics"),
         "negative_anti_keywords": ("trigger recovery",),
     },

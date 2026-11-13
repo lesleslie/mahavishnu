@@ -354,18 +354,18 @@ class TestRegisterTools:
         tool_names = {t.name for t in tools}
 
         expected = {
-            "list_repos",
-            "trigger_workflow",
-            "get_workflow_status",
-            "list_workflows",
-            "cancel_workflow",
-            "create_user",
-            "check_permission",
+            "mahavishnu_list_repos",
+            "mahavishnu_trigger_workflow",
+            "mahavishnu_get_workflow_status",
+            "mahavishnu_list_workflows",
+            "mahavishnu_cancel_workflow",
+            "mahavishnu_create_user",
+            "mahavishnu_check_permission",
             "get_health",
-            "list_adapters",
-            "get_observability_metrics",
+            "mahavishnu_list_adapters",
+            "mahavishnu_get_observability_metrics",
             "discover_tools",
-            "get_tool_versions",
+            "mahavishnu_get_tool_versions",
         }
         missing = expected - tool_names
         assert not missing, f"Missing tools: {missing}"

@@ -292,13 +292,13 @@ class TestRegistration:
         """All 8 pycharm tools should be registered."""
         expected = {
             "pycharm_health",
-            "pycharm_run_diagnostics",
-            "pycharm_open_file",
-            "pycharm_search_in_project",
-            "pycharm_replace_in_file",
-            "pycharm_reformat_file",
-            "pycharm_refactor_symbol",
-            "pycharm_list_problems",
+            "mahavishnu_pycharm_run_diagnostics",
+            "mahavishnu_pycharm_open_file",
+            "mahavishnu_pycharm_search_in_project",
+            "mahavishnu_pycharm_replace_in_file",
+            "mahavishnu_pycharm_reformat_file",
+            "mahavishnu_pycharm_refactor_symbol",
+            "mahavishnu_pycharm_list_problems",
         }
         assert expected.issubset(set(registered_mcp._tools.keys()))
 
@@ -333,8 +333,8 @@ class TestPycharmHealth:
         """Even when fallback is active, all tool names should be listed."""
         register_pycharm_tools(mock_mcp, mock_app_no_client)
         result = await mock_mcp._tools["pycharm_health"]()
-        assert "pycharm_run_diagnostics" in result["tools"]
-        assert "pycharm_open_file" in result["tools"]
+        assert "mahavishnu_pycharm_run_diagnostics" in result["tools"]
+        assert "mahavishnu_pycharm_open_file" in result["tools"]
 
 
 # =============================================================================
@@ -350,7 +350,7 @@ class TestPycharmRunDiagnostics:
         mock_mcp_client.call_tool = AsyncMock(
             return_value={"problems": [{"message": "x"}]}
         )
-        result = await registered_mcp._tools["pycharm_run_diagnostics"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_run_diagnostics"](
             file_path="src/foo.py"
         )
         assert result["source"] == "pycharm_mcp"
@@ -367,7 +367,7 @@ class TestPycharmRunDiagnostics:
             return_value=mock_result,
         ):
             register_pycharm_tools(mock_mcp, mock_app_no_client)
-            result = await mock_mcp._tools["pycharm_run_diagnostics"](
+            result = await mock_mcp._tools["mahavishnu_pycharm_run_diagnostics"](
                 file_path="src/foo.py"
             )
         assert result["source"] == "ruff_fallback"
@@ -384,7 +384,7 @@ class TestPycharmRunDiagnostics:
             "mahavishnu.mcp.tools.pycharm_tools.subprocess.run",
             return_value=mock_result,
         ):
-            result = await registered_mcp._tools["pycharm_run_diagnostics"](
+            result = await registered_mcp._tools["mahavishnu_pycharm_run_diagnostics"](
                 file_path="src/foo.py"
             )
         assert result["source"] == "ruff_fallback"
@@ -402,7 +402,7 @@ class TestPycharmOpenFile:
     async def test_mcp_path(self, registered_mcp, mock_mcp_client):
         """When MCP responds, opened=True."""
         mock_mcp_client.call_tool = AsyncMock(return_value={"ok": True})
-        result = await registered_mcp._tools["pycharm_open_file"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_open_file"](
             file_path="src/foo.py"
         )
         assert result["source"] == "pycharm_mcp"
@@ -412,7 +412,7 @@ class TestPycharmOpenFile:
     async def test_mcp_path_with_line(self, registered_mcp, mock_mcp_client):
         """When line is provided, it should be passed to the MCP client."""
         mock_mcp_client.call_tool = AsyncMock(return_value={"ok": True})
-        await registered_mcp._tools["pycharm_open_file"](
+        await registered_mcp._tools["mahavishnu_pycharm_open_file"](
             file_path="src/foo.py", line=42
         )
         call_args = mock_mcp_client.call_tool.await_args
@@ -422,7 +422,7 @@ class TestPycharmOpenFile:
     async def test_exception_returns_fallback(self, registered_mcp, mock_mcp_client):
         """Exception from MCP returns fallback error."""
         mock_mcp_client.call_tool = AsyncMock(side_effect=RuntimeError("nope"))
-        result = await registered_mcp._tools["pycharm_open_file"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_open_file"](
             file_path="src/foo.py"
         )
         assert result["source"] == "fallback"
@@ -442,7 +442,7 @@ class TestPycharmSearchInProject:
     async def test_mcp_path(self, registered_mcp, mock_mcp_client):
         """When MCP responds, source should be pycharm_mcp."""
         mock_mcp_client.call_tool = AsyncMock(return_value=[{"line": 1}])
-        result = await registered_mcp._tools["pycharm_search_in_project"](pattern="def")
+        result = await registered_mcp._tools["mahavishnu_pycharm_search_in_project"](pattern="def")
         assert result["source"] == "pycharm_mcp"
         assert result["results"] == [{"line": 1}]
 
@@ -455,7 +455,7 @@ class TestPycharmSearchInProject:
             return_value=mock_result,
         ):
             register_pycharm_tools(mock_mcp, mock_app_no_client)
-            result = await mock_mcp._tools["pycharm_search_in_project"](pattern="def")
+            result = await mock_mcp._tools["mahavishnu_pycharm_search_in_project"](pattern="def")
         assert result["source"] == "grep_fallback"
         assert result["fallback_active"] is True
         assert len(result["results"]) == 1
@@ -463,7 +463,7 @@ class TestPycharmSearchInProject:
     async def test_mcp_with_file_pattern(self, registered_mcp, mock_mcp_client):
         """file_pattern is forwarded to MCP call."""
         mock_mcp_client.call_tool = AsyncMock(return_value=[])
-        await registered_mcp._tools["pycharm_search_in_project"](
+        await registered_mcp._tools["mahavishnu_pycharm_search_in_project"](
             pattern="def", file_pattern="*.py"
         )
         call_args = mock_mcp_client.call_tool.await_args
@@ -481,7 +481,7 @@ class TestPycharmReplaceInFile:
     async def test_mcp_path(self, registered_mcp, mock_mcp_client):
         """When MCP responds, replaced should be True."""
         mock_mcp_client.call_tool = AsyncMock(return_value=True)
-        result = await registered_mcp._tools["pycharm_replace_in_file"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_replace_in_file"](
             file_path="foo.py", search_text="old", replace_text="new"
         )
         assert result["source"] == "pycharm_mcp"
@@ -490,7 +490,7 @@ class TestPycharmReplaceInFile:
     async def test_mcp_exception(self, registered_mcp, mock_mcp_client):
         """MCP exception returns fallback error."""
         mock_mcp_client.call_tool = AsyncMock(side_effect=RuntimeError("nope"))
-        result = await registered_mcp._tools["pycharm_replace_in_file"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_replace_in_file"](
             file_path="foo.py", search_text="old", replace_text="new"
         )
         assert result["source"] == "fallback"
@@ -509,7 +509,7 @@ class TestPycharmReformatFile:
     async def test_mcp_path(self, registered_mcp, mock_mcp_client):
         """When MCP responds, reformatted should be True."""
         mock_mcp_client.call_tool = AsyncMock(return_value=True)
-        result = await registered_mcp._tools["pycharm_reformat_file"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_reformat_file"](
             file_path="foo.py"
         )
         assert result["source"] == "pycharm_mcp"
@@ -518,7 +518,7 @@ class TestPycharmReformatFile:
     async def test_mcp_exception(self, registered_mcp, mock_mcp_client):
         """MCP exception returns fallback error."""
         mock_mcp_client.call_tool = AsyncMock(side_effect=RuntimeError("nope"))
-        result = await registered_mcp._tools["pycharm_reformat_file"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_reformat_file"](
             file_path="foo.py"
         )
         assert result["source"] == "fallback"
@@ -537,7 +537,7 @@ class TestPycharmRefactorSymbol:
     async def test_mcp_path(self, registered_mcp, mock_mcp_client):
         """When MCP responds, refactored should be True."""
         mock_mcp_client.call_tool = AsyncMock(return_value=True)
-        result = await registered_mcp._tools["pycharm_refactor_symbol"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_refactor_symbol"](
             symbol_name="old_name", new_name="new_name"
         )
         assert result["source"] == "pycharm_mcp"
@@ -546,7 +546,7 @@ class TestPycharmRefactorSymbol:
     async def test_default_scope(self, registered_mcp, mock_mcp_client):
         """Default scope should be 'project'."""
         mock_mcp_client.call_tool = AsyncMock(return_value=True)
-        await registered_mcp._tools["pycharm_refactor_symbol"](
+        await registered_mcp._tools["mahavishnu_pycharm_refactor_symbol"](
             symbol_name="x", new_name="y"
         )
         call_args = mock_mcp_client.call_tool.await_args
@@ -555,7 +555,7 @@ class TestPycharmRefactorSymbol:
     async def test_mcp_exception(self, registered_mcp, mock_mcp_client):
         """MCP exception returns fallback error."""
         mock_mcp_client.call_tool = AsyncMock(side_effect=RuntimeError("nope"))
-        result = await registered_mcp._tools["pycharm_refactor_symbol"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_refactor_symbol"](
             symbol_name="x", new_name="y"
         )
         assert result["source"] == "fallback"
@@ -576,7 +576,7 @@ class TestPycharmListProblems:
         mock_mcp_client.call_tool = AsyncMock(
             return_value={"problems": [{"message": "p"}]}
         )
-        result = await registered_mcp._tools["pycharm_list_problems"](
+        result = await registered_mcp._tools["mahavishnu_pycharm_list_problems"](
             file_path="foo.py"
         )
         assert result["source"] == "pycharm_mcp"
@@ -585,7 +585,7 @@ class TestPycharmListProblems:
     async def test_mcp_path_with_severity(self, registered_mcp, mock_mcp_client):
         """severity is forwarded to MCP call."""
         mock_mcp_client.call_tool = AsyncMock(return_value={"problems": []})
-        await registered_mcp._tools["pycharm_list_problems"](
+        await registered_mcp._tools["mahavishnu_pycharm_list_problems"](
             file_path="foo.py", severity="error"
         )
         call_args = mock_mcp_client.call_tool.await_args
@@ -601,7 +601,7 @@ class TestPycharmListProblems:
             return_value=mock_result,
         ) as mock_run:
             register_pycharm_tools(mock_mcp, mock_app_no_client)
-            await mock_mcp._tools["pycharm_list_problems"](
+            await mock_mcp._tools["mahavishnu_pycharm_list_problems"](
                 file_path="foo.py", severity="error"
             )
         cmd = mock_run.call_args.args[0]
@@ -618,7 +618,7 @@ class TestPycharmListProblems:
             return_value=mock_result,
         ) as mock_run:
             register_pycharm_tools(mock_mcp, mock_app_no_client)
-            await mock_mcp._tools["pycharm_list_problems"](
+            await mock_mcp._tools["mahavishnu_pycharm_list_problems"](
                 file_path="foo.py", severity="warning"
             )
         cmd = mock_run.call_args.args[0]

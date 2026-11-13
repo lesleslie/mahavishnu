@@ -216,16 +216,16 @@ def registered_mcp(stub_mcp: _StubMCP, mock_manager: MagicMock) -> _StubMCP:
 
 
 EXPECTED_TOOL_NAMES = {
-    "terminal_launch",
-    "terminal_send",
-    "terminal_capture",
-    "terminal_capture_all",
-    "terminal_list",
-    "terminal_close",
-    "terminal_close_all",
-    "terminal_switch_adapter",
-    "terminal_current_adapter",
-    "terminal_list_adapters",
+    "mahavishnu_terminal_launch",
+    "mahavishnu_terminal_send",
+    "mahavishnu_terminal_capture",
+    "mahavishnu_terminal_capture_all",
+    "mahavishnu_terminal_list",
+    "mahavishnu_terminal_close",
+    "mahavishnu_terminal_close_all",
+    "mahavishnu_terminal_switch_adapter",
+    "mahavishnu_terminal_current_adapter",
+    "mahavishnu_terminal_list_adapters",
 }
 
 
@@ -363,7 +363,7 @@ class TestTerminalLaunch:
     async def test_default_arguments(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_launch"]
+        fn = registered_mcp.tools["mahavishnu_terminal_launch"]
         result = await fn(command="echo hi")
         assert result == ["sess-1", "sess-2"]
         mock_manager.launch_sessions.assert_awaited_once_with("echo hi", 1, 120, 40)
@@ -371,7 +371,7 @@ class TestTerminalLaunch:
     async def test_custom_count_columns_rows(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_launch"]
+        fn = registered_mcp.tools["mahavishnu_terminal_launch"]
         result = await fn(command="qwen", count=3, columns=200, rows=50)
         assert result == ["sess-1", "sess-2"]
         mock_manager.launch_sessions.assert_awaited_once_with("qwen", 3, 200, 50)
@@ -379,7 +379,7 @@ class TestTerminalLaunch:
     async def test_dangerous_command_rejected_before_launch(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_launch"]
+        fn = registered_mcp.tools["mahavishnu_terminal_launch"]
         with pytest.raises(ValueError, match="dangerous pattern"):
             await fn(command="rm -rf /")
         mock_manager.launch_sessions.assert_not_awaited()
@@ -388,7 +388,7 @@ class TestTerminalLaunch:
     async def test_count_out_of_range_rejected(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock, bad_count: int
     ) -> None:
-        fn = registered_mcp.tools["terminal_launch"]
+        fn = registered_mcp.tools["mahavishnu_terminal_launch"]
         with pytest.raises(ValueError):
             await fn(command="ls", count=bad_count)
         mock_manager.launch_sessions.assert_not_awaited()
@@ -397,7 +397,7 @@ class TestTerminalLaunch:
     async def test_columns_out_of_range_rejected(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock, bad_columns: int
     ) -> None:
-        fn = registered_mcp.tools["terminal_launch"]
+        fn = registered_mcp.tools["mahavishnu_terminal_launch"]
         with pytest.raises(ValueError):
             await fn(command="ls", columns=bad_columns)
         mock_manager.launch_sessions.assert_not_awaited()
@@ -406,7 +406,7 @@ class TestTerminalLaunch:
     async def test_rows_out_of_range_rejected(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock, bad_rows: int
     ) -> None:
-        fn = registered_mcp.tools["terminal_launch"]
+        fn = registered_mcp.tools["mahavishnu_terminal_launch"]
         with pytest.raises(ValueError):
             await fn(command="ls", rows=bad_rows)
         mock_manager.launch_sessions.assert_not_awaited()
@@ -414,7 +414,7 @@ class TestTerminalLaunch:
     async def test_increments_metrics(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_launch"]
+        fn = registered_mcp.tools["mahavishnu_terminal_launch"]
         # Use the singleton via the module's `_metrics` reference. The existing
         # test_pool_share_metrics.py already verifies the metric increment for
         # ``terminal_launch``; this test asserts the same tool is callable when
@@ -434,7 +434,7 @@ class TestTerminalSend:
     async def test_returns_success_payload(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_send"]
+        fn = registered_mcp.tools["mahavishnu_terminal_send"]
         result = await fn(session_id="sess-1", command="echo hello")
         assert result == {
             "status": "success",
@@ -446,7 +446,7 @@ class TestTerminalSend:
     async def test_dangerous_command_rejected_before_send(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_send"]
+        fn = registered_mcp.tools["mahavishnu_terminal_send"]
         with pytest.raises(ValueError, match="dangerous pattern"):
             # Use a hard-block command (Shape B keeps rm -rf / as a
             # substring-match reject). The original test used
@@ -462,7 +462,7 @@ class TestTerminalSend:
     async def test_invalid_session_id_rejected(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock, bad_session_id: str
     ) -> None:
-        fn = registered_mcp.tools["terminal_send"]
+        fn = registered_mcp.tools["mahavishnu_terminal_send"]
         with pytest.raises(ValueError):
             await fn(session_id=bad_session_id, command="ls")
         mock_manager.send_command.assert_not_awaited()
@@ -481,7 +481,7 @@ class TestTerminalSend:
         The previous regex ``[a-zA-Z0-9_-]`` rejected these IDs at the MCP
         boundary; the relaxed regex ``[a-zA-Z0-9._-]`` lets them through.
         """
-        fn = registered_mcp.tools["terminal_send"]
+        fn = registered_mcp.tools["mahavishnu_terminal_send"]
         result = await fn(session_id=dot_session_id, command="ls")
         assert result["session_id"] == dot_session_id
         mock_manager.send_command.assert_awaited_once_with(dot_session_id, "ls")
@@ -489,7 +489,7 @@ class TestTerminalSend:
     async def test_oversized_command_rejected(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_send"]
+        fn = registered_mcp.tools["mahavishnu_terminal_send"]
         with pytest.raises(ValueError):
             await fn(session_id="sess-1", command="x" * 10_001)
         mock_manager.send_command.assert_not_awaited()
@@ -497,7 +497,7 @@ class TestTerminalSend:
     async def test_empty_command_rejected(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_send"]
+        fn = registered_mcp.tools["mahavishnu_terminal_send"]
         with pytest.raises(ValueError):
             await fn(session_id="sess-1", command="")
         mock_manager.send_command.assert_not_awaited()
@@ -514,7 +514,7 @@ class TestTerminalCapture:
     async def test_capture_returns_text(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_capture"]
+        fn = registered_mcp.tools["mahavishnu_terminal_capture"]
         result = await fn(session_id="sess-1")
         assert result == "captured output"
         mock_manager.capture_output.assert_awaited_once_with("sess-1", None)
@@ -522,7 +522,7 @@ class TestTerminalCapture:
     async def test_capture_with_lines(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_capture"]
+        fn = registered_mcp.tools["mahavishnu_terminal_capture"]
         result = await fn(session_id="sess-1", lines=50)
         assert result == "captured output"
         mock_manager.capture_output.assert_awaited_once_with("sess-1", 50)
@@ -539,7 +539,7 @@ class TestTerminalCaptureAll:
     async def test_capture_all_returns_mapping(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_capture_all"]
+        fn = registered_mcp.tools["mahavishnu_terminal_capture_all"]
         result = await fn(session_ids=["sess-1", "sess-2"])
         assert result == {"sess-1": "out-1", "sess-2": "out-2"}
         mock_manager.capture_all_outputs.assert_awaited_once_with(
@@ -549,7 +549,7 @@ class TestTerminalCaptureAll:
     async def test_capture_all_with_lines(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_capture_all"]
+        fn = registered_mcp.tools["mahavishnu_terminal_capture_all"]
         result = await fn(session_ids=["sess-1"], lines=10)
         assert result == {"sess-1": "out-1", "sess-2": "out-2"}
         mock_manager.capture_all_outputs.assert_awaited_once_with(["sess-1"], 10)
@@ -566,7 +566,7 @@ class TestTerminalList:
     async def test_returns_session_list(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_list"]
+        fn = registered_mcp.tools["mahavishnu_terminal_list"]
         result = await fn()
         assert result == [
             {"id": "sess-1", "command": "echo hello"},
@@ -586,7 +586,7 @@ class TestTerminalClose:
     async def test_close_session(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_close"]
+        fn = registered_mcp.tools["mahavishnu_terminal_close"]
         result = await fn(session_id="sess-1")
         assert result is None
         mock_manager.close_session.assert_awaited_once_with("sess-1")
@@ -603,7 +603,7 @@ class TestTerminalCloseAll:
     async def test_close_all_with_sessions(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_close_all"]
+        fn = registered_mcp.tools["mahavishnu_terminal_close_all"]
         result = await fn()
         assert result == {"closed_count": 2}
         mock_manager.list_sessions.assert_awaited_once_with()
@@ -613,7 +613,7 @@ class TestTerminalCloseAll:
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
         mock_manager.list_sessions = AsyncMock(return_value=[])
-        fn = registered_mcp.tools["terminal_close_all"]
+        fn = registered_mcp.tools["mahavishnu_terminal_close_all"]
         result = await fn()
         assert result == {"closed_count": 0}
         mock_manager.close_all.assert_not_awaited()
@@ -629,7 +629,7 @@ class TestTerminalCloseAll:
                 {"terminal_id": "sess-2"},  # only terminal_id is present
             ]
         )
-        fn = registered_mcp.tools["terminal_close_all"]
+        fn = registered_mcp.tools["mahavishnu_terminal_close_all"]
         result = await fn()
         assert result == {"closed_count": 2}
         mock_manager.close_all.assert_awaited_once_with(["sess-1", "sess-2"])
@@ -644,7 +644,7 @@ class TestTerminalCloseAll:
         mock_manager.list_sessions = AsyncMock(
             return_value=[{"command": "echo hi"}, {"id": "sess-1"}]
         )
-        fn = registered_mcp.tools["terminal_close_all"]
+        fn = registered_mcp.tools["mahavishnu_terminal_close_all"]
         result = await fn()
         assert result == {"closed_count": 1}
         mock_manager.close_all.assert_awaited_once_with(["sess-1"])
@@ -656,7 +656,7 @@ class TestTerminalCloseAll:
         mock_manager.list_sessions = AsyncMock(
             return_value=[{"command": "x"}, {"terminal_id": ""}]
         )
-        fn = registered_mcp.tools["terminal_close_all"]
+        fn = registered_mcp.tools["mahavishnu_terminal_close_all"]
         result = await fn()
         assert result == {"closed_count": 0}
         mock_manager.close_all.assert_not_awaited()
@@ -677,7 +677,7 @@ class TestTerminalCurrentAdapter:
             {"from": "mock", "to": "tmux", "timestamp": "2026-01-01T00:00:00Z"},
         ]
         mock_manager.get_adapter_history = MagicMock(return_value=history)
-        fn = registered_mcp.tools["terminal_current_adapter"]
+        fn = registered_mcp.tools["mahavishnu_terminal_current_adapter"]
         result = await fn()
         assert result == {"adapter": "mock", "history": history}
         mock_manager.current_adapter.assert_called_once_with()
@@ -686,7 +686,7 @@ class TestTerminalCurrentAdapter:
     async def test_returns_empty_history_by_default(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_current_adapter"]
+        fn = registered_mcp.tools["mahavishnu_terminal_current_adapter"]
         result = await fn()
         assert result == {"adapter": "mock", "history": []}
 
@@ -703,7 +703,7 @@ class TestTerminalListAdapters:
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
         # Default TerminalSettings has crow_enabled=False
-        fn = registered_mcp.tools["terminal_list_adapters"]
+        fn = registered_mcp.tools["mahavishnu_terminal_list_adapters"]
         result = await fn()
         assert result["current"] == "mock"
         assert set(result["adapters"].keys()) == {"tmux", "mock"}
@@ -718,7 +718,7 @@ class TestTerminalListAdapters:
         # Patch the manager's config to advertise crow_enabled=True
         config = TerminalSettings(crow_enabled=True)
         mock_manager.config = config
-        fn = registered_mcp.tools["terminal_list_adapters"]
+        fn = registered_mcp.tools["mahavishnu_terminal_list_adapters"]
         result = await fn()
         assert set(result["adapters"].keys()) == {"tmux", "mock", "crow"}
         assert result["adapters"]["crow"]["status"] == "available"
@@ -730,7 +730,7 @@ class TestTerminalListAdapters:
         # Some terminal manager implementations may not expose ``config``;
         # ``getattr(..., None)`` should fall back to no crow entry.
         del mock_manager.config
-        fn = registered_mcp.tools["terminal_list_adapters"]
+        fn = registered_mcp.tools["mahavishnu_terminal_list_adapters"]
         result = await fn()
         assert set(result["adapters"].keys()) == {"tmux", "mock"}
         assert "crow" not in result["adapters"]
@@ -748,7 +748,7 @@ class TestTerminalSwitchAdapter:
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
         # Manager already reports adapter_name='mock'
-        fn = registered_mcp.tools["terminal_switch_adapter"]
+        fn = registered_mcp.tools["mahavishnu_terminal_switch_adapter"]
         result = await fn(adapter_name="mock")
         assert result["status"] == "already_using"
         assert result["current_adapter"] == "mock"
@@ -758,7 +758,7 @@ class TestTerminalSwitchAdapter:
     async def test_unknown_adapter_returns_error(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_switch_adapter"]
+        fn = registered_mcp.tools["mahavishnu_terminal_switch_adapter"]
         result = await fn(adapter_name="bogus")
         assert result["status"] == "error"
         assert "Unknown adapter: bogus" in result["message"]
@@ -767,7 +767,7 @@ class TestTerminalSwitchAdapter:
     async def test_iterm2_raises_not_implemented(
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
-        fn = registered_mcp.tools["terminal_switch_adapter"]
+        fn = registered_mcp.tools["mahavishnu_terminal_switch_adapter"]
         # Current adapter is 'mock', so we are not "already_using" iterm2.
         with pytest.raises(NotImplementedError, match="iTerm2 adapter is deprecated"):
             await fn(adapter_name="iterm2")
@@ -777,7 +777,7 @@ class TestTerminalSwitchAdapter:
         self, registered_mcp: _StubMCP, mock_manager: MagicMock
     ) -> None:
         # crow_enabled defaults to False on TerminalSettings
-        fn = registered_mcp.tools["terminal_switch_adapter"]
+        fn = registered_mcp.tools["mahavishnu_terminal_switch_adapter"]
         result = await fn(adapter_name="crow")
         assert result["status"] == "error"
         assert "crow_enabled is false" in result["message"]
@@ -801,7 +801,7 @@ class TestTerminalSwitchAdapter:
                     MagicMock(return_value=fake_manager),
                 ),
             ):
-                fn = registered_mcp.tools["terminal_switch_adapter"]
+                fn = registered_mcp.tools["mahavishnu_terminal_switch_adapter"]
                 result = await fn(adapter_name="tmux", migrate_sessions=True)
         assert result["status"] == "success"
         assert result["previous_adapter"] == "mock"
@@ -829,7 +829,7 @@ class TestTerminalSwitchAdapter:
                 MagicMock(return_value=fake_adapter),
             ),
         ):
-            fn = registered_mcp.tools["terminal_switch_adapter"]
+            fn = registered_mcp.tools["mahavishnu_terminal_switch_adapter"]
             result = await fn(adapter_name="crow")
         assert result["status"] == "success"
         assert result["new_adapter"] == "crow"
@@ -851,7 +851,7 @@ class TestTerminalSwitchAdapter:
                 mock_manager.switch_adapter = AsyncMock(
                     side_effect=RuntimeError("boom")
                 )
-                fn = registered_mcp.tools["terminal_switch_adapter"]
+                fn = registered_mcp.tools["mahavishnu_terminal_switch_adapter"]
                 result = await fn(adapter_name="tmux")
         assert result["status"] == "error"
         assert "Failed to switch adapter: boom" in result["message"]
@@ -865,7 +865,7 @@ class TestTerminalSwitchAdapter:
                 "mahavishnu.mcp.tools.terminal_tools.TmuxTerminalAdapter",
                 MagicMock(return_value=fake_adapter),
             ):
-                fn = registered_mcp.tools["terminal_switch_adapter"]
+                fn = registered_mcp.tools["mahavishnu_terminal_switch_adapter"]
                 result = await fn(adapter_name="tmux")
         assert result["status"] == "success"
         # migrate_sessions should default to False when not specified

@@ -138,7 +138,7 @@ class TestPoolSpawnDispatch:
         assert body["jsonrpc"] == "2.0"
         assert body["method"] == "tools/call"
         params = body["params"]
-        assert params["name"] == "pool_spawn"
+        assert params["name"] == "mahavishnu_pool_spawn"
         args = params["arguments"]
         assert args["name"] == "local"
         assert args["pool_type"] == "mahavishnu"

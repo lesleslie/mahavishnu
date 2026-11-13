@@ -524,10 +524,10 @@ class TestRegisterSelfImprovementTools:
     def test_all_tools_registered(self, registered_mcp):
         """All 4 self-improvement tools should be registered."""
         expected = {
-            "review_and_fix",
-            "request_approval",
-            "respond_to_approval",
-            "get_pending_approvals",
+            "mahavishnu_review_and_fix",
+            "mahavishnu_request_approval",
+            "mahavishnu_respond_to_approval",
+            "mahavishnu_get_pending_approvals",
         }
         assert expected.issubset(set(registered_mcp._tools.keys()))
 
@@ -537,7 +537,7 @@ class TestRegisterSelfImprovementTools:
             SelfImprovementTools, "review_and_fix", new_callable=AsyncMock
         ) as mock_method:
             mock_method.return_value = {"success": True, "findings_count": 0}
-            await registered_mcp._tools["review_and_fix"](
+            await registered_mcp._tools["mahavishnu_review_and_fix"](
                 scope="critical", auto_fix=False, dry_run=True
             )
         mock_method.assert_awaited_once()
@@ -548,7 +548,7 @@ class TestRegisterSelfImprovementTools:
             SelfImprovementTools, "request_approval", new_callable=AsyncMock
         ) as mock_method:
             mock_method.return_value = {"approval_id": "x", "status": "pending"}
-            await registered_mcp._tools["request_approval"](
+            await registered_mcp._tools["mahavishnu_request_approval"](
                 approval_type="version_bump", context={}
             )
         mock_method.assert_awaited_once()
@@ -559,7 +559,7 @@ class TestRegisterSelfImprovementTools:
             SelfImprovementTools, "respond_to_approval", new_callable=AsyncMock
         ) as mock_method:
             mock_method.return_value = {"approved": True}
-            await registered_mcp._tools["respond_to_approval"](
+            await registered_mcp._tools["mahavishnu_respond_to_approval"](
                 approval_id="apr-1", approved=True
             )
         mock_method.assert_awaited_once()
@@ -570,5 +570,5 @@ class TestRegisterSelfImprovementTools:
             SelfImprovementTools, "get_pending_approvals", new_callable=AsyncMock
         ) as mock_method:
             mock_method.return_value = {"count": 0, "approvals": []}
-            await registered_mcp._tools["get_pending_approvals"]()
+            await registered_mcp._tools["mahavishnu_get_pending_approvals"]()
         mock_method.assert_awaited_once()

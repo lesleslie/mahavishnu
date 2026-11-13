@@ -95,7 +95,7 @@ class TestTreesitterParseExceptions:
             "mahavishnu.mcp.tools.treesitter_tools._get_parser",
             side_effect=RuntimeError("parser unavailable"),
         ):
-            result = await tools["treesitter_parse"]("/fake/file.py")
+            result = await tools["mahavishnu_treesitter_parse"]("/fake/file.py")
         assert result["success"] is False
         assert "parser unavailable" in result["error"]
 
@@ -109,7 +109,7 @@ class TestTreesitterExtractSymbolsExceptions:
             "mahavishnu.mcp.tools.treesitter_tools._get_parser",
             side_effect=RuntimeError("extract error"),
         ):
-            result = await tools["treesitter_extract_symbols"]("/fake/file.py")
+            result = await tools["mahavishnu_treesitter_extract_symbols"]("/fake/file.py")
         assert result["success"] is False
         assert result["symbols"] == []
         assert "extract error" in result["error"]
@@ -124,7 +124,7 @@ class TestTreesitterFindUsagesExceptions:
             "mahavishnu.mcp.tools.treesitter_tools._get_parser",
             side_effect=RuntimeError("usages error"),
         ):
-            result = await tools["treesitter_find_usages"]("/fake/file.py", "my_sym")
+            result = await tools["mahavishnu_treesitter_find_usages"]("/fake/file.py", "my_sym")
         assert result["success"] is False
         assert result["usages"] == []
         assert "usages error" in result["error"]
@@ -139,7 +139,7 @@ class TestTreesitterQueryExceptions:
             "mahavishnu.mcp.tools.treesitter_tools._get_parser",
             side_effect=RuntimeError("query error"),
         ):
-            result = await tools["treesitter_query"](
+            result = await tools["mahavishnu_treesitter_query"](
                 "/fake/file.py", "(function_definition)"
             )
         assert result["success"] is False
@@ -156,7 +156,7 @@ class TestTreesitterBatchAnalyzeExceptions:
             "mahavishnu.mcp.tools.treesitter_tools._get_parser",
             side_effect=RuntimeError("batch error"),
         ):
-            result = await tools["treesitter_batch_analyze"]("/fake/dir")
+            result = await tools["mahavishnu_treesitter_batch_analyze"]("/fake/dir")
         assert result["success"] is False
         assert result["results"] == []
         assert "batch error" in result["error"]
@@ -171,7 +171,7 @@ class TestTreesitterCacheStatsExceptions:
             "mahavishnu.mcp.tools.treesitter_tools._get_parser",
             side_effect=RuntimeError("stats error"),
         ):
-            result = await tools["treesitter_cache_stats"]()
+            result = await tools["mahavishnu_treesitter_cache_stats"]()
         assert result["success"] is False
         assert "stats error" in result["error"]
 
@@ -185,7 +185,7 @@ class TestTreesitterClearCacheExceptions:
             "mahavishnu.mcp.tools.treesitter_tools._get_parser",
             side_effect=RuntimeError("clear error"),
         ):
-            result = await tools["treesitter_clear_cache"]()
+            result = await tools["mahavishnu_treesitter_clear_cache"]()
         assert result["success"] is False
         assert "clear error" in result["error"]
 
@@ -234,7 +234,7 @@ class TestTreesitterParseSuccess:
                 "mahavishnu.mcp.tools.treesitter_tools._ensure_grammar_loaded",
                 return_value=True,
             ):
-                result = await tools["treesitter_parse"]("/fake/file.py")
+                result = await tools["mahavishnu_treesitter_parse"]("/fake/file.py")
         assert result["success"] is True
 
     @pytest.mark.asyncio
@@ -247,7 +247,7 @@ class TestTreesitterParseSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_parse"]("/fake/file.py")
+            result = await tools["mahavishnu_treesitter_parse"]("/fake/file.py")
         assert "symbols_count" in result
         assert "imports_count" in result
         assert "from_cache" in result
@@ -264,7 +264,7 @@ class TestTreesitterExtractSymbolsSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_extract_symbols"]("/fake/file.py")
+            result = await tools["mahavishnu_treesitter_extract_symbols"]("/fake/file.py")
         assert result["success"] is True
         assert isinstance(result["symbols"], list)
         assert result["total_symbols"] == 1
@@ -277,7 +277,7 @@ class TestTreesitterExtractSymbolsSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_extract_symbols"](
+            result = await tools["mahavishnu_treesitter_extract_symbols"](
                 "/fake/file.py", symbol_kinds=["function"]
             )
         assert result["filtered_symbols"] == 1
@@ -290,7 +290,7 @@ class TestTreesitterExtractSymbolsSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_extract_symbols"](
+            result = await tools["mahavishnu_treesitter_extract_symbols"](
                 "/fake/file.py", symbol_kinds=["class"]
             )
         assert result["filtered_symbols"] == 0
@@ -305,7 +305,7 @@ class TestTreesitterCacheStatsSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_cache_stats"]()
+            result = await tools["mahavishnu_treesitter_cache_stats"]()
         assert result["success"] is True
         assert result["hit_rate"] == 0.5
 
@@ -319,7 +319,7 @@ class TestTreesitterClearCacheSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_clear_cache"]()
+            result = await tools["mahavishnu_treesitter_clear_cache"]()
         assert result["success"] is True
         assert result["entries_cleared"] == 7
 
@@ -337,7 +337,7 @@ class TestTreesitterFindUsagesSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_find_usages"]("/fake/file.py", "sym")
+            result = await tools["mahavishnu_treesitter_find_usages"]("/fake/file.py", "sym")
         assert result["success"] is False
         assert "parse failed" in result["error"]
 
@@ -349,7 +349,7 @@ class TestTreesitterFindUsagesSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_find_usages"](
+            result = await tools["mahavishnu_treesitter_find_usages"](
                 "/fake/file.py", "nonexistent_sym"
             )
         assert result["success"] is True
@@ -371,7 +371,7 @@ class TestTreesitterQuerySuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_query"]("/fake/file.py", "(func)")
+            result = await tools["mahavishnu_treesitter_query"]("/fake/file.py", "(func)")
         assert result["success"] is False
         assert "Unknown language" in result["error"]
 
@@ -383,7 +383,7 @@ class TestTreesitterQuerySuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_query"]("/fake/file.py", "(func)")
+            result = await tools["mahavishnu_treesitter_query"]("/fake/file.py", "(func)")
         assert result["success"] is True
         assert result["matches"] == []
 
@@ -399,7 +399,7 @@ class TestTreesitterBatchAnalyzeSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_batch_analyze"](str(tmp_path))
+            result = await tools["mahavishnu_treesitter_batch_analyze"](str(tmp_path))
         assert result["success"] is True
         assert result["files_analyzed"] == 0
 
@@ -414,6 +414,6 @@ class TestTreesitterBatchAnalyzeSuccess:
         with patch(
             "mahavishnu.mcp.tools.treesitter_tools._get_parser", return_value=parser
         ):
-            result = await tools["treesitter_batch_analyze"](str(tmp_path))
+            result = await tools["mahavishnu_treesitter_batch_analyze"](str(tmp_path))
         assert result["success"] is True
         assert result["files_analyzed"] == 1

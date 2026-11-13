@@ -176,7 +176,7 @@ class _FakeClient:
         return None
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> _CallResult:
-        assert name == "pool_route_execute"
+        assert name == "mahavishnu_pool_route_execute"
         assert arguments
         return _CallResult(self._payload)
 

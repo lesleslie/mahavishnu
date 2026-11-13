@@ -12,21 +12,21 @@ from mahavishnu.mcp.tools.profiles import FULL_REGISTRATIONS, REGISTRATION_MAP
 
 EXPECTED = {
     # Pre-drain baseline (Task 13).
-    "jot_list",
-    "jot_show",
-    "jot_add",
-    "jot_edit",
-    "jot_done",
-    "jot_reopen",
-    "jot_vitals",
-    "jot_search",
+    "mahavishnu_jot_list",
+    "mahavishnu_jot_show",
+    "mahavishnu_jot_add",
+    "mahavishnu_jot_edit",
+    "mahavishnu_jot_done",
+    "mahavishnu_jot_reopen",
+    "mahavishnu_jot_vitals",
+    "mahavishnu_jot_search",
     # Drain additions (sub-plan 3).
-    "jot_drain",
-    "jot_dispatch",
-    "jot_defer",
-    "jot_delete",
-    "jot_retry",
-    "jot_resurface",
+    "mahavishnu_jot_drain",
+    "mahavishnu_jot_dispatch",
+    "mahavishnu_jot_defer",
+    "mahavishnu_jot_delete",
+    "mahavishnu_jot_retry",
+    "mahavishnu_jot_resurface",
 }
 
 

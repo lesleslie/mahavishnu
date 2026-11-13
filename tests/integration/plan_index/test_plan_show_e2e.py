@@ -42,7 +42,7 @@ class TestPlanShowE2E:
         plan_id = "f" * 32
         await store.upsert(_sample_record(plan_id=plan_id, title="Round-trip"))
 
-        result = await call_tool("plan_show", {"plan_id": plan_id})
+        result = await call_tool("mahavishnu_plan_show", {"plan_id": plan_id})
 
         assert isinstance(result, dict)
         assert result["plan_id"] == plan_id
@@ -61,7 +61,7 @@ class TestPlanShowE2E:
         message rather than a structured code so the test stays
         version-portable.
         """
-        result = await call_tool("plan_show", {"plan_id": "0" * 32})
+        result = await call_tool("mahavishnu_plan_show", {"plan_id": "0" * 32})
 
         assert isinstance(result, dict)
         assert result["status"] == "error"
@@ -84,7 +84,7 @@ class TestPlanShowE2E:
         ``pytest.raises(PermissionError)`` style, because the wrapper
         does not raise.
         """
-        result = await call_tool("plan_show", {"plan_id": "not-hex"})
+        result = await call_tool("mahavishnu_plan_show", {"plan_id": "not-hex"})
 
         assert isinstance(result, dict)
         assert result["status"] == "error"

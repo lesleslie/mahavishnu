@@ -149,7 +149,7 @@ class TestAuthGateE2E:
     ) -> None:
         """With no user_id, plan_list returns the AUTH_REQUIRED envelope."""
         monkeypatch.setenv("MAHAVISHNU_AUTH_ENABLED", "true")
-        result = await call_tool_unauthenticated("plan_list", {})
+        result = await call_tool_unauthenticated("mahavishnu_plan_list", {})
         assert isinstance(result, dict)
         assert result["status"] == "error"
         assert result["error_code"] == "AUTH_REQUIRED"
@@ -159,7 +159,7 @@ class TestAuthGateE2E:
         self, call_tool_unauthenticated: Any, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("MAHAVISHNU_AUTH_ENABLED", "true")
-        result = await call_tool_unauthenticated("plan_show", {"plan_id": "0" * 32})
+        result = await call_tool_unauthenticated("mahavishnu_plan_show", {"plan_id": "0" * 32})
         assert isinstance(result, dict)
         assert result["status"] == "error"
         assert result["error_code"] == "AUTH_REQUIRED"
@@ -169,7 +169,7 @@ class TestAuthGateE2E:
         self, call_tool_unauthenticated: Any, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("MAHAVISHNU_AUTH_ENABLED", "true")
-        result = await call_tool_unauthenticated("plan_search", {"query": "x"})
+        result = await call_tool_unauthenticated("mahavishnu_plan_search", {"query": "x"})
         assert isinstance(result, dict)
         assert result["status"] == "error"
         assert result["error_code"] == "AUTH_REQUIRED"
@@ -179,7 +179,7 @@ class TestAuthGateE2E:
         self, call_tool_unauthenticated: Any, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("MAHAVISHNU_AUTH_ENABLED", "true")
-        result = await call_tool_unauthenticated("plan_vitals", {})
+        result = await call_tool_unauthenticated("mahavishnu_plan_vitals", {})
         assert isinstance(result, dict)
         assert result["status"] == "error"
         assert result["error_code"] == "AUTH_REQUIRED"
@@ -189,7 +189,7 @@ class TestAuthGateE2E:
         self, call_tool_unauthenticated: Any, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("MAHAVISHNU_AUTH_ENABLED", "true")
-        result = await call_tool_unauthenticated("plan_rebuild_status", {})
+        result = await call_tool_unauthenticated("mahavishnu_plan_rebuild_status", {})
         assert isinstance(result, dict)
         assert result["status"] == "error"
         assert result["error_code"] == "AUTH_REQUIRED"
@@ -203,7 +203,7 @@ class TestAuthGateRBACEnforcement:
         self, call_tool_with_rbac: Any
     ) -> None:
         """``intruder`` has no READ_PLAN_INDEX grant — must get PERMISSION_DENIED."""
-        result = await call_tool_with_rbac("plan_list", {}, user_id="intruder")
+        result = await call_tool_with_rbac("mahavishnu_plan_list", {}, user_id="intruder")
         assert isinstance(result, dict)
         assert result["status"] == "error"
         assert result["error_code"] == "PERMISSION_DENIED"
@@ -214,7 +214,7 @@ class TestAuthGateRBACEnforcement:
         self, call_tool_with_rbac: Any
     ) -> None:
         """``alice`` has READ_PLAN_INDEX — plan_list reaches the wrapped function."""
-        result = await call_tool_with_rbac("plan_list", {}, user_id="alice")
+        result = await call_tool_with_rbac("mahavishnu_plan_list", {}, user_id="alice")
         # Happy path returns the structured ``{"plans": ..., "total": ...,
         # "status": "ok"}`` envelope from the tool body — NOT the error
         # envelope. ``structured_content["result"]`` wraps the dict.
@@ -245,7 +245,7 @@ class TestAuthGateRBACEnforcement:
 
         args: dict[str, Any] = {"user_id": "alice"}
         try:
-            result = await server.call_tool("plan_list", args)
+            result = await server.call_tool("mahavishnu_plan_list", args)
         except ToolError as exc:
             envelope = {
                 "status": "error",

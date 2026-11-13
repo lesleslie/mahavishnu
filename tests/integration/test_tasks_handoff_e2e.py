@@ -40,4 +40,4 @@ async def test_tasks_handoff_to_workflow_registration_idempotent() -> None:
     # FastMCP 4.x exposes the registered tool set via list_tools(); the
     # v1 ``_tool_manager._tools`` private dict was removed in 3.x.
     tool_names = [t.name for t in await mcp.list_tools()]
-    assert tool_names.count("tasks_handoff_to_workflow") == 1
+    assert tool_names.count("mahavishnu_tasks_handoff_to_workflow") == 1

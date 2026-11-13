@@ -71,7 +71,7 @@ async def test_pool_spawn_e2e_full_flow() -> None:
     stub = _StubMCP()
     pm = _make_pool_manager()
     register_pool_tools(stub, pm)
-    pool_spawn = stub.tools["pool_spawn"]
+    pool_spawn = stub.tools["mahavishnu_pool_spawn"]
 
     # 1. Spawn a new pool with explicit sizing
     spawn_result = await pool_spawn(

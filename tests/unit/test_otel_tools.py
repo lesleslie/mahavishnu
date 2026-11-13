@@ -63,7 +63,7 @@ class TestIngestOtelTracesEarlyReturn:
     @pytest.mark.asyncio
     async def test_no_input_returns_error(self) -> None:
         tools = _register()
-        result = await tools["ingest_otel_traces"]()
+        result = await tools["mahavishnu_ingest_otel_traces"]()
         assert result["status"] == "error"
         assert "Either log_files or trace_data" in result["error"]
         assert result["traces_ingested"] == 0
@@ -85,7 +85,7 @@ class TestIngestOtelTracesImportError:
                 side_effect=ImportError("OtelIngester missing"),
             ),
         ):
-            result = await tools["ingest_otel_traces"](trace_data=[{"span": "x"}])
+            result = await tools["mahavishnu_ingest_otel_traces"](trace_data=[{"span": "x"}])
         assert result["status"] == "error"
 
     @pytest.mark.asyncio
@@ -104,7 +104,7 @@ class TestIngestOtelTracesImportError:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["ingest_otel_traces"](trace_data=[{"span": "x"}])
+            result = await tools["mahavishnu_ingest_otel_traces"](trace_data=[{"span": "x"}])
         assert result["status"] == "error"
         assert "db unavailable" in result["error"]
 
@@ -126,7 +126,7 @@ class TestIngestOtelTracesTraceData:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["ingest_otel_traces"](
+            result = await tools["mahavishnu_ingest_otel_traces"](
                 trace_data=[{"span": "x", "system_id": "svc"}, {"span": "y"}]
             )
         assert result["traces_ingested"] == 2
@@ -148,7 +148,7 @@ class TestIngestOtelTracesTraceData:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            await tools["ingest_otel_traces"](
+            await tools["mahavishnu_ingest_otel_traces"](
                 trace_data=[{"span": "z"}], system_id="my-svc"
             )
         assert ingested[0]["system_id"] == "my-svc"
@@ -171,7 +171,7 @@ class TestIngestOtelTracesLogFiles:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["ingest_otel_traces"](log_files=["/no/such/file.json"])
+            result = await tools["mahavishnu_ingest_otel_traces"](log_files=["/no/such/file.json"])
         assert any("File not found" in e for e in result["errors"])
 
     @pytest.mark.asyncio
@@ -187,7 +187,7 @@ class TestIngestOtelTracesLogFiles:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["ingest_otel_traces"](log_files=[str(log_file)])
+            result = await tools["mahavishnu_ingest_otel_traces"](log_files=[str(log_file)])
         assert result["files_processed"] == 1
         assert result["traces_ingested"] == 2
 
@@ -206,7 +206,7 @@ class TestIngestOtelTracesLogFiles:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["ingest_otel_traces"](log_files=[str(log_file)])
+            result = await tools["mahavishnu_ingest_otel_traces"](log_files=[str(log_file)])
         assert result["traces_ingested"] == 1
 
     @pytest.mark.asyncio
@@ -222,7 +222,7 @@ class TestIngestOtelTracesLogFiles:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["ingest_otel_traces"](log_files=[str(log_file)])
+            result = await tools["mahavishnu_ingest_otel_traces"](log_files=[str(log_file)])
         assert any("Invalid format" in e for e in result["errors"])
 
 
@@ -242,7 +242,7 @@ class TestSearchOtelTraces:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["search_otel_traces"]("my query")
+            result = await tools["mahavishnu_search_otel_traces"]("my query")
         assert result == [] or isinstance(result, list)
 
     @pytest.mark.asyncio
@@ -255,7 +255,7 @@ class TestSearchOtelTraces:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["search_otel_traces"]("my query")
+            result = await tools["mahavishnu_search_otel_traces"]("my query")
         assert result == []
 
     @pytest.mark.asyncio
@@ -269,7 +269,7 @@ class TestSearchOtelTraces:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["search_otel_traces"]("error traces", limit=5)
+            result = await tools["mahavishnu_search_otel_traces"]("error traces", limit=5)
         assert result == [{"trace_id": "abc"}]
 
 
@@ -289,7 +289,7 @@ class TestGetOtelTrace:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["get_otel_trace"]("trace-xyz")
+            result = await tools["mahavishnu_get_otel_trace"]("trace-xyz")
         assert result is None
 
     @pytest.mark.asyncio
@@ -303,7 +303,7 @@ class TestGetOtelTrace:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["get_otel_trace"]("nonexistent")
+            result = await tools["mahavishnu_get_otel_trace"]("nonexistent")
         assert result is None
 
     @pytest.mark.asyncio
@@ -318,7 +318,7 @@ class TestGetOtelTrace:
             "mahavishnu.ingesters.otel_ingester.OtelIngester",
             return_value=mock_ingester,
         ):
-            result = await tools["get_otel_trace"]("abc")
+            result = await tools["mahavishnu_get_otel_trace"]("abc")
         assert result == trace
 
 
@@ -333,7 +333,7 @@ class TestOtelIngesterStats:
         tools = _register()
         with patch.dict("sys.modules", {"oneiric.adapters.vector.hot_store": None}):
             with patch("builtins.__import__", side_effect=ImportError("no oneiric")):
-                result = await tools["otel_ingester_stats"]()
+                result = await tools["mahavishnu_otel_ingester_stats"]()
         assert result["status"] == "error"
 
     @pytest.mark.asyncio
@@ -345,7 +345,7 @@ class TestOtelIngesterStats:
         with patch(
             "oneiric.adapters.vector.hot_store.HotStore", return_value=mock_store
         ):
-            result = await tools["otel_ingester_stats"]()
+            result = await tools["mahavishnu_otel_ingester_stats"]()
         assert result["status"] == "error"
         assert "store fail" in result["error"]
 
@@ -358,6 +358,6 @@ class TestOtelIngesterStats:
         with patch(
             "oneiric.adapters.vector.hot_store.HotStore", return_value=mock_store
         ):
-            result = await tools["otel_ingester_stats"]()
+            result = await tools["mahavishnu_otel_ingester_stats"]()
         assert result["status"] == "healthy"
         assert result["storage_backend"] == "duckdb_hotstore"

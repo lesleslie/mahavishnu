@@ -21,12 +21,12 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 DRAIN_TOOLS: tuple[str, ...] = (
-    "jot_drain",
-    "jot_dispatch",
-    "jot_defer",
-    "jot_delete",
-    "jot_retry",
-    "jot_resurface",
+    "mahavishnu_jot_drain",
+    "mahavishnu_jot_dispatch",
+    "mahavishnu_jot_defer",
+    "mahavishnu_jot_delete",
+    "mahavishnu_jot_retry",
+    "mahavishnu_jot_resurface",
 )
 
 
@@ -74,14 +74,14 @@ def test_registration_map_grew_by_exactly_six() -> None:
 def test_drain_entries_are_distinct_from_pre_drain() -> None:
     """The 6 new names do not collide with any existing ``jot_*`` key."""
     pre_drain = {
-        "jot_list",
-        "jot_show",
-        "jot_add",
-        "jot_edit",
-        "jot_done",
-        "jot_reopen",
-        "jot_vitals",
-        "jot_search",
+        "mahavishnu_jot_list",
+        "mahavishnu_jot_show",
+        "mahavishnu_jot_add",
+        "mahavishnu_jot_edit",
+        "mahavishnu_jot_done",
+        "mahavishnu_jot_reopen",
+        "mahavishnu_jot_vitals",
+        "mahavishnu_jot_search",
     }
     overlap = set(DRAIN_TOOLS) & pre_drain
     assert overlap == set(), f"drain tool names collide with pre-drain set: {overlap!r}"

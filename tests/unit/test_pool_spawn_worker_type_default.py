@@ -102,7 +102,7 @@ def test_pool_spawn_mcp_tool_default_worker_type_is_shepherd() -> None:
 
     mcp = _NoOpMcp()
     register_pool_tools(mcp, MagicMock())  # type: ignore[arg-type]
-    spawn = mcp._registered["pool_spawn"]
+    spawn = mcp._registered["mahavishnu_pool_spawn"]
     sig = inspect.signature(spawn)
     assert sig.parameters["worker_type"].default == "shepherd", (
         f"pool_spawn worker_type default is "

@@ -33,11 +33,11 @@ if TYPE_CHECKING:
     )
 
 TOOL_NAMES = (
-    "plan_list",
-    "plan_show",
-    "plan_search",
-    "plan_vitals",
-    "plan_rebuild_status",
+    "mahavishnu_plan_list",
+    "mahavishnu_plan_show",
+    "mahavishnu_plan_search",
+    "mahavishnu_plan_vitals",
+    "mahavishnu_plan_rebuild_status",
 )
 
 
@@ -171,7 +171,7 @@ class TestPlanListTool:
     ) -> None:
         await store.upsert(_sample_record())
 
-        result = await tools["plan_list"](user_id="alice")
+        result = await tools["mahavishnu_plan_list"](user_id="alice")
 
         assert result["status"] == "ok"
         assert result["total"] == len(result["plans"])
@@ -183,7 +183,7 @@ class TestPlanListTool:
     ) -> None:
         await store.upsert(_sample_record())
 
-        result = await tools["plan_list"](status="active", user_id="alice")
+        result = await tools["mahavishnu_plan_list"](status="active", user_id="alice")
 
         assert result["total"] == 1
         assert result["plans"][0]["status"] == "active"
@@ -193,8 +193,8 @@ class TestPlanListTool:
     ) -> None:
         await store.upsert(_sample_record())
 
-        matched = await tools["plan_list"](topic="routing", user_id="alice")
-        unmatched = await tools["plan_list"](topic="unrelated", user_id="alice")
+        matched = await tools["mahavishnu_plan_list"](topic="routing", user_id="alice")
+        unmatched = await tools["mahavishnu_plan_list"](topic="unrelated", user_id="alice")
 
         assert matched["total"] == 1
         assert unmatched["total"] == 0
@@ -204,10 +204,10 @@ class TestPlanListTool:
     ) -> None:
         await store.upsert(_sample_record())
 
-        inside = await tools["plan_list"](
+        inside = await tools["mahavishnu_plan_list"](
             date_from="2026-09-01", date_to="2026-09-30", user_id="alice"
         )
-        outside = await tools["plan_list"](
+        outside = await tools["mahavishnu_plan_list"](
             date_from="2026-01-01", date_to="2026-01-31", user_id="alice"
         )
 
@@ -215,7 +215,7 @@ class TestPlanListTool:
         assert outside["total"] == 0
 
     async def test_empty_store_returns_zero_total(self, tools: dict[str, Any]) -> None:
-        result = await tools["plan_list"](user_id="alice")
+        result = await tools["mahavishnu_plan_list"](user_id="alice")
 
         assert result == {"plans": [], "total": 0, "status": "ok"}
 
@@ -226,7 +226,7 @@ class TestPlanShowTool:
     ) -> None:
         await store.upsert(_sample_record())
 
-        result = await tools["plan_show"](plan_id="1" * 32, user_id="alice")
+        result = await tools["mahavishnu_plan_show"](plan_id="1" * 32, user_id="alice")
 
         assert result["plan_id"] == "1" * 32
         assert result["path"] == "docs/plans/x.md"
@@ -236,7 +236,7 @@ class TestPlanShowTool:
         self, tools: dict[str, Any]
     ) -> None:
         with pytest.raises(PlanNotFoundError) as excinfo:
-            await tools["plan_show"](plan_id="0" * 32, user_id="alice")
+            await tools["mahavishnu_plan_show"](plan_id="0" * 32, user_id="alice")
 
         assert excinfo.value.plan_id == "0" * 32
 
@@ -247,7 +247,7 @@ class TestPlanSearchTool:
     ) -> None:
         await store.upsert(_sample_record())
 
-        result = await tools["plan_search"](query="routing", user_id="alice")
+        result = await tools["mahavishnu_plan_search"](query="routing", user_id="alice")
 
         assert isinstance(result, list)
         assert len(result) == 1
@@ -258,14 +258,14 @@ class TestPlanSearchTool:
     ) -> None:
         await store.upsert(_sample_record())
 
-        assert await tools["plan_search"](query="", user_id="alice") == []
+        assert await tools["mahavishnu_plan_search"](query="", user_id="alice") == []
 
     async def test_no_match_returns_empty_list(
         self, tools: dict[str, Any], store: PlanIndexStore
     ) -> None:
         await store.upsert(_sample_record())
 
-        assert await tools["plan_search"](query="zzzz-nomatch", user_id="alice") == []
+        assert await tools["mahavishnu_plan_search"](query="zzzz-nomatch", user_id="alice") == []
 
 
 class TestPlanVitalsTool:
@@ -274,7 +274,7 @@ class TestPlanVitalsTool:
     ) -> None:
         await store.upsert(_sample_record())
 
-        result = await tools["plan_vitals"](user_id="alice")
+        result = await tools["mahavishnu_plan_vitals"](user_id="alice")
 
         for key in (
             "total",
@@ -294,7 +294,7 @@ class TestPlanVitalsTool:
 
 class TestPlanRebuildStatusTool:
     async def test_returns_rebuild_status_shape(self, tools: dict[str, Any]) -> None:
-        result = await tools["plan_rebuild_status"](user_id="alice")
+        result = await tools["mahavishnu_plan_rebuild_status"](user_id="alice")
 
         assert result["cycles_total"] == 0
         assert result["successful_cycles_total"] == 0
@@ -312,9 +312,9 @@ class TestAuthEnvelope:
         self, tools: dict[str, Any], tool_name: str
     ) -> None:
         kwargs: dict[str, Any] = {}
-        if tool_name == "plan_show":
+        if tool_name == "mahavishnu_plan_show":
             kwargs["plan_id"] = "1" * 32
-        elif tool_name == "plan_search":
+        elif tool_name == "mahavishnu_plan_search":
             kwargs["query"] = "routing"
 
         result = await tools[tool_name](**kwargs)

@@ -93,7 +93,7 @@ def test_invoke_bootstrap_sends_jsonrpc_envelope(
     assert isinstance(body, dict)
     assert body["jsonrpc"] == "2.0"
     assert body["method"] == "tools/call"
-    assert body["params"]["name"] == "pool_bootstrap"
+    assert body["params"]["name"] == "mahavishnu_pool_bootstrap"
 
 
 def test_invoke_bootstrap_returns_none_on_connection_error(

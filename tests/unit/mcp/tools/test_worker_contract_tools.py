@@ -77,8 +77,8 @@ def _make_manager_mock() -> MagicMock:
     """Build a MagicMock that mimics DurableWorkerManager."""
     manager = MagicMock()
     manager.spawn = MagicMock()
-    manager.send_input = MagicMock(return_value=True)
-    manager.capture_output = MagicMock()
+    manager.mahavishnu_send_input = MagicMock(return_value=True)
+    manager.mahavishnu_capture_output = MagicMock()
     manager.status = MagicMock(return_value=None)
     manager.cancel = MagicMock(return_value=True)
     manager.reap = MagicMock()
@@ -252,7 +252,7 @@ def test_launch_worker_returns_manager_unconfigured_when_none(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", None)
-    out = asyncio.run(tools.launch_worker(prompt="hi"))
+    out = asyncio.run(tools.mahavishnu_launch_worker(prompt="hi"))
     assert out == {"worker_id": None, "state": "manager_unconfigured"}
 
 
@@ -262,7 +262,7 @@ def test_launch_worker_returns_no_tmux_when_session_mode_no_tmux(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
-    out = asyncio.run(tools.launch_worker(prompt="hi", session_mode="no_tmux"))
+    out = asyncio.run(tools.mahavishnu_launch_worker(prompt="hi", session_mode="no_tmux"))
     assert out == {"worker_id": None, "state": "no_tmux"}
 
 
@@ -277,7 +277,7 @@ def test_launch_worker_returns_current_tmux_when_session_mode_current_tmux(
 
     monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
     monkeypatch.setenv("TMUX", "/tmp/tmux-1000/default,12345,0")
-    out = asyncio.run(tools.launch_worker(prompt="hi", session_mode="current_tmux"))
+    out = asyncio.run(tools.mahavishnu_launch_worker(prompt="hi", session_mode="current_tmux"))
     assert out == {
         "worker_id": None,
         "state": "current_tmux",
@@ -300,7 +300,7 @@ def test_launch_worker_returns_tmux_unavailable_when_session_mode_current_tmux_n
     monkeypatch.delenv("TMUX", raising=False)
     assert os.environ.get("TMUX") is None
     monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
-    out = asyncio.run(tools.launch_worker(prompt="hi", session_mode="current_tmux"))
+    out = asyncio.run(tools.mahavishnu_launch_worker(prompt="hi", session_mode="current_tmux"))
     assert out == {
         "worker_id": None,
         "state": "tmux_unavailable",
@@ -316,7 +316,7 @@ def test_launch_worker_calls_manager(monkeypatch: pytest.MonkeyPatch) -> None:
     manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(
-        tools.launch_worker(
+        tools.mahavishnu_launch_worker(
             prompt="do it",
             worker_type="terminal-claude",
             backend="claude_tui",
@@ -338,7 +338,7 @@ def test_launch_worker_defaults_command_to_claude(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result())
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    asyncio.run(tools.launch_worker(prompt="x"))
+    asyncio.run(tools.mahavishnu_launch_worker(prompt="x"))
     call_kwargs = manager.spawn.call_args.kwargs
     assert call_kwargs["command"] == ["claude"]
     assert call_kwargs["worker_type"] == "terminal-claude"
@@ -352,7 +352,7 @@ def test_launch_worker_with_metadata_window_name(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result())
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    asyncio.run(tools.launch_worker(prompt="x", metadata={"window_name": "editor"}))
+    asyncio.run(tools.mahavishnu_launch_worker(prompt="x", metadata={"window_name": "editor"}))
     assert manager.spawn.call_args.kwargs["window_name"] == "editor"
 
 
@@ -365,7 +365,7 @@ def test_launch_worker_with_non_dict_metadata(
     manager.spawn = MagicMock(return_value=_make_spawn_result())
     monkeypatch.setattr(tools, "_durable_manager", manager)
     # metadata is not a dict → falls back to "main"
-    out = asyncio.run(tools.launch_worker(prompt="x", metadata="not-a-dict"))  # type: ignore[arg-type]
+    out = asyncio.run(tools.mahavishnu_launch_worker(prompt="x", metadata="not-a-dict"))  # type: ignore[arg-type]
     assert out["metadata"] == "not-a-dict"
     assert manager.spawn.call_args.kwargs["window_name"] == "main"
 
@@ -379,7 +379,7 @@ def test_launch_worker_returns_metadata_dict(
     manager.spawn = MagicMock(return_value=_make_spawn_result())
     monkeypatch.setattr(tools, "_durable_manager", manager)
     meta = {"k": "v"}
-    out = asyncio.run(tools.launch_worker(prompt="x", metadata=meta))
+    out = asyncio.run(tools.mahavishnu_launch_worker(prompt="x", metadata=meta))
     assert out["metadata"] == meta
 
 
@@ -391,7 +391,7 @@ def test_launch_worker_returns_empty_metadata_when_none(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result())
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.launch_worker(prompt="x"))
+    out = asyncio.run(tools.mahavishnu_launch_worker(prompt="x"))
     assert out["metadata"] == {}
 
 
@@ -406,7 +406,7 @@ def test_send_input_returns_unconfigured_when_none(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", None)
-    out = asyncio.run(tools.send_input("w-1", "hello"))
+    out = asyncio.run(tools.mahavishnu_send_input("w-1", "hello"))
     assert out == {"accepted": False, "byte_offset": 0}
 
 
@@ -414,20 +414,20 @@ def test_send_input_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.send_input = MagicMock(return_value=True)
+    manager.mahavishnu_send_input = MagicMock(return_value=True)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.send_input("w-1", "hello", submit=False))
+    out = asyncio.run(tools.mahavishnu_send_input("w-1", "hello", submit=False))
     assert out["accepted"] is True
-    manager.send_input.assert_called_once_with("w-1", "hello", submit=False)
+    manager.mahavishnu_send_input.assert_called_once_with("w-1", "hello", submit=False)
 
 
 def test_send_input_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.send_input = MagicMock(return_value=False)
+    manager.mahavishnu_send_input = MagicMock(return_value=False)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.send_input("w-1", "hello"))
+    out = asyncio.run(tools.mahavishnu_send_input("w-1", "hello"))
     assert out["accepted"] is False
 
 
@@ -442,7 +442,7 @@ def test_capture_output_unconfigured_when_none(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", None)
-    out = asyncio.run(tools.capture_output("w-1"))
+    out = asyncio.run(tools.mahavishnu_capture_output("w-1"))
     assert out == {
         "worker_id": "w-1",
         "text": "",
@@ -456,18 +456,18 @@ def test_capture_output_returns_text(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.capture_output = MagicMock(
+    manager.mahavishnu_capture_output = MagicMock(
         return_value=_make_capture_output(text="hello", next_offset=42, truncated=True)
     )
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(
-        tools.capture_output("w-1", since_offset=10, max_bytes=2048, strip_ansi=False)
+        tools.mahavishnu_capture_output("w-1", since_offset=10, max_bytes=2048, strip_ansi=False)
     )
     assert out["text"] == "hello"
     assert out["next_offset"] == 42
     assert out["truncated"] is True
     assert out["pane_alive"] is True
-    manager.capture_output.assert_called_once_with(
+    manager.mahavishnu_capture_output.assert_called_once_with(
         "w-1", since_offset=10, max_bytes=2048
     )
 
@@ -478,11 +478,11 @@ def test_capture_output_strips_ansi_by_default(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.capture_output = MagicMock(
+    manager.mahavishnu_capture_output = MagicMock(
         return_value=_make_capture_output(text="\x1b[31mred\x1b[0m text")
     )
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.capture_output("w-1"))
+    out = asyncio.run(tools.mahavishnu_capture_output("w-1"))
     assert out["text"] == "red text"
 
 
@@ -492,13 +492,13 @@ def test_capture_output_handles_none_text(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.capture_output = MagicMock(
+    manager.mahavishnu_capture_output = MagicMock(
         return_value=SimpleNamespace(
             text=None, next_offset=99, truncated=False, pane_alive=True
         )
     )
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.capture_output("w-1"))
+    out = asyncio.run(tools.mahavishnu_capture_output("w-1"))
     assert out["text"] == ""
     assert out["next_offset"] == 99
 
@@ -509,9 +509,9 @@ def test_capture_output_no_strip_when_text_empty(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     manager = _make_manager_mock()
-    manager.capture_output = MagicMock(return_value=_make_capture_output(text=""))
+    manager.mahavishnu_capture_output = MagicMock(return_value=_make_capture_output(text=""))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.capture_output("w-1", strip_ansi=True))
+    out = asyncio.run(tools.mahavishnu_capture_output("w-1", strip_ansi=True))
     assert out["text"] == ""
 
 
@@ -526,7 +526,7 @@ def test_workflow_status_unconfigured_when_none(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", None)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
     assert out == {"worker_id": "w-1", "state": "manager_unconfigured"}
 
 
@@ -536,7 +536,7 @@ def test_workflow_status_returns_record(monkeypatch: pytest.MonkeyPatch) -> None
     manager = _make_manager_mock()
     manager.status = MagicMock(return_value=_make_record(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
 
     assert out["worker_id"] == "w-1"
     assert out["state"] == "ready"
@@ -549,7 +549,7 @@ def test_workflow_status_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     manager = _make_manager_mock()
     manager.status = MagicMock(return_value=None)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
     assert out == {"worker_id": "w-1", "state": "not_found"}
 
 
@@ -571,7 +571,7 @@ def test_workflow_status_returns_record_with_tmux_and_uptime(
     )
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
 
     assert out["worker_id"] == "w-1"
     assert out["state"] == "ready"
@@ -600,7 +600,7 @@ def test_workflow_status_handles_bad_dates(monkeypatch: pytest.MonkeyPatch) -> N
     manager = _make_manager_mock()
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
     assert out["uptime_seconds"] == 0
     assert out["last_activity_iso"] is None
 
@@ -618,7 +618,7 @@ def test_workflow_status_handles_missing_dates(
     manager = _make_manager_mock()
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
     assert out["uptime_seconds"] == 0
     assert out["last_activity_iso"] is None
 
@@ -650,7 +650,7 @@ def test_workflow_status_handles_malformed_non_datetime(
     manager = _make_manager_mock()
     manager.status = MagicMock(return_value=corrupt)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
     # Both fallback paths engaged: uptime=0 (subtraction raised TypeError),
     # last_activity_iso=None (isoformat would have raised AttributeError).
     assert out["uptime_seconds"] == 0
@@ -666,7 +666,7 @@ def test_workflow_status_no_pane_command_when_no_tmux(
     record = _make_record(worker_id="w-1", tmux=None)
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
     assert out["pane_command"] is None
 
 
@@ -681,7 +681,7 @@ def test_workflow_status_pane_command_exception_swallowed(
     record = _make_record(worker_id="w-1", tmux=_tmux_obj())
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
     assert out["pane_command"] is None
 
 
@@ -697,7 +697,7 @@ def test_workflow_status_no_pane_command_attr(
     record = _make_record(worker_id="w-1", tmux=_tmux_obj())
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_status("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_status("w-1"))
     assert out["pane_command"] is None
 
 
@@ -712,7 +712,7 @@ def test_wait_for_state_unconfigured_when_none(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", None)
-    out = asyncio.run(tools.wait_for_state("w-1", until_state="ready"))
+    out = asyncio.run(tools.mahavishnu_wait_for_state("w-1", until_state="ready"))
     assert out == {
         "worker_id": "w-1",
         "state": "manager_unconfigured",
@@ -728,7 +728,7 @@ def test_wait_for_state_terminates_on_match(monkeypatch: pytest.MonkeyPatch) -> 
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(
-        tools.wait_for_state(
+        tools.mahavishnu_wait_for_state(
             "w-1", until_state="ready", timeout_ms=200, poll_interval_ms=10
         )
     )
@@ -744,7 +744,7 @@ def test_wait_for_state_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(
-        tools.wait_for_state(
+        tools.mahavishnu_wait_for_state(
             "w-1",
             until_state="ready",
             timeout_ms=50,
@@ -765,7 +765,7 @@ def test_wait_for_state_record_missing_during_poll(
     manager.status = MagicMock(return_value=None)
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(
-        tools.wait_for_state(
+        tools.mahavishnu_wait_for_state(
             "w-1", until_state="ready", timeout_ms=50, poll_interval_ms=10
         )
     )
@@ -788,7 +788,7 @@ def test_wait_for_state_record_missing_after_timeout(
     )
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(
-        tools.wait_for_state(
+        tools.mahavishnu_wait_for_state(
             "w-1", until_state="ready", timeout_ms=300, poll_interval_ms=10
         )
     )
@@ -803,10 +803,10 @@ def test_wait_for_state_with_output_capture(monkeypatch: pytest.MonkeyPatch) -> 
     record = _make_record(state=WorkerLifecycleState.READY)
     manager.status = MagicMock(return_value=record)
     capture = _make_capture_output(text="output chunk", next_offset=50)
-    manager.capture_output = MagicMock(return_value=capture)
+    manager.mahavishnu_capture_output = MagicMock(return_value=capture)
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(
-        tools.wait_for_state(
+        tools.mahavishnu_wait_for_state(
             "w-1",
             until_state="ready",
             timeout_ms=200,
@@ -829,7 +829,7 @@ def test_wait_for_state_include_output_false(monkeypatch: pytest.MonkeyPatch) ->
     )
     monkeypatch.setattr(tools, "_durable_manager", manager)
     out = asyncio.run(
-        tools.wait_for_state(
+        tools.mahavishnu_wait_for_state(
             "w-1",
             until_state="ready",
             timeout_ms=200,
@@ -838,7 +838,7 @@ def test_wait_for_state_include_output_false(monkeypatch: pytest.MonkeyPatch) ->
         )
     )
     assert out["output_during_wait"] is None
-    manager.capture_output.assert_not_called()
+    manager.mahavishnu_capture_output.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -852,7 +852,7 @@ def test_cancel_worker_unconfigured_when_none(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", None)
-    out = asyncio.run(tools.cancel_worker("w-1"))
+    out = asyncio.run(tools.mahavishnu_cancel_worker("w-1"))
     assert out == {"killed": False, "exit_code": None}
 
 
@@ -863,7 +863,7 @@ def test_cancel_worker_soft(monkeypatch: pytest.MonkeyPatch) -> None:
     manager.cancel = MagicMock(return_value=True)
     manager.status = MagicMock(return_value=_make_record(last_exit_code=42))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.cancel_worker("w-1", signal="soft", grace_ms=1000))
+    out = asyncio.run(tools.mahavishnu_cancel_worker("w-1", signal="soft", grace_ms=1000))
     assert out["killed"] is True
     assert out["exit_code"] == 42
     manager.cancel.assert_called_once_with("w-1", signal="soft", grace_ms=1000)
@@ -876,7 +876,7 @@ def test_cancel_worker_record_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     manager.cancel = MagicMock(return_value=True)
     manager.status = MagicMock(return_value=None)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.cancel_worker("w-1"))
+    out = asyncio.run(tools.mahavishnu_cancel_worker("w-1"))
     assert out["killed"] is True
     assert out["exit_code"] is None
 
@@ -888,7 +888,7 @@ def test_cancel_worker_sigkill(monkeypatch: pytest.MonkeyPatch) -> None:
     manager.cancel = MagicMock(return_value=True)
     manager.status = MagicMock(return_value=_make_record(last_exit_code=-9))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.cancel_worker("w-1", signal="SIGKILL"))
+    out = asyncio.run(tools.mahavishnu_cancel_worker("w-1", signal="SIGKILL"))
     assert out["exit_code"] == -9
 
 
@@ -903,7 +903,7 @@ def test_worker_revoke_unconfigured_when_none(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", None)
-    out = asyncio.run(tools.worker_revoke("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_revoke("w-1"))
     assert out == {"revoked": False, "force": False, "attach_command": None}
 
 
@@ -914,7 +914,7 @@ def test_worker_revoke_no_force(monkeypatch: pytest.MonkeyPatch) -> None:
     record = _make_record(tmux=_tmux_obj())
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_revoke("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_revoke("w-1"))
     assert out["revoked"] is True
     assert out["force"] is False
     assert out["attach_command"] == "tmux attach -t s1:1.0"
@@ -929,7 +929,7 @@ def test_worker_revoke_force(monkeypatch: pytest.MonkeyPatch) -> None:
     record = _make_record(tmux=_tmux_obj())
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_revoke("w-1", force=True))
+    out = asyncio.run(tools.mahavishnu_worker_revoke("w-1", force=True))
     assert out["force"] is True
     manager.cancel.assert_called_once_with("w-1", signal="SIGKILL", grace_ms=1_000)
     manager.reap.assert_not_called()
@@ -943,7 +943,7 @@ def test_worker_revoke_no_attach_when_record_missing(
     manager = _make_manager_mock()
     manager.status = MagicMock(return_value=None)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_revoke("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_revoke("w-1"))
     assert out["attach_command"] is None
 
 
@@ -956,7 +956,7 @@ def test_worker_revoke_no_attach_when_tmux_missing(
     record = _make_record(tmux=None)
     manager.status = MagicMock(return_value=record)
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_revoke("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_revoke("w-1"))
     assert out["attach_command"] is None
 
 
@@ -976,7 +976,7 @@ def test_worker_revoke_no_attach_when_attach_command_none(
     manager = _make_manager_mock()
     manager.status = MagicMock(return_value=_make_record(tmux=tmux))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_revoke("w-1"))
+    out = asyncio.run(tools.mahavishnu_worker_revoke("w-1"))
     assert out["attach_command"] is None
 
 
@@ -1058,7 +1058,7 @@ async def test_broadcast_settle_transition_invoked_on_propose(
     monkeypatch.setattr(tools, "_broadcast_settle_transition", _fake_broadcast)
 
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    launch = await tools.worker_run_with_settle(
+    launch = await tools.mahavishnu_worker_run_with_settle(
         "do the task",
         bindings=[{"path": "a.py", "base": ""}],
     )
@@ -1118,7 +1118,7 @@ async def test_broadcast_settle_transition_invoked_on_settle_action(
     monkeypatch.setattr(tools, "load_record", _fake_load)
     monkeypatch.setattr(tools, "persist_transition", _fake_persist)
 
-    result = await tools.worker_settle("settle-broadcast-1", "select")
+    result = await tools.mahavishnu_worker_settle("settle-broadcast-1", "select")
 
     assert result["state"] == "selected"
     for _ in range(5):
@@ -1172,7 +1172,7 @@ async def test_settle_mcp_backend_receives_initial_and_transition_writes(
     # worker_run_with_settle should pass tools._settle_mcp (= our mock) to
     # persist_initial_async.
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    launch = await tools.worker_run_with_settle(
+    launch = await tools.mahavishnu_worker_run_with_settle(
         "do the task",
         bindings=[{"path": "a.py", "base": ""}],
     )
@@ -1215,7 +1215,7 @@ def test_worker_run_with_settle_empty_task_signature(
 
     monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
     out = asyncio.run(
-        tools.worker_run_with_settle("", bindings=[{"path": "a.py", "base": ""}])
+        tools.mahavishnu_worker_run_with_settle("", bindings=[{"path": "a.py", "base": ""}])
     )
     assert out["state"] == "manager_unconfigured"
     assert "task_signature must be a non-empty string" in out["error"]
@@ -1228,7 +1228,7 @@ def test_worker_run_with_settle_non_string_task_signature(
 
     monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
     out = asyncio.run(
-        tools.worker_run_with_settle(123, bindings=[{"path": "a.py", "base": ""}])  # type: ignore[arg-type]
+        tools.mahavishnu_worker_run_with_settle(123, bindings=[{"path": "a.py", "base": ""}])  # type: ignore[arg-type]
     )
     assert out["state"] == "manager_unconfigured"
 
@@ -1239,7 +1239,7 @@ def test_worker_run_with_settle_empty_bindings(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
-    out = asyncio.run(tools.worker_run_with_settle("task", bindings=[]))
+    out = asyncio.run(tools.mahavishnu_worker_run_with_settle("task", bindings=[]))
     assert out["state"] == "manager_unconfigured"
     assert "bindings must be a non-empty list" in out["error"]
 
@@ -1250,7 +1250,7 @@ def test_worker_run_with_settle_non_list_bindings(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
-    out = asyncio.run(tools.worker_run_with_settle("task", bindings="not-a-list"))  # type: ignore[arg-type]
+    out = asyncio.run(tools.mahavishnu_worker_run_with_settle("task", bindings="not-a-list"))  # type: ignore[arg-type]
     assert out["state"] == "manager_unconfigured"
 
 
@@ -1261,7 +1261,7 @@ def test_worker_run_with_settle_unconfigured_manager(
 
     monkeypatch.setattr(tools, "_durable_manager", None)
     out = asyncio.run(
-        tools.worker_run_with_settle("task", bindings=[{"path": "a.py", "base": ""}])
+        tools.mahavishnu_worker_run_with_settle("task", bindings=[{"path": "a.py", "base": ""}])
     )
     assert out["state"] == "manager_unconfigured"
     assert out["run_ref"] is None
@@ -1275,7 +1275,7 @@ def test_worker_run_with_settle_invalid_bindings(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_run_with_settle("task", bindings=["not-a-dict"]))
+    out = asyncio.run(tools.mahavishnu_worker_run_with_settle("task", bindings=["not-a-dict"]))
     assert out["state"] == "invalid_bindings"
     assert "must be a dict" in out["error"]
 
@@ -1288,7 +1288,7 @@ def test_worker_run_with_settle_binding_missing_path(
     manager = _make_manager_mock()
     manager.spawn = MagicMock(return_value=_make_spawn_result(worker_id="w-1"))
     monkeypatch.setattr(tools, "_durable_manager", manager)
-    out = asyncio.run(tools.worker_run_with_settle("task", bindings=[{"base": "x"}]))
+    out = asyncio.run(tools.mahavishnu_worker_run_with_settle("task", bindings=[{"base": "x"}]))
     assert out["state"] == "invalid_bindings"
 
 
@@ -1300,7 +1300,7 @@ def test_worker_run_with_settle_success(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(tools, "_durable_manager", manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
-        tools.worker_run_with_settle(
+        tools.mahavishnu_worker_run_with_settle(
             "task",
             bindings=[{"path": "a.py", "base": "old"}],
             run_ref="settle-fixed",
@@ -1325,7 +1325,7 @@ def test_worker_run_with_settle_generates_run_ref_when_omitted(
     monkeypatch.setattr(tools, "_durable_manager", manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
-        tools.worker_run_with_settle("task", bindings=[{"path": "a.py", "base": "old"}])
+        tools.mahavishnu_worker_run_with_settle("task", bindings=[{"path": "a.py", "base": "old"}])
     )
     assert out["run_ref"].startswith("settle-")
     assert len(out["run_ref"]) == len("settle-") + 12
@@ -1342,7 +1342,7 @@ def test_worker_run_with_settle_worker_id_change_triggers_restamp(
     monkeypatch.setattr(tools, "_durable_manager", manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
-        tools.worker_run_with_settle(
+        tools.mahavishnu_worker_run_with_settle(
             "task",
             bindings=[{"path": "a.py", "base": "old"}],
             worker_id="<pending>",
@@ -1361,7 +1361,7 @@ def test_worker_run_with_settle_no_restamp_when_worker_id_unchanged(
     monkeypatch.setattr(tools, "_durable_manager", manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
-        tools.worker_run_with_settle(
+        tools.mahavishnu_worker_run_with_settle(
             "task",
             bindings=[{"path": "a.py", "base": "old"}],
             worker_id="w-1",
@@ -1380,7 +1380,7 @@ def test_worker_run_with_settle_passes_command_and_metadata(
     monkeypatch.setattr(tools, "_durable_manager", manager)
     monkeypatch.setattr(tools, "_settle_mcp", None)
     asyncio.run(
-        tools.worker_run_with_settle(
+        tools.mahavishnu_worker_run_with_settle(
             "task",
             bindings=[{"path": "a.py", "base": "old"}],
             command=["claude"],
@@ -1402,7 +1402,7 @@ def test_worker_settle_invalid_run_ref_empty(
 ) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-    out = asyncio.run(tools.worker_settle("", "select"))
+    out = asyncio.run(tools.mahavishnu_worker_settle("", "select"))
     assert out["state"] == "invalid_run_ref"
 
 
@@ -1411,14 +1411,14 @@ def test_worker_settle_invalid_run_ref_non_string(
 ) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-    out = asyncio.run(tools.worker_settle(123, "select"))  # type: ignore[arg-type]
+    out = asyncio.run(tools.mahavishnu_worker_settle(123, "select"))  # type: ignore[arg-type]
     assert out["state"] == "invalid_run_ref"
 
 
 def test_worker_settle_invalid_action(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-    out = asyncio.run(tools.worker_settle("r1", "not-a-real-action"))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r1", "not-a-real-action"))
     assert out["state"] == "invalid_action"
     assert "action must be one of" in out["error"]
 
@@ -1428,7 +1428,7 @@ def test_worker_settle_record_not_found(monkeypatch: pytest.MonkeyPatch) -> None
 
     monkeypatch.setattr(tools, "_settle_mcp", None)
     # No dead-letter file → load_record returns None
-    out = asyncio.run(tools.worker_settle("r-missing", "select"))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r-missing", "select"))
     assert out["state"] == "not_found"
 
 
@@ -1441,7 +1441,7 @@ def test_worker_settle_select_transition(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
 
-    out = asyncio.run(tools.worker_settle("r1", "select", actor="alice"))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r1", "select", actor="alice"))
     assert out["state"] == "selected"
     assert out["action"] == "select"
     assert "release" in out["legal_next"]
@@ -1455,7 +1455,7 @@ def test_worker_settle_illegal_transition(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
-        tools.worker_settle(
+        tools.mahavishnu_worker_settle(
             "r1",
             "apply",
             bindings_content={"a.py": "new"},
@@ -1474,7 +1474,7 @@ def test_worker_settle_apply_missing_bindings(
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
-    out = asyncio.run(tools.worker_settle("r1", "apply"))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r1", "apply"))
     assert out["state"] == "missing_bindings_content"
 
 
@@ -1486,7 +1486,7 @@ def test_worker_settle_apply_empty_bindings_content(
     record = _make_settle_record(state=SettleState.SELECTED)
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
-    out = asyncio.run(tools.worker_settle("r1", "apply", bindings_content={}))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r1", "apply", bindings_content={}))
     assert out["state"] == "missing_bindings_content"
 
 
@@ -1499,7 +1499,7 @@ def test_worker_settle_apply_non_dict_bindings(
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
-        tools.worker_settle("r1", "apply", bindings_content="not-a-dict")  # type: ignore[arg-type]
+        tools.mahavishnu_worker_settle("r1", "apply", bindings_content="not-a-dict")  # type: ignore[arg-type]
     )
     assert out["state"] == "missing_bindings_content"
 
@@ -1687,7 +1687,7 @@ def test_worker_settle_apply_merge_conflict_path(
         ),
     )
     out = asyncio.run(
-        tools.worker_settle("r1", "apply", bindings_content={"a.py": "ours"})
+        tools.mahavishnu_worker_settle("r1", "apply", bindings_content={"a.py": "ours"})
     )
     assert out["state"] == "merge_conflict"
     assert "conflicts" in out
@@ -1708,7 +1708,7 @@ def test_worker_settle_apply_merge_failure_path(
         AsyncMock(side_effect=MergeFailureError("git crashed")),
     )
     out = asyncio.run(
-        tools.worker_settle("r1", "apply", bindings_content={"a.py": "ours"})
+        tools.mahavishnu_worker_settle("r1", "apply", bindings_content={"a.py": "ours"})
     )
     assert out["state"] == "merge_failure"
 
@@ -1723,7 +1723,7 @@ def test_worker_settle_apply_merge_missing_ours_path(
     monkeypatch.setattr(tools, "_settle_mcp", None)
     # bindings_content does NOT contain a.py
     out = asyncio.run(
-        tools.worker_settle("r1", "apply", bindings_content={"other.py": "x"})
+        tools.mahavishnu_worker_settle("r1", "apply", bindings_content={"other.py": "x"})
     )
     assert out["state"] == "merge_failure"
 
@@ -1741,7 +1741,7 @@ def test_worker_settle_apply_success_path(monkeypatch: pytest.MonkeyPatch) -> No
         AsyncMock(return_value=MergeResult(merged="merged-clean", conflict_count=0)),
     )
     out = asyncio.run(
-        tools.worker_settle(
+        tools.mahavishnu_worker_settle(
             "r1",
             "apply",
             bindings_content={"a.py": "ours"},
@@ -1759,7 +1759,7 @@ def test_worker_settle_release_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
-    out = asyncio.run(tools.worker_settle("r1", "release"))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r1", "release"))
     assert out["state"] == "released"
 
 
@@ -1770,7 +1770,7 @@ def test_worker_settle_discard_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
-    out = asyncio.run(tools.worker_settle("r1", "discard"))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r1", "discard"))
     assert out["state"] == "discarded"
 
 
@@ -1784,7 +1784,7 @@ def test_worker_settle_action_enum_string_coercion(
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
-    out = asyncio.run(tools.worker_settle("r1", SettleAction.SELECT.value))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r1", SettleAction.SELECT.value))
     assert out["state"] == "selected"
 
 
@@ -1798,7 +1798,7 @@ def test_worker_settle_response_legal_next_for_terminal(
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
-    out = asyncio.run(tools.worker_settle("r1", "release"))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r1", "release"))
     assert out["legal_next"] == []
 
 
@@ -1811,6 +1811,6 @@ def test_worker_settle_response_includes_transitions(
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
     monkeypatch.setattr(tools, "persist_transition", AsyncMock(return_value=record))
-    out = asyncio.run(tools.worker_settle("r1", "select"))
+    out = asyncio.run(tools.mahavishnu_worker_settle("r1", "select"))
     assert "transitions" in out
     assert isinstance(out["transitions"], list)

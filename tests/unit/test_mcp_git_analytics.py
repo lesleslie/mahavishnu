@@ -86,9 +86,9 @@ class TestRegistration:
     def test_registers_three_tools(self, registered):
         """The 3 public tools should be on the stub server after register()."""
         expected = {
-            "get_git_velocity_dashboard",
-            "get_repository_health",
-            "get_cross_project_patterns",
+            "mahavishnu_get_git_velocity_dashboard",
+            "mahavishnu_get_repository_health",
+            "mahavishnu_get_cross_project_patterns",
         }
         assert expected.issubset(set(registered.tools.keys()))
 
@@ -115,7 +115,7 @@ class TestGitVelocityDashboard:
         )
 
         with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp):
-            result = await registered.tools["get_git_velocity_dashboard"](
+            result = await registered.tools["mahavishnu_get_git_velocity_dashboard"](
                 repo_paths=["/work/repo-a", "/work/repo-b"],
                 days_back=10,
                 user_id="u1",
@@ -136,7 +136,7 @@ class TestGitVelocityDashboard:
         """Without a server.app attribute, return error dict."""
         registered.app = None
         with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp):
-            result = await registered.tools["get_git_velocity_dashboard"](
+            result = await registered.tools["mahavishnu_get_git_velocity_dashboard"](
                 repo_paths=["/x/repo-a"], user_id="u1"
             )
         assert result["status"] == "error"
@@ -149,7 +149,7 @@ class TestGitVelocityDashboard:
             "mahavishnu.core.mcp_adapter.MCPAdapter",
             side_effect=RuntimeError("boom"),
         ):
-            result = await registered.tools["get_git_velocity_dashboard"](
+            result = await registered.tools["mahavishnu_get_git_velocity_dashboard"](
                 repo_paths=["/x/repo-a"], user_id="u1"
             )
         assert result["status"] == "error"
@@ -189,7 +189,7 @@ class TestRepositoryHealth:
                 return_value=_make_sb_integration(),
             ),
         ):
-            result = await registered.tools["get_repository_health"](
+            result = await registered.tools["mahavishnu_get_repository_health"](
                 repo_path="/work/repo-a", user_id="u1"
             )
 
@@ -217,7 +217,7 @@ class TestRepositoryHealth:
                 return_value=sb,
             ),
         ):
-            result = await registered.tools["get_repository_health"](
+            result = await registered.tools["mahavishnu_get_repository_health"](
                 repo_path="/x/repo-a", user_id="u1"
             )
 
@@ -238,7 +238,7 @@ class TestRepositoryHealth:
                 side_effect=RuntimeError("down"),
             ),
         ):
-            result = await registered.tools["get_repository_health"](
+            result = await registered.tools["mahavishnu_get_repository_health"](
                 repo_path="/x/repo-a", user_id="u1"
             )
         assert result["status"] == "success"
@@ -249,7 +249,7 @@ class TestRepositoryHealth:
         """Missing server.app should yield error dict."""
         registered.app = None
         with patch("mahavishnu.core.mcp_adapter.MCPAdapter", return_value=fake_mcp):
-            result = await registered.tools["get_repository_health"](
+            result = await registered.tools["mahavishnu_get_repository_health"](
                 repo_path="/x/repo-a", user_id="u1"
             )
         assert result["status"] == "error"
@@ -283,7 +283,7 @@ class TestCrossProjectPatterns:
                 return_value=sb,
             ),
         ):
-            result = await registered.tools["get_cross_project_patterns"](user_id="u1")
+            result = await registered.tools["mahavishnu_get_cross_project_patterns"](user_id="u1")
 
         assert result["status"] == "success"
         r = result["result"]
@@ -317,7 +317,7 @@ class TestCrossProjectPatterns:
                 return_value=sb,
             ),
         ):
-            result = await registered.tools["get_cross_project_patterns"](
+            result = await registered.tools["mahavishnu_get_cross_project_patterns"](
                 days_back=30, min_occurrences=1, user_id="u1"
             )
 
@@ -341,7 +341,7 @@ class TestCrossProjectPatterns:
                 return_value=sb,
             ),
         ):
-            result = await registered.tools["get_cross_project_patterns"](user_id="u1")
+            result = await registered.tools["mahavishnu_get_cross_project_patterns"](user_id="u1")
 
         corr_types = [c["type"] for c in result["result"]["correlations"]]
         assert "workflow_failure_pattern" in corr_types
@@ -353,7 +353,7 @@ class TestCrossProjectPatterns:
             "mahavishnu.core.mcp_adapter.MCPAdapter",
             side_effect=RuntimeError("nope"),
         ):
-            result = await registered.tools["get_cross_project_patterns"](user_id="u1")
+            result = await registered.tools["mahavishnu_get_cross_project_patterns"](user_id="u1")
         assert result["status"] == "error"
         assert "nope" in result["error"]
 
@@ -381,7 +381,7 @@ class TestHealthScoreEdgeCases:
                 return_value=sb,
             ),
         ):
-            result = await registered.tools["get_repository_health"](
+            result = await registered.tools["mahavishnu_get_repository_health"](
                 repo_path="/x/r", user_id="u1"
             )
         # Score floors at 0, status='critical'
@@ -403,7 +403,7 @@ class TestHealthScoreEdgeCases:
                 return_value=sb,
             ),
         ):
-            result = await registered.tools["get_repository_health"](
+            result = await registered.tools["mahavishnu_get_repository_health"](
                 repo_path="/x/r", user_id="u1"
             )
         # 100 - min(40, 30) = 70, status='fair'

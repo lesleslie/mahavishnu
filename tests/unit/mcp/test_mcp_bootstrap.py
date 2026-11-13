@@ -810,7 +810,7 @@ class TestOptionalToolBlockGating:
 
         getattr(bootstrap, register_fn_name)(server)
 
-        assert recorder.mounted == [(sub_server, "openhands")]
+        assert recorder.mounted == [(sub_server, "mahavishnu_openhands")]
 
     @pytest.mark.parametrize(
         "register_fn_name", ["_register_openhands_block", "_register_openhands_tools"]

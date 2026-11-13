@@ -253,9 +253,9 @@ async def test_cli_exit_ok_on_populated_corpus(
     from scripts import audit_top_tool_calls
 
     sample_traces = [
-        {"selector": "pool_route_execute"},
-        {"selector": "pool_route_execute"},
-        {"selector": "pool_route_execute"},
+        {"selector": "mahavishnu_pool_route_execute"},
+        {"selector": "mahavishnu_pool_route_execute"},
+        {"selector": "mahavishnu_pool_route_execute"},
         {"selector": "discover_tools"},
         {"selector": "discover_tools"},
         {"selector": "get_health"},
@@ -272,7 +272,7 @@ async def test_cli_exit_ok_on_populated_corpus(
             code = await audit_top_tool_calls.main_async([])
     assert code == EXIT_OK
     out = out_buf.getvalue()
-    assert "pool_route_execute" in out
+    assert "mahavishnu_pool_route_execute" in out
     assert "discover_tools" in out
     assert "get_health" in out
     assert "total: 6" in out

@@ -11,14 +11,14 @@ import pytest
 from mahavishnu.mcp.tools import jot_tools
 
 JOT_TOOLS = [
-    jot_tools.jot_list,
-    jot_tools.jot_show,
-    jot_tools.jot_add,
-    jot_tools.jot_edit,
-    jot_tools.jot_done,
-    jot_tools.jot_reopen,
-    jot_tools.jot_vitals,
-    jot_tools.jot_search,
+    jot_tools.mahavishnu_jot_list,
+    jot_tools.mahavishnu_jot_show,
+    jot_tools.mahavishnu_jot_add,
+    jot_tools.mahavishnu_jot_edit,
+    jot_tools.mahavishnu_jot_done,
+    jot_tools.mahavishnu_jot_reopen,
+    jot_tools.mahavishnu_jot_vitals,
+    jot_tools.mahavishnu_jot_search,
 ]
 
 

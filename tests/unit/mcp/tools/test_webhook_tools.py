@@ -50,10 +50,10 @@ async def test_register_webhook_tools_registers_tool() -> None:
     tools = await mcp.list_tools()
     tool_names = {t.name for t in tools}
     # FastMCP derives tool name from the inline function's __name__.
-    assert "webhook_replay_tool" in tool_names
+    assert "mahavishnu_webhook_replay_tool" in tool_names
 
     # And: the registered coroutine is async, matching the FastMCP contract.
-    tool = next(t for t in tools if t.name == "webhook_replay_tool")
+    tool = next(t for t in tools if t.name == "mahavishnu_webhook_replay_tool")
     assert asyncio.iscoroutinefunction(tool.fn)
 
 
@@ -76,7 +76,7 @@ async def test_registered_tool_returns_dict_for_known_webhook() -> None:
 
     mcp = FastMCP(name="test-webhook-tools-roundtrip")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
+    tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_webhook_replay_tool")
 
     # The leaf requires a JWT-shaped token; pass one so the RBAC gate
     # inside webhook_replay falls through.
@@ -95,7 +95,7 @@ async def test_registered_tool_returns_none_when_record_missing() -> None:
     """End-to-end: when no record exists, the tool returns ``None``."""
     mcp = FastMCP(name="test-webhook-tools-missing")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
+    tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_webhook_replay_tool")
 
     result = await tool.fn(
         webhook_id="wh-missing",
@@ -117,7 +117,7 @@ async def test_registered_tool_rejects_without_user_id() -> None:
     """
     mcp = FastMCP(name="test-webhook-tools-auth")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
+    tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_webhook_replay_tool")
 
     result = await tool.fn(webhook_id="wh-1", token="a.b.c")
 
@@ -132,7 +132,7 @@ async def test_registered_tool_rejects_path_traversal() -> None:
     """Path-traversal webhook_id is refused by the leaf guard before the store is touched."""
     mcp = FastMCP(name="test-webhook-tools-traversal")
     register_webhook_tools(mcp, rbac_manager=_fake_rbac_manager())
-    tool = next(t for t in await mcp.list_tools() if t.name == "webhook_replay_tool")
+    tool = next(t for t in await mcp.list_tools() if t.name == "mahavishnu_webhook_replay_tool")
 
     result = await tool.fn(
         webhook_id="../../etc/passwd",

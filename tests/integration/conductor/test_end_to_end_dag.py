@@ -82,7 +82,7 @@ async def test_execute_capability_returns_valid_dag() -> None:
     settings = MahavishnuSettings.model_validate(
         {
             "capability_enabled": True,
-            "capability_scopes": ["execute_capability"],
+            "capability_scopes": ["mahavishnu_execute_capability"],
         }
     )
     spec = CapabilitySpec(
@@ -128,7 +128,7 @@ async def test_execute_capability_runs_two_node_dag() -> None:
     settings = MahavishnuSettings.model_validate(
         {
             "capability_enabled": True,
-            "capability_scopes": ["execute_capability"],
+            "capability_scopes": ["mahavishnu_execute_capability"],
         }
     )
     spec = CapabilitySpec(

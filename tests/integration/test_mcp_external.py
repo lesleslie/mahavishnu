@@ -218,20 +218,20 @@ class TestVersionRegistry:
         assert get_tool_version("nonexistent_tool_xyz") is None
 
     def test_get_tool_version_returns_string_for_known(self):
-        version = get_tool_version("list_repos")
+        version = get_tool_version("mahavishnu_list_repos")
         assert version is not None
         assert isinstance(version, str)
         assert version == "1.0.0"
 
     def test_get_tool_versions_tool_is_versioned(self):
         """The get_tool_versions query tool should be in the registry."""
-        assert get_tool_version("get_tool_versions") is not None
+        assert get_tool_version("mahavishnu_get_tool_versions") is not None
 
     def test_mcp_utility_tools_are_versioned(self):
         """New MCP utility tools should be tracked in the version registry."""
-        assert get_tool_version("mcp_list_tools") is not None
-        assert get_tool_version("mcp_test_connection") is not None
-        assert get_tool_version("mcp_get_metrics") is not None
+        assert get_tool_version("mahavishnu_mcp_list_tools") is not None
+        assert get_tool_version("mahavishnu_mcp_test_connection") is not None
+        assert get_tool_version("mahavishnu_mcp_get_metrics") is not None
 
 
 # ---------------------------------------------------------------------------

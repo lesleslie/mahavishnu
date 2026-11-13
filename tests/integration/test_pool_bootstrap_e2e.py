@@ -89,25 +89,25 @@ def test_pool_bootstrap_e2e_empty_registry_spawns() -> None:
     with httpx.Client(timeout=5.0) as client:
         # 1. Close any existing pools to get a clean state (best-effort)
         try:
-            _call_tool(client, "pool_close_all")
+            _call_tool(client, "mahavishnu_pool_close_all")
             time.sleep(0.5)
         except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             pass  # OK if pool_close_all doesn't exist or registry is already empty
 
         # 2. Verify empty
-        health = _call_tool(client, "pool_health")
+        health = _call_tool(client, "mahavishnu_pool_health")
         assert health.get("pools_active", -1) == 0, (
             f"setup failed: registry not empty: {health}"
         )
 
         # 3. Bootstrap
-        result = _call_tool(client, "pool_bootstrap")
+        result = _call_tool(client, "mahavishnu_pool_bootstrap")
         assert result["status"] in ("spawned", "warning"), (
             f"unexpected status: {result}"
         )
 
         # 4. Confirm the pool is now in the registry
-        health_after = _call_tool(client, "pool_health")
+        health_after = _call_tool(client, "mahavishnu_pool_health")
         assert health_after.get("pools_active", 0) >= 1, (
             f"bootstrap did not add a pool: {health_after}"
         )
@@ -120,6 +120,6 @@ def test_pool_bootstrap_e2e_empty_registry_spawns() -> None:
 def test_pool_bootstrap_e2e_populated_registry_is_no_op() -> None:
     """SessionStart with non-empty registry → pool_bootstrap returns status='skipped'."""
     with httpx.Client(timeout=5.0) as client:
-        result = _call_tool(client, "pool_bootstrap")
+        result = _call_tool(client, "mahavishnu_pool_bootstrap")
         assert result["status"] == "skipped", f"expected skipped, got: {result}"
         assert result["pools_active_before"] >= 1

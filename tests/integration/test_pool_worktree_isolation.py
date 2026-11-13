@@ -95,7 +95,7 @@ def _capture_pool_route_execute(mock_pool_manager: MagicMock):
     mcp = MagicMock()
     mcp.tool = registering_decorator
     register_pool_tools(mcp, mock_pool_manager)
-    return captured["pool_route_execute"]
+    return captured["mahavishnu_pool_route_execute"]
 
 
 # ---------------------------------------------------------------------------

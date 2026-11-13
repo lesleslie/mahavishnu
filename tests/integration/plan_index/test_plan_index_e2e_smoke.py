@@ -16,11 +16,11 @@ from __future__ import annotations
 from typing import Any
 
 PLAN_TOOL_NAMES = (
-    "plan_list",
-    "plan_show",
-    "plan_search",
-    "plan_vitals",
-    "plan_rebuild_status",
+    "mahavishnu_plan_list",
+    "mahavishnu_plan_show",
+    "mahavishnu_plan_search",
+    "mahavishnu_plan_vitals",
+    "mahavishnu_plan_rebuild_status",
 )
 
 
@@ -79,24 +79,24 @@ class TestPlanIndexE2ESmoke:
         )
 
         # plan_list
-        listed = await call_tool("plan_list", {"status": "active"})
+        listed = await call_tool("mahavishnu_plan_list", {"status": "active"})
         assert isinstance(listed, dict)
         assert {"plans", "total", "status"} <= set(listed.keys())
         assert listed["status"] in ("ok", "degraded")
         assert listed["total"] == len(listed["plans"])
 
         # plan_show (round-trip through the JSON-RPC envelope)
-        shown = await call_tool("plan_show", {"plan_id": seed_id})
+        shown = await call_tool("mahavishnu_plan_show", {"plan_id": seed_id})
         assert isinstance(shown, dict)
         assert shown["plan_id"] == seed_id
         assert shown["path"] == "docs/plans/smoke.md"
 
         # plan_search
-        searched = await call_tool("plan_search", {"query": "routing"})
+        searched = await call_tool("mahavishnu_plan_search", {"query": "routing"})
         assert isinstance(searched, list)
 
         # plan_vitals (9 required keys per spec §6)
-        vitals = await call_tool("plan_vitals", {})
+        vitals = await call_tool("mahavishnu_plan_vitals", {})
         for required in (
             "total",
             "by_status",
@@ -111,6 +111,6 @@ class TestPlanIndexE2ESmoke:
             assert required in vitals, f"plan_vitals missing field: {required}"
 
         # plan_rebuild_status
-        status = await call_tool("plan_rebuild_status", {})
+        status = await call_tool("mahavishnu_plan_rebuild_status", {})
         assert {"cycles_total", "errors_total", "stale"} <= set(status.keys())
         assert isinstance(status["stale"], bool)

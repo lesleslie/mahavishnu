@@ -121,7 +121,7 @@ class TestSendMessage:
         msg = _make_message()
         fake_messenger.send_message.return_value = msg
 
-        tool = registered.tools["send_repository_message"]
+        tool = registered.tools["mahavishnu_send_repository_message"]
         result = await tool(
             sender_repo="repo-a",
             receiver_repo="repo-b",
@@ -137,7 +137,7 @@ class TestSendMessage:
     @pytest.mark.asyncio
     async def test_invalid_message_type(self, registered):
         """An unknown message type returns an error dict, not raise."""
-        tool = registered.tools["send_repository_message"]
+        tool = registered.tools["mahavishnu_send_repository_message"]
         result = await tool(
             sender_repo="a",
             receiver_repo="b",
@@ -150,7 +150,7 @@ class TestSendMessage:
     @pytest.mark.asyncio
     async def test_invalid_priority(self, registered):
         """An unknown priority returns an error dict, not raise."""
-        tool = registered.tools["send_repository_message"]
+        tool = registered.tools["mahavishnu_send_repository_message"]
         result = await tool(
             sender_repo="a",
             receiver_repo="b",
@@ -165,7 +165,7 @@ class TestSendMessage:
     async def test_exception_caught(self, registered, fake_messenger):
         """An exception inside send_message should be reported as error."""
         fake_messenger.send_message.side_effect = RuntimeError("kaboom")
-        tool = registered.tools["send_repository_message"]
+        tool = registered.tools["mahavishnu_send_repository_message"]
         result = await tool(
             sender_repo="a",
             receiver_repo="b",
@@ -190,7 +190,7 @@ class TestBroadcastMessage:
         msgs = [_make_message(msg_id="m1"), _make_message(msg_id="m2")]
         fake_messenger.broadcast_message.return_value = msgs
 
-        tool = registered.tools["broadcast_repository_message"]
+        tool = registered.tools["mahavishnu_broadcast_repository_message"]
         result = await tool(
             sender_repo="a",
             message_type="workflow_status_update",
@@ -205,7 +205,7 @@ class TestBroadcastMessage:
     @pytest.mark.asyncio
     async def test_broadcast_invalid_type(self, registered):
         """Invalid type returns error dict."""
-        tool = registered.tools["broadcast_repository_message"]
+        tool = registered.tools["mahavishnu_broadcast_repository_message"]
         result = await tool(
             sender_repo="a",
             message_type="bogus_type",
@@ -217,7 +217,7 @@ class TestBroadcastMessage:
     @pytest.mark.asyncio
     async def test_broadcast_invalid_priority(self, registered):
         """Invalid priority returns error dict."""
-        tool = registered.tools["broadcast_repository_message"]
+        tool = registered.tools["mahavishnu_broadcast_repository_message"]
         result = await tool(
             sender_repo="a",
             message_type="workflow_status_update",
@@ -241,7 +241,7 @@ class TestGetMessages:
         msg = _make_message()
         fake_messenger.get_messages_for_repo.return_value = [msg]
 
-        tool = registered.tools["get_repository_messages"]
+        tool = registered.tools["mahavishnu_get_repository_messages"]
         result = await tool(receiver_repo="repo-b")
 
         assert result["status"] == "success"
@@ -252,7 +252,7 @@ class TestGetMessages:
     @pytest.mark.asyncio
     async def test_invalid_message_type(self, registered):
         """Invalid message_type returns error dict."""
-        tool = registered.tools["get_repository_messages"]
+        tool = registered.tools["mahavishnu_get_repository_messages"]
         result = await tool(receiver_repo="repo-b", message_type="bogus")
         assert result["status"] == "error"
         assert "Invalid message type" in result["error"]
@@ -260,7 +260,7 @@ class TestGetMessages:
     @pytest.mark.asyncio
     async def test_invalid_since(self, registered):
         """Invalid 'since' timestamp returns error dict."""
-        tool = registered.tools["get_repository_messages"]
+        tool = registered.tools["mahavishnu_get_repository_messages"]
         result = await tool(receiver_repo="repo-b", since="not-a-date")
         assert result["status"] == "error"
         assert "Invalid datetime" in result["error"]
@@ -269,7 +269,7 @@ class TestGetMessages:
     async def test_since_accepts_iso_with_z(self, registered, fake_messenger):
         """'since' should accept an ISO string with 'Z' suffix."""
         fake_messenger.get_messages_for_repo.return_value = []
-        tool = registered.tools["get_repository_messages"]
+        tool = registered.tools["mahavishnu_get_repository_messages"]
         result = await tool(receiver_repo="repo-b", since="2024-01-01T00:00:00Z")
         assert result["status"] == "success"
         # The parsed datetime should have been passed (source uses kwarg name `since`)
@@ -281,7 +281,7 @@ class TestGetMessages:
     async def test_exception_caught(self, registered, fake_messenger):
         """An exception should be caught and returned as error."""
         fake_messenger.get_messages_for_repo.side_effect = RuntimeError("db down")
-        tool = registered.tools["get_repository_messages"]
+        tool = registered.tools["mahavishnu_get_repository_messages"]
         result = await tool(receiver_repo="repo-b")
         assert result["status"] == "error"
 
@@ -298,7 +298,7 @@ class TestAcknowledgeMessage:
     async def test_success(self, registered, fake_messenger):
         """Acknowledge should report success when underlying returns True."""
         fake_messenger.acknowledge_message.return_value = True
-        tool = registered.tools["acknowledge_repository_message"]
+        tool = registered.tools["mahavishnu_acknowledge_repository_message"]
         result = await tool(message_id="m1", receiver_repo="repo-b")
         assert result["status"] == "success"
         assert result["success"] is True
@@ -307,7 +307,7 @@ class TestAcknowledgeMessage:
     async def test_returns_error_when_unack(self, registered, fake_messenger):
         """When acknowledge returns False, status should be 'error'."""
         fake_messenger.acknowledge_message.return_value = False
-        tool = registered.tools["acknowledge_repository_message"]
+        tool = registered.tools["mahavishnu_acknowledge_repository_message"]
         result = await tool(message_id="m1", receiver_repo="repo-b")
         assert result["status"] == "error"
         assert result["success"] is False
@@ -316,7 +316,7 @@ class TestAcknowledgeMessage:
     async def test_exception_caught(self, registered, fake_messenger):
         """An exception should be reported as error."""
         fake_messenger.acknowledge_message.side_effect = RuntimeError("boom")
-        tool = registered.tools["acknowledge_repository_message"]
+        tool = registered.tools["mahavishnu_acknowledge_repository_message"]
         result = await tool(message_id="m1", receiver_repo="repo-b")
         assert result["status"] == "error"
 
@@ -332,7 +332,7 @@ class TestNotifyAndAlert:
     @pytest.mark.asyncio
     async def test_notify_repository_changes(self, registered, fake_manager):
         """notify_repository_changes should call the manager and forward results."""
-        tool = registered.tools["notify_repository_changes"]
+        tool = registered.tools["mahavishnu_notify_repository_changes"]
         result = await tool(repo_path="/x", changes=[{"type": "modified"}])
         assert result["status"] == "success"
         assert result["messages_sent"] == 2
@@ -343,14 +343,14 @@ class TestNotifyAndAlert:
     async def test_notify_repository_changes_error(self, registered, fake_manager):
         """An exception should be reported as error."""
         fake_manager.process_repository_changes.side_effect = RuntimeError("nope")
-        tool = registered.tools["notify_repository_changes"]
+        tool = registered.tools["mahavishnu_notify_repository_changes"]
         result = await tool(repo_path="/x", changes=[])
         assert result["status"] == "error"
 
     @pytest.mark.asyncio
     async def test_notify_workflow_status(self, registered, fake_manager):
         """notify_workflow_status should pass through to manager."""
-        tool = registered.tools["notify_workflow_status"]
+        tool = registered.tools["mahavishnu_notify_workflow_status"]
         result = await tool(
             workflow_id="w1",
             status="running",
@@ -365,14 +365,14 @@ class TestNotifyAndAlert:
     async def test_notify_workflow_status_error(self, registered, fake_manager):
         """An exception should be reported as error."""
         fake_manager.notify_workflow_status.side_effect = RuntimeError("nope")
-        tool = registered.tools["notify_workflow_status"]
+        tool = registered.tools["mahavishnu_notify_workflow_status"]
         result = await tool(workflow_id="w1", status="running", repo_path="/x")
         assert result["status"] == "error"
 
     @pytest.mark.asyncio
     async def test_send_quality_alert(self, registered, fake_manager):
         """send_quality_alert should pass through to manager."""
-        tool = registered.tools["send_quality_alert"]
+        tool = registered.tools["mahavishnu_send_quality_alert"]
         result = await tool(
             repo_path="/x",
             alert_type="coverage_drop",
@@ -387,7 +387,7 @@ class TestNotifyAndAlert:
     async def test_send_quality_alert_error(self, registered, fake_manager):
         """An exception should be reported as error."""
         fake_manager.send_quality_alert.side_effect = RuntimeError("nope")
-        tool = registered.tools["send_quality_alert"]
+        tool = registered.tools["mahavishnu_send_quality_alert"]
         result = await tool(repo_path="/x", alert_type="x", description="y")
         assert result["status"] == "error"
 

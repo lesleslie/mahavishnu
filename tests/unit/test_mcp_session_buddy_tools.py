@@ -140,7 +140,7 @@ class TestCodeIntelTools:
         register_session_buddy_tools(
             stub, session_manager=MagicMock(), mcp_client=MagicMock()
         )
-        tool = stub.tools["index_code_graph"]
+        tool = stub.tools["mahavishnu_index_code_graph"]
         result = _run(tool(user_id="test-user", project_path="/tmp/repo"))
         # The legacy guard string must not appear in the result. Any
         # other shape (success with a work item, or a real error from
@@ -154,7 +154,7 @@ class TestCodeIntelTools:
         register_session_buddy_tools(
             stub, session_manager=MagicMock(), mcp_client=MagicMock()
         )
-        tool = stub.tools["get_function_context"]
+        tool = stub.tools["mahavishnu_get_function_context"]
         result = _run(
             tool(user_id="test-user", project_path="/tmp/repo", function_name="foo")
         )
@@ -165,7 +165,7 @@ class TestCodeIntelTools:
         register_session_buddy_tools(
             stub, session_manager=MagicMock(), mcp_client=MagicMock()
         )
-        tool = stub.tools["find_related_code"]
+        tool = stub.tools["mahavishnu_find_related_code"]
         result = _run(
             tool(user_id="test-user", project_path="/tmp/repo", file_path="foo.py")
         )
@@ -176,7 +176,7 @@ class TestCodeIntelTools:
         register_session_buddy_tools(
             stub, session_manager=MagicMock(), mcp_client=MagicMock()
         )
-        tool = stub.tools["index_documentation"]
+        tool = stub.tools["mahavishnu_index_documentation"]
         result = _run(tool(user_id="test-user", project_path="/tmp/repo"))
         assert result["status"] == "error"
 
@@ -185,7 +185,7 @@ class TestCodeIntelTools:
         register_session_buddy_tools(
             stub, session_manager=MagicMock(), mcp_client=MagicMock()
         )
-        tool = stub.tools["search_documentation"]
+        tool = stub.tools["mahavishnu_search_documentation"]
         result = _run(tool(user_id="test-user", query="find me docs"))
         assert result["status"] == "error"
 
@@ -407,7 +407,7 @@ class TestSendProjectMessage:
         register_session_buddy_tools(
             stub, session_manager=MagicMock(), mcp_client=MagicMock()
         )
-        tool = stub.tools["send_project_message"]
+        tool = stub.tools["mahavishnu_send_project_message"]
         result = _run(
             tool(
                 user_id="test-user",
@@ -433,6 +433,6 @@ class TestListProjectMessages:
         register_session_buddy_tools(
             stub, session_manager=MagicMock(), mcp_client=MagicMock()
         )
-        tool = stub.tools["list_project_messages"]
+        tool = stub.tools["mahavishnu_list_project_messages"]
         result = _run(tool(user_id="test-user", project="myproj"))
         assert result["status"] == "error"

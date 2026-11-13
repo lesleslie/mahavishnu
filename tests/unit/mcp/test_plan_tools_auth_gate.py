@@ -26,11 +26,11 @@ from mahavishnu.core.permissions import Permission
 import mahavishnu.mcp.tools.plan_tools as plan_tools_module
 
 TOOL_NAMES = (
-    "plan_list",
-    "plan_show",
-    "plan_search",
-    "plan_vitals",
-    "plan_rebuild_status",
+    "mahavishnu_plan_list",
+    "mahavishnu_plan_show",
+    "mahavishnu_plan_search",
+    "mahavishnu_plan_vitals",
+    "mahavishnu_plan_rebuild_status",
 )
 
 

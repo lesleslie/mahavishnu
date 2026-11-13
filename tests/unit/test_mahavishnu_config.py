@@ -555,7 +555,7 @@ class TestAgnoToolsConfig:
             "search_code",
             "read_file",
             "write_file",
-            "list_repos",
+            "mahavishnu_list_repos",
             "get_repo_info",
             "run_command",
         ]

@@ -32,7 +32,7 @@ def _record(plan_id: str, *, status: str, role: str, topic: str) -> PlanRecord:
 class TestPlanVitalsE2E:
     async def test_vitals_returns_typed_dict_shape(self, call_tool: Any) -> None:
         """Empty substrate; required TypedDict keys are still present."""
-        result = await call_tool("plan_vitals", {})
+        result = await call_tool("mahavishnu_plan_vitals", {})
 
         assert isinstance(result, dict)
         for required in (
@@ -50,7 +50,7 @@ class TestPlanVitalsE2E:
 
     async def test_vitals_counters_are_non_negative_ints(self, call_tool: Any) -> None:
         """Counter invariants per spec §6."""
-        result = await call_tool("plan_vitals", {})
+        result = await call_tool("mahavishnu_plan_vitals", {})
 
         assert isinstance(result["total"], int)
         assert isinstance(result["cycles_total"], int)
@@ -75,7 +75,7 @@ class TestPlanVitalsE2E:
             _record("c" * 32, status="shipped", role="canonical", topic="indexing")
         )
 
-        result = await call_tool("plan_vitals", {})
+        result = await call_tool("mahavishnu_plan_vitals", {})
 
         assert result["total"] == 3
         assert result["by_status"] == {"active": 2, "shipped": 1}
@@ -83,7 +83,7 @@ class TestPlanVitalsE2E:
 
     async def test_vitals_tripwire_enum_membership(self, call_tool: Any) -> None:
         """``tripwire`` is one of the documented enum values (spec §6)."""
-        result = await call_tool("plan_vitals", {})
+        result = await call_tool("mahavishnu_plan_vitals", {})
 
         assert result["tripwire"] in (
             "ok",
@@ -105,7 +105,7 @@ class TestPlanVitalsE2E:
             _record("a" * 32, status="active", role="implementation", topic="routing")
         )
 
-        result = await call_tool("plan_vitals", {})
+        result = await call_tool("mahavishnu_plan_vitals", {})
 
         assert isinstance(result["by_topic_top10"], list)
         for entry in result["by_topic_top10"]:
@@ -117,7 +117,7 @@ class TestPlanVitalsE2E:
         self, call_tool: Any
     ) -> None:
         """REQ-PLAN-010: missing ``user_id`` returns envelope, not raise."""
-        result = await call_tool("plan_vitals", {}, user_id=None)
+        result = await call_tool("mahavishnu_plan_vitals", {}, user_id=None)
 
         assert isinstance(result, dict)
         assert result["status"] == "error"

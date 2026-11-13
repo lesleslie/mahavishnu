@@ -68,12 +68,12 @@ def test_terminal_launch_increments_pool_share_denominator(
     stub = _StubMCP()
     register_terminal_tools(stub, terminal_manager=manager, mcp_client=None)
 
-    fn = stub.tools["terminal_launch"]
+    fn = stub.tools["mahavishnu_terminal_launch"]
     out = asyncio.run(fn(command="ls -la"))
 
     assert out == ["sess-1"]
     snap = fresh_metrics.snapshot()
     assert snap["pool_share_numerator"] == 0
     assert snap["pool_share_denominator"] == 1
-    assert snap["terminal_launch"] == 1
+    assert snap["mahavishnu_terminal_launch"] == 1
     assert snap["pool_share_ratio"] == 0.0

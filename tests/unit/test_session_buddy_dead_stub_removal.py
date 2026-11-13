@@ -162,7 +162,7 @@ class TestIndexCodeGraphMcpToolDelegatesToIndexer:
             mcp_client=fake_mcp_client,
             rbac_manager=SimpleNamespace(check_permission=AsyncMock(return_value=True)),
         )
-        tool = stub.tools["index_code_graph"]
+        tool = stub.tools["mahavishnu_index_code_graph"]
 
         # ``IndexWorkItem`` is the return type of ``indexer.index_repo``.
         from mahavishnu.core.code_index.models import IndexWorkItem
@@ -210,7 +210,7 @@ class TestIndexCodeGraphMcpToolDelegatesToIndexer:
             mcp_client=MagicMock(),
             rbac_manager=SimpleNamespace(check_permission=AsyncMock(return_value=True)),
         )
-        tool = stub.tools["index_code_graph"]
+        tool = stub.tools["mahavishnu_index_code_graph"]
         source = inspect.getsource(tool)
         # The legacy import-and-instantiate pattern is what produced the
         # broken guard. After the fix, the function body should not
@@ -263,7 +263,7 @@ class TestIndexCodeGraphSchemaDropsIncludeDocs:
             mcp_client=MagicMock(),
         )
         tools = _run(mcp.list_tools())
-        return next(t for t in tools if t.name == "index_code_graph")
+        return next(t for t in tools if t.name == "mahavishnu_index_code_graph")
 
     def test_advertised_input_schema_does_not_expose_include_docs(self):
         """The advertised schema must not list the removed parameter."""

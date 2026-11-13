@@ -187,7 +187,7 @@ class TestSendRepositoryMessage:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["send_repository_message"](
+            result = await tools["mahavishnu_send_repository_message"](
                 sender_repo="repo_a",
                 receiver_repo="repo_b",
                 message_type="code_change_notification",
@@ -204,7 +204,7 @@ class TestSendRepositoryMessage:
     async def test_send_invalid_message_type(self) -> None:
         """An unknown message_type returns an error dict, not a raise."""
         with _registered_tools() as tools:
-            result = await tools["send_repository_message"](
+            result = await tools["mahavishnu_send_repository_message"](
                 sender_repo="repo_a",
                 receiver_repo="repo_b",
                 message_type="not_a_real_type",
@@ -216,7 +216,7 @@ class TestSendRepositoryMessage:
     async def test_send_invalid_priority(self) -> None:
         """An unknown priority returns an error dict, not a raise."""
         with _registered_tools() as tools:
-            result = await tools["send_repository_message"](
+            result = await tools["mahavishnu_send_repository_message"](
                 sender_repo="repo_a",
                 receiver_repo="repo_b",
                 message_type="code_change_notification",
@@ -233,7 +233,7 @@ class TestSendRepositoryMessage:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["send_repository_message"](
+            result = await tools["mahavishnu_send_repository_message"](
                 sender_repo="repo_a",
                 receiver_repo="repo_b",
                 message_type="code_change_notification",
@@ -264,7 +264,7 @@ class TestBroadcastRepositoryMessage:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["broadcast_repository_message"](
+            result = await tools["mahavishnu_broadcast_repository_message"](
                 sender_repo="repo_a",
                 message_type="quality_alert",
                 content={"k": "v"},
@@ -283,7 +283,7 @@ class TestBroadcastRepositoryMessage:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["broadcast_repository_message"](
+            result = await tools["mahavishnu_broadcast_repository_message"](
                 sender_repo="repo_a",
                 message_type="quality_alert",
                 content={},
@@ -296,7 +296,7 @@ class TestBroadcastRepositoryMessage:
     async def test_broadcast_invalid_message_type(self) -> None:
         """Invalid message_type returns an error dict."""
         with _registered_tools() as tools:
-            result = await tools["broadcast_repository_message"](
+            result = await tools["mahavishnu_broadcast_repository_message"](
                 sender_repo="repo_a",
                 message_type="nope",
                 content={},
@@ -307,7 +307,7 @@ class TestBroadcastRepositoryMessage:
     async def test_broadcast_invalid_priority(self) -> None:
         """Invalid priority returns an error dict."""
         with _registered_tools() as tools:
-            result = await tools["broadcast_repository_message"](
+            result = await tools["mahavishnu_broadcast_repository_message"](
                 sender_repo="repo_a",
                 message_type="quality_alert",
                 content={},
@@ -323,7 +323,7 @@ class TestBroadcastRepositoryMessage:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["broadcast_repository_message"](
+            result = await tools["mahavishnu_broadcast_repository_message"](
                 sender_repo="repo_a",
                 message_type="quality_alert",
                 content={},
@@ -353,7 +353,7 @@ class TestGetRepositoryMessages:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["get_repository_messages"](receiver_repo="repo_b")
+            result = await tools["mahavishnu_get_repository_messages"](receiver_repo="repo_b")
 
         assert result["status"] == "success"
         assert result["count"] == 2
@@ -370,7 +370,7 @@ class TestGetRepositoryMessages:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["get_repository_messages"](
+            result = await tools["mahavishnu_get_repository_messages"](
                 receiver_repo="repo_b",
                 message_type="workflow_status_update",
                 limit=10,
@@ -391,7 +391,7 @@ class TestGetRepositoryMessages:
     async def test_get_messages_invalid_message_type(self) -> None:
         """Invalid message_type returns an error dict."""
         with _registered_tools() as tools:
-            result = await tools["get_repository_messages"](
+            result = await tools["mahavishnu_get_repository_messages"](
                 receiver_repo="repo_b", message_type="not_real"
             )
         assert result["status"] == "error"
@@ -400,7 +400,7 @@ class TestGetRepositoryMessages:
     async def test_get_messages_invalid_since(self) -> None:
         """Invalid `since` datetime returns an error dict."""
         with _registered_tools() as tools:
-            result = await tools["get_repository_messages"](
+            result = await tools["mahavishnu_get_repository_messages"](
                 receiver_repo="repo_b", since="not-a-date"
             )
         assert result["status"] == "error"
@@ -413,7 +413,7 @@ class TestGetRepositoryMessages:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["get_repository_messages"](receiver_repo="repo_b")
+            result = await tools["mahavishnu_get_repository_messages"](receiver_repo="repo_b")
         assert result["status"] == "error"
         assert "Failed to get" in result["error"]
 
@@ -434,7 +434,7 @@ class TestAcknowledgeRepositoryMessage:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["acknowledge_repository_message"](
+            result = await tools["mahavishnu_acknowledge_repository_message"](
                 message_id="msg_abc", receiver_repo="repo_b"
             )
         assert result["status"] == "success"
@@ -449,7 +449,7 @@ class TestAcknowledgeRepositoryMessage:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["acknowledge_repository_message"](
+            result = await tools["mahavishnu_acknowledge_repository_message"](
                 message_id="msg_abc", receiver_repo="repo_b"
             )
         assert result["status"] == "error"
@@ -462,7 +462,7 @@ class TestAcknowledgeRepositoryMessage:
         manager = _build_manager(messenger)
 
         with _registered_tools(manager) as tools:
-            result = await tools["acknowledge_repository_message"](
+            result = await tools["mahavishnu_acknowledge_repository_message"](
                 message_id="msg_abc", receiver_repo="repo_b"
             )
         assert result["status"] == "error"
@@ -489,7 +489,7 @@ class TestNotifyRepositoryChanges:
         )
 
         with _registered_tools(manager) as tools:
-            result = await tools["notify_repository_changes"](
+            result = await tools["mahavishnu_notify_repository_changes"](
                 repo_path="/path/to/repo",
                 changes=[{"type": "added"}, {"type": "modified"}],
             )
@@ -504,7 +504,7 @@ class TestNotifyRepositoryChanges:
         )
 
         with _registered_tools(manager) as tools:
-            result = await tools["notify_repository_changes"](
+            result = await tools["mahavishnu_notify_repository_changes"](
                 repo_path="/path/to/repo", changes=[]
             )
         assert result["status"] == "error"
@@ -514,7 +514,7 @@ class TestNotifyRepositoryChanges:
         manager = _build_manager(process_changes_side_effect=RuntimeError("oops"))
 
         with _registered_tools(manager) as tools:
-            result = await tools["notify_repository_changes"](
+            result = await tools["mahavishnu_notify_repository_changes"](
                 repo_path="/path/to/repo", changes=[]
             )
         assert result["status"] == "error"
@@ -541,7 +541,7 @@ class TestNotifyWorkflowStatus:
         )
 
         with _registered_tools(manager) as tools:
-            result = await tools["notify_workflow_status"](
+            result = await tools["mahavishnu_notify_workflow_status"](
                 workflow_id="wf_1",
                 status="completed",
                 repo_path="/path/to/repo",
@@ -556,7 +556,7 @@ class TestNotifyWorkflowStatus:
         manager = _build_manager(notify_status_side_effect=RuntimeError("err"))
 
         with _registered_tools(manager) as tools:
-            result = await tools["notify_workflow_status"](
+            result = await tools["mahavishnu_notify_workflow_status"](
                 workflow_id="wf_1",
                 status="failed",
                 repo_path="/path/to/repo",
@@ -586,7 +586,7 @@ class TestSendQualityAlert:
         )
 
         with _registered_tools(manager) as tools:
-            result = await tools["send_quality_alert"](
+            result = await tools["mahavishnu_send_quality_alert"](
                 repo_path="/path/to/repo",
                 alert_type="lint",
                 description="100 lint errors",
@@ -608,7 +608,7 @@ class TestSendQualityAlert:
         )
 
         with _registered_tools(manager) as tools:
-            result = await tools["send_quality_alert"](
+            result = await tools["mahavishnu_send_quality_alert"](
                 repo_path="/path/to/repo",
                 alert_type="lint",
                 description="issue",
@@ -621,7 +621,7 @@ class TestSendQualityAlert:
         manager = _build_manager(quality_alert_side_effect=RuntimeError("err"))
 
         with _registered_tools(manager) as tools:
-            result = await tools["send_quality_alert"](
+            result = await tools["mahavishnu_send_quality_alert"](
                 repo_path="/path/to/repo",
                 alert_type="lint",
                 description="x",
@@ -644,13 +644,13 @@ class TestRegistration:
         with _registered_tools() as tools:
             assert len(tools) == 7
             assert set(tools.keys()) == {
-                "send_repository_message",
-                "broadcast_repository_message",
-                "get_repository_messages",
-                "acknowledge_repository_message",
-                "notify_repository_changes",
-                "notify_workflow_status",
-                "send_quality_alert",
+                "mahavishnu_send_repository_message",
+                "mahavishnu_broadcast_repository_message",
+                "mahavishnu_get_repository_messages",
+                "mahavishnu_acknowledge_repository_message",
+                "mahavishnu_notify_repository_changes",
+                "mahavishnu_notify_workflow_status",
+                "mahavishnu_send_quality_alert",
             }
 
     def test_registration_uses_provided_app(self) -> None:
