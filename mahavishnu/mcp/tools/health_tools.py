@@ -1,7 +1,14 @@
-"""MCP tools for health check system.
+"""MCP tools for the health check surface.
 
-These tools provide health checking capabilities for the Mahavishnu ecosystem
-following the design in docs/plans/2026-02-27-health-check-system-design.md.
+The six shared health tools are owned by :mod:`mcp_common.health`, so every
+Bodai server exposes exactly one implementation behind each name. This
+module mounts that shared surface with Mahavishnu's dependency map and
+deprecation map, and keeps the three Mahavishnu-specific MCP tools that
+have no fleet-wide equivalent:
+
+- ``mahavishnu_mcp_list_tools`` -- tool introspection
+- ``mahavishnu_mcp_test_connection`` -- MCP-level connectivity probe
+- ``mahavishnu_mcp_get_metrics`` -- metrics snapshot
 
 .. _deprecation-plan:
 
@@ -18,6 +25,9 @@ unified ``mahavishnu_ecosystem_status`` MCP tool (to be created in Control Plane
 - **get_readiness** -- readiness semantics will be subsumed by ``mahavishnu_ecosystem_status``
   (same rationale as liveness).
 
+The map below is handed to mcp-common, which warns only for the names it
+lists -- so the other three Bodai servers stay warning-free.
+
 Tools that remain **canonical** and will *not* be removed:
 
 - ``health_check_all`` -- canonical bulk health check.
@@ -32,21 +42,14 @@ Reference: docs/plans/2026-04-25-mahavishnu-ecosystem-control-plane-update-plan.
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
 from typing import TYPE_CHECKING, Any
-import warnings
+from weakref import WeakSet
 
-from mahavishnu.core.health import (
-    DependencyWaiter,
-    HealthChecker,
-    HealthCheckResult,
-    HealthEndpoint,
-    HealthStatus,
-    ServiceInfo,
-    aggregate_readiness,
-)
+from mcp_common.health import DependencyConfig as SharedDependencyConfig
+from mcp_common.health import register_health_tools as register_shared_health_tools
+
+from mahavishnu.core.health import HealthChecker, HealthStatus
 from monitoring.metrics import expose_metrics, get_metrics_registry
 
 if TYPE_CHECKING:
@@ -56,110 +59,127 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
-    """Register health check tools with MCP server.
+#: Tool name -> replacement name for the tools this server still deprecates.
+#: Only names present in this map warn; mcp-common owns the mechanism.
+DEPRECATED_TOOLS: dict[str, str] = {
+    "health_check_service": "health_check_all",
+    "get_liveness": "mahavishnu_ecosystem_status",
+    "get_readiness": "mahavishnu_ecosystem_status",
+}
 
-    Structural C901 suppression: FastMCP's ``@mcp.tool()`` decorator
-    requires each tool function to be defined inline so it can introspect
-    the function name and signature for the MCP tool schema. The tools
-    registered here are intentionally kept inline; the complexity is the
-    cost of the FastMCP API contract, not bad code.
+
+# Servers that already carry the three Mahavishnu-specific tools. FastMCP
+# replaces a duplicate registration (logging "Component already exists"),
+# which leaves the first copy shadowed. Mahavishnu mounts health tools from
+# BOTH the legacy path (``server_core._register_tools``) and the profile
+# path (``apply_tool_profile`` -> ``_register_health_tools``), so this guard
+# is what keeps one registration per name. The shared six are guarded by
+# mcp-common's own equivalent, so the two guards stay independent: whichever
+# path runs first owns the tools.
+_WIRED_SERVERS: WeakSet[Any] = WeakSet()
+
+
+def _server_name(app: Any = None) -> str:
+    """Return the service name this server reports."""
+    config = getattr(app, "config", None) if app is not None else None
+    if config is not None:
+        name = getattr(config, "server_name", None)
+        if isinstance(name, str) and name.strip():
+            return name
+    return "mahavishnu"
+
+
+def _version() -> str:
+    """Return the installed Mahavishnu version."""
+    try:
+        from mahavishnu import __version__
+
+        return str(__version__)
+    except Exception:  # pragma: no cover - metadata lookup fallback
+        logger.debug("Mahavishnu version metadata unavailable", exc_info=True)
+        return "0.0.0"
+
+
+def _dependency_map(app: Any = None) -> dict[str, SharedDependencyConfig]:
+    """Convert Mahavishnu's health dependencies to the shared shape.
+
+    The shared implementation takes its dependency map at registration
+    time, which is the same contract the other three Bodai servers use.
+    """
+    config = getattr(app, "config", None) if app is not None else None
+    health = getattr(config, "health", None) if config is not None else None
+    if health is None:
+        from mahavishnu.core.config import MahavishnuSettings
+
+        health = MahavishnuSettings().health
+    return {
+        name: SharedDependencyConfig(
+            host=dep.host,
+            port=dep.port,
+            required=dep.required,
+            timeout_seconds=dep.timeout_seconds,
+            use_tls=dep.use_tls,
+        )
+        for name, dep in health.dependencies.items()
+    }
+
+
+def _tool_timeout_seconds(tool: Any) -> float | None:
+    timeout = getattr(tool, "timeout", None)
+    if timeout is None:
+        return None
+    if hasattr(timeout, "total_seconds"):
+        return float(timeout.total_seconds())
+    try:
+        return float(timeout)
+    except TypeError, ValueError:
+        return None
+
+
+def _summarize_tool(tool: Any) -> dict[str, Any]:
+    parameters = getattr(tool, "parameters", None)
+    summary: dict[str, Any] = {
+        "name": getattr(tool, "name", "unknown"),
+        "version": getattr(tool, "version", None),
+        "title": getattr(tool, "title", None),
+        "description": getattr(tool, "description", None),
+        "tags": sorted(getattr(tool, "tags", set()) or []),
+        "timeout_seconds": _tool_timeout_seconds(tool),
+    }
+    if parameters is not None:
+        summary["parameters"] = parameters
+    from mahavishnu.mcp.tool_versions import get_tool_deprecation
+
+    replacement = get_tool_deprecation(summary["name"])
+    if replacement is not None:
+        summary["deprecated"] = True
+        summary["deprecated_replaced_by"] = replacement
+    return summary
+
+
+def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
+    """Register the health surface and Mahavishnu's three MCP tools.
 
     Args:
         mcp: FastMCP server instance
         app: Optional MahavishnuApp instance for dependency injection
     """
+    register_shared_health_tools(
+        mcp,
+        server_name=_server_name(app),
+        version=_version(),
+        dependencies=_dependency_map(app),
+        deprecated_tools=DEPRECATED_TOOLS,
+    )
 
-    def _server_name() -> str:
-        if app is not None and getattr(app, "config", None) is not None:
-            server_name = getattr(app.config, "server_name", None)
-            if isinstance(server_name, str) and server_name.strip():
-                return server_name
-        return "mahavishnu"
-
-    def _warn_deprecated_tool(tool_name: str, replacement: str) -> None:
-        warnings.warn(
-            f"{tool_name} is deprecated; use {replacement} instead.",
-            DeprecationWarning,
-            stacklevel=2,
+    if mcp in _WIRED_SERVERS:
+        logger.debug(
+            "Mahavishnu MCP tools are already registered on this server; "
+            "skipping re-registration so each tool name is registered "
+            "exactly once."
         )
-
-    def _tool_timeout_seconds(tool: Any) -> float | None:
-        timeout = getattr(tool, "timeout", None)
-        if timeout is None:
-            return None
-        if hasattr(timeout, "total_seconds"):
-            return float(timeout.total_seconds())
-        try:
-            return float(timeout)
-        except TypeError, ValueError:
-            return None
-
-    def _summarize_tool(tool: Any) -> dict[str, Any]:
-        parameters = getattr(tool, "parameters", None)
-        summary: dict[str, Any] = {
-            "name": getattr(tool, "name", "unknown"),
-            "version": getattr(tool, "version", None),
-            "title": getattr(tool, "title", None),
-            "description": getattr(tool, "description", None),
-            "tags": sorted(getattr(tool, "tags", set()) or []),
-            "timeout_seconds": _tool_timeout_seconds(tool),
-        }
-        if parameters is not None:
-            summary["parameters"] = parameters
-        from mahavishnu.mcp.tool_versions import get_tool_deprecation
-
-        replacement = get_tool_deprecation(summary["name"])
-        if replacement is not None:
-            summary["deprecated"] = True
-            summary["deprecated_replaced_by"] = replacement
-        return summary
-
-    # deprecated: redundant with health_check_all; use mahavishnu_mcp_test_connection for single-service pings
-    # deprecated_replaced_by: mahavishnu_ecosystem_status (CP2)
-    @mcp.tool()
-    async def health_check_service(
-        service_name: str,
-        host: str = "localhost",
-        port: int = 8080,
-        timeout: int = 5,
-        use_tls: bool = False,
-    ) -> dict[str, Any]:
-        """Check the health of one service over HTTP.
-
-        Deprecated: prefer `health_check_all` for a bulk sweep, or
-        `mahavishnu_mcp_test_connection` to probe one MCP server. Returns a dict with
-        `service_name`, `status` ("ok", "degraded", or "unhealthy"),
-        `latency_ms`, and `url`, plus `error` when the probe failed. Returns
-        `status` "unhealthy" when the endpoint does not answer within `timeout`
-        seconds. Side effect: none; performs one HTTP GET.
-        """
-        # Implements: REQ-MCPTD-001
-        _warn_deprecated_tool("health_check_service", "health_check_all")
-        from mahavishnu.core.config import HealthConfig
-
-        config = HealthConfig(check_timeout_seconds=timeout)
-        checker = HealthChecker(config=config)
-
-        scheme = "https" if use_tls else "http"
-        url = f"{scheme}://{host}:{port}/health"
-
-        result = await checker.check(url, timeout=timeout)
-
-        response = {
-            "service_name": service_name,
-            "status": result.status.value,
-            "latency_ms": result.latency_ms,
-            "url": url,
-        }
-
-        if result.error:
-            response["error"] = result.error
-
-        if result.response_data:
-            response["response"] = result.response_data
-
-        return response
+        return
+    _WIRED_SERVERS.add(mcp)
 
     @mcp.tool()
     async def mahavishnu_mcp_list_tools() -> dict[str, Any]:
@@ -175,7 +195,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
         return {
             "status": "success",
-            "server_name": _server_name(),
+            "server_name": _server_name(app),
             "total_tools": len(tool_summaries),
             "versioned_tools": sum(1 for tool in tool_summaries if tool["version"]),
             "version_registry_size": len(versions),
@@ -239,7 +259,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
 
         return {
             "status": "success",
-            "server_name": _server_name(),
+            "server_name": _server_name(app),
             "registered_tools": len(tools),
             "metric_family_count": len(metric_families),
             "metric_families": metric_families,
@@ -247,235 +267,5 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
             "metrics_preview": metrics_text.splitlines()[:25],
         }
 
-    @mcp.tool()
-    async def health_check_all() -> dict[str, Any]:
-        """Check the health of every configured service concurrently.
 
-        Returns a dict with `status` ("ok" or "unhealthy"), a `services` map of
-        per-service `status` and `latency_ms`, plus `total_services` and
-        `healthy_services`. Do NOT use to probe a single service — use
-        `mahavishnu_mcp_test_connection` for that; `health_check_service` is deprecated
-        in favour of this tool. Returns `status` "ok" with an empty `services`
-        map when no dependencies are configured. Side effect: none; performs
-        one HTTP GET per configured service.
-        """
-        # Implements: REQ-MCPTD-001
-        from mahavishnu.core.config import MahavishnuSettings
-
-        settings = MahavishnuSettings()
-        config = settings.health
-        checker = HealthChecker(config=config)
-
-        if not config.dependencies:
-            return {
-                "status": "ok",
-                "services": {},
-                "message": "No dependencies configured",
-            }
-
-        # Check all dependencies concurrently
-        results = {}
-        tasks = {}
-
-        for name, dep in config.dependencies.items():
-            scheme = "https" if dep.use_tls else "http"
-            url = f"{scheme}://{dep.host}:{dep.port}/health"
-            tasks[name] = checker.check(url, timeout=config.check_timeout_seconds)
-
-        if tasks:
-            gathered = await asyncio.gather(*tasks.values(), return_exceptions=True)
-            for (name, _), result in zip(tasks.items(), gathered, strict=True):
-                if isinstance(result, HealthCheckResult):
-                    results[name] = {
-                        "status": result.status.value,
-                        "latency_ms": result.latency_ms,
-                    }
-                    if result.error:
-                        results[name]["error"] = result.error
-                else:
-                    results[name] = {
-                        "status": HealthStatus.UNHEALTHY.value,
-                        "error": str(result),
-                    }
-
-        # Determine overall status
-        all_ok = all(
-            r.get("status") in (HealthStatus.OK.value, HealthStatus.DEGRADED.value)
-            for r in results.values()
-        )
-
-        return {
-            "status": HealthStatus.OK.value if all_ok else HealthStatus.UNHEALTHY.value,
-            "services": results,
-            "total_services": len(results),
-            "healthy_services": sum(
-                1 for r in results.values() if r.get("status") == HealthStatus.OK.value
-            ),
-        }
-
-    @mcp.tool()
-    async def wait_for_dependency(
-        service_name: str,
-        host: str = "localhost",
-        port: int = 8080,
-        timeout: int = 30,
-        required: bool = True,
-        use_tls: bool = False,
-    ) -> dict[str, Any]:
-        """Wait for a specific dependency to become healthy."""
-        from mahavishnu.core.config import DependencyConfig, HealthConfig
-
-        dep_config = DependencyConfig(
-            host=host,
-            port=port,
-            required=required,
-            timeout_seconds=timeout,
-            use_tls=use_tls,
-        )
-
-        health_config = HealthConfig()
-        waiter = DependencyWaiter(config=health_config)
-
-        start_time = time.time()
-        result = await waiter.wait_for_all({service_name: dep_config})
-        elapsed = time.time() - start_time
-
-        dep_result = result.dependencies.get(service_name)
-
-        response = {
-            "service_name": service_name,
-            "success": result.success or (not required and dep_result is not None),
-            "elapsed_seconds": elapsed,
-            "timeout_seconds": timeout,
-        }
-
-        if dep_result:
-            response["status"] = dep_result.status.value
-            response["latency_ms"] = dep_result.latency_ms
-            if dep_result.error:
-                response["error"] = dep_result.error
-
-        if not result.success and required:
-            response["message"] = (
-                f"Required dependency '{service_name}' did not become healthy within {timeout}s"
-            )
-
-        return response
-
-    @mcp.tool()
-    async def wait_for_all_dependencies() -> dict[str, Any]:
-        """Wait for all configured dependencies to become healthy."""
-        from mahavishnu.core.config import MahavishnuSettings
-
-        settings = MahavishnuSettings()
-        config = settings.health
-
-        if not config.dependencies:
-            return {
-                "success": True,
-                "message": "No dependencies configured",
-                "dependencies": {},
-                "total_wait_seconds": 0,
-            }
-
-        waiter = DependencyWaiter(config=config)
-        result = await waiter.wait_for_all(config.dependencies)
-
-        response: dict[str, Any] = {
-            "success": result.success,
-            "total_wait_seconds": result.total_wait_seconds,
-            "failed_required": result.failed_required,
-            "skipped_optional": result.skipped_optional,
-        }
-
-        # Convert dependency results to serializable format
-        deps_status = {}
-        for name, dep_result in result.dependencies.items():
-            deps_status[name] = {
-                "status": dep_result.status.value,
-                "latency_ms": dep_result.latency_ms,
-            }
-            if dep_result.error:
-                deps_status[name]["error"] = dep_result.error
-
-        response["dependencies"] = deps_status
-
-        if not result.success:
-            response["message"] = (
-                f"Failed to connect to required dependencies: {', '.join(result.failed_required)}"
-            )
-
-        return response
-
-    # deprecated: will be subsumed by mahavishnu_ecosystem_status (CP2)
-    # deprecated_replaced_by: mahavishnu_ecosystem_status (CP2)
-    @mcp.tool()
-    async def get_liveness() -> dict[str, Any]:
-        """Report whether this process is alive.
-
-        Deprecated: prefer `mahavishnu_ecosystem_status`, which reports liveness for every
-        service in the fleet. Returns a dict with `status` ("ok"), `service`,
-        `version`, and `uptime_seconds`. Always reports "ok" while the process
-        is running — it does not probe dependencies, so a "ok" liveness does
-        not mean the service can accept work. Side effect: none.
-        """
-        # Implements: REQ-MCPTD-001
-        _warn_deprecated_tool("get_liveness", "mahavishnu_ecosystem_status")
-        from mahavishnu.core.config import MahavishnuSettings
-
-        settings = MahavishnuSettings()
-        config = settings.health
-
-        service_info = ServiceInfo(
-            name="mahavishnu",
-            version="0.3.2",
-        )
-        endpoint = HealthEndpoint(service_info=service_info, config=config)
-
-        response = await endpoint.liveness()
-        return response.model_dump()
-
-    # deprecated: will be subsumed by mahavishnu_ecosystem_status (CP2)
-    # deprecated_replaced_by: mahavishnu_ecosystem_status (CP2)
-    @mcp.tool()
-    async def get_readiness() -> dict[str, Any]:
-        """Report whether this service is ready to accept work.
-
-        Deprecated: prefer `mahavishnu_ecosystem_status`, which reports readiness for every
-        service in the fleet. Returns a dict with `ready` (bool), `service`,
-        `dependencies` (per-dependency status), and `checks` (internal check
-        results). `ready` is false when a required dependency is unhealthy.
-        Do NOT use for liveness — use `get_liveness` for that. Side effect:
-        none; probes each configured dependency once.
-        """
-        # Implements: REQ-MCPTD-001
-        _warn_deprecated_tool("get_readiness", "mahavishnu_ecosystem_status")
-        from mahavishnu.core.config import MahavishnuSettings
-
-        settings = MahavishnuSettings()
-        config = settings.health
-
-        service_info = ServiceInfo(
-            name="mahavishnu",
-            version="0.3.2",
-        )
-        endpoint = HealthEndpoint(service_info=service_info, config=config)
-
-        response = await endpoint.readiness(config.dependencies)
-        payload = response.model_dump()
-
-        # Fold the worker capability component into the response so the
-        # MCP surface matches the ``/ready`` HTTP endpoint.
-        # ``aggregate_readiness`` is the single source of truth for the
-        # worker component; it used to be reached through a wrapper in
-        # ``mahavishnu/health.py``, which existed only to host a FastAPI
-        # app on port 8080 that nothing started.
-        try:
-            payload["workers"] = await aggregate_readiness(settings=settings)
-        except Exception:
-            logger.exception("readiness worker aggregation failed")
-            payload["workers"] = {"status": "unhealthy"}
-        return payload
-
-
-__all__ = ["register_health_tools"]
+__all__ = ["DEPRECATED_TOOLS", "register_health_tools"]
