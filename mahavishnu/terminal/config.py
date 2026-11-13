@@ -17,7 +17,7 @@ class TerminalSettings(BaseModel):
         default=True,
         description=(
             "Enable terminal management features. The spawn path "
-            "(pool_spawn, terminal manager) requires this; disabling "
+            "(mahavishnu_pool_spawn, terminal manager) requires this; disabling "
             "it makes pool spawn fail with 'terminal_manager is not "
             "available'. Default ``True`` because ``adapter_preference`` "
             "defaults to ``mock`` — the manager has no real side effects "

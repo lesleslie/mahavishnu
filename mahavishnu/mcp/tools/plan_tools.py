@@ -81,11 +81,11 @@ def register_plan_tools(
     """
     provider = store_provider
 
-    @mcp.tool(name="plan_list")
+    @mcp.tool(name="mahavishnu_plan_list")
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
     )
-    async def plan_list(
+    async def mahavishnu_plan_list(
         status: str | None = None,
         topic: str | None = None,
         date_from: str | None = None,
@@ -113,11 +113,11 @@ def register_plan_tools(
             "status": "ok",
         }
 
-    @mcp.tool(name="plan_show")
+    @mcp.tool(name="mahavishnu_plan_show")
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
     )
-    async def plan_show(plan_id: str, user_id: str | None = None) -> dict[str, Any]:
+    async def mahavishnu_plan_show(plan_id: str, user_id: str | None = None) -> dict[str, Any]:
         """Show one plan by ``plan_id``. Raises ``PlanNotFoundError`` if absent."""
         store = provider()
         record = await store.get(cast("PlanId", plan_id))
@@ -125,11 +125,11 @@ def register_plan_tools(
             raise PlanNotFoundError(plan_id)
         return cast("dict[str, Any]", record)
 
-    @mcp.tool(name="plan_search")
+    @mcp.tool(name="mahavishnu_plan_search")
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
     )
-    async def plan_search(
+    async def mahavishnu_plan_search(
         query: str,
         limit: int = 20,
         user_id: str | None = None,
@@ -140,20 +140,20 @@ def register_plan_tools(
         store = provider()
         return cast("list[dict[str, Any]]", await store.search(query, limit=limit))
 
-    @mcp.tool(name="plan_vitals")
+    @mcp.tool(name="mahavishnu_plan_vitals")
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
     )
-    async def plan_vitals(user_id: str | None = None) -> dict[str, Any]:
+    async def mahavishnu_plan_vitals(user_id: str | None = None) -> dict[str, Any]:
         """Aggregate counters, per-status/role/topic breakdowns, and tripwire state."""
         store = provider()
         return cast("dict[str, Any]", await store.vitals())
 
-    @mcp.tool(name="plan_rebuild_status")
+    @mcp.tool(name="mahavishnu_plan_rebuild_status")
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
     )
-    async def plan_rebuild_status(user_id: str | None = None) -> dict[str, Any]:
+    async def mahavishnu_plan_rebuild_status(user_id: str | None = None) -> dict[str, Any]:
         """Rebuild cycle counters, staleness flag, and (redacted) lock holder."""
         store = provider()
         return cast("dict[str, Any]", await store.rebuild_status())

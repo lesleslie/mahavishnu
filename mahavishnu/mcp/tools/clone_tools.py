@@ -567,11 +567,11 @@ def register_clone_tools(
             ``app.settings``. Tests inject a fake store here.
 
     Registers 4 tools:
-    - clone_detect_ecosystem: Fan-out pyscn clone detection across all repos
-    - clone_refactor_group: Trigger cross-repo refactor DAG for a clone cluster
+    - mahavishnu_clone_detect_ecosystem: Fan-out pyscn clone detection across all repos
+    - mahavishnu_clone_refactor_group: Trigger cross-repo refactor DAG for a clone cluster
       (runs ``verify_proposal`` before returning the job-id per Task 1.3)
-    - clone_refactor_status: List in-flight DAG records (sorted by UUID7)
-    - get_verification_result: Fetch a stored ``VerificationResult`` by
+    - mahavishnu_clone_refactor_status: List in-flight DAG records (sorted by UUID7)
+    - mahavishnu_get_verification_result: Fetch a stored ``VerificationResult`` by
       proposal_id (per Task 1.5)
     """
     # CE-B2: reconfigure the module-level `mcp_backend` singleton using
@@ -584,7 +584,7 @@ def register_clone_tools(
     tools = CloneTools(app, store=store)
 
     @mcp.tool()
-    async def clone_detect_ecosystem(
+    async def mahavishnu_clone_detect_ecosystem(
         repos: list[str] | None = None,
         min_similarity: float = 0.70,
         detect_until_dry: bool = False,
@@ -608,7 +608,7 @@ def register_clone_tools(
         )
 
     @mcp.tool()
-    async def clone_refactor_group(
+    async def mahavishnu_clone_refactor_group(
         cluster_id: str,
         target_repo: str,
         consumer_repos: list[str],
@@ -637,14 +637,14 @@ def register_clone_tools(
         )
 
     @mcp.tool()
-    async def clone_refactor_status(
+    async def mahavishnu_clone_refactor_status(
         limit: int = 10,
     ) -> list[tuple[str, dict[str, Any]]]:
         """List open clone clusters with confidence tier and PR status."""
         return await tools.clone_refactor_status(limit=limit)
 
     @mcp.tool()
-    async def get_verification_result(
+    async def mahavishnu_get_verification_result(
         proposal_id: str,
     ) -> dict[str, Any]:
         """Return the stored ``VerificationResult`` for a given ``proposal_id``.
@@ -652,6 +652,6 @@ def register_clone_tools(
         Returns ``{"status": "not_found"}`` when no record exists or when the
         VerificationStore was not configured (see Task 1.5). The proposal_id
         is the same UUID as the ``refactor_job_id`` returned by
-        ``clone_refactor_group``.
+        ``mahavishnu_clone_refactor_group``.
         """
         return await tools.get_verification_result(proposal_id=proposal_id)

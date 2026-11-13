@@ -766,7 +766,7 @@ def _register_openhands_block(server: FastMCPServer) -> None:
     try:
         from ..mcp.tools.openhands_tools import mcp as openhands_mcp
 
-        server.server.mount(openhands_mcp, "openhands")
+        server.server.mount(openhands_mcp, "mahavishnu_openhands")
         logger.info("Registered 4 OpenHands integration tools with MCP server")
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("OpenHands tools not available: %s", exc)
@@ -792,9 +792,9 @@ def _register_eval_tools_block(server: FastMCPServer) -> None:
 
 
 def _register_capability_block(server: FastMCPServer) -> None:
-    """Register capability tools + MCP-backed get_capability_result reader.
+    """Register capability tools + MCP-backed mahavishnu_get_capability_result reader.
 
-    Also wires ``get_capability_result(trace_id)`` when MCP is reachable.
+    Also wires ``mahavishnu_get_capability_result(trace_id)`` when MCP is reachable.
     The MCP-wired tool is skipped (with a WARN log) if the substrate is
     not configured or the HTTP probe fails; the four core tools above
     still register successfully in that mode.
@@ -811,7 +811,7 @@ def _register_capability_block(server: FastMCPServer) -> None:
     )
     logger.info("Registered 4 capability tools with MCP server")
 
-    # Wire get_capability_result against the MCP substrate when reachable.
+    # Wire mahavishnu_get_capability_result against the MCP substrate when reachable.
     # Skipped silently (with WARN) when MCP is offline so the other 4 tools
     # still register; the call site at ``register_get_capability_result``
     # raises TypeError on mcp=None, which is why we cannot default here.
@@ -819,23 +819,23 @@ def _register_capability_block(server: FastMCPServer) -> None:
         mcp_url = resolve_mcp_url(server.app.config)
         mcp = MCPClient(base_url=mcp_url, timeout=10.0, internal=True)
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.warning("Skipping get_capability_result registration: %s", exc)
+        logger.warning("Skipping mahavishnu_get_capability_result registration: %s", exc)
         return
 
     try:
         register_get_capability_result(server.server, mcp=mcp)
-        logger.info("Registered get_capability_result tool with MCP server")
+        logger.info("Registered mahavishnu_get_capability_result tool with MCP server")
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning(
-            "Skipping get_capability_result registration after MCP init: %s", exc
+            "Skipping mahavishnu_get_capability_result registration after MCP init: %s", exc
         )
 
 
 def _register_search_block(server: FastMCPServer) -> None:
-    """Register the search-tools group (hybrid_search + cross_repo_search).
+    """Register the search-tools group (mahavishnu_hybrid_search + mahavishnu_cross_repo_search).
 
-    v1 plan Phase 1 ships ``cross_repo_search`` as a peer to the
-    pre-existing ``hybrid_search``. Both live in
+    v1 plan Phase 1 ships ``mahavishnu_cross_repo_search`` as a peer to the
+    pre-existing ``mahavishnu_hybrid_search``. Both live in
     ``mahavishnu/mcp/tools/search_tools.py``. The registration function
     was wired into neither ``_OPTIONAL_TOOL_BLOCKS`` (CLI path) nor
     ``REGISTRATION_MAP`` (W0 path), so the search tool group was never
@@ -844,7 +844,7 @@ def _register_search_block(server: FastMCPServer) -> None:
     from ..mcp.tools.search_tools import register_search_tools
 
     register_search_tools(server.server)
-    logger.info("Registered search-tools group (hybrid_search + cross_repo_search)")
+    logger.info("Registered search-tools group (mahavishnu_hybrid_search + mahavishnu_cross_repo_search)")
 
 
 def _register_ecosystem_publish_url_block(server: FastMCPServer) -> None:
@@ -994,7 +994,7 @@ def _register_audit_health_tools_block(server: FastMCPServer) -> None:
     in ``profiles.py`` is a parallel registration surface — both must
     list this group, otherwise the CLI path silently drops it.
 
-    ``audit_health`` is in ``MAHAVISHNU_MANDATORY_GROUPS`` and in every
+    ``_register_audit_health_tools`` is in ``MAHAVISHNU_MANDATORY_GROUPS`` and in every
     ``PROFILE_REGISTRATIONS`` tier, so the ``methods_set`` gate in
     ``_register_optional_tools`` dispatches it at every tier.
     """
@@ -1039,12 +1039,12 @@ _OPTIONAL_TOOL_BLOCKS: tuple[tuple[str, Callable[[FastMCPServer], None]], ...] =
     # subsystem is operator-facing, not infrastructure-critical, so it
     # is not part of the MINIMAL profile.
     ("_register_eval_tools", _register_eval_tools_block),
-    # Fleet-wide audit_health. Mandatory tier — dispatched at every
+    # Fleet-wide mahavishnu_audit_health. Mandatory tier — dispatched at every
     # profile, matching MAHAVISHNU_MANDATORY_GROUPS.
     ("_register_audit_health_tools", _register_audit_health_tools_block),
     # Budget enforcement. STANDARD-tier, matching STANDARD_REGISTRATIONS.
     ("_register_budget_tools", _register_budget_tools_block),
-    # Plan index (plan_list/show/search/vitals/rebuild_status).
+    # Plan index (mahavishnu_plan_list/show/search/vitals/rebuild_status).
     # FULL-tier, matching FULL_REGISTRATIONS.
     ("_register_plan_tools", _register_plan_tools_block),
 )
@@ -1127,7 +1127,7 @@ def _register_health_tools(server: FastMCPServer) -> None:
 
 
 def _register_audit_health_tools(server: FastMCPServer) -> None:
-    """Register fleet-wide audit_health tool (always-on).
+    """Register fleet-wide mahavishnu_audit_health tool (always-on).
 
     Phase 2 of the MCP /health enrichment plan. Sibling to
     :func:`_register_health_tools` but fleet-bounded: it iterates
@@ -1141,7 +1141,7 @@ def _register_audit_health_tools(server: FastMCPServer) -> None:
     from ..mcp.tools.audit_health_tool import register_audit_health_tools
 
     register_audit_health_tools(server.server, server.app)
-    logger.info("Registered audit_health tool with MCP server")
+    logger.info("Registered mahavishnu_audit_health tool with MCP server")
 
 
 def _register_ecosystem_tools(server: FastMCPServer) -> None:
@@ -1435,7 +1435,7 @@ def _register_openhands_tools(server: FastMCPServer) -> None:
     try:
         from ..mcp.tools.openhands_tools import mcp as openhands_mcp
 
-        server.server.mount(openhands_mcp, "openhands")
+        server.server.mount(openhands_mcp, "mahavishnu_openhands")
         logger.info("Registered 4 OpenHands integration tools with MCP server")
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning("OpenHands tools not available: %s", exc)

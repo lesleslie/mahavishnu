@@ -21,7 +21,7 @@ Implementation choices:
 - **No FastMCP lifespan** (``mahavishnu/mcp/server_core.py:59-69``
   tolerates up to 120s startup for early ``/health``). Phase 3's
   dispatcher is built lazily inside the tool handler, mirroring how
-  ``mahavishnu/mcp/tools/ecosystem_tools.py::ecosystem_capabilities``
+  ``mahavishnu/mcp/tools/ecosystem_tools.py::mahavishnu_ecosystem_capabilities``
   resolves its service on first call. The first call may pay
   sub-second latency; subsequent calls are O(1) from the in-process
   cache.

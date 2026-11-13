@@ -1,7 +1,7 @@
 """MCP tools for capability resolution, planning, and execution.
 
 Three tools are gated by ``MahavishnuSettings.capability_enabled`` AND
-``capability_scopes`` allow-list. The fourth (``list_capabilities``) is
+``capability_scopes`` allow-list. The fourth (``mahavishnu_list_capabilities``) is
 ungated so the operator can introspect the registry without auth.
 
 The internal helper ``_all_registrations()`` merges engine registrations
@@ -213,10 +213,10 @@ def register_capability_tools(
     """
 
     @server.tool(
-        name="list_capabilities",
+        name="mahavishnu_list_capabilities",
         description="List every registered engine and its provides.",
     )
-    async def list_capabilities() -> dict[str, object]:
+    async def mahavishnu_list_capabilities() -> dict[str, object]:
         """Ungated introspection tool: enumerate every engine + worker registration."""
         regs = _all_registrations(settings)
         return {
@@ -233,14 +233,14 @@ def register_capability_tools(
         }
 
     @server.tool(
-        name="resolve_capabilities",
+        name="mahavishnu_resolve_capabilities",
         description="Resolve CapabilitySpec.requires into Candidate engines.",
     )
     @require_mcp_auth(
         rbac_manager=rbac_manager,
         required_permission=MCPPermission.READ,
     )
-    async def resolve_capabilities(
+    async def mahavishnu_resolve_capabilities(
         requires: list[str],
         prompt: str,
         selector: str = "capability_score",
@@ -285,14 +285,14 @@ def register_capability_tools(
         }
 
     @server.tool(
-        name="plan_capability",
+        name="mahavishnu_plan_capability",
         description="Plan an ExecutionDAG from a CapabilitySpec.",
     )
     @require_mcp_auth(
         rbac_manager=rbac_manager,
         required_permission=MCPPermission.WRITE,
     )
-    async def plan_capability(
+    async def mahavishnu_plan_capability(
         requires: list[str],
         prompt: str,
         selector: str = "capability_score",
@@ -348,7 +348,7 @@ def register_capability_tools(
         }
 
     @server.tool(
-        name="execute_capability",
+        name="mahavishnu_execute_capability",
         description=(
             "Plan an ExecutionDAG, dispatch each node via its engine in level-by-level waves, "
             "and persist envelopes. Returns status='queued' with envelope_ids populated when "
@@ -360,7 +360,7 @@ def register_capability_tools(
         rbac_manager=rbac_manager,
         required_permission=MCPPermission.WRITE,
     )
-    async def execute_capability(
+    async def mahavishnu_execute_capability(
         requires: list[str],
         prompt: str,
         selector: str = "capability_score",

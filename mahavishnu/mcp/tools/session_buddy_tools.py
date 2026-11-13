@@ -59,7 +59,7 @@ def register_session_buddy_tools(
         required_permission=MCPPermission.READ,
         require_repo_param="project_path",
     )
-    async def index_code_graph(
+    async def mahavishnu_index_code_graph(
         project_path: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """Index codebase structure for better context in Session Buddy.
@@ -70,7 +70,7 @@ def register_session_buddy_tools(
         ``store_code_graph_from_mahavishnu``, and falls back to a local
         filesystem queue if Session-Buddy is unavailable.
         """
-        _warn_code_intel_deprecation("index_code_graph", "code_index.index_repo")
+        _warn_code_intel_deprecation("mahavishnu_index_code_graph", "code_index.index_repo")
         try:
             from ...core.code_index.indexer import index_repo as _index_repo
 
@@ -91,7 +91,7 @@ def register_session_buddy_tools(
         required_permission=MCPPermission.READ,
         require_repo_param="project_path",
     )
-    async def get_function_context(
+    async def mahavishnu_get_function_context(
         project_path: str, function_name: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """Get caller/callee context for a function for Session Buddy."""
@@ -118,11 +118,11 @@ def register_session_buddy_tools(
         required_permission=MCPPermission.READ,
         require_repo_param="project_path",
     )
-    async def find_related_code(
+    async def mahavishnu_find_related_code(
         project_path: str, file_path: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """Find code related by imports/calls for Session Buddy."""
-        _warn_code_intel_deprecation("find_related_code", "treesitter_tools")
+        _warn_code_intel_deprecation("mahavishnu_find_related_code", "treesitter_tools")
         try:
             from ...session_buddy.integration import SessionBuddyIntegration
 
@@ -146,11 +146,11 @@ def register_session_buddy_tools(
         required_permission=MCPPermission.READ,
         require_repo_param="project_path",
     )
-    async def index_documentation(
+    async def mahavishnu_index_documentation(
         project_path: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """Extract docstrings and index for semantic search in Session Buddy."""
-        _warn_code_intel_deprecation("index_documentation", "code_index.index_repo")
+        _warn_code_intel_deprecation("mahavishnu_index_documentation", "code_index.index_repo")
         try:
             from ...session_buddy.integration import SessionBuddyIntegration
 
@@ -173,12 +173,12 @@ def register_session_buddy_tools(
         rbac_manager=rbac_manager,
         required_permission=MCPPermission.READ,
     )  # No repo permission needed for search
-    async def search_documentation(
+    async def mahavishnu_search_documentation(
         query: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """Search through indexed documentation in Session Buddy."""
         _warn_code_intel_deprecation(
-            "search_documentation", "search_tools.hybrid_search"
+            "mahavishnu_search_documentation", "search_tools.hybrid_search"
         )
         try:
             from ...session_buddy.integration import SessionBuddyIntegration
@@ -202,7 +202,7 @@ def register_session_buddy_tools(
         rbac_manager=rbac_manager,
         required_permission=MCPPermission.WRITE,
     )
-    async def send_project_message(
+    async def mahavishnu_send_project_message(
         from_project: str,
         to_project: str,
         subject: str,
@@ -244,7 +244,7 @@ def register_session_buddy_tools(
         rbac_manager=rbac_manager,
         required_permission=MCPPermission.READ,
     )
-    async def list_project_messages(
+    async def mahavishnu_list_project_messages(
         project: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """List messages for a project in Session Buddy."""

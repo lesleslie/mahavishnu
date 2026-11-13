@@ -1,6 +1,6 @@
-"""Runtime facts builder for the ``list_adapters`` MCP tool (Phase 2).
+"""Runtime facts builder for the ``mahavishnu_list_adapters`` MCP tool (Phase 2).
 
-Mirrors the legacy inline ``list_adapters`` wire shape so the FastMCP
+Mirrors the legacy inline ``mahavishnu_list_adapters`` wire shape so the FastMCP
 handler can delegate with ``RuntimeFactsBuilder(self.app).build_all()``.
 
 Wire contract (v3, plan 2026-09-26):
@@ -10,7 +10,7 @@ Wire contract (v3, plan 2026-09-26):
   "count": int, "available_names": list[str]}``.
 * The Oneiric envelope (``success / registry / runtime / health``) is
   constructed inside :meth:`MahavishnuApp.report_runtime_facts`, NOT
-  inside ``build_all``. This keeps the MCP-side ``list_adapters``
+  inside ``build_all``. This keeps the MCP-side ``mahavishnu_list_adapters``
   payload binary-compatible with the pre-Phase-2 inline body.
 
 Phase 2 design rules:
@@ -41,10 +41,10 @@ class RuntimeFactsBuilder:
     """Enumerate ``MahavishnuApp.adapters`` into the legacy adapter-listing shape.
 
     The returned dict matches the canonical wire shape served by the
-    pre-Phase-2 inline ``list_adapters`` MCP tool body. The Oneiric
+    pre-Phase-2 inline ``mahavishnu_list_adapters`` MCP tool body. The Oneiric
     envelope is NOT constructed in this builder; it lives in
     :meth:`MahavishnuApp.report_runtime_facts` so the two surfaces
-    (MCP ``list_adapters`` vs Oneiric push) can evolve independently.
+    (MCP ``mahavishnu_list_adapters`` vs Oneiric push) can evolve independently.
 
     The builder is intentionally pure-introspection: ``build_all`` does
     not ``await`` anything. Live health probing is out of scope and

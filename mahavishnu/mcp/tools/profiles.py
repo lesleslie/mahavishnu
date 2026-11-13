@@ -4,7 +4,7 @@ Maps ToolProfile levels from mcp-common to the set of ``_register_*()``
 methods called during ``FastMCPServer.start()``.
 
 Core inline tools (defined in ``FastMCPServer._register_tools()`` such as
-``list_repos``, ``trigger_workflow``, ``get_health``, etc.) are always
+``mahavishnu_list_repos``, ``mahavishnu_trigger_workflow``, ``get_health``, etc.) are always
 registered regardless of profile -- they are fundamental workflow and
 monitoring tools that every consumer needs.
 
@@ -143,23 +143,23 @@ FULL_REGISTRATIONS: list[str] = STANDARD_REGISTRATIONS + [
     # Jot inbox tools (14 tools; Task 13 + drain). Each key in
     # REGISTRATION_MAP delegates to the same ``register`` callable which is
     # idempotent (re-decorates all 14 tools against the FastMCP server).
-    # The 6 drain tools (``jot_drain``, ``jot_dispatch``, ``jot_defer``,
-    # ``jot_delete``, ``jot_retry``, ``jot_resurface``) were added by
+    # The 6 drain tools (``mahavishnu_jot_drain``, ``mahavishnu_jot_dispatch``, ``mahavishnu_jot_defer``,
+    # ``mahavishnu_jot_delete``, ``mahavishnu_jot_retry``, ``mahavishnu_jot_resurface``) were added by
     # sub-plan 3; they share the same registration lambda trampoline.
-    "jot_list",
-    "jot_show",
-    "jot_add",
-    "jot_edit",
-    "jot_done",
-    "jot_reopen",
-    "jot_vitals",
-    "jot_search",
-    "jot_drain",
-    "jot_dispatch",
-    "jot_defer",
-    "jot_delete",
-    "jot_retry",
-    "jot_resurface",
+    "mahavishnu_jot_list",
+    "mahavishnu_jot_show",
+    "mahavishnu_jot_add",
+    "mahavishnu_jot_edit",
+    "mahavishnu_jot_done",
+    "mahavishnu_jot_reopen",
+    "mahavishnu_jot_vitals",
+    "mahavishnu_jot_search",
+    "mahavishnu_jot_drain",
+    "mahavishnu_jot_dispatch",
+    "mahavishnu_jot_defer",
+    "mahavishnu_jot_delete",
+    "mahavishnu_jot_retry",
+    "mahavishnu_jot_resurface",
 ]
 
 # Note: ``register_worktree_tools`` is async and conditionally registered
@@ -298,20 +298,20 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # .jot_tools) which is idempotent — the first call wraps all 14
     # tools against the server, subsequent calls re-bind the wrappers
     # harmlessly.
-    "jot_list": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_show": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_add": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_edit": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_done": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_reopen": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_vitals": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_search": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_drain": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_dispatch": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_defer": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_delete": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_retry": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "jot_resurface": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_list": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_show": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_add": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_edit": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_done": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_reopen": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_vitals": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_search": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_drain": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_dispatch": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_defer": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_delete": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_retry": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_resurface": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
 }
 
 

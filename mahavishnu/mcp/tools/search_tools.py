@@ -1,10 +1,10 @@
 """MCP tools for hybrid search operations.
 
 This module provides MCP tools that expose the hybrid search functionality:
-- hybrid_search: Search across documents using semantic + lexical search
-- index_document: Index a new document for search
-- delete_document: Remove a document from the search index
-- cross_repo_search: Fan out to Akosha + Session-Buddy and aggregate results
+- mahavishnu_hybrid_search: Search across documents using semantic + lexical search
+- mahavishnu_index_document: Index a new document for search
+- mahavishnu_delete_document: Remove a document from the search index
+- mahavishnu_cross_repo_search: Fan out to Akosha + Session-Buddy and aggregate results
 
 These tools integrate with the HybridSearchEngine and follow the MCP tool
 patterns established in the mahavishnu.mcp.tools module.
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# cross_repo_search decomposition.
+# mahavishnu_cross_repo_search decomposition.
 # req: REQ-CX-004
 #
 # The fan-out to Akosha and Session-Buddy is independent per source: one
@@ -143,7 +143,7 @@ async def _fan_out_akosha(
         finally:
             await akosha_client.aclose()
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.warning("cross_repo_search: akosha fan-out failed: %s", exc)
+        logger.warning("mahavishnu_cross_repo_search: akosha fan-out failed: %s", exc)
         sources.append(
             {
                 "name": "akosha",
@@ -192,7 +192,7 @@ async def _fan_out_session_buddy(
         finally:
             await sb_client.aclose()
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.warning("cross_repo_search: session-buddy fan-out failed: %s", exc)
+        logger.warning("mahavishnu_cross_repo_search: session-buddy fan-out failed: %s", exc)
         sources.append(
             {
                 "name": "session-buddy",
@@ -250,7 +250,7 @@ async def _broadcast_cross_repo_result(
             )
             await server.broadcast_to_room(channel, msg)
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.warning("cross_repo_search: websocket broadcast failed: %s", exc)
+        logger.warning("mahavishnu_cross_repo_search: websocket broadcast failed: %s", exc)
 
 
 # =============================================================================
@@ -277,7 +277,7 @@ def register_search_tools(mcp: FastMCP) -> None:
         return _search_engine
 
     @mcp.tool()
-    async def hybrid_search(
+    async def mahavishnu_hybrid_search(
         query: str,
         repository: str | None = None,
         limit: int = 20,
@@ -313,7 +313,7 @@ def register_search_tools(mcp: FastMCP) -> None:
             Exception
         ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
-                "hybrid_search tool failed",
+                "mahavishnu_hybrid_search tool failed",
                 extra={
                     "query": query[:100],
                     "repository": repository,
@@ -323,7 +323,7 @@ def register_search_tools(mcp: FastMCP) -> None:
             raise
 
     @mcp.tool()
-    async def index_document(
+    async def mahavishnu_index_document(
         doc_id: str,
         title: str,
         content: str,
@@ -357,7 +357,7 @@ def register_search_tools(mcp: FastMCP) -> None:
 
         except ValueError as e:
             logger.error(
-                "index_document tool failed: invalid UUID",
+                "mahavishnu_index_document tool failed: invalid UUID",
                 extra={"doc_id": doc_id, "error": str(e)},
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
@@ -365,7 +365,7 @@ def register_search_tools(mcp: FastMCP) -> None:
             Exception
         ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
-                "index_document tool failed",
+                "mahavishnu_index_document tool failed",
                 extra={
                     "doc_id": doc_id,
                     "title": title[:50] if title else None,
@@ -375,7 +375,7 @@ def register_search_tools(mcp: FastMCP) -> None:
             raise
 
     @mcp.tool()
-    async def delete_document(doc_id: str) -> dict[str, Any]:
+    async def mahavishnu_delete_document(doc_id: str) -> dict[str, Any]:
         """Delete a document from the search index."""
         try:
             # Parse UUID
@@ -398,7 +398,7 @@ def register_search_tools(mcp: FastMCP) -> None:
 
         except ValueError as e:
             logger.error(
-                "delete_document tool failed: invalid UUID",
+                "mahavishnu_delete_document tool failed: invalid UUID",
                 extra={"doc_id": doc_id, "error": str(e)},
             )
             raise ValueError(f"Invalid document UUID: {doc_id}") from e
@@ -406,13 +406,13 @@ def register_search_tools(mcp: FastMCP) -> None:
             Exception
         ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
-                "delete_document tool failed",
+                "mahavishnu_delete_document tool failed",
                 extra={"doc_id": doc_id, "error": str(e)},
             )
             raise
 
     @mcp.tool()
-    async def search_by_repository(
+    async def mahavishnu_search_by_repository(
         repository: str,
         query: str = "",
         limit: int = 50,
@@ -438,7 +438,7 @@ def register_search_tools(mcp: FastMCP) -> None:
             Exception
         ) as e:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
-                "search_by_repository tool failed",
+                "mahavishnu_search_by_repository tool failed",
                 extra={
                     "repository": repository,
                     "query": query[:100],
@@ -448,7 +448,7 @@ def register_search_tools(mcp: FastMCP) -> None:
             raise
 
     @mcp.tool()
-    async def cross_repo_search(
+    async def mahavishnu_cross_repo_search(
         query: str,
         scope: str = "capabilities",
         repo_filter: str | None = None,

@@ -21,7 +21,7 @@ Failure mode semantics
 State save ordering (round-5 fix)
 ---------------------------------
 The state sidecar is updated INSIDE the ``try`` block, AFTER the
-successful ``await pool_route_execute(...)``. A previous revision saved
+successful ``await mahavishnu_pool_route_execute(...)``. A previous revision saved
 state *before* dispatch, which masked dispatch failures behind a
 "successful" state entry. Test
 ``test_modified_event_dispatches_card`` relied on that surface and
@@ -227,19 +227,19 @@ async def _dispatch_card(
 
 
 async def _default_dispatch(card: dict) -> None:
-    """Production dispatch path: route through pool_route_execute.
+    """Production dispatch path: route through mahavishnu_pool_route_execute.
 
     Imports are deferred so importing this module does not require
     the mcp tool surface (keeps tests cheap and avoids loading MCP at
     module import time).
     """
     from mahavishnu.mcp.tools.pool_tools import (
-        pool_route_execute,  # ty: ignore[import-not-found]
+        mahavishnu_pool_route_execute,  # ty: ignore[import-not-found]
     )
 
     prompt = str(card.get("prompt", ""))
     pool_selector = str(card.get("pool", "mahavishnu"))
-    await pool_route_execute(
+    await mahavishnu_pool_route_execute(
         prompt=prompt,
         pool_selector=pool_selector,
         caller_kind="mahavishnu_jot_board",

@@ -4,7 +4,7 @@ These tools expose the unified :class:`EcosystemStatusReport` so that
 agents can query a single canonical source of truth for ecosystem health,
 capabilities, and routing readiness.
 
-See: ``mahavishnu/core/ecosystem_status.py`` for the report models and
+See: ``mahavishnu/core/mahavishnu_ecosystem_status.py`` for the report models and
      ``EcosystemStatusService`` for the collection logic.
 """
 
@@ -41,7 +41,7 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
     """
 
     @mcp.tool()
-    async def ecosystem_status(
+    async def mahavishnu_ecosystem_status(
         sections: list[str] | None = None,
         timeout_per_section_ms: int = 5000,
     ) -> dict[str, Any]:
@@ -101,7 +101,7 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
         return data
 
     @mcp.tool()
-    async def ecosystem_capabilities(
+    async def mahavishnu_ecosystem_capabilities(
         capability: str | None = None,
     ) -> dict[str, Any]:
         """Query ecosystem capabilities by name or list all.
@@ -128,7 +128,7 @@ def register_ecosystem_tools(mcp: FastMCP) -> None:
         return {k: v.model_dump(mode="json") for k, v in caps.items()}
 
     @mcp.tool()
-    async def ecosystem_routing_readiness(
+    async def mahavishnu_ecosystem_routing_readiness(
         task_class: str,
     ) -> dict[str, Any]:
         """Check routing readiness for a given task class.

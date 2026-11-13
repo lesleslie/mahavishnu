@@ -9,7 +9,7 @@ pool over the server's MCP surface and returns the reviewer's reply text.
 Design notes
 ------------
 
-- The pool route is reached over MCP (``pool_route_execute``) rather than
+- The pool route is reached over MCP (``mahavishnu_pool_route_execute``) rather than
   by constructing a :class:`~mahavishnu.pools.manager.PoolManager` here.
   The pool manager is a dependency-injected, lifecycle-managed object on
   the server; the MCP surface is the supported programmatic entry point
@@ -187,7 +187,7 @@ def _extract_reply_text(payload: Any) -> str:
 
     ``CommonMCPClient.call_tool`` returns the raw MCP ``CallToolResult``,
     whose text lives in ``content[0].text``; that text is itself the JSON
-    envelope of the ``pool_route_execute`` result dict, which carries the
+    envelope of the ``mahavishnu_pool_route_execute`` result dict, which carries the
     worker's output under ``result``. Every layer is optional, so this
     walks the known shapes and falls back to the stringified payload.
     """
@@ -265,7 +265,7 @@ def _parse_pool_result(text: str) -> str:
 #: the 2026-09-24 legacy-worker deprecation). Per
 #: ``mahavishnu/workers/registry.py``, shepherd-backed workers "do not
 #: consume a prompt at all -- they take a command or a task ref", while
-#: ``pool_route_execute`` sends ``{"prompt": ...}``. A pool whose worker
+#: ``mahavishnu_pool_route_execute`` sends ``{"prompt": ...}``. A pool whose worker
 #: cannot take a prompt answers with this error.
 POOL_TASK_SHAPE_ERROR: str = "Task must specify 'task_ref' or 'command'"
 
@@ -366,7 +366,7 @@ async def dispatch_review_async(
     try:
         async with CommonMCPClient(base_url=url, timeout=timeout) as client:
             call_result = await client.call_tool(
-                "pool_route_execute",
+                "mahavishnu_pool_route_execute",
                 {
                     "prompt": routed_prompt,
                     "pool_selector": "least_loaded",

@@ -1,6 +1,6 @@
 """The single dispatch edge from the Bodai task system to pool dispatch.
 
-This module exposes the ``tasks_handoff_to_workflow`` MCP tool. It is the
+This module exposes the ``mahavishnu_tasks_handoff_to_workflow`` MCP tool. It is the
 only dispatch edge in the task system: every other task tool (create /
 update / complete / list / get) talks to session-buddy directly; this one
 talks to session-buddy *and* to mahavishnu's pool router in sequence.
@@ -10,7 +10,7 @@ disconnect between steps 2 and 3 emits ``task.handoff_orphan`` before
 re-raising:
 
     1. session-buddy.tasks_get(task_id)         # load the task
-    2. pool_route_execute(prompt=task.content)  # dispatch
+    2. mahavishnu_pool_route_execute(prompt=task.content)  # dispatch
     3. session-buddy.tasks_update(workflow_id)  # back-link
 
 Mahavishnu owns its own copies of :class:`HandoffParams` and
@@ -92,7 +92,7 @@ class HandoffParams(BaseModel):
 
 
 class HandoffResult(BaseModel):
-    """Result envelope returned by ``tasks_handoff_to_workflow`` after
+    """Result envelope returned by ``mahavishnu_tasks_handoff_to_workflow`` after
     step 2 (dispatch) succeeds.
 
     ``workflow_id`` is the identifier of the durable mahavishnu workflow
@@ -397,7 +397,7 @@ def _publish_task_handoff_orphan(
 
 
 # ---------------------------------------------------------------------------
-# Session-buddy + pool_route_execute call sites — module-level so tests
+# Session-buddy + mahavishnu_pool_route_execute call sites — module-level so tests
 # can monkeypatch them at the boundary.
 # ---------------------------------------------------------------------------
 
@@ -462,7 +462,7 @@ def register_tasks_handoff_tools(
     session_buddy_client: Any | None = None,
     workflow_dispatch_fn: Any | None = None,
 ) -> bool:
-    """Register ``tasks_handoff_to_workflow`` with the FastMCP server.
+    """Register ``mahavishnu_tasks_handoff_to_workflow`` with the FastMCP server.
 
     Args:
         mcp: FastMCP server instance (T18 wires this via profiles.py).
@@ -495,14 +495,14 @@ def register_tasks_handoff_tools(
     # absence once, at registration, not on every call.
     if not tasks_handoff_to_workflow_available():
         logger.warning(
-            "tasks_handoff_to_workflow NOT registered — the installed "
+            "mahavishnu_tasks_handoff_to_workflow NOT registered — the installed "
             "session-buddy does not provide a usable task-system "
             "contract (missing, outdated, or failing to import)"
         )
         return False
 
     @mcp.tool()
-    async def tasks_handoff_to_workflow(  # req: REQ-TASKLINK-007
+    async def mahavishnu_tasks_handoff_to_workflow(  # req: REQ-TASKLINK-007
         task_id: Annotated[str, Field(pattern=TASK_ID_PATTERN)],
         adapter: _ADAPTER = "prefect",
         params: HandoffParams | None = None,
@@ -729,5 +729,5 @@ def _raise_rate_limited(exc: RateLimitError) -> None:
     contract forbids returning one. FastMCP translates the raised
     exception into a structured error envelope upstream.
     """
-    logger.warning("tasks_handoff_to_workflow rate-limited: %s", exc)
+    logger.warning("mahavishnu_tasks_handoff_to_workflow rate-limited: %s", exc)
     raise exc

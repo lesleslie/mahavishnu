@@ -119,7 +119,7 @@ def commit_message(refactor_job_id: str, repo: str, extracted_symbol: str) -> st
         f"target: {repo}\n"
         f"extracts: {extracted_symbol}\n"
         f"\n"
-        f"Automated commit from clone_refactor_group DAG.\n"
+        f"Automated commit from mahavishnu_clone_refactor_group DAG.\n"
         f"Revert recipe: git reset --hard $(git log --grep='^refactor-job: {refactor_job_id}$' --pretty=%H -n 1)^"
     )
 

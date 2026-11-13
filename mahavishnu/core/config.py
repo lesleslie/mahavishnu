@@ -405,7 +405,7 @@ class AgnoToolsConfig(BaseModel):
             "search_code",
             "read_file",
             "write_file",
-            "list_repos",
+            "mahavishnu_list_repos",
             "get_repo_info",
             "run_command",
         ],
@@ -670,7 +670,7 @@ class PoolConfig(BaseModel):
     )
     auto_spawn: bool = Field(
         default=False,
-        description="When True, the first pool_route_execute call with an empty registry spawns a default pool before routing. Default-off; opt-in via settings/local.yaml.",
+        description="When True, the first mahavishnu_pool_route_execute call with an empty registry spawns a default pool before routing. Default-off; opt-in via settings/local.yaml.",
     )
     auto_spawn_type: str = Field(
         default="mahavishnu",
@@ -2704,7 +2704,7 @@ class WorktreeStorageSettings(BaseModel):
 
 
 class IdempotencySettings(BaseModel):
-    """Idempotency layer on ``pool_route_execute``.
+    """Idempotency layer on ``mahavishnu_pool_route_execute``.
 
     Per round-4 security finding, default ``fail_mode`` is ``closed``
     (rejected dispatch on DB outage) not ``open`` (proceed silently).
@@ -3230,7 +3230,7 @@ class MahavishnuSettings(BaseSettings):
     # C-1 prep — 4 net-new top-level sections (no-backcompat, no deprecation)
     idempotency: IdempotencySettings = Field(
         default_factory=IdempotencySettings,
-        description="Idempotency layer on pool_route_execute (fail_mode defaults to closed).",
+        description="Idempotency layer on mahavishnu_pool_route_execute (fail_mode defaults to closed).",
     )
     webhook_intake: WebhookIntakeSettings = Field(
         default_factory=WebhookIntakeSettings,

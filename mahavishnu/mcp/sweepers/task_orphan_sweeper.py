@@ -3,7 +3,7 @@
 The sweeper is the recovery half of the v1.1 Bodai task-system
 handoff:
 
-* :func:`mahavishnu.mcp.tools.tasks_handoff.tasks_handoff_to_workflow`
+* :func:`mahavishnu.mcp.tools.tasks_handoff.mahavishnu_tasks_handoff_to_workflow`
   emits a ``task.handoff_orphan`` event on the ``bodai:events`` Redis
   Stream whenever a dispatch succeeds but the back-link to
   session-buddy's task record fails (or the caller disconnects).

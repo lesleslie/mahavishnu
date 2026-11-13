@@ -1271,7 +1271,7 @@ class MahavishnuApp:
         """Execute a workflow in parallel across repositories with progress reporting.
 
         .. note:: **Golden Path**: Prefer ``mahavishnu workflow sweep`` (CLI) or
-           ``trigger_workflow`` MCP tool over calling this method directly.
+           ``mahavishnu_trigger_workflow`` MCP tool over calling this method directly.
            See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
 
         This refactored method orchestrates workflow execution through focused helper methods,
@@ -1470,7 +1470,7 @@ class MahavishnuApp:
 
                 The Oneiric envelope (``success / registry / runtime``) is
                 constructed HERE, not in the builder, so the MCP
-                ``list_adapters`` payload stays binary-compatible with the
+                ``mahavishnu_list_adapters`` payload stays binary-compatible with the
                 pre-Phase-2 wire shape.
                 """
                 runtime_facts: dict[str, Any] = {

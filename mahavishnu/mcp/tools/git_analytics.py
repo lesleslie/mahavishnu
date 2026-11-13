@@ -41,7 +41,7 @@ def register_git_analytics_tools(
         required_permission=Permission.READ,
         require_repo_param="repo_path",
     )
-    async def get_git_velocity_dashboard(
+    async def mahavishnu_get_git_velocity_dashboard(
         repo_paths: list[str],
         days_back: int = 30,
         user_id: str | None = None,
@@ -126,7 +126,7 @@ def register_git_analytics_tools(
         required_permission=Permission.READ,
         require_repo_param="repo_path",
     )
-    async def get_repository_health(
+    async def mahavishnu_get_repository_health(
         repo_path: str,
         user_id: str | None = None,
     ) -> dict[str, Any]:
@@ -196,7 +196,7 @@ def register_git_analytics_tools(
         rbac_manager=rbac_manager,
         required_permission=Permission.READ,
     )
-    async def get_cross_project_patterns(
+    async def mahavishnu_get_cross_project_patterns(
         days_back: int = 90,
         min_occurrences: int = 3,
         detect_until_dry: bool = False,

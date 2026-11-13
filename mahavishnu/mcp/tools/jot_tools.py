@@ -2,8 +2,8 @@
 
 R1: CRUD-only. R11 / TD-B1 / TD-H5: every return type is a TypedDict, no Any.
 
-Sub-plan 3 (Drain) adds 6 tools: ``jot_drain``, ``jot_dispatch``, ``jot_defer``,
-``jot_delete``, ``jot_retry``, ``jot_resurface``. They live alongside the
+Sub-plan 3 (Drain) adds 6 tools: ``mahavishnu_jot_drain``, ``mahavishnu_jot_dispatch``, ``mahavishnu_jot_defer``,
+``mahavishnu_jot_delete``, ``mahavishnu_jot_retry``, ``mahavishnu_jot_resurface``. They live alongside the
 8 CRUD tools from sub-plan 2.
 
 The ``JotSummaryDict`` / ``JotVitalsDict`` / ``_summary_dict`` / ``_vitals_dict``
@@ -129,7 +129,7 @@ def _detail_dict(s: JotSummary, events: list[JotEvent]) -> JotDetailDict:
 # --- 8 tool functions ---
 
 
-def jot_list(
+def mahavishnu_jot_list(
     status: str | None = None,
     limit: int = 50,
 ) -> list[JotSummaryDict]:
@@ -142,7 +142,7 @@ def jot_list(
     return [_summary_dict(s) for s in states[:limit]]
 
 
-def jot_show(handle: str) -> JotDetailDict:
+def mahavishnu_jot_show(handle: str) -> JotDetailDict:
     """Show one jot by id (32 hex) or short_id (6 hex).
 
     Raises JotNotFoundError or JotAmbiguousHandleError.
@@ -153,7 +153,7 @@ def jot_show(handle: str) -> JotDetailDict:
     return _detail_dict(s, events)
 
 
-def jot_add(text: str) -> JotDetailDict:
+def mahavishnu_jot_add(text: str) -> JotDetailDict:
     """Manually create a jot (alternative to ',,' capture). Writes capture event."""
     new_id = _emit("capture", text, ctx={"cwd": str(Path.cwd())})
     events = _read_events()
@@ -162,7 +162,7 @@ def jot_add(text: str) -> JotDetailDict:
     return _detail_dict(s, events)
 
 
-def jot_edit(handle: str, new_text: str) -> JotDetailDict:
+def mahavishnu_jot_edit(handle: str, new_text: str) -> JotDetailDict:
     """Edit a jot's text. Writes edit event.
 
     Raises JotNotFoundError or JotAmbiguousHandleError.
@@ -177,7 +177,7 @@ def jot_edit(handle: str, new_text: str) -> JotDetailDict:
     return _detail_dict(s, events)
 
 
-def jot_done(handle: str) -> JotDetailDict:
+def mahavishnu_jot_done(handle: str) -> JotDetailDict:
     """Mark a jot as done. No-op if already done.
 
     Raises JotNotFoundError or JotAmbiguousHandleError.
@@ -193,7 +193,7 @@ def jot_done(handle: str) -> JotDetailDict:
     return _detail_dict(s, events)
 
 
-def jot_reopen(handle: str) -> JotDetailDict:
+def mahavishnu_jot_reopen(handle: str) -> JotDetailDict:
     """Reopen a done jot. No-op if already open.
 
     Raises JotNotFoundError or JotAmbiguousHandleError.
@@ -209,7 +209,7 @@ def jot_reopen(handle: str) -> JotDetailDict:
     return _detail_dict(s, events)
 
 
-def jot_vitals() -> JotVitalsDict:
+def mahavishnu_jot_vitals() -> JotVitalsDict:
     """Return counts: open, done, dispatch_in_flight, dispatch_failed,
     deferred, deleted, log_event_count (render sub-plan 3 §3.3 shape)."""
     events = _read_events()
@@ -217,7 +217,7 @@ def jot_vitals() -> JotVitalsDict:
     return _vitals_dict(result.states, log_event_count=len(events))
 
 
-def jot_search(query: str, limit: int = 20) -> list[JotSummaryDict]:
+def mahavishnu_jot_search(query: str, limit: int = 20) -> list[JotSummaryDict]:
     """Lexical substring search (Session-Buddy semantic search is a future addition)."""
     events = _read_events()
     result = build_states(events, enrich=False)
@@ -228,7 +228,7 @@ def jot_search(query: str, limit: int = 20) -> list[JotSummaryDict]:
 # --- 6 drain tools (sub-plan 3 §3.3) ---
 
 
-def jot_drain(
+def mahavishnu_jot_drain(
     query: str | None = None,
     limit: int = 20,
     include_in_flight: bool = False,
@@ -237,7 +237,7 @@ def jot_drain(
 
     Lazy import keeps module-load cost down when drain is unused (per
     sub-plan 3 §3.7 separation). Returns the plan but performs NO
-    dispatch — callers invoke ``jot_dispatch`` per selected candidate.
+    dispatch — callers invoke ``mahavishnu_jot_dispatch`` per selected candidate.
     """
     from mahavishnu.jot import drain as _drain
 
@@ -254,7 +254,7 @@ def jot_drain(
     )
 
 
-def jot_dispatch(handle: str) -> DispatchResultDict:
+def mahavishnu_jot_dispatch(handle: str) -> DispatchResultDict:
     """Dispatch a single jot as a Mahavishnu workflow.
 
     Stamps ``dispatched_from="mcp"`` so the fold records the entry surface.
@@ -271,7 +271,7 @@ def jot_dispatch(handle: str) -> DispatchResultDict:
     )
 
 
-def jot_defer(
+def mahavishnu_jot_defer(
     handle: str,
     until_ms: int,
     reason: str | None = None,
@@ -284,14 +284,14 @@ def jot_defer(
     )
 
 
-def jot_delete(handle: str, reason: str | None = None) -> JotSummaryDict:
+def mahavishnu_jot_delete(handle: str, reason: str | None = None) -> JotSummaryDict:
     """Soft delete (audit log retained)."""
     from mahavishnu.jot import drain as _drain
 
     return _summary_dict(asyncio.run(_drain.delete_jot(handle=handle, reason=reason)))
 
 
-def jot_retry(handle: str) -> DispatchResultDict:
+def mahavishnu_jot_retry(handle: str) -> DispatchResultDict:
     """Manual retry of a FAILED-dispatched jot."""
     from mahavishnu.jot import drain as _drain
 
@@ -305,7 +305,7 @@ def jot_retry(handle: str) -> DispatchResultDict:
     )
 
 
-def jot_resurface(
+def mahavishnu_jot_resurface(
     trigger: Literal["session_start", "tool_result"],
     context_text: str,
     limit: int = 3,
@@ -325,7 +325,7 @@ def jot_resurface(
     return [_summary_dict(s) for s in result.matches]
 
 
-def jot_export_markdown(output_path: str) -> dict[str, object]:
+def mahavishnu_jot_export_markdown(output_path: str) -> dict[str, object]:
     """C-11 board export — render the markdown board scaffold to disk.
 
     Req: REQ-018
@@ -356,21 +356,21 @@ def register(mcp) -> None:  # type: ignore[no-untyped-def]
     Idempotent: re-calling replaces prior wrappers.
     """
     names = [
-        "jot_list",
-        "jot_show",
-        "jot_add",
-        "jot_edit",
-        "jot_done",
-        "jot_reopen",
-        "jot_vitals",
-        "jot_search",
-        "jot_drain",
-        "jot_dispatch",
-        "jot_defer",
-        "jot_delete",
-        "jot_retry",
-        "jot_resurface",
-        "jot_export_markdown",
+        "mahavishnu_jot_list",
+        "mahavishnu_jot_show",
+        "mahavishnu_jot_add",
+        "mahavishnu_jot_edit",
+        "mahavishnu_jot_done",
+        "mahavishnu_jot_reopen",
+        "mahavishnu_jot_vitals",
+        "mahavishnu_jot_search",
+        "mahavishnu_jot_drain",
+        "mahavishnu_jot_dispatch",
+        "mahavishnu_jot_defer",
+        "mahavishnu_jot_delete",
+        "mahavishnu_jot_retry",
+        "mahavishnu_jot_resurface",
+        "mahavishnu_jot_export_markdown",
     ]
     module = sys.modules[__name__]
     for name in names:
@@ -410,21 +410,21 @@ def _wrap_at_import() -> None:
         return
 
     names = [
-        "jot_list",
-        "jot_show",
-        "jot_add",
-        "jot_edit",
-        "jot_done",
-        "jot_reopen",
-        "jot_vitals",
-        "jot_search",
-        "jot_drain",
-        "jot_dispatch",
-        "jot_defer",
-        "jot_delete",
-        "jot_retry",
-        "jot_resurface",
-        "jot_export_markdown",
+        "mahavishnu_jot_list",
+        "mahavishnu_jot_show",
+        "mahavishnu_jot_add",
+        "mahavishnu_jot_edit",
+        "mahavishnu_jot_done",
+        "mahavishnu_jot_reopen",
+        "mahavishnu_jot_vitals",
+        "mahavishnu_jot_search",
+        "mahavishnu_jot_drain",
+        "mahavishnu_jot_dispatch",
+        "mahavishnu_jot_defer",
+        "mahavishnu_jot_delete",
+        "mahavishnu_jot_retry",
+        "mahavishnu_jot_resurface",
+        "mahavishnu_jot_export_markdown",
     ]
     module = sys.modules[__name__]
     for name in names:

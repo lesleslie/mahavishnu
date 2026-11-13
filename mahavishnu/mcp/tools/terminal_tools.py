@@ -34,8 +34,8 @@ SessionID = Annotated[
 Command = Annotated[str, StringConstraints(min_length=1, max_length=10000)]
 
 # Spec §14 success-criteria instrumentation. Singleton per module; thread-safe.
-# Used by ``terminal_launch`` to feed the pool_share success criterion
-# (terminal_calls increments the denominator alongside pool_route_execute's
+# Used by ``mahavishnu_terminal_launch`` to feed the pool_share success criterion
+# (terminal_calls increments the denominator alongside mahavishnu_pool_route_execute's
 # pool_calls numerator).
 _metrics = WorkerMetrics()
 
@@ -178,14 +178,14 @@ def register_terminal_tools(
     """
 
     @mcp.tool()
-    async def terminal_launch(
+    async def mahavishnu_terminal_launch(
         command: Command,
         count: int = Field(default=1, ge=1, le=10),
         columns: int = Field(default=120, ge=40, le=300),
         rows: int = Field(default=40, ge=10, le=200),
     ) -> list[str]:
         """Launch terminal sessions running a command."""
-        _metrics.record("terminal_launch")
+        _metrics.record("mahavishnu_terminal_launch")
         _metrics.record_pool_share(pool_calls=0, terminal_calls=1)
         # SECURITY: Validate command safety
         validate_command_safety(command)
@@ -198,7 +198,7 @@ def register_terminal_tools(
         )
 
     @mcp.tool()
-    async def terminal_send(
+    async def mahavishnu_terminal_send(
         session_id: SessionID,
         command: Command,
     ) -> dict[str, Any]:
@@ -211,7 +211,7 @@ def register_terminal_tools(
         return {"status": "success", "session_id": session_id, "command": command}
 
     @mcp.tool()
-    async def terminal_capture(
+    async def mahavishnu_terminal_capture(
         session_id: str,
         lines: int | None = None,
     ) -> str:
@@ -219,7 +219,7 @@ def register_terminal_tools(
         return await terminal_manager.capture_output(session_id, lines)
 
     @mcp.tool()
-    async def terminal_capture_all(
+    async def mahavishnu_terminal_capture_all(
         session_ids: list[str],
         lines: int | None = None,
     ) -> dict[str, str]:
@@ -227,17 +227,17 @@ def register_terminal_tools(
         return await terminal_manager.capture_all_outputs(session_ids, lines)
 
     @mcp.tool()
-    async def terminal_list() -> list[dict]:
+    async def mahavishnu_terminal_list() -> list[dict]:
         """List all active terminal sessions."""
         return await terminal_manager.list_sessions()
 
     @mcp.tool()
-    async def terminal_close(session_id: str) -> None:
+    async def mahavishnu_terminal_close(session_id: str) -> None:
         """Close a terminal session."""
         await terminal_manager.close_session(session_id)
 
     @mcp.tool()
-    async def terminal_close_all() -> dict:
+    async def mahavishnu_terminal_close_all() -> dict:
         """Close all terminal sessions."""
         sessions = await terminal_manager.list_sessions()
         # Filter out sessions with missing/empty IDs before round-tripping
@@ -255,7 +255,7 @@ def register_terminal_tools(
         return {"closed_count": len(session_ids)}
 
     @mcp.tool()
-    async def terminal_switch_adapter(
+    async def mahavishnu_terminal_switch_adapter(
         adapter_name: str,
         migrate_sessions: bool = False,
     ) -> dict:
@@ -331,7 +331,7 @@ def register_terminal_tools(
             return {"status": "error", "message": f"Failed to switch adapter: {e}"}
 
     @mcp.tool()
-    async def terminal_current_adapter() -> dict:
+    async def mahavishnu_terminal_current_adapter() -> dict:
         """Get information about the current terminal adapter."""
         return {
             "adapter": terminal_manager.current_adapter(),
@@ -339,7 +339,7 @@ def register_terminal_tools(
         }
 
     @mcp.tool()
-    async def terminal_list_adapters() -> dict:
+    async def mahavishnu_terminal_list_adapters() -> dict:
         """List all available terminal adapters."""
         # Built dynamically from the adapter registry (D0 refactor). Each
         # adapter module registers itself on import; the registry is the
@@ -359,7 +359,7 @@ def register_terminal_tools(
         # opt-in; when its flag is off we still register its NAME in
         # the adapter registry so internal resolution paths (e.g.
         # ``switch_adapter``) can accept the name and emit a clear
-        # "disabled" error. The list_adapters tool, however, only
+        # "disabled" error. The mahavishnu_list_adapters tool, however, only
         # surfaces what the operator can actually select — matching
         # the pre-D0 behavior the ``TestTerminalListAdapters`` test
         # fixtures pin.

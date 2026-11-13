@@ -63,7 +63,7 @@ def get_pool_factory(name: str) -> Callable[..., Any]:
 def list_pool_types() -> tuple[str, ...]:
     """Return the registered pool type names, sorted.
 
-    Useful for CLI whitelists and ``terminal_list_adapters``-style discovery.
+    Useful for CLI whitelists and ``mahavishnu_terminal_list_adapters``-style discovery.
     """
     return tuple(sorted(_POOL_FACTORIES))
 

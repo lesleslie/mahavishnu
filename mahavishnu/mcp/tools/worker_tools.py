@@ -136,7 +136,7 @@ async def worker_collect_results(
       returns an envelope ``{"workers": {wid: {text, next_offset,
       truncated, pane_alive}}}`` so callers can page pane output via
       ``since_offset`` (F1, F20). An empty ``worker_ids`` returns
-      ``{"workers": {}}`` without calling ``capture_output``.
+      ``{"workers": {}}`` without calling ``mahavishnu_capture_output``.
     * **Legacy path** — when ``_durable_manager`` is not configured,
       returns the original flat ``{wid: {status, output, error,
       exit_code, duration_seconds, metadata}}`` mapping so existing

@@ -1,4 +1,4 @@
-"""Cluster-claim helpers for clone_refactor_group.
+"""Cluster-claim helpers for mahavishnu_clone_refactor_group.
 
 Single-process dedup via dict[str, asyncio.Lock]. Cross-process dedup is
 deferred (out of scope per spec §3 Non-Goals; MCPStateBackend.put() is not CAS).

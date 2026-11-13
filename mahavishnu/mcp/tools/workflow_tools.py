@@ -70,7 +70,7 @@ def register_workflow_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> No
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.VIEW_WORKFLOW_STATUS
     )
-    async def workflow_get_outcome_tool(
+    async def mahavishnu_workflow_get_outcome_tool(
         workflow_id: str,
         user_id: str | None = None,
     ) -> WorkflowOutcome | dict[str, Any] | None:

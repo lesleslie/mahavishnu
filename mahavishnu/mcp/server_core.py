@@ -400,7 +400,7 @@ class FastMCPServer:
         server = self.server
 
         @server.tool()
-        async def list_repos(
+        async def mahavishnu_list_repos(
             tag: str | None = None,
             limit: int | None = None,
             offset: int | None = None,
@@ -409,8 +409,8 @@ class FastMCPServer:
             """List repositories in the registry.
 
             Do NOT use to scan or read repository contents — this returns the
-            catalog only. Use `pool_route_execute` to dispatch work against a
-            repo, or `get_capability_result` to query a registered adapter.
+            catalog only. Use `mahavishnu_pool_route_execute` to dispatch work against a
+            repo, or `mahavishnu_get_capability_result` to query a registered adapter.
 
             Returns a dict with keys `repos` (list of `{path, exists}`),
             `total_count`, `filtered_count`, and the `tag` filter that was
@@ -446,7 +446,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def trigger_workflow(
+        async def mahavishnu_trigger_workflow(
             adapter: str,
             task_type: str,
             params: dict[str, Any] | None = None,
@@ -462,9 +462,9 @@ class FastMCPServer:
             Workflows run as durable Prefect flows, Agno agent loops, or
             LlamaIndex RAG pipelines depending on `adapter`.
 
-            For ad-hoc single-task dispatch, prefer `pool_route_execute` instead —
+            For ad-hoc single-task dispatch, prefer `mahavishnu_pool_route_execute` instead —
             it's lighter weight and goes through the pool manager. Use
-            `trigger_workflow` when you need durable orchestration, scheduled
+            `mahavishnu_trigger_workflow` when you need durable orchestration, scheduled
             execution, or cross-adapter composition.
 
             **Adapter selection:**
@@ -474,7 +474,7 @@ class FastMCPServer:
             - `agno` — agent loops, multi-step reasoning, tool use
 
             Returns a `workflow_id` immediately (C-NEW-5: fire-and-forget).
-            Poll `get_workflow_status(workflow_id=...)` for results.
+            Poll `mahavishnu_get_workflow_status(workflow_id=...)` for results.
 
             Args:
                 adapter: One of `prefect`, `llamaindex`, `agno`.
@@ -492,7 +492,7 @@ class FastMCPServer:
 
             Example:
                 ```
-                result = await trigger_workflow(
+                result = await mahavishnu_trigger_workflow(
                     adapter="prefect",
                     task_type="code_review",
                     repos=["/path/to/mahavishnu", "/path/to/akosha"],
@@ -620,7 +620,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def get_workflow_status(
+        async def mahavishnu_get_workflow_status(
             workflow_id: str, user_id: str | None = None
         ) -> dict[str, Any]:
             """Get status of a workflow execution."""
@@ -671,7 +671,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def list_workflows(
+        async def mahavishnu_list_workflows(
             status: str | None = None,
             limit: int = 10,
             offset: int = 0,
@@ -679,8 +679,8 @@ class FastMCPServer:
         ) -> dict[str, Any]:
             """List workflows matching optional status filter.
 
-            Do NOT use to run a new workflow — use `trigger_workflow` for that.
-            Do NOT use for aggregate metrics — use `get_workflow_statistics`
+            Do NOT use to run a new workflow — use `mahavishnu_trigger_workflow` for that.
+            Do NOT use for aggregate metrics — use `mahavishnu_get_workflow_statistics`
             for that.
 
             Returns a dict with `workflows`, `total_count`, and the `status`
@@ -749,7 +749,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def cancel_workflow(
+        async def mahavishnu_cancel_workflow(
             workflow_id: str, user_id: str | None = None
         ) -> dict[str, Any]:
             """Cancel a running workflow."""
@@ -786,7 +786,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def create_user(
+        async def mahavishnu_create_user(
             user_id: str,
             roles: list[str],
             allowed_repos: list[str] | None = None,
@@ -827,7 +827,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def check_permission(
+        async def mahavishnu_check_permission(
             user_id: str, repo: str, permission: str
         ) -> dict[str, Any]:
             """Check if a user has a specific permission for a repository."""
@@ -861,12 +861,12 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def get_observability_metrics() -> dict[str, Any]:
+        async def mahavishnu_get_observability_metrics() -> dict[str, Any]:
             """Get the current observability snapshot.
 
             Do NOT use to query historical metrics or read log lines — use
-            `search_logs` for that. Do NOT use for the ecosystem health roll-up
-            — use `get_monitoring_dashboard` for that.
+            `mahavishnu_search_logs` for that. Do NOT use for the ecosystem health roll-up
+            — use `mahavishnu_get_monitoring_dashboard` for that.
 
             Returns a dict with `performance_metrics`, `recent_logs_count`,
             and `recent_logs_preview` (last 10 log lines). Empty
@@ -912,7 +912,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def search_logs(
+        async def mahavishnu_search_logs(
             query: str | None = None,
             level: str | None = None,
             workflow_id: str | None = None,
@@ -955,7 +955,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def search_workflows(
+        async def mahavishnu_search_workflows(
             workflow_id: str | None = None,
             adapter: str | None = None,
             task_type: str | None = None,
@@ -998,12 +998,12 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def get_workflow_statistics() -> dict[str, Any]:
+        async def mahavishnu_get_workflow_statistics() -> dict[str, Any]:
             """Get aggregate workflow statistics over the corpus.
 
-            Do NOT use to enumerate specific workflows — use `list_workflows`
+            Do NOT use to enumerate specific workflows — use `mahavishnu_list_workflows`
             for that. Do NOT use for per-tool performance — use
-            `get_observability_metrics` for that.
+            `mahavishnu_get_observability_metrics` for that.
 
             Returns a dict with `status` and `statistics` (status counts,
             duration distributions). Empty `statistics` means no workflows
@@ -1025,10 +1025,10 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def get_log_statistics() -> dict[str, Any]:
+        async def mahavishnu_get_log_statistics() -> dict[str, Any]:
             """Get aggregate log statistics.
 
-            Do NOT use to read individual log lines — use `search_logs` for
+            Do NOT use to read individual log lines — use `mahavishnu_search_logs` for
             that.
 
             Returns a dict with `status` and `statistics` (level counts,
@@ -1051,10 +1051,10 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def get_recovery_metrics() -> dict[str, Any]:
+        async def mahavishnu_get_recovery_metrics() -> dict[str, Any]:
             """Get metrics about error recovery and resilience operations.
 
-            Do NOT use to trigger recovery — use `heal_workflows` for that.
+            Do NOT use to trigger recovery — use `mahavishnu_heal_workflows` for that.
 
             Returns a dict with `status` and `metrics` (recovery attempt
             counts, success rates, mean-time-to-recover). Empty `metrics` is
@@ -1077,12 +1077,12 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def create_backup(backup_type: str = "full") -> dict[str, Any]:
+        async def mahavishnu_create_backup(backup_type: str = "full") -> dict[str, Any]:
             """Create a backup of the system.
 
             The backup id is assigned by the backup manager and returned in
             the response — callers cannot choose it. Use the returned id
-            with `restore_backup`.
+            with `mahavishnu_restore_backup`.
 
             Args:
                 backup_type: Type of backup to create (e.g. `full`).
@@ -1113,11 +1113,11 @@ class FastMCPServer:
                 return {"status": "error", "error": f"Failed to create backup: {e}"}
 
         @server.tool()
-        async def list_backups() -> dict[str, Any]:
+        async def mahavishnu_list_backups() -> dict[str, Any]:
             """List available system backups.
 
-            Do NOT use to create a backup — use `create_backup` for that.
-            Do NOT use to restore from a backup — use `restore_backup` for
+            Do NOT use to create a backup — use `mahavishnu_create_backup` for that.
+            Do NOT use to restore from a backup — use `mahavishnu_restore_backup` for
             that.
 
             Returns a dict with `backups` (list of `{backup_id, timestamp,
@@ -1158,7 +1158,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def restore_backup(backup_id: str) -> dict[str, Any]:
+        async def mahavishnu_restore_backup(backup_id: str) -> dict[str, Any]:
             """Restore from a backup."""
             try:
                 from ..core.backup_recovery import BackupManager
@@ -1176,7 +1176,7 @@ class FastMCPServer:
                 return {"status": "error", "error": f"Failed to restore backup: {e}"}
 
         @server.tool()
-        async def run_disaster_recovery_check() -> dict[str, Any]:
+        async def mahavishnu_run_disaster_recovery_check() -> dict[str, Any]:
             """Run a disaster recovery check."""
             try:
                 from ..core.backup_recovery import DisasterRecoveryManager
@@ -1193,7 +1193,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def heal_workflows() -> dict[str, Any]:
+        async def mahavishnu_heal_workflows() -> dict[str, Any]:
             """Manually trigger healing of failed workflows."""
             try:
                 await self.app.error_recovery_manager.monitor_and_heal_workflows()
@@ -1203,11 +1203,11 @@ class FastMCPServer:
                 return {"status": "error", "error": f"Failed to initiate healing: {e}"}
 
         @server.tool()
-        async def get_monitoring_dashboard() -> dict[str, Any]:
+        async def mahavishnu_get_monitoring_dashboard() -> dict[str, Any]:
             """Get the canonical ecosystem status report.
 
-            Do NOT use for raw per-tool metrics — use `get_observability_metrics`
-            or `get_workflow_statistics` for that.
+            Do NOT use for raw per-tool metrics — use `mahavishnu_get_observability_metrics`
+            or `mahavishnu_get_workflow_statistics` for that.
 
             Returns a dict with `status` and `ecosystem_status` (health roll-up
             across pools, recovery, and workflows).
@@ -1237,11 +1237,11 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def get_active_alerts() -> dict[str, Any]:
+        async def mahavishnu_get_active_alerts() -> dict[str, Any]:
             """Get currently-firing (non-acknowledged) alerts.
 
             Do NOT use to acknowledge or resolve alerts — use
-            `acknowledge_alert` for that.
+            `mahavishnu_acknowledge_alert` for that.
 
             Returns a dict with `alerts` (list of `{id, timestamp, severity,
             type, title, description, details}`) and `count`. Empty `alerts`
@@ -1286,7 +1286,7 @@ class FastMCPServer:
                 return {"status": "error", "error": f"Failed to get active alerts: {e}"}
 
         @server.tool()
-        async def acknowledge_alert(alert_id: str, user: str) -> dict[str, Any]:
+        async def mahavishnu_acknowledge_alert(alert_id: str, user: str) -> dict[str, Any]:
             """Acknowledge an alert."""
             try:
                 if not self.app.monitoring_service:
@@ -1307,7 +1307,7 @@ class FastMCPServer:
                 return {"status": "error", "error": f"Failed to acknowledge alert: {e}"}
 
         @server.tool()
-        async def trigger_test_alert(
+        async def mahavishnu_trigger_test_alert(
             severity: str = "medium",
             title: str = "Test Alert",
             description: str = "This is a test alert",
@@ -1354,7 +1354,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def flush_metrics() -> dict[str, Any]:
+        async def mahavishnu_flush_metrics() -> dict[str, Any]:
             """Force flush all pending metrics to exporters."""
             try:
                 if not self.app.observability:
@@ -1370,12 +1370,12 @@ class FastMCPServer:
                 return {"status": "error", "error": f"Failed to flush metrics: {e}"}
 
         @server.tool()
-        async def list_adapters() -> dict[str, Any]:
+        async def mahavishnu_list_adapters() -> dict[str, Any]:
             """List registered engine adapters with per-adapter health.
 
-            Do NOT use to dispatch work — use `pool_route_execute` for that.
+            Do NOT use to dispatch work — use `mahavishnu_pool_route_execute` for that.
             Do NOT use for one-off adapter queries — use
-            `get_capability_result` for that.
+            `mahavishnu_get_capability_result` for that.
 
             Returns a dict keyed by adapter name with `enabled`, `health`,
             `type`, and `features`. Missing adapters are absent from the
@@ -1486,7 +1486,7 @@ class FastMCPServer:
                 }
 
         @server.tool()
-        async def get_tool_versions(
+        async def mahavishnu_get_tool_versions(
             tool_name: str | None = None,
         ) -> dict[str, Any]:
             """Get version metadata for MCP tools."""
@@ -1598,7 +1598,7 @@ class FastMCPServer:
                 )
             return response
 
-        # T18: Wire tasks_handoff_to_workflow (Bodai task system dispatch edge).
+        # T18: Wire mahavishnu_tasks_handoff_to_workflow (Bodai task system dispatch edge).
         # The gate compares the two repos' shared envelopes field-for-field
         # and SKIPS registration on drift — a version skew must cost the
         # fleet the handoff edge, not the orchestrator. Registration
@@ -1620,7 +1620,7 @@ class FastMCPServer:
             )
         else:
             logger.warning(
-                "tasks_handoff_to_workflow NOT wired — the installed "
+                "mahavishnu_tasks_handoff_to_workflow NOT wired — the installed "
                 "session-buddy does not provide a usable task-system "
                 "contract (missing, outdated, or failing to import). "
                 "The gate logs the exact cause; if it is version skew, "

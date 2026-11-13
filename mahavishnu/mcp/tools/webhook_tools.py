@@ -56,7 +56,7 @@ def register_webhook_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> Non
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_WEBHOOK
     )
-    async def webhook_replay_tool(
+    async def mahavishnu_webhook_replay_tool(
         webhook_id: str,
         user_id: str | None = None,
         token: str | None = None,

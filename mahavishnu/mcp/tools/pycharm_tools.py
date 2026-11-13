@@ -140,13 +140,13 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
             "fallback_active": not mcp_available,
             "tools": [
                 "pycharm_health",
-                "pycharm_run_diagnostics",
-                "pycharm_open_file",
-                "pycharm_search_in_project",
-                "pycharm_replace_in_file",
-                "pycharm_reformat_file",
-                "pycharm_refactor_symbol",
-                "pycharm_list_problems",
+                "mahavishnu_pycharm_run_diagnostics",
+                "mahavishnu_pycharm_open_file",
+                "mahavishnu_pycharm_search_in_project",
+                "mahavishnu_pycharm_replace_in_file",
+                "mahavishnu_pycharm_reformat_file",
+                "mahavishnu_pycharm_refactor_symbol",
+                "mahavishnu_pycharm_list_problems",
             ],
             "message": (
                 "PyCharm MCP server connected"
@@ -156,7 +156,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_run_diagnostics(
+    async def mahavishnu_pycharm_run_diagnostics(
         file_path: str,
         errors_only: bool = False,
     ) -> dict[str, Any]:
@@ -194,7 +194,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_open_file(
+    async def mahavishnu_pycharm_open_file(
         file_path: str, line: int | None = None
     ) -> dict[str, Any]:
         """Open a file in PyCharm editor, optionally at a specific line."""
@@ -230,7 +230,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_search_in_project(
+    async def mahavishnu_pycharm_search_in_project(
         pattern: str,
         file_pattern: str | None = None,
     ) -> dict[str, Any]:
@@ -258,7 +258,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_replace_in_file(
+    async def mahavishnu_pycharm_replace_in_file(
         file_path: str,
         search_text: str,
         replace_text: str,
@@ -296,7 +296,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_reformat_file(file_path: str) -> dict[str, Any]:
+    async def mahavishnu_pycharm_reformat_file(file_path: str) -> dict[str, Any]:
         """Reformat a file using PyCharm's code formatter."""
         try:
             if app and hasattr(app, "worker_manager") and app.worker_manager:
@@ -325,7 +325,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_refactor_symbol(
+    async def mahavishnu_pycharm_refactor_symbol(
         symbol_name: str,
         new_name: str,
         scope: str = "project",
@@ -366,7 +366,7 @@ def register_pycharm_tools(mcp: FastMCP, app: Any = None) -> None:
         }
 
     @mcp.tool()
-    async def pycharm_list_problems(
+    async def mahavishnu_pycharm_list_problems(
         file_path: str,
         severity: str | None = None,
     ) -> dict[str, Any]:

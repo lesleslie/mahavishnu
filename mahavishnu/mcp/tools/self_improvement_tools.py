@@ -730,15 +730,15 @@ def register_self_improvement_tools(
         app: MahavishnuApp instance.
 
     This registers the following tools:
-    - review_and_fix: Run review agents and optionally fix issues
-    - request_approval: Request manual approval
-    - respond_to_approval: Respond to pending approval
-    - get_pending_approvals: List all pending approvals
+    - mahavishnu_review_and_fix: Run review agents and optionally fix issues
+    - mahavishnu_request_approval: Request manual approval
+    - mahavishnu_respond_to_approval: Respond to pending approval
+    - mahavishnu_get_pending_approvals: List all pending approvals
     """
     tools = SelfImprovementTools(app)
 
     @mcp.tool()
-    async def review_and_fix(
+    async def mahavishnu_review_and_fix(
         scope: str = "critical",
         auto_fix: bool = False,
         dry_run: bool = False,
@@ -752,7 +752,7 @@ def register_self_improvement_tools(
         )
 
     @mcp.tool()
-    async def request_approval(
+    async def mahavishnu_request_approval(
         approval_type: str,
         context: dict[str, Any],
     ) -> dict[str, Any]:
@@ -763,7 +763,7 @@ def register_self_improvement_tools(
         )
 
     @mcp.tool()
-    async def respond_to_approval(
+    async def mahavishnu_respond_to_approval(
         approval_id: str,
         approved: bool,
         selected_option: int | None = None,
@@ -778,12 +778,12 @@ def register_self_improvement_tools(
         )
 
     @mcp.tool()
-    async def get_pending_approvals() -> dict[str, Any]:
+    async def mahavishnu_get_pending_approvals() -> dict[str, Any]:
         """Get all pending approval requests."""
         return await tools.get_pending_approvals()
 
     @mcp.tool()
-    async def self_improvement_analyze_failures(
+    async def mahavishnu_self_improvement_analyze_failures(
         repo: str | None = None,
         hook: str | None = None,
         time_window_days: int = 30,
@@ -796,7 +796,7 @@ def register_self_improvement_tools(
         )
 
     @mcp.tool()
-    async def self_improvement_generate(
+    async def mahavishnu_self_improvement_generate(
         fingerprint: str,
         pattern_description: str = "",
     ) -> dict[str, Any]:
@@ -807,7 +807,7 @@ def register_self_improvement_tools(
         )
 
     @mcp.tool()
-    async def self_improvement_status(
+    async def mahavishnu_self_improvement_status(
         limit: int = 20,
     ) -> dict[str, Any]:
         """List recent self-improvement records with before/after failure rates."""

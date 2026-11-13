@@ -724,7 +724,7 @@ class DeadLetterQueue:
         """Manually retry a specific task.
 
         .. note:: **Golden Path**: Prefer ``mahavishnu workflow heal`` (CLI) or
-           ``heal_workflows`` MCP tool over calling this method directly.
+           ``mahavishnu_heal_workflows`` MCP tool over calling this method directly.
            See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
 
         Args:

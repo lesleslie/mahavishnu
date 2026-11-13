@@ -322,8 +322,8 @@ class PoolManager:
 
         Single source of truth for the auto-spawn sizing semantics used by
         both ``route_task`` (defensive auto-spawn path) and the MCP tools
-        (``pool_spawn``, ``pool_bootstrap``). Type-specific sizing is
-        consistent with ``pool_spawn``/``pool_bootstrap``:
+        (``mahavishnu_pool_spawn``, ``mahavishnu_pool_bootstrap``). Type-specific sizing is
+        consistent with ``mahavishnu_pool_spawn``/``mahavishnu_pool_bootstrap``:
           - ``mahavishnu``: honors ``min_workers``/``max_workers`` from config
           - ``session-buddy``: substrate fixed at 3 workers
           - ``runpod``: substrate fixed at ~10 workers
@@ -346,7 +346,7 @@ class PoolManager:
             # (WorkerManager.WORKER_SUPPORTED_TYPES == {"shepherd"}).
             # Operators who want gateway-openclaw override this via
             # MAHAVISHNU__POOLS__WORKER_TYPE or pass worker_type= explicitly
-            # to pool_spawn.
+            # to mahavishnu_pool_spawn.
             "worker_type": "shepherd",
         }
         try:
@@ -608,7 +608,7 @@ class PoolManager:
         """
         # Quota enforcement happens at the MCP tool boundary (see
         # ``_authorize_durable_fast_path`` in pool_tools.py for the
-        # pool_route_execute path, and the ``pool_execute`` tool for the
+        # mahavishnu_pool_route_execute path, and the ``pool_execute`` tool for the
         # direct path). Calling
         # ``_enforce_caller_quota`` here would double-count quota because
         # ``route_task`` already delegates through ``execute_on_pool``.
@@ -737,7 +737,7 @@ class PoolManager:
         if not self._pools:
             if auto_spawn:
                 # Single source of truth for auto-spawn sizing (shared
-                # with pool_spawn/pool_bootstrap MCP tools). Logs a
+                # with mahavishnu_pool_spawn/mahavishnu_pool_bootstrap MCP tools). Logs a
                 # warning on settings drift so operators can detect when
                 # the resolved defaults diverge from their config.
                 defaults = self._resolve_auto_spawn_defaults()

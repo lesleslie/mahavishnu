@@ -487,7 +487,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
             return "worker:read" in permissions
 
         # Phase 2: settle-run channels broadcast transitions for the
-        # ``worker_run_with_settle`` / ``worker_settle`` MCP tools.
+        # ``mahavishnu_worker_run_with_settle`` / ``mahavishnu_worker_settle`` MCP tools.
         # ``settle:`` is per-run (e.g. ``settle:settle-abcd1234``); ``run:``
         # is the equivalent per-worker alias (e.g. ``run:w-xyz``).
         # Both gate on ``worker:read`` so callers with worker visibility
@@ -759,8 +759,8 @@ class MahavishnuWebSocketServer(WebSocketServer):
         await self.broadcast_to_room(f"pool:{normalized_pool_id}", event)
 
     # Phase 2: settle-run broadcasts. Phase 2 introduces the ``settle:`` and
-    # ``run:`` channels for the ``worker_run_with_settle`` /
-    # ``worker_settle`` MCP tool pair. ``settle:{run_ref}`` is the canonical
+    # ``run:`` channels for the ``mahavishnu_worker_run_with_settle`` /
+    # ``mahavishnu_worker_settle`` MCP tool pair. ``settle:{run_ref}`` is the canonical
     # per-run channel; ``run:{worker_id}`` is the per-worker alias for
     # consumers that key on the underlying worker rather than the settle
     # handle. Both fire on the same event so subscribers on either channel

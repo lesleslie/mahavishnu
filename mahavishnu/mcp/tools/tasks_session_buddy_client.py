@@ -3,7 +3,7 @@
 Two components need to talk to session-buddy over MCP for the task
 system, and neither needs the rest of its 200+ tools:
 
-* ``tasks_handoff_to_workflow`` reads the task (``tasks_get``) and binds
+* ``mahavishnu_tasks_handoff_to_workflow`` reads the task (``tasks_get``) and binds
   the workflow to it (``tasks_link_workflow``).
 * ``task_orphan_sweeper`` reads the task and re-links it after a failed
   binding.

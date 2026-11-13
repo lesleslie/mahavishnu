@@ -31,7 +31,7 @@ def _categorize_tool(name: str) -> str:
 
     The category is derived from the leading underscore-separated segment of
     the tool name when present (e.g. ``pool_execute`` -> ``pool``,
-    ``terminal_launch`` -> ``terminal``); otherwise the tool is bucketed
+    ``mahavishnu_terminal_launch`` -> ``terminal``); otherwise the tool is bucketed
     under ``core``. ``list_primitives`` and ``show_primitive`` are
     bucketed under ``primitives``.
     """
@@ -165,7 +165,7 @@ def register_primitive_tools(mcp: FastMCP) -> None:
     """
 
     @mcp.tool()
-    async def list_primitives_tool(
+    async def mahavishnu_list_primitives_tool(
         category: str | None = None,
     ) -> dict[str, Any]:
         """List primitives (MCP tools) registered on this server.
@@ -182,7 +182,7 @@ def register_primitive_tools(mcp: FastMCP) -> None:
         return await list_primitives(server=mcp, category=category)
 
     @mcp.tool()
-    async def show_primitive_tool(name: str) -> dict[str, Any]:
+    async def mahavishnu_show_primitive_tool(name: str) -> dict[str, Any]:
         """Show full detail (docstring + input schema) for one primitive.
 
         Args:

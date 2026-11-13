@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# team_from_goal decomposition.
+# mahavishnu_team_from_goal decomposition.
 # req: REQ-CX-002
 #
 # Each helper owns one failure mode or one output shape so the tool body
@@ -395,13 +395,13 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
         mcp: FastMCP instance
 
     This registers 3 goal-driven team tools:
-    - team_from_goal: Create and optionally run a team from a natural language goal
-    - parse_goal: Parse a goal to see what team would be created
-    - list_team_skills: List all available skills for team creation
+    - mahavishnu_team_from_goal: Create and optionally run a team from a natural language goal
+    - mahavishnu_parse_goal: Parse a goal to see what team would be created
+    - mahavishnu_list_team_skills: List all available skills for team creation
     """
 
     @mcp.tool()
-    async def team_from_goal(
+    async def mahavishnu_team_from_goal(
         goal: str,
         name: str | None = None,
         mode: str | None = None,
@@ -577,7 +577,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             return _failure_response(ErrorCode.INTERNAL_ERROR.value, str(e))
 
     @mcp.tool()
-    async def parse_goal(goal: str, user_id: str | None = None) -> dict[str, Any]:
+    async def mahavishnu_parse_goal(goal: str, user_id: str | None = None) -> dict[str, Any]:
         """Parse a goal to see what team would be created.
 
         Structural C901 suppression: parses, validates, broadcasts, and
@@ -772,7 +772,7 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             }
 
     @mcp.tool()
-    async def list_team_skills() -> dict[str, Any]:
+    async def mahavishnu_list_team_skills() -> dict[str, Any]:
         """List all available skills for goal-driven team creation."""
         try:
             # Check feature flags first

@@ -2,18 +2,18 @@
 
 Exposes nine FastMCP tools that proxy to a :class:`DurableWorkerManager`:
 
-* ``launch_worker`` — spawn a worker backed by a tmux session.
-* ``send_input`` — type text into the worker's pane.
-* ``capture_output`` — snapshot the tmux pane buffer.
-* ``worker_status`` — return the durable record plus live pane info.
-* ``wait_for_state`` — poll until a target lifecycle state is reached.
-* ``cancel_worker`` — soft-cancel the worker (with optional SIGKILL fallback).
-* ``worker_revoke`` — mark the worker reaped (optionally with force kill).
-* ``worker_run_with_settle`` — spawn a worker AND register a settle record
+* ``mahavishnu_launch_worker`` — spawn a worker backed by a tmux session.
+* ``mahavishnu_send_input`` — type text into the worker's pane.
+* ``mahavishnu_capture_output`` — snapshot the tmux pane buffer.
+* ``mahavishnu_worker_status`` — return the durable record plus live pane info.
+* ``mahavishnu_wait_for_state`` — poll until a target lifecycle state is reached.
+* ``mahavishnu_cancel_worker`` — soft-cancel the worker (with optional SIGKILL fallback).
+* ``mahavishnu_worker_revoke`` — mark the worker reaped (optionally with force kill).
+* ``mahavishnu_worker_run_with_settle`` — spawn a worker AND register a settle record
   in state=``proposed`` BEFORE any file is written. The settle record is
   persisted to MCP (with dead-letter fallback) prior to launch so a
   process crash cannot leave a worker writing files without an audit trail.
-* ``worker_settle`` — drive a settle run through its lifecycle:
+* ``mahavishnu_worker_settle`` — drive a settle run through its lifecycle:
   ``select | apply | release | discard``. ``apply`` shells out to
   ``git merge-file`` (never a hand-rolled algorithm); conflicts surface
   as structured :class:`MergeConflictError` payloads.
@@ -186,7 +186,7 @@ def _latest_transition(record: Any) -> dict[str, str]:
     }
 
 
-async def launch_worker(
+async def mahavishnu_launch_worker(
     prompt: str,
     *,
     worker_type: str = "terminal-claude",
@@ -214,7 +214,7 @@ async def launch_worker(
     ``{state: "tmux_unavailable"}`` — the caller must fall back to
     ``managed_tmux`` or ``no_tmux``.
     """
-    _metrics.record("launch_worker")
+    _metrics.record("mahavishnu_launch_worker")
     if _durable_manager is None:
         return {"worker_id": None, "state": "manager_unconfigured"}
 
@@ -265,18 +265,18 @@ async def launch_worker(
     }
 
 
-async def send_input(worker_id: str, input: str, *, submit: bool = True) -> dict:
+async def mahavishnu_send_input(worker_id: str, input: str, *, submit: bool = True) -> dict:
     """Deliver text to the worker's pane. ``accepted=False`` means the worker
     is in a state that cannot accept input (already reaped, missing pane, etc.).
     """
-    _metrics.record("send_input")
+    _metrics.record("mahavishnu_send_input")
     if _durable_manager is None:
         return {"accepted": False, "byte_offset": 0}
     accepted = _durable_manager.send_input(worker_id, input, submit=submit)
     return {"accepted": accepted, "byte_offset": 0}
 
 
-async def capture_output(
+async def mahavishnu_capture_output(
     worker_id: str,
     *,
     since_offset: int = 0,
@@ -284,7 +284,7 @@ async def capture_output(
     strip_ansi: bool = True,
 ) -> dict:
     """Return a fresh pane snapshot bounded by ``since_offset`` and ``max_bytes``."""
-    _metrics.record("capture_output")
+    _metrics.record("mahavishnu_capture_output")
     if _durable_manager is None:
         return {
             "worker_id": worker_id,
@@ -308,7 +308,7 @@ async def capture_output(
     }
 
 
-async def worker_status(worker_id: str) -> dict:
+async def mahavishnu_worker_status(worker_id: str) -> dict:
     """Return the durable record for ``worker_id`` with live pane metadata.
 
     ``pane_command`` is fetched via :meth:`DurableWorkerManager.pane_command`
@@ -316,7 +316,7 @@ async def worker_status(worker_id: str) -> dict:
     revisions) the field silently falls back to ``None`` rather than crash
     the status call.
     """
-    _metrics.record("worker_status")
+    _metrics.record("mahavishnu_worker_status")
     if _durable_manager is None:
         return {"worker_id": worker_id, "state": "manager_unconfigured"}
 
@@ -364,7 +364,7 @@ async def worker_status(worker_id: str) -> dict:
     }
 
 
-async def wait_for_state(
+async def mahavishnu_wait_for_state(
     worker_id: str,
     until_state: str,
     timeout_ms: int = 30_000,
@@ -376,7 +376,7 @@ async def wait_for_state(
     When ``include_output`` is True, the response carries incremental pane
     output captured during the wait (``output_during_wait``), matching F9.
     """
-    _metrics.record("wait_for_state")
+    _metrics.record("mahavishnu_wait_for_state")
     if _durable_manager is None:
         return {
             "worker_id": worker_id,
@@ -422,7 +422,7 @@ async def wait_for_state(
     }
 
 
-async def cancel_worker(
+async def mahavishnu_cancel_worker(
     worker_id: str, *, signal: str = "soft", grace_ms: int = 5_000
 ) -> dict:
     """Cancel a worker gracefully. ``signal="SIGKILL"`` escalates after grace.
@@ -430,7 +430,7 @@ async def cancel_worker(
     The response always carries ``exit_code`` (F10) so callers can
     distinguish a graceful exit from a hard kill.
     """
-    _metrics.record("cancel_worker")
+    _metrics.record("mahavishnu_cancel_worker")
     if _durable_manager is None:
         return {"killed": False, "exit_code": None}
     killed = _durable_manager.cancel(worker_id, signal=signal, grace_ms=grace_ms)
@@ -441,7 +441,7 @@ async def cancel_worker(
     }
 
 
-async def worker_revoke(worker_id: str, *, force: bool = False) -> dict:
+async def mahavishnu_worker_revoke(worker_id: str, *, force: bool = False) -> dict:
     """Reap a durable worker record. With ``force=True`` the underlying
     pane is SIGKILL'd before the record is reaped.
 
@@ -449,7 +449,7 @@ async def worker_revoke(worker_id: str, *, force: bool = False) -> dict:
     NEVER auto-executed by Mahavishnu; the caller must issue the command in
     their own shell.
     """
-    _metrics.record("worker_revoke")
+    _metrics.record("mahavishnu_worker_revoke")
     if _durable_manager is None:
         return {"revoked": False, "force": force, "attach_command": None}
     if force:
@@ -501,15 +501,15 @@ def register_worker_contract_tools(
     _settle_mcp = settle_mcp
     _websocket_server = websocket_server
 
-    app.tool()(launch_worker)
-    app.tool()(send_input)
-    app.tool()(capture_output)
-    app.tool()(worker_status)
-    app.tool()(wait_for_state)
-    app.tool()(cancel_worker)
-    app.tool()(worker_revoke)
-    app.tool()(worker_run_with_settle)
-    app.tool()(worker_settle)
+    app.tool()(mahavishnu_launch_worker)
+    app.tool()(mahavishnu_send_input)
+    app.tool()(mahavishnu_capture_output)
+    app.tool()(mahavishnu_worker_status)
+    app.tool()(mahavishnu_wait_for_state)
+    app.tool()(mahavishnu_cancel_worker)
+    app.tool()(mahavishnu_worker_revoke)
+    app.tool()(mahavishnu_worker_run_with_settle)
+    app.tool()(mahavishnu_worker_settle)
 
 
 # ---------------------------------------------------------------------------
@@ -533,7 +533,7 @@ def _bindings_from_payload(raw_bindings: list[dict[str, str]]) -> tuple[Binding,
     return tuple(out)
 
 
-async def worker_run_with_settle(
+async def mahavishnu_worker_run_with_settle(
     task_signature: str,
     bindings: list[dict[str, str]],
     *,
@@ -550,17 +550,17 @@ async def worker_run_with_settle(
     """Spawn a durable worker AND register a settle record BEFORE any file write.
 
     The settle record (state=``proposed``) is persisted to MCP (with
-    local dead-letter fallback) before ``launch_worker`` is invoked, so
+    local dead-letter fallback) before ``mahavishnu_launch_worker`` is invoked, so
     a process crash cannot leave a worker writing files without an
     audit trail. The returned ``run_ref`` is the durable handle for
-    subsequent :func:`worker_settle` calls.
+    subsequent :func:`mahavishnu_worker_settle` calls.
 
     The ``bindings`` payload is a JSON-friendly list of ``{"path": str,
     "base": str}`` dicts — ``path`` is the binding's location relative
     to the worker repo, ``base`` is the pre-run content snapshot used
     for the 3-way merge during ``apply``.
     """
-    _metrics.record("worker_run_with_settle")
+    _metrics.record("mahavishnu_worker_run_with_settle")
     if not isinstance(task_signature, str) or not task_signature:
         return {
             "run_ref": None,
@@ -619,7 +619,7 @@ async def worker_run_with_settle(
         )
     )
 
-    launch_result = await launch_worker(
+    launch_result = await mahavishnu_launch_worker(
         prompt=task_signature,
         worker_type=worker_type,
         backend=backend,
@@ -669,7 +669,7 @@ async def worker_run_with_settle(
     }
 
 
-async def worker_settle(
+async def mahavishnu_worker_settle(
     run_ref: str,
     action: str,
     *,
@@ -687,7 +687,7 @@ async def worker_settle(
     For ``apply``, callers must pass ``bindings_content`` — a mapping of
     ``path -> ours`` (the worker's candidate content for each binding).
     Each binding is 3-way merged with ``git merge-file`` against the
-    base snapshot captured at ``worker_run_with_settle`` time. Conflicts
+    base snapshot captured at ``mahavishnu_worker_run_with_settle`` time. Conflicts
     surface as a structured :class:`MergeConflictError` payload (the
     merged-with-markers text is returned so the caller can decide how
     to proceed).
@@ -697,7 +697,7 @@ async def worker_settle(
     ``base`` (the "first apply" case — ours is adopted cleanly when it
     differs from base in non-overlapping ways).
     """
-    _metrics.record("worker_settle")
+    _metrics.record("mahavishnu_worker_settle")
     if not isinstance(run_ref, str) or not run_ref:
         return {
             "run_ref": run_ref,
@@ -801,7 +801,7 @@ async def _apply_merge(
     so the caller can see which paths failed.
 
     Note: NO state transition is performed here. The caller
-    (:func:`worker_settle`) decides whether to commit the transition
+    (:func:`mahavishnu_worker_settle`) decides whether to commit the transition
     after seeing the merge result. This keeps the audit trail honest —
     a failed apply does NOT advance the state machine.
 

@@ -434,17 +434,17 @@ RETRY_BACKOFF_SECONDS: int = 30
 async def _mcp_trigger_workflow(
     adapter: str, task_type: str, params: dict[str, object]
 ) -> dict[str, object]:
-    """Thin wrapper over mahavishnu.mcp.server_core.trigger_workflow.
+    """Thin wrapper over mahavishnu.mcp.server_core.mahavishnu_trigger_workflow.
 
     Raises JotDispatchError on failure so callers can decide retry vs fail-fast.
     """
     try:
         # Imported lazily to avoid module-load cost when drain is unused.
         from mahavishnu.mcp.server_core import (
-            trigger_workflow,  # ty: ignore[import-not-found]
+            mahavishnu_trigger_workflow,  # ty: ignore[import-not-found]
         )
 
-        result: dict[str, object] = await trigger_workflow(
+        result: dict[str, object] = await mahavishnu_trigger_workflow(
             adapter=adapter,
             task_type=task_type,
             params=params,
@@ -458,13 +458,15 @@ async def _mcp_trigger_workflow(
 
 
 async def _mcp_get_workflow_status(workflow_id: str) -> dict[str, object]:
-    """Thin wrapper over mahavishnu.mcp.server_core.get_workflow_status."""
+    """Thin wrapper over mahavishnu.mcp.server_core.mahavishnu_get_workflow_status."""
     try:
         from mahavishnu.mcp.server_core import (
-            get_workflow_status,  # ty: ignore[import-not-found]
+            mahavishnu_get_workflow_status,  # ty: ignore[import-not-found]
         )
 
-        result: dict[str, object] = await get_workflow_status(workflow_id=workflow_id)
+        result: dict[str, object] = await mahavishnu_get_workflow_status(
+            workflow_id=workflow_id,
+        )
         return result
     except Exception as exc:  # background task — broad catch is the documented contract
         raise JotDispatchError(

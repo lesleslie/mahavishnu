@@ -2040,7 +2040,7 @@ def pool_spawn(
     Architecture: the canonical place for pool state is the live MCP
     server (PoolManager persists in the server's process). The CLI
     from a fresh shell dispatches via JSON-RPC 2.0 over POST /mcp
-    to the server's ``pool_spawn`` tool — the same wire shape the
+    to the server's ``mahavishnu_pool_spawn`` tool — the same wire shape the
     SessionStart bootstrap hook uses for ``pool_bootstrap``. If the
     server is unreachable (e.g. running standalone with no MCP
     process), the CLI falls back to a transient in-process
@@ -2137,7 +2137,7 @@ def pool_spawn(
 
 class _MCPUnreachableError(Exception):
     """Raised when the live MCP server cannot be reached for a
-    pool_spawn dispatch. The CLI catches this and falls back to a
+    mahavishnu_pool_spawn dispatch. The CLI catches this and falls back to a
     transient in-process spawn. Carries the URL we tried so the
     warning message is actionable.
     """
@@ -2155,7 +2155,7 @@ def _dispatch_pool_spawn_via_mcp(
     max_workers: int,
     worker_type: str,
 ) -> dict[str, Any]:
-    """Dispatch pool_spawn to the live MCP server over JSON-RPC 2.0.
+    """Dispatch mahavishnu_pool_spawn to the live MCP server over JSON-RPC 2.0.
 
     The MCP server uses FastMCP's streamable-HTTP transport, which
     requires an ``initialize`` JSON-RPC handshake before any
@@ -2222,7 +2222,7 @@ def _dispatch_pool_spawn_via_mcp(
                 "id": "cli-pool-spawn",
                 "method": "tools/call",
                 "params": {
-                    "name": "pool_spawn",
+                    "name": "mahavishnu_pool_spawn",
                     "arguments": {
                         "name": name,
                         "pool_type": canonical_pool_type,

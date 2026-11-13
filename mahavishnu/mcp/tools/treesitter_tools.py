@@ -5,11 +5,11 @@ orchestration workflows. Unlike Session-Buddy's storage-focused tools,
 these focus on real-time parsing with content-hash caching.
 
 Tools:
-- treesitter_parse: Parse a file with caching
-- treesitter_extract_symbols: Extract symbols from parsed file
-- treesitter_find_usages: Find symbol usages (planned)
-- treesitter_query: Custom tree-sitter queries (planned)
-- treesitter_batch_analyze: Analyze multiple files
+- mahavishnu_treesitter_parse: Parse a file with caching
+- mahavishnu_treesitter_extract_symbols: Extract symbols from parsed file
+- mahavishnu_treesitter_find_usages: Find symbol usages (planned)
+- mahavishnu_treesitter_query: Custom tree-sitter queries (planned)
+- mahavishnu_treesitter_batch_analyze: Analyze multiple files
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
     """
 
     @mcp.tool()
-    async def treesitter_parse(
+    async def mahavishnu_treesitter_parse(
         file_path: str,
         language: str | None = None,
     ) -> dict[str, Any]:
@@ -111,7 +111,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
             }
 
     @mcp.tool()
-    async def treesitter_extract_symbols(
+    async def mahavishnu_treesitter_extract_symbols(
         file_path: str,
         symbol_kinds: list[str] | None = None,
     ) -> dict[str, Any]:
@@ -175,7 +175,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
             }
 
     @mcp.tool()
-    async def treesitter_find_usages(
+    async def mahavishnu_treesitter_find_usages(
         file_path: str,
         symbol_name: str,
         search_directory: str | None = None,
@@ -269,7 +269,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
             }
 
     @mcp.tool()
-    async def treesitter_query(
+    async def mahavishnu_treesitter_query(
         file_path: str,
         query: str,
     ) -> dict[str, Any]:
@@ -304,7 +304,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                 "query": query,
                 "matches": [],
                 "message": "Custom tree-sitter queries require direct tree-sitter API access",
-                "tip": "Use treesitter_extract_symbols with symbol_kinds filter instead",
+                "tip": "Use mahavishnu_treesitter_extract_symbols with symbol_kinds filter instead",
             }
 
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -318,7 +318,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
             }
 
     @mcp.tool()
-    async def treesitter_batch_analyze(
+    async def mahavishnu_treesitter_batch_analyze(
         directory: str,
         file_pattern: str = "**/*.py",
         max_files: int = 100,
@@ -400,7 +400,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
             }
 
     @mcp.tool()
-    async def treesitter_cache_stats() -> dict[str, Any]:
+    async def mahavishnu_treesitter_cache_stats() -> dict[str, Any]:
         """Get cache statistics for the tree-sitter parser."""
         try:
             parser = _get_parser()
@@ -416,7 +416,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
             }
 
     @mcp.tool()
-    async def treesitter_clear_cache() -> dict[str, Any]:
+    async def mahavishnu_treesitter_clear_cache() -> dict[str, Any]:
         """Clear the tree-sitter parse cache."""
         try:
             parser = _get_parser()

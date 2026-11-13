@@ -564,7 +564,7 @@ async def _merge_via_mergiraf(
     ``FileNotFoundError`` from ``create_subprocess_exec`` and re-probes
     the binary path. The cached ``_MERGIRAF_BIN`` is invalidated on
     exec failure so a tmux pane with a stale ``$PATH`` recovers on the
-    next call instead of crashing every subsequent ``worker_settle``.
+    next call instead of crashing every subsequent ``mahavishnu_worker_settle``.
     """
     if binary is None:  # pragma: no cover — validation gate upstream
         raise MergeDriverUnavailableError(

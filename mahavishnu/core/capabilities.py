@@ -227,12 +227,12 @@ class CapabilitySpec(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Result type for capability_tools.execute_capability (Phase 3a.3)
+# Result type for capability_tools.mahavishnu_execute_capability (Phase 3a.3)
 # ---------------------------------------------------------------------------
 
 
 class CapabilityExecutionResult(BaseModel):
-    """Return type of ``execute_capability``. Replaces dict[str, Any] leakage."""
+    """Return type of ``mahavishnu_execute_capability``. Replaces dict[str, Any] leakage."""
 
     model_config = ConfigDict(extra="forbid")  # mutable — set after construction
     status: str  # "planned" | "queued" | "rejected"

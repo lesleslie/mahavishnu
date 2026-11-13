@@ -32,7 +32,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
     messenger_manager = RepositoryMessengerManager(app)
 
     @server.tool()
-    async def send_repository_message(
+    async def mahavishnu_send_repository_message(
         sender_repo: str,
         receiver_repo: str,
         message_type: str,
@@ -81,7 +81,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
             }
 
     @server.tool()
-    async def broadcast_repository_message(
+    async def mahavishnu_broadcast_repository_message(
         sender_repo: str,
         message_type: str,
         content: dict[str, Any],
@@ -130,7 +130,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
             }
 
     @server.tool()
-    async def get_repository_messages(
+    async def mahavishnu_get_repository_messages(
         receiver_repo: str,
         message_type: str | None = None,
         limit: int = 50,
@@ -192,7 +192,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
             }
 
     @server.tool()
-    async def acknowledge_repository_message(
+    async def mahavishnu_acknowledge_repository_message(
         message_id: str, receiver_repo: str
     ) -> dict[str, Any]:
         """Acknowledge receipt of a message."""
@@ -214,7 +214,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
             }
 
     @server.tool()
-    async def notify_repository_changes(
+    async def mahavishnu_notify_repository_changes(
         repo_path: str, changes: list[dict[str, Any]]
     ) -> dict[str, Any]:
         """Notify other repositories about changes in a repository."""
@@ -235,7 +235,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
             }
 
     @server.tool()
-    async def notify_workflow_status(
+    async def mahavishnu_notify_workflow_status(
         workflow_id: str,
         status: str,
         repo_path: str,
@@ -259,7 +259,7 @@ def register_repository_messaging_tools(server, app, mcp_client):
             }
 
     @server.tool()
-    async def send_quality_alert(
+    async def mahavishnu_send_quality_alert(
         repo_path: str, alert_type: str, description: str, severity: str = "medium"
     ) -> dict[str, Any]:
         """Send a quality alert to other repositories."""

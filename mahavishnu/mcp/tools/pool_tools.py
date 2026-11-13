@@ -22,7 +22,7 @@ except Exception:  # pragma: no cover - optional import for test patching  # mod
     MemoryAggregator = None
 
 try:
-    # Phase 2m (Plan v3): pool_route_execute needs the selector enum, the
+    # Phase 2m (Plan v3): mahavishnu_pool_route_execute needs the selector enum, the
     # caller_kind quota attribution enum, the coerce_caller_kind funnel,
     # and the quota error type. Each is defensive-imported so test patching
     # can inject sentinel versions without instantiating the full pools
@@ -169,7 +169,7 @@ async def _repo_has_git(repo_nickname: str) -> bool:
 
     Returns ``False`` when the path does not exist or is not a git
     working tree — gates the worktree-isolation path in
-    ``pool_route_execute``.
+    ``mahavishnu_pool_route_execute``.
     """
 
     repo_path = _resolve_repo_path(repo_nickname)
@@ -227,7 +227,7 @@ async def _dispatch_internal(
 ):
     """Internal dispatch helper used when a worktree path is active.
 
-    Mirrors the inline dispatch in ``pool_route_execute`` so the worktree
+    Mirrors the inline dispatch in ``mahavishnu_pool_route_execute`` so the worktree
     finally-block can wrap it cleanly. Returns the same ``dict`` shape as
     ``pool_manager.route_task``.
 
@@ -290,7 +290,7 @@ async def _enforce_concurrency_limit(
 
 
 # ---------------------------------------------------------------------------
-# pool_route_execute decomposition.
+# mahavishnu_pool_route_execute decomposition.
 # req: REQ-CX-001
 #
 # The dispatch tool is a linear pipeline with many early-exit branches.
@@ -408,7 +408,7 @@ async def _lookup_idempotency(
             lambda: idem_store.get_or_create(
                 idempotency,
                 payload_hash=payload_hash,
-                actor="pool_route_execute",
+                actor="mahavishnu_pool_route_execute",
             )
         )
     except IdempotencyStoreUnavailable as exc:  # ty: ignore[invalid-exception-caught]
@@ -705,20 +705,20 @@ def register_pool_tools(
         pool_manager: PoolManager instance
 
     This registers 10 pool management tools:
-    - pool_list: List all active pools
-    - pool_spawn: Spawn a new pool (idempotent on name)
-    - pool_bootstrap: SessionStart bootstrap (spawn default pool if registry empty)
-    - pool_monitor: Monitor pool metrics
-    - pool_scale: Scale pool worker count
-    - pool_close: Close a specific pool
-    - pool_close_all: Close all pools
-    - pool_health: Get health status
-    - pool_search_memory: Search memory across pools
-    - pool_route_execute: Ad-hoc single-task dispatch across registered pools (Plan v3 Phase 2m)
+    - mahavishnu_pool_list: List all active pools
+    - mahavishnu_pool_spawn: Spawn a new pool (idempotent on name)
+    - mahavishnu_pool_bootstrap: SessionStart bootstrap (spawn default pool if registry empty)
+    - mahavishnu_pool_monitor: Monitor pool metrics
+    - mahavishnu_pool_scale: Scale pool worker count
+    - mahavishnu_pool_close: Close a specific pool
+    - mahavishnu_pool_close_all: Close all pools
+    - mahavishnu_pool_health: Get health status
+    - mahavishnu_pool_search_memory: Search memory across pools
+    - mahavishnu_pool_route_execute: Ad-hoc single-task dispatch across registered pools (Plan v3 Phase 2m)
     """
 
     @mcp.tool()
-    async def pool_list() -> list[dict[str, Any]]:
+    async def mahavishnu_pool_list() -> list[dict[str, Any]]:
         """List all active pools."""
         try:
             return await pool_manager.list_pools()  # type: ignore[no-any-return]
@@ -727,7 +727,7 @@ def register_pool_tools(
             return []
 
     @mcp.tool()
-    async def pool_spawn(
+    async def mahavishnu_pool_spawn(
         name: str,
         pool_type: str = "mahavishnu",
         min_workers: int | None = None,
@@ -759,7 +759,7 @@ def register_pool_tools(
         this tool never raises.
         """
         logger.info(
-            "pool_spawn tool called",
+            "mahavishnu_pool_spawn tool called",
             extra={
                 "pool_name": name,
                 "pool_type": pool_type,
@@ -807,7 +807,7 @@ def register_pool_tools(
         existing_id = pool_manager._pools_by_name.get(name)  # type: ignore[union-attr]
         if existing_id is not None:
             logger.info(
-                "pool_spawn: pool with name already exists, returning existing",
+                "mahavishnu_pool_spawn: pool with name already exists, returning existing",
                 extra={"pool_name": name, "pool_id": existing_id},
             )
             return {
@@ -871,7 +871,7 @@ def register_pool_tools(
             Exception
         ) as exc:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
-                "pool_spawn: spawn failed", extra={"error_id": "POOL_SPAWN_FAILED"}
+                "mahavishnu_pool_spawn: spawn failed", extra={"error_id": "POOL_SPAWN_FAILED"}
             )
             return {"status": "failed", "error": f"spawn failed: {exc}"}
 
@@ -889,10 +889,10 @@ def register_pool_tools(
         return result
 
     @mcp.tool()
-    async def pool_bootstrap() -> dict[str, Any]:
+    async def mahavishnu_pool_bootstrap() -> dict[str, Any]:
         """SessionStart bootstrap: ensure a default pool exists.
 
-        Reads ``pool_health`` (via ``health_check()``); if
+        Reads ``mahavishnu_pool_health`` (via ``health_check()``); if
         ``pools_active == 0``, spawns a default pool via the
         config-driven settings (``pools.auto_spawn_*``). Returns
         structured status so the calling hook script can log/observe
@@ -907,14 +907,14 @@ def register_pool_tools(
         ``{"status": "failed", "error": "..."}`` so SessionStart
         hooks that wrap this call cannot be blocked by MCP errors.
         """
-        logger.info("pool_bootstrap: tool called")
+        logger.info("mahavishnu_pool_bootstrap: tool called")
 
         try:
             health = await pool_manager.health_check()  # type: ignore[union-attr]
             pools_active_before = (health or {}).get("pools_active", 0)
             if pools_active_before > 0:
                 logger.info(
-                    "pool_bootstrap: registry already populated",
+                    "mahavishnu_pool_bootstrap: registry already populated",
                     extra={"pools_active": pools_active_before},
                 )
                 return {
@@ -924,7 +924,7 @@ def register_pool_tools(
                 }
         except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
-                "pool_bootstrap: health check failed; attempting spawn anyway",
+                "mahavishnu_pool_bootstrap: health check failed; attempting spawn anyway",
                 extra={"error": str(exc)},
             )
             pools_active_before = 0
@@ -958,7 +958,7 @@ def register_pool_tools(
             terminal_manager = getattr(pool_manager, "terminal_manager", None)
             if terminal_manager is None:
                 logger.info(
-                    "pool_bootstrap: terminal_manager unavailable, skipping spawn",
+                    "mahavishnu_pool_bootstrap: terminal_manager unavailable, skipping spawn",
                     extra={"spawn_type": spawn_type},
                 )
                 return {
@@ -968,7 +968,7 @@ def register_pool_tools(
                     "pools_active_after": pools_active_before,
                 }
 
-        # Same type-specific sizing as pool_spawn (Task 4)
+        # Same type-specific sizing as mahavishnu_pool_spawn (Task 4)
         sizing_warning: str | None = None
         if spawn_type != "mahavishnu":
             sizing_warning = (
@@ -999,7 +999,7 @@ def register_pool_tools(
             Exception
         ) as exc:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
-                "pool_bootstrap: spawn failed",
+                "mahavishnu_pool_bootstrap: spawn failed",
                 extra={"error_id": "POOL_BOOTSTRAP_SPAWN_FAILED"},
             )
             return {
@@ -1009,7 +1009,7 @@ def register_pool_tools(
             }
 
         logger.info(
-            "pool_bootstrap: spawned default pool",
+            "mahavishnu_pool_bootstrap: spawned default pool",
             extra={"pool_id": pool_id, "pool_type": spawn_type},
         )
         result: dict[str, Any] = {
@@ -1024,7 +1024,7 @@ def register_pool_tools(
         return result
 
     @mcp.tool()
-    async def pool_monitor(
+    async def mahavishnu_pool_monitor(
         pool_ids: list[str] | None = None,
     ) -> dict[str, dict[str, Any]]:
         """Monitor pool status and metrics."""
@@ -1035,7 +1035,7 @@ def register_pool_tools(
             return {}
 
     @mcp.tool()
-    async def pool_scale(
+    async def mahavishnu_pool_scale(
         pool_id: str,
         target_workers: int,
     ) -> dict[str, Any]:
@@ -1072,7 +1072,7 @@ def register_pool_tools(
             }
 
     @mcp.tool()
-    async def pool_close(
+    async def mahavishnu_pool_close(
         pool_id: str,
     ) -> dict[str, Any]:
         """Close a specific pool."""
@@ -1092,7 +1092,7 @@ def register_pool_tools(
             }
 
     @mcp.tool()
-    async def pool_close_all() -> dict[str, Any]:
+    async def mahavishnu_pool_close_all() -> dict[str, Any]:
         """Close all active pools."""
         try:
             pools = await pool_manager.list_pools()
@@ -1113,7 +1113,7 @@ def register_pool_tools(
             }
 
     @mcp.tool()
-    async def pool_health() -> dict[str, Any]:
+    async def mahavishnu_pool_health() -> dict[str, Any]:
         """Get health status of all pools."""
         try:
             return await pool_manager.health_check()  # type: ignore[no-any-return]
@@ -1125,7 +1125,7 @@ def register_pool_tools(
             }
 
     @mcp.tool()
-    async def pool_search_memory(
+    async def mahavishnu_pool_search_memory(
         query: str,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
@@ -1148,7 +1148,7 @@ def register_pool_tools(
             return []
 
     @mcp.tool()
-    async def pool_route_execute(  # ty: ignore[invalid-argument-type]
+    async def mahavishnu_pool_route_execute(  # ty: ignore[invalid-argument-type]
         prompt: str,
         pool_selector: str = "least_loaded",
         timeout: float | None = None,
@@ -1255,14 +1255,14 @@ def register_pool_tools(
             # Log the resolved value so the audit trail captures whether
             # config drove the decision (or an explicit caller override).
             logger.info(
-                "pool_route_execute: auto_spawn resolved",
+                "mahavishnu_pool_route_execute: auto_spawn resolved",
                 extra={"auto_spawn_resolved": resolved_auto_spawn},
             )
 
             try:
                 if resolve_model_id is not None and task_category is not None:
                     logger.info(
-                        "pool_route_execute: dispatch routed to model %s (category=%s)",
+                        "mahavishnu_pool_route_execute: dispatch routed to model %s (category=%s)",
                         resolve_model_id(task_category),
                         task_category.value,
                     )
@@ -1318,7 +1318,7 @@ def register_pool_tools(
             response = _map_dispatch_error(exc, worktree_info)
             if response is None:
                 logger.exception(
-                    "Failed to route task via pool_route_execute — see traceback"
+                    "Failed to route task via mahavishnu_pool_route_execute — see traceback"
                 )
                 response = {
                     "status": "failed",

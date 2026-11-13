@@ -199,7 +199,7 @@ def require_feature(feature_name: str) -> Callable[[F], F]:
 
     Example:
         >>> @require_feature("mcp_tools_enabled")
-        ... async def team_from_goal(goal: str) -> dict:
+        ... async def mahavishnu_team_from_goal(goal: str) -> dict:
         ...     # This will only execute if mcp_tools_enabled is True
         ...     return {"team_id": "..."}
 

@@ -525,7 +525,7 @@ def _install_merge_driver_runtime_config(app: Any) -> None:
     Loud-failure semantics: the guard raises
     :class:`mahavishnu.settle.merge.MergeDriverUnavailableError` at
     process start. Operators see the failure in the boot log, NOT
-    on the first ``worker_settle`` action — that would crash mid-
+    on the first ``mahavishnu_worker_settle`` action — that would crash mid-
     workflow and leave the audit trail half-written.
 
     Phase 4 deferred review (M4): registers the

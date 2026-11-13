@@ -41,7 +41,7 @@ def register_otel_tools(server, app, mcp_client):
     """
 
     @server.tool()
-    async def ingest_otel_traces(
+    async def mahavishnu_ingest_otel_traces(
         log_files: list[str] | None = None,
         trace_data: list[dict] | None = None,
         system_id: str = "unknown",
@@ -169,7 +169,7 @@ def register_otel_tools(server, app, mcp_client):
             }
 
     @server.tool()
-    async def search_otel_traces(
+    async def mahavishnu_search_otel_traces(
         query: str,
         system_id: str | None = None,
         limit: int = 10,
@@ -217,7 +217,7 @@ def register_otel_tools(server, app, mcp_client):
             return []
 
     @server.tool()
-    async def get_otel_trace(
+    async def mahavishnu_get_otel_trace(
         trace_id: str,
     ) -> dict[str, Any] | None:
         """Retrieve a specific OTel trace by ID."""
@@ -266,7 +266,7 @@ def register_otel_tools(server, app, mcp_client):
 
         Filter by an absolute ISO8601 window: pass `start_time` and `end_time`
         for a specific range, and omit both to search all history. Do NOT use
-        to fetch one trace by id — use `get_otel_trace` for that. Returns a list
+        to fetch one trace by id — use `mahavishnu_get_otel_trace` for that. Returns a list
         of records normalized for the fitness analyzer: `outcome`,
         `duration_ms`, `selector`, `component_name`, `task_class`, `timestamp`.
         Returns an empty list when no trace matches, when the trace store is
@@ -433,7 +433,7 @@ def register_otel_tools(server, app, mcp_client):
             return []
 
     @server.tool()
-    async def otel_ingester_stats() -> dict[str, Any]:
+    async def mahavishnu_otel_ingester_stats() -> dict[str, Any]:
         """Get statistics about the OTel trace ingester."""
         try:
             from oneiric.adapters.vector.hot_store import HotStore

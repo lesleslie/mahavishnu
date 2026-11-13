@@ -3,8 +3,8 @@
 Per Phase 1 of the Ultracode Integration Wiring plan (see
 ``docs/plans/2026-07-11-ultracode-integration-wiring.md`` §5). Provides the
 typed ``Proposal``/``RefuterStrategy``/``VerificationResult`` models and an
-async runner that supports the ``clone_refactor_group`` and
-``self_improvement_generate`` verification gates.
+async runner that supports the ``mahavishnu_clone_refactor_group`` and
+``mahavishnu_self_improvement_generate`` verification gates.
 
 Failure-mode contract (mandatory; verified by tests in T1.6):
 
