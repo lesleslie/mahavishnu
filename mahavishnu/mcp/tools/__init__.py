@@ -2,7 +2,6 @@
 
 # Available tool modules:
 # - terminal_tools: Terminal management tools
-# - coordination_tools: Multi-agent coordination tools
 # - otel_tools: OpenTelemetry trace management
 # - pool_tools: Pool management tools
 # - worker_tools: Worker orchestration tools

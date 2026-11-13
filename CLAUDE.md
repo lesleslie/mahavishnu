@@ -39,7 +39,7 @@ Mahavishnu is repo-centric orchestration infrastructure optimized for the Bodai 
 - **Multi-pool orchestration**: Horizontal scaling across local, delegated, cloud workers
 - **WebSocket infrastructure**: Real-time workflow monitoring
 - **Content ingestion**: Webpages, blogs, books, OpenTelemetry traces
-- **MCP tools**: 178 tools registered on a `full`-profile server (27 inline core + 150 profile-gated + `discover_tools`, across 39 profile-gated groups). Source holds 197 tool definitions; 43 of them live in three modules the server never imports.
+- **MCP tools**: 178 tools registered on a `full`-profile server (27 inline core + 150 profile-gated + `discover_tools`, across 39 profile-gated groups).
 
 **Product posture**: Internal-first. MCP-first. Control-plane scope.
 
@@ -775,30 +775,41 @@ Mahavishnu-specific guidance:
 - **MCP tools**: `mahavishnu/mcp/tools/` - Tool implementations
   - `mahavishnu/mcp/tools/pool_tools.py` - Pool management (10 tools)
   - `mahavishnu/mcp/tools/worker_tools.py` - Worker orchestration (8 tools)
-  - `mahavishnu/mcp/tools/coordination_tools.py` - Issues, todos, dependencies (15 tools; **not registered** — see the dead-module note below)
   - `mahavishnu/mcp/tools/repository_messaging_tools.py` - Inter-repo messaging (7 tools)
   - `mahavishnu/mcp/tools/otel_tools.py` - OpenTelemetry trace ingestion (4 tools)
   - `mahavishnu/mcp/tools/session_buddy_tools.py` - Session-Buddy integration (7 tools)
 
 #### Unregistered tool modules
 
-Two modules define tools that the server never registers — nothing
-outside their own unit tests imports them, so their tools are absent from
+One module defines tools that the server never registers — nothing
+outside its own unit tests imports it, so its tools are absent from
 `tools/list` and cannot be called:
 
 | Module | Tools | Status |
 |---|---|---|
-| `coordination_tools.py` | 15 | Dead. Backed by the `coordination:` block in `settings/ecosystem.yaml`, not by session-buddy. The todo half duplicates session-buddy's `tasks_*`; the issue half has no equivalent elsewhere. The capability itself is **live through the CLI** (`mahavishnu coord …`) — use that, not a `coord_*` MCP call. |
 | `learning_pipeline_tools.py` | 5 | Dead, and deliberately so — `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md` blocks the wiring branch on an authentication-identity fix. ADR 012 assigns the pipeline itself to mahavishnu. |
 
-`mcp__mahavishnu__get_tool_versions` still lists these 20 names, so treat
+`mcp__mahavishnu__get_tool_versions` still lists these 5 names, so treat
 that map as a historical inventory, not a live one. The map is broadly
-out of sync: 183 entries against a live surface of 178, with 63 names
-advertised that no longer exist (these 20 plus 43 more whose names have
+out of sync: 155 entries against a live surface of 178, with 35 names
+advertised that no longer exist (these 5 plus 30 more whose names have
 drifted — `worker_execute` for `worker_run_with_settle`,
 `otel_ingest_trace` for `ingest_otel_traces`, `list_primitives` for
 `list_primitives_tool`, and so on) and 58 live tools missing from it
-entirely.
+entirely. There is no generator script behind the map or the two
+`docs/mcp/MCP_TOOLS_*.md` documents, so the drift has to be closed by
+hand or by the planned `scripts/check_mcp_tool_surface.py` guard
+(`docs/plans/2026-11-07-mcp-tool-disambiguation.md` Phase 4).
+
+Coordination used to sit in this list as a second dead module (15 tools).
+It was deleted on 2026-11-12: the tools were never registered, they
+duplicated the `mahavishnu coord` CLI's write paths, and their bare
+`coord_` prefix violated the component-prefix convention
+(`docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md`).
+The coordination capability itself is unaffected — it lives in the
+`coordination:` block of `settings/ecosystem.yaml` and is reached
+through the CLI and through `CoordinationManager` in
+`mahavishnu/core/coordination/`.
 
 Desktop automation used to sit in this list as a third dead module
 (23 tools). Both it and the `mahavishnu/automation/` backend package
@@ -848,7 +859,7 @@ The CLI is split between the package root (cross-cutting subsystems) and `mahavi
 #### Package-root CLIs (cross-cutting subsystems)
 
 - **Backup CLI**: `mahavishnu/backup_cli.py` - Backup/recovery commands
-- **Coordination CLI**: `mahavishnu/coordination_cli.py` - Issues/todos/dependencies. This is the **live** path for cross-repo coordination; the `coord_*` MCP tools that mirror it are not registered.
+- **Coordination CLI**: `mahavishnu/coordination_cli.py` - Issues/todos/dependencies. This is the **only** path for cross-repo coordination; there is no MCP tool surface for it.
 - **Ecosystem CLI**: `mahavishnu/ecosystem_cli.py` - Repository management
 - **Ingestion CLI**: `mahavishnu/ingestion_cli.py` - Content ingestion
 - **Metrics CLI**: `mahavishnu/metrics_cli.py` - Observability metrics

@@ -60,7 +60,6 @@ def test_no_top_level_from_fastmcp_imports_in_production() -> None:
     "module_name",
     [
         "mahavishnu.mcp.server_core",
-        "mahavishnu.mcp.tools.coordination_tools",
         "mahavishnu.mcp.tools.pool_tools",
         "mahavishnu.mcp.tools.terminal_tools",
         "mahavishnu.mcp.tools.worker_tools",

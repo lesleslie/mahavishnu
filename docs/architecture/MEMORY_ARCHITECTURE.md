@@ -446,8 +446,7 @@ by access pattern: discovery, state, recall, monitor, health.
 
 | Tool | What it reads | Use when |
 |------|---------------|----------|
-| `list_issues` / `get_issue` / `create_issue` / `update_issue` / `delete_issue` / `list_todos` / `get_todo` / `list_dependencies` / `check_dependencies` / `get_blocking_issues` / `get_repo_status` / `get_ecosystem_status` (the `CoordinationManager` API, reached through the `mahavishnu coord` CLI) | the `coordination:` block in `settings/ecosystem.yaml` | Cross-repo blocker detection, issue and todo tracking |
-| `coord_*` (15 tools) — **not registered**; absent from `tools/list` | the same `coordination:` block | Reference only — the CLI covers the same ground |
+| `list_issues` / `get_issue` / `create_issue` / `update_issue` / `delete_issue` / `list_todos` / `get_todo` / `list_dependencies` / `check_dependencies` / `get_blocking_issues` / `get_repo_status` / `get_ecosystem_status` (the `CoordinationManager` API, reached through the `mahavishnu coord` CLI — there is no MCP tool surface for coordination) | the `coordination:` block in `settings/ecosystem.yaml` | Cross-repo blocker detection, issue and todo tracking |
 | `add_dependency` / `remove_dependency` / `get_dependency_graph` / `detect_circular_dependencies` / `get_critical_path` / `generate_mermaid_diagram` | `dependency_graph.py` (in-process DAG) | Cross-repo dependency graph, visualization + audit |
 
 ### Repository messaging / observability / monitoring

@@ -311,28 +311,35 @@ in order.
 
 ## Coordination
 
+Cross-repo issues, todos, plans, and dependencies live in the `coordination:`
+block of `settings/ecosystem.yaml`. There is **no MCP tool surface** for this
+capability — the `coord_*` MCP module was deleted on 2026-11-12 — so the CLI
+is the only way in.
+
 ```bash
 # Issues
-mahavishnu coord list-issues
+mahavishnu coord list-issues [--status <s>] [--priority <p>] [--repo <r>] [--assignee <user>]
 mahavishnu coord show-issue <id>
-mahavishnu coord create-issue --title <t> [--desc <d>] [--priority <p>] [--tag <t>...]
-mahavishnu coord update-issue <id> [--status <s>] [--assignee <user>]
+mahavishnu coord create-issue --title <t> --description <d> --repos <a,b> \
+    [--priority <p>] [--severity <s>] [--assignee <user>] [--target <iso>]
+mahavishnu coord update-issue <id> [--status <s>] [--priority <p>]
 mahavishnu coord close-issue <id>
 
 # Todos
-mahavishnu coord list-todos
+mahavishnu coord list-todos [--status <s>] [--repo <r>] [--assignee <user>]
 mahavishnu coord show-todo <id>
-mahavishnu coord create-todo --title <t> [--desc <d>] [--issue <id>]
+mahavishnu coord create-todo --task <t> --description <d> --repo <r> --estimate <hours> \
+    [--priority <p>] [--assignee <user>]
 mahavishnu coord complete-todo <id>
 
 # Plans, deps, status
-mahavishnu coord list-plans
-mahavishnu coord list-deps
-mahavishnu coord check-deps
-mahavishnu coord status
-mahavishnu coord blocking
+mahavishnu coord list-plans [--status <s>] [--repo <r>]
+mahavishnu coord list-deps [--consumer <c>] [--provider <p>]
+mahavishnu coord check-deps [--consumer <c>]
+mahavishnu coord status <repo>
+mahavishnu coord blocking <repo>
 mahavishnu coord ecosystem-status
-mahavishnu coord roadmap
+mahavishnu coord roadmap [--status <s>]
 ```
 
 ## Repositories (data layer)

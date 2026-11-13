@@ -548,9 +548,10 @@ mahavishnu coord blocking mahavishnu
 mahavishnu coord list-issues --repo mahavishnu
 ```
 
-The `coord_*` MCP tools that mirror this CLI exist in
-`mahavishnu/mcp/tools/coordination_tools.py` but are **not registered** on
-the server — they are absent from `tools/list` and cannot be called.
+There is **no MCP tool surface** for coordination. The `coord_*` MCP module
+was deleted on 2026-11-12: it was never registered, so none of its 15 tools
+were ever callable. See `docs/CLI_REFERENCE.md` § Coordination for the full
+command list.
 
 ### Repository Messaging (7 tools)
 

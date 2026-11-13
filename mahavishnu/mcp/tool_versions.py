@@ -86,20 +86,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "worker_close_all": "1.0.0",
     "worker_health": "1.0.0",
     "worker_monitor": "1.0.0",
-    # Coordination tools (coordination_tools.py)
-    "list_issues": "1.0.0",
-    "create_issue": "1.0.0",
-    "update_issue": "1.0.0",
-    "list_todos": "1.0.0",
-    "create_todo": "1.0.0",
-    "update_todo": "1.0.0",
-    "list_dependencies": "1.0.0",
-    "add_dependency": "1.0.0",
-    "remove_dependency": "1.0.0",
-    "get_dependency_graph": "1.0.0",
-    "detect_circular_dependencies": "1.0.0",
-    "get_critical_path": "1.0.0",
-    "generate_mermaid_diagram": "1.0.0",
     # Repository messaging tools (repository_messaging_tools.py)
     "send_repository_message": "1.0.0",
     "get_repository_messages": "1.0.0",
@@ -153,21 +139,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "search_otel_traces": "1.0.0",
     "hybrid_search": "1.0.0",
     "search_by_repository": "1.0.0",
-    # Coordination tools (coordination_tools.py - extended)
-    "coord_check_dependencies": "1.0.0",
-    "coord_close_issue": "1.0.0",
-    "coord_complete_todo": "1.0.0",
-    "coord_create_issue": "1.0.0",
-    "coord_create_todo": "1.0.0",
-    "coord_get_blocking_issues": "1.0.0",
-    "coord_get_issue": "1.0.0",
-    "coord_get_repo_status": "1.0.0",
-    "coord_get_todo": "1.0.0",
-    "coord_list_dependencies": "1.0.0",
-    "coord_list_issues": "1.0.0",
-    "coord_list_plans": "1.0.0",
-    "coord_list_todos": "1.0.0",
-    "coord_update_issue": "1.0.0",
     # Ecosystem/Git analytics tools
     "get_cross_project_patterns": "1.0.0",
     "get_git_velocity_dashboard": "1.0.0",
@@ -201,8 +172,6 @@ TOOL_VERSIONS: dict[str, str] = {
     "ecosystem_routing_readiness": "1.0.0",
     # Workflow outcome tools (workflow_tools.py)
     "workflow_get_outcome_tool": "1.0.0",
-    # Coordination ecosystem status (coordination_tools.py)
-    "coord_get_ecosystem_status": "1.0.0",
     # Learning pipeline tools (learning_pipeline_tools.py)
     "get_pipeline_status": "1.0.0",
     "list_evidence": "1.0.0",

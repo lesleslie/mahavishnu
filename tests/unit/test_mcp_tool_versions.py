@@ -60,7 +60,6 @@ class TestToolVersionsRegistry:
             "trigger_workflow",
             "pool_list",
             "terminal_launch",
-            "coord_create_issue",
             "treesitter_parse",
         }
         missing = expected - set(TOOL_VERSIONS)
