@@ -625,23 +625,109 @@ and is kept off the Claude Code path for that reason.
 
 ### Diagnosing the provider cache when it stalls
 
-Over seven days the provider cache is healthy at scale and degrades
-below a prompt-size threshold. Hit rate by prompt size:
+**The provider cache misses whole requests because Claude Code's tool
+set changes inside a session.** The Anthropic cacheable prefix is
+built in the order **tools → system → messages**, and the `tools` array
+is at its front — so a tool added mid-session invalidates the *entire*
+cached prefix.
 
-| prompt size | `MiniMax-M3` | `MiniMax-M3.1-Flash` |
-|---|---|---|
-| < 60k tokens | 64% | 42% |
-| 60–120k | 57% | 67% |
-| 120–250k | 92% | 95% |
-| > 250k | 99% | 98% |
+Captured consecutive requests from one session:
+
+| request | tool count | tool characters | tool added |
+|---|---|---|---|
+| 002 | 12 | 30,339 | — |
+| 003 | 13 | 33,494 | `mcp__bodai__wake` (MCP server connected late) |
+| 006 | 14 | 41,233 | `Monitor` (deferred tool materialised on demand) |
+| 007 | 15 | 42,067 | `mcp__bodai__telepathy_receive` |
 
 The failures are **whole-request misses**, not partial ones: the cached
 read lands on 128–600 tokens, which is MiniMax's own fixed server-side
 prefix and nothing of Claude Code's content. (A *fresh* 4,540-token
-request also reports 128, so 128 means "nothing of ours matched".) In
-the 60–120k band those whole misses are 24.8% of requests and partial
-hits a further 18.2%, spread evenly through the day rather than
-clustered on any event.
+request also reports 128, so 128 means "nothing of ours matched".) With
+a stable tool set the cache is effectively perfect — one captured
+request read **81,083 of 81,084 tokens** back, 99.99%.
+
+Over seven days the whole-request miss rate falls as sessions get
+longer, which is a per-session re-warm amortised over more turns:
+
+| prompt size | requests | whole-request misses | miss rate | cost over 7 days |
+|---|---|---|---|---|
+| < 60k | 3,292 | 774 | 23.5% | $8.96 |
+| 60–120k | 10,035 | 2,354 | 23.5% | $58.13 |
+| 120–250k | 10,315 | 427 | 4.1% | $19.94 |
+| > 250k | 9,936 | 112 | 1.1% | $11.88 |
+
+**What the fleet actually loses, and to what.** Claude Code sends **two
+different request families** on this path, and they cache very
+differently. They separate by `object_type` in the gateway's log
+(streamed vs not) and are confirmed by their output profile: the
+conversation averages 721 output tokens and stops with `tool_calls`; the
+other averages 46 and stops with `length` — a verdict truncated at a
+capped budget.
+
+Over seven days on the MiniMax path:
+
+| family | requests | input tokens | cache read | whole-request misses | re-read | cost |
+|---|---|---|---|---|---|---|
+| conversation (streamed) | 23,914 | 5.03B | **97.7%** | 1,655 | 57.3M | $17.18 |
+| auxiliary (non-streamed) | 7,320 | 584M | **35.1%** | 3,041 | 218M | $65.37 |
+| all MiniMax | 31,234 | 5.61B | 91.1% | 4,696 | 280M | $83.97 |
+
+$83.97 over seven days is **$360 a month** at $0.30/M.
+
+The auxiliary family is the **auto-mode safety classifier**: a per-turn
+request carrying the security-review prompt and the pending tool call,
+with no tools of its own. Its dynamic content sits *inside* its own
+cacheable region, so it can only ever cache its stable head — 35.1%,
+against 97.7% for the conversation.
+
+**The tool-set churn is real, but it is the smaller half.** Of the
+conversation family's whole-request misses, 1,383 are *churn-shaped* —
+the previous request in the same session was under five minutes earlier,
+so the provider had no reason to have evicted — and 120 are
+eviction-shaped. The churn-shaped misses re-read 30.3M tokens.
+
+| | conversation cache read rate | churn re-read | cost |
+|---|---|---|---|
+| before | 97.66% | 30.3M tokens / 7d | $9.08 / 7d |
+| after | **98.26%** | ~0 | ~$0 |
+
+**$38.92 a month.**
+
+**The fix is in the harness, and it is landed.** Two levers, both
+client-side:
+
+1. **`CLAUDE_CODE_MCP_STARTUP_WAIT_MS=10000`** — set in
+   `~/.claude/settings.json`. Claude Code picks its MCP startup mode
+   from this value: unset, the mode is `"lifted"` — *do not wait for MCP
+   servers before the first turn* — and a positive value makes it
+   `"host_wait"`, waiting up to that many ms for the MCP hosts to
+   connect. With the tools present from request one, the `tools` array
+   never changes and the prefix never breaks.
+2. **`"alwaysLoad": true`** on an MCP server's entry in
+   `~/.claude.json` — set for `bodai`. Claude Code's own description:
+   *"all tools from this server are always included in the prompt and
+   never deferred behind tool search … As a side effect, true also
+   blocks startup until the server is connected."* This is the lever for
+   the deferred half: `Monitor` and `mcp__bodai__telepathy_receive`
+   were materialised on demand in the capture above.
+
+> **`CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS` is not this lever.** It bounds
+> how long a running MCP *tool call* may take before Claude Code moves
+> it to a background task. It says nothing about when the server
+> connects; the harness's existing `1000` is about call backgrounding.
+
+Bifrost's `prompt_cache` block cannot help any of this: it is skipped
+for any request that already carries its own `cache_control` markers,
+which every Claude Code request does.
+
+**What the fix does not reach: the auxiliary family.** 218M tokens,
+$65.37 per seven days, **$280 a month** — seven times the churn prize.
+No tool-set change touches it, because it carries no tool set of its
+own: its prefix changes because *its own* dynamic content moves. The
+only lever on it is not running the classifier at all, which is a
+security-posture decision, not a cache decision. That is the next open
+question, not a closed one.
 
 > **Reading MiniMax's cache counters.** MiniMax's Anthropic-compatible
 > endpoint reports `cache_creation_input_tokens = 0` and
@@ -675,48 +761,22 @@ clustered on any event.
 > **`/anthropic/v1/messages`**, not `/v1/messages` (which returns HTTP
 > 405).
 
-**Where the fault must live.** A whole-request miss in a prefix-keyed
-cache means the request's *leading* region differed — the system prompt
-or the tool set, both of which sit before the conversation. Claude Code
-rebuilds its system prompt per request and it carries per-machine
-dynamic sections (cwd, environment info, memory paths, `git status`).
-The CLI ships `--exclude-dynamic-system-prompt-sections` precisely to
-move those out of the system prompt, and its own help says that
-"improves cross-user prompt-cache reuse". That is the lever, and it is
-on the client side.
+**To see the bodies without changing the gateway.** The virtual key
+`bodai-pi-pool` carries `disable_content_logging = 1` and every provider
+carries `store_raw_request_response = 0`, so the gateway logs none of
+them; the per-request headers `x-bf-disable-content-logging` and
+`x-bf-store-raw-request-response` **cannot override the key-level
+setting** (verified by probe), and a direct write to the config store is
+not picked up because Bifrost holds its config in memory.
 
-**To see the bodies** — the gateway cannot today:
-
-```bash
-# 734 of the last 740 rows have content_hidden=1 and an empty raw_request.
-sqlite3 ~/.config/bifrost/logs.db \
-  "select count(*), sum(content_hidden=1), sum(raw_request is null or raw_request='') from logs"
-```
-
-The virtual key `bodai-pi-pool` carries `disable_content_logging = 1`,
-and every provider has `store_raw_request_response = 0`. The per-request
-headers `x-bf-disable-content-logging` and `x-bf-store-raw-request-response`
-**cannot override the key-level setting** — verified by probe. To see
-the bodies:
-
-1. **Turn on content logging for a bounded window.** Set
-   `disable_content_logging = 0` on the virtual key and
-   `store_raw_request_response = 1` on the `minimax-anthropic` provider.
-   This writes full conversation bodies — system prompt, transcript, tool
-   results — into `~/.config/bifrost/logs.db` **unencrypted**. Keep the
-   window short, and delete the captured rows afterwards. **Get the
-   operator's explicit go-ahead first.**
-2. **Capture one hit and one miss.** The `logs` table's
-   `cache_read_tokens` column tells you which is which: a full read is
-   near the prompt count, a miss is 128.
-3. **Diff the prefixes** of the two bodies. The first divergence point is
-   the cause — expected in the system prompt's leading region or in the
-   tool set.
-4. **Turn content logging back off** and delete the captured rows.
-
-Do not guess at this from token counts alone — the same 128 appears for
-"the prefix changed" and "the provider never wrote a cache at all", and
-only the bodies separate them.
+The route that works is a **loopback capture proxy**: point Claude Code
+at `http://127.0.0.1:<port>/anthropic` with `--settings` for a
+scratch-repository run, and have the proxy forward each request
+unchanged to the gateway while writing the body to disk. Only the
+scratch session's bodies are recorded — no gateway configuration
+changes, no restart, and no other session's traffic. `settings.json`
+pins `ANTHROPIC_BASE_URL`, so the override has to come through
+`--settings`, not the process environment.
 
 ## Mahavishnu Worker Defaults
 

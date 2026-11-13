@@ -3,7 +3,7 @@ status: active
 role: canonical
 kind: decision
 date: 2026-11-08
-last_reviewed: 2026-11-12
+last_reviewed: 2026-11-13
 topic: bifrost-cache-layers
 ---
 
@@ -229,73 +229,143 @@ at current traffic" but **not measurable with the tooling available**.
 Even at fleet scale, an A/B would have to control for eviction to mean
 anything.
 
-**Open, and newly separated from the TTL: the provider cache misses
-whole requests below a prompt-size threshold.** While measuring, one
-`MiniMax-M3` session on 11-12 showed the provider cache collapsing and
-recovering *within the same conversation*. Over seven days the fault
-turns out to track **prompt size**, not the session, the model, or the
-TTL:
+**Closed 2026-11-13 — the provider-cache misses have two causes: Claude
+Code's tool set changing inside a session (now fixed, in the harness),
+and the auto-mode classifier's own request shape (still open).** The
+mechanism was proved by capturing real request bodies through a loopback
+proxy in front of the gateway, so no gateway configuration was changed and
+no other session's traffic was recorded.
 
-| prompt size | `MiniMax-M3` hit rate | `MiniMax-M3.1-Flash` hit rate |
-|---|---|---|
-| < 60k tokens | 64% | 42% |
-| 60–120k | 57% | 67% |
-| 120–250k | 92% | 95% |
-| > 250k | 99% | 98% |
+**The mechanism.** The Anthropic cacheable prefix is built in the order
+**tools → system → messages**, and the `tools` array is at its front.
+Captured consecutive requests from one scratch session show Claude Code
+**adding tools mid-session**:
 
-The failures are **whole-request misses**, not partial ones: the cached
-read lands on 128–600 tokens, which is MiniMax's own fixed server-side
-prefix and nothing of Claude Code's content. A fresh 4,540-token
-request also reports 128, so 128 means "nothing of ours matched". In
-the 60–120k band those whole misses are 24.8% of requests and partial
-hits a further 18.2%, spread evenly through the day rather than
-clustered on any event. Above 120k the fault essentially disappears.
+| request | tool count | tool characters | tool added |
+|---|---|---|---|
+| 002 | 12 | 30,339 | — |
+| 003 | 13 | 33,494 | `mcp__bodai__wake` |
+| 006 | 14 | 41,233 | `Monitor` |
+| 007 | 15 | 42,067 | `mcp__bodai__telepathy_receive` |
 
-**What the probes established.** A seven-arm controlled probe (prefix
-size × marker placement × requested TTL × direct-vs-gateway, read at
-+90s and +9min) and a synthetic mutation ladder together show:
+Two sources: an MCP server connecting after the session began
+(`mcp__bodai__*`), and Claude Code materialising a **deferred tool** on
+demand (`Monitor`, behind `ToolSearch`). Because the tools sit at the
+front of the prefix, either change invalidates the *entire* cached
+prefix — which is why the failures are **whole-request misses** rather
+than partial ones, and why the cached read lands on 128–600 tokens:
+that is MiniMax's own fixed server-side prefix, and nothing of Claude
+Code's content was cached.
 
-- **Bifrost passes `cache_control` through faithfully.** Matching direct
-  and gateway arms returned *identical* usage at every round. The
-  gateway is not the fault.
-- **The cached amount is the shared-prefix boundary.** Moving a mutation
-  later in a synthetic request moved the cached boundary later in
-  lockstep (0 → 3,584 → 5,888 → 7,168 → 8,192 → 8,704). So a cached
-  read of 128 means the *first* block differed, and a read of ~9,000
-  means the system prompt matched and something after it did not.
-- **The lookup is reliable for unchanged content.** Sixteen byte-identical
-  requests hit 16/16.
-- **MiniMax never reports the write.** `cache_creation_input_tokens` is
-  `0` and `cache_creation` is `null` even when a write plainly
-  happened. Only `cache_read_input_tokens` is trustworthy.
-- **The cache lifetime is not deterministic.** The same nominal 5-minute
-  arm survived 9 minutes in one variant and expired in another, and the
-  two 1-hour arms disagreed with each other. Provider-side eviction or
-  replica routing dominates the outcome, so a TTL A/B cannot separate
-  the requested TTL from that variance. This is also why the "5-minute
-  cliff" was one observation of a distribution rather than a fixed
-  property.
+With a stable tool set the cache is effectively perfect: one captured
+request read **81,083 of 81,084 tokens** back (99.99%).
 
-**Where the fault must live.** A whole-request miss in a
-prefix-keyed cache means the request's *leading* region differed — the
-system prompt or the tool set, both of which sit before the
-conversation. Claude Code rebuilds its system prompt per request and it
-carries per-machine dynamic sections (cwd, environment info, memory
-paths, `git status`); the CLI ships `--exclude-dynamic-system-prompt-sections`
-precisely to move those out of the system prompt, and its own help says
-that "improves cross-user prompt-cache reuse". That is the lever, and
-it is on the client side, not in Bifrost.
+**What the fault looks like in aggregate.** The whole-request miss rate
+falls as sessions get longer, which is the signature of a per-session
+re-warm amortised over more turns.
 
-It is not yet the *fix*. Two attempts to confirm it did not settle the
-question: the flag did not improve cross-invocation reuse in a scratch
-repository (two runs both floored), and the per-request headers
-`x-bf-disable-content-logging` and `x-bf-store-raw-request-response`
-cannot override the virtual key's `disable_content_logging = 1`, so the
-bodies stay hidden. **Naming the exact diverging bytes needs a bounded
-content-logging window**, which writes conversation bodies unencrypted
-into `~/.config/bifrost/logs.db` and therefore needs the operator's
-explicit go-ahead. Until that is run, the cause is narrowed to the
-request's leading region and no further.
+The gateway's log carries two distinct request families from Claude
+Code, and they cache very differently. They separate by `object_type`
+(streamed vs not) and are confirmed by their output profile: the
+conversation averages 721 output tokens and stops with `tool_calls`; the
+other averages 46 and stops with `length` — a verdict truncated at a
+capped budget. Over seven days on the MiniMax path:
+
+| family | requests | input tokens | cache read | whole-request misses | re-read | cost |
+|---|---|---|---|---|---|---|
+| conversation (streamed) | 23,914 | 5.03B | **97.7%** | 1,655 | 57.3M | $17.18 |
+| auxiliary (non-streamed) | 7,320 | 584M | **35.1%** | 3,041 | 218M | $65.37 |
+| all MiniMax | 31,234 | 5.61B | 91.1% | 4,696 | 280M | $83.97 |
+
+Total re-processed input: **280M tokens over 7 days — $83.97, about
+$360/month** at $0.30/M.
+
+The auxiliary family is the **auto-mode safety classifier**: a per-turn
+request carrying the security-review prompt and the pending tool call,
+with no tools of its own. Its dynamic content sits *inside* its own
+cacheable region, so it can only ever cache its stable head — 35.1%
+against 97.7% for the conversation. It can never share a cache entry
+with the conversation, and no tool-set change reaches it.
+
+**The tool-set churn is real, and it is the smaller half.** Of the
+conversation family's whole-request misses, 1,383 are *churn-shaped* —
+the previous request in the same session was under five minutes earlier,
+so the provider had no reason to have evicted — and 120 are
+eviction-shaped. The churn-shaped misses re-read 30.3M tokens.
+
+| | conversation cache read rate | churn re-read | cost |
+|---|---|---|---|
+| before | 97.66% | 30.3M tokens / 7d | $9.08 / 7d |
+| after | **98.26%** | ~0 | ~$0 |
+
+**$38.92 a month** — against $280 a month in the auxiliary family that
+the same fix cannot reach.
+
+**What this rules out, with evidence:**
+
+- **Not the gateway.** A seven-arm controlled probe (prefix size ×
+  marker placement × requested TTL × direct-vs-gateway, read at +90s and
+  +9min) returned *identical* usage on matching direct and gateway arms
+  at every round. Bifrost passes `cache_control` through faithfully.
+- **Not the TTL.** The same nominal 5-minute arm survived 9 minutes in
+  one variant and expired in another, and the two 1-hour arms disagreed
+  with each other. The cache lifetime is not deterministic under this
+  load, so a TTL A/B cannot separate the requested TTL from
+  provider-side eviction — and the "5-minute cliff" was one observation
+  of a distribution, not a fixed property.
+- **Not an unreliable lookup.** Sixteen byte-identical requests hit
+  16/16.
+- **Not the model alias.** The alias substitutes before the provider
+  call, so MiniMax sees the same resolved model either way, and the
+  `model` field is not part of the cacheable prefix.
+
+**Also settled:** the cached amount *is* the shared-prefix boundary. A
+synthetic mutation ladder moved it in lockstep with the mutation
+(0 → 3,584 → 5,888 → 7,168 → 8,192 → 8,704), which is what made the
+counter a ruler rather than a boolean. And MiniMax never reports the
+write: `cache_creation_input_tokens` is `0` and `cache_creation` is
+`null` even when a write plainly happened, so only
+`cache_read_input_tokens` is trustworthy.
+
+**Where the fix lives — the client, not the gateway.** Two levers, both
+in the harness rather than in Bifrost, and **both landed on 2026-11-13**:
+
+1. **Connect the MCP servers before the first turn**, so the tool set is
+   stable from request one. Claude Code chooses its MCP startup mode from
+   `CLAUDE_CODE_MCP_STARTUP_WAIT_MS`: unset, the mode is `"lifted"` — *do
+   not wait for MCP servers before the first turn* — and a positive value
+   makes it `"host_wait"`, waiting up to that many milliseconds for the
+   MCP hosts to connect. **`CLAUDE_CODE_MCP_STARTUP_WAIT_MS=10000`** is
+   now set in `~/.claude/settings.json`.
+2. **Stop deferring a server's tools behind tool search.** An MCP server
+   entry in `~/.claude.json` accepts `"alwaysLoad": true`, which Claude
+   Code describes as: *"all tools from this server are always included
+   in the prompt and never deferred behind tool search … As a side
+   effect, true also blocks startup until the server is connected."* It
+   is set for `bodai`, whose tools (`mcp__bodai__wake`,
+   `mcp__bodai__telepathy_receive`) demonstrably arrived late in the
+   capture above.
+
+> **A correction to this record's earlier reasoning.**
+> `CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS` is *not* the connect-timing
+> lever. It bounds how long a running MCP **tool call** may take before
+> Claude Code moves it to a background task. It says nothing about when
+> the server connects, and the harness's existing `1000` is about call
+> backgrounding. The connect-timing levers are
+> `CLAUDE_CODE_MCP_STARTUP_WAIT_MS`, `CLAUDE_CODE_MCP_PREWAIT_SERVERS`
+> and per-server `alwaysLoad`.
+
+Neither is a Bifrost setting, and Bifrost's `prompt_cache` block cannot
+help: it is skipped for any request that already carries its own
+`cache_control` markers, which every Claude Code request does.
+
+**What the fix does not reach.** The auxiliary family's 218M re-read
+tokens — **$280 a month**, seven times the churn prize — are untouched
+by it. That family carries no tool set of its own; its prefix changes
+because its *own* dynamic content moves. The only lever on it is not
+running the classifier at all, which is a security-posture decision
+rather than a cache decision. It is the next open question, not a
+closed one.
 
 ## Related
 
