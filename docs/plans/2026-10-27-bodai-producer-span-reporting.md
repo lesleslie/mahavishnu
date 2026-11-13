@@ -306,7 +306,7 @@ exporter is not orphaned.
 | `mcp-common/.venv/bin/pytest tests/unit/test_producer_telemetry.py` | pass | test output |
 | `akosha/.venv/bin/pytest tests/unit/test_tracing.py` | pass | test output |
 | `curl -fsS :8682/metrics \| grep heartbeat_p0_a` | flat over 5 min | metrics |
-| `mcp__akosha__search_spans {service_name: "<each roster entry>"}` | ≥1 row each | tool output |
+| `mcp__akosha__akosha_search_spans {service_name: "<each roster entry>"}` | ≥1 row each | tool output |
 | `tail akosha.err \| grep 'did not respond within'` | no new lines | log |
 
 ## 8. Risks

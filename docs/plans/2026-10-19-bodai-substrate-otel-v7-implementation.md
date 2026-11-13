@@ -2468,7 +2468,7 @@ ls docs/feature-tracking/otel-spans-substrate.md
 - **Triggered from**: `akosha mcp start` (lifespan); any OTLP producer POSTing to `:4318/v1/traces` or the gRPC `:4317`.
 - **Returns to / updates**: `akosha/observability/otlp_receiver.py` (new module), `akosha/mcp/server.py` (lifespan), `mahavishnu/config/otel-collector-config.yaml` (ports).
 - **Demonstrable by**: `pytest tests/integration/test_otlp_receiver_e2e.py tests/integration/test_substrate_lifespan_order.py -v` — all passing; `curl -fsS http://localhost:9464/metrics | grep telemetry_receiver_started`.
-- **Rollback signal**: `LifecycleError("spans_substrate_missing")` at boot → Task 2's DDL did not land, or oneiric's version pin is stale. Verify with `mcp__akosha__spans_summary` (the substrate read path) or `python -c "import duckdb; ..."` in the interim. Note: `akosha hot-store inspect --table spans_substrate` was the original probe, and it is **not** shipped — Task 6's CLI group was dropped, so no `akosha` subcommand inspects a table.
+- **Rollback signal**: `LifecycleError("spans_substrate_missing")` at boot → Task 2's DDL did not land, or oneiric's version pin is stale. Verify with `mcp__akosha__akosha_spans_summary` (the substrate read path) or `python -c "import duckdb; ..."` in the interim. Note: `akosha hot-store inspect --table spans_substrate` was the original probe, and it is **not** shipped — Task 6's CLI group was dropped, so no `akosha` subcommand inspects a table.
 - **Observability added**: `telemetry_receiver_started_total`, `telemetry_receiver_batch_inserted{outcome}`, `telemetry_receiver_row_rejected{reason,field}`, `telemetry_receiver_dlq_insert_failed{reason}`, `telemetry_receiver_batch_size` histogram — all on `:9464`.
 
 ---
@@ -2504,7 +2504,7 @@ ls docs/feature-tracking/otel-spans-substrate.md
 > interval could matter during substrate pressure. What the reconciliation
 > changed is the SHAPE of the interface, not whether there is one.
 >
-> The trigger is `mcp__akosha__force_retention_sweep`. It cannot be a CLI
+> The trigger is `mcp__akosha__akosha_force_retention_sweep`. It cannot be a CLI
 > command, and this is architectural rather than a preference: the
 > substrate lives in the running akosha process's memory
 > (`HotStore(database_path=":memory:")`) and the receiver is a
@@ -2543,7 +2543,7 @@ ls docs/feature-tracking/otel-spans-substrate.md
   - ~~`akosha admin otel retention manual-run [--retention-days N] [--dry-run|--apply --confirm PHRASE]`~~ — **not shipped**
   - ~~`akosha admin otel retention sweep-once`~~ — **not shipped**
   - ~~`akosha admin otel retention config set [--retention-days N] [--reload]`~~ — **not shipped**; the settings file is the interface
-  - ~~`akosha admin otel retention cardinality-report`~~ — **not shipped**; `mcp__akosha__spans_summary` and the `akosha_otlp_*` counters are
+  - ~~`akosha admin otel retention cardinality-report`~~ — **not shipped**; `mcp__akosha__akosha_spans_summary` and the `akosha_otlp_*` counters are
   - Settings keys `spans_substrate.{retention_days, retention_sweep_interval_hours}` — **shipped, top-level** (canonical path, sibling of `otel`, NOT nested under it — spec §11.4)
 
 - [ ] **Step 1: Write the failing test**

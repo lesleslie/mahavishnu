@@ -614,7 +614,7 @@ class ContentIngester:
                     "id": 1,
                     "method": "tools/call",
                     "params": {
-                        "name": "mcp__crackerjack__index_file_semantic",
+                        "name": "mcp__crackerjack__crackerjack_index_file_semantic",
                         "arguments": {"file_path": file_path},
                     },
                 },

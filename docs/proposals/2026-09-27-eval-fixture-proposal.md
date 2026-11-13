@@ -31,7 +31,7 @@ produces a non-trivial ordering (per §5 exit criteria).
 | # | Fixture slug | Task class | Adapter coverage | Output type | Tooling touchpoints (anticipated) |
 |---|---|---|---|---|---|
 | 1 | `code-review-py-typo` | code_review | Prefect, LlamaIndex, Agno | list | `mcp__mahavishnu__discover_tools`, `mcp__akosha__akosha_search_code_patterns` |
-| 2 | `code-review-py-typing` | code_review | Prefect, LlamaIndex, Agno | list | same as #1 + `mcp__crackerjack__search_semantic` (Akkosha has no semantic search tool) |
+| 2 | `code-review-py-typing` | code_review | Prefect, LlamaIndex, Agno | list | same as #1 + `mcp__crackerjack__crackerjack_search_semantic` (Akkosha has no semantic search tool) |
 | 3 | `refactor-py-extract-method` | refactor | Prefect, LlamaIndex, Agno | file_path | `mcp__akosha__akosha_search_code_patterns`, `mcp__mahavishnu__mahavishnu_trigger_workflow(adapter="...")` |
 | 4 | `refactor-py-rename-symbol` | refactor | Prefect, LlamaIndex, Agno | file_path | same as #3 |
 | 5 | `refactor-py-decompose-class` | refactor | Prefect, LlamaIndex, Agno (hardest) | file_path + list | same as #3, multi-step; budget ≥ 15 tool calls |

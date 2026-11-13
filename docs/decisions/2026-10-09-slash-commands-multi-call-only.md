@@ -81,7 +81,7 @@ Fifteen 1:1 wrappers exist today. All slated for deletion:
 | `~/.claude/commands/start.md` | `mcp__session-buddy__session_buddy_start` | (user-level) |
 | `~/.claude/commands/end.md` | `mcp__session-buddy__session_buddy_end` | (user-level) |
 | `akosha/commands/akosha-search.md` | `mcp__akosha__akosha_search_all_systems` | akosha |
-| `akosha/commands/akosha-analyze.md` | `mcp__akosha__analyze_imports` | akosha |
+| `akosha/commands/akosha-analyze.md` | `mcp__akosha__akosha_analyze_imports` | akosha |
 | `legacy-mcp/commands/legacy-get.md` | `mcp__mahavishnu__mahavishnu_kv_get` (1 tool) | legacy-mcp |
 | `legacy-mcp/commands/legacy-put.md` | `mcp__mahavishnu__mahavishnu_kv_put` (1 tool) | legacy-mcp |
 | `session-buddy/commands/session-buddy-checkpoint.md` | `mcp__session-buddy__session_buddy_checkpoint` | session-buddy |

@@ -364,7 +364,7 @@ results = await mcp.call_tool(
 ```python
 # Via MCP tool
 results = await mcp.call_tool(
-    "mcp__crackerjack__search_semantic",
+    "mcp__crackerjack__crackerjack_search_semantic",
     {"query": "RAG pipeline architecture", "max_results": 10, "min_similarity": 0.7},
 )
 ```
