@@ -46,7 +46,7 @@ to wiring evidence.
 1. **Track `{built, wired, adopted}` state** for every feature in
    `docs/feature-tracking/<slug>.md` (template at
    `docs/feature-tracking/TEMPLATE.md`). Persist a one-line state
-   summary to Session-Buddy via `mcp__session-buddy__store_reflection`
+   summary to Session-Buddy via `mcp__session-buddy__session_buddy_store_reflection`
    with tags `["feature-tracking", "<slug>", "wire-up-state"]`.
 1. **Follow the `feature-delivery-lifecycle` workflow** which now
    includes a Wiring phase between Design and Validate.

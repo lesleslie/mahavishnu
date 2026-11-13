@@ -1,4 +1,4 @@
-"""Per-tool e2e: ``mcp__mahavishnu__plan_vitals``.
+"""Per-tool e2e: ``mcp__mahavishnu__mahavishnu_plan_vitals``.
 
 REQ-PLAN-007 (§4 gate): 9 TypedDict fields, counter invariants, and
 tripwire enum membership.

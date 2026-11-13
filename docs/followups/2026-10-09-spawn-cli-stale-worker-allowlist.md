@@ -97,7 +97,7 @@ $ mahavishnu pool spawn --type mahavishnu --name demo-tmux-pool \
    Allowlist should narrow to **currently supported** worker types per
    the decision doc: `shepherd`, and the post-deprecation workflow-engine
    path is `mahavishnu/pools/` (handled by `mahavishnu pool execute` /
-   `mcp__mahavishnu__pool_route_execute`, not by `pool spawn`).
+   `mcp__mahavishnu__mahavishnu_pool_route_execute`, not by `pool spawn`).
 2. **Refresh the error message** at `_main_cli.py:1810` to point at the
    decision doc and the recommended workflow-engine path, instead of
    re-stating the deprecated allowlist.

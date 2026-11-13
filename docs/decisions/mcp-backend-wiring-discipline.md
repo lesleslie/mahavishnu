@@ -18,7 +18,7 @@ The 2026-09-05 Akosha audit revealed a process failure pattern: a Bodai MCP serv
 The failure mode is structural:
 
 1. **Surface health check vs. functional health check** — `/health` returns 200 regardless of whether data feeds are producing. K8s liveness probes treat the server as healthy.
-2. **Tests probe the tool surface, not the data surface** — a test calls `mcp__akosha__query_knowledge_graph(...)` and passes when it gets `{"neighbors": []}` back. The test never asks "should there be neighbors?"
+2. **Tests probe the tool surface, not the data surface** — a test calls `mcp__akosha__akosha_query_knowledge_graph(...)` and passes when it gets `{"neighbors": []}` back. The test never asks "should there be neighbors?"
 3. **No end-to-end smoke test** — no CI job spins up the server, waits for warmup, and asserts non-empty results from each registered tool.
 4. **No feed observability** — no metric like `akosha.kg.entities_indexed_total` that alerts when it stops incrementing.
 5. **No proactive audit cadence** — the wiring-drift problem was only caught because someone explicitly asked for an audit.

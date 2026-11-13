@@ -1,4 +1,4 @@
-<!-- Last regenerated: <STABLE> UTC · run mcp__mahavishnu__plan_rebuild_status for staleness check -->
+<!-- Last regenerated: <STABLE> UTC · run mcp__mahavishnu__mahavishnu_plan_rebuild_status for staleness check -->
 
 # Plan Index
 

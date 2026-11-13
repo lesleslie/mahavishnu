@@ -1,7 +1,7 @@
 """End-to-end integration test for the pool bootstrap flow.
 
 Verifies the wiring contract from docs/plans/2026-10-09-pool-bootstrap-mcp-tool.md
-Commit 2: simulate the SessionStart hook calling mcp__mahavishnu__pool_bootstrap
+Commit 2: simulate the SessionStart hook calling mcp__mahavishnu__mahavishnu_pool_bootstrap
 via JSON-RPC 2.0, confirm the registry goes from 0 pools to 1 pool.
 """
 

@@ -333,7 +333,7 @@ ______________________________________________________________________
 
 - **#1** `mahavishnu repo diff` + `mahavishnu repo pr create` (Tier 1, S, reimplement) — closes the "what did each parallel agent do?" UX gap; ships immediately regardless of any external decision.
 - **#2** `mcp__mahavishnu__show_primitive` (Tier 1, S, reimplement) — borrows Keystone's `keystone_show` pattern; single-call composed view of Bodai rules/skills. Worth doing regardless of Keystone adoption.
-- **#3** `mcp__session-buddy__export_markdown` + `lint_memory` (Tier 1, S+M, reimplement) — closes "memory is opaque" gap; surfaces orphans/staleness/contradictions.
+- **#3** `mcp__session-buddy__session_buddy_export_markdown` + `lint_memory` (Tier 1, S+M, reimplement) — closes "memory is opaque" gap; surfaces orphans/staleness/contradictions.
 - **#4** OpenObserve docker POC (Tier 2, S 2-3d, run as service) — validates Parquet/S3 retention lever.
 - **#5** `mode: keyword` for `quick_search` (Tier 3, ~1 line, reimplement) — zero-embedding-cost fallback; default stays `"semantic"` for backward compat.
 - **#6** Tier 2 spikes in sequence: Graphify 4h → Maxun 30-min pre-check + 1.5d → OpenObserve 2-3d → PageIndex 2d → Keystone pilot 1d → Emdash bridge 1-2w. All hard-gated with decision memos. Nothing graduates without written decision.
@@ -351,10 +351,10 @@ Per-action fields: **description**, **effort** (S/M/L), **probability** of succe
 1. **`mahavishnu repo pr create <worktree-id> --fill`** — Effort: S. Probability: 80%. Owner: CLI/tooling. Blockers: `gh` system prereq. Tier: 1.
 1. **`mcp__mahavishnu__show_primitive`** — Effort: S. Probability: 85%. Owner: Mahavishnu MCP. Blockers: scan logic for skills/rules. Tier: 1.
 1. **`mcp__mahavishnu__list_primitives` (companion)** — Effort: XS. Probability: 90%. Owner: Mahavishnu MCP. Blockers: tied to #3. Tier: 1.
-1. **`mcp__session-buddy__export_markdown`** — Effort: S. Probability: 85%. Owner: Session-Buddy MCP. Blockers: bulk-export adapter. Tier: 1.
-1. **`mcp__session-buddy__lint_memory` (broken_links)** — Effort: S. Probability: 90%. Owner: Session-Buddy MCP. Blockers: v2 schema verification. Tier: 1.
-1. **`mcp__session-buddy__lint_memory` (orphans + staleness)** — Effort: S. Probability: 85%. Owner: Session-Buddy MCP. Blockers: v2 schema verification. Tier: 1.
-1. **`mcp__session-buddy__lint_memory` (contradictions)** — Effort: M. Probability: 70%. Owner: Session-Buddy MCP. Blockers: LLM cost ceiling for fingerprinting deltas. Tier: 1.
+1. **`mcp__session-buddy__session_buddy_export_markdown`** — Effort: S. Probability: 85%. Owner: Session-Buddy MCP. Blockers: bulk-export adapter. Tier: 1.
+1. **`mcp__session-buddy__session_buddy_lint_memory` (broken_links)** — Effort: S. Probability: 90%. Owner: Session-Buddy MCP. Blockers: v2 schema verification. Tier: 1.
+1. **`mcp__session-buddy__session_buddy_lint_memory` (orphans + staleness)** — Effort: S. Probability: 85%. Owner: Session-Buddy MCP. Blockers: v2 schema verification. Tier: 1.
+1. **`mcp__session-buddy__session_buddy_lint_memory` (contradictions)** — Effort: M. Probability: 70%. Owner: Session-Buddy MCP. Blockers: LLM cost ceiling for fingerprinting deltas. Tier: 1.
 
 ### Tier 2 — Time-boxed spikes (5 actions, 35–75% go-probability each, hard go/no-go criteria)
 

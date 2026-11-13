@@ -42,7 +42,7 @@ class TestRenderer:
         out = render([_sample("b" * 32)])
         # The staleness-header comment is emitted by the renderer
         assert "<!-- Last regenerated:" in out
-        assert "mcp__mahavishnu__plan_rebuild_status" in out
+        assert "mcp__mahavishnu__mahavishnu_plan_rebuild_status" in out
 
     def test_groups_by_store(self) -> None:
         out = render([_sample("c" * 32), _sample("d" * 32)])

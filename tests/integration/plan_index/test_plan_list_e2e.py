@@ -1,4 +1,4 @@
-"""Per-tool e2e: ``mcp__mahavishnu__plan_list``.
+"""Per-tool e2e: ``mcp__mahavishnu__mahavishnu_plan_list``.
 
 REQ-PLAN-007 (§4 gate): verifies the typed-dict envelope shape, the
 ``status`` filter routing, and the empty-store contract.

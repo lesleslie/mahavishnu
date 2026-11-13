@@ -508,7 +508,7 @@ Mahavishnu via the Bodai EventBridge).
 
 | Consumer | Surface | Reads from Mahavishnu | Writes to Mahavishnu |
 |----------|---------|-----------------------|----------------------|
-| **Session-Buddy** | MCP `mcp__session-buddy__store_reflection` (called by Mahavishnu workers); `kg_entities` via `store_code_graph_from_mahavishnu` | (no direct reads; Session-Buddy is write-side from Mahavishnu's perspective) | Optional heartbeat via `component_endpoint/session_buddy` Mahavishnu key (written by SB, not Mahavishnu) |
+| **Session-Buddy** | MCP `mcp__session-buddy__session_buddy_store_reflection` (called by Mahavishnu workers); `kg_entities` via `store_code_graph_from_mahavishnu` | (no direct reads; Session-Buddy is write-side from Mahavishnu's perspective) | Optional heartbeat via `component_endpoint/session_buddy` Mahavishnu key (written by SB, not Mahavishnu) |
 | **Akosha** | `mcp__mahavishnu__*` for control-plane reads; Akosha `FitnessAnalyzer` polls `routing_fitness/*` keys that **Mahavishnu writes** | `ecosystem_status`, `ecosystem_capabilities`, `ecosystem_routing_readiness`, `pool_health`, `dispatch_to_pool` results | (none — Akosha is read-side from Mahavishnu's perspective) |
 | **Shared persistence substrate** | `mcp__mahavishnu__*`; Mahavishnu writes `workflow-results/*`, `pool-state/*`, `worker-state/*`, `routing_fitness/*`, `adapters/*` via the Mahavishnu MCP tools | `component_endpoint/*` (other components' URLs); `adapters/*` for Oneiric distribution | **All operational state above**; `component_endpoint/mahavishnu` at Phase 0; `record_time_series` for every routing decision |
 | **Crackerjack** | `mahavishnu trigger_workflow(adapter="prefect")`; Mahavishnu reads Crackerjack MCP for `crackerjack_run` / `crackerjack_metrics` / `crackerjack_history` | `crackerjack_skill_names` via `mahavishnu/quality/` (writes `distilled_skills` via SB after successful fix) | Optional heartbeat via `component_endpoint/crackerjack` |
@@ -847,7 +847,7 @@ The `routable_workers` field reflects runtime state via
 **Goal**: Get the unified control-plane status report.
 
 ```python
-mcp__mahavishnu__ecosystem_status(
+mcp__mahavishnu__mahavishnu_ecosystem_status(
     sections=["services", "adapters", "capabilities"],
     timeout_per_section_ms=3000,
 )
@@ -864,7 +864,7 @@ which Bodai capabilities are wired.
 **Goal**: "Which adapters can serve `AI_TASK` right now?"
 
 ```python
-mcp__mahavishnu__ecosystem_routing_readiness(task_class="AI_TASK")
+mcp__mahavishnu__mahavishnu_ecosystem_routing_readiness(task_class="AI_TASK")
 ```
 
 Returns `{"task_class": "AI_TASK", "overall_status": "ok", "available_adapters": {...}, "healthy_count": 2, "degraded_count": 1, "recommendation": "Use prefect"}`.
@@ -875,7 +875,7 @@ Drives the `TaskRouter` selector when fitness signals are unavailable.
 **Goal**: List every active pool with current metrics.
 
 ```python
-mcp__mahavishnu__pool_health()
+mcp__mahavishnu__mahavishnu_pool_health()
 ```
 
 Returns `{"pools": [{"pool_id": "pool_abc", "status": "active", "active_workers": 3, "tasks_completed": 142, "avg_task_duration": 12.4}, ...]}`.
@@ -886,7 +886,7 @@ Returns `{"pools": [{"pool_id": "pool_abc", "status": "active", "active_workers"
 fixtures or repeated error signatures).
 
 ```python
-mcp__mahavishnu__get_cross_project_patterns(
+mcp__mahavishnu__mahavishnu_get_cross_project_patterns(
     pattern_type="error_signature",
     window_days=7,
     min_occurrences=3,
@@ -901,7 +901,7 @@ hash, returns patterns occurring ≥ `min_occurrences` within the window.
 **Goal**: Snapshot the repo fingerprint and find near-duplicates.
 
 ```python
-mcp__mahavishnu__clone_detect_ecosystem(
+mcp__mahavishnu__mahavishnu_clone_detect_ecosystem(
     repos=["/path/to/repo-a", "/path/to/repo-b"],
     threshold=0.85,
 )
@@ -931,7 +931,7 @@ cosine similarity is ≥ `threshold` (DuckDB or pgvector via
 **Goal**: Combine keyword + semantic for ingested documentation.
 
 ```python
-mcp__mahavishnu__hybrid_search(
+mcp__mahavishnu__mahavishnu_hybrid_search(
     query="async dispatch dead-letter",
     limit=20,
     semantic_weight=0.6,
@@ -957,10 +957,10 @@ Returns `{"adapter_id": "cache:redis:default", "factory_path": "oneiric.adapters
 **Goal**: After Crackerjack proposes a fix, approve or reject.
 
 ```python
-mcp__mahavishnu__get_pending_approvals()
+mcp__mahavishnu__mahavishnu_get_pending_approvals()
 # Returns list of {proposal_id, error_pattern, action_taken, confidence}
 
-mcp__mahavishnu__respond_to_approval(
+mcp__mahavishnu__mahavishnu_respond_to_approval(
     proposal_id="prop_xyz",
     decision="approve",
     rationale="matches crackerjack-orchestrator pattern",

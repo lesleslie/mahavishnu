@@ -543,13 +543,13 @@ is verified as unused by grep.
   override, or a sentence-transformers wrapper). Not in Phase 0; pick up as
   Phase 2 if/when the substrate gets a `rank_via_logits()` abstraction.
 
-## Phase 1 gating (live routing in `mcp__mahavishnu__pool_route_execute`)
+## Phase 1 gating (live routing in `mcp__mahavishnu__mahavishnu_pool_route_execute`)
 
 Per the user's prior direction ("approval gating first"), the first live
 use of the decision category in Mahavishnu should be a **shadow-mode
 disagreement test**, not a flipped selector. Specifically:
 
-1. Shadow-mode Jev Noul decisions alongside `mcp__mahavishnu__request_approval`
+1. Shadow-mode Jev Noul decisions alongside `mcp__mahavishnu__mahavishnu_request_approval`
    for 7 days. Log disagreements with the hand-coded approval gate.
 1. Compare P-value distribution vs. baseline (alert on >2σ shift).
 1. Compute precision vs. the hand-coded baseline over the 7-day window.

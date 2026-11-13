@@ -122,7 +122,7 @@ The `_env_overrides` mechanism (lines 678-745) honors `{PROJECT_NAME}_*` env var
 
 ### 4.6 MCP tool feed observability — gap
 
-`mcp-backend-wiring-discipline.md §3` mandates `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `cycles_total` per data feed. The Akosha, SB, and Mahavishnu MCP tools that wrap these substrates (`mcp__akosha__search_all_systems`, `mcp__session-buddy__quick_search`, `mcp__mahavishnu__pool_health`, etc.) currently do **not** expose feed-state for their substrate backing store. Phase E1 adds the methods; Phase E2 wires component `/health` endpoints to aggregate.
+`mcp-backend-wiring-discipline.md §3` mandates `feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`, `cycles_total` per data feed. The Akosha, SB, and Mahavishnu MCP tools that wrap these substrates (`mcp__akosha__akosha_search_all_systems`, `mcp__session-buddy__session_buddy_quick_search`, `mcp__mahavishnu__mahavishnu_pool_health`, etc.) currently do **not** expose feed-state for their substrate backing store. Phase E1 adds the methods; Phase E2 wires component `/health` endpoints to aggregate.
 
 ## 5. Architecture
 
@@ -361,7 +361,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 ### 6.1 Phase A — Cache consolidation (SB + Akosha)
 
 **Integration Contract**:
-- **Triggered from**: `mcp__session-buddy__quick_search` first call after SB restart; `mcp__akosha__search_code_patterns` first call after Akosha restart.
+- **Triggered from**: `mcp__session-buddy__session_buddy_quick_search` first call after SB restart; `mcp__akosha__akosha_search_code_patterns` first call after Akosha restart.
 - **Returns to**: cache writes go to `MemoryCacheAdapter` instance; L2 DuckDB table no longer created.
 - **Demonstrable by**: `grep -rn "class QueryCacheManager\|self._l1_cache: OrderedDict" session_buddy/ akosha/` returns zero hits; `pytest session_buddy/tests/cache/ akosha/tests/cache/` all green; `python -c "from oneiric.adapters.cache.memory import MemoryCacheAdapter; c = MemoryCacheAdapter(); c.set('k', 'v'); print(c.get('k'))"` returns `v`.
 - **Rollback signal**: SB or Akosha `/health` returns 503 with `feeds.cache_health == degraded`; p99 `quick_search` latency > 50ms.
@@ -388,7 +388,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 ### 6.2 Phase B — SB warm tier = pgvector
 
 **Integration Contract**:
-- **Triggered from**: `mcp__session-buddy__quick_search` first call after SB restart; SB warm write from `mcp__session-buddy__store_reflection`.
+- **Triggered from**: `mcp__session-buddy__session_buddy_quick_search` first call after SB restart; SB warm write from `mcp__session-buddy__session_buddy_store_reflection`.
 - **Returns to**: SB reflections persist in `sb.reflections` table (pgvector); 461 MB `reflection.duckdb` becomes cold-tier archive.
 - **Demonstrable by**: `grep -rn "duckdb.*reflection\|reflection.duckdb" session_buddy/storage/ session_buddy/adapters/reflection_adapter_oneiric.py` returns zero hits; `SELECT count(*) FROM sb.reflections` matches pre-migration count; `python -c "import session_buddy.adapters.reflection_adapter_oneiric as r; print(r.SCHEMA_VERSION)"` prints `"pgvector_v1"`.
 - **Rollback signal**: SB p99 `quick_search` latency > 200ms; pgvector connection error rate > 1% over 5 minutes.

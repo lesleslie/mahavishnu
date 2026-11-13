@@ -126,10 +126,10 @@ def test_mcp_tool_call_via_subprocess() -> None:
     """Boot MCP server, list tools, verify jot_* present.
 
     Skipped because MCP server boot is unreliable in CI; document as
-    `@pytest.mark.slow` and verify via `mcp__mahavishnu__jot_list` after
+    `@pytest.mark.slow` and verify via `mcp__mahavishnu__mahavishnu_jot_list` after
     a manual server boot instead.
     """
-    pytest.skip("manual smoke — verify via mcp__mahavishnu__jot_list after server boot")
+    pytest.skip("manual smoke — verify via mcp__mahavishnu__mahavishnu_jot_list after server boot")
 
 
 @pytest.mark.parametrize(

@@ -30,7 +30,7 @@ no
 
 ## Trigger path
 
-`mcp__mahavishnu__clone_detect_ecosystem(detect_until_dry=True, ..., max_iterations=5)` (line 29 in `clone_tools.py`) and `mcp__mahavishnu__get_cross_project_patterns(detect_until_dry=True, ..., max_iterations=5)`. Default is `detect_until_dry=False`; opt-in only.
+`mcp__mahavishnu__mahavishnu_clone_detect_ecosystem(detect_until_dry=True, ..., max_iterations=5)` (line 29 in `clone_tools.py`) and `mcp__mahavishnu__mahavishnu_get_cross_project_patterns(detect_until_dry=True, ..., max_iterations=5)`. Default is `detect_until_dry=False`; opt-in only.
 
 ## Integration point
 

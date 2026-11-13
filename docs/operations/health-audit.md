@@ -24,7 +24,7 @@ topic: mcp-design
 mahavishnu mcp audit-health --all-repos
 
 # Or invoke the MCP tool directly (any MCP client):
-mcp__mahavishnu__audit_health(all_repos=True)
+mcp__mahavishnu__mahavishnu_audit_health(all_repos=True)
 ```
 
 Exit code `0` = no silent-degraded servers, `2` = at least one

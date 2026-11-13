@@ -1,4 +1,4 @@
-"""Integration tests for mcp__mahavishnu__audit_health (Phase 2).
+"""Integration tests for mcp__mahavishnu__mahavishnu_audit_health (Phase 2).
 
 Validates the fleet-wide /health audit tool against the 5 Bodai
 core repos, with both the silent-degraded and the

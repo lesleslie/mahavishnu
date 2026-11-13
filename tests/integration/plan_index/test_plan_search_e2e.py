@@ -1,4 +1,4 @@
-"""Per-tool e2e: ``mcp__mahavishnu__plan_search``.
+"""Per-tool e2e: ``mcp__mahavishnu__mahavishnu_plan_search``.
 
 REQ-PLAN-007 (§4 gate): non-empty result returns a ``list[dict]`` with
 matched records; empty query short-circuits to ``[]`` (not an error);

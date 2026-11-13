@@ -189,7 +189,7 @@ MCP tooling.
 
 - `plan_index/meta/last_rebuild_ms` — set by the cron cycle (Task 14)
   on each successful rebuild, not by the bootstrap script. Operators
-  can check `mcp__mahavishnu__plan_rebuild_status` to confirm the
+  can check `mcp__mahavishnu__mahavishnu_plan_rebuild_status` to confirm the
   cycle is alive.
 - `plan_index/meta/entities_count` — total records in the durable key-value store after
   bootstrap. Should match `success` from the bootstrap summary
@@ -197,4 +197,4 @@ MCP tooling.
 - `plan_index/meta/recent_errors` — bounded list (max 20 entries,
   30-day TTL) of the most recent partial-failure contexts. Inspect
   via `mahavishnu plan vitals` (Task 10) or the
-  `mcp__mahavishnu__plan_vitals` tool.
+  `mcp__mahavishnu__mahavishnu_plan_vitals` tool.

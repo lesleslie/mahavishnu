@@ -30,7 +30,7 @@ no
 
 ## Trigger path
 
-`mcp__mahavishnu__clone_refactor_group(cluster_id=...)` (line 60 in `clone_tools.py`) and `mcp__mahavishnu__self_improvement_generate(fingerprint=...)` (line 463 in `self_improvement_tools.py`). Verification runs at entry to both methods, before the job-id is generated.
+`mcp__mahavishnu__mahavishnu_clone_refactor_group(cluster_id=...)` (line 60 in `clone_tools.py`) and `mcp__mahavishnu__mahavishnu_self_improvement_generate(fingerprint=...)` (line 463 in `self_improvement_tools.py`). Verification runs at entry to both methods, before the job-id is generated.
 
 ## Integration point
 

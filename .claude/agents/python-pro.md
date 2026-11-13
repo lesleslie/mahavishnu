@@ -109,5 +109,5 @@ A passing run is the definition of done. Never commit until it reports zero fail
 ## Ecosystem
 
 - `mcp__crackerjack__crackerjack_run` (pytest quality gates)
-- `mcp__akosha__search_code_patterns` (cross-repo Python patterns)
-- `mcp__mahavishnu__pool_route_execute` (distributed test execution)
+- `mcp__akosha__akosha_search_code_patterns` (cross-repo Python patterns)
+- `mcp__mahavishnu__mahavishnu_pool_route_execute` (distributed test execution)

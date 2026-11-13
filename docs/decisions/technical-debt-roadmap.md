@@ -202,7 +202,7 @@ felt like scope creep; can be added later if needed.
 - **Risk**: MEDIUM (writing meaningful tests requires understanding
   what each module does; the test surface is large)
 - **Why it matters**: The quality-score report from
-  `mcp__session-buddy__checkpoint` consistently shows "Critical:
+  `mcp__session-buddy__session_buddy_checkpoint` consistently shows "Critical:
   Increase test coverage (3.3% → target 80%+)". This is the lever
   that moves the headline number. Every other fix in this roadmap
   is small-change, big-quality; this one is medium-change, very-big

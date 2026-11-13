@@ -164,7 +164,7 @@ optimization lens is time and efficiency, measured at three points:
 
 | Criterion | Where it is measured | Budget |
 |---|---|---|
-| **Dispatch latency** — the added overhead of joining the pool lane to the workflow lane | `mcp__mahavishnu__pool_route_execute` wall time, before vs after | the pool lane's documented **~200–500 ms** routing overhead must not grow (§4.5) |
+| **Dispatch latency** — the added overhead of joining the pool lane to the workflow lane | `mcp__mahavishnu__mahavishnu_pool_route_execute` wall time, before vs after | the pool lane's documented **~200–500 ms** routing overhead must not grow (§4.5) |
 | **Fan-out cost** — what one dispatch costs in *resources*, not dollars | workers spawned, tmux sessions created, wall-clock seconds per leg | `count` bounded (§4.11); one worker per task, never per repo × task |
 | **State-write cost** — the workflow record's write path | `StateManager._persist` (`core/task_router.py:217`) rewrites the **entire** JSON file on every mutation, unlocked | the pool lane must not write a full-file-rewrite record per dispatch; either the record is written once at completion, or the store gets a lock + atomic replace first |
 
@@ -1430,7 +1430,7 @@ real conversation against the current SDK.
 
 #### Integration Contract
 
-- **Triggered from:** `mcp__mahavishnu__trigger_workflow`
+- **Triggered from:** `mcp__mahavishnu__mahavishnu_trigger_workflow`
   (`mcp/server_core.py:410`), `mahavishnu workflow sweep` /
   `quality-check` (`_main_cli.py:373`, `:638`), and
   `core/task_router.py:831` (`execute_with_fallback`).
@@ -1665,7 +1665,7 @@ unregistering it and without losing MCP tools.**
 #### Integration Contract
 
 - **Triggered from:** `TaskRouter.generate_fallback_chain`
-  (`core/task_router.py:729`) and `mcp__mahavishnu__trigger_workflow`.
+  (`core/task_router.py:729`) and `mcp__mahavishnu__mahavishnu_trigger_workflow`.
 - **Returns to / updates:** `app.adapters` selection in
   `prepare_execution` (`core/workflow_execution.py:103`) and the
   `adapter_used` field of the fallback result.
@@ -2580,13 +2580,13 @@ has not regressed.
 
 #### Integration Contract
 
-- **Triggered from:** `mcp__mahavishnu__pool_route_execute` →
+- **Triggered from:** `mcp__mahavishnu__mahavishnu_pool_route_execute` →
   `pool_manager.route_task` (`mahavishnu/pools/manager.py:663`).
 - **Returns to / updates:** `app.workflow_state_manager`,
   `pool_manager.aggregate_results` (`pools/manager.py`), the
   `workflow_id` field of the tool's response, and the OTel span tree.
 - **Demonstrable by:** `mahavishnu demo pool-mahavishnu` prints a
-  `workflow_id`; `mcp__mahavishnu__get_workflow_status` with that id
+  `workflow_id`; `mcp__mahavishnu__mahavishnu_get_workflow_status` with that id
   resolves and reports a non-`unknown` task type;
   `pytest tests/integration/test_pool_route_execute_e2e.py` asserts
   every return path carries the id.
@@ -2977,7 +2977,7 @@ reported as `delivery_fidelity: "mismatch"`.
 
 #### Integration Contract
 
-- **Triggered from:** `mcp__mahavishnu__pool_route_execute` →
+- **Triggered from:** `mcp__mahavishnu__mahavishnu_pool_route_execute` →
   `MahavishnuPool.execute_task` (`pools/mahavishnu_pool.py`);
   `ShellWorker.start` and `ShellWorker._await_completion`
   (`workers/shell_backend.py`).
@@ -3164,7 +3164,7 @@ dark adapters, one layer down, so this phase closes it.
     `trigger_workflow`. The cookbook is where a reader would look for
     "how do I actually run a workflow on a terminal worker", and today
     there is no worked example for it. A recipe showing
-    `mcp__mahavishnu__trigger_workflow(adapter="worker", …)` end to end
+    `mcp__mahavishnu__mahavishnu_trigger_workflow(adapter="worker", …)` end to end
     — including the repositories to scope to, and what the result
     envelope looks like — is the missing worked example.
 21. **Update the "How to add a new recipe" procedure itself.** It is
@@ -3208,7 +3208,7 @@ dark adapters, one layer down, so this phase closes it.
 24. **Fix the published skill that contradicts Phase 5.**
     `mahavishnu/mcp/skills_catalog/workflow-status.md:66-68` says:
     *"For a synchronous single-task dispatch that has already returned,
-    use `mcp__mahavishnu__pool_route_execute` directly — **there is no
+    use `mcp__mahavishnu__mahavishnu_pool_route_execute` directly — **there is no
     workflow_id to poll.**"* After Phase 5 that is **false**, and the
     file is served to agents over MCP
     (`mcp/tools/skill_tools.py:66`) and materialized into

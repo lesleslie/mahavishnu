@@ -355,7 +355,7 @@ Once ingested, content is searchable through:
 ```python
 # Via MCP tool
 results = await mcp.call_tool(
-    "mcp__akosha__search_all_systems", {"query": "machine learning best practices"}
+    "mcp__akosha__akosha_search_all_systems", {"query": "machine learning best practices"}
 )
 ```
 

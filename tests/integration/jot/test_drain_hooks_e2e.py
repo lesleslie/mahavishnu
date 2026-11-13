@@ -112,7 +112,7 @@ class TestPostToolUse:
     def test_emits_post_tool_use_envelope(self, isolated_home: Path) -> None:
         """PostToolUse hook exits 0 and prints the expected JSON shape."""
         stdin_payload = {
-            "tool_name": "mcp__akosha__search_code_patterns",
+            "tool_name": "mcp__akosha__akosha_search_code_patterns",
             "tool_result": "search results here",
         }
         result = _run_hook("jot-post-tool-use.py", stdin_payload, isolated_home)

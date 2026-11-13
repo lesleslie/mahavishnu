@@ -10,8 +10,8 @@ last_reviewed: 2026-07-11
 model: opus
 tools:
 
-- mcp__mahavishnu__execute_capability
-- mcp__mahavishnu__pool_route_execute
+- mcp__mahavishnu__mahavishnu_execute_capability
+- mcp__mahavishnu__mahavishnu_pool_route_execute
 - mcp__mahavishnu__discover_tools
 - Read
 
@@ -46,9 +46,9 @@ the work rather than running it locally. Typical triggers:
 1. **Pick the right entry point:**
 
    - **Capability-driven dispatch** (preferred for new work; also the durable path) →
-     `mcp__mahavishnu__execute_capability(requires=["engine:durable-flow", "worker:ai-context"], prompt=...)`. The conductor resolves the spec into an `ExecutionDAG` and emits durable envelopes; surface the `trace_id` for polling.
+     `mcp__mahavishnu__mahavishnu_execute_capability(requires=["engine:durable-flow", "worker:ai-context"], prompt=...)`. The conductor resolves the spec into an `ExecutionDAG` and emits durable envelopes; surface the `trace_id` for polling.
    - **Pool dispatch** →
-     `mcp__mahavishnu__pool_route_execute(prompt=..., pool_selector="least_loaded")` for quick sync work.
+     `mcp__mahavishnu__mahavishnu_pool_route_execute(prompt=..., pool_selector="least_loaded")` for quick sync work.
 
 1. **Write a clear dispatch prompt.** Include:
 

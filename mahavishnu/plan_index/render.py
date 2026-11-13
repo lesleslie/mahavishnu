@@ -25,7 +25,7 @@ def render(records: list[PlanRecordDict]) -> str:
     # (Spec §D5: humans reading the cached PLAN_INDEX.md need to know it's stale.)
     lines.append(
         f"<!-- Last regenerated: {now_iso} UTC · "
-        "run mcp__mahavishnu__plan_rebuild_status for staleness check -->"
+        "run mcp__mahavishnu__mahavishnu_plan_rebuild_status for staleness check -->"
     )
     lines.append("")
     lines.append("# Plan Index")

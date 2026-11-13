@@ -26,6 +26,6 @@ Run, route, and diagnose work on the Mahavishnu orchestration platform.
 
 ## Ecosystem
 
-- `mcp__mahavishnu__pool_route_execute` (task routing)
+- `mcp__mahavishnu__mahavishnu_pool_route_execute` (task routing)
 - `mcp__mahavishnu__get_health` (health check)
-- `mcp__mahavishnu__trigger_workflow` (workflow control)
+- `mcp__mahavishnu__mahavishnu_trigger_workflow` (workflow control)

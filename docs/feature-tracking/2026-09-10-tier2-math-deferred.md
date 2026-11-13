@@ -55,7 +55,7 @@ exercises the trigger logic end-to-end)
 
 - `scripts/feature_eligibility.py` (entry point, run by CI)
 - Data sources: `mcp__akosha__akosha_get_system_metrics`,
-  `mcp__session-buddy__get_intelligence_stats`,
+  `mcp__session-buddy__session_buddy_get_intelligence_stats`,
   `docs/feature-tracking/2026-09-10-observability-changepoint.md`
   frontmatter (Phase 8 status), `~/.mahavishnu/metric_requests.json`
   (operator metric requests via `mcp__mahavishnu__discover_tools`)

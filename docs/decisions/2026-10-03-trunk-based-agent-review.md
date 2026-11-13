@@ -79,7 +79,7 @@ Stage summary (per spec §Workflow):
 - **Memory (forward ref, ships with Task 4.4):**
   `~/.claude/projects/-Users-les-Projects-mahavishnu/memory/feedback-bodai-merge-workflow.md`
   — the workflow contract surfaced for CLAUDE.md readers and
-  dual-stored via `mcp__session-buddy__store_reflection` with tags
+  dual-stored via `mcp__session-buddy__session_buddy_store_reflection` with tags
   `["feedback", "merge-workflow", "trunk-based-agent-review"]`.
 - **Implementation:**
   - `mahavishnu/core/merge_to_main.py::run_pipeline()` — orchestration

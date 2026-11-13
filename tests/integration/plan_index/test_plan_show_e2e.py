@@ -1,4 +1,4 @@
-"""Per-tool e2e: ``mcp__mahavishnu__plan_show``.
+"""Per-tool e2e: ``mcp__mahavishnu__mahavishnu_plan_show``.
 
 REQ-PLAN-007 (§4 gate): round-trip upsert→show equality, plus the
 missing-record path (FastMCP error serialization).

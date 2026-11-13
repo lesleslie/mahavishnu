@@ -578,7 +578,7 @@ class ContentIngester:
                     "id": 1,
                     "method": "tools/call",
                     "params": {
-                        "name": "mcp__akosha__store_memory",
+                        "name": "mcp__akosha__akosha_store_memory",
                         "arguments": {
                             "content": content,
                             "metadata": {**metadata, "embedding": embedding},
@@ -660,7 +660,7 @@ class ContentIngester:
                     "id": 1,
                     "method": "tools/call",
                     "params": {
-                        "name": "mcp__session-buddy__store_reflection",
+                        "name": "mcp__session-buddy__session_buddy_store_reflection",
                         "arguments": {
                             "content": f"Ingested {content_type.value}: {title or source}",
                             "category": "content-ingestion",

@@ -728,7 +728,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 - `mcp__legacy__list_agents` → `mcp__crackerjack__list_agents`
 - `mcp__legacy__get_agent` → `mcp__crackerjack__get_agent`
-- `mcp__legacy__list_skills` → `mcp__crackerjack__list_skills`
+- `mcp__legacy__list_skills` → `mcp__crackerjack__crackerjack_list_skills`
 - `mcp__legacy__get_skill` → `mcp__crackerjack__get_skill`
 
 **Naming note:** Crackerjack already ships its own skill mechanism for skill-managed packaging (`crackerjack-compliant-code`, etc.). The ported Bodai-wide agent/skill catalog lives under the same tool prefix. Document the two namespaces in Phase 4 acceptance criteria: "Crackerjack's own skill management" vs "the federation-wide agent/skill catalog."
@@ -985,7 +985,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 | `mcp__legacy__list_services` | `mcp__mahavishnu__mahavishnu_list_services` | Mahavishnu ecosystem service listing |
 | `mcp__legacy__record_event` | `mcp__mahavishnu__mahavishnu_record_event` | Mahavishnu ecosystem event log |
 | `mcp__legacy__list_agents` | `mcp__crackerjack__list_agents` | Crackerjack agent catalog |
-| `mcp__legacy__list_skills` | `mcp__crackerjack__list_skills` | Crackerjack skill catalog |
+| `mcp__legacy__list_skills` | `mcp__crackerjack__crackerjack_list_skills` | Crackerjack skill catalog |
 | `mcp__legacy__query_local_traces` | `mcp__akosha__query_local_traces_fitness` | Akosha trace query (fitness-shaped) |
 | `mcp__legacy__sql_query` / `mcp__legacy__sql_execute` | **deleted** (no replacement) | — |
 | `mcp__legacy__put` / `mcp__legacy__get` / `mcp__legacy__list_prefix` / `mcp__legacy__record_time_series` / `mcp__legacy__query_time_series` / `mcp__legacy__aggregate_patterns` | **deleted as MCP tools** (replaced by Oneiric cache adapter `oneiric.adapters.cache.persistent_kv`, not exposed as MCP tool) | Oneiric resolver, not MCP |
@@ -1235,7 +1235,7 @@ All resolved 2026-09-14, plus OQ #5 / OQ #6 added 2026-09-14 from the topology r
 | `mcp__legacy__list_events` | Works | **Replaced by `mcp__mahavishnu__mahavishnu_list_events`** |
 | `mcp__legacy__list_agents` | Works | **Replaced by `mcp__crackerjack__list_agents`** |
 | `mcp__legacy__get_agent` | Works | **Replaced by `mcp__crackerjack__get_agent`** |
-| `mcp__legacy__list_skills` | Works | **Replaced by `mcp__crackerjack__list_skills`** |
+| `mcp__legacy__list_skills` | Works | **Replaced by `mcp__crackerjack__crackerjack_list_skills`** |
 | `mcp__legacy__get_skill` | Works | **Replaced by `mcp__crackerjack__get_skill`** |
 | `mcp__legacy__query_local_traces` | Works | **Replaced by `mcp__akosha__query_local_traces_fitness`** |
 | `mcp__akosha__query_local_traces` | Works (general-purpose) | **Dropped** (replaced by `_fitness` variant) |

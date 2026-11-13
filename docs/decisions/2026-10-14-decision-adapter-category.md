@@ -106,7 +106,7 @@ cannot reach.
 Phase 0 plan in `docs/plans/2026-10-14-decision-adapter-category.md`. Phase 0
 spec in `docs/specs/2026-10-14-decision-adapter-category-design.md`. Hard
 sequencing on the `task_router.py` migration. Phase 1 (live routing
-in `mcp__mahavishnu__pool_route_execute`) gated on a 7-day disagreement
+in `mcp__mahavishnu__mahavishnu_pool_route_execute`) gated on a 7-day disagreement
 test vs. hand-coded baseline, per `feedback-bodai-merge-workflow` rules
 plus the precision/calibration drift checks from the spec. Three Phase 0
 adapters means three substrate-side PRs (one per adapter) plus the

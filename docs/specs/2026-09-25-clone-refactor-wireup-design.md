@@ -435,7 +435,7 @@ Dataclasses: `DAGResult`, `RepoCommit`, `RepoHit`, `DAGState`. **No** `Extractio
 Imports `_git_ops.py` (`mahavishnu/workflows/_git_ops.py`), `mahavishnu/core/state_backends/mcp.py`, `mahavishnu/core/loop_helpers.py` (`detect_until_dry`), `prefect`. Does **not** import from `mahavishnu/mcp/tools/clone_tools.py` (one-way dependency: tools call workflow).
 
 **Integration Contract:**
-- **Triggered from**: `mcp__mahavishnu__clone_refactor_group` (in `mahavishnu/mcp/tools/clone_tools.py`) via `asyncio.create_task(run_clone_refactor_dag(...))` after `verify_proposal` succeeds and `cluster_claim` succeeds (REQ-CLONE-009)
+- **Triggered from**: `mcp__mahavishnu__mahavishnu_clone_refactor_group` (in `mahavishnu/mcp/tools/clone_tools.py`) via `asyncio.create_task(run_clone_refactor_dag(...))` after `verify_proposal` succeeds and `cluster_claim` succeeds (REQ-CLONE-009)
 - **Returns to / updates**: `workflow/v1/{refactor_job_id}` MCP key (via `MCPStateBackend.dag_key()`), `workflow/v1/{refactor_job_id}/steps/{step_name}` per-step outcomes (REQ-CLONE-010), `cluster/v1/{cluster_id}` per-cluster consumer-progress, `cluster/v1/{cluster_id}/in_flight` claim sentinel; all wrapped in try/except with structured-log fallback on substrate failure (REQ-CLONE-014)
 - **Demonstrable by**: `pytest tests/integration/test_clone_refactor_group_e2e.py::test_clone_refactor_group_returns_job_id_and_starts_dag` passes and asserts `workflow/v1/{id}` exists post-DAG-start. Per-step durability tested by `test_dag_per_step_state_durability` (Layer 1). Unhandled-exception path tested by `test_dag_unhandled_exception_marks_failed` (Layer 1).
 - **Rollback signal**: OTel/log line `clone_refactor.dag.failed` with `refactor_job_id` attribute; consumer-recovery via `clone_refactor_status(limit=N)` listing `status: failed` records (no-auto-revert policy: operator does manual cleanup per Section 5.4 + commit-message convention REQ-CLONE-012 + cleanup recipe in §5.4)
@@ -564,7 +564,7 @@ The claim singleton shares the `mcp_backend` instance with the rest of the subst
 **Import direction invariant** (one-way dependency): `clone_tools.py` may import from `workflows/`, but `workflows/clone_refactor_workflow.py` must NOT import from `mcp/tools/clone_tools.py`. Verified by the §9 grep `git grep -nE "from mahavishnu\.workflows" mahavishnu/mcp/tools/clone_tools.py` (the spec previously had the grep backwards; this is the correct direction).
 
 **Integration Contract:**
-- **Triggered from**: MCP client invokes `mcp__mahavishnu__clone_refactor_group`; existing `clone_refactor_status` MCP tool continues to be invoked by operators
+- **Triggered from**: MCP client invokes `mcp__mahavishnu__mahavishnu_clone_refactor_group`; existing `clone_refactor_status` MCP tool continues to be invoked by operators
 - **Returns to / updates**: returns `{refactor_job_id, status: queued, decision, verification}` to MCP client; `MCPStateBackend.put("workflow/v1/{id}", {...})` records initial state
 - **Demonstrable by**: `pytest tests/integration/test_clone_refactor_group_e2e.py` — all 4 Layer 3 tests pass
 - **Rollback signal**: OTel span `mcp.clone_refactor_group` with `error` attribute on exception; log line `clone_refactor_group.failed` with exception class + message

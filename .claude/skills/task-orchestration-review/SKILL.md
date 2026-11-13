@@ -129,7 +129,7 @@ ______________________________________________________________________
 
 ```python
 # Dispatch security review pool (2 agents in parallel)
-mcp__mahavishnu__pool_spawn(
+mcp__mahavishnu__mahavishnu_pool_spawn(
     pool_type="mahavishnu",
     name="security-review",
     min_workers=2,
@@ -151,11 +151,11 @@ mcp__mahavishnu__pool_execute(
 )
 
 # Collect results: monitor pool status and search memory for findings
-mcp__mahavishnu__pool_monitor(pool_ids=["security-review"])
-mcp__mahavishnu__pool_search_memory(query="security review findings")
+mcp__mahavishnu__mahavishnu_pool_monitor(pool_ids=["security-review"])
+mcp__mahavishnu__mahavishnu_pool_search_memory(query="security review findings")
 
 # After execution, the orchestrator agent collects results via
-# mcp__mahavishnu__pool_monitor and mcp__mahavishnu__pool_search_memory,
+# mcp__mahavishnu__mahavishnu_pool_monitor and mcp__mahavishnu__mahavishnu_pool_search_memory,
 # then writes a synthesis report.
 ```
 

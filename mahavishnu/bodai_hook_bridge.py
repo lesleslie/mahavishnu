@@ -410,7 +410,7 @@ def handle_pool_bootstrap(env: CanonicalEnvelope) -> int:
 
     The actual bootstrap work happens in the standalone hook script
     (``.claude/hooks/mahavishnu-pool-bootstrap.py`` and the Qwen
-    equivalent) which calls the new ``mcp__mahavishnu__pool_bootstrap``
+    equivalent) which calls the new ``mcp__mahavishnu__mahavishnu_pool_bootstrap``
     tool. This handler exists to record the event in the canonical
     audit feed so the bridge sees a SessionStart with a
     ``pool_bootstrap`` annotation regardless of which harness fired it.

@@ -55,7 +55,7 @@ Crackerjack test runs, and Mahavishnu workflows in one timeline.
 
 When the user asks about plan-level activity (e.g., "what plans are
 in flight?", "show me the plan index"), the skill calls
-`mcp__mahavishnu__plan_list({status: "active"})` (FULL profile only,
+`mcp__mahavishnu__mahavishnu_plan_list({status: "active"})` (FULL profile only,
 auth-gated). On degraded MCP response, fall back to filesystem
 read of `docs/plans/PLAN_INDEX.md`.
 

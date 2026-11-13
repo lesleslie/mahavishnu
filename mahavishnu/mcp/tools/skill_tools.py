@@ -85,14 +85,14 @@ _STATIC_SKILLS: list[dict[str, Any]] = [
             "`/mahavishnu:pool-route` or selects this Skill from the "
             "picker to dispatch a single ad-hoc task through the "
             "Mahavishnu pool router. Do not auto-trigger. Routes through "
-            "`mcp__mahavishnu__pool_route_execute` with the "
+            "`mcp__mahavishnu__mahavishnu_pool_route_execute` with the "
             "`least_loaded` selector so the call lands on the worker "
             "pool with the most available capacity."
         ),
-        "tool_refs": ["mcp__mahavishnu__pool_route_execute"],
+        "tool_refs": ["mcp__mahavishnu__mahavishnu_pool_route_execute"],
         "allowed_tools": [
-            "mcp__mahavishnu__pool_route_execute",
-            "mcp__mahavishnu__pool_health",
+            "mcp__mahavishnu__mahavishnu_pool_route_execute",
+            "mcp__mahavishnu__mahavishnu_pool_health",
             "Read",
             "Bash(echo:*)",
         ],
@@ -107,16 +107,16 @@ _STATIC_SKILLS: list[dict[str, Any]] = [
             "`/mahavishnu:workflow-status` or selects this Skill from "
             "the picker to poll the status of a Mahavishnu-launched "
             "durable workflow. Do not auto-trigger. Routes through "
-            "`mcp__mahavishnu__get_workflow_status` and explains the "
+            "`mcp__mahavishnu__mahavishnu_get_workflow_status` and explains the "
             "difference between durable Prefect flows, Agno agent loops, "
             "and LlamaIndex RAG pipelines so the user can pick the right "
             "polling cadence."
         ),
-        "tool_refs": ["mcp__mahavishnu__get_workflow_status"],
+        "tool_refs": ["mcp__mahavishnu__mahavishnu_get_workflow_status"],
         "allowed_tools": [
-            "mcp__mahavishnu__get_workflow_status",
-            "mcp__mahavishnu__list_workflows",
-            "mcp__mahavishnu__trigger_workflow",
+            "mcp__mahavishnu__mahavishnu_get_workflow_status",
+            "mcp__mahavishnu__mahavishnu_list_workflows",
+            "mcp__mahavishnu__mahavishnu_trigger_workflow",
             "Read",
             "Bash(echo:*)",
         ],
@@ -131,16 +131,16 @@ _STATIC_SKILLS: list[dict[str, Any]] = [
             "`/mahavishnu:ecosystem-status` or selects this Skill from "
             "the picker to render a cross-component health snapshot of "
             "the Bodai ecosystem from Mahavishnu's vantage point. Do not "
-            "auto-trigger. Routes through `mcp__mahavishnu__ecosystem_status` "
+            "auto-trigger. Routes through `mcp__mahavishnu__mahavishnu_ecosystem_status` "
             "and explains the `sections` parameter plus the degraded-"
             "adapter flag so the user can interpret a partial report "
             "correctly."
         ),
-        "tool_refs": ["mcp__mahavishnu__ecosystem_status"],
+        "tool_refs": ["mcp__mahavishnu__mahavishnu_ecosystem_status"],
         "allowed_tools": [
-            "mcp__mahavishnu__ecosystem_status",
+            "mcp__mahavishnu__mahavishnu_ecosystem_status",
             "mcp__mahavishnu__get_health",
-            "mcp__mahavishnu__list_adapters",
+            "mcp__mahavishnu__mahavishnu_list_adapters",
             "Read",
             "Bash(echo:*)",
         ],

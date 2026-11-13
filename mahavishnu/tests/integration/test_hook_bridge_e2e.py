@@ -281,7 +281,7 @@ def test_handle_publishes_canonical_envelope_shape(
             "hook_event_name": "PostToolUse",
             "session_id": "sess_shape_001",
             "cwd": "/Users/les/test",
-            "tool_name": "mcp__mahavishnu__pool_route_execute",
+            "tool_name": "mcp__mahavishnu__mahavishnu_pool_route_execute",
             "tool_input": {"prompt": "do the thing"},
             "tool_use_id": "toolu_shape_001",
             "timestamp": "2026-01-15T10:00:00+00:00",
@@ -296,7 +296,7 @@ def test_handle_publishes_canonical_envelope_shape(
     assert envelope["session_id"] == "sess_shape_001"
     assert envelope["cwd"] == "/Users/les/test"
     # spec §4.13.2 Claude-specific optional fields
-    assert envelope["tool_name"] == "mcp__mahavishnu__pool_route_execute"
+    assert envelope["tool_name"] == "mcp__mahavishnu__mahavishnu_pool_route_execute"
     assert envelope["tool_input"] == {"prompt": "do the thing"}
     assert envelope["tool_use_id"] == "toolu_shape_001"
 
@@ -424,7 +424,7 @@ def test_full_round_trip_bridge_publishes_then_hook_consumes(
         "hook_event_name": "PostToolUse",
         "session_id": "sess_e2e_001",
         "cwd": "/Users/les/test",
-        "tool_name": "mcp__mahavishnu__pool_route_execute",
+        "tool_name": "mcp__mahavishnu__mahavishnu_pool_route_execute",
         "tool_input": {"prompt": "do the thing"},
         "tool_use_id": "toolu_e2e_001",
         "timestamp": "2026-01-15T10:00:00+00:00",
@@ -442,7 +442,7 @@ def test_full_round_trip_bridge_publishes_then_hook_consumes(
     bridge_envelope = captured_publish[0]["envelope"]
     assert bridge_envelope["event"] == "PostToolUse"
     assert bridge_envelope["harness"] == "claude"
-    assert bridge_envelope["tool_name"] == "mcp__mahavishnu__pool_route_execute"
+    assert bridge_envelope["tool_name"] == "mcp__mahavishnu__mahavishnu_pool_route_execute"
 
     # Phase 2: that envelope "appears on the bus" as a canonical
     # EventEnvelope (the wire shape read_bodai_events_since decodes).
@@ -473,7 +473,7 @@ def test_full_round_trip_bridge_publishes_then_hook_consumes(
     # Payload keys are alphabetically sorted in the summary format.
     assert (
         "[mahavishnu] post_tool_use status=success tool_name="
-        "mcp__mahavishnu__pool_route_execute workflow_id=wid_e2e_001" in captured_out
+        "mcp__mahavishnu__mahavishnu_pool_route_execute workflow_id=wid_e2e_001" in captured_out
     ), f"expected summary line not found in hook stdout.\ncaptured={captured_out!r}"
 
     # Phase 4: cursor advanced to the consumed message_id.

@@ -30,4 +30,4 @@ See `../../AGENTS.md#coding-style--naming-conventions` for the canonical setting
 
 - `mcp__oneiric__oneiric_list_adapters` (catalog)
 - `mcp__oneiric__oneiric_get_adapter` (lookup)
-- `mcp__mahavishnu__list_repos` (repos)
+- `mcp__mahavishnu__mahavishnu_list_repos` (repos)

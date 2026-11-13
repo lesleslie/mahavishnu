@@ -89,22 +89,22 @@ _STATIC_AGENTS: list[dict[str, Any]] = [
             "Use when the user explicitly asks for Mahavishnu-specific "
             "orchestration guidance — pool routing, workflow triggers, "
             "or cross-repo dispatch — and the picker has surfaced this "
-            "agent. Do not auto-trigger. Drives pool_route_execute / "
-            "trigger_workflow with the least_loaded selector and surfaces "
+            "agent. Do not auto-trigger. Drives mahavishnu_pool_route_execute / "
+            "mahavishnu_trigger_workflow with the least_loaded selector and surfaces "
             "degraded-pool fallbacks to the user before dispatching."
         ),
         "model": "sonnet",
         "tools": [
-            "mcp__mahavishnu__pool_route_execute",
-            "mcp__mahavishnu__pool_health",
-            "mcp__mahavishnu__trigger_workflow",
-            "mcp__mahavishnu__list_workflows",
-            "mcp__mahavishnu__get_workflow_status",
+            "mcp__mahavishnu__mahavishnu_pool_route_execute",
+            "mcp__mahavishnu__mahavishnu_pool_health",
+            "mcp__mahavishnu__mahavishnu_trigger_workflow",
+            "mcp__mahavishnu__mahavishnu_list_workflows",
+            "mcp__mahavishnu__mahavishnu_get_workflow_status",
         ],
         "tool_refs": [
-            "mcp__mahavishnu__pool_route_execute",
-            "mcp__mahavishnu__pool_health",
-            "mcp__mahavishnu__trigger_workflow",
+            "mcp__mahavishnu__mahavishnu_pool_route_execute",
+            "mcp__mahavishnu__mahavishnu_pool_health",
+            "mcp__mahavishnu__mahavishnu_trigger_workflow",
         ],
         "dependencies": ["pool-router-agent", "workflow-monitor"],
         "category": "orchestration",
@@ -121,18 +121,18 @@ _STATIC_AGENTS: list[dict[str, Any]] = [
             "Use when the user asks for pool-selector advice — which "
             "selector (least_loaded, round_robin, random, affinity) is "
             "right for the current workload. Do not auto-trigger. Reads "
-            "pool_health, weights against the workload shape, and "
+            "mahavishnu_pool_health, weights against the workload shape, and "
             "recommends a selector with the tradeoffs spelled out "
             "before any dispatch."
         ),
         "model": "sonnet",
         "tools": [
-            "mcp__mahavishnu__pool_health",
-            "mcp__mahavishnu__pool_list",
+            "mcp__mahavishnu__mahavishnu_pool_health",
+            "mcp__mahavishnu__mahavishnu_pool_list",
         ],
         "tool_refs": [
-            "mcp__mahavishnu__pool_health",
-            "mcp__mahavishnu__pool_list",
+            "mcp__mahavishnu__mahavishnu_pool_health",
+            "mcp__mahavishnu__mahavishnu_pool_list",
         ],
         "dependencies": [],
         "category": "orchestration",
@@ -149,20 +149,20 @@ _STATIC_AGENTS: list[dict[str, Any]] = [
             "Use when the user asks for the status of a Mahavishnu-"
             "launched durable workflow or wants to interpret a "
             "workflow_id. Do not auto-trigger. Polls "
-            "get_workflow_status, distinguishes Prefect flows from "
+            "mahavishnu_get_workflow_status, distinguishes Prefect flows from "
             "Agno agent loops and LlamaIndex RAG pipelines, and "
             "surfaces a partial-status flag when the workflow is "
             "mid-stage."
         ),
         "model": "sonnet",
         "tools": [
-            "mcp__mahavishnu__get_workflow_status",
-            "mcp__mahavishnu__list_workflows",
-            "mcp__mahavishnu__cancel_workflow",
+            "mcp__mahavishnu__mahavishnu_get_workflow_status",
+            "mcp__mahavishnu__mahavishnu_list_workflows",
+            "mcp__mahavishnu__mahavishnu_cancel_workflow",
         ],
         "tool_refs": [
-            "mcp__mahavishnu__get_workflow_status",
-            "mcp__mahavishnu__list_workflows",
+            "mcp__mahavishnu__mahavishnu_get_workflow_status",
+            "mcp__mahavishnu__mahavishnu_list_workflows",
         ],
         "dependencies": [],
         "category": "orchestration",

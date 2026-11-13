@@ -17,16 +17,16 @@ without spinning up a FastMCP server.
 
 Auth: this is a read-only probe — no ``@require_mcp_auth`` gate
 needed. The audit is meant to be runnable from ``mahavishnu mcp
-audit_health --all-repos`` by any operator or cron job, and the
+mahavishnu_audit_health --all-repos`` by any operator or cron job, and the
 5-core list is the canonical source of ports (mirrors
 ``CLAUDE.md``'s port table).
 
 REQ-HC-004 (Phase 2) from
 ``docs/plans/2026-10-09-mcp-health-check-enrichment.md``:
 
-- ``mahavishnu mcp audit_health --all-repos`` returns a JSON
+- ``mahavishnu mcp mahavishnu_audit_health --all-repos`` returns a JSON
   report listing per-repo status + silent-degraded flags.
-- ``mcp__mahavishnu__audit_health()`` (MCP tool) returns the same
+- ``mcp__mahavishnu__mahavishnu_audit_health()`` (MCP tool) returns the same
   envelope so callers don't care which surface they hit.
 - Cadence: monthly, owned by the operator (see
   ``docs/operations/health-audit.md``).
@@ -136,7 +136,7 @@ def _load_ecosystem_repo_names() -> set[str]:
             data: Any = yaml.safe_load(handle)
     except (yaml.YAMLError, OSError) as exc:
         logger.debug(
-            "audit_health: failed to read %s: %s",
+            "mahavishnu_audit_health: failed to read %s: %s",
             ecosystem_path,
             exc,
         )
@@ -335,7 +335,7 @@ async def audit_health_async(
 
 
 def register_audit_health_tools(mcp: FastMCP, app: Any = None) -> None:
-    """Register the ``mcp__mahavishnu__audit_health`` MCP tool.
+    """Register the ``mcp__mahavishnu__mahavishnu_audit_health`` MCP tool.
 
     Args:
         mcp: FastMCP server instance
@@ -345,7 +345,7 @@ def register_audit_health_tools(mcp: FastMCP, app: Any = None) -> None:
     """
 
     @mcp.tool()
-    async def audit_health(
+    async def mahavishnu_audit_health(
         repos: list[str] | None = None,
         all_repos: bool = False,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
@@ -368,7 +368,7 @@ def register_audit_health_tools(mcp: FastMCP, app: Any = None) -> None:
         missing).
 
         Do NOT use for in-band health checks of a single repo —
-        use ``mcp_test_connection`` (single) or
+        use ``mahavishnu_mcp_test_connection`` (single) or
         ``health_check_all`` (configured dependencies). This tool
         is the fleet-wide monthly audit; it is not a hot-path
         probe.

@@ -305,7 +305,7 @@ The full sequence, with time offsets and concrete events:
 
 | t (ms) | Component | Action |
 |---|---|---|
-| 0 | Operator | `mcp__mahavishnu__pool_route_execute(prompt=...)` enters `pool_manager.route_task(...)`. |
+| 0 | Operator | `mcp__mahavishnu__mahavishnu_pool_route_execute(prompt=...)` enters `pool_manager.route_task(...)`. |
 | 1 | TaskRouter (Mahavishnu) | Redis GET `akosha:fsm:selector_fitness:mahavishnu_pool:code_generation` → `FSMRecommendation{state:CLOSED,confidence:0.92,ttl_remaining:24s}`. |
 | 2 | DecisionSpanEmitter (NEW) | Emits `routing.decision` span with `task.class=code_generation`, `selector=mahavishnu_pool`, `selected_reason=fsm_recommendation`, `fitness.snapshot_hash=0x7a3f...`. |
 | 3 | Worker | Calls Claude/Anthropic. |

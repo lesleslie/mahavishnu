@@ -71,7 +71,7 @@ populated `workflow_id` and its provenance (`workflow_linked_at`, `workflow_link
 and keeps them across a session-buddy restart.
 
 **Success signal:** a live task is created, handed off through
-`mcp__mahavishnu__tasks_handoff_to_workflow`, and `tasks_get` returns
+`mcp__mahavishnu__mahavishnu_tasks_handoff_to_workflow`, and `tasks_get` returns
 `workflow_id == "<the durable workflow id>"` with `workflow_linked_at` and
 `workflow_linked_by` populated — then returns the same values after a
 `launchctl kickstart -k` restart of session-buddy.
@@ -188,7 +188,7 @@ envelope; a new unit suite covers the client adapter.
 
 #### Integration Contract — handoff step 2 + step 3
 - **Triggered from:** MCP client call
-  `mcp__mahavishnu__tasks_handoff_to_workflow(task_id=...)` on mahavishnu (port 8680).
+  `mcp__mahavishnu__mahavishnu_tasks_handoff_to_workflow(task_id=...)` on mahavishnu (port 8680).
 - **Returns to / updates:** mahavishnu's durable workflow state
   (`workflow_state_manager`, keyed by `workflow_id`); then session-buddy's task sidecar
   via `tasks_link_workflow`; plus `task.handoff_started` / `task.handoff_completed`
@@ -256,7 +256,7 @@ session-buddy restart; the sweeper converges.
 
 #### Integration Contract — live verification
 - **Triggered from:** an operator-facing MCP session: `tasks_create` on session-buddy,
-  then `mcp__mahavishnu__tasks_handoff_to_workflow`, then `tasks_get`.
+  then `mcp__mahavishnu__mahavishnu_tasks_handoff_to_workflow`, then `tasks_get`.
 - **Returns to / updates:** the live task's sidecar row and its `workflow_id` field.
 - **Demonstrable by:** `tasks_get` returns a non-null `workflow_id` equal to the id
   returned by the handoff, `workflow_linked_at` and `workflow_linked_by` populated, and

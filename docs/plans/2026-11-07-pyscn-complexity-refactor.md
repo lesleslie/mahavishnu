@@ -157,7 +157,7 @@ and reduce the MCP tool body to a linear orchestration:
 
 #### Integration Contract
 - **Triggered from**: the `pool_route_execute` MCP tool
-  (`mcp__mahavishnu__pool_route_execute`), registered by
+  (`mcp__mahavishnu__mahavishnu_pool_route_execute`), registered by
   `register_pool_tools` in `mahavishnu/mcp/tools/pool_tools.py`.
 - **Returns to / updates**: the same `dict[str, Any]` dispatch envelope the
   tool returns today — `{"status": "duplicate"|"rate_limited"|"timeout"|
@@ -165,7 +165,7 @@ and reduce the MCP tool body to a linear orchestration:
   result. No new state store is introduced.
 - **Demonstrable by**: `pytest tests/unit/test_mcp_pool_tools.py
   tests/unit/mcp/test_pool_dispatch_timeout.py` passes, and
-  `mcp__mahavishnu__pool_route_execute` returns an unchanged envelope for a
+  `mcp__mahavishnu__mahavishnu_pool_route_execute` returns an unchanged envelope for a
   duplicate idempotency key and for a saturated concurrency gate.
 - **Rollback signal**: any pool-dispatch test failing, or the
   `pool_route_execute` status vocabulary changing — revert the phase.
@@ -192,7 +192,7 @@ the result assembly.
 
 #### Integration Contract
 - **Triggered from**: the `team_from_goal` MCP tool
-  (`mcp__mahavishnu__team_from_goal`), registered by
+  (`mcp__mahavishnu__mahavishnu_team_from_goal`), registered by
   `register_goal_team_tools`.
 - **Returns to / updates**: the same `dict[str, Any]` envelope —
   `{"success": True, "team_id": ..., "config": ..., "parsed_goal": ...}` or
@@ -250,7 +250,7 @@ search tests still pass unchanged.
 
 #### Integration Contract
 - **Triggered from**: the `cross_repo_search` MCP tool
-  (`mcp__mahavishnu__cross_repo_search`), registered by
+  (`mcp__mahavishnu__mahavishnu_cross_repo_search`), registered by
   `register_search_tools`.
 - **Returns to / updates**: the same envelope — `query`, `scope`,
   `query_hash`, `sources`, `combined`, `total_combined`, `repos_seen`,

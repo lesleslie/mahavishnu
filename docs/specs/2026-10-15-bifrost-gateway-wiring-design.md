@@ -64,7 +64,7 @@ After this design ships:
 **Proof it worked**:
 - `grep -rn "minimax\.io/v1" mahavishnu/engines mahavishnu/workers/capabilities mahavishnu/llm_gateway` returns zero hits outside `settings/models.yaml` (the canonical reference) and `mahavishnu/llm_gateway/` (documentation-only). The grep scope **excludes `mahavishnu/workers/cloud_worker.py`** per the CloudWorker KEEP decision at `docs/feature-tracking/2026-09-25-cloud-worker-decision.md:58` — the `MINIMAX_OPENAI_BASE_URL` constant at `cloud_worker.py:37` is preserved (it is the env-var fallback at `cloud_worker.py:57`). Env-injection runtime paths in `mahavishnu/workers/contract/tmux_adapter.py` and `mahavishnu/terminal/adapters/tmux.py` are also out of scope (they receive bifrost-aware URLs at runtime, not source literals). The three in-tree runtime hits are replaced as part of Phase F: `mahavishnu/engines/agno_adapter_impl.py:259` (factory default-fallback), `mahavishnu/engines/agno_adapter_impl.py:244` (docstring), `mahavishnu/workers/capabilities/_probes.py:128` (probe URL — replaced with bifrost-aware URL via `resolve_probe_endpoint`).
 - `grep -rn "from mahavishnu.llm_gateway" mahavishnu/` returns hits in `engines/agno_adapter_impl.py`, `workers/capabilities/_probes.py`, plus tests.
-- `tail -F ~/.local/state/mcp/logs/bifrost.log | grep '"caller_id":"mahavishnu"'` shows entries within 15 seconds of any `mcp__mahavishnu__pool_route_execute` invocation that hits the cloud tier (Node stdout block-buffering absorbed by the longer timeout).
+- `tail -F ~/.local/state/mcp/logs/bifrost.log | grep '"caller_id":"mahavishnu"'` shows entries within 15 seconds of any `mcp__mahavishnu__mahavishnu_pool_route_execute` invocation that hits the cloud tier (Node stdout block-buffering absorbed by the longer timeout).
 - `curl -s http://localhost:8680/health | jq .bifrost.config` returns the config block; `curl -s http://localhost:8680/health | jq .bifrost.reachable` returns a boolean.
 - `mahavishnu metrics bifrost --source auto --output table` returns non-zero counters after one dispatch against the cloud tier.
 - `pytest tests/integration/test_bifrost_routing_e2e.py::test_agno_dispatch_emits_caller_id` passes.
@@ -587,7 +587,7 @@ The two sub-shapes inside the sub-model:
     summary: "Bifrost dispatch error rate > 50% over 1m"
 ```
 
-Alternative alert destinations: `mcp__mahavishnu__trigger_test_alert` (Akosha paging path) — Phase E picks one.
+Alternative alert destinations: `mcp__mahavishnu__mahavishnu_trigger_test_alert` (Akosha paging path) — Phase E picks one.
 
 **Node stdout buffering mitigation**: `scripts/bifrost-gateway.py:120-126` opens `bifrost.log` with `open(..., "ab")` and `subprocess.Popen(..., stdout=stdout_log, stderr=stderr_log)`. Node stdout is block-buffered when piped. Phase E either (a) replaces the launcher with `stdbuf -oL -eL` line-buffering, or (b) calls `os.fsync(stdout_log.fileno())` after every dispatch path so the FD is flushed. The e2e test must absorb this: assertion window is **15 seconds, not 5**, per the project's existing precedent on CI-flaky tests.
 
@@ -611,7 +611,7 @@ Alternative alert destinations: `mcp__mahavishnu__trigger_test_alert` (Akosha pa
 
 ### Integration Contract — Phase B (mahavishnu LLM-calling surface integration)
 
-**Triggered from**: `mcp__mahavishnu__trigger_workflow(adapter="agno", ...)` (Agno adapter instantiates `OpenAIChat` / `Claude`); `mcp__mahavishnu__pool_route_execute` followed by capability probe (PROVIDER_PROBES via `resolve_probe_endpoint`).
+**Triggered from**: `mcp__mahavishnu__mahavishnu_trigger_workflow(adapter="agno", ...)` (Agno adapter instantiates `OpenAIChat` / `Claude`); `mcp__mahavishnu__mahavishnu_pool_route_execute` followed by capability probe (PROVIDER_PROBES via `resolve_probe_endpoint`).
 
 **Returns to / updates**: Agno adapter's three sites (`_create_openai_model`, `_create_anthropic_model`, `_create_minimax_model`) consult `self._settings.bifrost` (new `LLMProviderFactory._settings` attribute, populated in `AgnoAdapter.__init__`); `_probe_provider_request` calls `resolve_probe_endpoint(provider, settings)`; `MINIMAX_BASE_URL` precedence test enforces bifrost-wins-when-enabled.
 
@@ -625,7 +625,7 @@ Alternative alert destinations: `mcp__mahavishnu__trigger_test_alert` (Akosha pa
 
 ### Integration Contract — Phase D (AI-CLI worker env-injection)
 
-**Triggered from**: `mcp__mahavishnu__launch_worker(worker_type="terminal-claude"|"terminal-qwen", ...)` → `TerminalManager.launch_sessions(worker_type=..., command=...)` → `TmuxTerminalAdapter.launch_session(worker_type, env)` → `DurableWorkerManager.spawn(worker_type, env)` → `contract/tmux_adapter.create_session(env)` → `tmux set-environment -t <session> KEY VAL` per env entry.
+**Triggered from**: `mcp__mahavishnu__mahavishnu_launch_worker(worker_type="terminal-claude"|"terminal-qwen", ...)` → `TerminalManager.launch_sessions(worker_type=..., command=...)` → `TmuxTerminalAdapter.launch_session(worker_type, env)` → `DurableWorkerManager.spawn(worker_type, env)` → `contract/tmux_adapter.create_session(env)` → `tmux set-environment -t <session> KEY VAL` per env entry.
 
 **Returns to / updates**: `terminal-claude` subprocess inherits `ANTHROPIC_BASE_URL=http://127.0.0.1:8471/anthropic` when `route_claude_code: true`; `terminal-qwen` subprocess inherits `bifrost.qwen_env_var` (= `OPENAI_BASE_URL` by default) pointing at `gateway_api_base(OPENAI, bifrost.base_url)` (`http://127.0.0.1:8471/v1`) when `route_qwen_code: true`. Both via `tmux set-environment` (not `tmux new-session -e`).
 

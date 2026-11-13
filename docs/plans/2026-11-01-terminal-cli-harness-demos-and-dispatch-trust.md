@@ -455,12 +455,12 @@ never reverts; the state is visible in the MCP responses.
 
 #### Integration Contract
 
-- **Triggered from:** `mcp__mahavishnu__pool_route_execute` →
+- **Triggered from:** `mcp__mahavishnu__mahavishnu_pool_route_execute` →
   `MahavishnuPool.execute_task` (`mahavishnu/pools/mahavishnu_pool.py`).
 - **Returns to / updates:** the dispatch's state in the pool's
   in-memory dispatch record, and the `status` field of the
   `pool_route_execute` response. Surfaced by
-  `mcp__mahavishnu__pool_monitor`.
+  `mcp__mahavishnu__mahavishnu_pool_monitor`.
 - **Demonstrable by:** `pytest tests/unit/pools/test_dispatch_states.py`
   — a CLI that exits 0 with `is_error: true` yields FAILED; a settled
   dispatch stays settled across a later poll.

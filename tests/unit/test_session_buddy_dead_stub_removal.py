@@ -140,7 +140,7 @@ class TestDeadStubsRemoved:
 
 
 class TestIndexCodeGraphMcpToolDelegatesToIndexer:
-    """``mcp__mahavishnu__index_code_graph`` must call the real
+    """``mcp__mahavishnu__mahavishnu_index_code_graph`` must call the real
     ``mahavishnu.core.code_index.indexer.index_repo`` path. The legacy
     ``getattr(server, "app", None)`` guard produced
     ``{"status": "error", "error": "App instance not available in server context"}``

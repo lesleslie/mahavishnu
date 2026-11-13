@@ -793,7 +793,7 @@ counts, which is an operator decision.
   - "Given a Mahavishnu workflow config with a single repo and `pool_type: 'mahavishnu'`, which pool selector would minimize latency?" → expected: contains "least_loaded"
   - "Given a repo with tags `['backend', 'python']` and a query 'refactor the API layer', which adapter should Mahavishnu route this to?" → expected: contains "prefect" or "llamaindex" or "agno"
   - "Given a failing pool health check, what is the remediation step in Mahavishnu's `pool_health` tool output?" → expected: mentions pool restart or respawn
-  - "Given a Mahavishnu settings file with `pools_enabled: true` and no spawned pools, what does `mcp__mahavishnu__pool_health` return?" → expected: `status: "degraded"` or similar
+  - "Given a Mahavishnu settings file with `pools_enabled: true` and no spawned pools, what does `mcp__mahavishnu__mahavishnu_pool_health` return?" → expected: `status: "degraded"` or similar
   - "Given a workflow run with status='failed' and error 'NoAdapterAvailable', what is the most likely configuration fix?" → expected: references adapters config or `MAHAVISHNU_ADAPTERS_PREFECT=true` etc.
   - ... 15-25 more, drawn from real Mahavishnu scenarios (repo routing, pool management, adapter selection, configuration, error recovery).
 - [x] **8.4** Write `docs/eval/dogfood-v0.jsonl` with 20-30 cases. Each line: `{"id": "...", "input": "...", "expected": "...", "metadata": {"added_by": "<team-member>", "failure_mode": "<one-line description>", "last_reviewed": "<ISO date>"}}`.

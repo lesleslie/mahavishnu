@@ -30,18 +30,18 @@ produces a non-trivial ordering (per §5 exit criteria).
 
 | # | Fixture slug | Task class | Adapter coverage | Output type | Tooling touchpoints (anticipated) |
 |---|---|---|---|---|---|
-| 1 | `code-review-py-typo` | code_review | Prefect, LlamaIndex, Agno | list | `mcp__mahavishnu__discover_tools`, `mcp__akosha__search_code_patterns` |
+| 1 | `code-review-py-typo` | code_review | Prefect, LlamaIndex, Agno | list | `mcp__mahavishnu__discover_tools`, `mcp__akosha__akosha_search_code_patterns` |
 | 2 | `code-review-py-typing` | code_review | Prefect, LlamaIndex, Agno | list | same as #1 + `mcp__crackerjack__search_semantic` (Akkosha has no semantic search tool) |
-| 3 | `refactor-py-extract-method` | refactor | Prefect, LlamaIndex, Agno | file_path | `mcp__akosha__search_code_patterns`, `mcp__mahavishnu__trigger_workflow(adapter="...")` |
+| 3 | `refactor-py-extract-method` | refactor | Prefect, LlamaIndex, Agno | file_path | `mcp__akosha__akosha_search_code_patterns`, `mcp__mahavishnu__mahavishnu_trigger_workflow(adapter="...")` |
 | 4 | `refactor-py-rename-symbol` | refactor | Prefect, LlamaIndex, Agno | file_path | same as #3 |
 | 5 | `refactor-py-decompose-class` | refactor | Prefect, LlamaIndex, Agno (hardest) | file_path + list | same as #3, multi-step; budget ≥ 15 tool calls |
-| 6 | `ingest-webpage-summary` | ingest | Prefect, LlamaIndex, Agno | dict | `mcp__mahavishnu__pool_route_execute(prompt="ingest <url>")` — pool worker calls `ContentIngester.ingest_url()` which POSTs to `http://localhost:8699/mcp` (HTTP-delegated, not a direct MCP tool). Requires web_reader deployed on port 8699. |
+| 6 | `ingest-webpage-summary` | ingest | Prefect, LlamaIndex, Agno | dict | `mcp__mahavishnu__mahavishnu_pool_route_execute(prompt="ingest <url>")` — pool worker calls `ContentIngester.ingest_url()` which POSTs to `http://localhost:8699/mcp` (HTTP-delegated, not a direct MCP tool). Requires web_reader deployed on port 8699. |
 | 7 | `ingest-blog-multiple` | ingest | Prefect, LlamaIndex, Agno | dict | same as #6, multi-source |
 | 8 | `ingest-book-chapter` | ingest | Prefect, LlamaIndex, Agno (slowest) | dict | same as #6, large payload (PDF) |
-| 9 | `deploy-prefect-flow` | deploy | Prefect (canonical) + Agno | dict | `mcp__mahavishnu__trigger_workflow(adapter="prefect")`, `mcp__mahavishnu__get_workflow_status` |
-| 10 | `deploy-llamaindex-rag-index` | deploy | LlamaIndex (canonical) + Agno | dict | `mcp__mahavishnu__trigger_workflow(adapter="llamaindex")` |
-| 11 | `deploy-agno-multi-step` | deploy | Agno (canonical) | dict | `mcp__mahavishnu__trigger_workflow(adapter="agno")` |
-| 12 | `multi-adapter-fanout` | cross-cutting | Prefect + LlamaIndex + Agno | dict (3x) | three `mcp__mahavishnu__trigger_workflow(adapter=...)` calls in parallel, polled via `get_workflow_status`. Cross-adapter comparison fixture — runs each adapter on the same task and compares results. |
+| 9 | `deploy-prefect-flow` | deploy | Prefect (canonical) + Agno | dict | `mcp__mahavishnu__mahavishnu_trigger_workflow(adapter="prefect")`, `mcp__mahavishnu__mahavishnu_get_workflow_status` |
+| 10 | `deploy-llamaindex-rag-index` | deploy | LlamaIndex (canonical) + Agno | dict | `mcp__mahavishnu__mahavishnu_trigger_workflow(adapter="llamaindex")` |
+| 11 | `deploy-agno-multi-step` | deploy | Agno (canonical) | dict | `mcp__mahavishnu__mahavishnu_trigger_workflow(adapter="agno")` |
+| 12 | `multi-adapter-fanout` | cross-cutting | Prefect + LlamaIndex + Agno | dict (3x) | three `mcp__mahavishnu__mahavishnu_trigger_workflow(adapter=...)` calls in parallel, polled via `get_workflow_status`. Cross-adapter comparison fixture — runs each adapter on the same task and compares results. |
 
 **Output type taxonomy** (committed per fixture): `list` = ordered collection
 of issue dicts; `file_path` = the result is a file written to disk; `dict` =

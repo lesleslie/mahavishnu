@@ -23,16 +23,16 @@ def test_extract_mcp_refs_single():
 
 
 def test_extract_mcp_refs_multiple():
-    content = "mcp__akosha__search_all_systems and mcp__session-buddy__checkpoint"
+    content = "mcp__akosha__akosha_search_all_systems and mcp__session-buddy__session_buddy_checkpoint"
     refs = extract_mcp_refs(content)
-    assert "mcp__akosha__search_all_systems" in refs
-    assert "mcp__session-buddy__checkpoint" in refs
+    assert "mcp__akosha__akosha_search_all_systems" in refs
+    assert "mcp__session-buddy__session_buddy_checkpoint" in refs
 
 
 def test_extract_mcp_refs_triple_underscore():
     # FastMCP servers with hyphens use triple underscore
-    content = "mcp__session-buddy___code_ingest_file_impl"
-    assert extract_mcp_refs(content) == ["mcp__session-buddy___code_ingest_file_impl"]
+    content = "mcp__session-buddy__session_buddy__code_ingest_file_impl"
+    assert extract_mcp_refs(content) == ["mcp__session-buddy__session_buddy__code_ingest_file_impl"]
 
 
 def test_validate_agent_file_no_refs(tmp_path):

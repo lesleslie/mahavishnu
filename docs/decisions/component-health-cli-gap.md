@@ -14,7 +14,7 @@ topic: component-health
 The Bodai ecosystem has two coexisting surfaces for "what is the
 health of component X right now":
 
-1. **`mcp__mahavishnu__ecosystem_status(sections=[...])`** — the canonical,
+1. **`mcp__mahavishnu__mahavishnu_ecosystem_status(sections=[...])`** — the canonical,
    cross-component health report. Defined by the unified
    `ecosystem_status` aggregator; produces a single schema-validated
    envelope with `services`, `adapters`, `capabilities`, `workflows`,

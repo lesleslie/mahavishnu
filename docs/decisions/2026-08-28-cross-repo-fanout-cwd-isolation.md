@@ -70,7 +70,7 @@ narrative. They should not duplicate.
    dispatch SHA (catches agents that landed in the parent's
    worktree without creating a new worktree at all).
 5. **Cross-repo MCP dispatch is a separate concern.** This rule
-   does NOT recommend `mcp__mahavishnu__pool_route_execute` over
+   does NOT recommend `mcp__mahavishnu__mahavishnu_pool_route_execute` over
    `Workflow({script: parallel()})` for CWD-leak reasons — that
    is an observability/routing improvement, not a leak fix. The
    leak is in Claude Code's dispatch, not Mahavishnu's. Mixing

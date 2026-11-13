@@ -140,5 +140,5 @@ now `active`); that gate is unblocked but not yet shipped.
 
 ## Session-Buddy
 
-- Reflection ID: <to be filled by `mcp__session-buddy__store_reflection`>
+- Reflection ID: <to be filled by `mcp__session-buddy__session_buddy_store_reflection`>
 - Saved at: <ISO timestamp>

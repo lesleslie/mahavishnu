@@ -1,4 +1,4 @@
-"""Per-tool e2e: ``mcp__mahavishnu__plan_rebuild_status``.
+"""Per-tool e2e: ``mcp__mahavishnu__mahavishnu_plan_rebuild_status``.
 
 REQ-PLAN-007 (§4 gate) + REQ-PLAN-009 (lock-holder redaction): TypedDict
 shape, ``stale`` boolean, and the ``^[a-f0-9]{8}/\\d+$`` regex on

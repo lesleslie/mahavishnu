@@ -363,13 +363,13 @@ The v2 plan's Phase 0 task #4 reads:
 I verified the migration path is **NOT yet available** in this environment:
 
 ```python
-mcp__mahavishnu__execute_capability(
+mcp__mahavishnu__mahavishnu_execute_capability(
     requires=["code_generation"], prompt="...", trace_id="outcome-1-test-trace"
 )
-# → Error: No such tool available: mcp__mahavishnu__execute_capability
+# → Error: No such tool available: mcp__mahavishnu__mahavishnu_execute_capability
 
-mcp__mahavishnu__get_capability_result(trace_id="outcome-1-test-trace")
-# → Error: No such tool available: mcp__mahavishnu__get_capability_result
+mcp__mahavishnu__mahavishnu_get_capability_result(trace_id="outcome-1-test-trace")
+# → Error: No such tool available: mcp__mahavishnu__mahavishnu_get_capability_result
 ```
 
 The replacement tools exist in `mahavishnu/mcp/tools/capability_tools.py` and

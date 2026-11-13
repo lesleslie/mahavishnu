@@ -2,10 +2,10 @@
 
 Counts and surfaces:
 - Per-tool call counts (powers the Crackerjack quality dashboard).
-- ``attach_events`` — fires when a ``worker_revoke`` response carries
+- ``attach_events`` — fires when a ``mahavishnu_worker_revoke`` response carries
   an ``attach_command`` that the operator later runs (drives the
   "tmux-attached operator action" success criterion).
-- ``pool_share`` — ratio of pool_route_execute / terminal_launch calls
+- ``pool_share`` — ratio of mahavishnu_pool_route_execute / mahavishnu_terminal_launch calls
   on Claude Code sessions that opt in to the new contract. The
   spec target is ≥45% (≥0.45). Captured as numerator/denominator plus
   the ratio for fast dashboard reads.
@@ -13,7 +13,7 @@ Counts and surfaces:
 Crackerjack quality score (spec §14: "≥75 after rollout") is sourced
 from ``crackerjack run --json`` and persisted to MCP per the
 project convention; it is surfaced via
-``mcp__mahavishnu__get_observability_metrics`` — not via this class.
+``mcp__mahavishnu__mahavishnu_get_observability_metrics`` — not via this class.
 """
 
 from __future__ import annotations

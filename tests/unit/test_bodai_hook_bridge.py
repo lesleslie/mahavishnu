@@ -30,7 +30,7 @@ def test_handle_pool_bootstrap_emits_telemetry_only() -> None:
     """The bridge handler does NOT call MCP — it only emits telemetry.
 
     The actual work is in the standalone hook script which calls
-    mcp__mahavishnu__pool_bootstrap (Task 9). This handler is the
+    mcp__mahavishnu__mahavishnu_pool_bootstrap (Task 9). This handler is the
     bridge-side audit trail entry.
     """
     env = _make_env()

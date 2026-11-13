@@ -89,7 +89,7 @@ The shared Python module orchestrates the 6-stage per-worktree cycle:
 
 1. **Stage 2 — Ensemble review** (skippable via `--review quick` / `--review none`).
    Dispatches 3 agents (domain specialist + code-quality specialist +
-   random generalist) via `mcp__mahavishnu__pool_route_execute`, parses
+   random generalist) via `mcp__mahavishnu__mahavishnu_pool_route_execute`, parses
    each `<verdict>decision: …</verdict>` block, and aggregates via the
    spec §4.4 rule order (any block → block; ≥2 pass → proceed; else iterate).
 1. **Stage 3 — Crackerjack gate**. Invokes `crackerjack run -v` (NEVER

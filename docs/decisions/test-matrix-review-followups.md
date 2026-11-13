@@ -444,7 +444,7 @@ group.
 - **Location**: `.claude/agents/architecture-council.md:3`
 - **Effort**: XS
 - **Why it matters**: `aggregate_patterns` is described in the
-  frontmatter as "pattern aggregation" alongside `mcp__akosha__search_code_patterns`,
+  frontmatter as "pattern aggregation" alongside `mcp__akosha__akosha_search_code_patterns`,
   but the two are not peers. `aggregate_patterns` is time-series
   telemetry about *which patterns have been observed*; `search_code_patterns`
   is a structural code-graph query. Putting them side-by-side

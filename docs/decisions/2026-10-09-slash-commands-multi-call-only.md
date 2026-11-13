@@ -77,19 +77,19 @@ Fifteen 1:1 wrappers exist today. All slated for deletion:
 
 | File | Wrapped MCP tool | Repo |
 |---|---|---|
-| `~/.claude/commands/checkpoint.md` | `mcp__session-buddy__checkpoint` | (user-level) |
-| `~/.claude/commands/start.md` | `mcp__session-buddy__start` | (user-level) |
-| `~/.claude/commands/end.md` | `mcp__session-buddy__end` | (user-level) |
-| `akosha/commands/akosha-search.md` | `mcp__akosha__search_all_systems` | akosha |
+| `~/.claude/commands/checkpoint.md` | `mcp__session-buddy__session_buddy_checkpoint` | (user-level) |
+| `~/.claude/commands/start.md` | `mcp__session-buddy__session_buddy_start` | (user-level) |
+| `~/.claude/commands/end.md` | `mcp__session-buddy__session_buddy_end` | (user-level) |
+| `akosha/commands/akosha-search.md` | `mcp__akosha__akosha_search_all_systems` | akosha |
 | `akosha/commands/akosha-analyze.md` | `mcp__akosha__analyze_imports` | akosha |
 | `legacy-mcp/commands/legacy-get.md` | `mcp__mahavishnu__mahavishnu_kv_get` (1 tool) | legacy-mcp |
 | `legacy-mcp/commands/legacy-put.md` | `mcp__mahavishnu__mahavishnu_kv_put` (1 tool) | legacy-mcp |
-| `session-buddy/commands/session-buddy-checkpoint.md` | `mcp__session-buddy__checkpoint` | session-buddy |
-| `session-buddy/commands/session-buddy-end.md` | `mcp__session-buddy__end` | session-buddy |
-| `session-buddy/commands/session-buddy-start.md` | `mcp__session-buddy__start` | session-buddy |
+| `session-buddy/commands/session-buddy-checkpoint.md` | `mcp__session-buddy__session_buddy_checkpoint` | session-buddy |
+| `session-buddy/commands/session-buddy-end.md` | `mcp__session-buddy__session_buddy_end` | session-buddy |
+| `session-buddy/commands/session-buddy-start.md` | `mcp__session-buddy__session_buddy_start` | session-buddy |
 | `crackerjack/commands/crackerjack-init.md` | `mcp__crackerjack__init_crackerjack` | crackerjack |
 | `crackerjack/commands/crackerjack-run.md` | `mcp__crackerjack__execute_crackerjack` | crackerjack |
-| `crackerjack/commands/crackerjack-status.md` | `mcp__crackerjack__get_comprehensive_status` | crackerjack |
+| `crackerjack/commands/crackerjack-status.md` | `mcp__crackerjack__crackerjack_get_comprehensive_status` | crackerjack |
 | `mailgun-mcp/commands/mailgun-send.md` | `mcp__mailgun__send_message` | mailgun-mcp |
 | `porkbun-domain-mcp/commands/porkbun-domain-pricing.md` | `mcp__porkbun-domain__get_pricing` | porkbun-domain-mcp |
 

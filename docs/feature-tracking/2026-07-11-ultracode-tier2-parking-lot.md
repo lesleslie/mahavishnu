@@ -141,7 +141,7 @@ When a trigger condition is met:
 
 ## Session-Buddy
 
-Run `mcp__session-buddy__store_reflection` once after creating this file:
+Run `mcp__session-buddy__session_buddy_store_reflection` once after creating this file:
 
 ```python
 mcp__session - buddy__store_reflection(

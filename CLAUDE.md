@@ -58,7 +58,7 @@ When saving `project`/`reference` memory, call `store_reflection(content, tags=[
 
 ## Task System (Bodai)
 
-Mahavishnu owns the **dispatch edge** in the Bodai task system: `mcp__mahavishnu__tasks_handoff_to_workflow`. This is the only path from a session-buddy task to a running workflow.
+Mahavishnu owns the **dispatch edge** in the Bodai task system: `mcp__mahavishnu__mahavishnu_tasks_handoff_to_workflow`. This is the only path from a session-buddy task to a running workflow.
 
 ### Spec & skill
 
@@ -425,7 +425,7 @@ Use `mcp__mahavishnu__*` tools when the task:
 The primary entry point for non-trivial work:
 
 ```python
-mcp__mahavishnu__pool_route_execute(
+mcp__mahavishnu__mahavishnu_pool_route_execute(
     prompt="<clear task description>",
     pool_selector="least_loaded",  # or round_robin, affinity, peer_affinity
     timeout=300,
@@ -435,7 +435,7 @@ mcp__mahavishnu__pool_route_execute(
 For long-running or durable work:
 
 ```python
-mcp__mahavishnu__trigger_workflow(
+mcp__mahavishnu__mahavishnu_trigger_workflow(
     adapter="prefect",  # or "llamaindex" / "agno"
     task_type="<task-type>",
     params={"prompt": "<task>"},
@@ -444,7 +444,7 @@ mcp__mahavishnu__trigger_workflow(
 ```
 
 `trigger_workflow` starts a durable workflow and returns its `workflow_id`;
-poll `mcp__mahavishnu__get_workflow_status` for the outcome.
+poll `mcp__mahavishnu__mahavishnu_get_workflow_status` for the outcome.
 
 ### When to use local tools (Bash, Edit, Read, Write)
 
@@ -454,7 +454,7 @@ Use the built-in tools **only** when:
 - The task is **trivially small** (\<5 lines changed, single file)
 - You're **discovering or explaining** the codebase
 - The task is **conversation-local** (e.g., updating this file, fixing a typo, drafting docs)
-- Mahavishnu pools are **unavailable** (use `mcp__mahavishnu__pool_health` to check; if down, surface the unavailability to the user — do not silently fall back to local tools, since local fallback breaks the audit trail. See "Degraded mode" below.)
+- Mahavishnu pools are **unavailable** (use `mcp__mahavishnu__mahavishnu_pool_health` to check; if down, surface the unavailability to the user — do not silently fall back to local tools, since local fallback breaks the audit trail. See "Degraded mode" below.)
 
 ### Dispatching non-trivial work
 
@@ -480,7 +480,7 @@ If Mahavishnu pools are unhealthy or unreachable, **surface the unavailability t
 
 Recommended behavior when Mahavishnu is down:
 
-1. Run `mcp__mahavishnu__pool_health` to confirm the failure mode (degraded vs. unreachable).
+1. Run `mcp__mahavishnu__mahavishnu_pool_health` to confirm the failure mode (degraded vs. unreachable).
 1. Tell the user: "Mahavishnu is unavailable; doing this locally without observability. Proceed?"
 1. If the user agrees, proceed locally but emit a structured note in the conversation: `[vishnu] local fallback — no observability for {task}`.
 1. Queue the task for replay: write a marker to `~/.mahavishnu/fallback-queue/{task-id}.json` so an operator can replay it through Mahavishnu later.
@@ -513,17 +513,17 @@ Use these substitutes for the missing built-ins:
 
 | Missing | Use instead |
 |---|---|
-| `Grep` (regex, single repo) | `mcp__crackerjack__search_code(pattern=..., file_pattern=...)` |
+| `Grep` (regex, single repo) | `mcp__crackerjack__crackerjack_search_code(pattern=..., file_pattern=...)` |
 | `Grep` (semantic) | `mcp__crackerjack__search_semantic(query=..., min_similarity=...)` |
-| `Grep` (cross-repo, Bodai) | `mcp__akosha__search_code_patterns(pattern=..., scope="all", limit=100)` |
-| `Grep` (symbol-aware) | `mcp__akosha__find_function_usage(function_name=...)` |
+| `Grep` (cross-repo, Bodai) | `mcp__akosha__akosha_search_code_patterns(pattern=..., scope="all", limit=100)` |
+| `Grep` (symbol-aware) | `mcp__akosha__akosha_find_function_usage(function_name=...)` |
 | `TodoWrite` (task tracking) | Maintain a markdown checklist in the response, OR `Write` to `/tmp/todos-{session-id}.md`, OR dispatch the `Explore` subagent (has `TodoWrite`) |
-| `TodoWrite` (cross-session) | `mcp__session-buddy__store_reflection(content, tags=["todo", "<topic>"])` |
-| `Glob` (file pattern match) | `Bash(find <root> -type f -name '<pattern>' ...)` — already permitted via `Bash(find *)` in settings. For indexed/Bodai-wide search use `mcp__akosha__search_code_patterns(pattern="*.py", scope="all")`. |
+| `TodoWrite` (cross-session) | `mcp__session-buddy__session_buddy_store_reflection(content, tags=["todo", "<topic>"])` |
+| `Glob` (file pattern match) | `Bash(find <root> -type f -name '<pattern>' ...)` — already permitted via `Bash(find *)` in settings. For indexed/Bodai-wide search use `mcp__akosha__akosha_search_code_patterns(pattern="*.py", scope="all")`. |
 | `MultiEdit` (atomic multi-file edit) | Sequential `Edit(...)` calls. Claude Code's harness serializes them in the order given; there is no atomicity guarantee across files, so review diffs between calls. |
-| `BashOutput` (tail background bash) | Avoid backgrounding: run `Bash(...)` synchronously and let output flow inline. For long-running watchers, use `mcp__mahavishnu__terminal_launch` (returns `session_id`) + `mcp__mahavishnu__terminal_capture(session_id=...)` instead. |
+| `BashOutput` (tail background bash) | Avoid backgrounding: run `Bash(...)` synchronously and let output flow inline. For long-running watchers, use `mcp__mahavishnu__mahavishnu_terminal_launch` (returns `session_id`) + `mcp__mahavishnu__mahavishnu_terminal_capture(session_id=...)` instead. |
 | `KillShell` / `KillBash` | `Bash(kill <PID>)` or `Bash(pkill -f '<pattern>')` — both permitted via the existing `Bash(kill *)` / `Bash(pkill *)` allowlist in `~/.claude/settings.json`. |
-| `NotebookRead` (`.ipynb`) | `Bash(jupyter nbconvert --to script <path>.ipynb --stdout)` to get the code cells, then `Read` for raw JSON. For semantic search of notebook contents, use `mcp__akosha__search_code_patterns`. |
+| `NotebookRead` (`.ipynb`) | `Bash(jupyter nbconvert --to script <path>.ipynb --stdout)` to get the code cells, then `Read` for raw JSON. For semantic search of notebook contents, use `mcp__akosha__akosha_search_code_patterns`. |
 | `SlashCommand` (programmatic `/<cmd>`) | Invoke via the `Skill` tool with the slash command name as `skill` (e.g. `Skill(skill="crack", args={...})`), or call the underlying MCP server directly (most slash commands have an MCP equivalent under `mcp__crackerjack__*` or `mcp__mahavishnu__*`). |
 | `WebSearch` | **Primary**: `mcp__tavily__tavily_search` (and `tavily_extract` / `tavily_crawl` / `tavily_map` / `tavily_research` — AI-agent-native, 6 tools; requires `TAVILY_API_KEY` in shell env). **Fallback chain**: `mcp__minimax-coding-plan__web_search` (always-on, no key, Google-style JSON envelope) → `mcp__crow__web_search` (SearXNG; often captcha'd by upstream engines — last resort, accept HTML responses). |
 
@@ -753,7 +753,7 @@ non-empty responses per tool. Audit cadence: monthly Bodai-wide.
 
 Mahavishnu-specific guidance:
 
-- `mcp__mahavishnu__pool_health` and `/health` must both surface the
+- `mcp__mahavishnu__mahavishnu_pool_health` and `/health` must both surface the
   same feed-state aggregates; disagreement between them is a bug.
 - Worker pools with registered tools but no active workers must
   return `degraded`, not `ok`.
@@ -791,7 +791,7 @@ outside their own unit tests imports them, so their tools are absent from
 | `coordination_tools.py` | 15 | Dead. Backed by the `coordination:` block in `settings/ecosystem.yaml`, not by session-buddy. The todo half duplicates session-buddy's `tasks_*`; the issue half has no equivalent elsewhere. |
 | `learning_pipeline_tools.py` | 5 | Dead, and deliberately so — `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md` blocks the wiring branch on an authentication-identity fix. ADR 012 assigns the pipeline itself to mahavishnu. |
 
-`mcp__mahavishnu__get_tool_versions` still lists these 20 names, so treat
+`mcp__mahavishnu__mahavishnu_get_tool_versions` still lists these 20 names, so treat
 that map as a historical inventory, not a live one. The map is broadly
 out of sync: 183 entries against a live surface of 178, with 63 names
 advertised that no longer exist (these 20 plus 43 more whose names have

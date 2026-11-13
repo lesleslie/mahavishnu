@@ -24,7 +24,7 @@ visibility, e.g.:
 - "Surface pool / worker / dispatch metrics."
 
 The skill is *not* for requests like "dispatch this to Mahavishnu" or "run
-the workers on X" — those use `mcp__mahavishnu__execute_capability` (or the
+the workers on X" — those use `mcp__mahavishnu__mahavishnu_execute_capability` (or the
 `mahavishnu-orchestrator` subagent for forced delegation).
 
 ## Behavior
@@ -52,7 +52,7 @@ canonical fallback wording.
 
 | Surface | Purpose | Effect |
 |----------------------|---------------------------------------|---------------------------------|
-| `mcp__mahavishnu__execute_capability` | Dispatch / *do work* through Mahavishnu | Plans and emits an ExecutionDAG from a `CapabilitySpec` |
+| `mcp__mahavishnu__mahavishnu_execute_capability` | Dispatch / *do work* through Mahavishnu | Plans and emits an ExecutionDAG from a `CapabilitySpec` |
 | `/mahavishnu:status` | Observe / *show state* of Mahavishnu | Surfaces pool, workflow, dispatch metrics |
 | `mahavishnu-orchestrator` (subagent) | Forced delegation with tool isolation | Same as the dispatch tools but with strict `tools:` frontmatter |
 
@@ -63,7 +63,7 @@ If the user says "what's running on Mahavishnu" → this skill → `/mahavishnu:
 
 When the user asks about plan-level activity (e.g., "what plans are
 in flight?", "show me the plan index"), the skill calls
-`mcp__mahavishnu__plan_list({status: "active"})` (FULL profile only,
+`mcp__mahavishnu__mahavishnu_plan_list({status: "active"})` (FULL profile only,
 auth-gated). On degraded MCP response, fall back to filesystem
 read of `docs/plans/PLAN_INDEX.md`.
 

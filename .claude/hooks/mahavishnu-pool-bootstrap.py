@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SessionStart hook: ensure a default pool exists via mcp__mahavishnu__pool_bootstrap.
+"""SessionStart hook: ensure a default pool exists via mcp__mahavishnu__mahavishnu_pool_bootstrap.
 
 Mirrors the pattern of .claude/hooks/jot-session-start.py — the script
 does the actual work (JSON-RPC 2.0 call to the FastMCP server's /mcp
@@ -59,7 +59,7 @@ def _safe_parse_payload() -> dict[str, object]:
 
 
 def _invoke_bootstrap() -> dict[str, object] | None:
-    """Call mcp__mahavishnu__pool_bootstrap via JSON-RPC 2.0 over FastMCP.
+    """Call mcp__mahavishnu__mahavishnu_pool_bootstrap via JSON-RPC 2.0 over FastMCP.
 
     Returns the parsed result dict on success, or None on any failure.
     Uses the shared wire helpers in ``_bodai_mcp_client.py``: the
