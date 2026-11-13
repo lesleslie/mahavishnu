@@ -514,7 +514,7 @@ Use these substitutes for the missing built-ins:
 | Missing | Use instead |
 |---|---|
 | `Grep` (regex, single repo) | `mcp__crackerjack__crackerjack_search_code(pattern=..., file_pattern=...)` |
-| `Grep` (semantic) | `mcp__crackerjack__search_semantic(query=..., min_similarity=...)` |
+| `Grep` (semantic) | `mcp__crackerjack__crackerjack_search_semantic(query=..., min_similarity=...)` |
 | `Grep` (cross-repo, Bodai) | `mcp__akosha__akosha_search_code_patterns(pattern=..., scope="all", limit=100)` |
 | `Grep` (symbol-aware) | `mcp__akosha__akosha_find_function_usage(function_name=...)` |
 | `TodoWrite` (task tracking) | Maintain a markdown checklist in the response, OR `Write` to `/tmp/todos-{session-id}.md`, OR dispatch the `Explore` subagent (has `TodoWrite`) |
