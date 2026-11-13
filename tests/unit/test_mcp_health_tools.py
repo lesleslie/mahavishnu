@@ -248,6 +248,27 @@ class TestSharedSurfaceContract:
         assert DEPRECATED_TOOLS["get_liveness"] == "mahavishnu_ecosystem_status"
         assert DEPRECATED_TOOLS["get_readiness"] == "mahavishnu_ecosystem_status"
 
+    async def test_readiness_extra_contributes_the_workers_fold(self, mock_mcp):
+        """Mahavishnu's worker-capability state reaches the readiness payload.
+
+        The MCP tool and the ``/ready`` HTTP route are documented to carry
+        the same payload, so the workers fold the fork used to inline must
+        survive the de-vendoring.
+        """
+        app = MagicMock()
+        app.config.server_name = "mahavishnu"
+        app.config.health.dependencies = {}
+        register_health_tools(mock_mcp, app=app)
+
+        workers = {"status": "healthy", "worker_reports": {"terminal-claude": "ready"}}
+        with patch(
+            "mahavishnu.core.health.aggregate_readiness",
+            new=AsyncMock(return_value=workers),
+        ):
+            result = await mock_mcp._tools["get_readiness"]()
+
+        assert result["workers"] == workers
+
 
 # =============================================================================
 # mahavishnu_mcp_list_tools

@@ -3405,7 +3405,7 @@ requires-dist = [
     { name = "llama-index-embeddings-openai", specifier = ">=0.5.0,<0.6.0" },
     { name = "llama-index-llms-openai-like", specifier = ">=0.8.0,<0.9.0" },
     { name = "llama-index-vector-stores-opensearch", specifier = ">=0.6.3,<0.7.0" },
-    { name = "mcp-common", specifier = ">=0.33.1" },
+    { name = "mcp-common", specifier = ">=0.36.0" },
     { name = "msgspec", specifier = ">=0.21.1,<0.22" },
     { name = "oneiric", specifier = ">=0.34.0" },
     { name = "opentelemetry-api", specifier = ">=1.45.1" },
@@ -3669,7 +3669,7 @@ wheels = [
 
 [[package]]
 name = "mcp-common"
-version = "0.34.3"
+version = "0.36.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -3690,9 +3690,9 @@ dependencies = [
     { name = "typer" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c4/34/81f29917c7bfca4b881ef55563d6a69121255f18953cdd2be2888da40791/mcp_common-0.34.3.tar.gz", hash = "sha256:b60c7fb0b997d8443ef098c40c9e64ec5508887d578c9119d7acfd335b939ed0", size = 1080852, upload-time = "2026-11-08T06:26:10.778Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/e7/705fa5ce5ec3d6a7af38dd464610401b904515959a09eee32e040afc7e8c/mcp_common-0.36.0.tar.gz", hash = "sha256:a4ee19ff9731c2e07dbebd3a45f376210516d22a538fb5d2faf6cf29f7996726", size = 1091809, upload-time = "2026-11-13T13:57:07.952Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/ac/dc65f72df79339cfa751515a03196d1bb79f1dfff7e8973a8dfb86dbab14/mcp_common-0.34.3-py3-none-any.whl", hash = "sha256:0bd8d50591d845fcf49f6deb11185f60debe107a1b3b63a5caab0d0cd1e095f8", size = 489707, upload-time = "2026-11-08T06:26:08.909Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/f3/02f49e39e94abb54d4a6fb0126df61db1de1ab00abe0d914a8ce226edf18/mcp_common-0.36.0-py3-none-any.whl", hash = "sha256:f6ca1a1ef9a2c334deac61f083906f0406aa0667393bbd047f16ccd59c55c91b", size = 490882, upload-time = "2026-11-13T13:57:06.042Z" },
 ]
 
 [[package]]

@@ -157,6 +157,29 @@ def _summarize_tool(tool: Any) -> dict[str, Any]:
     return summary
 
 
+async def _readiness_extra() -> dict[str, Any]:
+    """Contribute Mahavishnu's worker-capability state to ``get_readiness``.
+
+    The MCP tool and the ``/ready`` HTTP route are documented to carry the
+    same payload, and worker capability state is Mahavishnu's own concept
+    -- it has no fleet-wide meaning, so it cannot live in the shared
+    module. The shared module merges whatever this returns without
+    knowing what the extra fields mean; the hook is invoked at probe
+    time, so the payload reflects live state rather than what was
+    configured at registration.
+    """
+    from mahavishnu.core.health import aggregate_readiness
+
+    from mahavishnu.core.config import MahavishnuSettings
+
+    try:
+        settings = MahavishnuSettings()
+        return {"workers": await aggregate_readiness(settings=settings)}
+    except Exception:
+        logger.exception("readiness worker aggregation failed")
+        return {"workers": {"status": "unhealthy"}}
+
+
 def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
     """Register the health surface and Mahavishnu's three MCP tools.
 
@@ -170,6 +193,7 @@ def register_health_tools(mcp: FastMCP, app: Any = None) -> None:
         version=_version(),
         dependencies=_dependency_map(app),
         deprecated_tools=DEPRECATED_TOOLS,
+        readiness_extra=_readiness_extra,
     )
 
     if mcp in _WIRED_SERVERS:
