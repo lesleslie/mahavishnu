@@ -44,7 +44,13 @@ dependencies = [
     # dependency group, so the group has to leave the project entirely --
     # un- including it from "dev" is not enough. Operators who want the
     # RunPod provider install it themselves: `uv pip install runpod`.
-    "oneiric>=0.34.0",
+    # 0.36.0 is the floor that carries the LLM subsystem: the provider
+    # transport, the fallback chain, and their settings moved from
+    # ``mcp_common.llm`` to ``oneiric.adapters.llm`` in 0.36.0.
+    # ``mahavishnu.workers.cloud_worker`` imports ``FallbackChain`` and
+    # ``LLMSettings`` from that package, so a lower floor fails at
+    # import time.
+    "oneiric>=0.36.0",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
     # 0.27.0+ required for the session-scoped Principal propagation fix

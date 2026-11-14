@@ -66,6 +66,26 @@ minimax:
     # at the bottom of this file.
     FALLBACK: "MiniMax-M3"
     FALLBACK_HIGHSPEED: "MiniMax-M3.1-Flash"
+  # Per-model thinking depth, keyed by the *resolved* model id -- the model
+  # the provider picks after task_routing above. Edit it here and the policy
+  # applies on the next worker start; no code change.
+  #
+  # "adaptive" sends no effort field at all and lets the model choose its own
+  # depth. MiniMax-M3 accepts and ignores `reasoning_effort`, so "adaptive"
+  # is the honest setting for it. MiniMax-M3.1-Flash honors the field and
+  # otherwise defaults to "max" -- the deepest, slowest tier -- so it is
+  # pinned to "low" here for the latency-sensitive bucket.
+  #
+  # A model id that is missing from this map is a configuration miss: the
+  # provider logs a warning and falls back to that model's provider default.
+  # Renaming a model above means renaming it here too.
+  #
+  # Allowed levels: adaptive, low, medium, high, xhigh, max. There is no
+  # "off" -- thinking is never disabled; MiniMax-M3.1-Flash answers 400 for a
+  # disable request.
+  reasoning_effort:
+    "MiniMax-M3": "adaptive"
+    "MiniMax-M3.1-Flash": "low"
 
 # =============================================================================
 # LOCAL PROVIDERS (no auth required, always available when running)

@@ -10,6 +10,7 @@ local providers stay direct.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
@@ -18,11 +19,18 @@ from mahavishnu.bifrost.cache_headers import (
     TRAFFIC_CLASS_WORKER,
     resolve_cache_bucket,
 )
+from mahavishnu.core.model_routing import (
+    MODELS_CONFIG_PATH_ENV,
+    _reset_routing_cache,
+)
 from mahavishnu.workers.cloud_worker import (
     CloudWorkerConfig,
     _build_fallback_chain,
     _resolve_minimax_endpoint,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _enable_bifrost(
@@ -130,7 +138,7 @@ class TestBuildFallbackChainBifrostRouting:
 
         captured: list = []
         real_from_settings = None
-        from mcp_common.llm import FallbackChain
+        from oneiric.adapters.llm import FallbackChain
 
         real_from_settings = FallbackChain.from_settings
 
@@ -166,7 +174,7 @@ class TestBuildFallbackChainBifrostRouting:
         reset_router_for_tests()
 
         captured: list = []
-        from mcp_common.llm import FallbackChain
+        from oneiric.adapters.llm import FallbackChain
 
         real_from_settings = FallbackChain.from_settings
 
@@ -198,7 +206,7 @@ class TestBuildFallbackChainBifrostRouting:
         the chain is a 2-tier minimax → llama_server; the chain
         providers dict has no anthropic entry.
         """
-        from mcp_common.llm import FallbackChain
+        from oneiric.adapters.llm import FallbackChain
         from oneiric.adapters.llm.bifrost import reset_router_for_tests
 
         monkeypatch.setenv("ONEIRIC_BIFROST_ENABLED", "true")
@@ -238,7 +246,7 @@ class TestBuildFallbackChainGatewayHeaders:
     @staticmethod
     def _capture(monkeypatch: pytest.MonkeyPatch) -> list:
         """Build the chain with ``LLMSettings`` captured."""
-        from mcp_common.llm import FallbackChain
+        from oneiric.adapters.llm import FallbackChain
 
         captured: list = []
         real_from_settings = FallbackChain.from_settings
@@ -377,3 +385,125 @@ class TestDefaultModelIsNotRetired:
         assert "M2." not in model, (
             f"default model {model!r} is on the retired M2.x line (upstream retirement 2026-11-18)"
         )
+
+
+class TestReasoningEffortPolicy:
+    """The operator's thinking-depth policy reaches the provider config.
+
+    ``settings/models.yaml`` carries ``minimax.reasoning_effort`` -- a map
+    from the *resolved* model id to an effort level. The cloud worker hands
+    that map to oneiric's ``ProviderConfig``, which looks the level up by
+    the model it is about to call.
+
+    A model id that is not in the map is a configuration miss: the provider
+    logs it and falls back to that model's provider default, which on
+    ``MiniMax-M3.1-Flash`` is ``max`` -- the deepest, slowest tier. That
+    makes a rename in the routing table a real hazard, so it gets a test.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _clean_routing_cache(self):
+        """Reset the parsed operator config around every test."""
+        _reset_routing_cache()
+        yield
+        _reset_routing_cache()
+
+    @staticmethod
+    def _write_config(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        body: str,
+    ) -> None:
+        """Point the operator-config loader at a temporary file."""
+        path = tmp_path / "models.yaml"
+        path.write_text(body, encoding="utf-8")
+        monkeypatch.setenv(MODELS_CONFIG_PATH_ENV, str(path))
+        _reset_routing_cache()
+
+    def test_configured_map_reaches_the_provider_config(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The operator's map survives the trip into ``ProviderConfig``.
+
+        The map is validated on the way in: oneiric's ``ProviderConfig``
+        rejects an effort level outside its vocabulary, and an invalid
+        level must fail there rather than be quietly dropped by the
+        loader -- a dropped entry would put ``MiniMax-M3.1-Flash`` back
+        on its ``max`` provider default.
+        """
+        from oneiric.adapters.llm.config import ProviderConfig
+
+        self._write_config(
+            tmp_path,
+            monkeypatch,
+            "minimax:\n"
+            "  reasoning_effort:\n"
+            "    'MiniMax-M3': 'adaptive'\n"
+            "    'MiniMax-M3.1-Flash': 'low'\n",
+        )
+
+        captured: list = []
+        from oneiric.adapters.llm import FallbackChain
+
+        real_from_settings = FallbackChain.from_settings
+
+        def capture(settings):  # type: ignore[no-untyped-def]
+            captured.append(settings)
+            return real_from_settings(settings)
+
+        with patch.object(FallbackChain, "from_settings", side_effect=capture):
+            _build_fallback_chain(CloudWorkerConfig())
+
+        assert len(captured) == 1
+        raw = captured[0].providers["minimax"]
+        assert raw["reasoning_effort"] == {
+            "MiniMax-M3": "adaptive",
+            "MiniMax-M3.1-Flash": "low",
+        }
+        # The same dict oneiric hands to ProviderConfig -- so this asserts
+        # the policy survives validation, not merely that it was copied.
+        provider_config = ProviderConfig(**raw)
+        assert provider_config.reasoning_effort == {
+            "MiniMax-M3": "adaptive",
+            "MiniMax-M3.1-Flash": "low",
+        }
+
+    def test_renamed_model_id_is_reported_as_a_configuration_miss(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """A model the policy does not name is reported, not silently kept.
+
+        The operator renames the flash model in the routing table and
+        forgets the policy. The provider must log the miss, because the
+        alternative -- the provider default -- is ``max`` on that model.
+
+        The provider's resolver is reached directly: the public path
+        (``execute``) would issue a live HTTP call to MiniMax, and the
+        warning is emitted before the request is built.
+        """
+        import logging
+
+        self._write_config(
+            tmp_path,
+            monkeypatch,
+            "minimax:\n"
+            "  task_routing:\n"
+            "    SWARM: 'MiniMax-M3.1-Flash-v2'\n"
+            "  reasoning_effort:\n"
+            "    'MiniMax-M3': 'adaptive'\n",
+        )
+
+        chain = _build_fallback_chain(CloudWorkerConfig())
+        minimax = next(p for p in chain._providers if p.name == "minimax")
+
+        with caplog.at_level(logging.WARNING, logger="oneiric.adapters.llm.provider"):
+            effort = minimax._resolve_reasoning_effort("MiniMax-M3.1-Flash-v2")
+
+        assert effort is None, "a model with no policy entry falls back to the default"
+        assert "has no reasoning_effort entry" in caplog.text
+        assert "MiniMax-M3.1-Flash-v2" in caplog.text

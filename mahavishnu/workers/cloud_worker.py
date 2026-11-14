@@ -1,7 +1,7 @@
 """Cloud AI worker — two-tier FallbackChain (MiniMax → llama-server).
 
-Delegates all LLM dispatch to mcp_common.llm.FallbackChain, which handles
-per-provider retry, circuit breaking, and fail-closed auth checks.
+Delegates all LLM dispatch to oneiric.adapters.llm.FallbackChain, which
+handles per-provider retry, circuit breaking, and fail-closed auth checks.
 Intelligent task classification via classify_task() feeds the task_type
 field so each provider selects the right model from its routing table.
 """
@@ -17,7 +17,7 @@ import time
 from typing import Any
 
 import httpx2 as httpx
-from mcp_common.llm import FallbackChain, LLMSettings
+from oneiric.adapters.llm import FallbackChain, LLMSettings
 
 from mahavishnu.core.status import WorkerStatus
 
@@ -32,6 +32,7 @@ from ..core.model_routing import (
     gateway_openai_base_url,
     get_rate_limiter,
     resolve_llama_server_routing,
+    resolve_minimax_reasoning_effort,
     resolve_minimax_routing,
     resolve_runpod_public_routing,
     routing_to_task_map,
@@ -165,6 +166,14 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
             "default_headers": gateway_headers,
             "require_auth": True,
             "task_routing": minimax_routing,
+            # Per-model thinking depth, from the operator config
+            # (``minimax.reasoning_effort`` in settings/models.yaml).
+            # Keyed by the *resolved* model id -- the one the provider
+            # picks after task_routing -- so the entry that applies is
+            # the one for the model that will actually answer. An empty
+            # map means "no policy", which the provider reads as its own
+            # default rather than as a misconfiguration.
+            "reasoning_effort": resolve_minimax_reasoning_effort(),
             "timeout_seconds": config.timeout,
         },
         "llama_server": {

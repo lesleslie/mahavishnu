@@ -347,6 +347,28 @@ Mahavishnu uses MiniMax M3 models as the primary cloud LLM provider. The repo no
 For local fallback (`llama_server`), see `settings/models.yaml` — the
 `llama_server.task_routing` block is live like the others.
 
+**Thinking depth** (`minimax.reasoning_effort` in `settings/models.yaml`): the
+per-model thinking-depth policy, keyed by the **resolved** model id — the model
+the provider picks after `task_routing`. The cloud worker reads it through
+`resolve_minimax_reasoning_effort()` in `mahavishnu/core/model_routing.py` and
+hands it to oneiric's `ProviderConfig`, which looks the level up per call.
+
+Three rules matter when editing this:
+
+- **`adaptive` sends no effort field at all** — the model picks its own depth.
+  It is the honest setting for `MiniMax-M3`, which accepts and ignores
+  `reasoning_effort` outright.
+- **`MiniMax-M3.1-Flash` honors the field and otherwise defaults to `max`** —
+  the deepest, slowest tier. The shipped config pins it to `low`; a miss in
+  the map is a *configuration miss*, logged by the provider, and it silently
+  costs you the `max` default. **Renaming a model in `task_routing` means
+  renaming it in `reasoning_effort` too.**
+- **There is no "off" member.** The vocabulary is `adaptive`, `low`,
+  `medium`, `high`, `xhigh`, `max`. Thinking is never disabled:
+  `MiniMax-M3.1-Flash` answers 400 for a disable request. oneiric's
+  `ProviderConfig` rejects a level outside that set, loudly, at chain-build
+  time.
+
 **Agno adapter provider chain** (added 2026-10-29): the Agno adapter uses the
 same MiniMax-first ordering as the cloud worker. `agno.llm.provider` defaults
 to `minimax`, with `agno.llm.fallback_providers: [llama_server]` — the local

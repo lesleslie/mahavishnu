@@ -358,15 +358,19 @@ def _config_stamp(path: Path | None) -> tuple[int, int] | None:
 
 
 @lru_cache(maxsize=4)
-def _operator_routing_for(
+def _operator_config_for(
     path_str: str | None,
     stamp: tuple[int, int] | None,
-) -> dict[str, dict[TaskCategory, str]]:
-    """Parse the operator config. Cached per (path, change-detector).
+) -> dict[str, Any]:
+    """Read and parse the operator config. Cached per (path, change-detector).
 
     The cache key carries the change-detector, so editing the file
     produces a new entry and the next call re-parses. ``path_str`` is
     ``None`` when there is no operator config at all.
+
+    The raw mapping is cached rather than the derived tables so that the
+    routing tables and the thinking-depth policy are read from a single
+    parse of a single file.
 
     req: REQ-YAML-003
     """
@@ -381,8 +385,29 @@ def _operator_routing_for(
     if not isinstance(data, dict):
         logger.warning("Model routing config %s is not a mapping", path)
         return {}
+    return cast("dict[str, Any]", data)
+
+
+@lru_cache(maxsize=4)
+def _operator_routing_for(
+    path_str: str | None,
+    stamp: tuple[int, int] | None,
+) -> dict[str, dict[TaskCategory, str]]:
+    """Derive the per-provider routing tables from the operator config.
+
+    Cached per (path, change-detector), so an operator who edits
+    ``settings/models.yaml`` sees the change on the next dispatch without
+    restarting the process, and a malformed entry is reported once per
+    config version rather than once per dispatch.
+
+    req: REQ-YAML-003
+    """
+    data = _operator_config_for(path_str, stamp)
+    if not data:
+        return {}
+    path = Path(path_str) if path_str else None
     tables: dict[str, dict[TaskCategory, str]] = {}
-    for provider, block in cast("dict[str, Any]", data).items():
+    for provider, block in data.items():
         if not isinstance(block, dict):
             continue
         routing = cast("dict[str, Any]", block).get("task_routing")
@@ -409,6 +434,65 @@ def _operator_routing_for(
     return tables
 
 
+@lru_cache(maxsize=4)
+def _operator_reasoning_effort_for(
+    path_str: str | None,
+    stamp: tuple[int, int] | None,
+) -> dict[str, dict[str, str]]:
+    """Derive the per-provider thinking-depth policies from the operator config.
+
+    Each provider block may carry a ``reasoning_effort`` mapping of
+    *resolved model id* to effort level. The levels themselves are not
+    interpreted here: oneiric's ``ProviderConfig`` owns the permitted
+    vocabulary and rejects anything outside it, so an invalid level
+    fails loudly at chain-build time instead of being silently dropped
+    here (a dropped entry would put ``MiniMax-M3.1-Flash`` back on its
+    ``max`` provider default -- the slowest and most expensive tier --
+    with only a log line to say so).
+
+    A malformed *shape* (the block is not a mapping, a value is not a
+    string) is warned about and ignored: there is no safe built-in
+    fallback for a thinking-depth policy, so the operator is told rather
+    than the worker being taken down for a YAML typo.
+
+    Cached per (path, change-detector), like the routing tables.
+    """
+    data = _operator_config_for(path_str, stamp)
+    if not data:
+        return {}
+    path = Path(path_str) if path_str else None
+    policies: dict[str, dict[str, str]] = {}
+    for provider, block in data.items():
+        if not isinstance(block, dict):
+            continue
+        effort_map = cast("dict[str, Any]", block).get("reasoning_effort")
+        if effort_map is None:
+            continue
+        if not isinstance(effort_map, dict):
+            logger.warning(
+                "Model routing config %s: provider %r reasoning_effort is not a "
+                "mapping; ignoring that policy",
+                path,
+                provider,
+            )
+            continue
+        policy: dict[str, str] = {}
+        for model, effort in cast("dict[str, Any]", effort_map).items():
+            if not isinstance(effort, str) or not effort:
+                logger.warning(
+                    "Model routing config %s: provider %r reasoning_effort entry %r "
+                    "has an empty or non-string level; ignoring that entry",
+                    path,
+                    provider,
+                    model,
+                )
+                continue
+            policy[str(model)] = effort
+        if policy:
+            policies[provider] = policy
+    return policies
+
+
 def _operator_routing() -> dict[str, dict[TaskCategory, str]]:
     """Read the operator routing config into per-provider tables.
 
@@ -418,6 +502,14 @@ def _operator_routing() -> dict[str, dict[TaskCategory, str]]:
     """
     path = _resolve_models_config_path()
     return _operator_routing_for(str(path) if path else None, _config_stamp(path))
+
+
+def _operator_reasoning_effort() -> dict[str, dict[str, str]]:
+    """Read the operator thinking-depth policies into per-provider maps."""
+    path = _resolve_models_config_path()
+    return _operator_reasoning_effort_for(
+        str(path) if path else None, _config_stamp(path)
+    )
 
 
 def _effective_routing(
@@ -455,13 +547,30 @@ def resolve_runpod_public_routing() -> dict[TaskCategory, str]:
     return _effective_routing("runpod_public", DEFAULT_RUNPOD_PUBLIC_ROUTING)
 
 
+def resolve_minimax_reasoning_effort() -> dict[str, str]:
+    """The MiniMax thinking-depth policy: resolved model id to effort level.
+
+    Sourced from ``minimax.reasoning_effort`` in the operator config
+    (``settings/models.yaml``). An absent policy returns an empty map,
+    which oneiric reads as "this provider has no thinking-depth policy" --
+    not as a misconfiguration, so no warning is logged for it.
+
+    There is deliberately no built-in default: the thinking depth of a
+    model is an operator decision, and the provider defaults differ
+    between models (``MiniMax-M3.1-Flash`` defaults to ``max``).
+    """
+    return dict(_operator_reasoning_effort().get("minimax", {}))
+
+
 def _reset_routing_cache() -> None:
     """Drop the parsed operator config.
 
     The config re-parses itself when the file changes; this exists so the
     test suite can start from a deterministic cache.
     """
+    _operator_config_for.cache_clear()
     _operator_routing_for.cache_clear()
+    _operator_reasoning_effort_for.cache_clear()
 
 
 def routing_to_task_map(routing: dict[TaskCategory, str]) -> dict[str, str]:
