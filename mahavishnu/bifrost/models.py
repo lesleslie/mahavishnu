@@ -11,6 +11,7 @@ here as data; :mod:`mahavishnu.bifrost.toggles` holds the single state machine.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import field as dataclasses_field
 from pathlib import Path
 
 from .paths import BIFROST_BACKUP_DIR, DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
@@ -54,6 +55,44 @@ CACHE_TRAFFIC_CLASS_QWEN_CODE = "qwen-code"
 
 #: Env var holding the Bifrost virtual key. Never inlined into settings.
 VIRTUAL_KEY_ENV = "BIFROST_VIRTUAL_KEY"
+
+#: Claude Code's per-slot model defaults, and the id each slot falls back
+#: to when the harness talks to MiniMax directly.
+#:
+#: The gateway's alias table maps ``claude-*-5-5`` onto MiniMax, so a
+#: Claude id is a request the GATEWAY understands and the upstream does
+#: not: MiniMax's own endpoint knows ``MiniMax-M3`` and
+#: ``MiniMax-M3.1-Flash`` and nothing else. Point the harness back at
+#: the upstream with a Claude id still in place and every request is
+#: refused.
+#:
+#: The slot ids are kept distinct because they are not interchangeable:
+#: the gateway serves ``MiniMax-M3`` for the opus and sonnet slots and
+#: ``MiniMax-M3.1-Flash`` for the haiku slot, so a haiku slot pointed at
+#: ``MiniMax-M3`` would move the fast slot onto the heavy model.
+CC_MODEL_SLOTS: dict[str, str] = {
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M3",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M3",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M3.1-Flash",
+}
+
+#: The Claude ids the gateway aliases onto MiniMax. A harness holding one
+#: of these is holding a gateway-only id: valid in front of the gateway,
+#: refused by the upstream.
+CC_GATEWAY_ONLY_MODEL_IDS: frozenset[str] = frozenset(
+    {
+        "claude-opus-5-5",
+        "claude-opus-5.5",
+        "claude-opus-4-6",
+        "claude-sonnet-5-5",
+        "claude-sonnet-4-6",
+        "claude-sonnet-4.6",
+        "claude-haiku-5-5",
+        "claude-haiku-4-5",
+        "claude-fable-5-1",
+        "claude-mythos-5-1",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -107,6 +146,17 @@ class HarnessDescriptor:
     route_header: tuple[str, str] | None = None
     cache_traffic_class: str | None = None
     cache_enabled: bool = True
+    #: The settings keys (inside ``settings["env"]``) holding this
+    #: harness's per-slot model defaults, and the upstream-valid id for
+    #: each slot. Empty means the harness has no such slot -- Qwen Code
+    #: carries its model in a different shape and has no per-slot
+    #: default to rewrite.
+    #:
+    #: The gateway resolves a ``claude-*-5-5`` id onto MiniMax through
+    #: its alias table; the upstream provider does not know that id. So
+    #: the id is only valid while the gateway is in front, and the
+    #: toggle has to put the upstream-valid one back when it is not.
+    model_slots: dict[str, str] = dataclasses_field(default_factory=dict)
 
     @property
     def backup_path(self) -> Path:
@@ -128,6 +178,12 @@ CC_HARNESS = HarnessDescriptor(
     url_suffix="/anthropic",
     credential_sink="env",
     restart_note="restart any running Claude Code session for this to take effect",
+    # Claude Code's three model slots. The gateway serves the MiniMax ids
+    # unchanged, so the standing default works in front of the gateway
+    # and needs no rewrite there; the ids are restored when the harness
+    # is pointed back at the upstream, where a gateway-only Claude id
+    # would be refused.
+    model_slots=CC_MODEL_SLOTS,
     # Claude Code speaks the Anthropic Messages protocol, so it must reach
     # MiniMax over MiniMax's Anthropic-native endpoint to get genuine
     # Anthropic responses. The route header tells the gateway which provider

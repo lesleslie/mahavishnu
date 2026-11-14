@@ -26,6 +26,7 @@ from typing import Any
 
 import typer
 
+from . import models
 from .cache_headers import CACHE_KEY_HEADER, resolve_cache_bucket
 from .models import VIRTUAL_KEY_ENV, VIRTUAL_KEY_HEADER, HarnessDescriptor
 from .paths import DEFAULT_BIFROST_HOST, DEFAULT_BIFROST_PORT
@@ -954,26 +955,34 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
     prior_url = backup.get("url")
     had_credential = backup.get("credential_present") == "true"
 
+    # The endpoint the harness ends up at decides whether the Claude ids
+    # survive the restore, so it is settled BEFORE the slots are
+    # rewritten: a MiniMax endpoint cannot serve them, another upstream
+    # can.
+    provider_key, _ = _active_provider(settings)
+    upstream = _BIFROST_UPSTREAMS.get(provider_key or "")
+    target_url = prior_url or upstream or None
+
     _pop_url(settings, harness)
     _pop_credential(settings, harness)
+    restored_slots = _restore_model_slots(settings, harness, target_url)
 
     if dry_run:
         typer.echo(
             f"[dry-run] would restore {harness.label} to {prior_url or '<unset>'}"
         )
+        for slot, value in restored_slots:
+            typer.echo(f"[dry-run] would set {slot}={value}")
         return
 
     if prior_url:
         _set_url(settings, harness, prior_url)
-    elif _active_provider(settings)[1] is not None:
+    elif upstream and _active_provider(settings)[1] is not None:
         # No prior URL was recorded (the model had no provider entry when the
         # toggle first ran), so fall back to the shipped upstream for this
         # provider rather than leaving the entry pointed at Bifrost.
-        provider_key, _ = _active_provider(settings)
-        upstream = _BIFROST_UPSTREAMS.get(provider_key or "")
-        if upstream:
-            _set_url(settings, harness, upstream)
-            typer.echo(f"restored {provider_key} provider upstream to {upstream}")
+        _set_url(settings, harness, upstream)
+        typer.echo(f"restored {provider_key} provider upstream to {upstream}")
     if had_credential:
         typer.echo(
             f"note: a pre-existing {VIRTUAL_KEY_HEADER} header was removed. It was "
@@ -987,7 +996,68 @@ def _action_direct(harness: HarnessDescriptor, dry_run: bool) -> None:
     typer.echo(
         f"restored {harness.label} to {prior_url or '<removed>'} in {harness.settings_path}"
     )
+    for slot, value in restored_slots:
+        typer.echo(f"set {slot}={value} (the upstream does not know the Claude ids)")
     typer.echo(f"note: {harness.restart_note}")
+
+
+def _restore_model_slots(
+    settings: dict[str, Any],
+    harness: HarnessDescriptor,
+    restored_url: str | None,
+) -> list[tuple[str, str]]:
+    """Put an upstream-valid model id back in every gateway-only slot.
+
+    The gateway's alias table maps ``claude-*-5-5`` onto MiniMax. That
+    mapping lives in the GATEWAY: point the harness at MiniMax's own
+    endpoint and a Claude id is a request MiniMax refuses (its error
+    2013, unknown model).
+
+    So the restore is conditional on WHERE the harness ends up. A
+    MiniMax endpoint cannot serve a Claude id, so a slot holding one is
+    replaced with the MiniMax id for that slot. A different upstream
+    (Anthropic's own API, say) serves the Claude ids natively, so those
+    are left alone.
+
+    A slot already holding a MiniMax id is never touched: the gateway
+    serves those unchanged, so the standing default survives the round
+    trip exactly as it was.
+
+    Returns the ``(slot, id)`` pairs it changed.
+    """
+    if not harness.model_slots:
+        return []
+    if not _is_minimax_endpoint(restored_url):
+        return []
+    env = _env_block(settings)
+    changed: list[tuple[str, str]] = []
+    for slot, upstream_id in harness.model_slots.items():
+        current = env.get(slot)
+        if not isinstance(current, str) or not current:
+            continue
+        if current not in models.CC_GATEWAY_ONLY_MODEL_IDS:
+            continue
+        env[slot] = upstream_id
+        changed.append((slot, upstream_id))
+    return changed
+
+
+#: Hosts whose endpoint serves MiniMax's own model ids and cannot serve
+#: the gateway's Claude aliases.
+_MINIMAX_HOSTS: tuple[str, ...] = ("minimax.io",)
+
+
+def _is_minimax_endpoint(url: str | None) -> bool:
+    """Does this endpoint serve MiniMax's own model ids?
+
+    True for a MiniMax endpoint (the one ``direct`` restores). An unset
+    URL is not one: the harness would be talking to whatever default its
+    own vendor uses, which serves the Claude ids natively.
+    """
+    if not url:
+        return False
+    lowered = url.lower()
+    return any(host in lowered for host in _MINIMAX_HOSTS)
 
 
 def _endpoint_label(settings: dict[str, Any], harness: HarnessDescriptor) -> str:

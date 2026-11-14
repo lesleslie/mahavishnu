@@ -1278,3 +1278,132 @@ def test_template_pins_a_model_only_for_the_simple_tier() -> None:
     assert "SIMPLE" in expression
     assert rule["targets"][0]["provider"] == "minimax-anthropic"
     assert rule["targets"][0].get("model") == CHEAP_MODEL
+
+
+# ---------------------------------------------------------------------------
+# The model defaults are part of what the toggle owns
+# ---------------------------------------------------------------------------
+
+
+def test_direct_restores_the_model_defaults_it_replaced(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """req: REQ-BIFROST-030 -- the round-trip restores the model ids too.
+
+    The gateway resolves a ``claude-*-5-5`` id onto MiniMax through its
+    alias table; MiniMax's own endpoint does not know that id. So the
+    moment the harness is pointed back at the upstream, the Claude ids
+    are a request the upstream refuses.
+
+    The toggle is what moved the ids, so the toggle is what puts them
+    back: ``bifrost`` records the model ids it replaced, and ``direct``
+    restores them.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M3",
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M3",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M3.1-Flash",
+            }
+        },
+    )
+    harness = _harness("cc", settings)
+
+    toggles.apply(harness, "bifrost")
+    env = _read(settings)["env"]
+    # The gateway serves the MiniMax ids unchanged -- they are real
+    # MiniMax model names, not aliases -- so the standing default
+    # survives the gateway and needs no rewrite.
+    assert env["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "MiniMax-M3"
+
+    toggles.apply(harness, "direct")
+    env = _read(settings)["env"]
+    assert env["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "MiniMax-M3"
+    assert env["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "MiniMax-M3"
+    assert env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] == "MiniMax-M3.1-Flash"
+
+
+def test_direct_restores_a_claude_id_the_operator_had_set(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """req: REQ-BIFROST-030 -- a gateway-only id must not outlive the gateway.
+
+    The alias table that maps ``claude-*-5-5`` onto MiniMax lives in the
+    GATEWAY. Point the harness back at the upstream and that mapping is
+    gone, so a Claude id becomes a request the upstream refuses.
+
+    The operator may have set that id themselves -- it is what the
+    security-review plugin asks for -- so ``direct`` restores the
+    upstream-valid id for the slot rather than leaving a broken one.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5",
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5",
+            }
+        },
+    )
+    harness = _harness("cc", settings)
+
+    toggles.apply(harness, "bifrost")
+    toggles.apply(harness, "direct")
+
+    env = _read(settings)["env"]
+    assert env["ANTHROPIC_BASE_URL"] == "https://api.minimax.io/anthropic"
+    assert env["ANTHROPIC_DEFAULT_OPUS_MODEL"] == "MiniMax-M3"
+    assert env["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "MiniMax-M3"
+    assert env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] == "MiniMax-M3.1-Flash"
+
+
+def test_direct_leaves_a_claude_id_alone_when_the_upstream_is_not_minimax(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """req: REQ-BIFROST-030 -- only MiniMax needs the id rewritten.
+
+    A different upstream serves the Claude ids natively, so rewriting them
+    would break a harness that was working.
+    """
+    settings = tmp_path / "settings.json"
+    _write(
+        settings,
+        {
+            "env": {
+                "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
+            }
+        },
+    )
+    harness = _harness("cc", settings)
+
+    toggles.apply(harness, "bifrost")
+    toggles.apply(harness, "direct")
+
+    env = _read(settings)["env"]
+    assert env["ANTHROPIC_BASE_URL"] == "https://api.anthropic.com"
+    assert env["ANTHROPIC_DEFAULT_SONNET_MODEL"] == "claude-sonnet-5-5"
+
+
+def test_bifrost_leaves_the_model_defaults_alone_when_there_are_none(
+    tmp_path: Path, backup_dir: Path, vk: str
+) -> None:
+    """req: REQ-BIFROST-030 -- a harness with no model ids gets none.
+
+    The toggle writes no model id it did not find: there is no prior id
+    to restore, so there is nothing to write.
+    """
+    settings = tmp_path / "settings.json"
+    _write(settings, {"env": {}})
+    harness = _harness("cc", settings)
+
+    toggles.apply(harness, "bifrost")
+
+    env = _read(settings)["env"]
+    assert "ANTHROPIC_DEFAULT_SONNET_MODEL" not in env
