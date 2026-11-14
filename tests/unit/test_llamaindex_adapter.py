@@ -41,7 +41,7 @@ async def test_llamaindex_adapter_initialize_stub():
     await adapter.initialize()
 
     # Stub doesn't create a client
-    assert adapter._client is None  # type: ignore
+    assert adapter._client is None
 
 
 @pytest.mark.asyncio

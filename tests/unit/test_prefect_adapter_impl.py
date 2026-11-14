@@ -234,7 +234,7 @@ class TestPrefectAdapterInitialization:
     def test_resolved_api_url_fallback(self) -> None:
         """Test _resolved_api_url falls back to default."""
         config = PrefectConfig()
-        config.api_url = ""  # type: ignore
+        config.api_url = ""
         adapter = PrefectAdapter(config=config)
 
         result = adapter._resolved_api_url()

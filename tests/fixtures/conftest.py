@@ -93,10 +93,10 @@ try:
     MAHAVISHNU_AVAILABLE = True
 except ImportError:
     MAHAVISHNU_AVAILABLE = False
-    MahavishnuApp = None  # type: ignore
-    MahavishnuSettings = None  # type: ignore
-    WorkflowState = None  # type: ignore
-    OrchestratorAdapter = None  # type: ignore
+    MahavishnuApp = None
+    MahavishnuSettings = None
+    WorkflowState = None
+    OrchestratorAdapter = None
 
 
 class IntegrationFixtures:

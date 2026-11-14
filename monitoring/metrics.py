@@ -356,7 +356,7 @@ def create_counter(
     """
     if name in _custom_metrics:
         logger.warning(f"Metric {name} already exists")
-        return _custom_metrics[name]  # type: ignore
+        return _custom_metrics[name]
 
     counter = Counter(name, description, labels or [])
     _custom_metrics[name] = counter
@@ -389,7 +389,7 @@ def create_gauge(
     """
     if name in _custom_metrics:
         logger.warning(f"Metric {name} already exists")
-        return _custom_metrics[name]  # type: ignore
+        return _custom_metrics[name]
 
     gauge = Gauge(name, description, labels or [])
     _custom_metrics[name] = gauge
@@ -425,7 +425,7 @@ def create_histogram(
     """
     if name in _custom_metrics:
         logger.warning(f"Metric {name} already exists")
-        return _custom_metrics[name]  # type: ignore
+        return _custom_metrics[name]
 
     histogram = Histogram(name, description, labels or [], buckets=buckets)
     _custom_metrics[name] = histogram

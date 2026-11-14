@@ -109,7 +109,7 @@ class BodaiComponentMCPClient:
         """
         await self._ensure_session()
 
-        result = await self._session.call_tool(name, arguments)  # type: ignore
+        result = await self._session.call_tool(name, arguments)  # ty: ignore[missing-union-attribute]
         return result
 
     async def query_local_traces(

@@ -236,8 +236,8 @@ def require_feature(feature_name: str) -> Callable[[F], F]:
 
         # Return appropriate wrapper based on function type
         if iscoroutinefunction(func):
-            return async_wrapper  # type: ignore
-        return sync_wrapper  # type: ignore
+            return async_wrapper  # ty: ignore[invalid-explicit-return]
+        return sync_wrapper  # ty: ignore[invalid-explicit-return]
 
     return decorator
 
