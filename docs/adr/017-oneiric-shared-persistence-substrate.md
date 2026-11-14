@@ -3,7 +3,7 @@ status: complete
 role: canonical
 kind: decision
 date: 2026-09-14
-last_reviewed: 2026-10-13
+last_reviewed: 2026-11-10
 superseded_by: null
 blocks_on: []
 decision_date: 2026-09-14
@@ -14,7 +14,8 @@ topic: persistence
 
 ## Status
 
-**Proposed** (2026-09-14) — pending review and adoption
+**Accepted** (2026-09-14). The substrate boundary is canonical; individual
+component migrations remain staged work tracked by their implementation plans.
 
 Promoted from Appendix C of the serverless-readiness plan
 (`docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md`,

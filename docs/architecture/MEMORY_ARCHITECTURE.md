@@ -31,10 +31,18 @@ ecosystem-status surface** (`ecosystem_status` / `ecosystem_capabilities` /
 control-plane decisions.
 
 It does **not** own long-term memory — that lives in Session-Buddy
-(reflections), Akosha (tiered vector store), Oneiric (persistent object graph),
-and Crackerjack (skill memory). Mahavishnu's job is to **route** writes and
+(reflections), Akosha (tiered vector store and OTel query surface), Oneiric-backed
+persistence (with semantic ownership retained by the relevant component), and
+Crackerjack (skill memory). Mahavishnu's job is to **route** writes and
 reads to those components and to **persist its own operational state** (pool
-state, workflow results, routing decisions, audit dead-letters, tool profiles).
+
+**ADR 020 reconciliation:** this inventory records current and transitional
+paths, not a claim that Mahavishnu owns every semantic record. The
+`OTelStore.conversations` path is transitional/derived; Akosha's
+`spans_substrate` is canonical for OTel telemetry. Semantic ownership controls
+meaning, correction, deletion, retention, and external reads; Oneiric controls
+the target persistence adapter and delivery substrate. See ADR 020's migration
+table for the explicit exceptions.
 
 This document describes what Mahavishnu stores, who reads and writes it, and
 the integration contracts the rest of the ecosystem depends on. The five
@@ -76,7 +84,7 @@ on it.
 | **Routing-fitness signals** | `${Mahavishnu.time_series}[routing_fitness/{task_class}/{selector}]` | `{ts, latency_ms, ok, score, failure_rate, samples}` | Written by `RoutingFitnessReader._flush_buffer`; read by `TaskRouter` to pick the best selector per task class |
 | **Routing decisions** | In-process ring buffer (`RoutingDecisionBuffer`) plus persistence via `mahavishnu_publisher` to Akosha `pattern.detected` topic | `RoutingDecision` Pydantic model | Per-task-class bounded ring buffer (default 1000) — Prometheus labels are `task_class` + `routing_strategy` only |
 | **WebSocket broadcast log** | In-process `MahavishnuWebSocketServer._history: deque[WebSocketMessage]` | `WebSocketMessage` envelope (type, channel, payload, ts) | Rolling broadcast history for reconnecting clients; default 1000-message cap |
-| **OTel trace storage** | DuckDB (in-memory or `${DATA_DIR}/otel/duck.db`) **or** pgvector via `PgvectorHotStore` | HotStore `conversations` schema (384-dim embedding + JSON metadata) | OTel span ingestion via `otel_ingest_trace`; semantic search via `otel_search_traces` |
+| **OTel trace storage (transitional)** | DuckDB (in-memory or `${DATA_DIR}/otel/duck.db`) **or** pgvector via `PgvectorHotStore` | HotStore `conversations` schema (384-dim embedding + JSON metadata) | Transitional/derived Mahavishnu ingestion; canonical OTel telemetry is Akosha `spans_substrate` |
 | **Adapter distribution registry** | `${Oneiric.adapters}[adapter:{domain}:{key}:{provider}]` via `store_adapter` | `Adapter` Pydantic persistent object | Oneiric adapter factory path + config + version_history |
 | **Oneiric settings (layered)** | `oneiric://defaults` → `${REPO}/settings/mahavishnu.yaml` → `${REPO}/settings/local.yaml` → env vars `MAHAVISHNU_*` | Pydantic `MahavishnuSettings` (nested BaseModels with `extra="forbid"`) | All tool profiles, pool types, LLM routing, WebSocket ports, terminal adapters |
 | **Async dispatch dead-letter** | `~/.mahavishnu/async-dead-letter/{safewid}.json` (per the `~/.mahavishnu/` legacy layout, separate from the XDG state dir) | JSON `{workflow_id, prompt, caller_kind, error, failed_at}` | Dead-letter for `dispatch_to_pool` async path when the Mahavishnu KV put for terminal state fails |
@@ -238,7 +246,7 @@ erDiagram
 | `routing_fitness/{task_class}/{selector}` | `TaskRouter` (selector selection), `routing_alerts`, `routing_metrics_persistence` | `RoutingFitnessReader._flush_buffer` (called after every `route_task`) | Opportunistic prune via `_purge_ts` against Oneiric `TimeSeriesRetention(retention_days=60)` default |
 | `RoutingDecisionBuffer` | `get_observability_metrics` (last-N), `mahavishnu_publisher` (push to Akosha) | `TaskRouter._record_decision` (every successful routing) | Per-task-class ring buffer `maxlen=1000`; no on-disk persistence |
 | `WSBroadcastLog` | Reconnecting WebSocket clients (catch-up on connect), `pool_monitor` | `MahavishnuWebSocketServer._broadcast` | `deque(maxlen=1000)`; no on-disk persistence |
-| `OTelStore.conversations` | `otel_search_traces`, `otel_get_trace`, `otel_get_stats`, Akosha `query_local_traces` cross-system | `otel_ingest_trace`, `otel_ingester.ingest_trace`, batch via `ingest_otel_traces` | Hot tier ~7 days; migrate-to-warm service NOT yet implemented (see Known Gaps) |
+| `OTelStore.conversations` (transitional) | legacy Mahavishnu OTel tools and Akosha compatibility reads | legacy Mahavishnu ingestion paths | Transitional/derived; canonical telemetry is Akosha `spans_substrate`; migrate/remove per OTel substrate plans |
 | `adapter:{d}:{k}:{p}` | `adapter_resolve`, `adapter_list`, `adapter_metadata`, `adapter_health`; every consumer looking up an Oneiric adapter at runtime | `adapter_discover` (publish new version), `store_adapter` (CLI / one-shot), WorkerManager on first cache miss | Bounded by Oneiric `AdapterConfig.max_versions_per_adapter` (default 10) |
 | `Settings` | One-shot on `MahavishnuSettings` instantiation; `reload_settings` CLI | Layered config writer at startup (YAML + env); manual edits to `settings/local.yaml` | Operator-controlled; no automatic aging |
 | `~/.mahavishnu/async-dead-letter/` | `dispatch_to_pool` recovery path (operator replays); `dump_async_dead_letter` CLI | `dispatch_to_pool` async result-lifecycle handler when the Mahavishnu KV `put` for terminal state fails | No TTL — manual cleanup or replay-then-delete |
@@ -506,7 +514,7 @@ Mahavishnu via the Bodai EventBridge).
 
 | Consumer | Surface | Reads from Mahavishnu | Writes to Mahavishnu |
 |----------|---------|-----------------------|----------------------|
-| **Session-Buddy** | MCP `mcp__session-buddy__session_buddy_store_reflection` (called by Mahavishnu workers); `kg_entities` via `store_code_graph_from_mahavishnu` | (no direct reads; Session-Buddy is write-side from Mahavishnu's perspective) | Optional heartbeat via `component_endpoint/session_buddy` Mahavishnu key (written by SB, not Mahavishnu) |
+| **Session-Buddy** | MCP `mcp__session-buddy__store_reflection` (called by Mahavishnu workers); `kg_entities` via `store_code_graph_from_mahavishnu` | (no direct reads; Session-Buddy is write-side from Mahavishnu's perspective) | Optional heartbeat via `component_endpoint/session_buddy` Mahavishnu key (written by SB, not Mahavishnu) |
 | **Akosha** | `mcp__mahavishnu__*` for control-plane reads; Akosha `FitnessAnalyzer` polls `routing_fitness/*` keys that **Mahavishnu writes** | `ecosystem_status`, `ecosystem_capabilities`, `ecosystem_routing_readiness`, `pool_health`, `dispatch_to_pool` results | (none — Akosha is read-side from Mahavishnu's perspective) |
 | **Shared persistence substrate** | `mcp__mahavishnu__*`; Mahavishnu writes `workflow-results/*`, `pool-state/*`, `worker-state/*`, `routing_fitness/*`, `adapters/*` via the Mahavishnu MCP tools | `component_endpoint/*` (other components' URLs); `adapters/*` for Oneiric distribution | **All operational state above**; `component_endpoint/mahavishnu` at Phase 0; `record_time_series` for every routing decision |
 | **Crackerjack** | `mahavishnu trigger_workflow(adapter="prefect")`; Mahavishnu reads Crackerjack MCP for `crackerjack_run` / `crackerjack_metrics` / `crackerjack_history` | `crackerjack_skill_names` via `mahavishnu/quality/` (writes `distilled_skills` via SB after successful fix) | Optional heartbeat via `component_endpoint/crackerjack` |
@@ -845,7 +853,7 @@ The `routable_workers` field reflects runtime state via
 **Goal**: Get the unified control-plane status report.
 
 ```python
-mcp__mahavishnu__mahavishnu_ecosystem_status(
+mcp__mahavishnu__ecosystem_status(
     sections=["services", "adapters", "capabilities"],
     timeout_per_section_ms=3000,
 )
@@ -862,7 +870,7 @@ which Bodai capabilities are wired.
 **Goal**: "Which adapters can serve `AI_TASK` right now?"
 
 ```python
-mcp__mahavishnu__mahavishnu_ecosystem_routing_readiness(task_class="AI_TASK")
+mcp__mahavishnu__ecosystem_routing_readiness(task_class="AI_TASK")
 ```
 
 Returns `{"task_class": "AI_TASK", "overall_status": "ok", "available_adapters": {...}, "healthy_count": 2, "degraded_count": 1, "recommendation": "Use prefect"}`.
@@ -873,7 +881,7 @@ Drives the `TaskRouter` selector when fitness signals are unavailable.
 **Goal**: List every active pool with current metrics.
 
 ```python
-mcp__mahavishnu__mahavishnu_pool_health()
+mcp__mahavishnu__pool_health()
 ```
 
 Returns `{"pools": [{"pool_id": "pool_abc", "status": "active", "active_workers": 3, "tasks_completed": 142, "avg_task_duration": 12.4}, ...]}`.
@@ -884,7 +892,7 @@ Returns `{"pools": [{"pool_id": "pool_abc", "status": "active", "active_workers"
 fixtures or repeated error signatures).
 
 ```python
-mcp__mahavishnu__mahavishnu_get_cross_project_patterns(
+mcp__mahavishnu__get_cross_project_patterns(
     pattern_type="error_signature",
     window_days=7,
     min_occurrences=3,
@@ -899,7 +907,7 @@ hash, returns patterns occurring ≥ `min_occurrences` within the window.
 **Goal**: Snapshot the repo fingerprint and find near-duplicates.
 
 ```python
-mcp__mahavishnu__mahavishnu_clone_detect_ecosystem(
+mcp__mahavishnu__clone_detect_ecosystem(
     repos=["/path/to/repo-a", "/path/to/repo-b"],
     threshold=0.85,
 )
@@ -929,7 +937,7 @@ cosine similarity is ≥ `threshold` (DuckDB or pgvector via
 **Goal**: Combine keyword + semantic for ingested documentation.
 
 ```python
-mcp__mahavishnu__mahavishnu_hybrid_search(
+mcp__mahavishnu__hybrid_search(
     query="async dispatch dead-letter",
     limit=20,
     semantic_weight=0.6,
@@ -955,10 +963,10 @@ Returns `{"adapter_id": "cache:redis:default", "factory_path": "oneiric.adapters
 **Goal**: After Crackerjack proposes a fix, approve or reject.
 
 ```python
-mcp__mahavishnu__mahavishnu_get_pending_approvals()
+mcp__mahavishnu__get_pending_approvals()
 # Returns list of {proposal_id, error_pattern, action_taken, confidence}
 
-mcp__mahavishnu__mahavishnu_respond_to_approval(
+mcp__mahavishnu__respond_to_approval(
     proposal_id="prop_xyz",
     decision="approve",
     rationale="matches crackerjack-orchestrator pattern",

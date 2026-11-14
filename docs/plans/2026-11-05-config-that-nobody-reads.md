@@ -3,7 +3,7 @@ status: active
 role: implementation
 kind: plan
 date: 2026-11-05
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-10
 superseded_by: null
 topic: config-that-nobody-reads
 title: "Config that nobody reads — a settings/ sweep for the dead-knob pattern"
@@ -45,6 +45,12 @@ document tells an operator that a key is live when it is not.
 Success signal: a sweep of `settings/` reports zero INERT keys, and
 `docs/CONFIGURATION.md` describes only keys that a reader can find a consumer
 for.
+
+For settings used by an acceptance demo, the sweep also requires live
+readback: the running service must report the resolved value, and the demo
+must show the setting affecting the route, provider, profile, or health
+result it claims to control. This closes the gap between configuration
+validation and ecosystem behaviour.
 
 ## 2. Goals
 

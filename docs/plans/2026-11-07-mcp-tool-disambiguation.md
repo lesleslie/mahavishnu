@@ -3,7 +3,7 @@ status: active
 role: implementation
 kind: plan
 date: 2026-11-07
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-10
 superseded_by: null
 topic: mcp-tool-disambiguation
 title: "MCP Tool Disambiguation — unique, self-describing tool names across the Bodai core fleet"
@@ -50,6 +50,11 @@ the same name.
 reports zero duplicate bare names, zero empty descriptions, and zero stale
 `KNOWN_TOOLS` entries across the five live servers — and it fails when any
 one of those regresses.
+
+The guard will contribute acceptance-packet evidence: checked component
+versions, active profile, exposed tool names, and the parameter-contract
+verdict for the canonical Vishnu demos. A demo will not be accepted when its
+profile exposes a tool surface different from the one the packet names.
 
 ## 2. Goals
 

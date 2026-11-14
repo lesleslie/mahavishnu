@@ -3,10 +3,12 @@ status: partial
 role: implementation
 kind: plan
 date: 2026-10-30
-last_reviewed: 2026-11-08
+last_reviewed: 2026-11-10
 superseded_by: null
 topic: task-workflow-backlink
 title: "Task → Workflow Back-Link — typed channel, durable dispatch, and wiring"
+related:
+  - "docs/adr/020-bodai-ecosystem-memory-architecture.md"
 requirements:
 - id: REQ-TASKLINK-001
   implementation_repo: session-buddy
@@ -62,6 +64,21 @@ requirements:
 **Design:** [`docs/specs/2026-10-30-task-workflow-backlink-design.md`](../specs/2026-10-30-task-workflow-backlink-design.md)
 **Purpose:** make the task→workflow back-link real, and make the dispatch edge able to produce a `workflow_id` at all.
 
+**ADR 020 integration note:** Session-Buddy remains the canonical owner of the
+task-side link and its link provenance; Mahavishnu remains the canonical owner
+of workflow execution state. The backlink is a typed projection between those
+owners, not shared mutable task/workflow storage. Any cross-component event or
+acceptance evidence added here must preserve source, owner, workflow/session
+identity, and idempotency information.
+
+**Ownership clarification:** Session-Buddy owns the canonical task-side
+`workflow_id` backlink and its link provenance. Mahavishnu owns the canonical
+workflow execution record. The backlink is a typed relationship projection,
+not a shared owner or shared mutable task/workflow record. Its
+cross-component event uses the existing `EventEnvelope` transport plus the
+ADR 020 memory-projection profile; it must be replayable and visibly
+idempotent.
+
 ---
 
 ## 1. Outcome
@@ -71,7 +88,7 @@ populated `workflow_id` and its provenance (`workflow_linked_at`, `workflow_link
 and keeps them across a session-buddy restart.
 
 **Success signal:** a live task is created, handed off through
-`mcp__mahavishnu__mahavishnu_tasks_handoff_to_workflow`, and `tasks_get` returns
+`mcp__mahavishnu__tasks_handoff_to_workflow`, and `tasks_get` returns
 `workflow_id == "<the durable workflow id>"` with `workflow_linked_at` and
 `workflow_linked_by` populated — then returns the same values after a
 `launchctl kickstart -k` restart of session-buddy.
@@ -188,7 +205,7 @@ envelope; a new unit suite covers the client adapter.
 
 #### Integration Contract — handoff step 2 + step 3
 - **Triggered from:** MCP client call
-  `mcp__mahavishnu__mahavishnu_tasks_handoff_to_workflow(task_id=...)` on mahavishnu (port 8680).
+  `mcp__mahavishnu__tasks_handoff_to_workflow(task_id=...)` on mahavishnu (port 8680).
 - **Returns to / updates:** mahavishnu's durable workflow state
   (`workflow_state_manager`, keyed by `workflow_id`); then session-buddy's task sidecar
   via `tasks_link_workflow`; plus `task.handoff_started` / `task.handoff_completed`
@@ -240,7 +257,21 @@ orphan is linked once and is skipped on the next cycle.
 
 ### Phase 4: contract amendments and live verification
 
+The live verification uses one canonical control-plane demo and records the
+acceptance-packet fields: command, component commits, `workflow_id`, `trace_id`,
+task/worker linkage, Session-Buddy handoff, terminal status, and evidence
+locations. It must also identify `source_component=session-buddy`,
+`owner_component=mahavishnu` for the workflow projection, and the projection's
+idempotency/delivery result. This makes the backlink a demonstrated ecosystem
+contract rather than an isolated persistence feature.
+
 **Goal:** the docs describe the contract that exists, and the contract is proven live.
+
+**Dependency gate:** the live backlink may be verified before the ecosystem
+projection gates, but Phase 4 cannot claim ADR 020 projection readiness until
+the control-plane plan's Gate A (memory-projection/EventEnvelope mapping) and
+Gate B (Mahavishnu projection ledger) are complete. The acceptance packet must
+identify the profile version and ledger entry, not only source/owner labels.
 
 **Tasks:**
 - Amend `docs/specs/2026-10-02-bodai-task-system-v1.1.md` — replace the back-link
@@ -256,7 +287,7 @@ session-buddy restart; the sweeper converges.
 
 #### Integration Contract — live verification
 - **Triggered from:** an operator-facing MCP session: `tasks_create` on session-buddy,
-  then `mcp__mahavishnu__mahavishnu_tasks_handoff_to_workflow`, then `tasks_get`.
+  then `mcp__mahavishnu__tasks_handoff_to_workflow`, then `tasks_get`.
 - **Returns to / updates:** the live task's sidecar row and its `workflow_id` field.
 - **Demonstrable by:** `tasks_get` returns a non-null `workflow_id` equal to the id
   returned by the handoff, `workflow_linked_at` and `workflow_linked_by` populated, and
@@ -311,6 +342,9 @@ session-buddy restart; the sweeper converges.
 | live `tasks_create` → `tasks_handoff_to_workflow` → `tasks_get` | `workflow_id` populated | MCP transcript |
 | live session-buddy restart → `tasks_get` | `workflow_id` still populated | MCP transcript |
 | live orphan sweep | linked orphan skipped; unlinked orphan linked once | sweeper log / stream |
+| cross-component projection evidence | source/owner identity and replay-safe delivery result are present | acceptance packet |
+| projection profile mapping | EventEnvelope ids, versions, timestamps, correlation/causation, and typed memory fields round-trip | Gate A test output |
+| projection ledger convergence | duplicate, retry, replay, supersession, and tombstone states converge with a stable target id | Gate B test output |
 
 ## 8. Risks
 

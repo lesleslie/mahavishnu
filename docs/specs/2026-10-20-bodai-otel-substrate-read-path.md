@@ -3,7 +3,7 @@ status: active
 role: canonical
 kind: spec
 date: 2026-10-20
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-10
 superseded_by: null
 blocks_on:
   - docs/specs/2026-10-19-bodai-substrate-otel-v7.md
@@ -64,6 +64,12 @@ Five items:
 3. A `spans_summary` MCP tool carrying the §5.6 aggregate, corrected for v7 columns (§4.2).
 4. Rewiring `fitness_analyzer` from HTTP fan-out to the local aggregate.
 5. Repointing one real producer, and a migration runbook so each consumer repo opts in on its own PR.
+
+The read path is an operational gate for the ecosystem acceptance packet. Its
+verification must record ingestion readiness, bounded page size and query
+timeout, query latency, and evidence that a read cannot stall ingestion.
+The larger FSM, materialised projection, and shared-projection work remains
+explicitly outside this gate.
 
 ## 3. Non-goals
 

@@ -3,10 +3,12 @@ status: partial
 role: canonical
 kind: plan
 date: 2026-11-01
-last_reviewed: 2026-11-08
+last_reviewed: 2026-11-14
 superseded_by: null
 topic: control-plane-consolidation
 title: "Control-plane consolidation — one registry, one envelope, one workflow lane"
+related:
+  - "docs/adr/020-bodai-ecosystem-memory-architecture.md"
 requirements:
   # Only the requirements whose phase has landed a marker are declared.
   # The audit keeps a plan that has both live and dead requirements and
@@ -20,6 +22,14 @@ requirements:
   - id: REQ-C14
     title: "The openhands worker speaks the current OpenHands SDK API"
     description: "The worker starts a conversation with the SDK's StartConversationRequest, reads the event socket at /sockets/events/{conversation_id}, discriminates events by 'kind', and treats finished | error | stuck as terminal."
+  - id: REQ-C16
+    title: "Cross-component projection evidence uses the canonical EventEnvelope mapping"
+    description: "Workflow/session projections preserve EventEnvelope event_id, source, version, timestamp, and correlation/causation lineage while carrying the ADR 020 memory-projection fields in the typed payload or metadata profile."
+    implementation_repo: mahavishnu
+  - id: REQ-C17
+    title: "The Mahavishnu workflow/session projection ledger is idempotent and replayable"
+    description: "The first cross-component projection boundary records source, target, owner, content hash, status, attempts, errors, target identity, and deletion state, and exposes duplicate, replay, and partial-failure evidence."
+    implementation_repo: mahavishnu
 ---
 
 # Control-plane consolidation — one registry, one envelope, one workflow lane
@@ -44,6 +54,19 @@ requirements:
 > executor on the assumption that no composition exists, when a proven
 > two-stage composition is already in the demo layer. §4 records the
 > corrections with evidence.
+
+> **ADR 020 integration note:** this plan owns the Mahavishnu control-plane
+> portion of the ecosystem memory contract. Its task/result/workflow envelope
+> is the first implementation boundary for shared provenance; it must carry
+> source/owner identity and projection lineage without making Mahavishnu the
+> owner of Session-Buddy, Akosha, Crackerjack, or Bodai Kit memory.
+
+> **Contract boundary:** this plan does not invent a second event envelope.
+> `EventEnvelope` remains the transport wrapper; the mcp-common
+> memory-projection profile supplies the typed owner, project, workflow/session,
+> content, sensitivity, and supersession fields. Mahavishnu owns the first
+> workflow/session projection ledger and its reconciliation/replay evidence;
+> Oneiric/EventBridge owns transport delivery and DLQ mechanics.
 
 ## Policy: No backwards compatibility / legacy support
 
@@ -99,6 +122,49 @@ mahavishnu demo workflow-engine-and-worker
 And the simplification that makes it maintainable: **one dispatch
 registry, one router, one task envelope, one result envelope, one
 execution lifecycle enum** — instead of two of each.
+
+## 1.1 Ecosystem acceptance packet
+
+This plan is the integration owner for the ecosystem acceptance packet. Every
+canonical CLI demo must emit or retain evidence for the same fields:
+
+1. `workflow_id` and one `trace_id` spanning every engine and worker leg;
+2. the task/worker backlink, including the Session-Buddy handoff when used;
+3. the selected MCP profile and the exact tools exposed by that profile;
+4. the resolved route, provider, and Bifrost egress decision;
+5. the namespace label used for the run;
+6. terminal workflow status, exit code, and evidence locations;
+7. component versions and the commit under test; and
+8. the ADR 020 provenance fields for every cross-component projection:
+   `source_component`, `owner_component`, `content_hash`, `profile_version`,
+   `ledger_entry`, and projection delivery status. Until Gate A and Gate B
+   ship, the packet must report those two fields as `not_implemented`, never
+   imply that the projection contract has passed.
+
+The packet is assembled from the validation outputs of the supporting plans,
+not from a second status store. The generated `Ecosystem Acceptance Status`
+section in `docs/plans/PLAN_INDEX.md` is the navigation view for these gates.
+The control-plane plan assembles the packet; each supporting plan retains
+authority over its own lifecycle and completion status.
+
+| Field | Meaning | Owning evidence |
+|---|---|---|
+| `workflow_id` | Stable identity for the complete execution | control-plane and backlink validation |
+| `trace_id` | One trace tree across engine and worker legs | control-plane and OTel validation |
+| `task_link` | Task/worker and Session-Buddy handoff relationship | backlink validation |
+| `mcp_profile` | Profile and exact exposed tool surface | MCP profile/disambiguation validation |
+| `route_provider` | Resolved model/provider and Bifrost egress decision | config and Bifrost validation |
+| `namespace_label` | Stable namespace used to identify the acceptance run | control-plane and release/demo harness |
+| `terminal_status` | Final status and exit code | control-plane validation |
+| `evidence` | Paths or references to the captured outputs | owning validation matrix |
+| `component_commits` | Versions/commits under test | release/demo harness |
+| `source_component` | Component that authored or first observed the record | event/projection evidence |
+| `owner_component` | Canonical semantic owner of the record | ownership matrix / projection evidence |
+| `content_hash` | Stable duplicate and integrity key | projection ledger |
+| `projection_status` | Delivered, pending, replayed, failed, or stale | projection ledger / health surface |
+| `projection_ledger` | Source/target lineage, attempts, errors, target identity, and deletion state | Mahavishnu projection ledger |
+| `profile_version` | Published mcp-common memory-projection profile version, or `not_implemented` | Gate A artifact/test output |
+| `ledger_entry` | Stable `(event_id, target_component)` entry, or `not_implemented` | Gate B artifact/test output |
 
 ## 2. Goals
 

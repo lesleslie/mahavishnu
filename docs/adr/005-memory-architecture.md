@@ -1,22 +1,22 @@
 ---
 status: complete
-role: historical
+role: superseded
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-09-09
-superseded_by: null
+superseded_by: docs/adr/020-bodai-ecosystem-memory-architecture.md
 blocks_on: []
 decision_date: 2025-01-24
 topic: memory-architecture
 ---
 
-# ADR 005: Unified Memory Architecture
+# ADR 005: Unified Memory Architecture (Historical)
 
-**Status:** Superseded (2026-09-09) — See YAML frontmatter
+**Status:** Historical — superseded by [ADR 020](020-bodai-ecosystem-memory-architecture.md)
 
 <!-- legacy status: **Status:** Accepted — superseded by 2026-09-09 audit -->
 
-**Superseded** on 2026-09-09. The proposed `MahavishnuMemoryIntegration` class was never implemented; the unified memory story was actually built from `mahavishnu.workers.memory`, `mahavishnu.pools.memory_aggregator`, and Session-Buddy reflection storage rather than a single façade. The three-backend architecture (Session-Buddy + the durable key-value store + LlamaIndex) remains valid, but the unification layer specified here does not exist in the codebase.
+**Historical** as of 2026-11-10. The proposed `MahavishnuMemoryIntegration` class was never implemented; the unified memory story was actually built from `mahavishnu.workers.memory`, `mahavishnu.pools.memory_aggregator`, Session-Buddy reflection storage, Akosha, and Oneiric rather than a single façade. The replacement architecture and ownership boundaries are defined in ADR 020.
 
 <!-- legacy status: **Status:** Accepted — see YAML frontmatter -->
 

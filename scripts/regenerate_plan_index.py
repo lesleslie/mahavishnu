@@ -59,9 +59,10 @@ import re
 import sys
 import tempfile
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 # ---------------------------------------------------------------------------
 # Constants — mirrors `crackerjack docs validate --allow-nonstandard`
@@ -181,6 +182,7 @@ class Entry:
     kind: str  # document kind, or "plan" if missing (per schema v1.1 default)
     topic: str  # topic slug, or "—" if missing
     title: str  # one-line title derived from first H1 / filename
+    blocks_on: tuple[str, ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -422,11 +424,22 @@ def _entry_from_file(
     if not isinstance(front, dict):
         return None
 
-    date = _coerce_date(front.get("date"))
-    status = front.get("status") if isinstance(front.get("status"), str) else "unknown"
-    role = front.get("role") if isinstance(front.get("role"), str) else "unknown"
-    kind = front.get("kind") if isinstance(front.get("kind"), str) else "plan"
-    topic = front.get("topic") if isinstance(front.get("topic"), str) else "—"
+    date_value = front.get("date")
+    status_value = front.get("status")
+    role_value = front.get("role")
+    kind_value = front.get("kind")
+    topic_value = front.get("topic")
+    date = _coerce_date(date_value)
+    status = status_value if isinstance(status_value, str) else "unknown"
+    role = role_value if isinstance(role_value, str) else "unknown"
+    kind = kind_value if isinstance(kind_value, str) else "plan"
+    topic = topic_value if isinstance(topic_value, str) else "—"
+    raw_blocks_on = front.get("blocks_on")
+    blocks_on = (
+        tuple(item for item in raw_blocks_on if isinstance(item, str))
+        if isinstance(raw_blocks_on, list)
+        else ()
+    )
     fallback_title = abs_path.stem.replace("-", " ").replace("_", " ")
     title = _title_from_text(text, fallback=fallback_title)
 
@@ -439,6 +452,7 @@ def _entry_from_file(
         kind=kind,
         topic=topic,
         title=title,
+        blocks_on=blocks_on,
     )
 
 
@@ -473,13 +487,13 @@ and reproduced here for index readability.
 
 
 def _is_mahavishnu_layout(repo_root: Path) -> bool:
-    """True iff the repo looks like Mahavishnu's own docs layout (both
-    ``docs/adr/`` and ``docs/plans/`` present). Used to switch the
+    """True iff the repo carries Mahavishnu's distinctive registry marker.
+
+    The marker avoids classifying an unrelated repository that happens to
+    contain similarly named documentation directories. Used to switch the
     Authority Matrix between the rich Mahavishnu-specific table and the
     generic dynamic one."""
-    return (repo_root / "docs" / "adr").is_dir() and (
-        repo_root / "docs" / "superpowers"
-    ).is_dir()
+    return (repo_root / "BODAI_REPO_REGISTRY.md").is_file()
 
 
 def _authority_matrix(
@@ -502,13 +516,13 @@ def _authority_matrix(
 |---|---|
 | Plan navigation and current ownership | `docs/plans/PLAN_INDEX.md` (this file, regenerated from frontmatter) |
 | Frontmatter vocabulary and migration contract | `docs/schemas/document-frontmatter-v1.md` |
-| Cross-repo LLM provider defaults and Bifrost routing | `docs/plans/2026-05-10-minimax27-provider-migration.md` |
-| Legacy backlog item details | `docs/plans/2026-05-07-mahavishnu-master-backlog.md` |
-| Bodai control-plane convergence C0–C7 | `docs/plans/2026-05-10-bodai-control-plane-convergence-plan.md` |
-| Bodai-wide observability surface | `docs/plans/2026-07-11-phase-6-bodai-observability.md` |
+| Cross-repo LLM provider defaults and Bifrost routing | `docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md` |
+| Legacy backlog item details | `docs/plans/2026-11-07-archived-requirements-registry.md` |
+| Bodai control-plane convergence C0–C7 | `docs/plans/2026-11-01-control-plane-consolidation.md` |
+| Bodai-wide observability surface | `docs/specs/2026-10-19-bodai-substrate-otel-v7.md` |
 | Repo-local decisions index | `docs/decisions/README.md` |
 | Follow-up tracker index | `docs/followups/README.md` |
-| Source plan defining this index | `docs/plans/2026-07-16-plan-lifecycle-unification.md` |
+| Historical source plan defining this index | `docs/plans/.archive/implementation-plans/2026-07-16-plan-lifecycle-unification.md` |
 """
 
     # Generic matrix — list every discovered store with status breakdown.
@@ -601,6 +615,138 @@ Last regenerated: {generated_at}.
 # ---------------------------------------------------------------------------
 # Rendering — registry tables
 # ---------------------------------------------------------------------------
+
+
+class AcceptanceTrack(TypedDict):
+    """Static composition of existing plans into one acceptance track."""
+
+    name: str
+    owner: str
+    supporting: tuple[str, ...]
+    evidence: str
+
+
+# These tracks deliberately compose existing plans rather than becoming a
+# second plan hierarchy. The owner status is derived from frontmatter; the
+# supporting plans make the cross-plan acceptance contract visible in the
+# generated index.
+ECOSYSTEM_ACCEPTANCE_TRACKS: tuple[AcceptanceTrack, ...] = (
+    {
+        "name": "Golden workflow provenance",
+        "owner": "docs/plans/2026-11-01-control-plane-consolidation.md",
+        "supporting": (
+            "docs/plans/2026-10-30-task-workflow-backlink.md",
+            "docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md",
+            "docs/plans/2026-11-05-config-that-nobody-reads.md",
+            "docs/specs/2026-10-20-bodai-otel-substrate-read-path.md",
+        ),
+        "evidence": (
+            "workflow ID, trace ID, task/worker link, MCP profile, exposed tools, "
+            "resolved route/provider, final status and exit code, evidence locations, "
+            "namespace label, and component commits"
+        ),
+    },
+    {
+        "name": "MCP fleet contract",
+        "owner": "docs/plans/2026-11-07-mcp-tool-disambiguation.md",
+        "supporting": (
+            "docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md",
+            "docs/plans/2026-10-12-mcp-common-test-backfill.md",
+        ),
+        "evidence": (
+            "unique names, non-empty descriptions, matching parameters, profile membership, "
+            "and no retired aggregation path"
+        ),
+    },
+    {
+        "name": "Observability read path",
+        "owner": "docs/specs/2026-10-20-bodai-otel-substrate-read-path.md",
+        "supporting": (
+            "docs/specs/2026-10-19-bodai-substrate-otel-v7.md",
+            "docs/plans/2026-11-01-control-plane-consolidation.md",
+        ),
+        "evidence": (
+            "ingestion readiness, bounded query latency, page/time limits, and proof reads do not "
+            "stall ingestion"
+        ),
+    },
+    {
+        "name": "Configuration and LLM egress truth",
+        "owner": "docs/plans/2026-11-05-config-that-nobody-reads.md",
+        "supporting": (
+            "docs/plans/2026-10-21-bifrost-cli-consolidation.md",
+            "docs/plans/2026-11-01-bifrost-cache-eviction-and-threshold.md",
+            "docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md",
+        ),
+        "evidence": (
+            "live configuration readback, resolved provider/route, cache/fallback evidence, and "
+            "no dead knobs"
+        ),
+    },
+)
+
+
+def _render_ecosystem_acceptance(
+    entries_by_rel: dict[str, Entry],
+) -> str:
+    """Render the cross-plan acceptance view from current plan metadata."""
+    rows = [
+        "## Ecosystem Acceptance Status",
+        "",
+        (
+            "This section is generated from the owner and supporting plan frontmatter. "
+            "It is an integration view, not a second plan hierarchy. The owner plan "
+            "defines the track; supporting plans supply its gates and evidence."
+        ),
+        "",
+        "| Track | Owner | Status | Supporting plans | Required evidence |",
+        "|---|---|---|---|---|",
+    ]
+    for track in ECOSYSTEM_ACCEPTANCE_TRACKS:
+        owner = str(track["owner"])
+        owner_entry = entries_by_rel.get(owner)
+        owner_status = owner_entry.status if owner_entry else "missing"
+        owner_link = _entry_link(owner, "docs/plans/")
+        supporting_cells: list[str] = []
+        for supporting in track["supporting"]:
+            supporting_path = str(supporting)
+            supporting_entry = entries_by_rel.get(supporting_path)
+            supporting_status = supporting_entry.status if supporting_entry else "missing"
+            supporting_cells.append(
+                f"{_entry_link(supporting_path, 'docs/plans/')} ({supporting_status})"
+            )
+        rows.append(
+            f"| {track['name']} | {owner_link} | `{owner_status}` | "
+            f"{'<br>'.join(supporting_cells)} | {track['evidence']} |"
+        )
+    rows.append("")
+    rows.append(
+        "Runtime verification details remain in the owner plan's validation matrix; "
+        "a track is not complete merely because its supporting documents are active."
+    )
+    return "\n".join(rows)
+
+
+def _validate_ecosystem_acceptance_tracks(
+    entries_by_rel: dict[str, Entry],
+) -> None:
+    """Reject generated indexes whose acceptance links no longer resolve."""
+    referenced = {
+        str(track["owner"])
+        for track in ECOSYSTEM_ACCEPTANCE_TRACKS
+    }
+    referenced.update(
+        str(supporting)
+        for track in ECOSYSTEM_ACCEPTANCE_TRACKS
+        for supporting in track["supporting"]
+    )
+    missing = sorted(path for path in referenced if path not in entries_by_rel)
+    if missing:
+        missing_text = ", ".join(missing)
+        raise ValueError(
+            "ecosystem acceptance track references missing plan files: "
+            f"{missing_text}"
+        )
 
 
 def _entry_link(rel: str, store: str) -> str:
@@ -857,6 +1003,16 @@ def _render_index(
     )
     sections.append("")
 
+    if is_mahavishnu:
+        entries_by_rel = {
+            entry.rel: entry
+            for store_entries in entries_by_store.values()
+            for entry in store_entries
+        }
+        _validate_ecosystem_acceptance_tracks(entries_by_rel)
+        sections.append(_render_ecosystem_acceptance(entries_by_rel).rstrip())
+        sections.append("")
+
     sections.append("## Canonical and Active Plan Registry")
     sections.append("")
     sections.append(
@@ -936,7 +1092,7 @@ def _load_exclude_patterns(exclude_from: Path | None) -> list[str]:
     return out
 
 
-def _compile_exclude_matcher(patterns: list[str]) -> callable[[str], bool]:
+def _compile_exclude_matcher(patterns: list[str]) -> Callable[[str], bool]:
     """Return a callable that maps a repo-relative POSIX path → True to skip.
 
     Each pattern is a glob (fnmatch-style). Leading '/' anchors the match at
