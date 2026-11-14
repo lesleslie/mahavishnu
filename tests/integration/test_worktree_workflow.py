@@ -44,8 +44,17 @@ def make_repository(
 
 
 def make_worktree_roots(tmp_path: Path) -> list[Path]:
-    """Match the coordinator's default home-based root plus the test temp root."""
-    return [Path.home() / "worktrees", tmp_path / "worktrees"]
+    """Match the coordinator's own worktree root plus the test temp root.
+
+    The coordinator creates worktrees under the base that
+    ``get_worktree_base_path()`` resolves -- ``~/.local/state/mahavishnu/worktrees``
+    on this machine (ADR-015 v4), NOT the pre-ADR-015 ``~/worktrees``
+    default. Allowing only the old default meant the validator rejected
+    the very paths the coordinator had just produced.
+    """
+    from mahavishnu.core.paths import get_worktree_base_path
+
+    return [get_worktree_base_path(), tmp_path / "worktrees"]
 
 
 class TestWorktreeWorkflowIntegration:

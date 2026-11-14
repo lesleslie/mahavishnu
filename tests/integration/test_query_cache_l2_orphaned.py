@@ -35,11 +35,19 @@ def test_no_path_reads_or_writes_query_cache_l2() -> None:
     akosha/akosha/). Tests, archived docs, and stale worktrees
     intentionally out of scope — those paths assert absence or
     document history, not the production state.
+
+    SQL migrations are excluded too, and must be. session-buddy's
+    ``2026_10_11_uuid7_consolidation`` migration DROPs the vestigial
+    ``query_cache_l2`` table (with a matching down-migration that
+    re-creates it), so the name necessarily appears there. A drop
+    migration naming the table it drops is the migration working, not
+    the vestigial table being live. No non-SQL path references it.
     """
     result = subprocess.run(
         [
             "grep",
             "-rn",
+            "--exclude-dir=migrations",
             "query_cache_l2",
             "/Users/les/Projects/session-buddy/session_buddy",
             "/Users/les/Projects/akosha/akosha",

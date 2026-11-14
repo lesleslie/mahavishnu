@@ -20,6 +20,7 @@ import subprocess
 import sys
 
 import pytest
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_DIR = REPO_ROOT / ".claude" / "skills" / "bodai-worktree-cleanup"
@@ -37,20 +38,32 @@ EXPECTED_TRIGGERS = (
 def _frontmatter_description(skill_md: Path) -> str:
     """Extract the `description:` value from a SKILL.md header.
 
-    bodai-worktree-cleanup uses an H2 header:
+    bodai-worktree-cleanup declares its description as a YAML *folded
+    block scalar*::
+
+        description: >-
+          "Scan Bodai repos ... Triggers on
+          'scan worktrees', 'find stale worktrees', ..."
+
+    A line-oriented reader cannot read that. Scanning for the
+    ``description:`` line stops at the ``>-`` marker and yields the
+    literal string ``">-"``, so every trigger phrase looks absent.
+    The frontmatter is therefore parsed as YAML, which folds the
+    block into one string.
+
+    Some bodai skills use an H2 header instead of YAML fences:
         ## name: <id> description: "<text>"
 
-    rather than YAML frontmatter fences. The regex tolerates both forms.
+    The regex fallback still handles that form.
     """
     text = skill_md.read_text()
     # Try YAML frontmatter fences first.
     yaml_match = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
     if yaml_match:
-        for line in yaml_match.group(1).splitlines():
-            if line.startswith("description:"):
-                value = line[len("description:") :].strip()
-                if value.startswith(("'", '"')) and value.endswith(value[0]):
-                    value = value[1:-1]
+        front = yaml.safe_load(yaml_match.group(1))
+        if isinstance(front, dict):
+            value = front.get("description")
+            if isinstance(value, str):
                 return value
     # Fall back to the H2 form used by bodai skills.
     h2_match = re.search(r"^## .*?description:\s*(.+)$", text, re.MULTILINE)

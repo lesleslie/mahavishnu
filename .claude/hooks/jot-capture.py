@@ -27,6 +27,10 @@ CLAUDE_PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR")
 if CLAUDE_PROJECT_DIR:
     sys.path.insert(0, CLAUDE_PROJECT_DIR)
 
+from mahavishnu.hooks.logging_to_stderr import pin_logging_to_stderr
+
+pin_logging_to_stderr()
+
 from mahavishnu.bodai_hook_bridge import handle
 from mahavishnu.hooks.jot_capture import capture_hook
 

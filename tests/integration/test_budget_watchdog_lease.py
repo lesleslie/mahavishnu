@@ -28,7 +28,6 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 import json
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock
 
 from fastmcp import FastMCP
 import pytest
@@ -454,26 +453,48 @@ class TestWallclockBreachEnforcement:
 
 
 class _StubMCP:
-    """Minimal FastMCP stand-in that captures tool functions by name."""
+    """Minimal FastMCP stand-in that captures tool functions by name.
+
+    ``register_budget_tools`` registers under an explicit name
+    (``mahavishnu_budget_enforce``), which is not the function's
+    ``__name__`` -- so the stub has to honour the ``name=`` argument
+    the way FastMCP does.
+    """
 
     def __init__(self) -> None:
         self.tools: dict[str, Any] = {}
 
-    def tool(self):
+    def tool(self, name: str | None = None):
         def decorator(fn):
-            self.tools[fn.__name__] = fn
+            self.tools[name or fn.__name__] = fn
             return fn
 
         return decorator
 
 
+@pytest.fixture(autouse=True)
+def _reset_module_budget_store():
+    """Reset the module-level ``_budget_store`` slot around each test.
+
+    ``register_budget_tools`` writes the live dependency into the
+    ``budget_tools`` module namespace, so without this the slot leaks
+    from one test into the next.
+    """
+    from mahavishnu.mcp.tools import budget_tools
+
+    original = budget_tools._budget_store
+    budget_tools._budget_store = None
+    yield
+    budget_tools._budget_store = original
+
+
 class TestBudgetEnforceTool:
     async def test_budget_enforce_persists_active_record(self) -> None:
-        from mahavishnu.mcp.tools.pool_tools import register_pool_tools
+        from mahavishnu.mcp.tools.budget_tools import register_budget_tools
 
         store = InMemoryBudgetStore()
         mcp = _StubMCP()
-        register_pool_tools(mcp, pool_manager=AsyncMock(), budget_store=store)
+        register_budget_tools(mcp, budget_store=store)
 
         fn = mcp.tools["mahavishnu_budget_enforce"]
         result = await fn(
@@ -495,20 +516,20 @@ class TestBudgetEnforceTool:
         assert record.spec.budget_tokens == 5_000
 
     async def test_budget_enforce_without_store_returns_unconfigured(self) -> None:
-        from mahavishnu.mcp.tools.pool_tools import register_pool_tools
+        from mahavishnu.mcp.tools.budget_tools import register_budget_tools
 
         mcp = _StubMCP()
-        register_pool_tools(mcp, pool_manager=AsyncMock())
+        register_budget_tools(mcp)
         fn = mcp.tools["mahavishnu_budget_enforce"]
         result = await fn(workflow_id="wf-no-store", budget_tokens=100)
         assert result["status"] == "unconfigured"
 
     async def test_budget_enforce_rejects_empty_spec_via_state_machine(self) -> None:
-        from mahavishnu.mcp.tools.pool_tools import register_pool_tools
+        from mahavishnu.mcp.tools.budget_tools import register_budget_tools
 
         store = InMemoryBudgetStore()
         mcp = _StubMCP()
-        register_pool_tools(mcp, pool_manager=AsyncMock(), budget_store=store)
+        register_budget_tools(mcp, budget_store=store)
         fn = mcp.tools["mahavishnu_budget_enforce"]
         # All three dims None → state-machine refuses to start.
         result = await fn(workflow_id="wf-empty")

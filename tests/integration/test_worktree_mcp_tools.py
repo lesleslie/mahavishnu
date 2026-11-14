@@ -8,6 +8,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from mahavishnu.core.app import MahavishnuApp
+def _canonical_worktree_root() -> Path:
+    """The base the coordinator actually creates worktrees under.
+
+    ``get_worktree_base_path()`` resolves ``MAHAVISHNU_WORKTREE_BASE_PATH``
+    (ADR-015 v4) -- ``~/.local/state/mahavishnu/worktrees`` on this
+    machine -- not the pre-ADR-015 ``~/worktrees`` default. Allowing
+    only a temp root made the validator reject the paths the
+    coordinator had just produced.
+    """
+    from mahavishnu.core.paths import get_worktree_base_path
+
+    return get_worktree_base_path()
+
+
 from mahavishnu.core.worktree_coordination import WorktreeCoordinator
 from mahavishnu.core.worktree_providers.mock import MockWorktreeProvider
 
@@ -22,7 +36,7 @@ def _make_worktree_coordinator(tmp_path: Path) -> WorktreeCoordinator:
         repo_manager=repo_manager,
         coordination_manager=coord_manager,
         providers=[MockWorktreeProvider()],
-        allowed_worktree_roots=[tmp_path / "worktrees"],
+        allowed_worktree_roots=[_canonical_worktree_root(), tmp_path / "worktrees"],
     )
     return coordinator
 

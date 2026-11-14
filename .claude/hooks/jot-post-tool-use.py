@@ -17,6 +17,10 @@ import json
 import os
 import sys
 
+from mahavishnu.hooks.logging_to_stderr import pin_logging_to_stderr
+
+pin_logging_to_stderr()
+
 from mahavishnu.jot.drain import surface_relevant
 
 EVENT_NAME = "PostToolUse"

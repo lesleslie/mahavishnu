@@ -45,24 +45,29 @@ class TestMultiPoolExecution:
                     max_workers=2,
                 )
 
-                # Mock the actual pool creation
-                with patch("mahavishnu.pools.manager.MahavishnuPool"):
-                    mock_pool = MagicMock()
-                    mock_pool.pool_id = f"pool{i}"
-                    mock_pool.config = config
-                    mock_pool._workers = {f"w{j}": f"w{j}" for j in range(2)}
+                # The pools are injected straight into the manager's
+                # registry -- this test never calls spawn_pool, so the
+                # pool factory was never reached and the old
+                # ``patch("mahavishnu.pools.manager.MahavishnuPool")``
+                # had nothing to guard. The class left that module in
+                # the D0 registry refactor, so the patch could not even
+                # resolve.
+                mock_pool = MagicMock()
+                mock_pool.pool_id = f"pool{i}"
+                mock_pool.config = config
+                mock_pool._workers = {f"w{j}": f"w{j}" for j in range(2)}
 
-                    async def mock_execute(task, pool_id=mock_pool.pool_id):
-                        return {
-                            "pool_id": pool_id,
-                            "worker_id": "w0",
-                            "status": "completed",
-                            "output": f"Executed on {pool_id}",
-                        }
+                async def mock_execute(task, pool_id=mock_pool.pool_id):
+                    return {
+                        "pool_id": pool_id,
+                        "worker_id": "w0",
+                        "status": "completed",
+                        "output": f"Executed on {pool_id}",
+                    }
 
-                    mock_pool.execute_task = mock_execute
-                    app.pool_manager._pools[f"pool{i}"] = mock_pool
-                    pools.append(mock_pool)
+                mock_pool.execute_task = mock_execute
+                app.pool_manager._pools[f"pool{i}"] = mock_pool
+                pools.append(mock_pool)
 
             # Execute task on each pool
             results = []

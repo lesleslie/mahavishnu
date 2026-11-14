@@ -105,7 +105,6 @@ def test_collect_and_sync_fires_drainer_when_outbox_enabled() -> None:
                 new_callable=AsyncMock,
                 return_value={"flushed": 0, "remaining": 0},
             ),
-            patch.object(agg, "_sync_to_akosha", new_callable=AsyncMock),
         ):
             import asyncio
 
@@ -143,7 +142,6 @@ def test_collect_and_sync_skips_drainer_when_outbox_disabled() -> None:
                 new_callable=AsyncMock,
                 return_value={"flushed": 0, "remaining": 0},
             ),
-            patch.object(agg, "_sync_to_akosha", new_callable=AsyncMock),
         ):
             import asyncio
 
