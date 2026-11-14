@@ -30,6 +30,22 @@ Use one specific `# ty: ignore[<code>]` comment, attached to the expression that
 emits the verified diagnostic. Before adding it, try narrowing, a correct
 annotation, `cast`, an overload, or a typed adapter.
 
+**What enforces this.** Two different mechanisms, and they do not overlap:
+
+- **Syntax.** `crackerjack.tools.ty_ignore_syntax` rejects mypy/ruff ignore
+  syntax — bare `# type: ignore` and `# type: ignore[<code>]` — because ty
+  does not interpret it, so those comments suppress nothing while reading
+  like suppressions. It also rejects a line that carries both spellings.
+  The hook is opt-in (`hooks.enable_ty_ignore_syntax`), off by default.
+- **Rule-name validity.** ty itself. It reports `ignore-comment-unknown-rule`
+  and exits non-zero for a code it does not know, which is what makes the
+  rename coupling described below safe.
+
+Because ty owns rule-name validity, no registry of ty rule names is needed
+anywhere, and there is nothing to keep in sync with the codes below. The codes
+in this section are the **policy** — which suppressions the fleet sanctions —
+not the enforcement list.
+
 1. **A proven `None`-to-required-type boundary** uses
    `invalid-argument-type` only after the `None` path has been checked and the
    boundary is intentional:
@@ -103,8 +119,10 @@ annotation, `cast`, an overload, or a typed adapter.
    Files crossing this threshold (`neo4j-mcp/neo4j_mcp/client.py` is the
    current example, with 10 suppressed lines) trigger a forced audit before
    more are added. The audit must decide whether each suppression is a real
-   boundary or a sign that the typing should be redone. This rule is enforced
-   by crackerjack's `ty_ratchet` diagnostic-count gate.
+   boundary or a sign that the typing should be redone. This rule is **not**
+   machine-enforced: `ty_ratchet` counts the diagnostics ty reports, and a
+   suppression removes the diagnostic from that count. The threshold is
+   enforced by review, not by the gate.
 
 6. **When a function's declared return type is narrower than its actual return,
    fix the annotation, never suppress.** A `# type: ignore` here masks a real
@@ -149,8 +167,7 @@ annotation, `cast`, an overload, or a typed adapter.
 
 9. **`unused-type-ignore-comment` is a meta-code** — ty emits it on a dead
    suppression, not a code you write. Treat its appearance as a signal:
-   remove the dead suppression rather than adding the code. The crackerjack
-   hook accepts this code so it does not reject ty's own diagnostic.
+   remove the dead suppression rather than adding the code.
 
    ```python
    # ty reports this on a dead suppression; remove the suppression instead:
@@ -170,6 +187,14 @@ spellings. ty 0.0.104 renamed three of them: `unresolved-attribute` became
 `invalid-return-type` became `invalid-explicit-return`. A directive naming a
 pre-0.0.104 spelling is not a no-op — ty reports it as
 `renamed-rule-in-ignore-comment`, and ty exits non-zero on warnings alone.
+
+**The rename was a split, not a rename.** `unresolved-attribute` became
+*two* rules: `missing-attribute` (the attribute is genuinely absent) and
+`missing-union-attribute` (the attribute is absent on the `None` member of a
+union). A blanket rename leaves the union case unsuppressed. The reliable
+method is to strip the directive and read back the diagnostic ty actually
+reports for that line — `ty explain rule <name>` resolves a rule name but
+does not tell you which rule applies to a given site.
 
 ## Anti-patterns
 
@@ -197,8 +222,7 @@ pre-0.0.104 spelling is not a no-op — ty reports it as
 **Meta-code note.** `unused-type-ignore-comment` is not a suppression you write
 — it is what ty emits when a suppression is suppressing nothing (a dead
 suppression). Treat its appearance as a signal: remove the dead suppression
-rather than adding the code to your code. The crackerjack hook recognises this
-code so it doesn't reject ty's own diagnostic.
+rather than adding the code to your code.
 
 ## Audit cadence
 
@@ -210,6 +234,17 @@ Repeat the audit after a ty/Crackerjack upgrade or when a new diagnostic code
 appears in more than one repository; update this decision when the established
 code mapping changes.
 
-The crackerjack hook's `KNOWN_TY_CODES` set and this file's Decision Rule
-codes are kept in sync by `tests/unit/tools/test_ty_ignore_syntax.py`. When
-adding or removing a code in either place, run the sync test before committing.
+**Measure the test tree too.** A repo that scopes ty with
+`[tool.ty] src = { include = ["<pkg>/**/*.py"] }` filters ty's whole file
+discovery, so `ty check tests` finds no files and exits 0 — a "clean" result
+that measured nothing. `crackerjack.tools.ty_ratchet --split` overrides
+`src.include` per gate for this reason, and reports **GATE ERROR** rather than
+PASS when a populated directory yields no files. Treat a `test: PASS (0/N)`
+line with no file count as suspect until the gate has been shown to see the
+test tree.
+
+The crackerjack hook enforces the *syntax* rules above and nothing else;
+ty enforces rule-name validity natively. This file holds the *policy* — which
+suppressions the fleet sanctions and what each one means. Nothing parses this
+file, so adding a code here is a policy decision and needs no matching code
+change anywhere else.
