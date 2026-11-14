@@ -855,7 +855,7 @@ def register_pool_tools(
             # call-non-callable suppression below is because the except
             # branch in the defensive import at module top can rebind the
             # alias to None.
-            pool_config = RuntimePoolConfig(  # ty: ignore[call-non-callable]
+            pool_config = RuntimePoolConfig(  # ty: ignore[not-callable]
                 name=name,
                 pool_type=canonical,
                 min_workers=effective_min,
@@ -988,7 +988,7 @@ def register_pool_tools(
             # Task 4 step 3; the call-non-callable suppression below
             # is because the except branch in the defensive import at
             # module top can rebind the alias to None.
-            pool_config = RuntimePoolConfig(  # ty: ignore[call-non-callable]
+            pool_config = RuntimePoolConfig(  # ty: ignore[not-callable]
                 name="session-start-bootstrap",
                 pool_type=spawn_type,
                 min_workers=effective_min,

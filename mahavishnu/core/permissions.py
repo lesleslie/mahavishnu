@@ -198,7 +198,7 @@ class RBACManager:
             # pass for an admin whose role grants both via the widened
             # permission list. Allowed_repos still gates per-repo.
             role_perm_values = {
-                (p.value if isinstance(p, Permission) else str(p)).lower()  # ty: ignore[unresolved-attribute]
+                (p.value if isinstance(p, Permission) else str(p)).lower()  # ty: ignore[missing-attribute]
                 for p in role.permissions
             }
             if perm_value in role_perm_values and (

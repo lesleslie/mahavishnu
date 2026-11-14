@@ -91,7 +91,7 @@ def _summary_dict(jot: JotSummary) -> JotSummaryDict:
         text=jot.text,
         status=jot.status,
         last_modified_ms=jot.last_modified_ms,
-        dispatch_state=state_literal,  # ty: ignore[invalid-key]
+        dispatch_state=state_literal,  # ty: ignore[invalid-typed-dict-key]
         dispatch_workflow_id=jot.dispatch_workflow_id,
         current_attempt=jot.current_attempt,
         dispatch_started_at_ms=jot.dispatch_started_at_ms,

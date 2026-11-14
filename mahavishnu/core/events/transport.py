@@ -104,7 +104,7 @@ class NotificationEventHandler:
         if route is None:
             return None
         record = self._resolve_record(envelope)
-        return await self.notification_router.send(record, route)  # ty: ignore[unresolved-attribute, invalid-argument-type]
+        return await self.notification_router.send(record, route)  # ty: ignore[invalid-argument-type, missing-attribute, missing-union-attribute]
 
     def _resolve_route(self, envelope: EventEnvelope) -> NotificationRoute | None:
         if callable(self.route_factory):

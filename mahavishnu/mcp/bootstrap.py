@@ -38,7 +38,7 @@ def _mhv_server(fastmcp: FastMCP) -> FastMCPServer:
     attributes live on the wrapper, not on the FastMCP. The wrapper is set
     as ``server._mhv_server`` in ``FastMCPServer.__init__``.
     """
-    return fastmcp._mhv_server  # type: ignore[attr-defined, no-any-return]  # ty: ignore[unresolved-attribute]
+    return fastmcp._mhv_server  # type: ignore[attr-defined, no-any-return]  # ty: ignore[missing-attribute]
 
 
 logger = get_logger(__name__)
@@ -1512,4 +1512,4 @@ def _resolve_mcp_client(server: FastMCPServer) -> object:
     Tests: a FakeMCP stand-in is acceptable for the smoke test;
     the integration test for this lives in tests/integration/mcp/.
     """
-    return server.app.state.mcp  # ty: ignore[unresolved-attribute]
+    return server.app.state.mcp  # ty: ignore[missing-attribute, missing-union-attribute]

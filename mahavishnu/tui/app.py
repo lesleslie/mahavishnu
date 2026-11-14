@@ -76,8 +76,8 @@ async def _get_report() -> EcosystemStatusReport | None:
         settings = MahavishnuSettings()
         service_configs: dict[str, dict[str, Any]] = {}
         for name, url in {
-            "session-buddy": settings.session_buddy_url,  # ty: ignore[unresolved-attribute]
-            "akosha": settings.akosha_url,  # ty: ignore[unresolved-attribute]
+            "session-buddy": settings.session_buddy_url,  # ty: ignore[missing-attribute]
+            "akosha": settings.akosha_url,  # ty: ignore[missing-attribute]
         }.items():
             if url:
                 service_configs[name] = {"url": url, "required": False, "timeout_s": 3}

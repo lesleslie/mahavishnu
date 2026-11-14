@@ -70,7 +70,7 @@ _ALL_DDL: tuple[str, ...] = (
 
 def apply_distill_schema(conn: object) -> None:
     for ddl in _ALL_DDL:
-        conn.execute(ddl)  # ty: ignore[unresolved-attribute]
+        conn.execute(ddl)  # ty: ignore[missing-attribute]
 
 
 __all__ = [

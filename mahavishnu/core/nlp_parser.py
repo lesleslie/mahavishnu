@@ -301,7 +301,7 @@ class NlpParser:
         # Remove None values
         entities = {k: v for k, v in entities.items() if v is not None}
 
-        return entities  # ty: ignore[invalid-return-type]
+        return entities  # ty: ignore[invalid-explicit-return]
 
     def _extract_title(self, text: str, intent: Intent) -> ParsedEntity | None:
         """Extract task title from text."""

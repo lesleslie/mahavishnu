@@ -411,13 +411,13 @@ class DatabaseMigrator:
     async def _verify_connections(self) -> None:
         """Verify both database connections work."""
         # Test PostgreSQL
-        pg_health = await self._postgres.health_check()  # ty: ignore[unresolved-attribute]
+        pg_health = await self._postgres.health_check()  # ty: ignore[missing-attribute, missing-union-attribute]
         if not pg_health.get("connected"):
             raise DatabaseError("PostgreSQL connection failed")
 
         # Test SQLite
         try:
-            cursor = self._sqlite_conn.cursor()  # ty: ignore[unresolved-attribute]
+            cursor = self._sqlite_conn.cursor()  # ty: ignore[missing-attribute, missing-union-attribute]
             cursor.execute("SELECT 1")
             cursor.fetchone()
         except sqlite3.Error as e:
@@ -548,7 +548,7 @@ class DatabaseMigrator:
 
             # PostgreSQL count
             try:
-                pg_count = await self._postgres.fetchval(  # ty: ignore[unresolved-attribute]
+                pg_count = await self._postgres.fetchval(  # ty: ignore[missing-attribute, missing-union-attribute]
                     f"SELECT COUNT(*) FROM {table}"
                 )
             except Exception:  # table may not exist in PostgreSQL yet; record 0 and let the mismatch counter flag it  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100

@@ -1530,7 +1530,7 @@ class ObservabilityManager:
                 # Force flush metrics
                 from opentelemetry.metrics import get_meter_provider
 
-                get_meter_provider().force_flush()  # ty: ignore[unresolved-attribute]
+                get_meter_provider().force_flush()  # ty: ignore[missing-attribute]
 
                 # Force flush traces
                 #
@@ -1545,7 +1545,7 @@ class ObservabilityManager:
                 # flush_metrics tool), never on the request path.
                 from opentelemetry.trace import get_tracer_provider
 
-                get_tracer_provider().force_flush()  # ty: ignore[unresolved-attribute]
+                get_tracer_provider().force_flush()  # ty: ignore[missing-attribute]
             except Exception as e:  # OTel force_flush may fail; log a warning but never raise from cleanup  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 self.logger.warning(f"Failed to flush metrics: {e}")
 
@@ -1704,8 +1704,8 @@ class ObservabilityManager:
                 from opentelemetry.metrics import get_meter_provider
                 from opentelemetry.trace import get_tracer_provider
 
-                get_meter_provider().shutdown()  # ty: ignore[unresolved-attribute]
-                get_tracer_provider().shutdown()  # ty: ignore[unresolved-attribute]
+                get_meter_provider().shutdown()  # ty: ignore[missing-attribute]
+                get_tracer_provider().shutdown()  # ty: ignore[missing-attribute]
             except Exception as e:  # OTel shutdown is best-effort; never raise from cleanup  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                 self.logger.warning(f"Error during observability shutdown: {e}")
 

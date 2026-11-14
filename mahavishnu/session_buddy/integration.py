@@ -285,8 +285,8 @@ class SessionBuddyIntegration:
                 timestamp=datetime.now(UTC).isoformat(),
                 subject=subject,
                 priority=priority,
-                status=MessageStatus.UNREAD,  # ty: ignore[unresolved-attribute]
-                content_type=MessageType.NOTIFICATION,  # ty: ignore[unresolved-attribute]
+                status=MessageStatus.UNREAD,  # ty: ignore[missing-attribute, missing-union-attribute]
+                content_type=MessageType.NOTIFICATION,  # ty: ignore[missing-attribute, missing-union-attribute]
                 content_message=message,
             )
 
@@ -298,7 +298,7 @@ class SessionBuddyIntegration:
 
             return {
                 "status": "success",
-                "message_id": project_message.id,  # ty: ignore[unresolved-attribute]
+                "message_id": project_message.id,  # ty: ignore[missing-attribute, missing-union-attribute]
                 "sent": True,
             }
         except Exception as e:  # Integration helper — wraps project message dispatch and surfaces failures as a status payload  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100

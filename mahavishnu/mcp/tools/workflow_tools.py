@@ -42,7 +42,7 @@ async def workflow_get_outcome(
     payload = await substrate.get(f"workflow-results/{workflow_id}/")
     if payload is None:
         return None
-    return msgspec.convert(payload, WorkflowOutcome)  # ty: ignore[invalid-return-type]
+    return msgspec.convert(payload, WorkflowOutcome)  # ty: ignore[invalid-explicit-return]
 
 
 def register_workflow_tools(mcp: FastMCP, rbac_manager: Any | None = None) -> None:

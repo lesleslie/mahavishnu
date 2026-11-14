@@ -211,7 +211,7 @@ def _producer_thread_target(
         # ``threading.Thread`` has no such attribute. The ``ty: ignore``
         # below is the documented escape hatch for attaching a
         # private sentinel to an stdlib instance.
-        thread._producer_error = error  # ty: ignore[unresolved-attribute]
+        thread._producer_error = error  # ty: ignore[missing-attribute]
 
 
 class RemoteWorktreeProvider(WorktreeProvider):

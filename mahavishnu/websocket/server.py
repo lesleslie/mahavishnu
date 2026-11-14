@@ -191,13 +191,13 @@ class MahavishnuWebSocketServer(WebSocketServer):
         # parent's Optional contract — they still work whether metrics is
         # concrete or None.
         #
-        # ty: ignore[invalid-attribute-override] -- ``mcp_common.websocket.metrics.WebSocketMetrics``
+        # ty: ignore[incompatible-attribute-override] -- ``mcp_common.websocket.metrics.WebSocketMetrics``
         # and ``mahavishnu.websocket.metrics.WebSocketMetrics`` are two
         # structurally-compatible classes in distinct packages; nominal
         # equivalence is rejected by ty even though the LSP contract is
         # preserved at runtime. The parent class lives in mcp-common and
         # cannot depend on mahavishnu without inverting the dependency.
-        self.metrics: WebSocketMetrics | None = get_metrics("mahavishnu")  # ty: ignore[invalid-attribute-override]
+        self.metrics: WebSocketMetrics | None = get_metrics("mahavishnu")  # ty: ignore[incompatible-attribute-override]
 
         # Initialize rate limiter with configured rate
         # Burst size is 1.5x the rate to allow small bursts

@@ -264,7 +264,7 @@ class AsyncEcosystemStateStore:  # req: REQ-SUBSTR-003
         raw = await substrate.get(_service_key(service_id))
         if raw is None:
             return None
-        return msgspec.to_builtins(msgspec.convert(raw, EcosystemService))  # ty: ignore[invalid-return-type]
+        return msgspec.to_builtins(msgspec.convert(raw, EcosystemService))  # ty: ignore[invalid-explicit-return]
 
     async def list_services_async(
         self,

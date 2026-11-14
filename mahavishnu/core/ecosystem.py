@@ -394,7 +394,7 @@ class EcosystemLoader:
                 cmd = server.get_rendered_command()
                 commands.append((server.name, str(server.port), cmd))
 
-        return commands  # ty: ignore[invalid-return-type]
+        return commands  # ty: ignore[invalid-explicit-return]
 
     def update_audit_timestamp(
         self,
@@ -432,7 +432,7 @@ class EcosystemLoader:
         try:
             with self.config_path.open("w") as f:
                 yaml.dump(
-                    self._config.model_dump(mode="yaml"),  # ty: ignore[unresolved-attribute]
+                    self._config.model_dump(mode="yaml"),  # ty: ignore[missing-attribute, missing-union-attribute]
                     f,
                     default_flow_style=False,
                 )

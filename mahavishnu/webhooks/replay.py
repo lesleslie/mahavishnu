@@ -99,7 +99,7 @@ async def webhook_replay(
 
     # msgspec.Struct is duck-typed so we read fields directly without an
     # isinstance check (bandit B101 forbids asserts in production).
-    return msgspec.convert(payload, WebhookIngress)  # ty: ignore[invalid-return-type]
+    return msgspec.convert(payload, WebhookIngress)  # ty: ignore[invalid-explicit-return]
 
 
 __all__ = ["webhook_replay"]

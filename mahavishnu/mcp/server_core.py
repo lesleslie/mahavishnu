@@ -119,7 +119,7 @@ class FastMCPServer:
         # recover the FastMCPServer wrapper (for app, terminal_manager, etc.)
         # from the FastMCP it receives. The W0 helper signature only
         # forwards the FastMCP, but our per-group functions need the wrapper.
-        self.server._mhv_server = self  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
+        self.server._mhv_server = self  # type: ignore[attr-defined]  # ty: ignore[missing-attribute]
 
         if app is None:
             self.app = MahavishnuApp(config)

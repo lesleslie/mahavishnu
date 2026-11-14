@@ -344,7 +344,7 @@ def _register_component_endpoint(
         # No running event loop — sync fallback using client directly
         from .mcp_adapter import MCPClient
 
-        client = MCPClient(base_url=mcp_state._client._base_url, internal=True)  # ty: ignore[unresolved-attribute]
+        client = MCPClient(base_url=mcp_state._client._base_url, internal=True)  # ty: ignore[missing-attribute]
         try:
             asyncio.run(
                 client.put(key, {"url": mcp_url, "registered_by": component_name})

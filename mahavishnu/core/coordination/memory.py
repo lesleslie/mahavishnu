@@ -338,7 +338,7 @@ class CoordinationMemory:
             metadata: Metadata dictionary
         """
         try:
-            await self.session_buddy.store_memory(  # ty: ignore[unresolved-attribute]
+            await self.session_buddy.store_memory(  # ty: ignore[missing-attribute, missing-union-attribute]
                 collection=self.collection,
                 content=content,
                 metadata=metadata,

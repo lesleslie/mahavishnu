@@ -167,8 +167,8 @@ async def process_repository(
                     required = {"start_line", "end_line", "calls"}
                     if not all(hasattr(node, attr) for attr in required):
                         continue
-                func_length = node.end_line - node.start_line  # ty: ignore[unresolved-attribute]
-                calls_count = len(node.calls)  # ty: ignore[unresolved-attribute]
+                func_length = node.end_line - node.start_line  # ty: ignore[missing-attribute]
+                calls_count = len(node.calls)  # ty: ignore[missing-attribute]
                 if func_length > 10 or calls_count > 5:
                     func_lengths.append(func_length)
                     call_counts.append(calls_count)
@@ -215,7 +215,7 @@ async def process_repository(
                 raise ImportError("QualityControl is unavailable")
 
             qc = _QualityControlImpl(get_settings())
-            # ty: ignore[unresolved-attribute] — QualityControl.check_repository drifted from
+            # ty: ignore[missing-attribute] — QualityControl.check_repository drifted from
             # upstream to _run_checks_for_repo(repo, checks); fix tracked separately.
             result = await qc.check_repository(repo_path)
 
@@ -791,7 +791,7 @@ class PrefectAdapter(OrchestratorAdapter):
             sdk_api_url = api_url_base + "/api"
 
         api_key = self.config.api_key
-        settings_overrides = {
+        settings_overrides: dict[Any, Any] = {
             PREFECT_API_URL: sdk_api_url,
             PREFECT_API_KEY: api_key,
         }

@@ -98,8 +98,8 @@ app = MahavishnuCLI(name="mahavishnu")
 # the click test runner can dispatch the typer app — without this,
 # every test that does ``runner.invoke(cli_module.app, ...)`` fails
 # with ``AttributeError: 'MahavishnuCLI' object has no attribute 'name'``.
-app.name = app.info.name  # ty: ignore[unresolved-attribute]
-app.main = app.__call__  # ty: ignore[unresolved-attribute]
+app.name = app.info.name  # ty: ignore[missing-attribute]
+app.main = app.__call__  # ty: ignore[missing-attribute]
 DEFAULT_MCP_HOST = "127.0.0.1"
 DEFAULT_MCP_PORT = 8680
 

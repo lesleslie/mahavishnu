@@ -453,7 +453,7 @@ class IntegrationTestSuite:
                 }
             )
 
-            return success  # ty: ignore[invalid-return-type]
+            return success  # ty: ignore[invalid-explicit-return]
         except Exception as e:  # production readiness check — broad catch isolates each test's failure  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self.test_results.append(
                 {

@@ -361,7 +361,7 @@ class CrossRepoBlockerTracker:
             keys_to_remove = [
                 k
                 for k in self._chain_cache
-                if blocker_task_id in self._chain_cache[k].chain_path  # ty: ignore[unresolved-attribute]
+                if blocker_task_id in self._chain_cache[k].chain_path  # ty: ignore[missing-attribute]
             ]
             for key in keys_to_remove:
                 del self._chain_cache[key]
