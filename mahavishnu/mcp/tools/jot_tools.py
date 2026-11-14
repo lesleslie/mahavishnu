@@ -348,7 +348,7 @@ def mahavishnu_jot_export_markdown(output_path: str) -> dict[str, object]:
     }
 
 
-def register(mcp) -> None:  # type: ignore[no-untyped-def]
+def register(mcp) -> None:
     """Register all 14 tools on the FastMCP instance.
 
     Re-decorates each module-level tool with the real FastMCP server,

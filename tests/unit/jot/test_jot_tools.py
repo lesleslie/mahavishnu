@@ -25,9 +25,9 @@ _jot_tools_path = (
     / "jot_tools.py"
 )
 _spec = importlib.util.spec_from_file_location("jot_tools_under_test", _jot_tools_path)
-jot_tools = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
+jot_tools = importlib.util.module_from_spec(_spec)
 sys.modules[_spec.name] = jot_tools
-_spec.loader.exec_module(jot_tools)  # type: ignore[union-attr]
+_spec.loader.exec_module(jot_tools)
 
 
 @pytest.fixture(autouse=True)
@@ -254,7 +254,7 @@ def test_jot_tools_module_importable_without_fastmcp(tmp_path: Path) -> None:
         def __getattr__(self, name: str) -> object:
             raise ImportError("fastmcp blocked for test")
 
-    sys.modules["fastmcp.tools.function_tool"] = _Blocked()  # type: ignore[assignment]
+    sys.modules["fastmcp.tools.function_tool"] = _Blocked()
 
     try:
         mod = _ilu.module_from_spec(spec)

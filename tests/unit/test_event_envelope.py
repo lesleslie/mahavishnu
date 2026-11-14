@@ -250,7 +250,7 @@ class TestEventEnvelope:
         from mahavishnu.core.events.envelope import EventVersion
 
         v = EventVersion("1.0.0")
-        result = v.__lt__(42)  # type: ignore[arg-type]
+        result = v.__lt__(42)
         assert result is NotImplemented
 
 

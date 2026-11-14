@@ -31,7 +31,7 @@ def _make_pool_config(**overrides) -> PoolConfig:
         "extra_config": {"endpoint_id": "granite-4-0-h-small"},
     }
     defaults.update(overrides)
-    return PoolConfig(**defaults)  # type: ignore[arg-type]
+    return PoolConfig(**defaults)
 
 
 def _fake_response(

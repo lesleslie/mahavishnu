@@ -119,7 +119,7 @@ class TestRegisterFlow:
         self, registry: FlowRegistry
     ) -> None:
         with pytest.raises(ValueError) as exc_info:
-            registry.register_flow("not-callable", name="x")  # type: ignore[arg-type]
+            registry.register_flow("not-callable", name="x")
         assert "callable" in str(exc_info.value).lower()
 
     def test_register_logs_at_info_level(

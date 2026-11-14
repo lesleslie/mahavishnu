@@ -103,8 +103,8 @@ def _patch_repo(repo: TaskRepository, conn: AsyncMock) -> None:
     async def connection():
         yield conn
 
-    repo.transaction = transaction  # type: ignore[method-assign]
-    repo.connection = connection  # type: ignore[method-assign]
+    repo.transaction = transaction
+    repo.connection = connection
 
 
 # ----------------------------------------------------------------------------
@@ -273,7 +273,7 @@ async def test_create_task_exception_wrapped() -> None:
 async def test_create_abstract_raises() -> None:
     repo = TaskRepository()
     with pytest.raises(NotImplementedError):
-        await repo.create(TaskCreate(title="x"))  # type: ignore[abstract]
+        await repo.create(TaskCreate(title="x"))
 
 
 # ----------------------------------------------------------------------------

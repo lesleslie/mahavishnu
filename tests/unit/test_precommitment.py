@@ -86,7 +86,7 @@ async def test_duplicate_lock_raises(lock: HypothesisLock) -> None:
         with pytest.raises(ValueError, match="duplicate lock_id"):
             await lock.lock(h)
     # Verify the first lock was actually written to the in-process sentinel.
-    items: dict[str, Any] = lock._lock._items  # type: ignore[attr-defined]
+    items: dict[str, Any] = lock._lock._items
     assert items.get("precommit:l:L-abcdef012345") is not None, (
         "first lock must be persisted"
     )
@@ -117,7 +117,7 @@ async def test_signature_mismatch_raises(lock: HypothesisLock) -> None:
             "locked_at": result.hypothesis.locked_at.isoformat(),
         },
     }
-    items: dict[str, Any] = lock._lock._items  # type: ignore[attr-defined]
+    items: dict[str, Any] = lock._lock._items
     key = f"precommit:l:{result.lock_id}"
     items[key] = replace(items[key], metadata=tampered_metadata)
     with pytest.raises(SignatureMismatchError):

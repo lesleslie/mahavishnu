@@ -1183,7 +1183,7 @@ def _run_phase_b(
     async def _upsert() -> tuple[int, int, list]:
         client = MCPClient(base_url=mcp_url, timeout=30.0)
         try:
-            store = PlanIndexStore(client)  # type: ignore[arg-type]
+            store = PlanIndexStore(client)
             rebuilder = PlanIndexRebuilder()
             return await rebuilder.upsert_all(records, store)
         finally:

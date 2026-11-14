@@ -44,6 +44,6 @@ def _restore_real_mcp() -> None:
 _restore_real_mcp()
 
 
-def pytest_runtest_setup(item) -> None:  # type: ignore[no-untyped-def]
+def pytest_runtest_setup(item) -> None:
     """Restore the real mcp package before each test."""
     _restore_real_mcp()

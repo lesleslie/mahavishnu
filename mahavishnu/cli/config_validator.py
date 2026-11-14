@@ -63,7 +63,7 @@ def _load_yaml_mapping(path: Path) -> dict[str, Any]:
         return {}
 
     with path.open() as handle:
-        data = yaml.safe_load(handle) or {}  # type: ignore[var-annotated]
+        data = yaml.safe_load(handle) or {}
 
     if not isinstance(data, dict):
         # ValueError is retained for the loader's tested invalid-content contract.

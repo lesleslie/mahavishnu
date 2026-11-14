@@ -158,7 +158,7 @@ def test_node_init_write_failure_raises_node_persist_error(
 
     original_open = os.open
 
-    def fake_open(path, flags, mode=0o777, *args, **kwargs):  # type: ignore[no-untyped-def]
+    def fake_open(path, flags, mode=0o777, *args, **kwargs):
         if str(node_file) in str(path):
             raise PermissionError(13, "Permission denied", str(path))
         return original_open(path, flags, mode, *args, **kwargs)

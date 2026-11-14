@@ -265,7 +265,7 @@ async def _connect_mcp(url: str) -> Any:
     ``ImportError`` when the package is missing — caught by ``main``.
     """
     try:
-        from mcp.client import AsyncClient  # type: ignore[import-not-found]
+        from mcp.client import AsyncClient
     except ImportError as exc:
         raise SystemExit(
             "MCP client requested but the `mcp` package is not installed. "
@@ -334,7 +334,7 @@ def _invoke_backup(repo_root: Path) -> Path | None:
         # Lazy import: backup_plan_index is a separate operator-facing
         # script — defer the import to keep this script self-contained
         # when backup is disabled.
-        from scripts.backup_plan_index import backup  # type: ignore[import-not-found]
+        from scripts.backup_plan_index import backup
     except ImportError:
         # Fallback: write a timestamped copy inline so the operator
         # never loses the pre-migration PLAN_INDEX.md even if the

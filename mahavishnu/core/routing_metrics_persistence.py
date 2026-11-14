@@ -69,7 +69,7 @@ class RoutingMetricsPersistence:
         self.dsn = dsn
         self.batch_size = batch_size
         self.batch_timeout_ms = batch_timeout_ms
-        self._pool: asyncpg.Pool | None = None  # ty: ignore[missing-attribute, missing-union-attribute] # type: ignore[attr-defined]
+        self._pool: asyncpg.Pool | None = None  # ty: ignore[missing-attribute, missing-union-attribute]
         self._pending_executions: list[ExecutionRecord] = []
         self._pending_costs: list[CostTracking] = []
         self._pending_decisions: list[RoutingDecision] = []
@@ -83,7 +83,7 @@ class RoutingMetricsPersistence:
             logger.warning("RoutingMetricsPersistence already initialized")
             return
 
-        self._pool = await asyncpg.create_pool(  # ty: ignore[missing-attribute, missing-union-attribute] # type: ignore[attr-defined]
+        self._pool = await asyncpg.create_pool(  # ty: ignore[missing-attribute, missing-union-attribute]
             self.dsn,
             min_size=2,
             max_size=10,
@@ -298,7 +298,7 @@ class RoutingMetricsPersistence:
             logger.error(f"Failed to get recent executions: {e}")
             return []
 
-    def _row_to_execution_record(self, row: asyncpg.Record) -> ExecutionRecord:  # ty: ignore[missing-attribute, missing-union-attribute] # type: ignore[attr-defined]
+    def _row_to_execution_record(self, row: asyncpg.Record) -> ExecutionRecord:  # ty: ignore[missing-attribute, missing-union-attribute]
         """Convert database row to ExecutionRecord."""
         return ExecutionRecord(
             execution_id=row["execution_id"],
@@ -423,7 +423,7 @@ class RoutingMetricsPersistence:
             logger.error(f"Failed to get adapter stats: {e}")
             return []
 
-    def _row_to_adapter_stats(self, row: asyncpg.Record) -> AdapterStats:  # ty: ignore[missing-attribute, missing-union-attribute] # type: ignore[attr-defined]
+    def _row_to_adapter_stats(self, row: asyncpg.Record) -> AdapterStats:  # ty: ignore[missing-attribute, missing-union-attribute]
         """Convert database row to AdapterStats."""
         return AdapterStats(
             adapter=AdapterType(row["adapter"]),

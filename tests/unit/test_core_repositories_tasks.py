@@ -117,8 +117,8 @@ def patch_repo_connection(repo, conn: _FakeConn) -> None:
     async def fake_transaction():
         yield conn
 
-    repo.connection = fake_connection  # type: ignore[assignment]
-    repo.transaction = fake_transaction  # type: ignore[assignment]
+    repo.connection = fake_connection
+    repo.transaction = fake_transaction
 
 
 @pytest.fixture
@@ -274,7 +274,7 @@ class TestCreateTask:
             raise RuntimeError("db down")
             yield  # unreachable, satisfies asyncgen-async
 
-        repo.transaction = boom  # type: ignore[assignment]
+        repo.transaction = boom
         with pytest.raises(RepositoryError):
             await repo.create_task(sample_create)
 

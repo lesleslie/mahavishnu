@@ -512,7 +512,7 @@ class QueryAnalyzer:
         Returns:
             List of index recommendations
         """
-        recommendations = []  # type: ignore[var-annotated]
+        recommendations = []
         query_plan = QueryPlan.from_explain(plan)
 
         # Only recommend for sequential scans

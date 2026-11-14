@@ -409,7 +409,7 @@ def test_merge_three_way_sync_uses_overridden_git_binary() -> None:
 def test_merge_result_is_frozen() -> None:
     result = MergeResult(merged="x", conflict_count=0)
     with pytest.raises((AttributeError, TypeError)):
-        result.merged = "y"  # type: ignore[misc]
+        result.merged = "y"
 
 
 def test_merge_conflict_error_carries_all_payload() -> None:

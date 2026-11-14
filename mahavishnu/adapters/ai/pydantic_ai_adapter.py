@@ -446,7 +446,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
                 details={"max_length": MAX_PROMPT_LENGTH, "actual_length": len(prompt)},
             )
 
-        return prompt  # type: ignore[no-any-return]
+        return prompt
 
     def _sanitize_error_message(self, error: Exception) -> str:
         """Sanitize error message for safe external consumption.
@@ -693,7 +693,7 @@ class PydanticAIAdapter[OutputT: BaseModel](OrchestratorAdapter):
             }
 
             logger.info("Created agent '%s' with ID: %s", name, agent_id)
-            return agent_id  # type: ignore[no-any-return]
+            return agent_id
 
         except Exception as e:  # Adapter create_agent wraps every failure as a typed PydanticAIAdapterError
             raise PydanticAIAdapterError(

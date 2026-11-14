@@ -55,13 +55,13 @@ class OpenHandsClient:
             json={"initial_message": task},
         )
         resp.raise_for_status()
-        return resp.json()["conversation_id"]  # type: ignore[no-any-return]
+        return resp.json()["conversation_id"]
 
     async def get_status(self, conv_id: str) -> dict[str, Any]:
         """Poll REST endpoint for conversation status."""
         resp = await self._http.get(f"/api/conversations/{conv_id}")
         resp.raise_for_status()
-        return resp.json()  # type: ignore[no-any-return]
+        return resp.json()
 
     async def stream_events(self, conv_id: str) -> list[dict[str, Any]]:
         """Consume the conversation's event socket (best-effort, may raise).

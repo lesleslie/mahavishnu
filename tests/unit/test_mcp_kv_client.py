@@ -194,7 +194,7 @@ class TestMCPKvClientContract:
         from mahavishnu.plan_index.store import PlanIndexStore
 
         client = _make_client()
-        store = PlanIndexStore(client)  # type: ignore[arg-type]
+        store = PlanIndexStore(client)
         # No exception here means the protocol is satisfied at runtime.
         assert store._mcp is client
 

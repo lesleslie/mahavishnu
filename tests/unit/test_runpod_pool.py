@@ -20,7 +20,7 @@ def _make_pool_config(**overrides) -> PoolConfig:
         "extra_config": {"endpoint_id": "ep-test-1234"},
     }
     defaults.update(overrides)
-    return PoolConfig(**defaults)  # type: ignore[arg-type]
+    return PoolConfig(**defaults)
 
 
 def _fake_run_request(

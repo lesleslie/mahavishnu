@@ -58,7 +58,7 @@ class _FakeHotStore:
 
 
 _FAKE_STORAGE = types.ModuleType("akosha.storage")
-_FAKE_STORAGE.HotStore = _FakeHotStore  # type: ignore[attr-defined]
+_FAKE_STORAGE.HotStore = _FakeHotStore
 # Also create parent akosha package if absent
 if "akosha" not in sys.modules:
     _FAKE_AKOSHA = types.ModuleType("akosha")
@@ -404,7 +404,7 @@ class TestQueryLocalTracesValidation:
     @pytest.mark.asyncio
     async def test_non_string_task_class_returns_empty_list(self) -> None:
         tools = _register()
-        result = await tools["query_local_traces"](task_class=123)  # type: ignore[arg-type]
+        result = await tools["query_local_traces"](task_class=123)
         assert result == []
 
     @pytest.mark.asyncio
@@ -457,7 +457,7 @@ class TestQueryLocalTracesContract:
 
     def test_signature_drops_time_range_minutes(self) -> None:
         tools = _register()
-        params = inspect.signature(tools["query_local_traces"]).parameters  # type: ignore[arg-type]
+        params = inspect.signature(tools["query_local_traces"]).parameters
 
         assert "time_range_minutes" not in params
         assert "start_time" in params
@@ -466,7 +466,7 @@ class TestQueryLocalTracesContract:
 
     def test_task_class_is_required(self) -> None:
         tools = _register()
-        params = inspect.signature(tools["query_local_traces"]).parameters  # type: ignore[arg-type]
+        params = inspect.signature(tools["query_local_traces"]).parameters
 
         assert params["task_class"].default is inspect.Parameter.empty
 

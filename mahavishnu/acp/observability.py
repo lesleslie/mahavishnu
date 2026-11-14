@@ -32,8 +32,8 @@ logger = logging.getLogger("mahavishnu.acp.observability")
 # import lazily so the rest of the ACP server works without it.
 _OTEL_IMPORT_ERROR: Exception | None = None
 try:
-    from opentelemetry import trace  # type: ignore[import-untyped]
-    from opentelemetry.trace import (  # type: ignore[import-untyped]
+    from opentelemetry import trace
+    from opentelemetry.trace import (
         Status,
         StatusCode,
         Tracer,
@@ -43,10 +43,10 @@ try:
 except ImportError as exc:  # pragma: no cover — exercised when OTel missing
     _OTEL_AVAILABLE = False
     _OTEL_IMPORT_ERROR = exc
-    trace = None  # type: ignore[assignment]
-    Status = None  # type: ignore[assignment,misc]
-    StatusCode = None  # type: ignore[assignment,misc]
-    Tracer = None  # type: ignore[assignment,misc]
+    trace = None
+    Status = None
+    StatusCode = None
+    Tracer = None
 
 
 def get_session_tracer() -> Any:
@@ -80,7 +80,7 @@ def is_otel_active() -> bool:
         # The default tracer provider is a no-op ProxyTracer; check if
         # it's been overridden with a real provider.
         from opentelemetry.sdk.trace import (
-            TracerProvider,  # type: ignore[import-untyped]
+            TracerProvider,
         )
 
         return isinstance(provider, TracerProvider)
@@ -140,7 +140,7 @@ def session_span(
                     with suppress(
                         Exception
                     ):  # OTel Status construction can fail on version skew; defensive pass
-                        span.set_status(Status(StatusCode.ERROR))  # type: ignore[arg-type]
+                        span.set_status(Status(StatusCode.ERROR))
                 logger.info(
                     "acp.session_completed session_id=%s stop_reason=%s duration_ms=%.1f",
                     session_id,

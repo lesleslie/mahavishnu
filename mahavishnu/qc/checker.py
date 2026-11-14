@@ -21,7 +21,7 @@ def _score_from_result(result: dict[str, Any], min_score: int) -> int:
     """Map a Crackerjack QualityCheckResult to a numeric score."""
     if result.get("success"):
         return 100
-    errors = result.get("errors") or []  # type: ignore[var-annotated]
+    errors = result.get("errors") or []
     raw = 100 - len(errors) * 10
     return max(0, raw)
 
@@ -83,7 +83,7 @@ class QualityControl:
             )
 
             score = _score_from_result(cj_result, self.min_score)
-            errors = cj_result.get("errors") or []  # type: ignore[var-annotated]
+            errors = cj_result.get("errors") or []
             success = cj_result.get("success", False)
 
             per_check: dict[str, Any] = {}

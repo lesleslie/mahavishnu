@@ -18,7 +18,7 @@ from mahavishnu.plan_index.testing import FakeMCP
 class TestPeriodicTaskRunner:
     @pytest.mark.asyncio
     async def test_force_run_increments_cycles(self) -> None:
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         runner = PeriodicTaskRunner(store=store, cron_every_seconds=3600)
         await runner.force_run()
         status = await store.rebuild_status()
@@ -26,7 +26,7 @@ class TestPeriodicTaskRunner:
 
     @pytest.mark.asyncio
     async def test_force_run_with_empty_records(self) -> None:
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         runner = PeriodicTaskRunner(store=store, cron_every_seconds=3600)
         await runner.force_run()
         # No records → no entities_count > 0

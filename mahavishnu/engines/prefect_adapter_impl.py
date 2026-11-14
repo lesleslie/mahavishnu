@@ -936,7 +936,7 @@ class PrefectAdapter(OrchestratorAdapter):
                     results: list[dict[str, Any]] = []
                 else:
                     is_completed = await _maybe_await(state.is_completed())
-                    results = await _maybe_await(state.result()) if is_completed else []  # type: ignore[var-annotated]
+                    results = await _maybe_await(state.result()) if is_completed else []
                     if results is None:
                         results = []
 

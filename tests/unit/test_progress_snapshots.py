@@ -99,7 +99,7 @@ class TestProgressSnapshotModel:
             message="starting",
         )
         with pytest.raises(FrozenInstanceError):
-            snap.percent = 50  # type: ignore[misc]
+            snap.percent = 50
 
     def test_to_payload_returns_serializable_dict(self) -> None:
         ts = datetime(2026, 6, 27, 10, 30, 0, tzinfo=UTC)
@@ -189,7 +189,7 @@ async def test_record_progress_snapshot_attaches_to_module_recorders(
     """
     from mahavishnu.workflows import progress as progress_mod
 
-    progress_mod._recorders.clear()  # type: ignore[attr-defined]
+    progress_mod._recorders.clear()
 
     snap = await record_progress_snapshot(
         workflow_id="wf-mod",
@@ -215,7 +215,7 @@ async def test_record_progress_snapshot_persists_to_mcp_when_available(
     """
     from mahavishnu.workflows import progress as progress_mod
 
-    progress_mod._recorders.clear()  # type: ignore[attr-defined]
+    progress_mod._recorders.clear()
 
     # substrate unavailable → recorder still records, no exception raised
     snap = await record_progress_snapshot(
@@ -241,7 +241,7 @@ async def test_record_progress_snapshot_tolerates_substrate_failure(
     """
     from mahavishnu.workflows import progress as progress_mod
 
-    progress_mod._recorders.clear()  # type: ignore[attr-defined]
+    progress_mod._recorders.clear()
 
     # Patch the persister to simulate substrate failure
     failing_persister = AsyncMock(
@@ -294,7 +294,7 @@ class TestCLIWatchStub:
         from mahavishnu.workflows import progress as progress_mod
         from mahavishnu.workflows.cli_watch import watch_app
 
-        progress_mod._recorders.clear()  # type: ignore[attr-defined]
+        progress_mod._recorders.clear()
 
         async def _seed() -> None:
             await progress_mod.record_progress_snapshot(
@@ -328,7 +328,7 @@ class TestCLIWatchStub:
         from mahavishnu.workflows import progress as progress_mod
         from mahavishnu.workflows.cli_watch import watch_app
 
-        progress_mod._recorders.clear()  # type: ignore[attr-defined]
+        progress_mod._recorders.clear()
 
         result = CliRunner().invoke(
             watch_app,

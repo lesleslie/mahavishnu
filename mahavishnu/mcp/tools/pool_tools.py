@@ -34,7 +34,7 @@ except Exception:  # pragma: no cover - optional import for test patching  # mod
     PoolSelector = None
     CallerKind = None
     RateLimitError = None
-    RuntimePoolConfig = None  # type: ignore[assignment]
+    RuntimePoolConfig = None
     coerce_caller_kind = None
 
 try:
@@ -81,10 +81,10 @@ except Exception:  # pragma: no cover - optional import for test patching  # mod
     IdempotencyCircuitBreaker = None
     IdempotencyOptions = None
     IdempotencyStore = None
-    get_idempotency_store = lambda: None  # type: ignore[assignment]
-    set_idempotency_store = lambda _store: None  # type: ignore[assignment]
-    get_idempotency_breaker = lambda: None  # type: ignore[assignment]
-    set_idempotency_breaker = lambda _breaker: None  # type: ignore[assignment]
+    get_idempotency_store = lambda: None
+    set_idempotency_store = lambda _store: None
+    get_idempotency_breaker = lambda: None
+    set_idempotency_breaker = lambda _breaker: None
 
 try:
     # C-8: worktree isolation (REQ-010/011). Defensive import so tests can
@@ -260,7 +260,7 @@ async def _hash_prompt(prompt: str) -> str:
     from oneiric.actions.compression import HashAction
 
     result = await HashAction().execute({"algorithm": "sha256", "data": prompt})
-    return result["digest"]  # type: ignore[no-any-return]
+    return result["digest"]
 
 
 async def _enforce_concurrency_limit(
@@ -721,7 +721,7 @@ def register_pool_tools(
     async def mahavishnu_pool_list() -> list[dict[str, Any]]:
         """List all active pools."""
         try:
-            return await pool_manager.list_pools()  # type: ignore[no-any-return]
+            return await pool_manager.list_pools()
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.error(f"Failed to list pools: {e}")
             return []
@@ -804,7 +804,7 @@ def register_pool_tools(
         # Idempotency: if a pool with this name already exists, return it.
         # Uses the new _pools_by_name index from Task 3.5, NOT _pools
         # (which is keyed by generated pool_id, not user-provided name).
-        existing_id = pool_manager._pools_by_name.get(name)  # type: ignore[union-attr]
+        existing_id = pool_manager._pools_by_name.get(name)
         if existing_id is not None:
             logger.info(
                 "mahavishnu_pool_spawn: pool with name already exists, returning existing",
@@ -866,7 +866,7 @@ def register_pool_tools(
             return {"status": "failed", "error": f"invalid pool config: {exc}"}
 
         try:
-            pool_id = await pool_manager.spawn_pool(canonical, pool_config)  # type: ignore[union-attr]
+            pool_id = await pool_manager.spawn_pool(canonical, pool_config)
         except (
             Exception
         ) as exc:  # MCP tool error handler — broad catch is the documented contract
@@ -911,7 +911,7 @@ def register_pool_tools(
         logger.info("mahavishnu_pool_bootstrap: tool called")
 
         try:
-            health = await pool_manager.health_check()  # type: ignore[union-attr]
+            health = await pool_manager.health_check()
             pools_active_before = (health or {}).get("pools_active", 0)
             if pools_active_before > 0:
                 logger.info(
@@ -995,7 +995,7 @@ def register_pool_tools(
                 max_workers=effective_max,
                 worker_type=worker_type,
             )
-            pool_id = await pool_manager.spawn_pool(spawn_type, pool_config)  # type: ignore[union-attr]
+            pool_id = await pool_manager.spawn_pool(spawn_type, pool_config)
         except (
             Exception
         ) as exc:  # MCP tool error handler — broad catch is the documented contract
@@ -1030,7 +1030,7 @@ def register_pool_tools(
     ) -> dict[str, dict[str, Any]]:
         """Monitor pool status and metrics."""
         try:
-            return await pool_manager.aggregate_results(pool_ids)  # type: ignore[no-any-return]
+            return await pool_manager.aggregate_results(pool_ids)
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.error(f"Failed to monitor pools: {e}")
             return {}
@@ -1117,7 +1117,7 @@ def register_pool_tools(
     async def mahavishnu_pool_health() -> dict[str, Any]:
         """Get health status of all pools."""
         try:
-            return await pool_manager.health_check()  # type: ignore[no-any-return]
+            return await pool_manager.health_check()
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.error(f"Failed to get health: {e}")
             return {

@@ -428,7 +428,7 @@ class TestLLMProviderFactoryBifrostRouting:
         # (before the context manager restores the prior value).
         captured: dict[str, str | None] = {}
 
-        def capture_init(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        def capture_init(*_args, **_kwargs):
             captured["ANTHROPIC_BASE_URL"] = os.environ.get("ANTHROPIC_BASE_URL")
             return MagicMock()
 

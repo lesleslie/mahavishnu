@@ -370,8 +370,8 @@ def test_textual_monitor_app_on_mount_schedules_refresh() -> None:
     app = MonitorApp()
     set_interval = MagicMock()
     call_after_refresh = MagicMock()
-    app.set_interval = set_interval  # type: ignore[method-assign]
-    app.call_after_refresh = call_after_refresh  # type: ignore[method-assign]
+    app.set_interval = set_interval
+    app.call_after_refresh = call_after_refresh
 
     app.on_mount()
 
@@ -399,8 +399,8 @@ async def test_textual_monitor_app_action_refresh_without_provider() -> None:
 
     app = MonitorApp()
     # Stub render methods so we don't need a running Textual app to mount.
-    app._render_pools = MagicMock()  # type: ignore[method-assign]
-    app._render_workers = MagicMock()  # type: ignore[method-assign]
+    app._render_pools = MagicMock()
+    app._render_workers = MagicMock()
 
     await app.action_refresh()
 
@@ -429,8 +429,8 @@ async def test_textual_monitor_app_action_refresh_with_provider_populates_state(
     provider.get_workers = AsyncMock(return_value=workers_payload)
 
     app = MonitorApp(data_provider=provider)
-    app._render_pools = MagicMock()  # type: ignore[method-assign]
-    app._render_workers = MagicMock()  # type: ignore[method-assign]
+    app._render_pools = MagicMock()
+    app._render_workers = MagicMock()
 
     await app.action_refresh()
 
@@ -465,8 +465,8 @@ async def test_textual_monitor_app_action_refresh_handles_provider_exception(
     provider.get_workers = AsyncMock(side_effect=RuntimeError("provider boom"))
 
     app = MonitorApp(data_provider=provider)
-    app._render_pools = MagicMock()  # type: ignore[method-assign]
-    app._render_workers = MagicMock()  # type: ignore[method-assign]
+    app._render_pools = MagicMock()
+    app._render_workers = MagicMock()
 
     # Should not raise — the event handler swallows the provider failure.
     await app.action_refresh()
@@ -494,7 +494,7 @@ def test_textual_monitor_app_render_pools_mounts_widgets_per_item() -> None:
     container.mount = MagicMock()
 
     query_one = MagicMock(return_value=container)
-    app.query_one = query_one  # type: ignore[method-assign]
+    app.query_one = query_one
 
     pools_payload = [
         {"name": "a", "type": "x", "worker_count": 1, "healthy": True},
@@ -538,7 +538,7 @@ def test_textual_monitor_app_render_workers_mounts_widgets_per_item() -> None:
     container.mount = MagicMock()
 
     query_one = MagicMock(return_value=container)
-    app.query_one = query_one  # type: ignore[method-assign]
+    app.query_one = query_one
 
     workers_payload = [
         {"id": "w1", "type": "x", "status": "running"},
@@ -576,7 +576,7 @@ def test_textual_monitor_app_render_pools_empty_data_no_mounts() -> None:
 
     app = MonitorApp()
     container = MagicMock()
-    app.query_one = MagicMock(return_value=container)  # type: ignore[method-assign]
+    app.query_one = MagicMock(return_value=container)
 
     app._render_pools()
 
@@ -595,7 +595,7 @@ def test_textual_monitor_app_render_workers_empty_data_no_mounts() -> None:
 
     app = MonitorApp()
     container = MagicMock()
-    app.query_one = MagicMock(return_value=container)  # type: ignore[method-assign]
+    app.query_one = MagicMock(return_value=container)
 
     app._render_workers()
 

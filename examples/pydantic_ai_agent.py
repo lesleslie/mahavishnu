@@ -228,8 +228,8 @@ async def sweep_repos(
     """
     request = SweepReposRequest(
         tag=tag,
-        adapter=adapter,  # type: ignore[arg-type]
-        strategy=strategy,  # type: ignore[arg-type]
+        adapter=adapter,
+        strategy=strategy,
         dry_run=dry_run,
     )
     result = await ctx.deps.agent.sweep_repos(request)
@@ -253,7 +253,7 @@ async def route_task(
     """
     request = RouteTaskRequest(
         intent=intent,
-        strategy=strategy,  # type: ignore[arg-type]
+        strategy=strategy,
         enable_fallback=enable_fallback,
     )
     result = await ctx.deps.agent.route_task(request)

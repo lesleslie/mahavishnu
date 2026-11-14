@@ -31,7 +31,7 @@ def _sample_record(plan_id: str = "11111111111111111111111111111111") -> PlanRec
 @pytest.fixture
 def store() -> PlanIndexStore:
     fake = FakeMCP()
-    return PlanIndexStore(mcp=fake)  # type: ignore[arg-type]
+    return PlanIndexStore(mcp=fake)
 
 
 class TestUpsertAndGet:
@@ -97,7 +97,7 @@ class TestTTLConsistency:
             store._topic_key(d),
         ):
             assert await fake.get(key) is not None
-            assert fake.get_ttl(key) == 86400  # type: ignore[attr-defined]
+            assert fake.get_ttl(key) == 86400
 
 
 class TestAtomicity:
@@ -115,10 +115,10 @@ class TestAtomicity:
                 raise RuntimeError("mcp down")
             await original_put(key, value, ttl=ttl)
 
-        fake.put = failing_put  # type: ignore[method-assign]
+        fake.put = failing_put
         with pytest.raises(RuntimeError, match="mcp down"):
             await store.upsert(rec)
-        fake.put = original_put  # type: ignore[method-assign]
+        fake.put = original_put
 
         assert await fake.get(store._status_key(d)) is None
         assert await fake.get(store._topic_key(d)) is None

@@ -145,9 +145,9 @@ class EvidenceRetriever:
                     or []
                 )
                 if isinstance(items, dict):
-                    items = items.get("items", [])  # type: ignore[assignment]
+                    items = items.get("items", [])
             elif isinstance(result, list):
-                items = result  # type: ignore[assignment]
+                items = result
 
             results: list[RetrievedEvidence] = []
             for item in items:
@@ -195,7 +195,7 @@ class EvidenceRetriever:
                 if isinstance(result, dict):
                     items: list[dict[str, Any]] = result.get("conversations", [])
                 elif isinstance(result, list):
-                    items = result  # type: ignore[assignment]
+                    items = result
                 else:
                     items = []
 

@@ -47,7 +47,7 @@ class TestPlanShowMissingRecord:
         themselves. This contract is the basis for the auth-gate and
         missing-record e2e tests in the sibling files.
         """
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
 
         result = await store.get("0" * 32)
 

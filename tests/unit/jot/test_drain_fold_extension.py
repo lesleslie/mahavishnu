@@ -29,7 +29,7 @@ def _ev(
     eid = event_id if event_id is not None else f"e{wall_ms}{ctr:02d}"
     return JotEvent(
         id=eid,
-        op=op,  # type: ignore[arg-type]
+        op=op,
         ctx=ctx,
         hlc=HLC(wall_ms=wall_ms, ctr=ctr, node="n1"),
         text="",

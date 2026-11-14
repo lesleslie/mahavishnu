@@ -715,7 +715,7 @@ def test_remote_worktree_ref_round_trip_all_backends(backend: str) -> None:
             bucket="my-bucket",
             key=f"path/to/{backend}/bundle",
             worktree_id=f"h-remote-{backend}",
-            backend_kind=backend,  # type: ignore[arg-type]
+            backend_kind=backend,
         ),
         sha256="",
         bytes_size=0,

@@ -70,7 +70,7 @@ def _make_full_provider(name: str = "test", healthy: bool = True) -> WorktreePro
 def test_worktree_provider_cannot_be_instantiated_directly() -> None:
     """Base class has unimplemented abstract methods -> TypeError on call."""
     with pytest.raises(TypeError) as exc_info:
-        WorktreeProvider()  # type: ignore[abstract]
+        WorktreeProvider()
 
     # The error message should mention the first missing abstract method
     assert "abstract" in str(exc_info.value).lower()
@@ -154,7 +154,7 @@ def test_subclass_missing_one_abstract_method_still_abstract(
     Incomplete = type("IncompleteProvider", (WorktreeProvider,), namespace)
 
     with pytest.raises(TypeError):
-        Incomplete()  # type: ignore[abstract]
+        Incomplete()
 
 
 # ---------------------------------------------------------------------------

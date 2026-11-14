@@ -23,7 +23,7 @@ pytestmark = pytest.mark.asyncio
 @pytest.fixture
 def metrics() -> DLQMetrics:
     """Module-level singleton (Counter registration is global)."""
-    return dlq_metrics.get_dlq_metrics()  # type: ignore[return-value]
+    return dlq_metrics.get_dlq_metrics()
 
 
 def _prometheus_installed() -> bool:
@@ -73,21 +73,21 @@ async def test_persisted_counter_increments(metrics: DLQMetrics) -> None:
     rejected = counter.labels(outcome="rejected")
 
     # Capture starting state for the three labels.
-    before_p = persisted._value.get()  # type: ignore[attr-defined]
-    before_m = in_memory._value.get()  # type: ignore[attr-defined]
-    before_r = rejected._value.get()  # type: ignore[attr-defined]
+    before_p = persisted._value.get()
+    before_m = in_memory._value.get()
+    before_r = rejected._value.get()
 
     metrics.record_persisted()
-    assert persisted._value.get() == before_p + 1  # type: ignore[attr-defined]
+    assert persisted._value.get() == before_p + 1
     # The other two labels are untouched.
-    assert in_memory._value.get() == before_m  # type: ignore[attr-defined]
-    assert rejected._value.get() == before_r  # type: ignore[attr-defined]
+    assert in_memory._value.get() == before_m
+    assert rejected._value.get() == before_r
 
     metrics.record_in_memory_fallback()
-    assert in_memory._value.get() == before_m + 1  # type: ignore[attr-defined]
-    assert persisted._value.get() == before_p + 1  # type: ignore[attr-defined]
+    assert in_memory._value.get() == before_m + 1
+    assert persisted._value.get() == before_p + 1
 
     metrics.record_rejected()
-    assert rejected._value.get() == before_r + 1  # type: ignore[attr-defined]
-    assert persisted._value.get() == before_p + 1  # type: ignore[attr-defined]
-    assert in_memory._value.get() == before_m + 1  # type: ignore[attr-defined]
+    assert rejected._value.get() == before_r + 1
+    assert persisted._value.get() == before_p + 1
+    assert in_memory._value.get() == before_m + 1

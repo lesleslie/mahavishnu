@@ -17,7 +17,7 @@ def test_hlc_is_frozen() -> None:
     """HLC must be immutable to support HLC ordering invariants."""
     hlc = HLC(wall_ms=1000, ctr=0, node="a3f9b2e1")
     with pytest.raises((AttributeError, Exception)):
-        hlc.wall_ms = 2000  # type: ignore[misc]
+        hlc.wall_ms = 2000
 
 
 def test_jot_event_is_frozen() -> None:
@@ -31,7 +31,7 @@ def test_jot_event_is_frozen() -> None:
         created_ms=1000,
     )
     with pytest.raises((AttributeError, Exception)):
-        event.text = "modified"  # type: ignore[misc]
+        event.text = "modified"
 
 
 def test_serialize_returns_compact_json_with_newline() -> None:

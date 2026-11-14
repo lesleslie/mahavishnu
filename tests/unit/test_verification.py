@@ -287,7 +287,7 @@ async def test_persisted_false_on_mcp_write_failure(
         async def put(self, key: str, payload: dict) -> None:
             raise ConnectionError("mcp unreachable")
 
-    store = VerificationStore(mcp=_BrokenMCP())  # type: ignore[arg-type]
+    store = VerificationStore(mcp=_BrokenMCP())
 
     result = VerificationResult(
         proposal_id="pid-deadletter",

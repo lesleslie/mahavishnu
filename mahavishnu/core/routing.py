@@ -466,7 +466,7 @@ class TaskRouter:
             f"(strategy={strategy.value}, score={scores[selected]:.2f})"
         )
 
-        return selected  # type: ignore[no-any-return]
+        return selected
 
     def get_routing_info(
         self,

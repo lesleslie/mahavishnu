@@ -40,7 +40,7 @@ def test_jot_summary_is_frozen() -> None:
         id="a" * 32, short_id="a" * 6, text="x", status="open", last_modified_ms=0
     )
     with pytest.raises(Exception):  # FrozenInstanceError
-        s.text = "y"  # type: ignore[misc]
+        s.text = "y"
 
 
 def test_parse_events_returns_empty_list_for_missing_log(tmp_path: Path) -> None:
@@ -232,7 +232,7 @@ def test_enrich_ctx_returns_repo_branch_sha(monkeypatch: pytest.MonkeyPatch) -> 
         "rev-parse HEAD": "a3f9c2b1e8d74f6a9c1b2e3f4a5b6c7d",
     }
 
-    def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
+    def fake_run(args, **kwargs):
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,
@@ -250,7 +250,7 @@ def test_enrich_ctx_returns_repo_branch_sha(monkeypatch: pytest.MonkeyPatch) -> 
 def test_enrich_ctx_fail_open_on_git_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.jot.fold import _enrich_ctx
 
-    def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def fake_run(*args, **kwargs):
         raise FileNotFoundError("git not installed")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -270,7 +270,7 @@ def test_enrich_ctx_fail_open_on_non_zero_exit(monkeypatch: pytest.MonkeyPatch) 
     """
     from mahavishnu.jot.fold import _enrich_ctx
 
-    def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def fake_run(*args, **kwargs):
         return subprocess.CompletedProcess(
             args=args,
             returncode=128,
@@ -293,7 +293,7 @@ def test_enrich_ctx_fail_open_on_timeout(monkeypatch: pytest.MonkeyPatch) -> Non
     """
     from mahavishnu.jot.fold import _enrich_ctx
 
-    def fake_run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def fake_run(*args, **kwargs):
         raise subprocess.TimeoutExpired(cmd=args[0] if args else "git", timeout=5)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -313,7 +313,7 @@ def test_enrich_ctx_spawns_three_git_calls_not_per_state() -> None:
 
     calls: list[tuple[str, ...]] = []
 
-    def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
+    def fake_run(args, **kwargs):
         calls.append(tuple(args))
         return subprocess.CompletedProcess(
             args=args,
@@ -361,7 +361,7 @@ def test_build_states_enrich_populates_ctx_by_id(
         "rev-parse HEAD": "abc1234",
     }
 
-    def fake_run(args, **kwargs):  # type: ignore[no-untyped-def]
+    def fake_run(args, **kwargs):
         return subprocess.CompletedProcess(
             args=args,
             returncode=0,

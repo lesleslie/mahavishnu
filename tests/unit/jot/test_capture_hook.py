@@ -313,7 +313,7 @@ class TestFailureModes:
 
         original_mkdir = PathLib.mkdir
 
-        def fake_mkdir(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_mkdir(self, *args, **kwargs):
             if "jot" in str(self):
                 raise PermissionError(13, "Permission denied", str(self))
             return original_mkdir(self, *args, **kwargs)
@@ -389,7 +389,7 @@ class TestFailOpen:
 
         original_open = os.open
 
-        def fake_open(path, flags, mode=0o777, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_open(path, flags, mode=0o777, *args, **kwargs):
             if "log.jsonl" in str(path):
                 raise PermissionError(13, "Permission denied", str(path))
             return original_open(path, flags, mode, *args, **kwargs)

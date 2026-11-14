@@ -80,10 +80,10 @@ else:
             ShepherdWorkspace,
         )
     except ImportError:  # pragma: no cover - exercised only when shepherd-ai absent
-        GitRepo = None  # type: ignore[misc]
-        ShepherdWorkspace = None  # type: ignore[misc]
-        AmbientWorldAccessRefused = None  # type: ignore[misc]
-        EffectNotPermitted = None  # type: ignore[misc]
+        GitRepo = None
+        ShepherdWorkspace = None
+        AmbientWorldAccessRefused = None
+        EffectNotPermitted = None
 
 
 #: Serialises the staged-command handoff in ``_shell_task``. Process-wide

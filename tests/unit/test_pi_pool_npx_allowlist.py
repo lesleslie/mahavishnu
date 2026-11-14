@@ -37,7 +37,7 @@ def test_default_npx_command_is_accepted() -> None:
 )
 def test_npx_command_rejects_non_npx_binary(bad_command: tuple[str, ...]) -> None:
     with pytest.raises(ConfigurationError) as excinfo:
-        PiPoolSettings(npx_command=bad_command)  # type: ignore[arg-type]
+        PiPoolSettings(npx_command=bad_command)
     # The error must NEVER be silent (i.e. must raise).
     assert "npx" in str(excinfo.value).lower()
 
@@ -45,7 +45,7 @@ def test_npx_command_rejects_non_npx_binary(bad_command: tuple[str, ...]) -> Non
 def test_npx_command_rejects_wrong_package() -> None:
     with pytest.raises(ConfigurationError) as excinfo:
         PiPoolSettings(
-            npx_command=("npx", "-y", "evil-package"),  # type: ignore[arg-type]
+            npx_command=("npx", "-y", "evil-package"),
         )
     assert "@earendil-works/pi-coding-agent" in str(excinfo.value)
 
@@ -62,5 +62,5 @@ def test_npx_command_rejects_wrong_package() -> None:
 )
 def test_npx_command_accepts_canonical_paths(ok_command: tuple[str, ...]) -> None:
     """All three canonical binaries are accepted; version-pinned forms too."""
-    ps = PiPoolSettings(npx_command=ok_command)  # type: ignore[arg-type]
+    ps = PiPoolSettings(npx_command=ok_command)
     assert ps.npx_command == ok_command

@@ -60,8 +60,8 @@ def _resolve_postgres_dsn(explicit_dsn: str | None) -> str | None:
         import yaml
 
         with settings_path.open() as f:
-            data = yaml.safe_load(f) or {}  # type: ignore[var-annotated]
-        persistence = data.get("persistence", {}) if isinstance(data, dict) else {}  # type: ignore[var-annotated]
+            data = yaml.safe_load(f) or {}
+        persistence = data.get("persistence", {}) if isinstance(data, dict) else {}
         dsn = persistence.get("postgres_url")
         if isinstance(dsn, str) and dsn.strip():
             return dsn.strip()
@@ -318,7 +318,7 @@ def collect_metrics(
     # Import here to avoid circular dependency. Resolved at runtime via sys.path;
     # static analysis cannot see the empty-file script stubs at scripts/*.py.
     from scripts.collect_metrics import (
-        main as collect_main,  # ty: ignore[import-not-found]  # type: ignore[misc]
+        main as collect_main,  # ty: ignore[import-not-found]
     )
 
     # Set up sys.argv to pass arguments to the collect script
@@ -374,7 +374,7 @@ def generate_report(
     # For now, delegate to collect_metrics
     # TODO: Generate more comprehensive reports with historical data
     from scripts.collect_metrics import (
-        main as collect_main,  # ty: ignore[import-not-found]  # type: ignore[misc]
+        main as collect_main,  # ty: ignore[import-not-found]
     )
 
     sys.argv = ["collect_metrics", f"--output={format}"]
@@ -448,7 +448,7 @@ def show_status(
     # Collect coverage data. Resolved at runtime via sys.path; static analysis
     # cannot see the empty-file script stub at scripts/collect_metrics.py.
     from scripts.collect_metrics import (
-        get_coverage_from_file,  # ty: ignore[import-not-found]  # type: ignore[misc]
+        get_coverage_from_file,  # ty: ignore[import-not-found]
     )
 
     for repo_data in repos:
@@ -611,7 +611,7 @@ def generate_dashboard(
     # Import dashboard generator. Resolved at runtime via sys.path; static analysis
     # cannot see the empty-file script stub at scripts/generate_metrics_dashboard.py.
     from scripts.generate_metrics_dashboard import (
-        main as dashboard_main,  # ty: ignore[import-not-found]  # type: ignore[misc]
+        main as dashboard_main,  # ty: ignore[import-not-found]
     )
 
     # Set up sys.argv
@@ -894,10 +894,10 @@ def _resolve_mcp_url(explicit_url: str | None) -> str:
             import yaml
 
             with settings_path.open() as f:
-                data = yaml.safe_load(f) or {}  # type: ignore[var-annotated]
-            health = data.get("health", {}) if isinstance(data, dict) else {}  # type: ignore[var-annotated]
-            deps = health.get("dependencies", {}) if isinstance(health, dict) else {}  # type: ignore[var-annotated]
-            mcp = deps.get("mcp") if isinstance(deps, dict) else None  # type: ignore[var-annotated]
+                data = yaml.safe_load(f) or {}
+            health = data.get("health", {}) if isinstance(data, dict) else {}
+            deps = health.get("dependencies", {}) if isinstance(health, dict) else {}
+            mcp = deps.get("mcp") if isinstance(deps, dict) else None
             if isinstance(mcp, dict):
                 host = mcp.get("host", "localhost")
                 port = mcp.get("port", 8680)

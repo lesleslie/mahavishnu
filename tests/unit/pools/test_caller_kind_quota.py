@@ -54,7 +54,7 @@ def pool_mgr_with_quota() -> PoolManager:
     """A PoolManager pre-loaded with a single stub pool and no MCP."""
     with patch("mahavishnu.core.app.TerminalManager"):
         mgr = PoolManager(terminal_manager=None, session_buddy_client=None)
-    mgr._pools["pool_test"] = _StubPool()  # type: ignore[assignment]
+    mgr._pools["pool_test"] = _StubPool()
     mgr._pool_worker_counts["pool_test"] = 1
     return mgr
 

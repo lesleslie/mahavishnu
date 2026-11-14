@@ -34,7 +34,7 @@ def _summary(
         id=sid.ljust(32, "0"),
         short_id=sid,
         text=text,
-        status=status,  # type: ignore[arg-type]
+        status=status,
         last_modified_ms=ms,
         dispatch_state=dispatch_state,
         dispatch_workflow_id=dispatch_workflow_id,

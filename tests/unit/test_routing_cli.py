@@ -22,7 +22,7 @@ def _patched_console_init(self: _RichConsole, *args: object, **kwargs: object) -
     _orig_console_init(self, *args, **kwargs)
 
 
-_RichConsole.__init__ = _patched_console_init  # type: ignore[method-assign]
+_RichConsole.__init__ = _patched_console_init
 
 from typer.testing import CliRunner
 

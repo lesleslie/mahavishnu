@@ -299,7 +299,7 @@ class CoordinationMemory:
                 filters=filters,
                 limit=limit,
             )
-            return results  # type: ignore[no-any-return]
+            return results
         except Exception as e:  # best-effort cross-system memory operation — broad catch isolates storage backend failures from caller  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             # If search fails, log error and return empty results
             logger.error(f"Coordination memory search failed: {e}")

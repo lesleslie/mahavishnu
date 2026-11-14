@@ -96,8 +96,8 @@ def patch_repo_connection(repo, conn: _FakeConn) -> None:
     async def fake_transaction():
         yield conn
 
-    repo.connection = fake_connection  # type: ignore[assignment]
-    repo.transaction = fake_transaction  # type: ignore[assignment]
+    repo.connection = fake_connection
+    repo.transaction = fake_transaction
 
 
 # =============================================================================
@@ -186,7 +186,7 @@ class TestTaskRunFilter:
 class TestTaskRunRead:
     def test_required_fields(self):
         with pytest.raises(ValueError):
-            TaskRunRead()  # type: ignore[call-arg]
+            TaskRunRead()
 
 
 # =============================================================================
@@ -250,8 +250,8 @@ class TestCreateRun:
         async def ok_conn():
             yield _FakeConn()
 
-        repo.transaction = boom_txn  # type: ignore[assignment]
-        repo.connection = ok_conn  # type: ignore[assignment]
+        repo.transaction = boom_txn
+        repo.connection = ok_conn
 
         with pytest.raises(RepositoryError) as exc:
             await repo.create_run(TaskRunCreate(task_id=uuid4(), run_number=1))
@@ -290,7 +290,7 @@ class TestGetRun:
             raise RuntimeError("nope")
             yield  # pragma: no cover
 
-        repo.connection = boom  # type: ignore[assignment]
+        repo.connection = boom
         with pytest.raises(RepositoryError):
             await repo.get_run(uuid4())
 
@@ -391,7 +391,7 @@ class TestUpdateRun:
             raise RuntimeError("nope")
             yield  # pragma: no cover
 
-        repo.transaction = boom  # type: ignore[assignment]
+        repo.transaction = boom
         with pytest.raises(RepositoryError):
             await repo.update_run(uuid4(), TaskRunUpdate(status="completed"))
 
@@ -428,7 +428,7 @@ class TestListRunsForTask:
             raise RuntimeError("db err")
             yield  # pragma: no cover
 
-        repo.connection = boom  # type: ignore[assignment]
+        repo.connection = boom
         with pytest.raises(RepositoryError):
             await repo.list_runs_for_task(uuid4())
 
@@ -537,7 +537,7 @@ class TestListRuns:
             raise RuntimeError("err")
             yield  # pragma: no cover
 
-        repo.connection = boom  # type: ignore[assignment]
+        repo.connection = boom
         with pytest.raises(RepositoryError):
             await repo.list_runs(TaskRunFilter())
 
@@ -574,7 +574,7 @@ class TestGetLatestRunForTask:
             raise RuntimeError("nope")
             yield  # pragma: no cover
 
-        repo.connection = boom  # type: ignore[assignment]
+        repo.connection = boom
         with pytest.raises(RepositoryError):
             await repo.get_latest_run_for_task(uuid4())
 
@@ -617,7 +617,7 @@ class TestGetNextRunNumber:
             raise RuntimeError("err")
             yield  # pragma: no cover
 
-        repo.connection = boom  # type: ignore[assignment]
+        repo.connection = boom
         with pytest.raises(RepositoryError):
             await repo.get_next_run_number(uuid4())
 

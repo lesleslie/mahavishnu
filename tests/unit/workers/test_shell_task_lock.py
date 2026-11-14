@@ -69,11 +69,11 @@ async def _observe_staged_commands(worker: Any) -> list[str]:
         return result
 
     sb._compose_shell_task = _REAL_COMPOSE
-    sb.ShepherdWorkspace.run = _run  # type: ignore[method-assign]
+    sb.ShepherdWorkspace.run = _run
     try:
         await asyncio.gather(*(_dispatch(worker, cmd) for cmd in ("echo A", "echo B")))
     finally:
-        sb.ShepherdWorkspace.run = original_run  # type: ignore[method-assign]
+        sb.ShepherdWorkspace.run = original_run
         sb._compose_shell_task = original_compose
     return observed
 
@@ -143,11 +143,11 @@ async def test_staging_survives_a_failed_run(tmp_path: Path) -> None:
     def _boom(self: Any, task_ref: Any, **kwargs: Any) -> Any:
         raise RuntimeError("substrate exploded")
 
-    sb.ShepherdWorkspace.run = _boom  # type: ignore[method-assign]
+    sb.ShepherdWorkspace.run = _boom
     try:
         result = await worker.execute({"command": "echo A"})
     finally:
-        sb.ShepherdWorkspace.run = original_run  # type: ignore[method-assign]
+        sb.ShepherdWorkspace.run = original_run
 
     assert result.status.value == "failed"
     assert not sb._SHELL_COMMAND_LOCK.locked(), (

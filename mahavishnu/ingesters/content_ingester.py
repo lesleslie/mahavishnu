@@ -568,7 +568,7 @@ class ContentIngester:
         try:
             # Generate embedding
             embeddings = await self._generate_embeddings([content])
-            embedding = embeddings[0] if embeddings else []  # type: ignore[var-annotated]
+            embedding = embeddings[0] if embeddings else []
 
             # Store memory with embedding
             response = await self._akosha_client.post(

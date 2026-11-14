@@ -22,7 +22,7 @@ else:
     try:
         from turboquant_pro import TurboQuantPGVector
     except ImportError:
-        TurboQuantPGVector = None  # type: ignore[misc]
+        TurboQuantPGVector = None
     TURBOQUANT_AVAILABLE = TurboQuantPGVector is not None
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class TurboQuantCompressor:
         self._dimension = dimension
         self._bits = bits
         self._seed = seed
-        self._tq: TurboQuantPGVector | None = None  # type: ignore[invalid-syntax]
+        self._tq: TurboQuantPGVector | None = None
 
     @property
     def available(self) -> bool:
@@ -96,7 +96,7 @@ class TurboQuantCompressor:
                 "turboquant-pro not installed. Install with: uv pip install turboquant-pro"
             )
         if self._tq is None:
-            self._tq = TurboQuantPGVector(  # type: ignore[invalid-syntax, misc]
+            self._tq = TurboQuantPGVector(
                 dim=self._dimension,
                 bits=self._bits,
                 seed=self._seed,

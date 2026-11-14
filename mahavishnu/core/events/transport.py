@@ -13,7 +13,7 @@ except ImportError:
     # CLI must start from any CWD so the post-commit git hook installed
     # by `mahavishnu index install-hooks` works in every Bodai repo.
     from logging import (
-        getLogger as get_logger,  # type: ignore[assignment]  # noqa: N813 — oneiric exposes get_logger; fallback keeps snake_case binding
+        getLogger as get_logger,  # noqa: N813 — oneiric exposes get_logger; fallback keeps snake_case binding
     )
 
 try:
@@ -26,7 +26,7 @@ except ImportError:
     # hook never reach that line. If a subcommand that actually
     # publishes an event runs without oneiric installed, the user gets
     # a clear AttributeError at the call site.
-    class NotificationRoute:  # type: ignore[no-redef]
+    class NotificationRoute:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise RuntimeError(
                 "oneiric is not importable; cannot construct NotificationRoute. "
@@ -34,7 +34,7 @@ except ImportError:
                 "the `oneiric` peer directory is on sys.path)."
             )
 
-    class NotificationRouter:  # type: ignore[no-redef]
+    class NotificationRouter:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise RuntimeError(
                 "oneiric is not importable; cannot construct NotificationRouter."

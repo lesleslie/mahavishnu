@@ -125,7 +125,7 @@ def _check_tmux_preconditions(
     return failures
 
 
-def _build_terminal_manager():  # type: ignore[no-untyped-def]
+def _build_terminal_manager():
     from mahavishnu.core.app import MahavishnuApp
     from mahavishnu.terminal.manager import TerminalManager
 
@@ -279,7 +279,7 @@ def _check_prefect_preconditions(
         failures.append(f"could not load settings: {exc}")
         return failures
 
-    prefect_cfg = settings.prefect  # type: ignore[attr-defined]
+    prefect_cfg = settings.prefect
     api_url = (api_url_override or _effective_prefect_api_url()).rstrip("/")
     if not api_url.endswith("/api"):
         api_url = api_url + "/api"
@@ -387,7 +387,7 @@ def _effective_prefect_api_url() -> str:
     if env_url:
         return _with_api_suffix(env_url.rstrip("/"))
     settings = _default_settings_getter()
-    return _with_api_suffix(str(settings.prefect.api_url).rstrip("/"))  # type: ignore[attr-defined]
+    return _with_api_suffix(str(settings.prefect.api_url).rstrip("/"))
 
 
 def _with_api_suffix(api_url: str) -> str:
@@ -574,7 +574,7 @@ async def _run_prefect_demo(
         )
 
     settings = _default_settings_getter()
-    prefect_cfg = settings.prefect  # type: ignore[attr-defined]
+    prefect_cfg = settings.prefect
     work_pool = prefect_cfg.work_pool
     flow_name = flow_func.name
 
@@ -806,7 +806,7 @@ def _check_agno_preconditions(
         return failures
 
     try:
-        agno_llm = settings.agno.llm  # type: ignore[attr-defined]
+        agno_llm = settings.agno.llm
     except AttributeError as exc:
         failures.append(f"settings.agno.llm not configured: {exc}")
         return failures
@@ -1849,7 +1849,7 @@ def _check_crow_preconditions(
         return failures
 
     try:
-        terminal = settings.terminal  # type: ignore[attr-defined]
+        terminal = settings.terminal
     except AttributeError as exc:
         failures.append(f"settings.terminal not configured: {exc}")
         return failures
@@ -2149,7 +2149,7 @@ def _check_hatchet_preconditions(
         )
 
     try:
-        hatchet_cfg = settings.hatchet  # type: ignore[attr-defined]
+        hatchet_cfg = settings.hatchet
     except AttributeError as exc:
         failures.append(f"settings.hatchet not configured: {exc}")
         return failures
@@ -4710,7 +4710,7 @@ def demo_all(
         help="Override each demo's own --timeout budget in seconds (0 = shipped default).",
     ),
     log_dir: Path = typer.Option(
-        None,  # type: ignore[arg-type]
+        None,
         "--log-dir",
         help="Directory for per-demo logs (default: a temp dir under the system temp root).",
     ),

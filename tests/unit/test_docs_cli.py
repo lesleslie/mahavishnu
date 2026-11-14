@@ -226,7 +226,7 @@ def test_audit_missing_module_exits_1(
     def _raise(*_a, **_k):
         raise ImportError("blocked for test")
 
-    blocker.build_audit_report = _raise  # type: ignore[attr-defined]
+    blocker.build_audit_report = _raise
     sys.modules["audit_ecosystem_docs"] = blocker
     try:
         result = runner.invoke(app, ["docs", "audit", "--ecosystem", str(eco)])

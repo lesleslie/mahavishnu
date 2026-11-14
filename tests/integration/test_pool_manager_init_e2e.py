@@ -178,12 +178,12 @@ class TestInitPoolManagerE2E:
         app = MahavishnuApp()
 
         # Mutate runtime config to opt out.
-        app.config.pools.enabled = False  # type: ignore[attr-defined]
+        app.config.pools.enabled = False
         # Re-run the relevant initialization segments — we want to confirm
         # that with pools_enabled=False, pool_manager is None and no exception.
         from mahavishnu.core.bootstrap import initialize_runtime_services
 
-        initialize_runtime_services(app)  # type: ignore[arg-type]
+        initialize_runtime_services(app)
 
-        assert app.pool_manager is None  # type: ignore[attr-defined]
+        assert app.pool_manager is None
         # No exception = good. Pool subsystem is disabled.

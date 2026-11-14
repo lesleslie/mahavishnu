@@ -689,12 +689,12 @@ async def _close_otel_span(span: Any) -> None:
         return
     if hasattr(span, "__aexit__"):
         try:
-            await span.__aexit__(None, None, None)  # type: ignore[attr-defined]
+            await span.__aexit__(None, None, None)
         except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.debug("budget.otel_aexit_failed: %s", exc)
     elif hasattr(span, "__exit__"):
         try:
-            span.__exit__(None, None, None)  # type: ignore[attr-defined]
+            span.__exit__(None, None, None)
         except Exception as exc:  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.debug("budget.otel_exit_failed: %s", exc)
 
@@ -919,6 +919,6 @@ async def _span_context(name: str, emitter: OTelEmitter):
         yield span
     finally:
         if span is not None and hasattr(span, "__aexit__"):
-            await span.__aexit__(None, None, None)  # type: ignore[attr-defined]
+            await span.__aexit__(None, None, None)
         elif span is not None and hasattr(span, "__exit__"):
-            span.__exit__(None, None, None)  # type: ignore[attr-defined]
+            span.__exit__(None, None, None)

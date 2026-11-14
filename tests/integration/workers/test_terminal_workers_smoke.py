@@ -112,7 +112,7 @@ async def test_each_terminal_worker_spawns_functional_pane() -> None:
         session_id = next(iter(terminal._sessions))
         return await terminal.capture_output(session_id, lines)
 
-    pool_mgr.terminal_capture = _terminal_capture  # type: ignore[method-assign]
+    pool_mgr.terminal_capture = _terminal_capture
 
     spawned: list[str] = []
     skipped: list[tuple[str, str]] = []

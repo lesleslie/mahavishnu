@@ -282,7 +282,7 @@ class MCPAdapterRegistryClient:
                 payload.get("error") or "MCP oneiric_list_adapters failed"
             )
 
-        raw_adapters = payload.get("adapters", []) if isinstance(payload, dict) else []  # type: ignore[var-annotated]
+        raw_adapters = payload.get("adapters", []) if isinstance(payload, dict) else []
         adapters = [
             AdapterEntry.from_mcp(a) for a in raw_adapters if isinstance(a, dict)
         ]

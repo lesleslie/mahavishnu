@@ -132,7 +132,7 @@ class _FakeConsumer:
 @pytest.fixture
 def fake_server_cls(monkeypatch: pytest.MonkeyPatch) -> type[_FakeServer]:
     """Patch ``integration.MahavishnuWebSocketServer`` to return ``_FakeServer``."""
-    _FakeServer.calls_started = []  # type: ignore[attr-defined]
+    _FakeServer.calls_started = []
     monkeypatch.setattr(integration, "MahavishnuWebSocketServer", _FakeServer)
     return _FakeServer
 
@@ -328,12 +328,12 @@ class TestStartWebSocketServerBasic:
             async def start(self) -> None:
                 raise RuntimeError("start failed")
 
-        _StartBoom.calls_started = []  # type: ignore[attr-defined]
-        _StartBoom.calls_stage = []  # type: ignore[attr-defined]
-        _StartBoom.calls_completed = []  # type: ignore[attr-defined]
-        _StartBoom.calls_failed = []  # type: ignore[attr-defined]
-        _StartBoom.calls_pool_status = []  # type: ignore[attr-defined]
-        _StartBoom.calls_worker_status = []  # type: ignore[attr-defined]
+        _StartBoom.calls_started = []
+        _StartBoom.calls_stage = []
+        _StartBoom.calls_completed = []
+        _StartBoom.calls_failed = []
+        _StartBoom.calls_pool_status = []
+        _StartBoom.calls_worker_status = []
         monkeypatch.setattr(integration, "MahavishnuWebSocketServer", _StartBoom)
         settings = _enabled_settings()
         result = await integration.start_websocket_server(
@@ -729,7 +729,7 @@ class TestStartWebSocketServerEventTransport:
         assert consumer.started is True
         assert result.event_consumer is consumer
         # No DLQ handler at any level
-        assert consumer.handler.dead_letter_handler is None  # type: ignore[attr-defined]
+        assert consumer.handler.dead_letter_handler is None
 
     @pytest.mark.asyncio
     async def test_event_transport_with_dlq_no_notification(
@@ -752,7 +752,7 @@ class TestStartWebSocketServerEventTransport:
         assert isinstance(consumer.handler, RetryingEventEnvelopeHandler)
         assert consumer.handler.dead_letter_handler is not None
         assert isinstance(
-            consumer.handler.handler,  # type: ignore[attr-defined]
+            consumer.handler.handler,
             _FakeServer,  # MahavishnuWebSocketServer substitute
         )
 
@@ -1012,7 +1012,7 @@ class TestBroadcastWorkflowEvent:
         """Server raising during broadcast must be swallowed and return False."""
         server = _make_fake_server()
         server.is_running = True
-        server.broadcast_workflow_started = AsyncMock(  # type: ignore[method-assign]
+        server.broadcast_workflow_started = AsyncMock(
             side_effect=RuntimeError("boom")
         )
         result = await integration.broadcast_workflow_event(
@@ -1095,7 +1095,7 @@ class TestBroadcastPoolEvent:
     async def test_broadcast_exception_returns_false(self) -> None:
         server = _make_fake_server()
         server.is_running = True
-        server.broadcast_pool_status_changed = AsyncMock(  # type: ignore[method-assign]
+        server.broadcast_pool_status_changed = AsyncMock(
             side_effect=RuntimeError("boom")
         )
         result = await integration.broadcast_pool_event(
@@ -1248,7 +1248,7 @@ class TestWebSocketBroadcasterHelper:
         """If the underlying server raises, the wrapper returns False."""
         server = _make_fake_server()
         server.is_running = True
-        server.broadcast_workflow_failed = AsyncMock(  # type: ignore[method-assign]
+        server.broadcast_workflow_failed = AsyncMock(
             side_effect=RuntimeError("kaboom")
         )
         b = integration.WebSocketBroadcaster(server)

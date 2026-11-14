@@ -68,4 +68,4 @@ def toggle_verbose(mode: Literal["on", "off", "toggle", "status"] = "toggle") ->
 
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "toggle"
-    toggle_verbose(mode)  # type: ignore[arg-type]
+    toggle_verbose(mode)

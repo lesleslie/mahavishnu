@@ -694,7 +694,7 @@ class HybridSearchEngine:
                         "Document not found for deletion", extra={"doc_id": str(doc_id)}
                     )
 
-                return deleted  # type: ignore[no-any-return]
+                return deleted
 
         except Exception as e:  # delete wrapper — broad catch re-raises typed exception with full diagnostic context (DB/embedding repos can fail independently)
             logger.exception(

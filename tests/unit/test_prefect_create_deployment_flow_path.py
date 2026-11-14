@@ -98,7 +98,7 @@ def patched_get_client(adapter: PrefectAdapter, mock_client: MagicMock) -> Magic
     cm = MagicMock()
     cm.__aenter__ = AsyncMock(return_value=mock_client)
     cm.__aexit__ = AsyncMock(return_value=None)
-    adapter._get_client_context = MagicMock(return_value=cm)  # type: ignore[method-assign]
+    adapter._get_client_context = MagicMock(return_value=cm)
     adapter._initialized = True
     return mock_client
 
@@ -201,7 +201,7 @@ class TestCreateDeploymentFlowPath:
         """flow_path=``module:func`` registers the decorated function via FlowRegistry."""
         # Spy on FlowRegistry.register_flow via a mock registry on the adapter.
         mock_registry = MagicMock()
-        adapter._flow_registry = mock_registry  # type: ignore[attr-defined]
+        adapter._flow_registry = mock_registry
 
         result = await adapter.create_deployment(
             flow_path="wfpkg.simple:wf_under_test",

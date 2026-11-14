@@ -35,7 +35,7 @@ def _all_14_fields(plan_id: str = "a" * 32) -> PlanRecord:
 class TestPlanRecordDict14FieldRoundtrip:
     @pytest.mark.asyncio
     async def test_all_14_fields_serialize_and_roundtrip(self) -> None:
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         rec = _all_14_fields()
         await store.upsert(rec)
         result = await store.get(rec.plan_id)
@@ -59,7 +59,7 @@ class TestPlanRecordDict14FieldRoundtrip:
     @pytest.mark.asyncio
     async def test_none_valued_fields_roundtrip(self) -> None:
         """PlanRecord with superseded_by=None and lifecycle_state=None."""
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         rec = PlanRecord(
             plan_id="d" * 32,
             path="docs/plans/nones.md",

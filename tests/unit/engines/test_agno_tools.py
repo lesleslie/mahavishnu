@@ -585,7 +585,7 @@ class TestCodeToolPathGuards:
     ) -> None:
         """A file outside the allowed base directories is not read."""
         with pytest.raises(AgnoError) as exc_info:
-            tool("/etc/hosts")  # type: ignore[operator]
+            tool("/etc/hosts")
 
         assert exc_info.value.error_code == ErrorCode.AGNO_TOOL_EXECUTION_ERROR
 
@@ -602,7 +602,7 @@ class TestCodeToolPathGuards:
     def test_a_traversal_path_is_refused(self, tool: object) -> None:
         """``..`` in the raw path is refused before it is resolved."""
         with pytest.raises(AgnoError) as exc_info:
-            tool("../../../../etc/hosts")  # type: ignore[operator]
+            tool("../../../../etc/hosts")
 
         assert exc_info.value.error_code == ErrorCode.AGNO_TOOL_EXECUTION_ERROR
 

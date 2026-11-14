@@ -596,7 +596,7 @@ class SessionBuddyPool(BasePool):
                 f"Collected {len(conversations)} memory items from SessionBuddyPool {self.pool_id}"
             )
 
-            return conversations  # type: ignore[no-any-return]
+            return conversations
 
         except MCPServerError as e:
             logger.error(f"Failed to collect memory from SessionBuddyPool: {e}")

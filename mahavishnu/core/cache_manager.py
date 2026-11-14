@@ -654,7 +654,7 @@ class CacheManager:
 
         key = self._make_key(namespace, identifier)
         result = await self._redis.delete(key)
-        return result > 0  # type: ignore[no-any-return]
+        return result > 0
 
 
 def aggregate_cache_health(

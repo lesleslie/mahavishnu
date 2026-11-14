@@ -174,7 +174,7 @@ class TaskMetrics:
         class NoOpMetric:
             """No-op metric that does nothing."""
 
-            def labels(self, *args: Any, **kwargs: Any) -> NoOpMetric:  # type: ignore[name-defined]
+            def labels(self, *args: Any, **kwargs: Any) -> NoOpMetric:
                 return self
 
             def inc(self, *args: Any, **kwargs: Any) -> None:

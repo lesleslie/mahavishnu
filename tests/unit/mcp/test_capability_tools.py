@@ -105,11 +105,11 @@ def test_all_registrations_returns_empty_list_when_no_workers() -> None:
     Stub ``_all_registrations`` on the module to bypass the engines import.
     """
     original = capability_tools_mod._all_registrations
-    capability_tools_mod._all_registrations = lambda s: []  # type: ignore[assignment]
+    capability_tools_mod._all_registrations = lambda s: []
     try:
         regs = capability_tools_mod._all_registrations(_settings())
     finally:
-        capability_tools_mod._all_registrations = original  # type: ignore[assignment]
+        capability_tools_mod._all_registrations = original
     assert regs == []
 
 

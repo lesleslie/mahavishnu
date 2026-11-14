@@ -54,13 +54,13 @@ def _url_router(
 def _stub_dns(ip: str = "93.184.216.34") -> Iterator[patch]:
     """Stub ``socket.getaddrinfo`` so ``validate_url()`` passes for test URLs."""
     original = _socket.getaddrinfo
-    _socket.getaddrinfo = lambda *_a, **_k: [  # type: ignore[assignment]
+    _socket.getaddrinfo = lambda *_a, **_k: [
         (None, None, None, None, (ip, 0))
     ]
     try:
         yield patch.object(_socket, "getaddrinfo", _socket.getaddrinfo)
     finally:
-        _socket.getaddrinfo = original  # type: ignore[assignment]
+        _socket.getaddrinfo = original
 
 
 @contextmanager
@@ -253,7 +253,7 @@ async def test_web_fetch_validates_every_redirect_hop(tmp_path):
         return next(addrs_by_call)
 
     original_getaddrinfo = _socket.getaddrinfo
-    _socket.getaddrinfo = fake_getaddrinfo  # type: ignore[assignment]
+    _socket.getaddrinfo = fake_getaddrinfo
 
     try:
         with _mock_http_client(
@@ -270,14 +270,14 @@ async def test_web_fetch_validates_every_redirect_hop(tmp_path):
             with pytest.raises(PermissionError, match="SSRF"):
                 await web_fetch("https://a.example/", mock_settings(tmp_path))
     finally:
-        _socket.getaddrinfo = original_getaddrinfo  # type: ignore[assignment]
+        _socket.getaddrinfo = original_getaddrinfo
 
 
 @pytest.mark.unit
 async def test_web_fetch_redirect_chain_within_max_hops(tmp_path):
     """Chain of N redirects that all resolve to public IPs must succeed."""
     original_getaddrinfo = _socket.getaddrinfo
-    _socket.getaddrinfo = lambda *_a, **_k: [  # type: ignore[assignment]
+    _socket.getaddrinfo = lambda *_a, **_k: [
         (None, None, None, None, ("93.184.216.34", 0))
     ]
     try:
@@ -305,14 +305,14 @@ async def test_web_fetch_redirect_chain_within_max_hops(tmp_path):
         assert result["status_code"] == 200
         assert "final" in result["content"]
     finally:
-        _socket.getaddrinfo = original_getaddrinfo  # type: ignore[assignment]
+        _socket.getaddrinfo = original_getaddrinfo
 
 
 @pytest.mark.unit
 async def test_web_fetch_redirect_chain_exceeds_max_hops(tmp_path):
     """Chain of N+1 redirects must fail with a clear error."""
     original_getaddrinfo = _socket.getaddrinfo
-    _socket.getaddrinfo = lambda *_a, **_k: [  # type: ignore[assignment]
+    _socket.getaddrinfo = lambda *_a, **_k: [
         (None, None, None, None, ("93.184.216.34", 0))
     ]
     try:
@@ -330,14 +330,14 @@ async def test_web_fetch_redirect_chain_exceeds_max_hops(tmp_path):
                     mock_settings(tmp_path, max_redirect_hops=3),
                 )
     finally:
-        _socket.getaddrinfo = original_getaddrinfo  # type: ignore[assignment]
+        _socket.getaddrinfo = original_getaddrinfo
 
 
 @pytest.mark.unit
 async def test_web_fetch_redirect_to_relative_url_resolves_against_current(tmp_path):
     """Relative Location header must resolve against the current URL."""
     original_getaddrinfo = _socket.getaddrinfo
-    _socket.getaddrinfo = lambda *_a, **_k: [  # type: ignore[assignment]
+    _socket.getaddrinfo = lambda *_a, **_k: [
         (None, None, None, None, ("93.184.216.34", 0))
     ]
     try:
@@ -359,14 +359,14 @@ async def test_web_fetch_redirect_to_relative_url_resolves_against_current(tmp_p
         assert result["status_code"] == 200
         assert result["final_url"] == "https://example.com/b"
     finally:
-        _socket.getaddrinfo = original_getaddrinfo  # type: ignore[assignment]
+        _socket.getaddrinfo = original_getaddrinfo
 
 
 @pytest.mark.unit
 async def test_web_fetch_redirect_to_suspicious_scheme_blocked(tmp_path):
     """Redirecting to file:// must be blocked at the redirect-validation step."""
     original_getaddrinfo = _socket.getaddrinfo
-    _socket.getaddrinfo = lambda *_a, **_k: [  # type: ignore[assignment]
+    _socket.getaddrinfo = lambda *_a, **_k: [
         (None, None, None, None, ("93.184.216.34", 0))
     ]
     try:
@@ -380,7 +380,7 @@ async def test_web_fetch_redirect_to_suspicious_scheme_blocked(tmp_path):
             with pytest.raises(ValueError, match="Only http"):
                 await web_fetch("https://a.example/", mock_settings(tmp_path))
     finally:
-        _socket.getaddrinfo = original_getaddrinfo  # type: ignore[assignment]
+        _socket.getaddrinfo = original_getaddrinfo
 
 
 # ---- batch ------------------------------------------------------------------
@@ -390,7 +390,7 @@ async def test_web_fetch_redirect_to_suspicious_scheme_blocked(tmp_path):
 async def test_web_fetch_batch_partial_failure(tmp_path):
     """One URL fails, the other succeeds — partial result, no raise."""
     original_getaddrinfo = _socket.getaddrinfo
-    _socket.getaddrinfo = lambda *_a, **_k: [  # type: ignore[assignment]
+    _socket.getaddrinfo = lambda *_a, **_k: [
         (None, None, None, None, ("93.184.216.34", 0))
     ]
     try:
@@ -411,7 +411,7 @@ async def test_web_fetch_batch_partial_failure(tmp_path):
         assert results[0]["error"] is not None
         assert results[1]["status_code"] == 200
     finally:
-        _socket.getaddrinfo = original_getaddrinfo  # type: ignore[assignment]
+        _socket.getaddrinfo = original_getaddrinfo
 
 
 @pytest.mark.unit

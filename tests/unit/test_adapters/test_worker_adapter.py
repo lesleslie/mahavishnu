@@ -233,7 +233,7 @@ async def test_health_and_lifecycle_methods() -> None:
     async def hc():
         return {"workers_active": 10, "max_concurrent": 10}
 
-    mgr.health_check = hc  # type: ignore[method-assign]
+    mgr.health_check = hc
     health2 = await adapter.get_health()
     assert health2["status"] == "degraded"
 

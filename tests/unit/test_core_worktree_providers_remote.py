@@ -291,7 +291,7 @@ def _handle(
             bucket=bucket,
             key=key or f"worktrees/{repo}/{branch}/{handle_id}.tar.zst",
             worktree_id=handle_id,
-            backend_kind=backend_kind,  # type: ignore[arg-type]
+            backend_kind=backend_kind,
         ),
         sha256=sha,
         bytes_size=size,
@@ -418,7 +418,7 @@ class TestSupportsStreaming:
         class _NoStreaming:
             metadata = _AdapterMetadata(capabilities=["stream"])
 
-        assert supports_streaming(_NoStreaming()) is False  # type: ignore[arg-type]
+        assert supports_streaming(_NoStreaming()) is False
 
     def test_returns_false_for_none_storage(self) -> None:
         assert supports_streaming(None) is False

@@ -277,7 +277,7 @@ class TestSessionNew:
         for i in range(3):
             response = server.handle_request(_request("session/new", req_id=i))
             assert _error_code(response) is None
-        assert len(server._sessions) == 3  # type: ignore[attr-defined]
+        assert len(server._sessions) == 3
 
     def test_session_new_over_rate_limit_returns_too_many(
         self, valid_bearer: str

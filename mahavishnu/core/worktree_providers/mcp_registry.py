@@ -269,7 +269,7 @@ def _row_to_handle(row: dict[str, Any]) -> WorktreeHandle:
             bucket=storage_data.get("bucket", ""),
             key=storage_data.get("key", ""),
             worktree_id=storage_data.get("worktree_id", row["handle_id"]),
-            backend_kind=backend_kind,  # type: ignore[arg-type]
+            backend_kind=backend_kind,
         )
     else:
         # Unknown backend — fail loud rather than silently downgrading

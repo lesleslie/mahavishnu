@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _make_summary(**overrides):  # type: ignore[no-untyped-def]
+def _make_summary(**overrides):
     """Build a JotSummary directly (no log needed for adversarial timing test)."""
     from mahavishnu.jot.fold import JotSummary
 
@@ -42,7 +42,7 @@ def _make_summary(**overrides):  # type: ignore[no-untyped-def]
         deleted=False,
     )
     defaults.update(overrides)
-    return JotSummary(**defaults)  # type: ignore[arg-type]
+    return JotSummary(**defaults)
 
 
 @pytest.mark.asyncio

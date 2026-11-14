@@ -94,7 +94,7 @@ def test_prompt_reaches_the_session_as_environment_data(worker_type: str) -> Non
     config = WORKER_REGISTRY[worker_type]
     worker = shell_backend.ShellWorker(
         config=config,
-        terminal_manager=_Manager(),  # type: ignore[arg-type]
+        terminal_manager=_Manager(),
     )
     asyncio.run(worker.start(prompt=HOSTILE_PROMPT))
 
@@ -141,7 +141,7 @@ def test_no_prompt_means_no_env_var() -> None:
 
     worker = shell_backend.ShellWorker(
         config=WORKER_REGISTRY["terminal-codex"],
-        terminal_manager=_Manager(),  # type: ignore[arg-type]
+        terminal_manager=_Manager(),
     )
     asyncio.run(worker.start())
 

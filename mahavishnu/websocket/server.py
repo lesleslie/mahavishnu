@@ -227,7 +227,7 @@ class MahavishnuWebSocketServer(WebSocketServer):
 
     async def handle_event_envelope(self, envelope: EventEnvelope) -> dict[str, Any]:
         """Bridge a canonical event envelope into websocket rooms."""
-        return await self._event_bridge.handle(envelope)  # type: ignore[no-any-return]
+        return await self._event_bridge.handle(envelope)
 
     async def handle(self, envelope: EventEnvelope) -> dict[str, Any]:
         """Compatibility handler for event consumers."""

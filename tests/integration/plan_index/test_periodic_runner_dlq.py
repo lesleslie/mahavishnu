@@ -21,8 +21,8 @@ from mahavishnu.plan_index.testing import FakeMCP
 class TestPeriodicRunnerDLQ:
     async def test_three_transient_failures_appear_in_dlq(self) -> None:
         # Pre-seed recent_errors with 3 prior failures
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
-        mcp = store._mcp  # type: ignore[attr-defined]
+        store = PlanIndexStore(FakeMCP())
+        mcp = store._mcp
         existing_errors = [
             {
                 "ts_ms": 1700000000000 + i,

@@ -363,7 +363,7 @@ class SessionBuddyPoller:
                 operation=f"session_buddy_poller.{tool_name}",
                 dependency="session_buddy",
             )
-            return result  # type: ignore[no-any-return]
+            return result
         except ValueError as e:
             self.logger.error(f"Invalid response from {tool_name}: {e}")
             raise

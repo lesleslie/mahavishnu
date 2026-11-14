@@ -131,7 +131,7 @@ def test_usr_bin_env_npx_is_accepted() -> None:
 
     ps = PiPoolSettings(
         npx_command=("/usr/bin/env", "npx", "@earendil-works/pi-coding-agent"),
-    )  # type: ignore[arg-type]
+    )
     assert ps.npx_command[0] == "/usr/bin/env"
     assert ps.npx_command[1] == "npx"
 
@@ -151,7 +151,7 @@ def test_usr_bin_env_requires_npx_as_second_arg() -> None:
                 "evil",
                 "@earendil-works/pi-coding-agent",
             ),
-        )  # type: ignore[arg-type]
+        )
     assert "must be 'npx'" in str(excinfo.value)
 
 
@@ -163,7 +163,7 @@ def test_shell_binary_in_argv_is_rejected() -> None:
     with pytest.raises(ConfigurationError) as excinfo:
         PiPoolSettings(
             npx_command=("npx", "sh", "-c", "evil", "@earendil-works/pi-coding-agent"),
-        )  # type: ignore[arg-type]
+        )
     assert "shell-binary" in str(excinfo.value)
 
 
@@ -175,5 +175,5 @@ def test_shell_flag_dash_c_is_rejected() -> None:
     with pytest.raises(ConfigurationError) as excinfo:
         PiPoolSettings(
             npx_command=("npx", "-y", "-c", "evil", "@earendil-works/pi-coding-agent"),
-        )  # type: ignore[arg-type]
+        )
     assert "shell-flag" in str(excinfo.value)

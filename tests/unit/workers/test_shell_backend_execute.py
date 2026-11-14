@@ -100,7 +100,7 @@ def _marker_from(instruction: str) -> str:
 
 
 async def _started(manager: _FakeManager, **cfg: Any) -> ShellWorker:
-    worker = ShellWorker(config=_config(**cfg), terminal_manager=manager)  # type: ignore[arg-type]
+    worker = ShellWorker(config=_config(**cfg), terminal_manager=manager)
     await worker.start()
     return worker
 
@@ -162,7 +162,7 @@ async def test_missing_prompt_fails_loudly() -> None:
 
 
 async def test_execute_before_start_fails() -> None:
-    worker = ShellWorker(config=_config(), terminal_manager=_FakeManager())  # type: ignore[arg-type]
+    worker = ShellWorker(config=_config(), terminal_manager=_FakeManager())
 
     result = await worker.execute({"prompt": "anything"})
 
@@ -283,10 +283,10 @@ def test_answer_excludes_the_echo_and_the_sentinel() -> None:
 
 def test_resolve_timeout_precedence() -> None:
     config = _config(default_timeout=7)
-    assert shell_backend._resolve_timeout({"timeout": 3}, config) == 3  # type: ignore[arg-type]
-    assert shell_backend._resolve_timeout({}, config) == 7  # type: ignore[arg-type]
-    assert shell_backend._resolve_timeout({"timeout": 0}, config) == 7  # type: ignore[arg-type]
-    assert shell_backend._resolve_timeout({"timeout": "bad"}, config) == 7  # type: ignore[arg-type]
+    assert shell_backend._resolve_timeout({"timeout": 3}, config) == 3
+    assert shell_backend._resolve_timeout({}, config) == 7
+    assert shell_backend._resolve_timeout({"timeout": 0}, config) == 7
+    assert shell_backend._resolve_timeout({"timeout": "bad"}, config) == 7
     assert shell_backend._resolve_timeout({}, _config(default_timeout=None)) == (
         shell_backend._DEFAULT_TIMEOUT_SECONDS
     )
@@ -365,7 +365,7 @@ async def test_one_shot_prompt_travels_with_the_launch_command() -> None:
     command limit is far below the size a prompt routinely reaches.
     """
     manager = _OneShotManager()
-    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)
 
     await worker.start(prompt="do the thing")
 
@@ -376,7 +376,7 @@ async def test_one_shot_prompt_travels_with_the_launch_command() -> None:
 
 async def test_one_shot_waits_for_the_completion_marker() -> None:
     manager = _OneShotManager()
-    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)
     await worker.start(prompt="do the thing")
 
     result = await worker.execute({"prompt": "do the thing"})
@@ -394,7 +394,7 @@ async def test_one_shot_times_out_without_the_marker() -> None:
     manager = _OneShotManager(emits_marker=False)
     worker = ShellWorker(
         config=_one_shot_config(default_timeout=1), terminal_manager=manager
-    )  # type: ignore[arg-type]
+    )
     await worker.start(prompt="do the thing")
 
     result = await worker.execute({"prompt": "do the thing"})
@@ -407,7 +407,7 @@ async def test_one_shot_times_out_without_the_marker() -> None:
 async def test_one_shot_ignores_the_prompt_in_the_task() -> None:
     """The prompt went out at launch; the task's copy is not a second prompt."""
     manager = _OneShotManager()
-    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)
     await worker.start(prompt="the real prompt")
 
     result = await worker.execute({"prompt": "a different prompt"})
@@ -462,7 +462,7 @@ async def test_the_worker_creates_a_private_stderr_file() -> None:
     import stat
 
     manager = _OneShotManager()
-    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)
     await worker.start(prompt="do the thing")
 
     path = manager.env_overrides[STDERR_PATH_ENV_VAR]
@@ -471,7 +471,7 @@ async def test_the_worker_creates_a_private_stderr_file() -> None:
 
     # A second worker gets a different file.
     other = _OneShotManager()
-    other_worker = ShellWorker(config=_one_shot_config(), terminal_manager=other)  # type: ignore[arg-type]
+    other_worker = ShellWorker(config=_one_shot_config(), terminal_manager=other)
     await other_worker.start(prompt="do the thing")
     assert other.env_overrides[STDERR_PATH_ENV_VAR] != path
 
@@ -481,7 +481,7 @@ async def test_the_stderr_file_is_removed_after_the_run() -> None:
     import os
 
     manager = _OneShotManager()
-    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)
     await worker.start(prompt="do the thing")
     path = manager.env_overrides[STDERR_PATH_ENV_VAR]
 
@@ -493,7 +493,7 @@ async def test_the_stderr_file_is_removed_after_the_run() -> None:
 async def test_the_stderr_tail_reaches_the_result() -> None:
     """The CLI's stderr is preserved in the result, not left in a file."""
     manager = _OneShotManager()
-    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)  # type: ignore[arg-type]
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)
     await worker.start(prompt="do the thing")
     path = manager.env_overrides[STDERR_PATH_ENV_VAR]
     await asyncio.to_thread(

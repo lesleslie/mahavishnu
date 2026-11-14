@@ -157,7 +157,7 @@ async def test_web_extract_returns_error_on_timeout(tmp_path):
         raise httpx.TimeoutException("timeout")
 
     with _mock_http_client(
-        {"https://e.example/": fail_handler},  # type: ignore[dict-item]
+        {"https://e.example/": fail_handler},
         target_module=_TARGET,
     ):
         result = await web_extract("https://e.example/", mock_settings(tmp_path))

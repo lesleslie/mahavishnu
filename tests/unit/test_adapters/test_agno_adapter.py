@@ -195,7 +195,7 @@ async def test_get_llm_unsupported_provider():
     # Create a config with an unsupported provider via direct manipulation
     config = AgnoLLMConfig(provider=LLMProvider.LLAMA_SERVER)
     # Manually set provider to an invalid value after construction
-    config.provider = "unsupported"  # type: ignore[assignment]
+    config.provider = "unsupported"
 
     factory = LLMProviderFactory(config)
 

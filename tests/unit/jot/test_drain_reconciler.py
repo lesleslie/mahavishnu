@@ -76,10 +76,10 @@ def _write_log(path: Path, *events: dict) -> None:
         for ev in events:
             event = JotEvent(
                 id=ev.get("id", ""),
-                op=ev["op"],  # type: ignore[arg-type]
+                op=ev["op"],
                 text=ev.get("text", ""),
                 ctx=ev.get("ctx", {}),
-                hlc=HLC(**ev["hlc"]),  # type: ignore[arg-type]
+                hlc=HLC(**ev["hlc"]),
                 created_ms=ev.get("created_ms", 0),
             )
             f.write(serialize(event))
@@ -107,7 +107,7 @@ def _make_summary(**overrides) -> RealJotSummary:
         deleted=False,
     )
     defaults.update(overrides)
-    return RealJotSummary(**defaults)  # type: ignore[arg-type]
+    return RealJotSummary(**defaults)
 
 
 # ===== Task 7: _reconcile_if_in_flight =====

@@ -87,12 +87,12 @@ class TestTerminalAdapterAbstract:
     def test_cannot_instantiate_abstract_class(self):
         """Direct instantiation should raise TypeError because the class is abstract."""
         with pytest.raises(TypeError):
-            TerminalAdapter()  # type: ignore[abstract]
+            TerminalAdapter()
 
     def test_incomplete_subclass_cannot_be_instantiated(self):
         """A subclass missing an abstract method should still raise TypeError."""
         with pytest.raises(TypeError):
-            _MissingLaunchAdapter()  # type: ignore[abstract]
+            _MissingLaunchAdapter()
 
     def test_complete_subclass_can_be_instantiated(self):
         """A fully-implemented subclass should be instantiable."""
@@ -127,7 +127,7 @@ class TestConcreteAdapterMethods:
     def test_launch_session_returns_session_id(self):
         adapter = _CompleteAdapter()
         # Replace the async method with an AsyncMock so we can call it without awaits
-        adapter.launch_session = AsyncMock(return_value="abc123")  # type: ignore[method-assign]
+        adapter.launch_session = AsyncMock(return_value="abc123")
         import asyncio
 
         result = asyncio.run(adapter.launch_session("qwen", 100, 30))
@@ -136,7 +136,7 @@ class TestConcreteAdapterMethods:
 
     def test_send_command_runs(self):
         adapter = _CompleteAdapter()
-        adapter.send_command = AsyncMock()  # type: ignore[method-assign]
+        adapter.send_command = AsyncMock()
         import asyncio
 
         asyncio.run(adapter.send_command("sid", "ls"))
@@ -144,7 +144,7 @@ class TestConcreteAdapterMethods:
 
     def test_capture_output_runs(self):
         adapter = _CompleteAdapter()
-        adapter.capture_output = AsyncMock(return_value="hello")  # type: ignore[method-assign]
+        adapter.capture_output = AsyncMock(return_value="hello")
         import asyncio
 
         result = asyncio.run(adapter.capture_output("sid", lines=10))
@@ -153,7 +153,7 @@ class TestConcreteAdapterMethods:
 
     def test_close_session_runs(self):
         adapter = _CompleteAdapter()
-        adapter.close_session = AsyncMock()  # type: ignore[method-assign]
+        adapter.close_session = AsyncMock()
         import asyncio
 
         asyncio.run(adapter.close_session("sid"))
@@ -161,7 +161,7 @@ class TestConcreteAdapterMethods:
 
     def test_list_sessions_returns_list(self):
         adapter = _CompleteAdapter()
-        adapter.list_sessions = AsyncMock(return_value=[{"id": "sid"}])  # type: ignore[method-assign]
+        adapter.list_sessions = AsyncMock(return_value=[{"id": "sid"}])
         import asyncio
 
         result = asyncio.run(adapter.list_sessions())

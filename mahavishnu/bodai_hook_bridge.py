@@ -703,7 +703,7 @@ class _HealthMonitorLike(Protocol):
     def get_feed(self, name: str) -> Any: ...
 
 
-_health_monitor: _HealthMonitorLike | None = None  # type: ignore[assignment]
+_health_monitor: _HealthMonitorLike | None = None
 
 
 __all__ = [

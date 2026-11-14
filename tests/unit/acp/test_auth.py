@@ -46,9 +46,9 @@ class TestVerifyToken:
         assert verify_token("short", "a-much-longer-token-1234") is False
 
     def test_non_string_inputs_rejected(self) -> None:
-        assert verify_token(None, "x") is False  # type: ignore[arg-type]
-        assert verify_token(42, "x") is False  # type: ignore[arg-type]
-        assert verify_token("x", None) is False  # type: ignore[arg-type]
+        assert verify_token(None, "x") is False
+        assert verify_token(42, "x") is False
+        assert verify_token("x", None) is False
 
     def test_empty_strings_do_not_verify(self) -> None:
         """Both-empty is False (no token provided) — fail-closed."""

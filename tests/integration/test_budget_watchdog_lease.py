@@ -285,7 +285,7 @@ class TestMCPFailOpen:
                 raise RuntimeError("simulated store down")
             return await original_get(key)
 
-        store.get = flaky_get  # type: ignore[method-assign]
+        store.get = flaky_get
 
         metrics = WatchdogMetrics()
         result = await run_watchdog_cycle(
@@ -355,7 +355,7 @@ class TestMCPFailOpen:
             outage_calls["n"] += 1
             raise RuntimeError("simulated mcp outage")
 
-        store.try_acquire_lease = always_failing_acquire  # type: ignore[method-assign]
+        store.try_acquire_lease = always_failing_acquire
 
         # Patch the sleep to yield once then signal stop — keeps the test
         # deterministic without relying on real asyncio.sleep timing.

@@ -135,7 +135,7 @@ async def test_redis_transport_rejects_unknown_wire_format() -> None:
     )
 
     with pytest.raises(EventEnvelopeConversionError):
-        transport = RedisEventTransport(_FakeAdapter(), wire_format="garbage")  # type: ignore[arg-type]
+        transport = RedisEventTransport(_FakeAdapter(), wire_format="garbage")
         await transport.publish(envelope)
 
 

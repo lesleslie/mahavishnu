@@ -586,9 +586,9 @@ class TestHandoffEnvelopes:
         error instead of a silently ignored field.
         """
         with pytest.raises(ValueError):
-            HandoffParams(pool_selector="affinity")  # type: ignore[call-arg]
+            HandoffParams(pool_selector="affinity")
         with pytest.raises(ValueError):
-            HandoffParams(pool_name="primary")  # type: ignore[call-arg]
+            HandoffParams(pool_name="primary")
 
     def test_handoff_result_rejects_unknown_field(self) -> None:
         with pytest.raises(ValueError):

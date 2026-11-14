@@ -62,7 +62,7 @@ try:
     from mahavishnu.core.errors import RateLimitError as _RateLimitError
 except ImportError:  # pragma: no cover
 
-    class _RateLimitError(Exception):  # type: ignore[no-redef]
+    class _RateLimitError(Exception):
         """Fallback stub when mahavishnu.core.errors is not importable."""
 
 

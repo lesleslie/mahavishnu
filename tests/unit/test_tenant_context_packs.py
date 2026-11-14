@@ -54,7 +54,7 @@ class TestTenantContextPack:
             published_by="system:cli",
         )
         with pytest.raises(Exception):  # FrozenInstanceError subclass
-            pack.tenant_id = "other"  # type: ignore[misc]
+            pack.tenant_id = "other"
 
     def test_published_at_defaults_to_utc_now(self) -> None:
         pack = TenantContextPack(

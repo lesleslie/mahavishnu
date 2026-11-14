@@ -22,7 +22,7 @@ class ProductionReadinessChecker:
 
     def __init__(self, app: MahavishnuApp):
         self.app = app
-        self.results = {}  # type: ignore[var-annotated]
+        self.results = {}
         self.checks_passed = 0
         self.total_checks = 0
 
@@ -362,7 +362,7 @@ class IntegrationTestSuite:
 
     def __init__(self, app: MahavishnuApp):
         self.app = app
-        self.test_results = []  # type: ignore[var-annotated]
+        self.test_results = []
 
     async def run_all_tests(self) -> dict[str, Any]:
         """Run all integration tests."""
@@ -414,7 +414,7 @@ class IntegrationTestSuite:
         logger.info(
             f"\n📊 Test Score: {score}% ({passed_tests}/{total_tests} tests passed)"
         )
-        logger.info(f"Status: {summary['summary']['status']}")  # type: ignore[invalid-index]
+        logger.info(f"Status: {summary['summary']['status']}")
 
         return summary
 
@@ -585,7 +585,7 @@ class PerformanceBenchmark:
 
     def __init__(self, app: MahavishnuApp):
         self.app = app
-        self.benchmarks = {}  # type: ignore[var-annotated]
+        self.benchmarks = {}
 
     async def run_benchmarks(self) -> dict[str, Any]:
         """Run performance benchmarks."""

@@ -68,13 +68,13 @@ def _call_tool(
         raise RuntimeError(f"JSON-RPC error: {body['error']}")
     result = body.get("result", {})
     if isinstance(result, dict) and "structuredContent" in result:
-        return result["structuredContent"]  # type: ignore[return-value]
+        return result["structuredContent"]
     if isinstance(result, dict) and "content" in result and result["content"]:
         first = result["content"][0]
         if isinstance(first, dict) and "text" in first:
             import json as _json
 
-            return _json.loads(first["text"])  # type: ignore[return-value]
+            return _json.loads(first["text"])
     if isinstance(result, dict):
         return result
     raise RuntimeError(f"unexpected JSON-RPC result shape: {result!r}")

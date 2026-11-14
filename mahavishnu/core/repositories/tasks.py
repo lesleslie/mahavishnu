@@ -552,7 +552,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
             param_idx += 1
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        params.extend([filters.limit, filters.offset])  # type: ignore[list-item]
+        params.extend([filters.limit, filters.offset])
 
         query = f"""
             SELECT * FROM {self._table}
@@ -689,7 +689,7 @@ class TaskRepository(BaseRepository[TaskCreate, TaskRead, TaskUpdate]):
         try:
             async with self.transaction() as conn:
                 result = await conn.execute(query, task_id)
-                return result == "DELETE 1"  # type: ignore[no-any-return]
+                return result == "DELETE 1"
 
         except Exception as e:  # DB driver (asyncpg) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             raise self._handle_error(

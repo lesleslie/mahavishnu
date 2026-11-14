@@ -718,7 +718,7 @@ class TestPollingLoop:
                 raise RuntimeError("transient")
             poller._running = False  # stop the loop after 3 iterations
 
-        poller.poll_once = fake_poll_once  # type: ignore[method-assign]
+        poller.poll_once = fake_poll_once
 
         with patch(
             "mahavishnu.integrations.session_buddy_poller.asyncio.sleep",
@@ -744,7 +744,7 @@ class TestPollingLoop:
         async def fake_poll_once() -> None:
             raise asyncio.CancelledError
 
-        poller.poll_once = fake_poll_once  # type: ignore[method-assign]
+        poller.poll_once = fake_poll_once
 
         errors_before = poller._errors
         with patch(

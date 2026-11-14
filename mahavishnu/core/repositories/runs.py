@@ -436,7 +436,7 @@ class TaskRunRepository(BaseRepository[TaskRunCreate, TaskRunRead, TaskRunUpdate
             param_idx += 1
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        params.extend([filters.limit, filters.offset])  # type: ignore[list-item]
+        params.extend([filters.limit, filters.offset])
 
         query = f"""
             SELECT * FROM {self._table}

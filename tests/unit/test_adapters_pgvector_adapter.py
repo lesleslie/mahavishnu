@@ -62,7 +62,7 @@ def adapter_with_mock_conn(
     async def _fake_connection() -> Any:
         yield mock_conn
 
-    adapter._connection = _fake_connection  # type: ignore[assignment]
+    adapter._connection = _fake_connection
     return adapter
 
 
@@ -444,7 +444,7 @@ class TestPublicAPI:
         assert mock_conn.execute.await_count >= 3
 
     async def test_create_collection_ivfflat(self, settings: PgvectorSettings):
-        settings.index_type = IndexType.IVFFLAT  # type: ignore[misc]
+        settings.index_type = IndexType.IVFFLAT
         adapter = PgvectorAdapter(settings)
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock(return_value=None)
@@ -453,7 +453,7 @@ class TestPublicAPI:
         async def fake_conn() -> Any:
             yield mock_conn
 
-        adapter._connection = fake_conn  # type: ignore[assignment]
+        adapter._connection = fake_conn
         ok = await adapter.create_collection("test", dimension=128)
         assert ok is True
 
@@ -499,16 +499,16 @@ class TestInit:
         self, adapter_with_mock_conn: PgvectorAdapter, mock_conn: AsyncMock
     ):
         # patch _ensure_pool to a no-op so init doesn't try to actually connect
-        adapter_with_mock_conn._ensure_pool = AsyncMock(return_value=None)  # type: ignore[assignment]
+        adapter_with_mock_conn._ensure_pool = AsyncMock(return_value=None)
         await adapter_with_mock_conn.init()
         # _ensure_extension calls conn.execute("CREATE EXTENSION ...")
         executed_sql = [c.args[0] for c in mock_conn.execute.await_args_list]
         assert any("CREATE EXTENSION" in s for s in executed_sql)
 
     async def test_init_skips_extension_if_disabled(self, settings: PgvectorSettings):
-        settings.ensure_extension = False  # type: ignore[misc]
+        settings.ensure_extension = False
         adapter = PgvectorAdapter(settings)
-        adapter._ensure_pool = AsyncMock(return_value=None)  # type: ignore[assignment]
+        adapter._ensure_pool = AsyncMock(return_value=None)
 
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock(return_value=None)
@@ -517,7 +517,7 @@ class TestInit:
         async def fake_conn() -> Any:
             yield mock_conn
 
-        adapter._connection = fake_conn  # type: ignore[assignment]
+        adapter._connection = fake_conn
         await adapter.init()
         # Should NOT have called execute since extension is disabled and pool
         # is mocked

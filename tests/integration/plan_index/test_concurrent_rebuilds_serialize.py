@@ -53,7 +53,7 @@ class YieldingFakeMCP(FakeMCP):
 class TestConcurrentRebuildsSerialize:
     async def test_two_concurrent_invocations_one_proceeds_one_aborts(self) -> None:
         mcp = YieldingFakeMCP()
-        store = PlanIndexStore(mcp)  # type: ignore[arg-type]
+        store = PlanIndexStore(mcp)
         rebuilder = PlanIndexRebuilder()
 
         # No pre-existing lock: both coroutines start from an unheld lock
@@ -80,7 +80,7 @@ class TestConcurrentRebuildsSerialize:
     async def test_a_live_lock_blocks_every_concurrent_invocation(self) -> None:
         """A fresh, non-stale holder aborts *both* racing cycles."""
         mcp = YieldingFakeMCP()
-        store = PlanIndexStore(mcp)  # type: ignore[arg-type]
+        store = PlanIndexStore(mcp)
         rebuilder = PlanIndexRebuilder()
 
         fresh_ms = int(time.time() * 1000)

@@ -50,13 +50,13 @@ try:
     # Per-module Tracer instance. Lazy via ``trace.get_tracer(__name__)``
     # — TracerProvider must be initialized by the app before any span is
     # emitted, but ``get_tracer`` returns a no-op Tracer until then.
-    _tracer: _Tracer = _otel_trace.get_tracer(__name__)  # type: ignore[assignment]
+    _tracer: _Tracer = _otel_trace.get_tracer(__name__)
     # Per-module Meter for runtime observability counters (Phase 4 REQ).
     # The counter is created lazily — the meter itself returns a no-op
     # until MeterProvider is initialized, but creating the counter at
     # module import lets us cache the handle for hot-path use.
     _merge_meter = _otel_metrics.get_meter(__name__)
-    _merge_fallback_counter: _Counter = _merge_meter.create_counter(  # type: ignore[assignment]
+    _merge_fallback_counter: _Counter = _merge_meter.create_counter(
         name="merge.fallback_total",
         description="Increments when default-resolution falls back from SEMANTIC to LINE",
         unit="1",
@@ -71,7 +71,7 @@ try:
     # regardless of outcome; the ``outcome`` label disambiguates
     # success/conflict/fatal_exit/mergiraf_unavailable buckets so a p99
     # query can filter to clean merges specifically.
-    _merge_semantic_duration_ms = _merge_meter.create_histogram(  # type: ignore[assignment]
+    _merge_semantic_duration_ms = _merge_meter.create_histogram(
         name="merge.semantic.duration_ms",
         description="Per-call latency of merge_three_way and _merge_three_way_sync_internal",
         unit="ms",
@@ -116,7 +116,7 @@ except ImportError:  # pragma: no cover — exercised only when opentelemetry ab
         ) -> None:
             pass
 
-    _merge_semantic_duration_ms = _NoopHistogram()  # type: ignore[assignment,misc]
+    _merge_semantic_duration_ms = _NoopHistogram()
 
 logger = logging.getLogger(__name__)
 

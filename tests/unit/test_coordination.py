@@ -910,7 +910,7 @@ class TestCoordinationManagerNormalization:
         from mahavishnu.core.coordination.manager import _run_command_safe
 
         class _EmptyCommand(str):
-            def split(self, sep=None, maxsplit=-1):  # type: ignore[override]
+            def split(self, sep=None, maxsplit=-1):
                 if sep == "|":
                     return []
                 return super().split(sep, maxsplit)

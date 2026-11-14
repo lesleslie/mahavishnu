@@ -88,7 +88,7 @@ class IVFFlatConfig:
             raise ValueError(f"IVFFlat lists must be >= 1, got {self.lists}")
 
 
-class PgvectorSettings(pydantic.BaseModel):  # type: ignore[misc]
+class PgvectorSettings(pydantic.BaseModel):
     """Settings for Mahavishnu's pgvector adapter.
 
     This extends Oneiric's settings with HNSW support.

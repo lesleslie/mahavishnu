@@ -188,7 +188,7 @@ class CleanupResult:
 def _import_duckdb() -> object:
     """Import duckdb with a clear error message if it's not installed."""
     try:
-        import duckdb  # type: ignore[import-untyped]
+        import duckdb
 
         return duckdb
     except ImportError as e:
@@ -394,7 +394,7 @@ def _http_get_json(parsed_url, timeout: float) -> dict | None:
         return None
     finally:
         try:
-            conn.close()  # type: ignore[possibly-undefined]
+            conn.close()
         except OSError, NameError, UnboundLocalError:
             pass
 
@@ -552,7 +552,7 @@ def force_release_lock(
     holder_is_live = not initial.stale
     if holder_is_live:
         if not shutdown_session_buddy(
-            initial.holder_pid,  # type: ignore[arg-type]
+            initial.holder_pid,
             timeout=shutdown_timeout,
             log=log,
         ):

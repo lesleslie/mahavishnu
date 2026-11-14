@@ -59,7 +59,7 @@ def test_monitor_app_constructor_accepts_data_provider() -> None:
     from mahavishnu.tui.monitor_app import MonitorApp
 
     app = MonitorApp(data_provider=_DefaultMonitorDataProvider())
-    assert app._data_provider is not None  # type: ignore[attr-defined]
+    assert app._data_provider is not None
 
 
 @pytest.mark.unit
@@ -100,10 +100,10 @@ async def test_monitor_app_action_refresh_with_mock_provider() -> None:
 
     assert provider.get_pools.await_count == 1
     assert provider.get_workers.await_count == 1
-    assert app._pool_data == [  # type: ignore[attr-defined]
+    assert app._pool_data == [
         {"name": "p1", "type": "t", "worker_count": 3, "healthy": True}
     ]
-    assert app._worker_data == [  # type: ignore[attr-defined]
+    assert app._worker_data == [
         {"id": "w1", "type": "t", "status": "running"}
     ]
 

@@ -93,8 +93,8 @@ def patch_repo_connection(repo, conn: _FakeConn) -> None:
     async def fake_transaction():
         yield conn
 
-    repo.connection = fake_connection  # type: ignore[assignment]
-    repo.transaction = fake_transaction  # type: ignore[assignment]
+    repo.connection = fake_connection
+    repo.transaction = fake_transaction
 
 
 @pytest.fixture

@@ -58,7 +58,7 @@ def _fake_records() -> list[PlanRecord]:
 class TestRunRebuildCycleRealScan:
     @pytest.mark.asyncio
     async def test_cycles_total_increments_even_on_partial_failure(self) -> None:
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         rebuilder = PlanIndexRebuilder()
         with patch(
             "mahavishnu.plan_index.cron_core.discover_records",
@@ -79,7 +79,7 @@ class TestRunRebuildCycleRealScan:
 
     @pytest.mark.asyncio
     async def test_successful_cycles_only_increments_on_full_success(self) -> None:
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         rebuilder = PlanIndexRebuilder()
         with patch(
             "mahavishnu.plan_index.cron_core.discover_records",
@@ -92,14 +92,14 @@ class TestRunRebuildCycleRealScan:
             )
         assert outcome.errors == 0
         assert outcome.successful_cycles_total == 1
-        entities_raw = await store._mcp.get("plan_index/meta/entities_count")  # type: ignore[attr-defined]
+        entities_raw = await store._mcp.get("plan_index/meta/entities_count")
         assert int(entities_raw) == outcome.entities_count
 
     @pytest.mark.asyncio
     async def test_recent_errors_bounded_at_20(self) -> None:
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         rebuilder = PlanIndexRebuilder()
-        mcp = store._mcp  # type: ignore[attr-defined]
+        mcp = store._mcp
         seed = [
             {"ts_ms": i, "op": "upsert", "err": "old", "ctx": {}} for i in range(25)
         ]

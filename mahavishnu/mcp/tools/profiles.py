@@ -206,16 +206,16 @@ def get_active_profile(
 # set in `FastMCPServer.__init__` (see ``_mhv_server`` helper).
 REGISTRATION_MAP: dict[str, Callable] = {
     # Always-on groups (registered at every profile via mandatory_tools).
-    "_register_health_tools": lambda s: _register_health_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_health_tools": lambda s: _register_health_tools(s._mhv_server),
     # Phase 2 of mcp /health enrichment (plan §5 Phase 2). Sibling of
     # _register_health_tools; always-on so the monthly operator
     # cadence can audit from any profile.
     "_register_audit_health_tools": lambda s: _register_audit_health_tools(
         s._mhv_server
-    ),  # type: ignore[attr-defined]
-    "_register_ecosystem_tools": lambda s: _register_ecosystem_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_workflow_tools": lambda s: _register_workflow_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_webhook_tools": lambda s: _register_webhook_tools(s._mhv_server),  # type: ignore[attr-defined]
+    ),
+    "_register_ecosystem_tools": lambda s: _register_ecosystem_tools(s._mhv_server),
+    "_register_workflow_tools": lambda s: _register_workflow_tools(s._mhv_server),
+    "_register_webhook_tools": lambda s: _register_webhook_tools(s._mhv_server),
     # Phase 3 of MCP MCP retirement (2026-09-16 plan). Durable ecosystem
     # service / event records — see ``_register_ecosystem_state_tools`` in
     # ``bootstrap.py``. Always-on alongside workflow + webhook because
@@ -223,21 +223,21 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # surface at any tool profile.
     "_register_ecosystem_state_tools": lambda s: _register_ecosystem_state_tools(
         s._mhv_server
-    ),  # type: ignore[attr-defined]
+    ),
     # C1 follow-up (2026-10-04) — self-hosted KV for the plan_index
     # periodic-rebuild lock store. See ``_register_kv_tools`` in
     # ``bootstrap.py`` and ``mahavishnu.mcp.tools.kv_tools``. Always-on
     # because the plan_index cron runs at every profile.
-    "_register_kv_tools": lambda s: _register_kv_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_kv_tools": lambda s: _register_kv_tools(s._mhv_server),
     # Phase 1.5 — skills_signer (per plan §10.3.1). The actual signer
     # init runs in start() because mahavishnu has no async lifespan.
     "_register_skills_signer_tools": lambda s: _register_skills_signer_tools(
         s._mhv_server
-    ),  # type: ignore[attr-defined]
+    ),
     # Phase 3 — agents share the same signer feed state as Phase 1
     # skills_signer (per plan §11 B-6). Always-on for parity with the
     # skills_signer mandatory group.
-    "_register_agents_tools": lambda s: _register_agents_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_agents_tools": lambda s: _register_agents_tools(s._mhv_server),
     # Phase 3 task #5 (H-3) — specialist dispatcher. The dispatcher
     # is the entry point by which workflows resolve category-named
     # specialists (mcp-specialist, crackerjack-specialist, etc.);
@@ -245,73 +245,73 @@ REGISTRATION_MAP: dict[str, Callable] = {
     # Always-on for parity with the discovery surface.
     "_register_dispatch_specialist_tools": lambda s: (
         _register_dispatch_specialist_tools(s._mhv_server)
-    ),  # type: ignore[attr-defined]
+    ),
     # STANDARD-tier groups.
-    "_register_terminal_tools": lambda s: _register_terminal_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_pool_tools": lambda s: _register_pool_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_worker_tools": lambda s: _register_worker_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_terminal_tools": lambda s: _register_terminal_tools(s._mhv_server),
+    "_register_pool_tools": lambda s: _register_pool_tools(s._mhv_server),
+    "_register_worker_tools": lambda s: _register_worker_tools(s._mhv_server),
     "_register_worker_contract_tools": lambda s: _register_worker_contract_tools(
         s._mhv_server
-    ),  # type: ignore[attr-defined]
+    ),
     "_register_repository_messaging_tools": lambda s: (
         _register_repository_messaging_tools(s._mhv_server)
-    ),  # type: ignore[attr-defined]
+    ),
     "_register_git_analytics_tools": lambda s: _register_git_analytics_tools(
         s._mhv_server
-    ),  # type: ignore[attr-defined]
+    ),
     "_register_session_buddy_tools": lambda s: _register_session_buddy_tools(
         s._mhv_server
-    ),  # type: ignore[attr-defined]
+    ),
     # Ecosystem publish-URL tool — see STANDARD_REGISTRATIONS rationale.
     "_register_ecosystem_publish_url_tool": lambda s: (
         _register_ecosystem_publish_url_tool(s._mhv_server)
-    ),  # type: ignore[attr-defined]
-    "_register_openhands_tools": lambda s: _register_openhands_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_primitive_tools": lambda s: _register_primitive_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_capability_tools": lambda s: _register_capability_tools(s._mhv_server),  # type: ignore[attr-defined]
+    ),
+    "_register_openhands_tools": lambda s: _register_openhands_tools(s._mhv_server),
+    "_register_primitive_tools": lambda s: _register_primitive_tools(s._mhv_server),
+    "_register_capability_tools": lambda s: _register_capability_tools(s._mhv_server),
     # Extracted from pool_tools.py at Stage 3b unblocker. Registrar
     # resolves ``budget_store`` from ``server.app`` inside bootstrap.py
     # (consistent with how ``_register_pool_tools`` resolves its
     # ``pool_manager``); the lambda trampoline stays simple.
-    "_register_budget_tools": lambda s: _register_budget_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_budget_tools": lambda s: _register_budget_tools(s._mhv_server),
     # Model evaluation — the eval tool group. The registrar checks
     # EvalSettings.enabled and registers nothing when eval is off, so
     # this entry is safe at every profile.
-    "_register_eval_tools": lambda s: _register_eval_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_eval_tools": lambda s: _register_eval_tools(s._mhv_server),
     # FULL-tier groups.
-    "_register_otel_tools": lambda s: _register_otel_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_otel_tools": lambda s: _register_otel_tools(s._mhv_server),
     "_register_self_improvement_tools": lambda s: _register_self_improvement_tools(
         s._mhv_server
-    ),  # type: ignore[attr-defined]
-    "_register_clone_tools": lambda s: _register_clone_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_goal_team_tools": lambda s: _register_goal_team_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_treesitter_tools": lambda s: _register_treesitter_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_pycharm_tools": lambda s: _register_pycharm_tools(s._mhv_server),  # type: ignore[attr-defined]
-    "_register_search_tools": lambda s: _register_search_tools(s._mhv_server),  # type: ignore[attr-defined]
+    ),
+    "_register_clone_tools": lambda s: _register_clone_tools(s._mhv_server),
+    "_register_goal_team_tools": lambda s: _register_goal_team_tools(s._mhv_server),
+    "_register_treesitter_tools": lambda s: _register_treesitter_tools(s._mhv_server),
+    "_register_pycharm_tools": lambda s: _register_pycharm_tools(s._mhv_server),
+    "_register_search_tools": lambda s: _register_search_tools(s._mhv_server),
     # Plan index tools (Task 12). ``_register_plan_tools`` resolves the
     # MCP client from ``MahavishnuApp`` and registers the five
     # ``plan_*`` tools in one call. The store is constructed fresh per
     # registration, matching the per-tool closure pattern.
-    "_register_plan_tools": lambda s: _register_plan_tools(s._mhv_server),  # type: ignore[attr-defined]
+    "_register_plan_tools": lambda s: _register_plan_tools(s._mhv_server),
     # Jot inbox tools (Task 13 + sub-plan 3 Drain). Each key delegates to
     # the same ``_register_jot_tools`` callable (imported from
     # .jot_tools) which is idempotent — the first call wraps all 14
     # tools against the server, subsequent calls re-bind the wrappers
     # harmlessly.
-    "mahavishnu_jot_list": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_show": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_add": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_edit": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_done": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_reopen": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_vitals": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_search": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_drain": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_dispatch": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_defer": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_delete": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_retry": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
-    "mahavishnu_jot_resurface": lambda s: _register_jot_tools(s),  # type: ignore[arg-type]
+    "mahavishnu_jot_list": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_show": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_add": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_edit": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_done": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_reopen": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_vitals": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_search": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_drain": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_dispatch": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_defer": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_delete": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_retry": lambda s: _register_jot_tools(s),
+    "mahavishnu_jot_resurface": lambda s: _register_jot_tools(s),
 }
 
 

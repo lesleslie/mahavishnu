@@ -26,7 +26,7 @@ class TestWorktreeStorageSettingsNewShape:
 
     def test_rejects_extra_fields(self) -> None:
         with pytest.raises(ValueError, match="Extra inputs are not permitted"):
-            WorktreeStorageSettings(unknown_field="nope")  # type: ignore[call-arg]
+            WorktreeStorageSettings(unknown_field="nope")
 
     def test_max_concurrent_bounds(self) -> None:
         with pytest.raises(ValueError, match="max_concurrent"):
@@ -65,6 +65,6 @@ def test_worktree_cache_settings_env_override(monkeypatch: object) -> None:
     the field name maps correctly.
     """
 
-    monkeypatch.setenv("MAHAVISHNU_WORKTREE_CACHE__L2_HOST", "redis-test.example.com")  # type: ignore[attr-defined]
+    monkeypatch.setenv("MAHAVISHNU_WORKTREE_CACHE__L2_HOST", "redis-test.example.com")
     settings = MahavishnuSettings()
     assert settings.worktree_cache.l2_host == "redis-test.example.com"

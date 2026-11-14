@@ -71,7 +71,7 @@ def metric_reader(_otel_test_provider: MeterProvider) -> Iterator[InMemoryMetric
     case any other module already triggered lazy resolution against a
     different provider).
     """
-    reader = _otel_test_provider._metric_readers[0]  # type: ignore[attr-defined]
+    reader = _otel_test_provider._metric_readers[0]
     pi_observability._reset_instrument_cache()
     yield reader
 

@@ -130,7 +130,7 @@ async def test_get_capability_result_fails_loudly_when_mcp_is_none() -> None:
     ``status='pending'`` that hides a broken backend.
     """
     server = FastMCP("test-none-mcp")
-    register_get_capability_result(server, mcp=None)  # type: ignore[arg-type]
+    register_get_capability_result(server, mcp=None)
 
     tools = await server.list_tools()
     tool = next(t for t in tools if t.name == "mahavishnu_get_capability_result")

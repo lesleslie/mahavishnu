@@ -534,7 +534,7 @@ async def test_runtime_fallback_increments_counter_and_sets_degraded_since() -> 
     import mahavishnu.core.health as health_module
 
     # Reset the module-level state for an isolated probe.
-    health_module._DEGRADED_SINCE = None  # type: ignore[attr-defined]
+    health_module._DEGRADED_SINCE = None
 
     from mahavishnu.settle.merge import _resolve_default_strategy
 
@@ -549,7 +549,7 @@ async def test_runtime_fallback_increments_counter_and_sets_degraded_since() -> 
     # The OTel counter is incremented — exact metric value depends on
     # the OTel SDK state, but the call must not raise.
     # The degraded_since stamp is set on the health module.
-    assert health_module._DEGRADED_SINCE is not None  # type: ignore[attr-defined]
+    assert health_module._DEGRADED_SINCE is not None
 
 
 async def test_runtime_fallback_sets_driver_warning_field() -> None:
@@ -693,7 +693,7 @@ def test_merge_driver_runtime_config_is_frozen_dataclass() -> None:
     """
     cfg = MergeDriverRuntimeConfig(default=MergeStrategy.LINE, required=False)
     with pytest.raises((AttributeError, Exception)) as excinfo:
-        cfg.default = MergeStrategy.SEMANTIC  # type: ignore[misc]
+        cfg.default = MergeStrategy.SEMANTIC
     # Frozen dataclasses raise FrozenInstanceError (a subclass of
     # AttributeError). The bare ``Exception`` arm catches the broader
     # typeshed signature in older Python builds.

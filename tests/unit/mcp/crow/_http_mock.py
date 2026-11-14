@@ -51,13 +51,13 @@ def _url_router(
 def _stub_dns(ip: str = "93.184.216.34") -> Iterator[Any]:
     """Stub ``socket.getaddrinfo`` so ``validate_url()`` passes for test URLs."""
     original = _socket.getaddrinfo
-    _socket.getaddrinfo = lambda *_a, **_k: [  # type: ignore[assignment]
+    _socket.getaddrinfo = lambda *_a, **_k: [
         (None, None, None, None, (ip, 0))
     ]
     try:
         yield patch.object(_socket, "getaddrinfo", _socket.getaddrinfo)
     finally:
-        _socket.getaddrinfo = original  # type: ignore[assignment]
+        _socket.getaddrinfo = original
 
 
 @contextmanager

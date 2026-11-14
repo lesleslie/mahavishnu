@@ -137,7 +137,7 @@ class TestSweepRequestConstruction:
 
     def test_tag_required(self):
         with pytest.raises(ValidationError):
-            OpenClawSweepRequest()  # type: ignore[call-arg]
+            OpenClawSweepRequest()
 
     @pytest.mark.parametrize(
         "bad_tag",
@@ -334,7 +334,7 @@ class TestWebhookResponseEnvelope:
         assert isinstance(b.accepted_at, datetime)
 
     def test_status_accepts_string_or_enum(self):
-        resp = WebhookResponse(status="pending")  # type: ignore[arg-type]
+        resp = WebhookResponse(status="pending")
         assert resp.status == WebhookStatus.PENDING
 
 
@@ -348,7 +348,7 @@ class TestWebhookErrorResponseEnvelope:
 
     def test_message_is_required(self):
         with pytest.raises(ValidationError):
-            WebhookErrorResponse()  # type: ignore[call-arg]
+            WebhookErrorResponse()
 
     def test_default_values(self):
         err = WebhookErrorResponse(message="something failed")

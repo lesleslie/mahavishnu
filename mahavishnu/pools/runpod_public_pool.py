@@ -50,7 +50,7 @@ else:
     try:
         import httpx2 as httpx  # httpx2 is the bodai-standard alias per cloud_worker.py
     except ImportError:
-        httpx = None  # type: ignore[misc]
+        httpx = None
 
 # Bind HTTPStatusError to a module-level name so the ``except``
 # clause doesn't re-resolve through a test-patched ``httpx`` (that
@@ -58,9 +58,9 @@ else:
 # Python's ``except`` rejects). Real class on real httpx; a safe
 # ``Exception`` fallback when httpx isn't importable.
 try:
-    HTTPStatusError = httpx.HTTPStatusError  # type: ignore[union-attr]
+    HTTPStatusError = httpx.HTTPStatusError
 except AttributeError, TypeError:
-    HTTPStatusError = Exception  # type: ignore[misc,assignment]
+    HTTPStatusError = Exception
 
 DEFAULT_RUNPOD_BASE_URL = "https://api.runpod.ai"
 

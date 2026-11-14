@@ -133,7 +133,7 @@ register_adapter("tmux", _build_tmux_adapter)
 try:
     from .crow import CrowTerminalAdapter
 
-    CrowTerminalAdapter: type[TerminalAdapter] | None = CrowTerminalAdapter  # type: ignore[misc,assignment]  # noqa: PLW0127 — self-bind narrows the import's type to type[TerminalAdapter] | None
+    CrowTerminalAdapter: type[TerminalAdapter] | None = CrowTerminalAdapter  # noqa: PLW0127 — self-bind narrows the import's type to type[TerminalAdapter] | None
 
     def _build_crow_adapter(
         config: Any = None,
@@ -184,7 +184,7 @@ try:
 
     register_adapter("crow", _build_crow_adapter)
 except ImportError:
-    CrowTerminalAdapter = None  # type: ignore[misc,assignment]
+    CrowTerminalAdapter = None
 
 
 def get_adapter_class(name: str) -> type[TerminalAdapter] | None:

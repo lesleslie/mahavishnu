@@ -323,7 +323,7 @@ class TestAPIShape:
             reason="",
         )
         with pytest.raises((AttributeError, TypeError)):
-            d.allowed = False  # type: ignore[misc]
+            d.allowed = False
 
     def test_source_enum_has_four_values(self) -> None:
         """The source enum covers all paths: env+allowlist, bootstrap, none, token."""

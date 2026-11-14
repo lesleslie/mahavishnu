@@ -24,7 +24,7 @@ def _mock_crackerjack_result(
     Tests should not require crackerjack at import time; we patch the
     crackerjack module attribute the CLI calls into.
     """
-    import crackerjack  # type: ignore[import-not-found]
+    import crackerjack
 
     return crackerjack.QualityCheckResult(
         success=success,

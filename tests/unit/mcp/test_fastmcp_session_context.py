@@ -111,7 +111,7 @@ def _build_call_context(
 
     return MiddlewareContext(
         message=_FakeCallToolMessage(arguments or {}),
-        fastmcp_context=fastmcp_context,  # type: ignore[arg-type]
+        fastmcp_context=fastmcp_context,
     )
 
 
@@ -282,7 +282,7 @@ class TestAuthContextMiddleware:
         middleware = AuthContextMiddleware()
         result = await middleware.on_call_tool(
             call_context, call_next=_next_call_returns
-        )  # type: ignore[arg-type]
+        )
 
         # The middleware passes through to call_next unchanged.
         assert result == {"status": "next-ok"}
@@ -307,7 +307,7 @@ class TestAuthContextMiddleware:
         middleware = AuthContextMiddleware()
         result = await middleware.on_call_tool(
             call_context, call_next=_next_call_returns
-        )  # type: ignore[arg-type]
+        )
 
         assert result == {"status": "next-ok"}
         # State was written (with None), not skipped — the decorator
@@ -336,7 +336,7 @@ class TestAuthContextMiddleware:
         middleware = AuthContextMiddleware()
         result = await middleware.on_call_tool(
             call_context, call_next=_next_call_returns
-        )  # type: ignore[arg-type]
+        )
 
         # The middleware must not propagate state-write failures; the
         # tool path runs, and the kwargs fallback in require_mcp_auth
@@ -356,7 +356,7 @@ class TestAuthContextMiddleware:
         middleware = AuthContextMiddleware()
         result = await middleware.on_call_tool(
             call_context, call_next=_next_call_returns
-        )  # type: ignore[arg-type]
+        )
 
         assert result == {"status": "next-ok"}
 

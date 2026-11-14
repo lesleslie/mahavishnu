@@ -103,7 +103,7 @@ def _restore_on_mount_each_test() -> Any:
             # Class did not declare its own ``on_mount``; remove the entry.
             cls.__dict__.pop("on_mount", None)
         else:
-            cls.on_mount = original  # type: ignore[method-assign]
+            cls.on_mount = original
 
 
 # ---------------------------------------------------------------------------
@@ -1615,7 +1615,7 @@ def test_approvals_screen_selected_approval_id_with_none_cursor() -> None:
     screen = ApprovalsScreen()
     screen._approval_ids = ["a", "b", "c"]
     # Stub query_one to return a DataTable whose cursor_row is None.
-    screen.query_one = MagicMock(return_value=MagicMock(cursor_row=None))  # type: ignore[method-assign]
+    screen.query_one = MagicMock(return_value=MagicMock(cursor_row=None))
     assert screen._selected_approval_id() is None
 
 
@@ -1626,13 +1626,13 @@ def test_approvals_screen_selected_approval_id_out_of_range() -> None:
 
     screen = ApprovalsScreen()
     screen._approval_ids = ["a", "b"]
-    screen.query_one = MagicMock(  # type: ignore[method-assign]
+    screen.query_one = MagicMock(
         return_value=MagicMock(cursor_row=5)
     )
     assert screen._selected_approval_id() is None
 
     # Negative cursor is also rejected.
-    screen.query_one = MagicMock(  # type: ignore[method-assign]
+    screen.query_one = MagicMock(
         return_value=MagicMock(cursor_row=-1)
     )
     assert screen._selected_approval_id() is None
@@ -1645,7 +1645,7 @@ def test_approvals_screen_selected_approval_id_in_range() -> None:
 
     screen = ApprovalsScreen()
     screen._approval_ids = ["a", "b", "c"]
-    screen.query_one = MagicMock(  # type: ignore[method-assign]
+    screen.query_one = MagicMock(
         return_value=MagicMock(cursor_row=1)
     )
     assert screen._selected_approval_id() == "b"
@@ -1659,8 +1659,8 @@ def test_approvals_screen_render_selected_approval_no_selection() -> None:
     screen = ApprovalsScreen()
     screen._approval_ids = []
     details = MagicMock()
-    screen.query_one = MagicMock(return_value=details)  # type: ignore[method-assign]
-    screen._selected_approval_id = MagicMock(return_value=None)  # type: ignore[method-assign]
+    screen.query_one = MagicMock(return_value=details)
+    screen._selected_approval_id = MagicMock(return_value=None)
 
     screen._render_selected_approval()
     details.update.assert_called_once()
@@ -1676,8 +1676,8 @@ def test_approvals_screen_render_selected_approval_with_selection() -> None:
     screen = ApprovalsScreen()
     screen._approval_ids = ["abc"]
     details = MagicMock()
-    screen.query_one = MagicMock(return_value=details)  # type: ignore[method-assign]
-    screen._selected_approval_id = MagicMock(return_value="abc")  # type: ignore[method-assign]
+    screen.query_one = MagicMock(return_value=details)
+    screen._selected_approval_id = MagicMock(return_value="abc")
 
     screen._render_selected_approval()
     call_arg = details.update.call_args[0][0]
@@ -1690,8 +1690,8 @@ def test_approvals_screen_submit_response_no_selection_noop() -> None:
     from mahavishnu.tui.app import ApprovalsScreen
 
     screen = ApprovalsScreen()
-    screen._selected_approval_id = MagicMock(return_value=None)  # type: ignore[method-assign]
-    screen.run_worker = MagicMock()  # type: ignore[method-assign]
+    screen._selected_approval_id = MagicMock(return_value=None)
+    screen.run_worker = MagicMock()
 
     # Coroutine to drive — should return immediately without scheduling work.
     asyncio.run(screen._submit_selected_response(True))
@@ -1798,7 +1798,7 @@ def test_action_refresh_all_calls_refresh_on_each_screen_widget() -> None:
     def _fake_query(screen_cls: type) -> list[Any]:
         return [widgets_by_class[screen_cls]]
 
-    app.query = _fake_query  # type: ignore[method-assign]
+    app.query = _fake_query
 
     app.action_refresh_all()
 
@@ -1813,7 +1813,7 @@ def test_action_approve_routes_to_first_approval_widget() -> None:
 
     widget = MagicMock(spec=ApprovalsScreen)
     app = DashboardApp.__new__(DashboardApp)
-    app.query = lambda _cls: [widget]  # type: ignore[method-assign]
+    app.query = lambda _cls: [widget]
 
     app.action_approve_selected_approval()
     widget.action_approve_selected_approval.assert_called_once_with()
@@ -1826,7 +1826,7 @@ def test_action_reject_routes_to_first_approval_widget() -> None:
 
     widget = MagicMock(spec=ApprovalsScreen)
     app = DashboardApp.__new__(DashboardApp)
-    app.query = lambda _cls: [widget]  # type: ignore[method-assign]
+    app.query = lambda _cls: [widget]
 
     app.action_reject_selected_approval()
     widget.action_reject_selected_approval.assert_called_once_with()
@@ -1838,7 +1838,7 @@ def test_action_switch_tab_sets_active_with_suppress() -> None:
     from mahavishnu.tui.app import DashboardApp
 
     app = DashboardApp.__new__(DashboardApp)
-    app.query_one = MagicMock(side_effect=Exception("no tab"))  # type: ignore[method-assign]
+    app.query_one = MagicMock(side_effect=Exception("no tab"))
     # Must not raise even when the TabbedContent is missing.
     app.action_switch_tab("overview")
     app.query_one.assert_called_once()
@@ -2210,7 +2210,7 @@ def _make_harness_app() -> Any:
         TraceScreen,
     )
 
-    def _noop_on_mount(self: Any) -> None:  # type: ignore[no-untyped-def]
+    def _noop_on_mount(self: Any) -> None:
         return None
 
     for _cls in (
@@ -2227,7 +2227,7 @@ def _make_harness_app() -> Any:
         AgnoScreen,
         TraceScreen,
     ):
-        _cls.on_mount = _noop_on_mount  # type: ignore[method-assign]
+        _cls.on_mount = _noop_on_mount
 
     class _HarnessApp(App):
         def compose(self) -> Any:

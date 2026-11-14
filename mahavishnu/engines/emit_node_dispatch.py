@@ -279,7 +279,7 @@ async def emit_pydanticai_node(spec: NodeSpec, mcp: MCPClient) -> NodeHandle:
     """
     try:
         from mahavishnu.adapters.ai.pydantic_ai_adapter import (
-            PydanticAIAdapter,  # type: ignore[import-not-found]
+            PydanticAIAdapter,
         )
     except ImportError as exc:
         envelope = _build_envelope(

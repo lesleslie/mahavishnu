@@ -39,7 +39,7 @@ try:
 except ImportError:  # pragma: no cover - graceful degradation
     _PROM_AVAILABLE = False
 
-    class _PromHistogram:  # type: ignore[no-redef]
+    class _PromHistogram:
         def __init__(self, *_args: Any, **_kwargs: Any) -> None:
             pass
 

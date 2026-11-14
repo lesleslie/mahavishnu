@@ -862,10 +862,10 @@ def set_app_context(app: Any) -> None:
                 return _AgnoModel(**llm_kwargs)
 
             def get_default_provider(self) -> str:
-                return self._config.agno.llm.provider.value  # type: ignore[no-any-return]
+                return self._config.agno.llm.provider.value
 
             def get_default_model(self) -> str:
-                return self._config.agno.llm.model_id  # type: ignore[no-any-return]
+                return self._config.agno.llm.model_id
 
         llm_factory = DefaultLLMFactory(app.config)
 

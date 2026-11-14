@@ -65,7 +65,7 @@ class TestMmcQueueConstruction:
     def test_is_frozen(self) -> None:
         q = MmcQueue(arrival_rate=1.0, service_rate=2.0, num_workers=2)
         with pytest.raises((AttributeError, Exception)):
-            q.arrival_rate = 99.0  # type: ignore[misc]
+            q.arrival_rate = 99.0
 
 
 # ---------------------------------------------------------------------------
@@ -558,12 +558,12 @@ class TestApproximationArgument:
     def test_invalid_approximation_raises(self) -> None:
         q = MmcQueue(arrival_rate=0.5, service_rate=1.0, num_workers=2)
         with pytest.raises(ValueError):
-            q.expected_wait_time(approximation="bogus")  # type: ignore[arg-type]
+            q.expected_wait_time(approximation="bogus")
 
     def test_safe_with_invalid_approximation_raises(self) -> None:
         q = MmcQueue(arrival_rate=0.5, service_rate=1.0, num_workers=2)
         with pytest.raises(ValueError):
-            q.safe_expected_wait_time(approximation="bogus")  # type: ignore[arg-type]
+            q.safe_expected_wait_time(approximation="bogus")
 
     def test_safe_with_kingman_and_low_rho(self) -> None:
         q = MmcQueue(arrival_rate=0.5, service_rate=1.0, num_workers=2)

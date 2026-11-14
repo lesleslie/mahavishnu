@@ -110,7 +110,7 @@ class StrategyStats:
         """Sample from Gamma distribution using Marsaglia and Tsang's method."""
         if shape < 1:
             # For shape < 1, use: Gamma(shape) = Gamma(shape+1) * U^(1/shape)
-            return self._sample_gamma(shape + 1) * (random.random() ** (1 / shape))  # type: ignore[no-any-return]
+            return self._sample_gamma(shape + 1) * (random.random() ** (1 / shape))
 
         d = shape - 1 / 3
         c = 1 / math.sqrt(9 * d)
@@ -296,7 +296,7 @@ class ThompsonSamplingRouter:
             f"complexity={complexity_score:.2f}, samples={samples}"
         )
 
-        return selected  # type: ignore[no-any-return]
+        return selected
 
     def _record_selection(
         self,

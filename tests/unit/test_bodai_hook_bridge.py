@@ -67,10 +67,10 @@ def test_event_handlers_accepts_legacy_callable_shape() -> None:
 
     # Temporarily replace the SessionStart entry with a single Callable
     original = _EVENT_HANDLERS["SessionStart"]
-    _EVENT_HANDLERS["SessionStart"] = _legacy_handler  # type: ignore[assignment]
+    _EVENT_HANDLERS["SessionStart"] = _legacy_handler
     try:
         # Should not raise; the dispatch loop normalizes to a list
         result = handle(event_name="SessionStart", harness="claude", payload={})
         assert result == 0
     finally:
-        _EVENT_HANDLERS["SessionStart"] = original  # type: ignore[assignment]
+        _EVENT_HANDLERS["SessionStart"] = original

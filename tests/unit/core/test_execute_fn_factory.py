@@ -163,7 +163,7 @@ class TestACPSettingsAppInjection:
         from mahavishnu.core.config import ACPSettings
 
         sentinel = object()
-        settings = ACPSettings(app=sentinel)  # type: ignore[arg-type]
+        settings = ACPSettings(app=sentinel)
         dumped = settings.model_dump()
         assert "app" not in dumped, (
             "ACPSettings.app leaked into model_dump() — runtime objects "
@@ -180,7 +180,7 @@ class TestACPSettingsAppInjection:
             async def execute(self, payload: dict[str, Any]) -> Any:
                 return payload
 
-        settings = ACPSettings(app=_ArbitraryApp())  # type: ignore[arg-type]
+        settings = ACPSettings(app=_ArbitraryApp())
         assert settings.app is not None
 
     def test_factory_routes_through_acp_settings_app(self) -> None:
@@ -195,7 +195,7 @@ class TestACPSettingsAppInjection:
                 return {"echo": payload.get("prompt", ""), "via": "shim"}
 
         shim = _RecordingShim()
-        settings = ACPSettings(app=shim)  # type: ignore[arg-type]
+        settings = ACPSettings(app=shim)
         fn = build_execute_fn(settings)
         result = asyncio.run(fn({"prompt": "hi"}))
 
@@ -216,7 +216,7 @@ class TestACPSettingsAppInjection:
             async def execute(self, payload: dict[str, Any]) -> Any:
                 return {"via": "marker"}
 
-        settings = ACPSettings(app=_MarkerShim())  # type: ignore[arg-type]
+        settings = ACPSettings(app=_MarkerShim())
         fn = build_execute_fn(settings)
         result = asyncio.run(fn({"prompt": "anything"}))
 

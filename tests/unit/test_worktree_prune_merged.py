@@ -192,7 +192,7 @@ async def test_worktree_pruner_remove_calls_coordinator_with_force_false(
     coordinator = FakeCoordinator([{"success": True}])
     results = await WorktreePruner(coordinator, FakeAudit()).remove(
         [candidate(tmp_path / "wt")]
-    )  # type: ignore[arg-type]
+    )
     assert results[0].success is True
     assert coordinator.calls[0]["force"] is False
 
@@ -209,7 +209,7 @@ async def test_worktree_pruner_remove_force_false_then_escalate(
         ]
     )
     result = (
-        await WorktreePruner(coordinator, FakeAudit()).remove(  # type: ignore[arg-type]
+        await WorktreePruner(coordinator, FakeAudit()).remove(
             [candidate(tmp_path / "wt")], force_reason="reviewed"
         )
     )[0]
@@ -224,7 +224,7 @@ async def test_worktree_pruner_remove_raises_on_unmerged_candidate(
 ) -> None:
     coordinator = FakeCoordinator([])
     with pytest.raises(ValueError, match="merge_status"):
-        await WorktreePruner(coordinator, FakeAudit()).remove(  # type: ignore[arg-type]
+        await WorktreePruner(coordinator, FakeAudit()).remove(
             [candidate(tmp_path / "wt", merge_status="not_merged")]
         )
     assert coordinator.calls == []
@@ -239,7 +239,7 @@ async def test_worktree_pruner_remove_writes_partial_event_when_some_fail(
         [{"success": True}, {"success": False, "error": "failed"}]
     )
     audit = FakeAudit()
-    results = await WorktreePruner(coordinator, audit).remove(  # type: ignore[arg-type]
+    results = await WorktreePruner(coordinator, audit).remove(
         [candidate(tmp_path / "one"), candidate(tmp_path / "two")]
     )
     assert [result.success for result in results] == [True, False]

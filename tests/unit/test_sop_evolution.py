@@ -83,7 +83,7 @@ class TestProjectSOP:
             version=1,
         )
         with pytest.raises(Exception):
-            sop.version = 99  # type: ignore[misc]
+            sop.version = 99
 
     def test_equality_by_content(self) -> None:
         a = ProjectSOP(project_id="p", name="n", body="b", version=1)
@@ -137,7 +137,7 @@ class TestFailureModeCatalogEntry:
             occurrences=0,
         )
         with pytest.raises(Exception):
-            entry.occurrences = 5  # type: ignore[misc]
+            entry.occurrences = 5
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +196,7 @@ class TestSOPSuggestion:
             rationale="why",
         )
         with pytest.raises(Exception):
-            suggestion.status = "applied"  # type: ignore[misc]
+            suggestion.status = "applied"
 
 
 # ---------------------------------------------------------------------------

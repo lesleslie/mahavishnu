@@ -105,7 +105,7 @@ def test_opensearch_import_failure_branch(monkeypatch: pytest.MonkeyPatch) -> No
     original_available = osc.OPENSEARCH_AVAILABLE
     original_import = builtins.__import__
 
-    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):  # type: ignore[no-untyped-def]
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
         if name == "opensearchpy":
             raise ImportError("opensearch unavailable")
         return original_import(name, globals, locals, fromlist, level)

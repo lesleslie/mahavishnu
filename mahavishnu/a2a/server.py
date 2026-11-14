@@ -130,7 +130,7 @@ def _sse_event(
 # ─── route factories ──────────────────────────────────────────────────────────
 
 
-def _agent_card_handler(settings: A2ASettings):  # type: ignore[no-untyped-def]
+def _agent_card_handler(settings: A2ASettings):
     async def handler(request: Request) -> JSONResponse:
         card = AgentCard(
             name=settings.card.name,
@@ -152,7 +152,7 @@ def _agent_card_handler(settings: A2ASettings):  # type: ignore[no-untyped-def]
 _background_tasks: set[asyncio.Task[None]] = set()
 
 
-def _tasks_send_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
+def _tasks_send_handler(execute_fn: Any):
     async def handler(request: Request) -> JSONResponse:
         task_data = await request.json()
         task_id: str = task_data.get("id", str(uuid.uuid4()))
@@ -167,7 +167,7 @@ def _tasks_send_handler(execute_fn: Any):  # type: ignore[no-untyped-def]
     return handler
 
 
-def _tasks_send_subscribe_handler(execute_fn: Any, timeout: float = 600.0):  # type: ignore[no-untyped-def]
+def _tasks_send_subscribe_handler(execute_fn: Any, timeout: float = 600.0):
     async def handler(request: Request) -> StreamingResponse:
         task_data = await request.json()
         task_id: str = task_data.get("id", str(uuid.uuid4()))

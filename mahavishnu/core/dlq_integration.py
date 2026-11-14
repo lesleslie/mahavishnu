@@ -314,7 +314,7 @@ class DLQIntegration:
                 user_id=user_id,
             )
 
-            return result  # type: ignore[no-any-return]
+            return result
 
         except Exception as e:
             self._stats["workflows_failed"] += 1

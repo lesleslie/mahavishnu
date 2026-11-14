@@ -224,7 +224,7 @@ class EcosystemLoader:
         # Topological sort by dependencies
         ordered = []
         remaining = {s.name: s for s in servers}
-        resolved = set()  # type: ignore[var-annotated]
+        resolved = set()
 
         while remaining:
             # Find servers with no unresolved dependencies

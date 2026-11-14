@@ -26,7 +26,7 @@ def _factory_with_unknown_goal() -> GoalDrivenTeamFactory:
     async def fake_parse_goal(_goal: str) -> ParsedGoal:
         return fake_goal
 
-    factory.parse_goal = fake_parse_goal  # type: ignore[method-assign]
+    factory.parse_goal = fake_parse_goal
     return factory
 
 

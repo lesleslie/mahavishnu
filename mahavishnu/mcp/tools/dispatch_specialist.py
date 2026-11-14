@@ -123,7 +123,7 @@ async def _call_list_agents(
     ``{"result": {"content": [{"type": "text", "text": "<json>"}]}}``.
     Raises on timeout, connection error, or non-2xx.
     """
-    from fastmcp.client import Client  # type: ignore[import-not-found]
+    from fastmcp.client import Client
     import httpx
 
     try:
@@ -169,7 +169,7 @@ async def _call_get_agent(
 
     Returns the unwrapped ``{metadata, body}`` envelope, or raises.
     """
-    from fastmcp.client import Client  # type: ignore[import-not-found]
+    from fastmcp.client import Client
     import httpx
 
     try:

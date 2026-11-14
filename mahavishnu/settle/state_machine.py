@@ -207,7 +207,7 @@ def _require_str_field(
     value = payload.get(field)
     is_valid = isinstance(value, str) and (not empty_required or value)
     if is_valid:
-        return value  # type: ignore[return-value]
+        return value
     details = (
         {"run_ref": run_ref}
         if run_ref is not None

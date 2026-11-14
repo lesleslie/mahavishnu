@@ -58,7 +58,7 @@ def _ensure_mcp_error_compat() -> None:
         return
 
     exc_mod = sys.modules.get("mcp.shared.exceptions") or exc
-    exc_mod.MCPError = exc_mod.McpError  # type: ignore[attr-defined]
+    exc_mod.MCPError = exc_mod.McpError
 
 
 # Apply once when this file is imported (i.e. at pytest collection time)

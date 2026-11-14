@@ -414,7 +414,7 @@ async def test_adapter_coercion_and_unknown_analysis_and_health_branches() -> No
     assert router._coerce_adapter_type(router_fallback) == AdapterType.PREFECT
 
     monkey_task = _UnknownTask()
-    router._normalize_task_type = lambda _task: monkey_task  # type: ignore[method-assign]
+    router._normalize_task_type = lambda _task: monkey_task
     analysis = await router.analyze_task({"task_type": "ignored"})
     assert analysis["task_type"] == "custom"
     assert analysis["recommended_adapter"] == AdapterType.PREFECT

@@ -60,7 +60,7 @@ class TestReviewCheck:
     def test_slots(self) -> None:
         check = ReviewCheck(name="x", passed=False, message="y")
         with pytest.raises(AttributeError):
-            check.nonexistent = "val"  # type: ignore[attr-defined]
+            check.nonexistent = "val"
 
 
 class TestReviewGateResult:

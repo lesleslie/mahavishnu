@@ -158,7 +158,7 @@ def test_signature_has_no_bifrost() -> None:
     settings were a real attack surface.
     """
     with pytest.raises(TypeError):
-        _resolve_worker_env("terminal-claude", bifrost=None)  # type: ignore[call-arg]
+        _resolve_worker_env("terminal-claude", bifrost=None)
 
 
 def test_terminal_manager_constructor_has_no_bifrost() -> None:
@@ -172,7 +172,7 @@ def test_terminal_manager_constructor_has_no_bifrost() -> None:
 
     adapter = MagicMock(spec=TerminalAdapter)
     with pytest.raises(TypeError):
-        TerminalManager(adapter=adapter, bifrost=None)  # type: ignore[call-arg]
+        TerminalManager(adapter=adapter, bifrost=None)
 
 
 # ============================================================================

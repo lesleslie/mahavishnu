@@ -296,7 +296,7 @@ def run_git_log(root: Path, days: int) -> tuple[set[Path], dict[Path, datetime]]
         )
     except subprocess.CalledProcessError, FileNotFoundError:
         git_available = False
-        result = None  # type: ignore[assignment]
+        result = None
 
     if git_available and result is not None:
         for raw in result.stdout.splitlines():

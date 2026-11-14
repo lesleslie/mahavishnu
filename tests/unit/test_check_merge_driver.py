@@ -468,7 +468,7 @@ def test_merge_driver_health_when_binary_present(
     """
     import mahavishnu.core.health as health_module
 
-    health_module._DEGRADED_SINCE = None  # type: ignore[attr-defined]
+    health_module._DEGRADED_SINCE = None
     monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/mergiraf")
 
     completed = MagicMock(spec=subprocess.CompletedProcess)
@@ -630,7 +630,7 @@ def test_merge_driver_health_clears_degraded_after_healthy_probe(
     import mahavishnu.core.health as health_module
 
     # Seed a stale degraded stamp.
-    health_module._DEGRADED_SINCE = datetime.now(UTC)  # type: ignore[attr-defined]
+    health_module._DEGRADED_SINCE = datetime.now(UTC)
 
     monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/mergiraf")
     completed = MagicMock(spec=subprocess.CompletedProcess)
@@ -662,11 +662,11 @@ def test_mark_merge_driver_fallback_updates_on_subsequent_calls() -> None:
     import mahavishnu.core.health as health_module
 
     # Start clean — module-global slot.
-    health_module._DEGRADED_SINCE = None  # type: ignore[attr-defined]
+    health_module._DEGRADED_SINCE = None
 
     first = datetime.now(UTC)
     health_module.mark_merge_driver_fallback()
-    after_first = health_module._DEGRADED_SINCE  # type: ignore[attr-defined]
+    after_first = health_module._DEGRADED_SINCE
     assert after_first is not None
     assert after_first >= first
 
@@ -677,7 +677,7 @@ def test_mark_merge_driver_fallback_updates_on_subsequent_calls() -> None:
 
     _time.sleep(0.005)  # ensure datetime.now(UTC) advances
     health_module.mark_merge_driver_fallback()
-    after_second = health_module._DEGRADED_SINCE  # type: ignore[attr-defined]
+    after_second = health_module._DEGRADED_SINCE
     assert after_second is not None
     assert after_second > after_first, (
         "Expected the second mark_merge_driver_fallback() call to advance "
@@ -696,7 +696,7 @@ def test_mark_merge_driver_fallback_with_app_uses_per_instance_slot() -> None:
     import mahavishnu.core.health as health_module
 
     # Reset module-global so the assertion below is unambiguous.
-    health_module._DEGRADED_SINCE = None  # type: ignore[attr-defined]
+    health_module._DEGRADED_SINCE = None
 
     # Build two duck-typed stand-ins (no need to import the full
     # ``MahavishnuApp`` — instantiating it pulls in Oneiric config,
@@ -711,7 +711,7 @@ def test_mark_merge_driver_fallback_with_app_uses_per_instance_slot() -> None:
     health_module.mark_merge_driver_fallback(app_a)
     assert app_a._degraded_since is not None
     assert app_b._degraded_since is None
-    assert health_module._DEGRADED_SINCE is None  # type: ignore[attr-defined]
+    assert health_module._DEGRADED_SINCE is None
 
     # Stamping app_b leaves app_a's stamp intact.
     import time as _time
@@ -720,7 +720,7 @@ def test_mark_merge_driver_fallback_with_app_uses_per_instance_slot() -> None:
     health_module.mark_merge_driver_fallback(app_b)
     assert app_b._degraded_since > app_a._degraded_since
     # Module-global still untouched — neither call fell through.
-    assert health_module._DEGRADED_SINCE is None  # type: ignore[attr-defined]
+    assert health_module._DEGRADED_SINCE is None
 
 
 def test_merge_driver_health_emits_probe_span(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -747,7 +747,7 @@ def test_merge_driver_health_emits_probe_span(monkeypatch: pytest.MonkeyPatch) -
     # already-resolved tracer.
     health_module._probe_tracer = provider.get_tracer(__name__)
 
-    health_module._DEGRADED_SINCE = None  # type: ignore[attr-defined]
+    health_module._DEGRADED_SINCE = None
     monkeypatch.setattr("shutil.which", lambda _: "/usr/local/bin/mergiraf")
     completed = MagicMock(spec=subprocess.CompletedProcess)
     completed.returncode = 0
@@ -794,7 +794,7 @@ def test_merge_driver_health_probe_span_records_missing_binary(
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     health_module._probe_tracer = provider.get_tracer(__name__)
 
-    health_module._DEGRADED_SINCE = None  # type: ignore[attr-defined]
+    health_module._DEGRADED_SINCE = None
     monkeypatch.setattr("shutil.which", lambda _: None)
     health_module.merge_driver_health()
 
@@ -821,7 +821,7 @@ def test_merge_driver_health_clears_per_app_stamp_after_healthy_probe(
             self._degraded_since: datetime | None = None
 
     app = _AppStub()
-    health_module._DEGRADED_SINCE = None  # type: ignore[attr-defined]
+    health_module._DEGRADED_SINCE = None
 
     # Seed a per-app degraded stamp.
     health_module.mark_merge_driver_fallback(app)
@@ -843,4 +843,4 @@ def test_merge_driver_health_clears_per_app_stamp_after_healthy_probe(
     assert payload["available"] is True
     assert payload["degraded_since"] is None
     # Module-global untouched (per-app was the target).
-    assert health_module._DEGRADED_SINCE is None  # type: ignore[attr-defined]
+    assert health_module._DEGRADED_SINCE is None

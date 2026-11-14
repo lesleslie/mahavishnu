@@ -154,7 +154,7 @@ class TestRegisterPlanTools:
 
     def test_missing_store_provider_raises_type_error(self) -> None:
         with pytest.raises(TypeError):
-            register_plan_tools(FakeMCP())  # type: ignore[call-arg]
+            register_plan_tools(FakeMCP())
 
     def test_default_store_provider_returns_fresh_store(self) -> None:
         first = plan_tools_default_store_provider()

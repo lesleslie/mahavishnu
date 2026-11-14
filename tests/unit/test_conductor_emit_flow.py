@@ -103,7 +103,7 @@ def test_emit_flow_inner_dag_submits_with_wait_for() -> None:
     flow = emit_flow(dag, prefect_factory=prefect)
     # The captured task function is the first arg of prefect.task(fn) — same
     # object the inner _dag closure references as ``_node``.
-    inner_node = prefect.task.call_args_list[0][0][0]  # type: ignore[index]
+    inner_node = prefect.task.call_args_list[0][0][0]
 
     submit_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
@@ -112,10 +112,10 @@ def test_emit_flow_inner_dag_submits_with_wait_for() -> None:
         # Also invoke the wrapped function body so the _node return line is
         # exercised (covers the f"envelope-of-{node_id}" return statement).
         if args:
-            return inner_node(*args)  # type: ignore[misc]
+            return inner_node(*args)
         return "future-of-?"
 
-    inner_node.submit = _fake_submit  # type: ignore[attr-defined]
+    inner_node.submit = _fake_submit
     result = flow()
     assert "n0" in result
     assert "n1" in result

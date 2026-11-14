@@ -95,7 +95,7 @@ class EmbeddingConfig(BaseModel):
 
         if config_path and os.path.exists(config_path):
             with open(config_path) as f:
-                data = yaml.safe_load(f) or {}  # type: ignore[var-annotated]
+                data = yaml.safe_load(f) or {}
                 return cls(**data)
 
         # Return defaults if file doesn't exist

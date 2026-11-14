@@ -79,7 +79,7 @@ async def test_the_loop_actually_drives_the_detector() -> None:
     def _record(metric_name: str, value: float) -> None:
         seen.append((metric_name, value))
 
-    manager._evaluate_change_point = _record  # type: ignore[method-assign]
+    manager._evaluate_change_point = _record
     task = manager.start_change_point_tick_loop(
         metric_source=lambda: {"pool_queue_depth": 7.5},
     )
@@ -208,7 +208,7 @@ async def test_the_pool_depth_source_speaks_the_detector_metric_namespace() -> N
     def _record(metric_name: str, value: float) -> None:
         seen.append((metric_name, value))
 
-    manager._evaluate_change_point = _record  # type: ignore[method-assign]
+    manager._evaluate_change_point = _record
 
     class _PoolManager:
         def get_pool_queue_depths(self) -> dict[str, float]:
@@ -260,7 +260,7 @@ async def test_the_pool_depth_source_honours_a_renamed_target_metric() -> None:
     def _record(metric_name: str, value: float) -> None:
         seen.append((metric_name, value))
 
-    manager._evaluate_change_point = _record  # type: ignore[method-assign]
+    manager._evaluate_change_point = _record
 
     class _PoolManager:
         def get_pool_queue_depths(self) -> dict[str, float]:

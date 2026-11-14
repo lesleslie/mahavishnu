@@ -68,7 +68,7 @@ class TestPromptTravelsInAFile:
         manager = _RecordingManager()
         worker = ShellWorker(
             config=WORKER_REGISTRY["terminal-claude"],
-            terminal_manager=manager,  # type: ignore[arg-type]
+            terminal_manager=manager,
         )
 
         await worker.start(prompt="do the thing")
@@ -84,7 +84,7 @@ class TestPromptTravelsInAFile:
         manager = _RecordingManager()
         worker = ShellWorker(
             config=WORKER_REGISTRY["terminal-claude"],
-            terminal_manager=manager,  # type: ignore[arg-type]
+            terminal_manager=manager,
         )
 
         await worker.start(prompt=LARGE_PROMPT)
@@ -99,7 +99,7 @@ class TestPromptTravelsInAFile:
         manager = _RecordingManager()
         worker = ShellWorker(
             config=WORKER_REGISTRY["terminal-claude"],
-            terminal_manager=manager,  # type: ignore[arg-type]
+            terminal_manager=manager,
         )
 
         await worker.start(prompt="do the thing")
@@ -114,7 +114,7 @@ class TestPromptTravelsInAFile:
         manager = _RecordingManager()
         worker = ShellWorker(
             config=WORKER_REGISTRY["terminal-claude"],
-            terminal_manager=manager,  # type: ignore[arg-type]
+            terminal_manager=manager,
         )
 
         await worker.start(prompt="do the thing")
@@ -129,7 +129,7 @@ class TestPromptTravelsInAFile:
         manager = _RecordingManager()
         worker = ShellWorker(
             config=WORKER_REGISTRY["terminal-claude"],
-            terminal_manager=manager,  # type: ignore[arg-type]
+            terminal_manager=manager,
         )
 
         await worker.start()
@@ -219,7 +219,7 @@ class TestAFailedCliIsNotASuccess:
         manager = _RecordingManager()
         worker = ShellWorker(
             config=WORKER_REGISTRY["terminal-claude"],
-            terminal_manager=manager,  # type: ignore[arg-type]
+            terminal_manager=manager,
         )
         await worker.start(prompt="do the thing")
 
@@ -239,7 +239,7 @@ class TestAFailedCliIsNotASuccess:
         manager = _RecordingManager()
         worker = ShellWorker(
             config=WORKER_REGISTRY["terminal-claude"],
-            terminal_manager=manager,  # type: ignore[arg-type]
+            terminal_manager=manager,
         )
         await worker.start(prompt="do the thing")
 

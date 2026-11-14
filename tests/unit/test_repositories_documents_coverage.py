@@ -112,7 +112,7 @@ class FakeDatabase:
 
 def make_repo(conn: FakeConn) -> DocumentRepository:
     """Build a DocumentRepository wired to a FakeDatabase with one FakeConn."""
-    repo = DocumentRepository(database=FakeDatabase(conn))  # type: ignore[arg-type]
+    repo = DocumentRepository(database=FakeDatabase(conn))
     return repo
 
 
@@ -151,7 +151,7 @@ class TestPydanticModels:
 
     def test_document_create_missing_required_raises(self) -> None:
         with pytest.raises(ValidationError):
-            DocumentCreate(source_type="repo", source_key="k1")  # type: ignore[call-arg]
+            DocumentCreate(source_type="repo", source_key="k1")
 
     def test_document_read_parses(self) -> None:
         rid = uuid4()
@@ -220,7 +220,7 @@ class TestBaseClassBehavior:
                 repo.create(
                     DocumentCreate(source_type="t", source_key="k", content="c")
                 )
-            )  # type: ignore[arg-type]
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -697,7 +697,7 @@ class TestInheritedBaseMethods:
     async def test_base_update_raises(self) -> None:
         repo = make_repo(FakeConn())
         with pytest.raises(NotImplementedError):
-            await repo.update("id", DocumentUpdate())  # type: ignore[arg-type]
+            await repo.update("id", DocumentUpdate())
 
     async def test_base_delete_raises(self) -> None:
         repo = make_repo(FakeConn())

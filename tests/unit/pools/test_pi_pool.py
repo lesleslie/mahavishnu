@@ -161,7 +161,7 @@ def test_npx_command_rejects_non_npx_binary() -> None:
     from mahavishnu.core.errors import ConfigurationError
 
     with pytest.raises(ConfigurationError) as excinfo:
-        PiPoolSettings(npx_command=("/bin/sh", "-c", "evil"))  # type: ignore[arg-type]
+        PiPoolSettings(npx_command=("/bin/sh", "-c", "evil"))
     assert "npx, /usr/bin/env, or /usr/local/bin/npx" in str(excinfo.value)
 
 
@@ -170,7 +170,7 @@ def test_npx_command_requires_pi_package_name() -> None:
     from mahavishnu.core.errors import ConfigurationError
 
     with pytest.raises(ConfigurationError) as excinfo:
-        PiPoolSettings(npx_command=("npx", "-y", "evil-package"))  # type: ignore[arg-type]
+        PiPoolSettings(npx_command=("npx", "-y", "evil-package"))
     assert "@earendil-works/pi-coding-agent" in str(excinfo.value)
 
 

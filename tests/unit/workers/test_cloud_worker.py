@@ -142,7 +142,7 @@ class TestBuildFallbackChainBifrostRouting:
 
         real_from_settings = FallbackChain.from_settings
 
-        def capture(settings):  # type: ignore[no-untyped-def]
+        def capture(settings):
             captured.append(settings)
             return real_from_settings(settings)
 
@@ -178,7 +178,7 @@ class TestBuildFallbackChainBifrostRouting:
 
         real_from_settings = FallbackChain.from_settings
 
-        def capture(settings):  # type: ignore[no-untyped-def]
+        def capture(settings):
             captured.append(settings)
             return real_from_settings(settings)
 
@@ -217,7 +217,7 @@ class TestBuildFallbackChainBifrostRouting:
         captured: list = []
         real_from_settings = FallbackChain.from_settings
 
-        def capture(settings):  # type: ignore[no-untyped-def]
+        def capture(settings):
             captured.append(settings)
             return real_from_settings(settings)
 
@@ -251,7 +251,7 @@ class TestBuildFallbackChainGatewayHeaders:
         captured: list = []
         real_from_settings = FallbackChain.from_settings
 
-        def capture(settings):  # type: ignore[no-untyped-def]
+        def capture(settings):
             captured.append(settings)
             return real_from_settings(settings)
 
@@ -449,7 +449,7 @@ class TestReasoningEffortPolicy:
 
         real_from_settings = FallbackChain.from_settings
 
-        def capture(settings):  # type: ignore[no-untyped-def]
+        def capture(settings):
             captured.append(settings)
             return real_from_settings(settings)
 

@@ -220,7 +220,7 @@ class TestBindingsFromPayload:
         from mahavishnu.mcp.tools import worker_contract_tools as tools
 
         with pytest.raises(TypeError, match="must be a dict"):
-            tools._bindings_from_payload(["not-a-dict"])  # type: ignore[list-item]
+            tools._bindings_from_payload(["not-a-dict"])
 
     def test_missing_path_raises(self) -> None:
         from mahavishnu.mcp.tools import worker_contract_tools as tools
@@ -365,7 +365,7 @@ def test_launch_worker_with_non_dict_metadata(
     manager.spawn = MagicMock(return_value=_make_spawn_result())
     monkeypatch.setattr(tools, "_durable_manager", manager)
     # metadata is not a dict → falls back to "main"
-    out = asyncio.run(tools.mahavishnu_launch_worker(prompt="x", metadata="not-a-dict"))  # type: ignore[arg-type]
+    out = asyncio.run(tools.mahavishnu_launch_worker(prompt="x", metadata="not-a-dict"))
     assert out["metadata"] == "not-a-dict"
     assert manager.spawn.call_args.kwargs["window_name"] == "main"
 
@@ -1228,7 +1228,7 @@ def test_worker_run_with_settle_non_string_task_signature(
 
     monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
     out = asyncio.run(
-        tools.mahavishnu_worker_run_with_settle(123, bindings=[{"path": "a.py", "base": ""}])  # type: ignore[arg-type]
+        tools.mahavishnu_worker_run_with_settle(123, bindings=[{"path": "a.py", "base": ""}])
     )
     assert out["state"] == "manager_unconfigured"
 
@@ -1250,7 +1250,7 @@ def test_worker_run_with_settle_non_list_bindings(
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
     monkeypatch.setattr(tools, "_durable_manager", _make_manager_mock())
-    out = asyncio.run(tools.mahavishnu_worker_run_with_settle("task", bindings="not-a-list"))  # type: ignore[arg-type]
+    out = asyncio.run(tools.mahavishnu_worker_run_with_settle("task", bindings="not-a-list"))
     assert out["state"] == "manager_unconfigured"
 
 
@@ -1411,7 +1411,7 @@ def test_worker_settle_invalid_run_ref_non_string(
 ) -> None:
     from mahavishnu.mcp.tools import worker_contract_tools as tools
 
-    out = asyncio.run(tools.mahavishnu_worker_settle(123, "select"))  # type: ignore[arg-type]
+    out = asyncio.run(tools.mahavishnu_worker_settle(123, "select"))
     assert out["state"] == "invalid_run_ref"
 
 
@@ -1499,7 +1499,7 @@ def test_worker_settle_apply_non_dict_bindings(
     monkeypatch.setattr(tools, "load_record", AsyncMock(return_value=record))
     monkeypatch.setattr(tools, "_settle_mcp", None)
     out = asyncio.run(
-        tools.mahavishnu_worker_settle("r1", "apply", bindings_content="not-a-dict")  # type: ignore[arg-type]
+        tools.mahavishnu_worker_settle("r1", "apply", bindings_content="not-a-dict")
     )
     assert out["state"] == "missing_bindings_content"
 

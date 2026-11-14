@@ -125,7 +125,7 @@ class MCPClient:
         unwrapped shape; the wire-envelope unwrap is the seam that
         lets both contracts coexist on the same MCP instance.
         """
-        from mcp.types import TextContent  # type: ignore[import-not-found]
+        from mcp.types import TextContent
 
         result = await self._mcp.call_tool(name, arguments)
         if result.is_error:

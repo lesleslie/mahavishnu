@@ -53,10 +53,10 @@ class TestToadConfigBlock:
         # Lazy-import tomli (or fall back to tomli_w / toml) — the
         # project uses tomllib on stdlib for Python 3.11+.
         try:
-            import tomllib as _toml  # type: ignore[import-not-found]
+            import tomllib as _toml
         except ImportError:
             try:
-                import tomli as _toml  # type: ignore[import-not-found]
+                import tomli as _toml
             except ImportError:
                 pytest.skip("no TOML parser available")
 

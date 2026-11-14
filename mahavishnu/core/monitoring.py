@@ -227,7 +227,7 @@ class AlertManager:
         self.logger = logging.getLogger(__name__)
         self.alerts: list[Alert] = []
         self.alert_handlers: dict[AlertType, list[Callable]] = {}
-        self.notification_channels = []  # type: ignore[var-annotated]
+        self.notification_channels = []
         self.rules: dict[str, AlertRule] = {}
         self.active_alerts: dict[str, Alert] = {}
         self._shutdown_event = asyncio.Event()
@@ -330,7 +330,7 @@ class AlertManager:
             "!=": lambda a, b: a != b,
         }
         if operator in ops:
-            return ops[operator](value, threshold)  # type: ignore[no-any-return]
+            return ops[operator](value, threshold)
         return False
 
     async def trigger_alert(

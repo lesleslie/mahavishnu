@@ -68,7 +68,7 @@ def pool_mgr(mcp_state: MagicMock) -> PoolManager:
             session_buddy_client=None,
             mcp_state=mcp_state,
         )
-    mgr._pools["pool_test"] = _StubPool()  # type: ignore[assignment]
+    mgr._pools["pool_test"] = _StubPool()
     mgr._pool_worker_counts["pool_test"] = 1
     return mgr
 

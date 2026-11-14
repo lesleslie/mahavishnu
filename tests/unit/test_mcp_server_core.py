@@ -737,7 +737,7 @@ class TestC1RunAsyncContract:
         uvicorn_config=)`` with the exact kwargs the launcher passed in.
         """
         server = FastMCPServer.__new__(FastMCPServer)
-        server.start = AsyncMock()  # type: ignore[method-assign]
+        server.start = AsyncMock()
 
         custom_uvicorn_config = {"timeout_graceful_shutdown": 30}
         await server.run_async(
@@ -761,7 +761,7 @@ class TestC1RunAsyncContract:
         applies (``{"timeout_graceful_shutdown": 30}``).
         """
         server = FastMCPServer.__new__(FastMCPServer)
-        server.start = AsyncMock()  # type: ignore[method-assign]
+        server.start = AsyncMock()
 
         await server.run_async(
             transport="http",
@@ -785,7 +785,7 @@ class TestC1RunAsyncContract:
         instead of silently falling through to a broken path.
         """
         server = FastMCPServer.__new__(FastMCPServer)
-        server.start = AsyncMock()  # type: ignore[method-assign]
+        server.start = AsyncMock()
 
         with pytest.raises(ValueError, match="only supports transport='http'"):
             await server.run_async(

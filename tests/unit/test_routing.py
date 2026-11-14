@@ -42,7 +42,7 @@ def test_generate_fallback_chain_default_and_preferred() -> None:
     class _Unknown:
         value = "unknown"
 
-    unknown_chain = router.generate_fallback_chain(_Unknown())  # type: ignore[arg-type]
+    unknown_chain = router.generate_fallback_chain(_Unknown())
     assert unknown_chain == [
         AdapterType.PREFECT,
         AdapterType.AGNO,

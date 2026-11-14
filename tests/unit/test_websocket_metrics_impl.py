@@ -151,8 +151,8 @@ class TestWebSocketMetricsInit:
         # The summary method references attributes that only exist once
         # metrics are wired up - pre-create them as empty so the call
         # doesn't raise.
-        m._broadcast_histograms = {}  # type: ignore[attr-defined]
-        m._error_counters = {}  # type: ignore[attr-defined]
+        m._broadcast_histograms = {}
+        m._error_counters = {}
         # Every method should silently no-op
         m.inc_message("request")
         m.set_connections(5)
@@ -457,8 +457,8 @@ class TestGetMetricsSummary:
         # The summary helper references plural attribute names that
         # are only populated after the metrics are wired up - pre-create
         # them as empty containers so the call doesn't raise.
-        m._broadcast_histograms = {}  # type: ignore[attr-defined]
-        m._error_counters = {}  # type: ignore[attr-defined]
+        m._broadcast_histograms = {}
+        m._error_counters = {}
 
         summary = m.get_metrics_summary()
 
@@ -477,8 +477,8 @@ class TestGetMetricsSummary:
         m._connection_gauge = MagicMock()
         m._subscription_gauge = MagicMock()
         m._metrics_initialized = True
-        m._broadcast_histograms = {"ch-a": MagicMock()}  # type: ignore[attr-defined]
-        m._error_counters = {"auth": MagicMock()}  # type: ignore[attr-defined]
+        m._broadcast_histograms = {"ch-a": MagicMock()}
+        m._error_counters = {"auth": MagicMock()}
 
         summary = m.get_metrics_summary()
 
@@ -492,8 +492,8 @@ class TestGetMetricsSummary:
         """If Prometheus is unavailable the summary reports enabled=False."""
         monkeypatch.setattr(metrics_module, "PROMETHEUS_AVAILABLE", False)
         m = WebSocketMetrics("svc")
-        m._broadcast_histograms = {}  # type: ignore[attr-defined]
-        m._error_counters = {}  # type: ignore[attr-defined]
+        m._broadcast_histograms = {}
+        m._error_counters = {}
 
         summary = m.get_metrics_summary()
 

@@ -101,7 +101,7 @@ class TestAdapterSettingsVersion:
             activated_by="alice",
         )
         with pytest.raises(FrozenInstanceError):
-            v.adapter_id = "llamaindex"  # type: ignore[misc]
+            v.adapter_id = "llamaindex"
 
 
 # ---------------------------------------------------------------------------

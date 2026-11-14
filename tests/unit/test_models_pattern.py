@@ -143,7 +143,7 @@ class TestTaskDurationPattern:
 
     def test_required_duration_fields_must_be_provided(self):
         with pytest.raises(ValidationError):
-            TaskDurationPattern()  # type: ignore[call-arg]
+            TaskDurationPattern()
 
     def test_optional_fields_default_to_none_or_empty(self):
         pat = self._build()
@@ -187,7 +187,7 @@ class TestBlockerPattern:
 
     def test_missing_required_field_raises(self):
         with pytest.raises(ValidationError):
-            BlockerPattern(blocker_keyword="dep")  # type: ignore[call-arg]
+            BlockerPattern(blocker_keyword="dep")
 
     def test_full_construction_with_resolution_data(self):
         pat = BlockerPattern(
@@ -226,7 +226,7 @@ class TestCompletionSequencePattern:
 
     def test_missing_required_completion_probability(self):
         with pytest.raises(ValidationError):
-            CompletionSequencePattern(sequence=["plan"])  # type: ignore[call-arg]
+            CompletionSequencePattern(sequence=["plan"])
 
     @pytest.mark.parametrize("prob", [-0.01, 1.5])
     def test_completion_probability_out_of_range(self, prob):

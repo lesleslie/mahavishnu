@@ -111,7 +111,7 @@ async def execute_capability_with_dispatch_for_test(
     envelope_ids = await _dispatch_dag_waves(
         dag,
         trace_id=tid,
-        mcp=mcp,  # type: ignore[arg-type]
+        mcp=mcp,
         prompt_for_root=spec.prompt,
     )
     return (

@@ -59,7 +59,7 @@ def _make_websocket(user=None):
     ws = MagicMock(name="websocket")
     ws.send = AsyncMock()
     if user is not None:
-        ws.user = user  # type: ignore[attr-defined]
+        ws.user = user
     return ws
 
 
@@ -204,7 +204,7 @@ class TestOnConnect:
         server = MahavishnuWebSocketServer(pool_manager=mock_pool_manager)
         ws = MagicMock()
         ws.send = MagicMock(return_value=None)  # sync, not awaitable
-        ws.user = None  # type: ignore[attr-defined]
+        ws.user = None
 
         # Should not raise
         await server.on_connect(ws, "conn-1")

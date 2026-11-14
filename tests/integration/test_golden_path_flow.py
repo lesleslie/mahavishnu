@@ -242,7 +242,7 @@ async def test_golden_path_flow_uses_recorded_contract_packet() -> None:
         session_id=fixture.workflow_id,
     )
 
-    orchestrator._run_quality_gates = AsyncMock(  # type: ignore[method-assign]
+    orchestrator._run_quality_gates = AsyncMock(
         return_value=QualityGateResult(
             fast_hooks=True,
             tests=True,

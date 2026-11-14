@@ -458,7 +458,7 @@ def _create_redis_client(
     if client_factory is not None:
         return client_factory(redis_url)
     try:
-        import redis.asyncio as aioredis  # type: ignore[import-not-found]
+        import redis.asyncio as aioredis
     except ImportError:
         _logger.warning(
             "bodai.subscriber: redis.asyncio is not installed; "

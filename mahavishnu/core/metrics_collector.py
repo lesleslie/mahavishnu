@@ -203,7 +203,7 @@ class ExecutionTracker:
             logger.debug(
                 f"Execution {execution_id} not sampled (strategy={self.sampling_strategy.value})"
             )
-            return execution_id  # type: ignore[no-any-return]
+            return execution_id
 
         # Record active execution
         self._metrics.active_executions[execution_id] = {
@@ -220,7 +220,7 @@ class ExecutionTracker:
             f"Recorded execution start: {execution_id} ({adapter.value} - {task_type.value})"
         )
 
-        return execution_id  # type: ignore[no-any-return]
+        return execution_id
 
     async def record_execution_end(
         self,
@@ -406,7 +406,7 @@ class ExecutionTracker:
             success_rate = self._metrics.get_success_rate(adapter)
             if success_rate is not None:
                 attempts = self._metrics.adapter_attempts.get(adapter.value, {})
-                aggregates["adapter_stats"][adapter.value] = {  # type: ignore[invalid-index]
+                aggregates["adapter_stats"][adapter.value] = {
                     "success_rate": success_rate,
                     "total_executions": attempts.get("success", 0)
                     + attempts.get("failure", 0),
@@ -416,7 +416,7 @@ class ExecutionTracker:
         # Calculate per-task-type statistics
         for task_type in TaskType:
             count = self._metrics.task_type_counts.get(task_type.value, 0)
-            aggregates["task_type_stats"][task_type.value] = {  # type: ignore[invalid-index]
+            aggregates["task_type_stats"][task_type.value] = {
                 "execution_count": count,
                 "last_updated": datetime.now(UTC).isoformat(),
             }

@@ -34,7 +34,7 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
 
     # Create dummy classes for graceful degradation
-    class Counter:  # type: ignore[no-redef]
+    class Counter:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -47,7 +47,7 @@ except ImportError:
         def count(self):
             return 0
 
-    class Gauge:  # type: ignore[no-redef]
+    class Gauge:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -66,7 +66,7 @@ except ImportError:
         def dec(self, amount=1):
             pass
 
-    class Histogram:  # type: ignore[no-redef]
+    class Histogram:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -79,7 +79,7 @@ except ImportError:
         def time(self):
             return self
 
-    class Summary:  # type: ignore[no-redef]
+    class Summary:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -92,7 +92,7 @@ except ImportError:
         def time(self):
             return self
 
-    def start_http_server(port: int):  # type: ignore[misc]
+    def start_http_server(port: int):
         logger.warning(
             "prometheus_client not available, metrics server not started on port %s",
             port,

@@ -420,7 +420,7 @@ class DisasterRecoveryManager:
 
         # Check backup availability
         backups = await self.backup_manager.list_backups()
-        results["checks"]["backups_available"] = {  # type: ignore[invalid-index]
+        results["checks"]["backups_available"] = {
             "status": "pass" if backups else "fail",
             "count": len(backups),
             "latest_backup": backups[0].timestamp.isoformat() if backups else None,
@@ -443,7 +443,7 @@ class DisasterRecoveryManager:
                 integrity_check["failed"] += 1
                 integrity_check["status"] = "fail"
 
-        results["checks"]["backup_integrity"] = integrity_check  # type: ignore[invalid-index]
+        results["checks"]["backup_integrity"] = integrity_check
 
         # Check if we have recent backups (within last 24 hours)
         if backups:
@@ -452,7 +452,7 @@ class DisasterRecoveryManager:
         else:
             recent_backup_ok = False
 
-        results["checks"]["recent_backup"] = {  # type: ignore[invalid-index]
+        results["checks"]["recent_backup"] = {
             "status": "pass" if recent_backup_ok else "fail",
             "latest_backup_age_hours": latest_backup_age.total_seconds() / 3600
             if backups

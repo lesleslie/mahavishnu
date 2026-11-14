@@ -25,13 +25,13 @@ def _install_delete_prefix_shim() -> None:
 
     async def delete_prefix(self, prefix: str) -> int:
         """Delete every key whose name starts with ``prefix`` (PR-A-equivalent)."""
-        async with self._lock:  # type: ignore[attr-defined]
-            victims = [k for k in self._store if k.startswith(prefix)]  # type: ignore[attr-defined]
+        async with self._lock:
+            victims = [k for k in self._store if k.startswith(prefix)]
             for k in victims:
-                self._store.pop(k, None)  # type: ignore[attr-defined]
+                self._store.pop(k, None)
             return len(victims)
 
-    MemoryCacheAdapter.delete_prefix = delete_prefix  # type: ignore[attr-defined]
+    MemoryCacheAdapter.delete_prefix = delete_prefix
 
 
 _install_delete_prefix_shim()

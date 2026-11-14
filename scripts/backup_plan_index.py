@@ -53,7 +53,7 @@ def backup(plan_index_path: Path, *, now: datetime.datetime | None = None) -> Pa
     sorting; human-friendly formatting matters more than parseability.
     """
     if not plan_index_path.exists():
-        return None  # type: ignore[return-value]
+        return None
     stamp = (now or datetime.datetime.now(UTC)).strftime("%Y%m%dT%H%M%SZ")
     target = plan_index_path.with_name(f"{BACKUP_PREFIX}{stamp}{BACKUP_SUFFIX}")
     shutil.copy2(plan_index_path, target)

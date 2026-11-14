@@ -221,7 +221,7 @@ class MemoryAggregator:
         try:
             memory_items = await _await_if_needed(pool.collect_memory())
             logger.info(f"Collected {len(memory_items)} items from pool {pool_id}")
-            return memory_items  # type: ignore[no-any-return]
+            return memory_items
         except Exception as e:  # Pool memory collection logs and returns empty list so aggregation can still proceed  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(f"Failed to collect from pool {pool_id}: {e}")
             return []
@@ -600,7 +600,7 @@ class MemoryAggregator:
                 logger.debug(
                     f"Cache HIT for query: {query} (age: {age.total_seconds():.1f}s)"
                 )
-                return cached_entry["results"][:limit]  # type: ignore[no-any-return]
+                return cached_entry["results"][:limit]
             else:
                 # Cache expired - remove and continue to fetch
                 del self._search_cache[cache_key]
@@ -639,7 +639,7 @@ class MemoryAggregator:
                 "cached_at": datetime.now(UTC),
             }
 
-            return conversations  # type: ignore[no-any-return]
+            return conversations
 
         except MCPServerError as e:
             self._sb_breaker.record_failure()

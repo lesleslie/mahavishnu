@@ -174,7 +174,7 @@ class TestRunCommandSafe:
         # as a no-op (popening [] raises IndexError). Verify the
         # short-circuit path on a string whose ``split("|")`` returns [].
         class _EmptyCommand(str):
-            def split(self, sep: Any = None, maxsplit: int = -1) -> list[str]:  # type: ignore[override]
+            def split(self, sep: Any = None, maxsplit: int = -1) -> list[str]:
                 if sep == "|":
                     return []
                 return super().split(sep, maxsplit)
@@ -795,7 +795,7 @@ class TestCoordinationManagerSaveReload:
         self, manager: CoordinationManager, tmp_path: Path
     ) -> None:
         new_path = tmp_path / "ecosystem.yaml"
-        manager.ecosystem_path = new_path  # type: ignore[assignment]
+        manager.ecosystem_path = new_path
         manager.create_issue(
             CrossRepoIssue(
                 id="ISSUE-002",
@@ -835,7 +835,7 @@ class TestCoordinationManagerSaveReload:
                 }
             )
         )
-        manager.ecosystem_path = new_path  # type: ignore[assignment]
+        manager.ecosystem_path = new_path
         manager.reload()
         assert manager.get_issue("FRESH") is not None
         assert manager.get_issue("ISSUE-001") is None
@@ -1184,7 +1184,7 @@ class TestCoordinationManagerNormalization:
 
     def test_normalize_todo_tags_to_labels(self, ecosystem_path: str) -> None:
         todo = _todo()
-        todo["tags"] = "not-a-list"  # type: ignore[assignment]
+        todo["tags"] = "not-a-list"
         path = _write({"coordination": {"todos": [todo]}})
         try:
             cm = CoordinationManager(path)
@@ -1450,7 +1450,7 @@ class TestCoordinationManagerBehavior:
         self, manager: CoordinationManager, tmp_path: Path
     ) -> None:
         new_path = tmp_path / "ecosystem.yaml"
-        manager.ecosystem_path = new_path  # type: ignore[assignment]
+        manager.ecosystem_path = new_path
 
         issue = CrossRepoIssue(
             id="ISSUE-002",
@@ -1753,7 +1753,7 @@ class TestCoordinationManagerMisc:
         )
         manager._coordination["dependencies"].append(dep.model_dump(mode="json"))
         new_path = tmp_path / "ecosystem.yaml"
-        manager.ecosystem_path = new_path  # type: ignore[assignment]
+        manager.ecosystem_path = new_path
         manager.save()
         new = CoordinationManager(new_path)
         loaded = new.list_dependencies()
@@ -1776,7 +1776,7 @@ class TestCoordinationManagerMisc:
             plan.model_dump(mode="json")
         )
         new_path = tmp_path / "ecosystem.yaml"
-        manager.ecosystem_path = new_path  # type: ignore[assignment]
+        manager.ecosystem_path = new_path
         manager.save()
         new = CoordinationManager(new_path)
         loaded = new.list_plans()

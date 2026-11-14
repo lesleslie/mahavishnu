@@ -285,7 +285,7 @@ class CoordinationExecutor:
                 task_data,
                 pool_selector=selector,
             )
-            return result  # type: ignore[no-any-return]
+            return result
 
         except Exception as e:  # pool dispatch — any failure surfaces as error dict, never raise  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             return {

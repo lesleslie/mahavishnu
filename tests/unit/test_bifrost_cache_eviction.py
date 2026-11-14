@@ -137,7 +137,7 @@ class TestSweepExpiredEntries:
                 b"BifrostSemanticCachePlugin:live": _entry(LIVE_AT),
             }
         )
-        result = await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
+        result = await sweep_expired_entries(client, now=NOW)
 
         assert result.scanned == 2
         assert result.expired == 1
@@ -149,7 +149,7 @@ class TestSweepExpiredEntries:
     async def test_keeps_entries_without_an_expiry(self) -> None:
         """An entry with no ``expires_at`` is never deleted."""
         client = FakeRedis({b"BifrostSemanticCachePlugin:unknown": _entry(None)})
-        result = await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
+        result = await sweep_expired_entries(client, now=NOW)
 
         assert result.unknown_expiry == 1
         assert result.expired == 0
@@ -164,7 +164,7 @@ class TestSweepExpiredEntries:
                 b"oneiric-queue": _entry(EXPIRED_AT),
             }
         )
-        result = await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
+        result = await sweep_expired_entries(client, now=NOW)
 
         assert result.scanned == 0
         assert result.deleted == 0
@@ -173,7 +173,7 @@ class TestSweepExpiredEntries:
 
     async def test_dry_run_deletes_nothing(self) -> None:
         client = FakeRedis({b"BifrostSemanticCachePlugin:expired": _entry(EXPIRED_AT)})
-        result = await sweep_expired_entries(client, now=NOW, dry_run=True)  # type: ignore[arg-type]
+        result = await sweep_expired_entries(client, now=NOW, dry_run=True)
 
         assert result.expired == 1
         assert result.deleted == 0
@@ -192,8 +192,8 @@ class TestSweepExpiredEntries:
             client.entries[key] = _entry(LIVE_AT)
             return raw
 
-        client.hget = _hget  # type: ignore[method-assign]
-        result = await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
+        client.hget = _hget
+        result = await sweep_expired_entries(client, now=NOW)
 
         assert result.expired == 1
         assert result.deleted == 0
@@ -207,7 +207,7 @@ class TestSweepExpiredEntries:
                 b"BifrostLocalCachePlugin:c": _entry(EXPIRED_AT),
             }
         )
-        result = await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
+        result = await sweep_expired_entries(client, now=NOW)
 
         assert result.scanned == 3
         assert result.deleted == 3
@@ -215,7 +215,7 @@ class TestSweepExpiredEntries:
 
     async def test_delete_uses_the_lua_script_with_the_cutoff(self) -> None:
         client = FakeRedis({b"BifrostSemanticCachePlugin:expired": _entry(EXPIRED_AT)})
-        await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
+        await sweep_expired_entries(client, now=NOW)
 
         assert len(client.eval_calls) == 1
         script, keys, args = client.eval_calls[0]
@@ -226,8 +226,8 @@ class TestSweepExpiredEntries:
 
     async def test_sweep_is_idempotent(self) -> None:
         client = FakeRedis({b"BifrostSemanticCachePlugin:expired": _entry(EXPIRED_AT)})
-        first = await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
-        second = await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
+        first = await sweep_expired_entries(client, now=NOW)
+        second = await sweep_expired_entries(client, now=NOW)
 
         assert first.deleted == 1
         assert second.deleted == 0
@@ -239,8 +239,8 @@ class TestSweepExpiredEntries:
         async def _boom(key: bytes, field: bytes) -> bytes | None:
             raise OSError("connection reset")
 
-        client.hget = _boom  # type: ignore[method-assign]
-        result = await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
+        client.hget = _boom
+        result = await sweep_expired_entries(client, now=NOW)
 
         assert result.errors == 1
         assert result.deleted == 0
@@ -252,8 +252,8 @@ class TestSweepExpiredEntries:
         async def _boom(script: str, keys: list[bytes], args: list[bytes]) -> int:
             raise OSError("connection reset")
 
-        client.eval = _boom  # type: ignore[method-assign]
-        result = await sweep_expired_entries(client, now=NOW)  # type: ignore[arg-type]
+        client.eval = _boom
+        result = await sweep_expired_entries(client, now=NOW)
 
         assert result.expired == 1
         assert result.deleted == 0

@@ -7,7 +7,7 @@ from mahavishnu.jot.fold import JotSummary
 
 
 def _summary(current_attempt: int) -> JotSummary:
-    return JotSummary(  # type: ignore[arg-type]
+    return JotSummary(
         id="e1",
         short_id="e1",
         text="x",

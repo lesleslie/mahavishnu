@@ -150,8 +150,8 @@ class WorktreeCache:
         # MultiTierCacheAdapter exposes _l1/_l2 as private. Reach in
         # for the delete_prefix method (Oneiric MemoryCacheAdapter and
         # RedisCacheAdapter both have it post-Oneiric-PR-A).
-        l1 = self._multi._l1  # type: ignore[attr-defined]
-        l2 = self._multi._l2  # type: ignore[attr-defined]
+        l1 = self._multi._l1
+        l2 = self._multi._l2
         if l1 is not None:
             l1_count = await l1.delete_prefix(full_prefix)
         if l2 is not None:

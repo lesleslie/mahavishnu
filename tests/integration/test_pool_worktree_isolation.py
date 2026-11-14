@@ -114,7 +114,7 @@ class TestWorktreeOptions:
 
     def test_extra_forbid(self) -> None:
         with pytest.raises(ValueError, match="literal_error"):
-            WorktreeOptions(isolation="bogus")  # type: ignore[arg-type]
+            WorktreeOptions(isolation="bogus")
 
     def test_ttl_bounds(self) -> None:
         with pytest.raises(ValueError):
@@ -130,7 +130,7 @@ class TestWorktreeOptions:
 
     def test_on_completion_literal(self) -> None:
         with pytest.raises(ValueError):
-            WorktreeOptions(on_completion="bogus")  # type: ignore[arg-type]
+            WorktreeOptions(on_completion="bogus")
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +271,7 @@ class TestPoolRouteExecuteWorktree:
                 return_value=tmp_git_repo,
             ),
         ):
-            result = await pool_route_execute(  # type: ignore[arg-type]
+            result = await pool_route_execute(
                 prompt=f"edit {tmp_git_repo.name}",
                 pool_selector="least_loaded",
                 worktree=opts,
@@ -340,12 +340,12 @@ class TestPoolRouteExecuteWorktree:
             ),
         ):
             results = await asyncio.gather(
-                pool_route_execute(  # type: ignore[arg-type]
+                pool_route_execute(
                     prompt="edit repo",
                     pool_selector="least_loaded",
                     worktree=opts,
                 ),
-                pool_route_execute(  # type: ignore[arg-type]
+                pool_route_execute(
                     prompt="edit repo",
                     pool_selector="least_loaded",
                     worktree=opts,
@@ -394,7 +394,7 @@ class TestPoolRouteExecuteWorktree:
             ),
         ):
             with pytest.raises(RuntimeError, match="dispatch failed"):
-                await pool_route_execute(  # type: ignore[arg-type]
+                await pool_route_execute(
                     prompt="edit test",
                     pool_selector="least_loaded",
                     worktree=WorktreeOptions(isolation="worktree"),
@@ -419,7 +419,7 @@ class TestPoolRouteExecuteWorktree:
                 "create_worktree",
             ) as mock_create,
         ):
-            result = await pool_route_execute(  # type: ignore[arg-type]
+            result = await pool_route_execute(
                 prompt="hello",
                 pool_selector="least_loaded",
                 worktree=WorktreeOptions(isolation="host"),

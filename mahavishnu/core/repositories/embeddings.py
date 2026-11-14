@@ -201,7 +201,7 @@ class EmbeddingRepository(
         try:
             async with self.transaction() as conn:
                 result = await conn.execute(_DELETE_EMBEDDING, document_id)
-                return result == "DELETE 1"  # type: ignore[no-any-return]
+                return result == "DELETE 1"
         except Exception as e:  # DB driver (asyncpg + pgvector) can raise any library error; re-raise via typed RepositoryError  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             raise self._handle_error(
                 "delete_embedding", e, {"document_id": str(document_id)}

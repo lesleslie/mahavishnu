@@ -157,7 +157,7 @@ class UnifiedOrchestrator:
                 },
             )
 
-            return workflow_id  # type: ignore[no-any-return]
+            return workflow_id
 
         except (
             Exception  # noqa: BLE001  # background task — broad catch is the documented contract

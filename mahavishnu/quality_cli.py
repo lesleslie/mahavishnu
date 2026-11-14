@@ -55,7 +55,7 @@ def quality_check(
         console.print("[dim]Verbose output enabled[/dim]")
 
     try:
-        import crackerjack  # type: ignore[import-not-found]
+        import crackerjack
 
         result = crackerjack.run_quality_checks(project_path=path)
     except ImportError:

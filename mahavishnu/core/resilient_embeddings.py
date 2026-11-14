@@ -278,12 +278,12 @@ class ResilientEmbeddingClient:
                 embedding = result["embedding"]
                 if embedding and self._validate_dimension(embedding, "akosha"):
                     self._circuit_breaker.record_success()
-                    return embedding  # type: ignore[no-any-return]
+                    return embedding
             if isinstance(result, list):
                 embedding = result
                 if embedding and self._validate_dimension(embedding, "akosha"):
                     self._circuit_breaker.record_success()
-                    return embedding  # type: ignore[no-any-return]
+                    return embedding
 
             self._circuit_breaker.record_failure()
             return None
@@ -553,16 +553,16 @@ class ResilientEmbeddingClient:
             )
             embeddings: list[list[float]] = []
             if isinstance(result, dict) and isinstance(result.get("embeddings"), list):
-                embeddings = result["embeddings"]  # type: ignore[assignment]
+                embeddings = result["embeddings"]
             elif isinstance(result, list):
-                embeddings = result  # type: ignore[assignment]
+                embeddings = result
 
             valid = all(
                 self._validate_dimension(emb, "akosha_batch") for emb in embeddings
             )
             if valid and len(embeddings) == len(texts):
                 self._circuit_breaker.record_success()
-                return embeddings  # type: ignore[no-any-return]
+                return embeddings
 
             self._circuit_breaker.record_failure()
             return None

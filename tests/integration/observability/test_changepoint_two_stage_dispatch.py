@@ -54,7 +54,7 @@ def _make_two_stage_manager(
         confirm_threshold=confirm_threshold,
         confirm_window_samples=confirm_window_samples,
     )
-    mgr.logger = None  # type: ignore[attr-defined]
+    mgr.logger = None
 
     warn = CUSUMDetector(
         target_mean=0.0, slack=0.25, threshold=warn_threshold, two_sided=True
@@ -154,11 +154,11 @@ class TestTwoStageDispatch:
                 ):
                     self._sink.append(attrs)
 
-        mgr.drift_warning_counter = _StubCounter(warning_adds, allow_severity=False)  # type: ignore[attr-defined]
-        mgr.drift_detected_counter = _StubCounter(detected_adds, allow_severity=True)  # type: ignore[attr-defined]
+        mgr.drift_warning_counter = _StubCounter(warning_adds, allow_severity=False)
+        mgr.drift_detected_counter = _StubCounter(detected_adds, allow_severity=True)
         # The detector reset / counter flush paths reference these; stub them
         # to keep the test focused on the increment calls.
-        mgr.detector_age_gauge = None  # type: ignore[attr-defined]
+        mgr.detector_age_gauge = None
 
         rng = random.Random(2026_09_11)
         # Quiet baseline.

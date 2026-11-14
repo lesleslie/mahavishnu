@@ -112,7 +112,7 @@ class IdempotencyStore:
         ttl_bucket = options.ttl_seconds // 3600
         raw = f"{options.source}:{options.nonce}:{payload_hash}:{ttl_bucket}"
         result = await HashAction().execute({"algorithm": "sha256", "data": raw})
-        return result["digest"]  # type: ignore[no-any-return]
+        return result["digest"]
 
     async def _lock_for(self, key: str) -> asyncio.Lock:
         """Per-key asyncio.Lock. Created lazily on first use; LRU-bounded."""

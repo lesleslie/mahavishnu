@@ -40,7 +40,7 @@ class TestMetricSample:
             value=1.0,
         )
         with pytest.raises((AttributeError, Exception)):
-            s.value = 99.0  # type: ignore[misc]
+            s.value = 99.0
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ class TestChangepointConfig:
         from mahavishnu.core.config import ChangepointConfig
 
         with pytest.raises(ValidationError):
-            ChangepointConfig(changepoint_unknown_field=True)  # type: ignore[call-arg]
+            ChangepointConfig(changepoint_unknown_field=True)
 
     def test_top_level_on_mahavishnu_settings(self) -> None:
         """ChangepointConfig is a top-level sibling on MahavishnuSettings.
@@ -279,7 +279,7 @@ class TestChangepointConfig:
             target_mean=4.0,  # explicit baseline for raw-count pool_queue_depth
             detector="cusum",
         )
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         detector = mgr._get_or_create_changepoint_detector()
         assert detector.target_mean == 4.0
 
@@ -301,7 +301,7 @@ class TestChangepointConfig:
             target_mean_auto_window=10,
             target_metric="test_metric",
         )
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         # Feed 50 samples around value=7.0
         sampler = mgr._get_metric_sampler()
         for _ in range(50):
@@ -318,7 +318,7 @@ class TestChangepointConfig:
 
 @pytest.mark.unit
 class TestObservabilityManagerDriftDetection:
-    def _build_manager(self, **kwargs):  # type: ignore[no-untyped-def]
+    def _build_manager(self, **kwargs):
         """Build an ObservabilityManager with a minimal MahavishnuSettings stub."""
         from mahavishnu.core.config import (
             ChangepointConfig,
@@ -337,15 +337,15 @@ class TestObservabilityManagerDriftDetection:
         # ObservabilityConfig and other fields are not exercised in
         # these tests, so we leave them at default.
         try:
-            return ObservabilityManager.__new__(ObservabilityManager).__init__(  # type: ignore[attr-defined]
-                config=settings,  # type: ignore[arg-type]
+            return ObservabilityManager.__new__(ObservabilityManager).__init__(
+                config=settings,
             )
         except Exception:  # best-effort operation — broad catch is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
             # __init__ may fail on OTel init in this minimal stub;
             # build directly without calling __init__.
             mgr = ObservabilityManager.__new__(ObservabilityManager)
-            mgr.config = settings  # type: ignore[attr-defined]
-            mgr.logger = None  # type: ignore[attr-defined]
+            mgr.config = settings
+            mgr.logger = None
             return mgr
 
     def test_changepoint_disabled_returns_noop_result(self) -> None:
@@ -360,7 +360,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=False)  # explicitly off
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         result = mgr._evaluate_change_point("pool_queue_depth", 5.0)
         assert result.detected is False
         assert result.score == 0.0
@@ -376,7 +376,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True)  # explicit opt-in
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         # First observation at value 5 against target 0 with
         # slack 0.25 threshold 8 → CUSUM accumulates
         # (5 - 0 - 0.25) = 4.75. Below threshold 8 → not detected.
@@ -391,7 +391,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr_default.config = _Stub2()
         mgr_default.config.changepoint = ChangepointConfig()  # default-off
-        mgr_default.logger = None  # type: ignore[attr-defined]
+        mgr_default.logger = None
         r2 = mgr_default._evaluate_change_point("pool_queue_depth", 5.0)
         assert r2.detected is False
         # When disabled, samples_since_reset stays 0 (no detector
@@ -410,7 +410,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True)  # explicit opt-in
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         detected_at = None
         for i in range(200):
             result = mgr._evaluate_change_point("pool_queue_depth", 1.0)
@@ -431,7 +431,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True)
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         result = mgr._evaluate_3sigma("pool_queue_depth", 5.0)
         # Not enough samples for a meaningful z-score
         assert result.detected is False
@@ -449,7 +449,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True)
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         for _ in range(10):
             mgr._evaluate_3sigma("pool_queue_depth", 5.0)
         result = mgr._evaluate_3sigma("pool_queue_depth", 5.0)
@@ -468,7 +468,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True)
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         # R3-M-1: with the new window that EXCLUDES the current value
         # from the baseline, a constant baseline has std=0.0 and we
         # early-return without detection. Feed small Gaussian noise
@@ -497,7 +497,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(reference_detector="none")
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         result = mgr._evaluate_3sigma("pool_queue_depth", 100.0)
         # Reference disabled — no detection, no exception
         assert result.detected is False
@@ -527,7 +527,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(sampler_cadence_seconds=60.0)
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         assert getattr(mgr, "_metric_sampler", None) is None
         s = mgr._get_metric_sampler()
         assert s is not None
@@ -542,7 +542,7 @@ class TestObservabilityManagerDriftDetection:
 
         mgr2.config = _Stub2()
         mgr2.config.changepoint = ChangepointConfig(sampler_cadence_seconds=10.0)
-        mgr2.logger = None  # type: ignore[attr-defined]
+        mgr2.logger = None
         assert mgr2._get_metric_sampler().cadence_seconds == 10.0
 
 
@@ -560,7 +560,7 @@ class TestDriftCounterEmission:
     detector logic runs. See audit CRITICAL #1 / observability #1 / HIGH #10.
     """
 
-    def _build_manager(self):  # type: ignore[no-untyped-def]
+    def _build_manager(self):
         from mahavishnu.core.config import ChangepointConfig
         from mahavishnu.core.observability import ObservabilityManager
 
@@ -571,7 +571,7 @@ class TestDriftCounterEmission:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True, threshold=4.0)
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         return mgr
 
     def test_observability_manager_has_drift_counter(self) -> None:
@@ -600,7 +600,7 @@ class TestDriftCounterEmission:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True, threshold=4.0)
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         mgr._init_fallback_components()
 
         # Spy on the counter
@@ -610,7 +610,7 @@ class TestDriftCounterEmission:
             def add(self, amount, attributes=None):
                 added.append((amount, attributes))
 
-        mgr.drift_detected_counter = _Spy()  # type: ignore[assignment]
+        mgr.drift_detected_counter = _Spy()
 
         # Drive a persistent shift
         detected = False
@@ -644,7 +644,7 @@ class TestDriftCounterEmission:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True, threshold=4.0)
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         mgr._init_fallback_components()
 
         # Capture span attributes via a spy tracer
@@ -665,7 +665,7 @@ class TestDriftCounterEmission:
                 captured_attrs.extend(list((attributes or {}).items()))
                 return _SpySpan()
 
-        mgr.tracer = _SpyTracer()  # type: ignore[assignment]
+        mgr.tracer = _SpyTracer()
 
         # Patch OTEL_AVAILABLE so the OTel branch in _on_drift_detected
         # executes even in CI where the OTel SDK is not installed.
@@ -742,7 +742,7 @@ class TestDetectorResetAfterFire:
     refactor that drops the reset would silently regress.
     """
 
-    def _build_manager(self):  # type: ignore[no-untyped-def]
+    def _build_manager(self):
         from mahavishnu.core.config import ChangepointConfig
         from mahavishnu.core.observability import ObservabilityManager
 
@@ -753,7 +753,7 @@ class TestDetectorResetAfterFire:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True, threshold=4.0)
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         mgr._init_fallback_components()
         return mgr
 
@@ -837,7 +837,7 @@ class TestTargetMeanAutoColdPath:
     create the detector with ``target_mean=0.0`` on the first sample.
     """
 
-    def _build_manager(self):  # type: ignore[no-untyped-def]
+    def _build_manager(self):
         from mahavishnu.core.config import ChangepointConfig
         from mahavishnu.core.observability import ObservabilityManager
 
@@ -853,7 +853,7 @@ class TestTargetMeanAutoColdPath:
             target_mean_auto_window=60,  # need 30 samples to bootstrap
             threshold=4.0,
         )
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
         mgr._init_fallback_components()
         return mgr
 
@@ -888,7 +888,7 @@ class TestTargetMeanAutoColdPath:
             def add(self, amount, attributes=None):
                 added.append((amount, attributes))
 
-        mgr.drift_detected_counter = _Spy()  # type: ignore[assignment]
+        mgr.drift_detected_counter = _Spy()
         # Drive a sustained 5.0 shift
         for _ in range(50):
             mgr._evaluate_change_point("pool_queue_depth", 5.0)

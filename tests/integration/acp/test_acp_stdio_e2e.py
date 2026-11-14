@@ -398,7 +398,7 @@ async def test_bearer_redaction_e2e() -> None:
         # ``proc.stdout`` is an ``asyncio.StreamReader`` whose ``_buffer``
         # is a ``bytearray``. Capture via ``bytes()`` — calling ``.read()``
         # on the bytearray raises ``AttributeError``.
-        stdout_data = bytes(proc.stdout._buffer) if proc.stdout else b""  # type: ignore[attr-defined]
+        stdout_data = bytes(proc.stdout._buffer) if proc.stdout else b""
     finally:
         await _terminate(proc)
 

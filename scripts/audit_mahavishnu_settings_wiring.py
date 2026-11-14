@@ -114,7 +114,7 @@ def extract_schema() -> list[Field]:
     """
     if str(MAHAVISHNU_ROOT) not in sys.path:
         sys.path.insert(0, str(MAHAVISHNU_ROOT))
-    from mahavishnu.core.config import MahavishnuSettings  # type: ignore[import-not-found]
+    from mahavishnu.core.config import MahavishnuSettings
     from pydantic import BaseModel
 
     fields: list[Field] = []

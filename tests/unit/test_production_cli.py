@@ -91,7 +91,7 @@ def _build_app_with_mocks() -> typer.Typer:
         patcher_suite.__enter__(),
         patcher_app.__enter__(),
     ]
-    app._active_patches = active  # type: ignore[attr-defined]
+    app._active_patches = active
 
     add_production_commands(app)
     return app

@@ -56,14 +56,14 @@ class TestRegisterSearchTools:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         assert "mahavishnu_cross_repo_search" in app.registered
 
     def test_cross_repo_search_is_coroutine(self) -> None:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         import inspect
 
         assert inspect.iscoroutinefunction(app.registered["mahavishnu_cross_repo_search"])
@@ -144,7 +144,7 @@ class TestCrossRepoSearchInvocation:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         fn = app.registered["mahavishnu_cross_repo_search"]
         with pytest.raises(ValueError):
             await fn(query="foo", scope="bogus")
@@ -154,7 +154,7 @@ class TestCrossRepoSearchInvocation:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         fn = app.registered["mahavishnu_cross_repo_search"]
         with pytest.raises(ValueError):
             await fn(query="foo", limit=9999)
@@ -165,7 +165,7 @@ class TestCrossRepoSearchInvocation:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         fn = app.registered["mahavishnu_cross_repo_search"]
 
         fake_client = _FakeCommonMCPClient(
@@ -215,7 +215,7 @@ class TestCrossRepoSearchInvocation:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         fn = app.registered["mahavishnu_cross_repo_search"]
 
         fake_client = _FakeCommonMCPClient(
@@ -251,7 +251,7 @@ class TestCrossRepoSearchInvocation:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         fn = app.registered["mahavishnu_cross_repo_search"]
 
         akosha_payload = {
@@ -378,7 +378,7 @@ class TestStreamChannelBroadcast:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         fn = app.registered["mahavishnu_cross_repo_search"]
 
         akosha_payload = {
@@ -452,7 +452,7 @@ class TestQueryHashStability:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         fn = app.registered["mahavishnu_cross_repo_search"]
 
         fake_client = _FakeCommonMCPClient(
@@ -494,7 +494,7 @@ class TestQueryHashStability:
         from mahavishnu.mcp.tools.search_tools import register_search_tools
 
         app = _DummyFastMCP()
-        register_search_tools(app)  # type: ignore[arg-type]
+        register_search_tools(app)
         fn = app.registered["mahavishnu_cross_repo_search"]
 
         fake_client = _FakeCommonMCPClient(

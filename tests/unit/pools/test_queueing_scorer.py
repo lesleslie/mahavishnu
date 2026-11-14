@@ -209,7 +209,7 @@ class TestPydanticPoolConfigQueueing:
         from mahavishnu.core.config import PoolConfig
 
         with pytest.raises(ValidationError):
-            PoolConfig(unknown_field=True)  # type: ignore[call-arg]
+            PoolConfig(unknown_field=True)
 
     def test_warmup_min_observations_default(self) -> None:
         from mahavishnu.core.config import PoolConfig
@@ -295,7 +295,7 @@ class TestApplyQueueingPenalty:
     at least one pool has a fitted model.
     """
 
-    def _build_manager(self):  # type: ignore[no-untyped-def]
+    def _build_manager(self):
         """Minimal PoolManager construction with two pools."""
         from mahavishnu.pools.manager import PoolManager
 
@@ -497,7 +497,7 @@ class TestRouteTaskExecutionInvariants:
     re-introduce either regression without explicit test failure.
     """
 
-    def _build_manager(self):  # type: ignore[no-untyped-def]
+    def _build_manager(self):
         """Minimal PoolManager construction for the invariant test."""
         from unittest.mock import MagicMock
 
@@ -526,17 +526,17 @@ class TestRouteTaskExecutionInvariants:
 
         mgr = self._build_manager()
         mgr.execute_on_pool = AsyncMock(return_value={"result": "ok"})
-        mgr._apply_fitness_aware_routing = AsyncMock(  # type: ignore[method-assign]
+        mgr._apply_fitness_aware_routing = AsyncMock(
             return_value=PoolSelector.LEAST_LOADED
         )
-        mgr._apply_gpu_category_override = MagicMock(  # type: ignore[method-assign]
+        mgr._apply_gpu_category_override = MagicMock(
             return_value=("pool_a", "least_loaded")
         )
-        mgr._apply_queueing_penalty = MagicMock(  # type: ignore[method-assign]
+        mgr._apply_queueing_penalty = MagicMock(
             return_value=("pool_a", None, "least_loaded", False)
         )
-        mgr._record_arrival = MagicMock()  # type: ignore[method-assign]
-        mgr._persist_routing_decision = AsyncMock()  # type: ignore[method-assign]
+        mgr._record_arrival = MagicMock()
+        mgr._persist_routing_decision = AsyncMock()
 
         result = await mgr.route_task({"prompt": "test"})
         assert result == {"result": "ok"}
@@ -554,17 +554,17 @@ class TestRouteTaskExecutionInvariants:
 
         mgr = self._build_manager()
         mgr.execute_on_pool = AsyncMock(return_value={"result": "ok"})
-        mgr._apply_fitness_aware_routing = AsyncMock(  # type: ignore[method-assign]
+        mgr._apply_fitness_aware_routing = AsyncMock(
             return_value=PoolSelector.LEAST_LOADED
         )
-        mgr._apply_gpu_category_override = MagicMock(  # type: ignore[method-assign]
+        mgr._apply_gpu_category_override = MagicMock(
             return_value=("pool_a", "least_loaded")
         )
-        mgr._apply_queueing_penalty = MagicMock(  # type: ignore[method-assign]
+        mgr._apply_queueing_penalty = MagicMock(
             return_value=("pool_a", None, "least_loaded", False)
         )
-        mgr._record_arrival = MagicMock()  # type: ignore[method-assign]
-        mgr._persist_routing_decision = AsyncMock()  # type: ignore[method-assign]
+        mgr._record_arrival = MagicMock()
+        mgr._persist_routing_decision = AsyncMock()
 
         await mgr.route_task({"prompt": "test"})
         assert mgr._record_arrival.call_count == 1, (

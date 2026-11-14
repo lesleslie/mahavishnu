@@ -46,7 +46,7 @@ try:
 
     SYSTEM_METRICS_AVAILABLE = True
 except ImportError:
-    SystemMetricsInstrumentor = None  # type: ignore[assignment]
+    SystemMetricsInstrumentor = None
     SYSTEM_METRICS_AVAILABLE = False
 
 
@@ -640,7 +640,7 @@ class ObservabilityManager:
                     "config has no changepoint block; using default cadence"
                 )
             sampler = MetricSampler(cadence_seconds=cadence)
-            self._metric_sampler = sampler  # type: ignore[attr-defined]
+            self._metric_sampler = sampler
         return sampler
 
     def _evaluate_change_point(
@@ -957,7 +957,7 @@ class ObservabilityManager:
                 threshold=threshold,
                 two_sided=True,
             )
-        self._changepoint_detector = detector  # type: ignore[attr-defined]
+        self._changepoint_detector = detector
         return detector
 
     def _get_changepoint_target_metric(self) -> str:
@@ -1215,7 +1215,7 @@ class ObservabilityManager:
                 )
         except Exception as exc:  # OTel counter writes are best-effort; we still log the drift event  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._log_debug("drift counter increment failed: %s", exc)
-        self._last_two_stage_result = None  # type: ignore[attr-defined]
+        self._last_two_stage_result = None
 
     def _record_changepoint_evaluation(self) -> None:
         """Record one change-point detector evaluation (liveness).
@@ -1274,7 +1274,7 @@ class ObservabilityManager:
                 # Cast to Any: real OTel Tracer accepts Mapping[str, primitive];
                 # MockTracer (in-test fallback) takes the narrower
                 # dict[str, str]. The union call needs the loosest type.
-                with self.tracer.start_as_current_span(  # type: ignore[union-attr]
+                with self.tracer.start_as_current_span(
                     "mahavishnu.observability.drift_detected",
                     attributes=cast("Any", span_attributes),
                 ):
@@ -1425,7 +1425,7 @@ class ObservabilityManager:
             if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
                 # Cast to Any: real OTel accepts Mapping[str, primitive];
                 # MockTracer takes narrower dict[str, str].
-                with self.tracer.start_as_current_span(  # type: ignore[union-attr]
+                with self.tracer.start_as_current_span(
                     "mahavishnu.observability.drift_warning",
                     attributes=cast("Any", span_attributes),
                 ):
@@ -1485,7 +1485,7 @@ class ObservabilityManager:
         )
         # Cache the TwoStageResult for _on_drift_detected to read if needed
         # (e.g., for the samples_since_warning span attribute).
-        self._last_two_stage_result = result  # type: ignore[attr-defined]
+        self._last_two_stage_result = result
         self._on_drift_detected(metric_name, value, synthetic)
 
     def _on_anomaly_detected(self, metric_name: str, result) -> None:
@@ -1501,11 +1501,11 @@ class ObservabilityManager:
 
     def _log_debug(self, msg: str, *args: Any) -> None:
         if getattr(self, "logger", None) is not None:
-            self.logger.debug(msg, *args)  # type: ignore[union-attr]
+            self.logger.debug(msg, *args)
 
     def _log_warning(self, msg: str, *args: Any) -> None:
         if getattr(self, "logger", None) is not None:
-            self.logger.warning(msg, *args)  # type: ignore[union-attr]
+            self.logger.warning(msg, *args)
 
     @staticmethod
     def _classify_drift_severity(score: float, threshold: float) -> str:

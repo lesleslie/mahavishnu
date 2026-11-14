@@ -23,8 +23,8 @@ def _sample(**overrides: object) -> PlanRecord:
         "repo": "github.com/example/repo",
         "updated_at_ms": 1700000000000,
     }
-    defaults.update(overrides)  # type: ignore[arg-type]
-    return PlanRecord(**defaults)  # type: ignore[arg-type]
+    defaults.update(overrides)
+    return PlanRecord(**defaults)
 
 
 class TestPlanRecordShape:
@@ -37,20 +37,20 @@ class TestPlanRecordShape:
     def test_frozen_prevents_mutation(self) -> None:
         rec = _sample()
         with pytest.raises((AttributeError, Exception)):  # FrozenInstanceError
-            rec.title = "Bar"  # type: ignore[misc]
+            rec.title = "Bar"
 
     def test_kw_only_required(self) -> None:
         # Positional args are rejected at construction
         with pytest.raises(TypeError):
-            PlanRecord("id", "path", "title")  # type: ignore[call-arg,arg-type]
+            PlanRecord("id", "path", "title")
 
     def test_status_literal_rejected_at_runtime(self) -> None:
         with pytest.raises(ValueError):
-            _sample(status="in-review")  # type: ignore[arg-type]
+            _sample(status="in-review")
 
     def test_role_literal_rejected_at_runtime(self) -> None:
         with pytest.raises(ValueError):
-            _sample(role="spec")  # type: ignore[arg-type]
+            _sample(role="spec")
 
     def test_lifecycle_state_default_is_none(self) -> None:
         rec = _sample()

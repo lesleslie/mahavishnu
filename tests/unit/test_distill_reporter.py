@@ -230,7 +230,7 @@ class TestSafeReportRun:
             started_at=datetime(2026, 6, 26, 12, 0, tzinfo=UTC),
         )
         with caplog.at_level(logging.WARNING, logger="mahavishnu.distill.reporter"):
-            result = safe_report_run(BrokenConn(), run)  # type: ignore[arg-type]
+            result = safe_report_run(BrokenConn(), run)
         # No exception bubbles up.
         assert result is False
         # Logged a warning so operators see the failure.

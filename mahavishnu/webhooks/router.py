@@ -118,7 +118,7 @@ async def validate_auth(
                     ],
                 },
             )
-        return result  # type: ignore[no-any-return]
+        return result
     except AuthenticationError as e:
         logger.warning(f"Authentication failed: {e.message}")
         raise HTTPException(

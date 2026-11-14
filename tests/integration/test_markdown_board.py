@@ -230,7 +230,7 @@ class TestWatcherLoop:
                     board_path=board,
                     state_sidecar=state,
                     watcher_lag_seconds=0.1,
-                    dispatch=lambda card: None,  # type: ignore[arg-type,return-value]
+                    dispatch=lambda card: None,
                 )
             )
             await asyncio.sleep(0.3)

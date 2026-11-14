@@ -321,7 +321,7 @@ def test_format_list_name_column_bold() -> None:
             captured.append(obj)
 
     capture = CaptureConsole()
-    capture_formatter = FallbackRichFormatter(console=capture)  # type: ignore[arg-type]
+    capture_formatter = FallbackRichFormatter(console=capture)
     capture_formatter.format_list(
         [{"name": "alpha", "status": "ok"}],
         columns=["name", "status"],
@@ -419,7 +419,7 @@ def test_import_error_branch_keeps_command_aliases_none(
         # Force the import to fail with ImportError. ``None`` is the
         # canonical sentinel Python returns for missing module imports;
         # the import system raises ImportError when it sees this.
-        sys.modules[palette_key] = None  # type: ignore[assignment]
+        sys.modules[palette_key] = None
         # We deliberately leave the sentinel in place — popping it would
         # let the import succeed via the normal filesystem path. The
         # reload below re-runs the module body, so the ``from ...

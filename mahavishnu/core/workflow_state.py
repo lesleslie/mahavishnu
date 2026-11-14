@@ -99,7 +99,7 @@ class WorkflowState:
         """List workflows, optionally filtered by status"""
         if self.opensearch and OPENSEARCH_AVAILABLE:
             try:
-                query = {"query": {"match_all": {}}}  # type: ignore[var-annotated]
+                query = {"query": {"match_all": {}}}
                 if status:
                     query["query"] = {"term": {"status.keyword": status.value}}
 

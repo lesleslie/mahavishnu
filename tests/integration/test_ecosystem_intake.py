@@ -60,7 +60,7 @@ def safe_publisher_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _fake_publish(envelope: Any) -> bool:
         # EventEnvelope is a msgspec.Struct; project to dict for assertions.
         try:
-            captured.append(envelope.to_dict())  # type: ignore[attr-defined]
+            captured.append(envelope.to_dict())
         except AttributeError:
             captured.append(
                 {

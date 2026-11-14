@@ -18,7 +18,7 @@ class _Counter:
     def __init__(self) -> None:
         self.calls: list[tuple[int, dict | None]] = []
 
-    def add(self, amount: int, attributes: dict[str, str] | None = None):  # type: ignore[override]
+    def add(self, amount: int, attributes: dict[str, str] | None = None):
         self.calls.append((amount, attributes))
 
 
@@ -26,14 +26,14 @@ class _Histogram:
     def __init__(self) -> None:
         self.calls: list[tuple[float, dict | None]] = []
 
-    def record(self, amount: float, attributes: dict[str, str] | None = None):  # type: ignore[override]
+    def record(self, amount: float, attributes: dict[str, str] | None = None):
         self.calls.append((amount, attributes))
 
 
 class _Tracer:
     def start_as_current_span(
         self, name: str, attributes: dict[str, str] | None = None
-    ):  # type: ignore[override]
+    ):
         class _Span:
             def __enter__(self):
                 return self
@@ -442,9 +442,9 @@ async def test_flush_and_shutdown_otel_paths(monkeypatch: pytest.MonkeyPatch) ->
     trace_provider = _Provider()
 
     metrics_mod = types.ModuleType("opentelemetry.metrics")
-    metrics_mod.get_meter_provider = lambda: meter_provider  # type: ignore[attr-defined]
+    metrics_mod.get_meter_provider = lambda: meter_provider
     trace_mod = types.ModuleType("opentelemetry.trace")
-    trace_mod.get_tracer_provider = lambda: trace_provider  # type: ignore[attr-defined]
+    trace_mod.get_tracer_provider = lambda: trace_provider
 
     monkeypatch.setitem(sys.modules, "opentelemetry.metrics", metrics_mod)
     monkeypatch.setitem(sys.modules, "opentelemetry.trace", trace_mod)
@@ -473,9 +473,9 @@ async def test_flush_and_shutdown_otel_exception_paths(
 
     bad_provider = _BadProvider()
     metrics_mod = types.ModuleType("opentelemetry.metrics")
-    metrics_mod.get_meter_provider = lambda: bad_provider  # type: ignore[attr-defined]
+    metrics_mod.get_meter_provider = lambda: bad_provider
     trace_mod = types.ModuleType("opentelemetry.trace")
-    trace_mod.get_tracer_provider = lambda: bad_provider  # type: ignore[attr-defined]
+    trace_mod.get_tracer_provider = lambda: bad_provider
     monkeypatch.setitem(sys.modules, "opentelemetry.metrics", metrics_mod)
     monkeypatch.setitem(sys.modules, "opentelemetry.trace", trace_mod)
 

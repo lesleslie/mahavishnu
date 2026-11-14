@@ -407,7 +407,7 @@ class TestAnomalyResult:
             window_std=1.0,
         )
         with pytest.raises((AttributeError, Exception)):
-            r.z_score = 99.0  # type: ignore[misc]
+            r.z_score = 99.0
 
 
 # ---------------------------------------------------------------------------
@@ -459,7 +459,7 @@ class TestChangePointResult:
             direction="unknown",
         )
         with pytest.raises((AttributeError, Exception)):
-            r.detected = True  # type: ignore[misc]
+            r.detected = True
 
 
 # ---------------------------------------------------------------------------
@@ -505,8 +505,8 @@ class TestIsFiniteRound4:
         # bool is a subclass of int; the explicit bool-rejection
         # guards against accidental ``_is_finite(True) is True``
         # meaning "True is a valid value".
-        assert _is_finite(True) is False  # type: ignore[arg-type]
-        assert _is_finite(False) is False  # type: ignore[arg-type]
+        assert _is_finite(True) is False
+        assert _is_finite(False) is False
 
     def test_nan_inf_rejected(self) -> None:
         from mahavishnu.observability.changepoint.cusum import _is_finite

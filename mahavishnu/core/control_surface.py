@@ -59,7 +59,7 @@ async def get_recovered_routing_decisions(
     try:
         decisions = await app._mcp_state.recover_routing_decisions()
         if task_class is None:
-            return decisions  # type: ignore[no-any-return]
+            return decisions
         return [
             decision
             for decision in decisions
@@ -169,7 +169,7 @@ def request_approval(
         options=options,
         timeout_minutes=timeout_minutes,
     )
-    return request.to_dict()  # type: ignore[no-any-return]
+    return request.to_dict()
 
 
 def respond_to_approval(

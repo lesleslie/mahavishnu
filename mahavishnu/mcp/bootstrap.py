@@ -38,7 +38,7 @@ def _mhv_server(fastmcp: FastMCP) -> FastMCPServer:
     attributes live on the wrapper, not on the FastMCP. The wrapper is set
     as ``server._mhv_server`` in ``FastMCPServer.__init__``.
     """
-    return fastmcp._mhv_server  # type: ignore[attr-defined, no-any-return]  # ty: ignore[missing-attribute]
+    return fastmcp._mhv_server  # ty: ignore[missing-attribute]
 
 
 logger = get_logger(__name__)

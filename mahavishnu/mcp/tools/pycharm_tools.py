@@ -408,7 +408,7 @@ def _extract_problems(result: Any) -> list[dict[str, Any]]:
         return result
     if isinstance(result, dict):
         if "problems" in result:
-            return result["problems"]  # type: ignore[no-any-return]
+            return result["problems"]
         if "content" in result:
             content = result["content"]
             if isinstance(content, list):

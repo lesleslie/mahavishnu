@@ -22,7 +22,7 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
 
     # Create mock classes for development
-    class Counter:  # type: ignore[no-redef]
+    class Counter:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -32,7 +32,7 @@ except ImportError:
         def inc(self, *args, **kwargs):
             pass
 
-    class Histogram:  # type: ignore[no-redef]
+    class Histogram:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -42,7 +42,7 @@ except ImportError:
         def observe(self, *args, **kwargs):
             pass
 
-    class Gauge:  # type: ignore[no-redef]
+    class Gauge:
         def __init__(self, *args, **kwargs):
             pass
 

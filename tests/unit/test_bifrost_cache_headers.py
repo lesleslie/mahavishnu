@@ -80,7 +80,7 @@ def no_credential_store(monkeypatch: pytest.MonkeyPatch):
 
 def test_direct_mode_narrows_the_lookup_to_the_exact_path() -> None:
     """``direct`` maps onto ``x-bf-cache-type: direct``."""
-    headers = build_cache_headers("direct")  # type: ignore[arg-type]
+    headers = build_cache_headers("direct")
     assert headers[CACHE_TYPE_HEADER] == "direct"
     assert CACHE_NO_STORE_HEADER not in headers
 
@@ -94,7 +94,7 @@ def test_semantic_mode_sends_no_cache_type_header() -> None:
     call) and the only one with no input-size ceiling, so a request that
     names it reaches a lookup that a semantic-pinned request cannot.
     """
-    headers = build_cache_headers("semantic")  # type: ignore[arg-type]
+    headers = build_cache_headers("semantic")
     assert CACHE_TYPE_HEADER not in headers
     assert CACHE_KEY_HEADER in headers
     assert CACHE_NO_STORE_HEADER not in headers
@@ -108,8 +108,8 @@ def test_semantic_mode_still_engages_semantic_caching() -> None:
     ceiling with no lookup at all. The default order keeps both, with
     the free exact-match path first.
     """
-    semantic = build_cache_headers("semantic")  # type: ignore[arg-type]
-    direct = build_cache_headers("direct")  # type: ignore[arg-type]
+    semantic = build_cache_headers("semantic")
+    direct = build_cache_headers("direct")
     assert CACHE_TYPE_HEADER not in semantic
     assert direct[CACHE_TYPE_HEADER] == "direct"
 
@@ -154,7 +154,7 @@ def test_off_mode_cannot_be_served_from_a_cache() -> None:
 def test_every_mode_carries_a_cache_bucket() -> None:
     """The cache key header is always present -- it selects the bucket."""
     for mode in ("off", "direct", "semantic"):
-        headers = build_cache_headers(mode)  # type: ignore[arg-type]
+        headers = build_cache_headers(mode)
         assert CACHE_KEY_HEADER in headers
 
 
@@ -166,7 +166,7 @@ def test_the_bucket_cannot_be_chosen_by_the_caller() -> None:
     keyword-only signature is what enforces that.
     """
     with pytest.raises(TypeError):
-        build_cache_headers("semantic", "tenant-a")  # type: ignore[call-arg]
+        build_cache_headers("semantic", "tenant-a")
 
 
 def test_the_traffic_class_separates_the_buckets() -> None:

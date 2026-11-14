@@ -275,7 +275,7 @@ class FixOrchestrator:
                         "session_id": task.session_id or correlation_id,
                     },
                 )
-            return checkpoint_id  # type: ignore[no-any-return]
+            return checkpoint_id
         except Exception as exc:  # Checkpoint recording logs and degrades gracefully so the fix flow can still proceed  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             trace.append(f"Session checkpoint degraded: {exc}")
             return None

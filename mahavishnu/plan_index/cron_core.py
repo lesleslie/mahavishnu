@@ -527,7 +527,7 @@ async def run_rebuild_cycle(
       5. Truncate `recent_errors` to 20 entries.
       6. Release lock by deleting the holder key (always, in `finally`).
     """
-    mcp = store._mcp  # type: ignore[attr-defined]
+    mcp = store._mcp
 
     # --- Lock acquisition (round-3 addition) ------------------------------
     holder_raw = await mcp.get(REBUILD_LOCK_HOLDER_KEY)

@@ -196,7 +196,7 @@ class TestWorkflowSpec:
 
         spec = WorkflowSpec(intent="x")
         with pytest.raises((AttributeError, Exception)) as exc_info:
-            spec.intent = "y"  # type: ignore[misc]
+            spec.intent = "y"
         # Frozen dataclasses raise FrozenInstanceError (a subclass of AttributeError).
         assert "frozen" in str(exc_info.value).lower() or isinstance(
             exc_info.value, AttributeError

@@ -29,7 +29,7 @@ try:
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
-    SentenceTransformer: type[Any] | None = None  # type: ignore[no-redef]
+    SentenceTransformer: type[Any] | None = None
 
 try:
     from fastembed import TextEmbedding  # ty: ignore[import-not-found]
@@ -37,7 +37,7 @@ try:
     FASTEMBED_AVAILABLE = True
 except ImportError:
     FASTEMBED_AVAILABLE = False
-    TextEmbedding: type[Any] | None = None  # type: ignore[no-redef]
+    TextEmbedding: type[Any] | None = None
 
 if TYPE_CHECKING:
     from oneiric.adapters.vector.hot_store import (
@@ -115,7 +115,7 @@ class SentenceTransformersWrapper:
         Returns:
             Embedding vector
         """
-        return self._model.encode(text, convert_to_numpy=True).tolist()  # type: ignore[no-any-return]
+        return self._model.encode(text, convert_to_numpy=True).tolist()
 
     @property
     def dimension(self) -> int:
@@ -150,7 +150,7 @@ class FastEmbedWrapper:
         """
         # fastembed returns a generator, get first result
         embeddings = list(self._model.embed([text]))
-        return embeddings[0].tolist()  # type: ignore[no-any-return]
+        return embeddings[0].tolist()
 
     @property
     def dimension(self) -> int:
@@ -293,9 +293,9 @@ class AkoshaEmbedder:
             )
             # CommonMCPClient surfaces the tool result payload directly.
             if isinstance(result, dict) and "embedding" in result:
-                return result["embedding"]  # type: ignore[no-any-return]
+                return result["embedding"]
             if isinstance(result, list):
-                return result  # type: ignore[no-any-return]
+                return result
             logger.warning(f"unexpected_akosha_response: {result}")
             return [0.0] * self._dimension
 
@@ -319,9 +319,9 @@ class AkoshaEmbedder:
                 {"texts": texts},
             )
             if isinstance(result, dict) and isinstance(result.get("embeddings"), list):
-                return result["embeddings"]  # type: ignore[no-any-return]
+                return result["embeddings"]
             if isinstance(result, list):
-                return result  # type: ignore[no-any-return]
+                return result
             return [[0.0] * self._dimension] * len(texts)
 
         except Exception as e:  # MCP call_tool may surface any error; fall back to zero-vector placeholders  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
@@ -940,7 +940,7 @@ class OtelIngester:
         if not self._hot_store:
             raise RuntimeError("HotStore not initialized. Call initialize() first.")
 
-        return await self._hot_store.search_similar(  # type: ignore[no-any-return]
+        return await self._hot_store.search_similar(
             query_embedding=query_embedding,
             system_id=system_id,
             limit=limit,
@@ -1187,7 +1187,7 @@ class OtelIngester:
                 elif "qwen" in service_name.lower():
                     return "qwen"
                 else:
-                    return service_name  # type: ignore[no-any-return]
+                    return service_name
 
         return "unknown"
 

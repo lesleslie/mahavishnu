@@ -203,7 +203,7 @@ class TestHostCapabilityProbe:
     def test_invalid_placement_raises_value_error(self) -> None:
         sb = _import_worker_class()
         with pytest.raises(ValueError, match="placement"):
-            sb.probe_host_capability(placement="nope")  # type: ignore[arg-type]
+            sb.probe_host_capability(placement="nope")
 
     def test_macos_jail_resolves_to_seatbelt(
         self, monkeypatch: pytest.MonkeyPatch
@@ -263,7 +263,7 @@ class TestFailClosedStartup:
     ) -> None:
         sb = _import_worker_class()
         with pytest.raises(TypeError):
-            sb.ShepherdBackendWorker()  # type: ignore[call-arg]
+            sb.ShepherdBackendWorker()
 
     def test_construct_raises_when_sdk_missing(
         self, monkeypatch: pytest.MonkeyPatch

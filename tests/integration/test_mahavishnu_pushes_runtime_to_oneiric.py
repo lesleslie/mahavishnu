@@ -185,7 +185,7 @@ class _StubApp:
         """Replicate production push path for integration testing."""
         from mahavishnu.core.runtime_facts import RuntimeFactsBuilder
 
-        builder = RuntimeFactsBuilder(self)  # type: ignore[arg-type]
+        builder = RuntimeFactsBuilder(self)
         legacy_facts = builder.build_all()
         legacy_adapters = legacy_facts.get("adapters") or {}
 
@@ -289,7 +289,7 @@ async def test_mahavishnu_list_adapters_preserves_legacy_wire_shape() -> None:
     from mahavishnu.core.runtime_facts import RuntimeFactsBuilder
 
     app = _build_stub_app()
-    builder = RuntimeFactsBuilder(app)  # type: ignore[arg-type]
+    builder = RuntimeFactsBuilder(app)
     payload = builder.build_all()
 
     # Top-level shape: exactly the legacy keys, no Oneiric envelope leak.

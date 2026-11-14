@@ -70,7 +70,7 @@ class TestProvenanceDecision:
             source_type="mahavishnu_workflow",
         )
         with pytest.raises((AttributeError, TypeError)):
-            d.allowed = False  # type: ignore[misc]
+            d.allowed = False
 
 
 # --------------------------------------------------------------- behavior

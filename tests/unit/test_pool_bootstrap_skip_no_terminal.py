@@ -88,7 +88,7 @@ async def test_bootstrap_skips_when_mahavishnu_pool_has_no_terminal_manager(
     _patch_defaults(monkeypatch, spawn_type="mahavishnu")
     mcp = _NoOpMcp()
     pm = _make_pool_manager(terminal_manager=None)
-    register_pool_tools(mcp, pm)  # type: ignore[arg-type]
+    register_pool_tools(mcp, pm)
     bootstrap = mcp._registered["mahavishnu_pool_bootstrap"]
 
     result = await bootstrap()
@@ -113,7 +113,7 @@ async def test_bootstrap_attempts_spawn_when_terminal_manager_present(
     mcp = _NoOpMcp()
     pm = _make_pool_manager(terminal_manager=MagicMock(name="tmux"))
     pm.spawn_pool = AsyncMock(return_value="pool_test_1")
-    register_pool_tools(mcp, pm)  # type: ignore[arg-type]
+    register_pool_tools(mcp, pm)
     bootstrap = mcp._registered["mahavishnu_pool_bootstrap"]
 
     result = await bootstrap()
@@ -136,7 +136,7 @@ async def test_bootstrap_skips_when_session_buddy_pool_uses_no_terminal(
     mcp = _NoOpMcp()
     pm = _make_pool_manager(terminal_manager=None)
     pm.spawn_pool = AsyncMock(return_value="pool_sb_1")
-    register_pool_tools(mcp, pm)  # type: ignore[arg-type]
+    register_pool_tools(mcp, pm)
     bootstrap = mcp._registered["mahavishnu_pool_bootstrap"]
 
     result = await bootstrap()

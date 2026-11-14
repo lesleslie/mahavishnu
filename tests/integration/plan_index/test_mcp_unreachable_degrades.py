@@ -53,7 +53,7 @@ class TestMCPUnreachableDegrades:
         implementation propagates the raw ``ConnectionError`` — a
         regression catcher for the planned error-translation layer.
         """
-        store = PlanIndexStore(_RaisingMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(_RaisingMCP())
 
         with pytest.raises((PlanIndexUnavailableError, ConnectionError)) as excinfo:
             await store.list_all()
@@ -70,7 +70,7 @@ class TestMCPUnreachableDegrades:
         visible at the boundary is deliberate until Task 12 lands the
         production wire.
         """
-        store = PlanIndexStore(_RaisingMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(_RaisingMCP())
 
         with pytest.raises((PlanIndexUnavailableError, ConnectionError)):
             await store.get("f" * 32)

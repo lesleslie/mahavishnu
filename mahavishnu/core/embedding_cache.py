@@ -404,7 +404,7 @@ class EmbeddingCache:
         result = self._l1.get(key)
         if result is not None:
             self._metrics.record_l1_hit()
-            return result  # type: ignore[no-any-return]
+            return result
 
         self._metrics.record_l1_miss()
 
@@ -420,7 +420,7 @@ class EmbeddingCache:
                         self._l1.set(key, embedding)
                         self._metrics.record_l2_hit()
                         self._circuit_breaker.record_success()
-                        return embedding  # type: ignore[no-any-return]
+                        return embedding
                 except Exception as e:  # L2 get can raise any Redis/JSON error; record circuit-breaker failure and fall through to compute  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
                     logger.debug(f"L2 cache get failed: {e}")
                     self._circuit_breaker.record_failure()
@@ -500,7 +500,7 @@ class EmbeddingCache:
                 self._metrics.record_compute(latency_ms)
                 return embedding
 
-            return await self._singleflight.do(key, _compute_and_cache)  # type: ignore[no-any-return]
+            return await self._singleflight.do(key, _compute_and_cache)
 
         # Fallback without singleflight
         start_time = time.perf_counter()

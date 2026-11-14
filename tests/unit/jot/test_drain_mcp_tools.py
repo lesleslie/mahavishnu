@@ -39,9 +39,9 @@ _jot_tools_path = (
 _spec = importlib.util.spec_from_file_location(
     "jot_tools_drain_under_test", _jot_tools_path
 )
-jot_tools = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
+jot_tools = importlib.util.module_from_spec(_spec)
 sys.modules[_spec.name] = jot_tools
-_spec.loader.exec_module(jot_tools)  # type: ignore[union-attr]
+_spec.loader.exec_module(jot_tools)
 
 
 @pytest.fixture(autouse=True)

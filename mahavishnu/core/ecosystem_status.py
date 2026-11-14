@@ -584,7 +584,7 @@ class EcosystemStatusService:
             try:
                 health = (
                     await adapter.get_health() if hasattr(adapter, "get_health") else {}
-                )  # type: ignore[var-annotated]
+                )
                 raw_status = health.get("status", "unknown")
                 adapters[name] = AdapterStatus(
                     status=normalize_status(raw_status),
@@ -699,7 +699,7 @@ class EcosystemStatusService:
             try:
                 health = (
                     await adapter.get_health() if hasattr(adapter, "get_health") else {}
-                )  # type: ignore[var-annotated]
+                )
                 adapter_status = normalize_status(health.get("status", "unknown"))
                 caps: list[str] = []
                 if hasattr(adapter, "capabilities"):

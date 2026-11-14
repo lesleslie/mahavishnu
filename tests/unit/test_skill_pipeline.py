@@ -108,7 +108,7 @@ class TestSkillTransition:
             content_hash="0" * 64,
         )
         with pytest.raises(Exception):
-            ts.skill_name = "other"  # type: ignore[misc]
+            ts.skill_name = "other"
 
 
 # ---------------------------------------------------------------------------

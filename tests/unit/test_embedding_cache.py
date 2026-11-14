@@ -697,8 +697,8 @@ class TestEmbeddingCacheL2Enabled:
         # Build fake redis package with asyncio submodule
         fake_redis = types.ModuleType("redis")
         fake_asyncio = types.ModuleType("redis.asyncio")
-        fake_asyncio.from_url = MagicMock(return_value=fake_client)  # type: ignore[attr-defined]
-        fake_redis.asyncio = fake_asyncio  # type: ignore[attr-defined]
+        fake_asyncio.from_url = MagicMock(return_value=fake_client)
+        fake_redis.asyncio = fake_asyncio
         sys.modules["redis"] = fake_redis
         sys.modules["redis.asyncio"] = fake_asyncio
         try:
@@ -723,10 +723,10 @@ class TestEmbeddingCacheL2Enabled:
         # Build fake redis package whose from_url raises
         fake_redis = types.ModuleType("redis")
         fake_asyncio = types.ModuleType("redis.asyncio")
-        fake_asyncio.from_url = MagicMock(  # type: ignore[attr-defined]
+        fake_asyncio.from_url = MagicMock(
             side_effect=ImportError("redis not available")
         )
-        fake_redis.asyncio = fake_asyncio  # type: ignore[attr-defined]
+        fake_redis.asyncio = fake_asyncio
         sys.modules["redis"] = fake_redis
         sys.modules["redis.asyncio"] = fake_asyncio
         try:
@@ -753,8 +753,8 @@ class TestEmbeddingCacheL2Enabled:
 
         fake_redis = types.ModuleType("redis")
         fake_asyncio = types.ModuleType("redis.asyncio")
-        fake_asyncio.from_url = MagicMock(return_value=fake_client)  # type: ignore[attr-defined]
-        fake_redis.asyncio = fake_asyncio  # type: ignore[attr-defined]
+        fake_asyncio.from_url = MagicMock(return_value=fake_client)
+        fake_redis.asyncio = fake_asyncio
         sys.modules["redis"] = fake_redis
         sys.modules["redis.asyncio"] = fake_asyncio
         try:
@@ -762,7 +762,7 @@ class TestEmbeddingCacheL2Enabled:
             c2 = await cache._get_l2_client()
             assert c1 is c2
             # from_url should be called only once
-            assert fake_asyncio.from_url.call_count == 1  # type: ignore[attr-defined]
+            assert fake_asyncio.from_url.call_count == 1
         finally:
             del sys.modules["redis"]
             del sys.modules["redis.asyncio"]

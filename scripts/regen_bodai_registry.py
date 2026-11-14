@@ -228,7 +228,7 @@ def parse_requires_python(repo_path: str) -> str:
         import tomllib
     except ImportError:
         try:
-            import tomli as tomllib  # type: ignore[no-redef]
+            import tomli as tomllib
         except ImportError:
             return "n/a (pyproject.toml unreadable)"
     try:

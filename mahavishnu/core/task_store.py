@@ -686,7 +686,7 @@ class TaskStore:
             query += f" AND assignee = ${param_count}"
             params.append(filters.assignee)
 
-        return await self.db.fetchval(query, *params)  # type: ignore[no-any-return]
+        return await self.db.fetchval(query, *params)
 
     # Batch operations
 

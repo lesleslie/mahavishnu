@@ -277,7 +277,7 @@ _deprecated_aliases = [
     "_spawn_crow_state",
 ]
 for _alias in _deprecated_aliases:
-    globals()[_alias] = None  # type: ignore[assignment]
+    globals()[_alias] = None
 
 
 async def _deprecated_no_op(*_args, **_kwargs):  # pragma: no cover

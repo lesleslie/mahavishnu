@@ -105,7 +105,7 @@ class FakeAdapter(OrchestratorAdapter):
             return self._execute_result
         return {"success": True, "execution_id": "exec-1", "latency_ms": 12}
 
-    async def is_available(self) -> bool:  # type: ignore[override]
+    async def is_available(self) -> bool:
         return self._available
 
     async def get_health(self) -> dict[str, Any]:
@@ -734,7 +734,7 @@ class TestCapabilityRouter:
     def test_get_cache_stats_disabled(self) -> None:
         # If cache is None, returns {"enabled": False}
         router = CapabilityRouter()
-        router._cache = None  # type: ignore[assignment]
+        router._cache = None
         stats = router.get_cache_stats()
         assert stats == {"enabled": False}
 
@@ -810,7 +810,7 @@ class TestTaskRouterHelpers:
     def test_default_preference_order_unknown_falls_back(self) -> None:
         tr = TaskRouter()
         # Use a real TaskType but with cleared mapping
-        tr.TASK_PREFERENCE_ORDERS = {}  # type: ignore[attr-defined]
+        tr.TASK_PREFERENCE_ORDERS = {}
         result = tr._default_preference_order(TaskType.WORKFLOW)
         assert result == list(TaskRouter.DEFAULT_PREFERENCE_ORDER)
 
@@ -1058,7 +1058,7 @@ class TestTaskRouterExecuteWithFallback:
         mgr = AdapterManager()
         adapter = FakeAdapter(
             AdapterType.PREFECT,
-            execute_result="not-a-dict",  # type: ignore[arg-type]
+            execute_result="not-a-dict",
         )
         await mgr.register_adapter(AdapterType.PREFECT, adapter)
         tr = TaskRouter(adapter_registry=mgr)
@@ -1161,7 +1161,7 @@ class TestGetAdapterHealth:
         mgr = AdapterManager()
 
         class BoomAdapter(FakeAdapter):
-            async def get_health(self) -> dict[str, Any]:  # type: ignore[override]
+            async def get_health(self) -> dict[str, Any]:
                 raise RuntimeError("health-broken")
 
         await mgr.register_adapter(

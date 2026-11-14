@@ -441,7 +441,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
                     bucket=bucket,
                     key=storage_key,
                     worktree_id=handle_id,
-                    backend_kind=backend_kind,  # type: ignore[arg-type]
+                    backend_kind=backend_kind,
                 ),
                 sha256=sha256,
                 bytes_size=size,
@@ -657,7 +657,7 @@ class RemoteWorktreeProvider(WorktreeProvider):
         from mahavishnu.core.errors import ErrorCode, WorktreeError
 
         try:
-            return self._storage.load_stream(storage_key)  # type: ignore[union-attr, return-value]
+            return self._storage.load_stream(storage_key)
         except Exception as exc:  # storage adapter error → map to typed WorktreeError regardless of underlying cause
             raise WorktreeError(
                 f"Storage key not found: {storage_key}",

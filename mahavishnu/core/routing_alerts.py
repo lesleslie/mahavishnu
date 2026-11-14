@@ -297,7 +297,7 @@ class RoutingAlertManager:
         Returns:
             List of cost alerts
         """
-        alerts = []  # type: ignore[var-annotated]
+        alerts = []
 
         if self._previous_cost_usd is None:
             self._previous_cost_usd = current_cost_usd
@@ -359,7 +359,7 @@ class RoutingAlertManager:
         Returns:
             List of fallback alerts
         """
-        alerts = []  # type: ignore[var-annotated]
+        alerts = []
 
         if total_executions == 0:
             return alerts

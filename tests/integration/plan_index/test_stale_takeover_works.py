@@ -34,9 +34,9 @@ class TestStaleTakeoverWorks:
         ``finally`` block deleted the history key along with the holder,
         so subsequent cycles had no provenance of the takeover event.
         """
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         rebuilder = PlanIndexRebuilder()
-        mcp = store._mcp  # type: ignore[attr-defined]
+        mcp = store._mcp
 
         # Plant a lock acquired 5 minutes ago (well past the 60s TTL).
         five_min_ago_ms = int(time.time() * 1000) - 5 * 60 * 1000
@@ -92,9 +92,9 @@ class TestStaleTakeoverWorks:
 
     async def test_fresh_lock_acquisition_does_not_write_history(self) -> None:
         """No takeover == no history key (no false-positive provenance)."""
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         rebuilder = PlanIndexRebuilder()
-        mcp = store._mcp  # type: ignore[attr-defined]
+        mcp = store._mcp
 
         # No prior holder — fresh acquisition path.
         await run_rebuild_cycle(store, rebuilder)

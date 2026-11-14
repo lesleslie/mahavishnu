@@ -42,7 +42,7 @@ class TestErrorsLogRedaction:
         """
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         rebuilder = PlanIndexRebuilder()
 
         async def _fake_discover(repo_root: Path | None) -> list[Any]:
@@ -53,7 +53,7 @@ class TestErrorsLogRedaction:
         # Mock rebuilder.upsert_all to return a partial failure with a single
         # ctx dict carrying path_hash (12 hex chars) and NO raw path/repo keys.
         # If redaction regresses, this ctx WILL leak /Users/... into errors.log.
-        rebuilder.upsert_all = AsyncMock(  # type: ignore[method-assign]
+        rebuilder.upsert_all = AsyncMock(
             return_value=(
                 1,
                 1,
@@ -88,7 +88,7 @@ class TestErrorsLogRedaction:
         """
         monkeypatch.setenv("HOME", str(tmp_path))
 
-        store = PlanIndexStore(FakeMCP())  # type: ignore[arg-type]
+        store = PlanIndexStore(FakeMCP())
         rebuilder = PlanIndexRebuilder()
 
         async def _fake_discover(repo_root: Path | None) -> list[Any]:
@@ -96,7 +96,7 @@ class TestErrorsLogRedaction:
 
         monkeypatch.setattr(cron_core, "discover_records", _fake_discover)
 
-        rebuilder.upsert_all = AsyncMock(  # type: ignore[method-assign]
+        rebuilder.upsert_all = AsyncMock(
             return_value=(
                 1,
                 2,

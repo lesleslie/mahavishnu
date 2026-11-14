@@ -415,7 +415,7 @@ def test_gateway_wrap_degrades_without_stdbuf(monkeypatch: pytest.MonkeyPatch) -
 def test_gateway_readiness_returns_false_when_child_exits() -> None:
     """A child that dies before binding fails fast instead of timing out."""
     exited = gateway.subprocess.CompletedProcess([], 1, "", "")
-    exited.poll = lambda: 1  # type: ignore[method-assign]
+    exited.poll = lambda: 1
     exited.returncode = 1
     assert gateway.wait_for_ready(exited, timeout=5) is False
 

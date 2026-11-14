@@ -25,14 +25,14 @@ try:
     # ``messaging.types`` only when neither path resolves (truly minimal
     # installs without ``mahavishnu.messaging.messaging``).
     try:
-        from mahavishnu.messaging.messaging.types import (  # type: ignore[import-not-found]
+        from mahavishnu.messaging.messaging.types import (
             MessageStatus,
             MessageType,
             Priority,
             ProjectMessage,
         )
     except ImportError:  # pragma: no cover - exercised only on minimal installs
-        from messaging.types import (  # type: ignore[import-not-found]  # ty: ignore[import-not-found]
+        from messaging.types import (  # ty: ignore[import-not-found]
             MessageStatus,
             MessageType,
             Priority,
@@ -55,7 +55,7 @@ except ImportError:  # pragma: no cover - exercised only on minimal installs
         NORMAL = 2
         LOW = 3
 
-    class ProjectMessage:  # type: ignore[no-redef]
+    class ProjectMessage:
         def __init__(self, **kwargs: Any) -> None:
             for key, value in kwargs.items():
                 setattr(self, key, value)
@@ -247,7 +247,7 @@ class SessionBuddyIntegration:
                     and node.name == function_name
                 ):
                     docstring = __import__("ast").get_docstring(node)
-                    return docstring  # type: ignore[no-any-return]
+                    return docstring
 
             return None
         except Exception:  # Utility — AST/file read errors mean "no docstring available", silent return is the documented contract  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100

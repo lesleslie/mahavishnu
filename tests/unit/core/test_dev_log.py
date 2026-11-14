@@ -80,7 +80,7 @@ def test_write_entry_annotates_null_on_mirror_failure(
     def _raise(*_args, **_kwargs):
         raise RuntimeError("simulated session-buddy outage")
 
-    fake_module.store_reflection = _raise  # type: ignore[attr-defined]
+    fake_module.store_reflection = _raise
     monkeypatch.setitem(sys.modules, "mcp__session_buddy", fake_module)
 
     metadata = {"date": "2026-10-03", "branch": "fix-ty"}

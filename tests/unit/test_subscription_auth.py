@@ -101,15 +101,15 @@ def test_verify_subscription_token_expired() -> None:
 
     original_decode = subscription_auth_module.jwt.decode
 
-    def fake_decode(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def fake_decode(*args, **kwargs):
         return expired_data
 
-    subscription_auth_module.jwt.decode = fake_decode  # type: ignore[assignment]
+    subscription_auth_module.jwt.decode = fake_decode
     try:
         with pytest.raises(AuthenticationError, match="expired"):
             auth.verify_subscription_token("token-value-not-used")
     finally:
-        subscription_auth_module.jwt.decode = original_decode  # type: ignore[assignment]
+        subscription_auth_module.jwt.decode = original_decode
 
 
 def test_multi_auth_rejects_invalid_header_format() -> None:
@@ -161,7 +161,7 @@ def test_multi_auth_jwt_non_dict_token_data_uses_username_attribute() -> None:
         username = "legacy-user"
 
     assert handler.jwt_auth is not None
-    handler.jwt_auth.verify_token = lambda _token: TokenObj()  # type: ignore[assignment]
+    handler.jwt_auth.verify_token = lambda _token: TokenObj()
 
     result = handler.authenticate_request("Bearer any-value")
     assert result["authenticated"] is True

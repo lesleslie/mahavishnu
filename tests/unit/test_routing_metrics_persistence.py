@@ -353,7 +353,7 @@ class TestRoutingMetricsPersistence:
         bad_acquire = MagicMock()
         bad_acquire.__aenter__ = AsyncMock(return_value=bad_conn)
         bad_acquire.__aexit__ = AsyncMock(return_value=None)
-        persistence._pool.acquire = MagicMock(return_value=bad_acquire)  # type: ignore[method-assign]
+        persistence._pool.acquire = MagicMock(return_value=bad_acquire)
 
         assert await persistence._flush_executions() == 0
         assert persistence._pending_executions
@@ -472,13 +472,13 @@ class TestRoutingMetricsPersistence:
 
         original_sleep = asyncio.sleep
         try:
-            asyncio.sleep = fake_sleep  # type: ignore[assignment]
+            asyncio.sleep = fake_sleep
             task = asyncio.create_task(persistence._periodic_flush())
             await started.wait()
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
         finally:
-            asyncio.sleep = original_sleep  # type: ignore[assignment]
+            asyncio.sleep = original_sleep
 
     @pytest.mark.asyncio
     async def test_not_initialized_branches_and_global_helpers(self) -> None:
@@ -521,7 +521,7 @@ class TestRoutingMetricsPersistence:
         none_acquire = MagicMock()
         none_acquire.__aenter__ = AsyncMock(return_value=none_conn)
         none_acquire.__aexit__ = AsyncMock(return_value=None)
-        persistence._pool.acquire = MagicMock(return_value=none_acquire)  # type: ignore[method-assign]
+        persistence._pool.acquire = MagicMock(return_value=none_acquire)
         assert await persistence.get_execution("missing") is None
 
         bad_conn = AsyncMock()
@@ -534,7 +534,7 @@ class TestRoutingMetricsPersistence:
         bad_acquire = MagicMock()
         bad_acquire.__aenter__ = AsyncMock(return_value=bad_conn)
         bad_acquire.__aexit__ = AsyncMock(return_value=None)
-        persistence._pool.acquire = MagicMock(return_value=bad_acquire)  # type: ignore[method-assign]
+        persistence._pool.acquire = MagicMock(return_value=bad_acquire)
 
         assert await persistence.get_execution("missing") is None
         assert (

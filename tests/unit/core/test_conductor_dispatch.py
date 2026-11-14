@@ -122,8 +122,8 @@ def _register(adapters: dict[str, MagicMock]) -> None:
 def _make_node(engine_id: str) -> DAGNode:
     return DAGNode(
         node_id=f"n-{engine_id}",
-        engine_id=engine_id,  # type: ignore[arg-type]
-        capability_id="engine:durable-flow",  # type: ignore[arg-type]
+        engine_id=engine_id,
+        capability_id="engine:durable-flow",
         inputs=TypeSchema(),
         outputs=TypeSchema(),
     )
@@ -156,7 +156,7 @@ async def test_emit_node_returns_handle_for_each_engine(
     eid = await emit_node(
         node=node,
         trace_id=TraceId("0" * 32),
-        mcp=fake_mcp,  # type: ignore[arg-type]
+        mcp=fake_mcp,
         prompt="hello",
     )
     # Envelope persisted
@@ -188,12 +188,12 @@ async def test_emit_prefect_node_surfaces_flow_run_id(
     _register(adapters)
     spec = NodeSpec(
         node_id="n-prefect",
-        engine_id="prefect",  # type: ignore[arg-type]
-        capability_id="engine:durable-flow",  # type: ignore[arg-type]
+        engine_id="prefect",
+        capability_id="engine:durable-flow",
         trace_id=TraceId("0" * 32),
         prompt="hi",
     )
-    handle = await emit_node_dispatch.emit_prefect_node(spec, fake_mcp)  # type: ignore[arg-type]
+    handle = await emit_node_dispatch.emit_prefect_node(spec, fake_mcp)
     assert handle.engine_id == "prefect"
     assert handle.status == "completed"
     assert handle.flow_run_id == "flow-abc"
@@ -213,12 +213,12 @@ async def test_emit_hatchet_node_surfaces_run_id(
     _register(adapters)
     spec = NodeSpec(
         node_id="n-hatchet",
-        engine_id="hatchet",  # type: ignore[arg-type]
-        capability_id="engine:durable-flow",  # type: ignore[arg-type]
+        engine_id="hatchet",
+        capability_id="engine:durable-flow",
         trace_id=TraceId("0" * 32),
         prompt="hi",
     )
-    handle = await emit_node_dispatch.emit_hatchet_node(spec, fake_mcp)  # type: ignore[arg-type]
+    handle = await emit_node_dispatch.emit_hatchet_node(spec, fake_mcp)
     assert handle.engine_id == "hatchet"
     assert handle.flow_run_id == "run-xyz"
 
@@ -232,17 +232,17 @@ async def test_emit_pydantic_ai_node_handles_missing_dep_group(
     # Force the lazy import to fail by hiding the module.
     monkeypatch.setitem(
         __import__("sys").modules, "mahavishnu.adapters.ai.pydantic_ai_adapter", None
-    )  # type: ignore[arg-type]
+    )
     adapters.pop("pydantic_ai", None)
     _register(adapters)
     spec = NodeSpec(
         node_id="n-pai",
-        engine_id="pydantic_ai",  # type: ignore[arg-type]
-        capability_id="engine:durable-flow",  # type: ignore[arg-type]
+        engine_id="pydantic_ai",
+        capability_id="engine:durable-flow",
         trace_id=TraceId("0" * 32),
         prompt="hi",
     )
-    handle = await emit_node_dispatch.emit_pydanticai_node(spec, fake_mcp)  # type: ignore[arg-type]
+    handle = await emit_node_dispatch.emit_pydanticai_node(spec, fake_mcp)
     assert handle.status == "failed"
     assert handle.error is not None
     assert "uv sync --group ai" in handle.error
@@ -265,7 +265,7 @@ async def test_dispatch_persists_envelope_io_out(
     eid = await emit_node(
         node=_make_node("prefect"),
         trace_id=TraceId("0" * 32),
-        mcp=fake_mcp,  # type: ignore[arg-type]
+        mcp=fake_mcp,
         prompt="x",
     )
     persisted = json.loads(fake_mcp.store[f"envelopes/{'0' * 32}/{eid}"].decode())
@@ -285,7 +285,7 @@ async def test_emit_node_unsupported_engine_raises(
         await emit_node(
             node=_make_node("unknown-engine"),
             trace_id=TraceId("0" * 32),
-            mcp=fake_mcp,  # type: ignore[arg-type]
+            mcp=fake_mcp,
             prompt="x",
         )
 
@@ -300,7 +300,7 @@ async def test_emit_node_persists_failed_envelope_on_adapter_exception(
     eid = await emit_node(
         node=_make_node("prefect"),
         trace_id=TraceId("0" * 32),
-        mcp=fake_mcp,  # type: ignore[arg-type]
+        mcp=fake_mcp,
         prompt="x",
     )
     persisted = json.loads(fake_mcp.store[f"envelopes/{'0' * 32}/{eid}"].decode())
@@ -321,22 +321,22 @@ async def test_dispatch_dag_waves_level_by_level(
     _register(adapters)
     a = DAGNode(
         node_id="A",
-        engine_id="prefect",  # type: ignore[arg-type]
-        capability_id="engine:durable-flow",  # type: ignore[arg-type]
+        engine_id="prefect",
+        capability_id="engine:durable-flow",
         inputs=TypeSchema(),
         outputs=TypeSchema(),
     )
     b = DAGNode(
         node_id="B",
-        engine_id="hatchet",  # type: ignore[arg-type]
-        capability_id="engine:durable-flow",  # type: ignore[arg-type]
+        engine_id="hatchet",
+        capability_id="engine:durable-flow",
         inputs=TypeSchema(),
         outputs=TypeSchema(),
     )
     c = DAGNode(
         node_id="C",
-        engine_id="agno",  # type: ignore[arg-type]
-        capability_id="engine:durable-flow",  # type: ignore[arg-type]
+        engine_id="agno",
+        capability_id="engine:durable-flow",
         inputs=TypeSchema(),
         outputs=TypeSchema(),
     )
@@ -371,7 +371,7 @@ async def test_dispatch_dag_waves_level_by_level(
     envelope_ids = await _dispatch_dag_waves(
         dag,
         trace_id=TraceId("0" * 32),
-        mcp=fake_mcp,  # type: ignore[arg-type]
+        mcp=fake_mcp,
         prompt_for_root="root-prompt",
     )
     assert set(envelope_ids.keys()) == {"A", "B", "C"}

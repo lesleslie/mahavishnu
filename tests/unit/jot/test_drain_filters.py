@@ -22,7 +22,7 @@ def _summary(**overrides) -> JotSummary:
         deleted=False,
     )
     defaults.update(overrides)
-    return JotSummary(**defaults)  # type: ignore[arg-type]
+    return JotSummary(**defaults)
 
 
 def test_surface_eligible_basic_open_undispatched() -> None:

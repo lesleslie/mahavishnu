@@ -133,7 +133,7 @@ if TUI_AVAILABLE:
 
 else:
 
-    class MonitorApp:  # type: ignore[no-redef]
+    class MonitorApp:
         """Fallback for environments without Textual."""
 
         def __init__(self, data_provider: Any | None = None) -> None:

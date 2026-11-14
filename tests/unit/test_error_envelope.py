@@ -19,11 +19,11 @@ class TestMcpErrorEnvelopeFields:
 
     def test_error_code_is_required(self):
         with pytest.raises(ValidationError):
-            McpErrorEnvelope(message="test message")  # type: ignore[call-arg]
+            McpErrorEnvelope(message="test message")
 
     def test_message_is_required(self):
         with pytest.raises(ValidationError):
-            McpErrorEnvelope(error_code="test")  # type: ignore[call-arg]
+            McpErrorEnvelope(error_code="test")
 
     def test_recovery_defaults_to_empty_list(self):
         envelope = McpErrorEnvelope(error_code="test", message="test message")

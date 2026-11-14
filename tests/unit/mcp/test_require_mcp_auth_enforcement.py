@@ -85,7 +85,7 @@ class TestRequireMCPAuthEnforcement:
         async def sample_tool(arg: str, user_id: str | None = None) -> dict[str, Any]:
             return {"status": "ok", "arg": arg}
 
-        result = await sample_tool(arg="x")  # type: ignore[call-arg]
+        result = await sample_tool(arg="x")
 
         assert result["status"] == "error"
         assert result["error_code"] == "AUTH_REQUIRED"

@@ -76,7 +76,7 @@ class TestChangePointIntegration:
 
         mgr.config = _Stub()
         mgr.config.changepoint = ChangepointConfig(enabled=True)
-        mgr.logger = None  # type: ignore[attr-defined]
+        mgr.logger = None
 
         # A constant stream at value 0 (the target) should not fire
         for _ in range(50):

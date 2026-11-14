@@ -921,7 +921,7 @@ class TaskRouter:
                 # its substrate, count and timeout from the top level, and
                 # hatchet reads its dispatch target.
                 projected = envelope.for_adapter(adapter_type.value)
-                return await adapter.execute(task=projected, repos=repos)  # type: ignore[no-any-return]
+                return await adapter.execute(task=projected, repos=repos)
 
             try:
                 result, attempts = await retry_async(

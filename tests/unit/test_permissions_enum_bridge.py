@@ -41,7 +41,7 @@ class _StubConfig:
 
 
 def _make_rbac() -> RBACManager:
-    return RBACManager(_StubConfig())  # type: ignore[arg-type]
+    return RBACManager(_StubConfig())
 
 
 @pytest.mark.asyncio

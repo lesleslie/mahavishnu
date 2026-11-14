@@ -23,7 +23,7 @@ JOT_TOOLS = [
 
 
 @pytest.mark.parametrize("tool", JOT_TOOLS, ids=lambda t: t.name)
-def test_tool_signature_has_no_any(tool) -> None:  # type: ignore[no-untyped-def]
+def test_tool_signature_has_no_any(tool) -> None:
     """No Any in params or return type."""
     # Use `.fn` to get the underlying callable (FunctionTool wraps it).
     sig = inspect.signature(tool.fn)
