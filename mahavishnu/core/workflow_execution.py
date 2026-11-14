@@ -21,10 +21,11 @@ from monitoring.metrics import (
 )
 
 from .errors import AdapterError, ExternalServiceError, ValidationError
-from .metrics_schema import AdapterType, TaskType
+from .metrics_schema import AdapterType
 from .permissions import Permission
 from .repository_surface import validate_path
 from .routing import RoutingStrategy, TaskRouter
+from .task_envelope import bounded_routing_type
 from .workflow.outcome_writer import (
     _workflow_outcome_v1_enabled,
     record_workflow_outcome,
@@ -39,7 +40,14 @@ async def initialize_workflow_state(
     adapter_name: str,
     validated_repos: list[str],
 ) -> str:
-    workflow_id = f"wf_{uuid.uuid4().hex[:8]}_{task.get('type', 'default')}"
+    # The id suffix and both label sinks carry the BOUNDED routing type.
+    # The task's "type" is the caller's operation: putting it in an id
+    # (a substrate key path) or in a metric label (a permanent series per
+    # distinct caller string) is exactly what the envelope closes.
+    #
+    # req: REQ-C02
+    routing_type = bounded_routing_type(task)
+    workflow_id = f"wf_{uuid.uuid4().hex[:8]}_{routing_type.value}"
     await app.workflow_state_manager.create(
         workflow_id=workflow_id, task=task, repos=validated_repos
     )
@@ -47,14 +55,14 @@ async def initialize_workflow_state(
     app._update_workflow_runtime_gauges()
     mahavishnu_workflows_total.labels(
         adapter=adapter_name,
-        task_type=task.get("type", "unknown"),
+        task_type=routing_type.value,
         status="started",
     ).inc()
     await app.workflow_state_manager.update(workflow_id=workflow_id, status="running")
     await app.opensearch_integration.log_workflow_start(
         workflow_id=workflow_id,
         adapter=adapter_name,
-        task_type=task.get("type", "unknown"),
+        task_type=routing_type.value,
         repos=validated_repos,
     )
     return workflow_id
@@ -200,8 +208,23 @@ async def process_single_repo(
         start_repo_time = time.time()
 
         try:
+            # The lane fans the task out across the scope: one dispatch
+            # per repo. A ``count`` on the task was computed against the
+            # whole scope, so honouring it here mints one fleet per repo
+            # -- ``count`` workers for every repo in the scope, and
+            # ``count x repos`` workers for the task. The plan's fan-out
+            # row forbids that ("one worker per task, never per repo x
+            # task"), so the per-repo dispatch pins the count to one.
+            #
+            # The count is absent from the task today (no builder sets
+            # it), which is why the adapter's own default -- one worker,
+            # because the adapter is handed a one-element repo list -- is
+            # what runs. Pinning it here keeps that true for the first
+            # builder that does set a count.
             result = await app.circuit_breaker.call(
-                adapter.execute, task | {"single_repo": repo_path}, [repo_path]
+                adapter.execute,
+                task | {"single_repo": repo_path, "count": 1},
+                [repo_path],
             )
 
             await app.workflow_state_manager.add_result(workflow_id, result)
@@ -270,11 +293,15 @@ async def execute_parallel_workflow(
 ) -> tuple[float, list[Any], list[dict[str, Any]]]:
     start_time = time.time()
 
+    # The OTel sinks carry the BOUNDED routing type, not the caller's
+    # operation string: an unbounded attribute is one series per value.
+    routing_type = bounded_routing_type(task).value
+
     if app.observability:
         workflow_counter = app.observability.create_workflow_counter()
         if workflow_counter:
             workflow_counter.add(
-                1, {"adapter": adapter_name, "task_type": task.get("type", "unknown")}
+                1, {"adapter": adapter_name, "task_type": routing_type}
             )
 
         repo_counter = app.observability.create_repo_counter()
@@ -283,7 +310,7 @@ async def execute_parallel_workflow(
 
     if app.observability:
         with app.observability.start_workflow_trace(
-            workflow_id, adapter_name, task.get("type", "unknown")
+            workflow_id, adapter_name, routing_type
         ) as workflow_span:
             _ = workflow_span
 
@@ -360,7 +387,7 @@ async def finalize_workflow_execution(
     final_status = (
         "completed" if not errors else ("partial" if successful_results else "failed")
     )
-    task_type = task.get("type", "unknown")
+    task_type = bounded_routing_type(task).value
 
     await app.workflow_state_manager.update(
         workflow_id=workflow_id,
@@ -376,7 +403,7 @@ async def finalize_workflow_execution(
         results_count=len(successful_results),
         errors_count=len(errors),
         adapter=adapter_name,
-        task_type=task.get("type", "unknown"),
+        task_type=task_type,
     )
 
     if app.config.session.enabled and checkpoint_id:
@@ -485,7 +512,7 @@ async def handle_workflow_execution_error(
 
     mahavishnu_workflows_total.labels(
         adapter=adapter_name,
-        task_type=task.get("type", "unknown"),
+        task_type=bounded_routing_type(task).value,
         status="failed",
     ).inc()
     app.active_workflows.discard(workflow_id)
@@ -671,7 +698,11 @@ async def execute_workflow_with_fallback(
     enable_cost_tracking: bool = False,
 ) -> dict[str, Any]:
     router = TaskRouter()
-    task_type = TaskType(task.get("type", "ai_task"))
+    # An unguarded enum cast raises a bare ValueError for every operation
+    # name the adapters actually use ("code_sweep", "quality_check",
+    # "focused_review", "ingest", "query") — the routing vocabulary and
+    # the operation vocabulary have zero overlap.
+    task_type = bounded_routing_type(task)
 
     preferred = AdapterType(adapter_preference[0]) if adapter_preference else None
     fallback_chain = router.generate_fallback_chain(task_type, preferred)
@@ -733,7 +764,11 @@ async def execute_workflow_with_routing(
         )
 
     router = TaskRouter()
-    task_type = TaskType(task.get("type", "ai_task"))
+    # An unguarded enum cast raises a bare ValueError for every operation
+    # name the adapters actually use ("code_sweep", "quality_check",
+    # "focused_review", "ingest", "query") — the routing vocabulary and
+    # the operation vocabulary have zero overlap.
+    task_type = bounded_routing_type(task)
     adapter = await router.select_adapter(task_type, strategy)
 
     result = await app.execute_workflow_parallel(

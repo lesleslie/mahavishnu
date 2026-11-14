@@ -34,7 +34,7 @@ result = await mcp_client.call_tool("get_tool_versions", {})
 result = await mcp_client.call_tool(
     "get_tool_versions", {"tool_name": "trigger_workflow"}
 )
-# Returns: {"version": "1.1.0", "tool_name": "trigger_workflow"}
+# Returns: {"version": "2.0.0", "tool_name": "trigger_workflow"}
 ```
 
 ### Return Schema Contract
@@ -60,7 +60,7 @@ Every return that includes an `"error"` key also includes a `"status"` key.
 | Tool | Version | Purpose |
 |------|---------|---------|
 | `list_repos` | 1.0.0 | List repositories with filtering |
-| `trigger_workflow` | 1.1.0 | Execute workflow across repos |
+| `trigger_workflow` | 2.0.0 | Execute workflow across repos |
 | `get_workflow_status` | 1.0.0 | Check workflow execution status |
 | `list_workflows` | 1.0.0 | List/filter workflows |
 | `cancel_workflow` | 1.0.0 | Cancel running workflow |

@@ -255,7 +255,9 @@ class TestTriggerWorkflow:
 
         assert result["status"] == "failed"
         assert result["workflow_id"].startswith("wf_timeout_")
-        assert result["workflow_id"].endswith("_review")
+        # The suffix is the BOUNDED routing type, never the caller's
+        # operation: the id is spliced into substrate key paths.
+        assert result["workflow_id"].endswith("_ai_task")
         assert result["failed_repos"] == 2
         assert result["execution_time"] == 5
         assert result["errors"][0]["type"] == "TimeoutError"

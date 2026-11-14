@@ -6,6 +6,9 @@ HTTP health endpoint registration, lifecycle, and tool-registration metrics.
 
 from __future__ import annotations
 
+import asyncio
+import json
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -855,3 +858,188 @@ class TestC1StartForwardsUvicornConfig:
             await server.start(host="127.0.0.1", port=3000)
 
         assert captured == {"uvicorn_config": None}
+
+
+# =============================================================================
+# trigger_workflow's deadline
+# =============================================================================
+
+
+class TestTriggerWorkflowDeadline:
+    """The public ``timeout`` must survive the envelope.
+
+    ``trigger_workflow(timeout=7200)`` worked before the envelope
+    existed: the tool passed the caller's value straight to
+    ``asyncio.wait_for``. The envelope's deadline field capped it at
+    one hour, so a two-hour workflow died in pydantic validation
+    before it started -- a break the branch did not declare.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_timeout_longer_than_one_hour_is_accepted(
+        self, server: FastMCPServer, mock_app: MagicMock
+    ) -> None:
+        mock_app.execute_workflow_parallel = AsyncMock(
+            return_value={
+                "workflow_id": "wf_1_ai_task",
+                "status": "completed",
+                "repos_processed": 0,
+                "successful_repos": 0,
+                "failed_repos": 0,
+            }
+        )
+
+        result = await server.server.call_tool(
+            "mahavishnu_trigger_workflow",
+            {"adapter": "prefect", "task_type": "code_sweep", "timeout": 7200},
+        )
+        payload = result.structured_content or {}
+
+        assert payload.get("status") == "completed"
+        assert payload.get("errors") == []
+
+    @pytest.mark.asyncio
+    async def test_the_envelope_owns_the_bound_that_is_enforced(
+        self, server: FastMCPServer, mock_app: MagicMock
+    ) -> None:
+        """The deadline the wait_for uses is the envelope's deadline.
+
+        The envelope documents a whole-execution bound; if the wait_for
+        reads the caller's parameter instead, the two can drift and the
+        documented field becomes decorative. This pins them together.
+        """
+        mock_app.execute_workflow_parallel = AsyncMock(
+            return_value={"status": "completed"}
+        )
+        wait_for_timeouts: list[float | None] = []
+        real_wait_for = asyncio.wait_for
+
+        async def _spy(awaitable: Any, timeout: float | None = None) -> Any:
+            wait_for_timeouts.append(timeout)
+            return await real_wait_for(awaitable, timeout)
+
+        with patch("asyncio.wait_for", _spy):
+            await server.server.call_tool(
+                "mahavishnu_trigger_workflow",
+                {"adapter": "prefect", "task_type": "code_sweep", "timeout": 7200},
+            )
+
+        assert wait_for_timeouts == [7200]
+
+    @pytest.mark.asyncio
+    async def test_no_timeout_means_no_bound(
+        self, server: FastMCPServer, mock_app: MagicMock
+    ) -> None:
+        """``timeout=None`` stays unbounded -- the hours-or-days case."""
+        mock_app.execute_workflow_parallel = AsyncMock(
+            return_value={"status": "completed"}
+        )
+        wait_for_timeouts: list[float | None] = []
+        real_wait_for = asyncio.wait_for
+
+        async def _spy(awaitable: Any, timeout: float | None = None) -> Any:
+            wait_for_timeouts.append(timeout)
+            return await real_wait_for(awaitable, timeout)
+
+        with patch("asyncio.wait_for", _spy):
+            await server.server.call_tool(
+                "mahavishnu_trigger_workflow",
+                {"adapter": "prefect", "task_type": "code_sweep"},
+            )
+
+        assert wait_for_timeouts == []
+
+
+class TestTriggerWorkflowRefusesAnUndispatchableTaskType:
+    """The caller's ``task_type`` names the adapter's behaviour.
+
+    llamaindex's vocabulary is closed -- ``ingest``, ``query``,
+    ``ingest_and_query`` -- so a caller that names anything else is
+    asking for behaviour that does not exist. It used to be answered
+    with a per-repo "Unknown task type" that the tool reported as a
+    *completed* workflow, which is worse than an error.
+    """
+
+    @pytest.mark.asyncio
+    async def test_an_unimplemented_task_type_is_refused(
+        self, server: FastMCPServer, mock_app: MagicMock
+    ) -> None:
+        mock_app.execute_workflow_parallel = AsyncMock(
+            return_value={"status": "completed"}
+        )
+
+        result = await server.server.call_tool(
+            "mahavishnu_trigger_workflow",
+            {"adapter": "llamaindex", "task_type": "code_review"},
+        )
+        payload = result.structured_content or {}
+
+        assert payload.get("status") == "failed"
+        message = json.dumps(payload)
+        assert "llamaindex" in message
+        assert "ingest" in message
+        mock_app.execute_workflow_parallel.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_an_implemented_task_type_is_accepted(
+        self, server: FastMCPServer, mock_app: MagicMock
+    ) -> None:
+        mock_app.execute_workflow_parallel = AsyncMock(
+            return_value={"workflow_id": "wf_1_ai_task", "status": "completed"}
+        )
+
+        result = await server.server.call_tool(
+            "mahavishnu_trigger_workflow",
+            {"adapter": "llamaindex", "task_type": "ingest"},
+        )
+        payload = result.structured_content or {}
+
+        assert payload.get("status") == "completed"
+        mock_app.execute_workflow_parallel.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_an_adapter_with_a_default_branch_accepts_any_task_type(
+        self, server: FastMCPServer, mock_app: MagicMock
+    ) -> None:
+        """prefect has a default branch, so every operation is dispatchable.
+
+        The tool's own docstring lists ``code_review`` as an example
+        task type, and prefect runs it through its default branch.
+        """
+        mock_app.execute_workflow_parallel = AsyncMock(
+            return_value={"workflow_id": "wf_1_ai_task", "status": "completed"}
+        )
+
+        result = await server.server.call_tool(
+            "mahavishnu_trigger_workflow",
+            {"adapter": "prefect", "task_type": "code_review"},
+        )
+        payload = result.structured_content or {}
+
+        assert payload.get("status") == "completed"
+        mock_app.execute_workflow_parallel.assert_called_once()
+
+
+class TestTheRequestContractClaimIsNotStale:
+    """The envelope DID change the request contract; no comment may claim otherwise.
+
+    ``trigger_workflow`` went 1.1.0 -> 2.0.0: ``params`` is filtered to
+    the allowlist before the adapter sees it, an over-long ``task_type``
+    is refused, a ``target`` that leaves the repo is refused, and a
+    ``task_type`` the adapter does not implement is refused. A comment
+    that says the request contract does not change contradicts the
+    shipped behaviour -- and it is how a caller finds out the hard way
+    that a 2.0.0 call can fail where a 1.1.0 call succeeded.
+    """
+
+    def test_the_false_claim_appears_nowhere_in_the_package(self) -> None:
+        import mahavishnu
+
+        package_root = Path(mahavishnu.__file__).parent
+        offenders = [
+            path.relative_to(package_root).as_posix()
+            for path in sorted(package_root.rglob("*.py"))
+            if "request contract does not change" in path.read_text()
+        ]
+
+        assert offenders == []

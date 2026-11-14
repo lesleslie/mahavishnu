@@ -44,6 +44,7 @@ import logging
 from pathlib import Path
 import sys
 from typing import TYPE_CHECKING, Any, ClassVar, cast
+import uuid
 
 from mahavishnu.core.adapters.base import (
     AdapterType,
@@ -52,6 +53,12 @@ from mahavishnu.core.adapters.base import (
 from mahavishnu.core.resilience import RetryExhaustedError, RetryPolicy, retry_async
 from mahavishnu.core.routing_metrics import RoutingMetrics, get_routing_metrics
 from mahavishnu.core.status import WorkflowStatus
+from mahavishnu.core.task_envelope import (
+    TaskControlParams,
+    TaskEnvelope,
+    TaskParams,
+    bounded_routing_type,
+)
 
 if TYPE_CHECKING:
     from mahavishnu.core.cost_optimizer import CostOptimizer
@@ -853,11 +860,35 @@ class TaskRouter:
         task_type = self._normalize_task_type(task.get("task_type"))
         prompt = task.get("prompt", "")
         repos = task.get("repos", [])
-        execution_context = {
-            "task_type": task_type.value,
-            "prompt": prompt,
-            "repos": repos,
-        }
+
+        # Build the same envelope every other builder builds. The old
+        # execution context was ``{"task_type", "prompt", "repos"}`` — it
+        # dropped the caller's ``params`` on the floor, so an adapter
+        # never saw them.
+        #
+        # The routing type comes from the six-member winner in
+        # ``core.metrics_schema`` (this module's own five-member enum is
+        # unified in Phase 2 task 0, which also removes the fallback in
+        # ``bounded_routing_type``). The operation stays free-form.
+        #
+        # req: REQ-C02
+        routing_type = bounded_routing_type({"type": task.get("task_type")})
+        caller_params = task.get("params")
+        if not isinstance(caller_params, dict):
+            caller_params = {}
+        envelope = TaskEnvelope(
+            routing_type=routing_type,
+            id=f"wf_{uuid.uuid4().hex[:8]}_{routing_type.value}",
+            params=TaskParams.model_validate(
+                {
+                    **caller_params,
+                    "prompt": prompt,
+                    "operation": str(task.get("task_type") or "general"),
+                }
+            ),
+            # The router's scope is the scope it dispatches over.
+            control=TaskControlParams(repos=list(repos)),
+        )
 
         candidates = self._normalize_preference_order(
             preference_order or task.get("preference_order")
@@ -882,8 +913,15 @@ class TaskRouter:
                 max_delay_seconds=60.0,
             )
 
-            async def _execute_adapter(adapter: Any = adapter) -> dict[str, Any]:
-                return await adapter.execute(task=execution_context, repos=repos)  # type: ignore[no-any-return]
+            async def _execute_adapter(
+                adapter: Any = adapter,
+                adapter_type: AdapterType = adapter_type,
+            ) -> dict[str, Any]:
+                # The projection is per-adapter: the worker adapter reads
+                # its substrate, count and timeout from the top level, and
+                # hatchet reads its dispatch target.
+                projected = envelope.for_adapter(adapter_type.value)
+                return await adapter.execute(task=projected, repos=repos)  # type: ignore[no-any-return]
 
             try:
                 result, attempts = await retry_async(

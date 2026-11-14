@@ -327,6 +327,7 @@ class WorkerManager:
         prompts: list[str],
         *,
         runtime_kwargs: dict[str, Any] | None = None,
+        permission_mode: str | None = None,
     ) -> list[str]:
         """Submit prompts to a one-shot worker, launching one session per prompt.
 
@@ -350,7 +351,11 @@ class WorkerManager:
         worker_ids: list[str] = []
         try:
             for prompt in prompts:
-                worker = self._create_worker(worker_type, **(runtime_kwargs or {}))
+                factory_kwargs = dict(runtime_kwargs or {})
+                # The envelope's mode is the server-derived control, so a
+                # raw factory kwarg must not shadow it.
+                factory_kwargs["permission_mode"] = permission_mode
+                worker = self._create_worker(worker_type, **factory_kwargs)
                 worker_id = await worker.start(prompt=prompt)
                 self._workers[worker_id] = worker
                 worker_ids.append(worker_id)
@@ -372,6 +377,7 @@ class WorkerManager:
         count: int,
         task_spec: dict[str, Any] | None = None,
         writable_root: Path | None = None,
+        permission_mode: str | None = None,
     ) -> list[str]:
         """Spawn multiple workers of specified type.
 
@@ -403,6 +409,7 @@ class WorkerManager:
         for _ in range(count):
             worker = self._create_worker(
                 worker_type,
+                permission_mode=permission_mode,
                 writable_root=writable_root or self.writable_root,
             )
             worker_id = await worker.start()
@@ -413,14 +420,26 @@ class WorkerManager:
 
         return worker_ids
 
-    def _resolve_permission_mode(self, config: WorkerConfig) -> str | None:
-        """Resolve the agent's approval/sandbox mode from settings.
+    def _resolve_permission_mode(
+        self,
+        config: WorkerConfig,
+        envelope_mode: str | None = None,
+    ) -> str | None:
+        """Resolve the agent's approval/sandbox mode.
 
-        ``workers.permission_modes`` overrides the registry default per
-        worker type, e.g. ``{'terminal-claude': 'plan'}``. The value is
-        validated against the allowlist for that CLI -- it is substituted
-        into a command line, so an unchecked value could smuggle a flag
-        into the agent's argv.
+        Three sources, in this order:
+
+        1. ``workers.permission_modes`` -- the operator's setting for the
+           worker type, e.g. ``{'terminal-claude': 'plan'}``. It is the
+           deployment's own decision about its agents, so it wins.
+        2. ``envelope_mode`` -- the envelope's server-derived mode. The
+           envelope's default table is never ``yolo``, so this is what
+           keeps a dispatched agent behind a human gate.
+        3. The registry default.
+
+        The value is validated against the allowlist for that CLI -- it is
+        substituted into a command line, so an unchecked value could
+        smuggle a flag into the agent's argv.
 
         A bad value raises at spawn time rather than silently falling back:
         a deployment that asked for ``plan`` must not silently get
@@ -434,9 +453,16 @@ class WorkerManager:
             candidate = modes.get(config.worker_type)
             if isinstance(candidate, str):
                 override = candidate
+        if override is None:
+            override = envelope_mode
         return resolve_permission_mode(config, override)
 
-    def _create_worker(self, worker_type: str, **kwargs: Any) -> BaseWorker:
+    def _create_worker(
+        self,
+        worker_type: str,
+        permission_mode: str | None = None,
+        **kwargs: Any,
+    ) -> BaseWorker:
         """Factory method for worker creation.
 
         Dispatches by :class:`WorkerConfig.runtime_kind` (per
@@ -506,7 +532,7 @@ class WorkerManager:
                 config=config,
                 terminal_manager=self.terminal_manager,
                 session_buddy_client=self.session_buddy_client,
-                permission_mode=self._resolve_permission_mode(config),
+                permission_mode=self._resolve_permission_mode(config, permission_mode),
             )
         return self._create_isolated_worker_from_config(config, kwargs)
 

@@ -13,6 +13,7 @@ from mahavishnu.core.adapters.base import (
     OrchestratorAdapter,
 )
 import mahavishnu.core.adapters.worker as wa
+from mahavishnu.core.task_envelope import MAX_COUNT
 
 
 class _Result:
@@ -40,13 +41,23 @@ class _Manager:
         self.raise_spawn = False
         self.raise_exec = False
 
-    async def spawn_workers(self, worker_type: str, count: int) -> list[str]:
+    async def spawn_workers(
+        self,
+        worker_type: str,
+        count: int,
+        permission_mode: str | None = None,
+    ) -> list[str]:
         self.spawn_calls.append((worker_type, count))
         if self.raise_spawn:
             raise RuntimeError("spawn failed")
         return [f"w{i}" for i in range(count)]
 
-    async def submit_workers(self, worker_type: str, prompts: list[str]) -> list[str]:
+    async def submit_workers(
+        self,
+        worker_type: str,
+        prompts: list[str],
+        permission_mode: str | None = None,
+    ) -> list[str]:
         """One-shot spawn: the prompt is delivered with the launch."""
         self.submit_calls.append((worker_type, list(prompts)))
         if self.raise_spawn:
@@ -162,6 +173,51 @@ async def test_execute_validation_and_success_and_fallback(
     mgr.raise_spawn = True
     with pytest.raises(RuntimeError):
         await adapter.execute({"prompt": "x", "count": 1}, ["/repo"])
+
+
+@pytest.mark.asyncio
+async def test_the_worker_fan_out_is_capped(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A long repo list must not mint one worker per repo.
+
+    The count the adapter uses when the caller names none is
+    ``len(repos)`` -- and the repo list is caller-controlled, so an
+    unbounded scope would spawn an unbounded fleet of one-shot agents.
+    The cap lives here, at the point where the workers are actually
+    minted, because this is the only place that sees how many workers a
+    single dispatch is about to create.
+    """
+    mgr = _Manager()
+    adapter = wa.WorkerOrchestratorAdapter(worker_manager=mgr)
+    monkeypatch.setattr(
+        wa, "resolve_worker_type", lambda req, task_type, prompt: "terminal-qwen"
+    )
+
+    repos = [f"/repo{i}" for i in range(MAX_COUNT + 25)]
+    out = await adapter.execute({"prompt": "x"}, repos)
+
+    assert out["worker_count"] == MAX_COUNT
+    assert len(mgr.submit_calls[0][1]) == MAX_COUNT
+
+
+@pytest.mark.asyncio
+async def test_an_explicit_count_above_the_cap_is_clamped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An explicit count is capped too.
+
+    The envelope bounds the count it projects, but the adapter is
+    reachable directly -- ``app.execute_workflow(task, "worker", repos)``
+    passes a raw task -- so the cap cannot live only at the projection.
+    """
+    mgr = _Manager()
+    adapter = wa.WorkerOrchestratorAdapter(worker_manager=mgr)
+    monkeypatch.setattr(
+        wa, "resolve_worker_type", lambda req, task_type, prompt: "terminal-qwen"
+    )
+
+    out = await adapter.execute({"prompt": "x", "count": MAX_COUNT + 10}, ["/repo"])
+
+    assert out["worker_count"] == MAX_COUNT
 
 
 @pytest.mark.asyncio

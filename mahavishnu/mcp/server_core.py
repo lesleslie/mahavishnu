@@ -11,6 +11,7 @@ import inspect
 from logging import getLogger
 import time
 from typing import Any, cast
+import uuid
 
 from mcp_common.fastmcp import FastMCP
 from mcp_common.server.telemetry import FastMCPOpenTelemetryMiddleware
@@ -24,7 +25,14 @@ from monitoring.metrics import (
 
 from ..core.app import MahavishnuApp
 from ..core.auth import get_auth_from_config
+from ..core.metrics_schema import TaskType
 from ..core.permissions import Permission
+from ..core.task_envelope import (
+    ADAPTER_TASK_TYPES,
+    TaskControlParams,
+    TaskEnvelope,
+    TaskParams,
+)
 from .bootstrap import init_terminal_manager as _init_terminal_manager_helper
 from .bootstrap import register_health_endpoint as _register_health_endpoint_helper
 from .lifecycle import register_worktree_tools as _register_worktree_tools_helper
@@ -456,8 +464,8 @@ class FastMCPServer:
             user_id: str | None = None,
         ) -> dict[str, Any]:
             """Trigger a durable workflow execution through a named adapter
-            (prefect, llamaindex, agno). Use for multi-step orchestrations that
-            span repos or need durable state across hours or days.
+            (prefect, llamaindex, agno, worker). Use for multi-step orchestrations
+            that span repos or need durable state across hours or days.
 
             Workflows run as durable Prefect flows, Agno agent loops, or
             LlamaIndex RAG pipelines depending on `adapter`.
@@ -472,15 +480,43 @@ class FastMCPServer:
               (best for production workflows)
             - `llamaindex` — RAG pipelines, document ingestion, semantic search
             - `agno` — agent loops, multi-step reasoning, tool use
+            - `worker` — one-shot agent CLIs (Claude Code, Qwen, Codex)
 
             Returns a `workflow_id` immediately (C-NEW-5: fire-and-forget).
             Poll `mahavishnu_get_workflow_status(workflow_id=...)` for results.
 
+            **Changed in 2.0.0** (the request contract is narrower; the
+            workflow itself is not):
+
+            - `params` is an *allowlisted* bag. The caller's dict no longer
+              reaches the top level of the task an adapter reads — only the
+              keys the adapters use (`query`, `index_id`, `top_k`,
+              `file_types`, `exclude_patterns`, `id`, `focus`, `standards`,
+              `target`, `scope`) and the `prompt` do. `output_type`,
+              `system_prompt`, `tools` and `workflow_name` are dropped:
+              they select the agent's behaviour, and a caller must not
+              reach them.
+            - `task_type` is capped at 100 characters.
+            - A `target` must be repo-relative and free of `..` segments.
+              An absolute path reaches any file the host can read.
+            - `task_type` must be one the adapter implements. `llamaindex`
+              implements `ingest`, `query` and `ingest_and_query`; asking
+              it for anything else is an error, not a task it runs quietly
+              some other way. `prefect` and `agno` have a default branch
+              and accept any task type.
+            - `adapter="worker"` now works, and spawns the agent CLIs
+              directly.
+            - `timeout` is the whole-execution deadline. It is not
+              capped: a workflow that spans hours or days can say so. A
+              negative value is refused. `0` means *unbounded*, the same
+              as omitting the parameter — the deadline is only set when
+              the caller named a positive one.
+
             Args:
-                adapter: One of `prefect`, `llamaindex`, `agno`.
+                adapter: One of `prefect`, `llamaindex`, `agno`, `worker`.
                 task_type: Workflow task type (e.g., `code_review`, `ingest`,
                     `deploy`). Adapter-specific.
-                params: Optional workflow parameters.
+                params: Optional workflow parameters. Allowlisted keys only.
                 tag: Optional tag to filter target repos (from `repos.yaml`).
                 repos: Optional list of repo paths to scope the workflow to.
                 timeout: Optional max seconds for the workflow to run.
@@ -504,6 +540,22 @@ class FastMCPServer:
             if params is None:
                 params = {}
             try:
+                # The caller's ``task_type`` names the adapter's
+                # behaviour, and the adapter's vocabulary is its own. An
+                # adapter with a default branch dispatches anything; one
+                # with a closed vocabulary does not, so a task type it
+                # does not own is a request for behaviour that does not
+                # exist. It used to be answered with a per-repo "Unknown
+                # task type" that the tool reported as a *completed*
+                # workflow -- a silent no-op dressed as a success.
+                vocabulary = ADAPTER_TASK_TYPES.get(adapter)
+                if vocabulary is not None and task_type not in vocabulary:
+                    raise ValueError(
+                        f"adapter {adapter!r} does not implement task_type "
+                        f"{task_type!r}; it implements "
+                        f"{', '.join(sorted(vocabulary))}"
+                    )
+
                 # Determine repos to process
                 if repos is not None:
                     target_repos = repos
@@ -512,20 +564,51 @@ class FastMCPServer:
                 else:
                     target_repos = self.app.get_repos(user_id=user_id)
 
-                # Create task specification
-                task = {
-                    "type": task_type,
-                    "params": params,
-                    "id": f"{task_type}_{adapter}_{len(target_repos)}_repos",
-                }
+                # Build the typed envelope.
+                #
+                # The caller's dict goes into ``params`` and is NOT
+                # flattened into the top level: the control namespace is
+                # server-owned, and a flattened bag would put caller
+                # values exactly where the worker reads its substrate,
+                # its worker count and its timeout.
+                #
+                # ``task_type`` keeps its current free-form meaning — it
+                # is the operation, the adapter's behaviour selector. The
+                # request contract still narrows, though: the tool is
+                # 2.0.0, and the params allowlist, the 100-character
+                # ``task_type`` cap, the repo-relative ``target`` rule and
+                # the adapter's own task-type vocabulary are all new. The
+                # docstring above lists them.
+                #
+                # req: REQ-C02
+                envelope = TaskEnvelope(
+                    routing_type=TaskType.AI_TASK,
+                    id=f"wf_{uuid.uuid4().hex[:8]}_ai_task",
+                    params=TaskParams.model_validate(
+                        {**params, "operation": task_type}
+                    ),
+                    control=TaskControlParams(
+                        deadline_seconds=timeout if timeout else None,
+                        # The scope is the server's: the repo list the tool
+                        # resolved and validated, never the caller's bag.
+                        repos=list(target_repos),
+                    ),
+                )
+                task = envelope.for_adapter(adapter)
 
-                # Execute workflow with timeout if specified
-                if timeout:
+                # Execute workflow with timeout if specified.
+                #
+                # The bound comes from the envelope, not from the raw
+                # parameter: the envelope is the control plane's record
+                # of what this execution is allowed to do, and a bound
+                # the envelope documents but nothing reads is decorative.
+                deadline = envelope.control.deadline_seconds
+                if deadline is not None:
                     raw_result = await asyncio.wait_for(
                         self.app.execute_workflow_parallel(
                             task, adapter, target_repos, user_id=user_id
                         ),
-                        timeout=timeout,
+                        timeout=deadline,
                     )
                 else:
                     raw_result = await self.app.execute_workflow_parallel(
@@ -554,15 +637,20 @@ class FastMCPServer:
                     "errors": result.get("errors", []),
                 }
             except TimeoutError:
-                # Create a workflow ID for the timeout case
-                import uuid
-
-                timeout_workflow_id = f"wf_timeout_{uuid.uuid4().hex[:8]}_{task_type}"
+                # Create a workflow ID for the timeout case. The suffix is
+                # the BOUNDED routing type: the caller's operation is not
+                # a safe key fragment, and the id is spliced into substrate
+                # key paths.
+                timeout_workflow_id = f"wf_timeout_{uuid.uuid4().hex[:8]}_ai_task"
 
                 # Update workflow state to reflect timeout
                 await self.app.workflow_state_manager.create(
                     workflow_id=timeout_workflow_id,
-                    task={"type": task_type, "params": params},
+                    task=(
+                        envelope.for_adapter(adapter)
+                        if "envelope" in locals()
+                        else {"type": task_type, "params": params}
+                    ),
                     repos=target_repos,
                 )
                 await self.app.workflow_state_manager.update(
@@ -585,15 +673,19 @@ class FastMCPServer:
                     ],
                 }
             except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                # Create a workflow ID for the error case
-                import uuid
-
-                error_workflow_id = f"wf_error_{uuid.uuid4().hex[:8]}_{task_type}"
+                # Create a workflow ID for the error case. The suffix is the
+                # BOUNDED routing type, for the same reason as the timeout
+                # branch's.
+                error_workflow_id = f"wf_error_{uuid.uuid4().hex[:8]}_ai_task"
 
                 # Update the workflow state to reflect error
                 with suppress(Exception):
                     # If we can't update the workflow state, continue with the response
-                    task_for_state = {"type": task_type, "params": params}
+                    task_for_state = (
+                        envelope.for_adapter(adapter)
+                        if "envelope" in locals()
+                        else {"type": task_type, "params": params}
+                    )
                     await self.app.workflow_state_manager.create(
                         workflow_id=error_workflow_id,
                         task=task_for_state,
@@ -1656,15 +1748,21 @@ class FastMCPServer:
 
         from mahavishnu.core.workflow_execution import dispatch_workflow_async
 
-        task = {
-            # ``ai_task`` is the generic workflow category. It also
-            # becomes the trailing fragment of the workflow id
-            # (``wf_<hex>_ai_task``), so it must stay a safe identifier
-            # -- the id is spliced into substrate key paths.
-            "type": "ai_task",
-            "id": f"task_handoff_{uuid.uuid4().hex[:8]}",
-            "params": {"prompt": prompt},
-        }
+        # The envelope's routing type is AI_TASK, so the workflow id the
+        # dispatcher mints from it is ``wf_<hex>_ai_task`` — the shape
+        # written into session-buddy's ``Task.workflow_id``, and the one
+        # the read path's guard accepts.
+        #
+        # req: REQ-C02
+        envelope = TaskEnvelope(
+            routing_type=TaskType.AI_TASK,
+            id=f"wf_{uuid.uuid4().hex[:8]}_ai_task",
+            params=TaskParams(operation="ai_task", prompt=prompt),
+            # The handoff is repo-scoped: ``repo`` is the one path the
+            # task names, and the scope is the server's to record.
+            control=TaskControlParams(repos=[repo] if repo else []),
+        )
+        task = envelope.for_adapter(adapter)
         return await dispatch_workflow_async(
             self.app,
             task,

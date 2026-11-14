@@ -3,6 +3,7 @@
 import asyncio
 import json
 from typing import Any, NoReturn
+import uuid
 
 import typer
 
@@ -50,7 +51,9 @@ from .cli.team_cli import add_team_commands
 from .coordination_cli import add_coordination_commands, add_repo_commands
 from .core.app import MahavishnuApp
 from .core.health import HealthStatus
+from .core.metrics_schema import TaskType
 from .core.subscription_auth import MultiAuthHandler
+from .core.task_envelope import TaskControlParams, TaskEnvelope, TaskParams
 
 # Import ecosystem management CLI
 from .ecosystem_cli import add_ecosystem_commands
@@ -394,7 +397,19 @@ async def _async_trigger_workflow(
 
     typer.echo(f"Running {task_type} across {len(all_repos)} repos via {adapter}...")
 
-    task = {"task": task_type, "id": f"{task_type}-{tag}"}
+    # Build the same typed envelope the MCP tool builds. The operation
+    # ("quality_check", "ai-sweep", ...) is NOT a routing type — the two
+    # vocabularies have zero overlap — so the routing type is named
+    # explicitly and the operation stays in the envelope's params.
+    #
+    # req: REQ-C02
+    envelope = TaskEnvelope(
+        routing_type=TaskType.AI_TASK,
+        id=f"wf_{uuid.uuid4().hex[:8]}_ai_task",
+        params=TaskParams(operation=task_type),
+        control=TaskControlParams(repos=list(all_repos)),
+    )
+    task = envelope.for_adapter(adapter)
     result = await maha_app.execute_workflow_parallel(task, adapter, all_repos)
     return result
 
@@ -667,7 +682,17 @@ async def _async_sweep(tag: str, adapter: str):
         )
         raise typer.Exit(code=1)
 
-    task = {"task": "ai-sweep", "id": f"sweep-{tag}"}
+    # The sweep's operation is "ai-sweep"; its routing type is AI_TASK.
+    # The operation never reaches the workflow id.
+    #
+    # req: REQ-C02
+    envelope = TaskEnvelope(
+        routing_type=TaskType.AI_TASK,
+        id=f"wf_{uuid.uuid4().hex[:8]}_ai_task",
+        params=TaskParams(operation="ai-sweep"),
+        control=TaskControlParams(repos=list(repos)),
+    )
+    task = envelope.for_adapter(adapter)
     result = await maha_app.execute_workflow_parallel(
         task, adapter, repos, progress_callback=progress_callback
     )

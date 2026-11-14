@@ -8,57 +8,29 @@ superseded_by: null
 topic: control-plane-consolidation
 title: "Control-plane consolidation — one registry, one envelope, one workflow lane"
 requirements:
-  - id: REQ-C01
-    title: "Every adapter registered in app.adapters is selectable by the router and named in the MCP tool's adapter list"
-    description: "worker, hatchet, and pydantic_ai are reachable through TaskRouter and documented in trigger_workflow, not only prefect/agno/llamaindex."
+  # Only the requirements whose phase has landed a marker are declared.
+  # The audit keeps a plan that has both live and dead requirements and
+  # orphans the dead ones (scripts/audit_requirements.py:222-225), so a
+  # multi-phase plan declares one requirement at a time, in the same
+  # change that lands its marker (plan §4.10). The full map of every
+  # requirement and the phase that delivers it is §4.14's table.
   - id: REQ-C02
     title: "One task-envelope shape reaches every adapter"
     description: "The MCP tool, the CLI sweep commands, and the router build the same envelope, so an adapter reads the same keys regardless of which entry point dispatched it."
-  - id: REQ-C03
-    title: "Exactly one adapter registry, one TaskRouter, and one workflow state store exist in production code"
-    description: "UnifiedOrchestrator, task_router.AdapterManager, the second TaskRouter, and the duplicate workflow state stores are removed or folded in."
-  - id: REQ-C04
-    title: "Every execution returns one envelope shape carrying explicit terminal state and exit code"
-    description: "Engine adapters, the worker adapter, and the pool lane all return the same result envelope."
-  - id: REQ-C05
-    title: "The control plane creates the span; an engine's own tracer is never the source of truth for a mahavishnu workflow span"
-    description: "One span tree spans engine and worker legs, created by mahavishnu's observability layer."
-  - id: REQ-C06
-    title: "A pool dispatch carries a workflow id and participates in the same span tree as an engine dispatch"
-    description: "pool_route_execute produces a workflow id that get_workflow_status resolves — state store first, substrate fallback — and the dispatch participates in the same span tree as an engine dispatch."
-  - id: REQ-C07
-    title: "A workflow can run an engine leg and a terminal-worker leg in one execution, with the second leg consuming the first's output"
-    description: "A composition demo runs both legs under one workflow id and one span tree."
-  - id: REQ-C08
-    title: "A one-shot dispatch reports an explicit terminal state that a later poll cannot reverse"
-    description: "Settling is final; a stale poll cannot move a settled dispatch back to running."
-  - id: REQ-C09
-    title: "A one-shot dispatch waits for an explicit readiness signal before it is reported running"
-    description: "The dispatch is not running until the CLI demonstrably holds the prompt."
-  - id: REQ-C10
-    title: "The prompt the CLI read is verified against a digest the worker wrote"
-    description: "A truncated or partially-written prompt fails the dispatch rather than running with the wrong bytes. This is a DELIVERY-FIDELITY control, not an authenticity guarantee: it catches truncation, partial writes, and wrong-file mix-up; it does not defend against a malicious caller or a compromised host, and the digest is advisory."
-  - id: REQ-C11
-    title: "Every demo routes through the workflow lane and produces a workflow id"
-    description: "The engine demos stop calling adapter.execute directly, so a demo run exercises the same path an operator gets."
-  - id: REQ-C12
-    title: "The demo inventory matches the shipped demo set"
-    description: "The DEMO SUB-COMMANDS comment, the demo_cli stub tally, the cookbook recipes, the CLI reference, and the wireup invariant tests all move together."
   - id: REQ-C14
     title: "The openhands worker speaks the current OpenHands SDK API"
-    description: "The worker uses the current conversation, event-stream, and terminal-status contract instead of the deleted V0 shape."
-  - id: REQ-C15
-    title: "Every workflow demo has a cookbook recipe and every recipe names a command that exists"
-    description: "A test parses docs/cookbook/workflows.md and checks both directions, so the cookbook cannot drift silently."
+    description: "The worker starts a conversation with the SDK's StartConversationRequest, reads the event socket at /sockets/events/{conversation_id}, discriminates events by 'kind', and treats finished | error | stuck as terminal."
 ---
 
 # Control-plane consolidation — one registry, one envelope, one workflow lane
 
-> **Status: partial** (verified 2026-11-08). Phase 1 of eight phases is
-> complete, and it lives on `feat/control-plane-consolidation` — 9 commits
-> ahead of `main` and unmerged; `main` has none of it. Phases 2–8 have not
-> started. The §6 checklist is 0/100 ticked on both branches and is not a
-> usable progress signal. This plan supersedes
+> **Status: partial** (verified 2026-11-13). Phase 1 of eight phases is
+> complete and **landed in `main`** by the squash-merge of
+> `feat/control-plane-consolidation` (subject: `merge:
+> feat/control-plane-consolidation -> main`). Phases 2–8 have not started.
+> The §6
+> checklist is 0/100 ticked on both branches and is not a usable progress
+> signal. This plan supersedes
 > `docs/plans/2026-11-01-terminal-cli-harness-demos-and-dispatch-trust.md`
 > and `docs/plans/2026-11-01-adapter-composition-executor.md`, both of
 > which are marked `superseded_by` this file.
@@ -413,12 +385,15 @@ unreferenced (`_filter_dead_plans`, `:208-243`), so this plan is
 invisible to the gate until Phase 1 lands its first marker — a known
 transient, not a defect. This section is the human-readable index.
 
-**The transient ends the moment the first marker lands**, and it ends
-badly if the remaining requirements have not acquired theirs: the audit
-keeps a plan that has *both* live and dead requirements (`:222-225`), so
-the dead ones become orphans. §4.10 states the rule — every declared
-requirement gets its literal `.py` marker **in the same change** that
-first references it. **Cost (REQ-C13) is not declared at all**: it is
+**The frontmatter declares only the requirements whose phase has landed a
+marker** — the one requirement this plan is delivering at a time, added in
+the same change that lands its marker. The audit keeps a plan that has
+*both* live and dead requirements (`:222-225`), so a plan that declares
+all fourteen up front orphans thirteen the moment the first marker lands,
+and `main()` returns 1. The table below is therefore the authoritative
+map of every requirement and the phase that delivers it; the frontmatter
+is the gate's view of the same thing, narrowed to what has landed.
+**Cost (REQ-C13) is not declared at all**: it is
 deferred (§3 non-goal 8), so it has no marker and must not appear in
 the frontmatter, where it would be an orphan from the moment Phase 1
 lands.
@@ -664,7 +639,7 @@ they hand any `trigger_workflow` caller three selectors at once.
 | `params` (the free-form bag) | `params` is `dict[str, Any]` (`mcp/server_core.py:413`) and reaches the adapters **unchanged**. Adapters read eleven live keys from it — `query`, `index_id`, `top_k`, `file_types`, `exclude_patterns`, `id` (llamaindex); `focus`, `standards`, `target` (agno) — plus `scope` (the tool's own docstring) and `param1` (the repo's own test) | `TaskParams` keeps `extra="allow"` and a passthrough map, so **nothing is dropped**; and it is handed to the adapters as a **plain `dict`**, because agno and llamaindex call `.get()` on it |
 | `params` (as an *adapter control*) | three of the keys the adapters read at the **top level** are **controls**, not parameters: `workflow_name` (`engines/hatchet_adapter_impl.py:232` → the Hatchet dispatch target at `:246-249`, `:260-263`), `tools` (`adapters/ai/pydantic_ai_adapter.py:975` → `:976-979` — **which MCP servers the agent carries**), and `system_prompt` (`:973` → `:989` — **the agent's instruction override**). `output_type` (`:974` → `:990`) is adapter-owned. **Today the caller cannot reach them** — the caller's dict is nested under `params` while the adapters read the top level. Phase 1's projection ("hands each adapter the shape it reads") would **expose** them, because `extra="allow"` plus "nothing is dropped" delivers them | an explicit **deny-list** on the projection: `output_type`, `system_prompt`, `tools` and `workflow_name` are **never** sourced from `params`. `workflow_name` is server-derived from the adapter's registry entry; `tools` and `system_prompt` are operator/registry-owned |
 | `target` (a *path*) | `engines/agno_adapter_impl.py:2039-2043` joins a **relative** `target` to the repo, but an **absolute** `target` is used **verbatim** — the containment is skipped and the agent is instructed to read an arbitrary absolute path. Its only backstop is agno's file-tool allowlist, whose base list is the hardcoded `Path("/Users/les/Projects")` (§4.2 row 11) | `target` is validated at the envelope boundary: repo-relative only, no `..` segment, rejected outright if it resolves outside the validated repo |
-| `count` (its *default*) | `worker.py:207` — `count = task.get("count", len(repos))`: one worker **per repo**. The plan's first draft defaulted it to **1**, silently changing a worker dispatch over N repos into a single worker | the default is preserved as `len(repos)`, resolved at **projection** time (the envelope *does* know `repos` — `TaskParams.repos` is a declared field). **`count` is omitted from the projected dict when it is `None`**, because `dict.get` returns the stored value when the key is *present* and a projected `None` raises `TypeError` at `worker.py:217`. The **effective** count is capped at dispatch (`min(count or len(repos), len(repos), 50)`), and `count` is `1` when `repos` is empty |
+| `count` (its *default*) | `worker.py:207` — `count = task.get("count", len(repos))`: one worker **per repo**. The plan's first draft defaulted it to **1**, silently changing a worker dispatch over N repos into a single worker | the default is preserved as `len(repos)`, resolved at **projection** time (the envelope *does* know the scope — `TaskControlParams.repos` is a control field, server-owned, because the scope is what the server computed and validated). **`count` is omitted from the projected dict when it is `None`**, because `dict.get` returns the stored value when the key is *present* and a projected `None` raises `TypeError` at `worker.py:217`. The **effective** count is capped at dispatch (`min(count or len(repos), len(repos), 50)`), and `count` is `1` when `repos` is empty |
 
 There is no command injection from an arbitrary `worker_type` — an
 unregistered name fails loudly before a command is built. The exposure
@@ -716,10 +691,15 @@ The envelope therefore carries **two** task-type fields:
   enters a workflow id.
 
 `trigger_workflow`'s public `task_type` argument keeps its current
-free-form meaning (the operation) — so **the request contract does not
-change**, and the plan's "MINOR" classification holds *for the corrected
-design*. Implementing the first draft's sketch literally would have been
-a MAJOR change, and a breaking one.
+free-form meaning (the operation), but **the request contract does
+change** — and the shipped bump is **2.0.0 (MAJOR)**, not the "MINOR"
+this paragraph originally argued for. The narrowing is the params
+allowlist, the 100-character `task_type` cap, the repo-relative
+`target` rule and the adapter's own task-type vocabulary: a request
+that used to succeed can now fail. Keeping `task_type` free-form was
+necessary but not sufficient — the allowlist it sits beside is what
+makes the whole change breaking. Implementing the first draft's sketch
+literally would have been a MAJOR change as well, and a breaking one.
 
 The same discipline applies to the composition (Phase 6): stage-one
 output is **untrusted data**. The reference implementation already
@@ -1030,13 +1010,16 @@ the trust boundary it is now (§4.11).
 
        model_config = ConfigDict(extra="forbid")
        count: int | None = Field(default=None, ge=1, le=50)  # omitted when None
-       deadline_seconds: float | None = Field(default=None, gt=0, le=MAX_TIMEOUT)
+       deadline_seconds: float | None = Field(
+           default=None, gt=0, allow_inf_nan=False
+       )  # NOT capped: the public timeout had no bound before
        leg_timeout_seconds: float = Field(
            default=LEG_TIMEOUT_SECONDS, gt=0, le=MAX_TIMEOUT
        )
        worker_type: str | None = None  # allowlist-checked in TaskEnvelope
        preference_order: list[str] | None = None  # router control
        permission_mode: str | None = None  # validated against the per-CLI allowlist
+       repos: list[str] = Field(default_factory=list)  # the SERVER's scope
 
 
    class TaskParams(BaseModel):
@@ -1046,7 +1029,6 @@ the trust boundary it is now (§4.11).
        model_config = ConfigDict(extra="allow")
        prompt: str = ""
        operation: str = "general"  # free-form; adapters' behaviour selector
-       repos: list[str] = Field(default_factory=list)
 
 
    class TaskEnvelope(BaseModel):
@@ -1076,9 +1058,10 @@ the trust boundary it is now (§4.11).
    **A single `timeout: float = Field(default=300)` would be a
    regression in both directions**: it would cap unbounded
    "hours-or-days" workflows at 300 s, *and* leave `trigger_workflow`'s
-   public parameter with no home in the envelope — which would make the
-   plan's own §4.11 claim that "the request contract does not change"
-   false. The two fields are named so the mapping is checkable.
+   public parameter with no home in the envelope — so the contract's
+   narrowing would have no field to hang off, and §4.11 could not say
+   which of the caller's values the envelope carries. The two fields
+   are named so the mapping is checkable.
 
    **`id` is server-derived and pattern-constrained.** `id` is not a
    free string: it reaches a **Prefect flow-run name**
@@ -1124,8 +1107,11 @@ the trust boundary it is now (§4.11).
      the router's key, the workflow-id suffix and the metric label.
      `operation` is free-form and length-capped; it is the adapter's
      behaviour selector and lands in `task["type"]`. `trigger_workflow`'s
-     public `task_type` argument keeps its current free-form meaning, so
-     **the request contract does not change**.
+     public `task_type` argument keeps its current free-form meaning —
+     but the request contract still narrows around it (the params
+     allowlist, the 100-character `task_type` cap, the repo-relative
+     `target` rule, the adapter's own task-type vocabulary), so the
+     shipped bump is **2.0.0 (MAJOR)**.
    - **`TaskParams` keeps `extra="allow"`**, so the eleven live keys
      the adapters read (`query`, `index_id`, `top_k`, `file_types`,
      `exclude_patterns`, `id`, `focus`, `standards`, `target`, `scope`,
@@ -1163,6 +1149,16 @@ the trust boundary it is now (§4.11).
      caller-supplied bag — a caller passing
      `params={"preference_order": ["worker"]}` would otherwise steer
      the router, which §4.11 explicitly forbids.
+   - **The repo scope is a control field, not a caller field.** The
+     first draft of this plan declared `repos` on `TaskParams`, which put
+     the scope in the caller's bag: `params={"repos": [...]}` bound to
+     the declared field, and the server's own validated scope never
+     reached the envelope at all. That inverted the count cap — it was
+     computed from a list the caller chose — and wrote an unvalidated
+     path list into the durable workflow record and the Prefect
+     flow-parameters document. The scope is server-computed, so it
+     belongs in `TaskControlParams`, where a caller's list is an
+     ordinary extra that the projection's allowlist drops.
    - `worker_type` is validated against an **allowlist of one-shot agent
      CLIs only** — `terminal-claude`, `terminal-qwen`, `terminal-codex`.
      Everything else is rejected at the boundary, so the registry
@@ -1175,7 +1171,7 @@ the trust boundary it is now (§4.11).
      `mcp/tools/worker_tools.py:67`. **Its default stays `len(repos)`**
      (`core/adapters/worker.py:207`) — one worker per repo — and is
      resolved at **projection** time, because the envelope *does* know
-     `repos` (`TaskParams.repos` is a declared field).
+     the scope (`TaskControlParams.repos` — a control field, server-owned).
    - **`count` is OMITTED from the projected dict when it is `None`.**
      This is load-bearing, not cosmetic. The adapter reads
      `count = task.get("count", len(repos))` (`core/adapters/worker.py:207`)
@@ -1193,8 +1189,19 @@ the trust boundary it is now (§4.11).
      traversal and allowlist membership but never checks that it is a
      repository). So `trigger_workflow(repos=[…500 allowed paths…])`
      would mint **500** one-shot workers. The effective count is
-     therefore `min(count if count is not None else len(repos), len(repos), 50)`,
-     and `len(repos)` is itself bounded at the envelope boundary.
+     therefore `min(count if count is not None else len(repos), len(repos), 50)`.
+     **Corrected (fix pass, 2026-11-08):** the cap cannot live only at
+     the projection, because the adapter is called with a *different*
+     repo list than the scope — the workflow lane dispatches once per
+     repo (`core/workflow_execution.py:212` passes `[repo_path]`) while
+     the router lane passes the whole scope
+     (`core/task_router.py:924`). A count derived from the scope would
+     mint one fleet per repo in the workflow lane. The cap therefore
+     lives where the workers are minted: `core/adapters/worker.py`
+     clamps the count it spawns to `MAX_COUNT`, and the projection
+     bounds the explicit count it supplies. What is bounded is **one
+     dispatch**; the number of dispatches is the scope, and the scope is
+     deliberately not capped at 50 (see §12).
    - **`count` defaults to `1` when `repos` is empty.** `len([]) == 0`
      → `worker.py:217` raises `ValueError("Worker count must be at
      least 1")`. The pool lane carries **no** `repos` today
@@ -1203,9 +1210,15 @@ the trust boundary it is now (§4.11).
      (`pools/mahavishnu_pool.py:341-344` passes `[prompt]`), so the
      merged lane must resolve `count = len(repos) if repos else 1`.
    - `timeout` is **two fields** (`deadline_seconds`,
-     `leg_timeout_seconds`) — see the sketch above. Both are bounded
-     finite `float`s — `"inf"` is rejected — and the deadline's `None`
+     `leg_timeout_seconds`) — see the sketch above. Both are finite
+     `float`s — `"inf"` is rejected — and the deadline's `None`
      means *unbounded*, which is today's `trigger_workflow` behaviour.
+     **Corrected (fix pass, 2026-11-08):** the *deadline* is finite and
+     positive but **not capped above**. The public `timeout` had no
+     bound before the envelope existed, so a two-hour workflow
+     (`trigger_workflow(timeout=7200)`) worked; capping the deadline at
+     the leg cap (`MAX_TIMEOUT`, 3600) broke it in pydantic validation
+     before the workflow started. The leg timeout is the capped one.
    - `prompt` is length-capped, following the pattern in
      `core/task_models.py`. The cap must be set from the pydantic-ai
      precedent (`MAX_PROMPT_LENGTH = 100000`,
@@ -1284,22 +1297,32 @@ the trust boundary it is now (§4.11).
      a structured error naming the runtime-available adapters rather
      than letting `prepare_execution` raise deep in the call.
    - Bump `tool_versions.py` `"trigger_workflow"` from `1.1.0` to
-     `1.2.0` — **MINOR, because the request contract does not
-     change.** Round 2 reclassified this twice. The first draft called
-     it MINOR on the grounds that it was *"additive new top-level
-     keys"*, which was factually wrong: the envelope's key set is
-     identical to today's `task` dict, and the keys the plan called
-     *new* (`workflow_name`, `single_repo`, `preference_order`) are
-     internal — the MCP caller never sees them. What changed was the
-     **semantics** of `params` and `task_type`, which under
+     `2.0.0` — **MAJOR.** Round 2 reclassified this three times. The
+     first draft called it MINOR on the grounds that it was *"additive
+     new top-level keys"*, which was factually wrong: the envelope's
+     key set is identical to today's `task` dict, and the keys the plan
+     called *new* (`workflow_name`, `single_repo`, `preference_order`)
+     are internal — the MCP caller never sees them. Round 2's second
+     pass settled on MINOR on the grounds that "the request contract
+     does not change", citing the corrected design's `extra="allow"`
+     **passthrough** — but the same task section narrows that
+     passthrough to *"a named allowlist, minus a named deny-list"*,
+     which is a different thing. The implemented design is the
+     allowlist, and under it the request contract DID change:
+     1. `params` keys outside the allowlist no longer reach the
+        adapter (the eleven live keys do — no adapter loses a
+        parameter it read);
+     2. a `task_type` longer than 100 characters is refused;
+     3. a `params.target` that is absolute or carries a `..` segment is
+        refused.
+     (2) and (3) are requests that used to succeed and now fail, and
+     (1) changes what `params` means. Under
      `mcp/tool_versions.py:8-10` ("MAJOR: Breaking change (removed
-     field, changed type, different semantics)") is MAJOR — *if the
-     first draft's sketch is implemented literally*. With the corrected
-     design above (two task-type fields, `extra="allow"` passthrough,
-     the caller's `task_type` keeping its meaning) the request is
-     unchanged and MINOR is correct.
-     **The classification therefore depends on the design, which is why
-     this task must state the design.**
+     field, changed type, different semantics)") that is MAJOR. The
+     registry exists to tell a consumer that its call may now fail;
+     a MINOR bump does not say that.
+     **The classification depends on the design, which is why this task
+     states the design.**
    - **ADR-015's deprecation recipe is NOT this plan's policy.** Round 2
      consulted it and over-generalised it. `docs/adr/015-worktree-and-cache-storage-v4.md:485-491`
      is the **Phase 5** step of the *worktree* feature's own plan — its
@@ -1460,11 +1483,16 @@ real conversation against the current SDK.
   `deadline_seconds` was wired to the per-leg budget; the openhands
   worker's conversation never reaching a terminal status means the SDK
   migration is incomplete.
-- **Rollback action:** revert the Phase 1 commit(s) — the envelope is
-  additive to the wire shape (the request contract does not change), so
-  reverting restores the previous `task` dict construction with no
-  migration. No flag to flip; the change is inert until the Phase 4
-  adapter migration consumes it.
+- **Rollback action:** revert the Phase 1 commit(s). The envelope's
+  construction is self-contained, so reverting restores the previous
+  `task` dict with no migration — but the request contract widens with
+  it. `trigger_workflow` goes back from 2.0.0 to 1.1.0, and the 2.0.0
+  refusals go with it: the params allowlist, the 100-character
+  `task_type` cap, the repo-relative `target` rule and the adapter's
+  own task-type vocabulary. A caller that relied on any of them gets
+  the wider contract back, which is the opposite direction from the
+  narrowing it was given. No flag to flip; the change is inert until
+  the Phase 4 adapter migration consumes it.
 - **Observability added:** the `task_type` recorded on the
   `mahavishnu.workflows.total` metric (`core/workflow_execution.py:382`)
   becomes meaningful for CLI-originated workflows for the first time,
@@ -2282,8 +2310,8 @@ absorbing terminals; workflow outcomes survive a process restart.
    otherwise be duplicated at two depths; removing it is a MAJOR shape
    change. **Round 2 corrected the arithmetic and dropped the
    deprecation machinery.** The first draft said `1.1.0 → 2.0.0`; but
-   Phase 1 already moves the version (`1.1.0 → 1.2.0`), so Phase 4's
-   bump is `1.2.0 → 2.0.0`. And because this plan is **forward-only**
+   Phase 1 already moves the version (`1.1.0 → 2.0.0`), so Phase 4's
+   bump is `2.0.0 → 3.0.0`. And because this plan is **forward-only**
    (§3 non-goal 10), there is **no** `DEPRECATED_TOOLS` entry, **no**
    translation shim, and **no** deprecation window — the key is
    removed and the version says so.
@@ -3930,3 +3958,248 @@ which is this repo's target. Verified by import. No action.
 - `docs/decisions/wire-up-contract.md` — the policy this plan implements.
 - `scripts/audit_orphans.py`, `scripts/audit_requirements.py` — the
   gates.
+
+## 12. Phase 1 implementation record
+
+Phase 1 lives on `feat/control-plane-consolidation` (branch base
+`9ddd2af5`, rebased onto `main` at `0d4987bd`). **It is merged into
+`main`** — the squash-merge commit is subject `merge:
+feat/control-plane-consolidation -> main`.
+A fresh reviewer read the whole-branch diff against §4.10, §4.11, §4.14
+and §5 Phase 1, traced every consumer of the task dict, and probed the
+boundary adversarially. It confirmed the five named controls hold at the
+boundary and reported **one Critical, five Important and eight Minor**
+findings.
+
+A second ensemble review — three reviewers, dispatched through the
+repo's own stage-2 gate — then read the same diff and reported **three
+Important** findings and **two documentation** findings. Those are fixed
+in the fix pass recorded below.
+
+### Fixed in the Phase 1 whole-branch review
+
+| Finding | What was wrong | The fix |
+|---|---|---|
+| **C1** | `#: req: REQ-C14` is a Sphinx-style comment; the audit's pattern is `#\s*req:`, so the audit found **zero** references in `workers/openhands.py`. REQ-C14 read as delivered and was untraceable — and declaring it without a visible marker would have made it an *orphan*, taking the audit's exit code to 1 | the marker is a plain comment, and REQ-C14 is declared in the frontmatter in the same change |
+| **I2** | `repos` was a declared `TaskParams` field, so `params={"repos": [...]}` bound to it and was projected to the adapter's top level — while the server's *validated* scope never reached the envelope. The count cap was computed from a list the caller chose, and an unvalidated path list landed in the durable workflow record and the Prefect flow-parameters document | the scope moved to `TaskControlParams.repos` (server-owned) and every builder passes the scope it resolved; the `target` containment check moved with it |
+| **I1** | the projection wrote `permission_mode` into the task dict and nothing read it, so the mode that reached the CLI was the registry default — `yolo` for `terminal-qwen` | the mode is threaded from the envelope through the worker adapter to the worker factory; the operator's `workers.permission_modes` still wins, the registry default is the last resort |
+| **I4** | the OpenHands socket path ends on `finished \| error \| stuck`; the REST fallback looked for `completed`, so a finished conversation fell through to the 600 s timeout | both paths read `TERMINAL_EVENT_KINDS` / `FAILED_EVENT_KINDS` |
+| **I5** | `trigger_workflow` was bumped to `1.2.0` (MINOR) on a rationale — *passthrough* — that the same task section had already narrowed to an allowlist. The shipped change filters `params`, refuses an over-long `task_type`, and refuses a `target` that leaves the repo: two of the three make a previously-successful call fail | the version moves to **2.0.0** (MAJOR under the registry's own policy), and this plan's bullet is corrected — Phase 4's bump becomes `2.0.0 → 3.0.0` |
+
+### Fixed in the merge-review fix pass
+
+The stage-2 ensemble review (three reviewers: `python-pro`,
+`critical-audit-specialist`, `documentation-review-specialist`) read the
+whole-branch diff and returned three `needs_adjustment` verdicts. Each
+finding was verified against live code before anything was changed, and
+each fix is a RED→GREEN cycle.
+
+| Finding | What was wrong | The fix | Test |
+|---|---|---|---|
+| **Important — the worker cap was inert** | `MAX_COUNT` was enforced only in the projection's *explicit*-count branch, and **no builder sets an explicit count**: `_effective_count()` returns `None` when unset, the projected dict omits `count`, and `core/adapters/worker.py` fell back to an uncapped `len(repos)`. A 500-repo scope minted 500 workers in one dispatch, and this plan's "enforced in the effective count at projection time" was false | the cap moved to where the workers are minted: `core/adapters/worker.py` clamps the count it spawns to `MAX_COUNT`. The projection cannot supply the default itself — the adapter is called with a *different* repo list than the scope (the workflow lane dispatches once per repo, the router lane passes the whole scope), so a scope-derived count would mint one fleet per repo | `test_the_worker_fan_out_is_capped`, `test_an_explicit_count_above_the_cap_is_clamped` |
+| **Important — `deadline_seconds` was capped at one hour** | the field carried `le=MAX_TIMEOUT` (3600), so `trigger_workflow(timeout=7200)` — which worked before the envelope existed — died in pydantic validation before the workflow started. The cap also contradicted the module's own docstring ("hours or days") and the plan's MAJOR rationale did not list the break | the deadline is finite and positive but **not capped above** (`gt=0`, `allow_inf_nan=False`); the leg timeout keeps the cap. The envelope's deadline is also now the bound the tool enforces (`asyncio.wait_for` reads `envelope.control.deadline_seconds`), so the field is not decorative | `test_a_deadline_longer_than_one_hour_is_accepted`, `test_a_timeout_longer_than_one_hour_is_accepted`, `test_the_envelope_owns_the_bound_that_is_enforced` |
+| **Important — the CLI's operation collided with llamaindex's vocabulary** | the projection writes the free-form operation into `task["type"]`, which is the adapter's *behaviour selector*. llamaindex's vocabulary is closed (`ingest`, `query`, `ingest_and_query`), so the CLI's `quality_check` / `ai-sweep` and the router's `general` became per-repo "Unknown task type" failures — which llamaindex still reported as a **completed** workflow | every adapter has its own vocabulary, so the projection resolves the operation against the adapter's: an operation the adapter dispatches is passed through, and one it does not own becomes the adapter's own default (what it runs when the key is absent). The MCP tool refuses a `task_type` the adapter does not implement, so a caller is told rather than handed a different task | `test_an_operation_the_adapter_cannot_dispatch_becomes_its_default`, `test_the_quality_check_hands_llamaindex_a_type_it_dispatches`, `test_an_unimplemented_task_type_is_refused` |
+| **Documentation — `trigger_workflow`'s docstring** | the tool went `1.1.0 → 2.0.0` and the docstring still described the `1.1.0` contract | the docstring lists the breaking changes: the `params` allowlist, the 100-character `task_type` cap, the repo-relative `target` rule, `adapter="worker"`, the vocabulary rule, and the timeout's new shape | `tests/unit/test_mcp_server_core.py` |
+| **Documentation — this plan's status** | the status block claimed Phase 1 "is merged into `main`" — only the branch has it — and §12 still read "offered for merge" | the status block names the branch and says the merge has not happened; §12 records the branch base and head | — |
+
+### Fixed in the post-rebase stage-2 review
+
+The stage-2 ensemble review was re-run against the **rebased** branch,
+because the branch changed materially since it last ran: 13 commits
+replayed onto `main` at `0d4987bd`, the MCP tool rename sweep, and the
+documentation fixes above. Three reviewers were dispatched through the
+repo's own gate (`python-pro`, `critical-audit-specialist`, and
+`performance-review-specialist` as the random generalist). Two returned
+`pass` and one `needs_adjustment`, so the gate's rule (≥2 `pass` →
+proceed) opens the merge; the `needs_adjustment` findings are fixed
+below.
+
+One reviewer's reply lost the opening `<` of its verdict block to the
+pool's capture window, so the parser read it as malformed. The reply's
+own text was intact and is what the findings below come from.
+
+| Finding | What was wrong | The fix | Test |
+|---|---|---|---|
+| **Important — the workflow lane multiplied the fan-out by the scope** | the projection's explicit-count branch computes `min(count, len(scope), MAX_COUNT)` — a **scope-derived** count. The workflow lane dispatches once per repo, and the count travelled into each of those dispatches: a count of 3 over 3 repos minted 3 workers per repo, 9 for the task. This is the exact failure this plan's ledger names ("a scope-derived count ... mints one fleet per repo in the workflow lane — 50 workers per repo instead of one") and the one the previous fix pass recorded as closed. It was closed only on the *unset* path — **no builder sets `control.count` today**, so the path is unreachable — and open on the explicit one | the lane that creates the multiplication is the lane that pins it: `core/workflow_execution.py` `process_single_repo` dispatches with `count: 1`. The lane already fans out one dispatch per repo, so each dispatch is one worker; a count on the task was computed against the whole scope and cannot be honoured per repo without multiplying it | `test_a_count_on_the_task_does_not_multiply_the_fleet` |
+| **Important — the request-contract claim was stale in four places** | the shipped tool is `2.0.0` (MAJOR): `params` is filtered to the allowlist, an over-long `task_type` is refused, a `target` that leaves the repo is refused, and a `task_type` the adapter does not implement is refused. The plan's §4.11 still claimed "the request contract does not change" in two places, its Phase-1 rollback note repeated it, and the code comment above the envelope's construction repeated it too — so §12's claim that "this plan's bullet is corrected" was only half true: the version was corrected, the sentence was not | the three plan sentences and the code comment now state what shipped, and the two named fields (`deadline_seconds`, `leg_timeout_seconds`) keep the public `timeout` parameter's home in the envelope, which is what lets §4.11 say which of the caller's values it carries | `test_the_false_claim_appears_nowhere_in_the_package` |
+
+### Ruled on, not changed
+
+- **A reviewer whose verdict was truncated was read from its own text
+  rather than re-dispatched.** The pool captures a window of the
+  worker's output, and one reviewer's reply lost the opening `<` of
+  its verdict block, so the parser read it as malformed — which is a
+  fail-loud `block`. The reply's own text was intact (the findings are
+  recorded in the table above), and a re-dispatch would have hit the
+  same capture window, so the verdict was taken from the text rather
+  than re-rolled. *Cost if wrong:* if that reply had been truncated
+  further — losing findings rather than one character — a finding would
+  have shipped unread. It was checked: the captured reply is the whole
+  verdict block, one character short of its opening tag.
+- **The `needs_adjustment` findings were fixed even though the gate's
+  rule already opened the merge.** Two reviewers passed and one asked
+  for an adjustment, so §4.4's rule (≥2 `pass` → proceed) was
+  satisfied. The findings were fixed anyway, because one of them —
+  the fan-out multiplication — contradicts a security property this
+  plan's own ledger records as holding, and a ledger that overstates
+  a property is the defect. *Cost if wrong:* the merge waits on two
+  small changes instead of shipping on the passes.
+- **I3 — Phase 1 opened the worker dispatch path ahead of Phase 2's gate.**
+  That is the plan's design: §4.11's "Phase 1 and Phase 2 remove both
+  barriers", and §8's cut order puts the trust boundary first. The
+  boundary is in place, and the one control that was inert (the
+  permission mode) was fixed in the same pass. *Cost if wrong:* a
+  `trigger_workflow(adapter="worker")` caller can now spawn a
+  `terminal-claude` worker where every such call previously died on
+  `ValueError("Task must include 'prompt' field")`.
+- **The plan's "one worker per repo" count rule is not the rule the
+  workflow lane runs.** The plan's *operative* rule — "`count` is OMITTED
+  from the projected dict when it is `None`" — is what the code follows;
+  in the workflow lane the adapter is called per repo, so the adapter's own
+  default is 1. *Corrected (fix pass, 2026-11-08):* this entry used to
+  claim "the security property holds either way". It did not. With the
+  count omitted, `core/adapters/worker.py` fell back to an uncapped
+  `len(repos)`, so a 500-repo scope minted 500 workers in one dispatch.
+  The property now holds **because** the adapter clamps what it spawns
+  (see the fix-pass table below). *Cost if wrong:* the projection would
+  have to carry a scope-derived count, and that mints one fleet per repo
+  in the workflow lane — 50 workers per repo instead of one.
+- **The repo list is not hard-bounded at 50.** The scope is the server's,
+  and a fleet may legitimately name more than 50 repos; refusing the
+  envelope would fail a legitimate workflow. The property the sentence
+  protects — never mint more than 50 one-shot workers — is enforced where
+  the workers are minted: `core/adapters/worker.py` clamps the count it
+  spawns to `MAX_COUNT`, and the projection bounds the explicit count it
+  supplies. What is bounded is **one dispatch**; the number of dispatches
+  is the scope, and the workflow lane dispatches once per repo.
+  *Cost if wrong:* a caller can name more than 50 repos, and each repo
+  gets its own worker — the fleet-wide total follows the scope, not the
+  count.
+- **REQ-C14's exit criterion ("completes a real conversation against the
+  current SDK") is unmet for environmental reasons** — no `openhands` SDK
+  is installed, it is not a declared dependency, and there is no server on
+  `localhost:3000`. The wire contract is pinned by tests instead
+  (`initial_message`, `/sockets/events/{conversation_id}`, the `kind`
+  discriminator, the `finished | error | stuck` terminal set). The
+  criterion stays marked **NOT VERIFIABLE HERE**, not "met".
+
+### Deferred minors
+
+`MAX_OPERATION_LENGTH`'s unsourced number; `deadline_seconds` not being
+projected into the persisted record; `preference_order` being declared
+but never populated; `_main_cli.py`'s missing `from __future__ import
+annotations`; the raw caller bag written into the durable record on the
+timeout/error branches; `record_repo_processing_time` keeping a parameter
+it deletes; and the AST guard test scanning only
+`core/workflow_execution.py`.
+
+From the merge-review fix pass:
+
+- `submit_workers` overwrites a `runtime_kwargs` `permission_mode` with
+  `None` — the operator's per-call mode does not reach the CLI when the
+  caller did not set one. *Cost:* the **registry** default applies
+  instead (`registry.py:202`), which is `acceptEdits` for
+  `terminal-claude` and **`yolo`** for `terminal-qwen`. The envelope's
+  own table (`DEFAULT_PERMISSION_MODES`) is `plan` for `terminal-qwen`,
+  but that table only governs the **adapter** path: the pool lane
+  (`pools/mahavishnu_pool.py:495`) calls `submit_workers` without a mode
+  and never projects an envelope, so a pool-dispatched `terminal-qwen`
+  worker runs `yolo`. *Corrected (merge-review fix pass, 2026-11-13):*
+  this entry previously claimed the fallback was `plan` and that "the
+  `yolo` case the envelope closed is not reopened". The first half was
+  wrong (the fallback is the registry default, `yolo`), and the second
+  half was true only of the adapter path. The `yolo` case IS reopened on
+  the pool path — the envelope closed it for the adapter lane only.
+- **llamaindex still reports a workflow as `completed` when every repo
+  failed.** The operation is resolved now (the fix pass), so the router
+  no longer hands it something it cannot dispatch — but the adapter's
+  own aggregate status does not count per-repo failures, so a run where
+  every repo failed reads as a success to the router and to
+  `trigger_workflow`'s caller. *Cost:* a caller that asks for behaviour
+  llamaindex cannot do gets an error at the boundary now (the fix
+  pass), but a run that fails for any *other* reason still reports
+  success. This is the adapter's own reporting contract, not the
+  envelope's.
+
+From the post-rebase stage-2 review:
+
+- **The target-containment validator does blocking path resolution in
+  the async path.** `core/task_envelope.py` resolves each repo root and
+  each joined target with `Path.resolve()` — two calls per repo, 62 for
+  a 31-repo scope — inside a pydantic validator that the async MCP
+  handler runs on the event loop. *Cost:* a few milliseconds of blocked
+  event loop on a large scope, which the project's own rule ("all I/O
+  in the orchestration layer is async") does not allow. *Not fixed
+  here:* the resolution is what makes the containment check symlink-safe
+  — dropping it re-opens the escape it closes — and the honest fix is to
+  move the check off the event loop, which is a change to the
+  validator's calling contract rather than a line in it.
+
+### Regression evidence
+
+| Run | Failing | Passed |
+|---|---|---|
+| After Phase 1 | 189 | 19148 |
+| After the fix pass | 185 | 19171 |
+| After the merge-review fix pass | 155 | 20015 |
+
+The last row is **not directly comparable** with the rows above: the
+worktree has since gained the gitignored artifacts the earlier run
+lacked, so more tests are collected now. What it does establish is that
+**no failure in a changed file survives**. The only failures in the
+files this branch touched are the two in `tests/unit/test_mcp_server_core.py`
+that need `session_buddy` importable (it is not installed in the
+worktree venv), and the one in `tests/unit/test_main_cli.py`
+(`TestPoolSpawn::test_pool_spawn_error`) which fails identically at the
+pristine branch head `a4800033` — verified by running it in a detached
+worktree at that commit.
+
+One new failure in the diff is an order-dependent Textual test that
+passes 120/120 in isolation and touches no changed code; five are the
+re-pinned behaviour-change tests. Every remaining failure's signature is
+environmental — a fresh worktree lacks the gitignored artifacts
+(`settings/repos.yaml`, `settings/ecosystem.yaml`, oneiric caches,
+`.crackerjack/`, `docs/plans/.archive/`, the rubric decision files).
+
+### Fix-pass evidence
+
+Each fix was verified by TDD: the test was written first, watched fail
+against the unfixed code, and watched pass after the change.
+
+- `Final: fixed the inert worker cap —
+  test_the_worker_fan_out_is_capped RED→GREEN (75 workers minted for a
+  75-repo list before the fix; 50 after), suite 155 failed / 20015
+  passed`
+- `Final: fixed the one-hour deadline cap —
+  test_a_deadline_longer_than_one_hour_is_accepted RED→GREEN
+  (ValidationError before the fix), suite 155 failed / 20015 passed`
+- `Final: fixed the operation/vocabulary collision —
+  test_an_operation_the_adapter_cannot_dispatch_becomes_its_default
+  RED→GREEN (the projection carried "quality_check" to llamaindex before
+  the fix), suite 155 failed / 20015 passed`
+- `Final: fixed the two documentation findings — the trigger_workflow
+  docstring and this plan's status block, suite 155 failed / 20015
+  passed`
+
+From the post-rebase stage-2 review:
+
+- `Final: fixed the workflow lane's fan-out multiplication —
+  test_a_count_on_the_task_does_not_multiply_the_fleet RED→GREEN (the
+  per-repo dispatch carried count 3 into all three dispatches before
+  the fix; 1 after), suite 4 failed / 314 passed`
+- `Final: fixed the stale request-contract claim —
+  test_the_false_claim_appears_nowhere_in_the_package RED→GREEN
+  (mcp/server_core.py carried the claim before the fix; nothing in the
+  package does now), suite 4 failed / 314 passed`
+
+The 4 failures in that run are the same 4 that fail at a pristine
+`main` (`TestFastMCPServerInit`'s two tracing tests and `TestLifecycle`'s
+two start tests), verified by running them in a detached worktree at
+`main` — they are pre-existing, not from this branch.
+
+### Not verified here
+
+The automated commit security review could not complete in this session:
+its reviewer CLI reports `[claude-code:unrecognized_model]` for the
+session's model, so the model's reply could not be read
+(`~/.claude/security/log.txt`). A push re-runs it.

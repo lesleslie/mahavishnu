@@ -127,7 +127,14 @@ class TestInitializeWorkflowState:
 
     @pytest.mark.asyncio
     async def test_creates_workflow_id(self):
-        """initialize_workflow_state creates a workflow ID and returns it."""
+        """initialize_workflow_state creates a workflow ID and returns it.
+
+        The id suffix is the BOUNDED routing type, never the caller's
+        operation. The operation is a free-form string the adapters use as
+        a behaviour selector; the id is spliced into substrate key paths,
+        so a caller-supplied fragment there is a traversal and an
+        unreadable record (consolidation plan §4.11).
+        """
         app = _make_mock_app()
         task = {"type": "code_review", "id": "task_1"}
         adapter_name = "prefect"
@@ -139,7 +146,8 @@ class TestInitializeWorkflowState:
 
         assert workflow_id is not None
         assert workflow_id.startswith("wf_")
-        assert "code_review" in workflow_id
+        assert workflow_id.endswith("_ai_task")
+        assert "code_review" not in workflow_id
 
     @pytest.mark.asyncio
     async def test_creates_workflow_state(self):
@@ -364,7 +372,7 @@ class TestPrepareExecution:
         with patch("mahavishnu.core.workflow_execution.validate_path") as mock_validate:
             mock_validate.return_value = "/validated/repo"
 
-            adapter, validated_repos = await prepare_execution(
+            _, validated_repos = await prepare_execution(
                 app, "prefect", {"type": "check"}, ["/repo/a"], None
             )
 
@@ -724,7 +732,7 @@ class TestHandleWorkflowExecutionError:
                 error=error,
                 checkpoint_id=None,
             )
-        except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100
+        except Exception:  # best-effort operation — broad catch is the documented contract  # noqa: BLE001, RUF100, S110
             pass  # Expected - error is re-raised
 
         assert "wf_123" not in app.active_workflows
@@ -1080,3 +1088,56 @@ class TestWorkflowExecutionCoverageAdditions:
 
         assert result is None
         handle_error.assert_awaited_once()
+
+
+# ============================================================================
+# The fan-out is not multiplied by the scope
+# ============================================================================
+
+
+class TestTheWorkflowLaneDoesNotMultiplyTheFanOut:
+    """One dispatch per repo, one worker per dispatch.
+
+    The workflow lane fans the task out across the scope: it dispatches
+    once per repo. A ``count`` on the task was computed against the
+    whole scope, so honouring it in each per-repo dispatch mints one
+    fleet per repo -- ``count`` workers for every repo, ``count x repos``
+    workers for the task. The plan's fan-out row forbids exactly that
+    ("one worker per task, never per repo x task"), so the per-repo
+    dispatch pins the count to one.
+
+    The count is absent from the task today (no builder sets it), which
+    is why the adapter's own default -- one worker, because the adapter
+    is handed a one-element repo list -- is what runs. This pins the
+    lane so the first builder that does set a count cannot change the
+    fleet size by a factor of the scope.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_count_on_the_task_does_not_multiply_the_fleet(self) -> None:
+        """Each per-repo dispatch mints one worker, not ``count`` of them."""
+        app = _make_mock_app()
+        adapter = AsyncMock()
+        adapter.execute = AsyncMock(return_value={"status": "ok"})
+        # The circuit breaker forwards to the adapter, so the dispatched
+        # task is observable.
+        async def _forward(fn, *args, **kwargs):
+            return await fn(*args, **kwargs)
+
+        app.circuit_breaker.call = AsyncMock(side_effect=_forward)
+        repos = ["/repo/a", "/repo/b", "/repo/c"]
+
+        await execute_parallel_workflow(
+            app,
+            adapter,
+            {"type": "check", "count": 3},
+            "worker",
+            "wf_123",
+            repos,
+        )
+
+        assert adapter.execute.await_count == 3
+        for dispatched in adapter.execute.await_args_list:
+            task, dispatched_repos = dispatched.args[0], dispatched.args[1]
+            assert task["count"] == 1
+            assert len(dispatched_repos) == 1

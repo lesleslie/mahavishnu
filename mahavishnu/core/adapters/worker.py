@@ -16,6 +16,7 @@ from ..capabilities import (
     CapabilityState,
     TypeSchema,
 )
+from ..task_envelope import MAX_COUNT
 
 
 def _is_one_shot(worker_type: str) -> bool:
@@ -206,10 +207,23 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
 
         # Extract task parameters
         requested_worker_type = task.get("worker_type", "terminal-claude")
-        count = task.get("count", len(repos))
+        # The count is capped here, at the point where the workers are
+        # actually minted, because this is the only place that sees how
+        # many workers one dispatch is about to create. The envelope's
+        # projection bounds the count it supplies, but this adapter is
+        # also reachable directly with a raw task -- and the fallback
+        # (``len(repos)``) is derived from a caller-controlled repo list,
+        # so an unbounded scope would spawn an unbounded fleet of
+        # one-shot agents.
+        count = min(task.get("count", len(repos)), MAX_COUNT)
         prompt = task.get("prompt", "")
         timeout = task.get("timeout", 300)
         task_type = task.get("task_type", "general")
+        # The envelope's server-derived permission mode. It reaches the
+        # agent's command line through the worker factory; without it the
+        # registry default applies, and terminal-qwen's registry default
+        # is "yolo" -- auto-approve.
+        permission_mode = task.get("permission_mode")
         worker_type = resolve_worker_type(
             requested_worker_type, task_type=task_type, prompt=prompt
         )
@@ -249,11 +263,13 @@ class WorkerOrchestratorAdapter(OrchestratorAdapter):
                 worker_ids = await worker_manager.submit_workers(
                     worker_type,
                     prompts,
+                    permission_mode=permission_mode,
                 )
             else:
                 worker_ids = await worker_manager.spawn_workers(
                     worker_type=worker_type,
                     count=count,
+                    permission_mode=permission_mode,
                 )
             logger.info(f"Spawned {len(worker_ids)} workers: {', '.join(worker_ids)}")
         except Exception as e:  # Worker spawn logs and re-raises so the caller can surface the orchestrator error

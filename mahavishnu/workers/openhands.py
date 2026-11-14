@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import httpx2 as httpx
 from oneiric.core.logging import get_logger
@@ -15,12 +15,21 @@ from .base import BaseWorker, WorkerResult
 
 logger = get_logger(__name__)
 
+#: The terminal event kinds the current OpenHands API emits. The event's
+#: discriminator is ``kind``; a stream ends on one of these, and ``stuck``
+#: is terminal without being a completion.
+# req: REQ-C14
+TERMINAL_EVENT_KINDS: Final[frozenset[str]] = frozenset({"finished", "error", "stuck"})
+
+#: The terminal kinds that mean the task did NOT succeed.
+FAILED_EVENT_KINDS: Final[frozenset[str]] = frozenset({"error", "stuck"})
+
 
 @dataclass
 class OpenHandsConfig:
     base_url: str = "http://localhost:3000"
     workspace_dir: Path = Path("/tmp/openhands-workspace")
-    timeout_seconds: int = 600
+    timeout_seconds: float = 600
     poll_interval_seconds: float = 3.0
     max_output_chars: int = 50_000
 
@@ -36,10 +45,14 @@ class OpenHandsClient:
         )
 
     async def create_conversation(self, task: str) -> str:
-        """Start an OpenHands conversation and return its conv_id."""
+        """Start an OpenHands conversation and return its conv_id.
+
+        The current API takes a ``StartConversationRequest``: the task
+        text is the request's ``initial_message``.
+        """
         resp = await self._http.post(
             "/api/conversations",
-            json={"task": task},
+            json={"initial_message": task},
         )
         resp.raise_for_status()
         return resp.json()["conversation_id"]  # type: ignore[no-any-return]
@@ -51,7 +64,11 @@ class OpenHandsClient:
         return resp.json()  # type: ignore[no-any-return]
 
     async def stream_events(self, conv_id: str) -> list[dict[str, Any]]:
-        """Attempt to consume WebSocket events (best-effort, may raise)."""
+        """Consume the conversation's event socket (best-effort, may raise).
+
+        The events live on ``/sockets/events/{conversation_id}`` and the
+        discriminator is the event's ``kind``.
+        """
         import json
 
         import websockets
@@ -60,14 +77,14 @@ class OpenHandsClient:
             self._config.base_url.replace("http://", "ws://").replace(
                 "https://", "wss://"
             )
-            + f"/ws?conversation_id={conv_id}"
+            + f"/sockets/events/{conv_id}"
         )
         events: list[dict[str, Any]] = []
         async with websockets.connect(url) as ws:
             async for raw in ws:
                 event = json.loads(raw)
                 events.append(event)
-                if event.get("type") in ("FINISHED", "ERROR"):
+                if event.get("kind") in TERMINAL_EVENT_KINDS:
                     break
         return events
 
@@ -127,14 +144,16 @@ class OpenHandsWorker(BaseWorker):
         try:
             events = await self._client.stream_events(conv_id)
             finished = next(
-                (e for e in events if e.get("type") in ("FINISHED", "ERROR")), None
+                (e for e in events if e.get("kind") in TERMINAL_EVENT_KINDS), None
             )
             if finished:
-                if finished.get("type") == "ERROR":
+                kind = str(finished.get("kind"))
+                if kind in FAILED_EVENT_KINDS:
                     return WorkerResult(
                         worker_id=conv_id,
                         status=WorkerStatus.FAILED,
-                        error=finished.get("message", "OpenHands task failed"),
+                        error=finished.get("message")
+                        or f"OpenHands conversation {kind}",
                         error_code=ErrorCode.OPENHANDS_TASK_FAILED,
                         metadata={"worker_type": self.worker_type, "conv_id": conv_id},
                     )
@@ -164,22 +183,25 @@ class OpenHandsWorker(BaseWorker):
                     metadata={"worker_type": self.worker_type, "conv_id": conv_id},
                 )
 
-            status = data.get("status")
-            if status == "completed":
+            # The REST status field carries the API's vocabulary — the
+            # same one the socket's ``kind`` uses. One vocabulary, or the
+            # fallback and the socket disagree about what "done" is.
+            status = str(data.get("status") or "")
+            if status in TERMINAL_EVENT_KINDS:
+                if status in FAILED_EVENT_KINDS:
+                    return WorkerResult(
+                        worker_id=conv_id,
+                        status=WorkerStatus.FAILED,
+                        error=data.get("error") or f"OpenHands conversation {status}",
+                        error_code=ErrorCode.OPENHANDS_TASK_FAILED,
+                        duration_seconds=elapsed,
+                        metadata={"worker_type": self.worker_type, "conv_id": conv_id},
+                    )
                 output = data.get("result", "")
                 return WorkerResult(
                     worker_id=conv_id,
                     status=WorkerStatus.COMPLETED,
                     output=str(output)[: self._config.max_output_chars],
-                    duration_seconds=elapsed,
-                    metadata={"worker_type": self.worker_type, "conv_id": conv_id},
-                )
-            if status == "error":
-                return WorkerResult(
-                    worker_id=conv_id,
-                    status=WorkerStatus.FAILED,
-                    error=data.get("error", "OpenHands task failed"),
-                    error_code=ErrorCode.OPENHANDS_TASK_FAILED,
                     duration_seconds=elapsed,
                     metadata={"worker_type": self.worker_type, "conv_id": conv_id},
                 )

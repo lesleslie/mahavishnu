@@ -16,7 +16,14 @@ class TestToolVersions:
         from mahavishnu.mcp.tool_versions import get_tool_version
 
         assert get_tool_version("mahavishnu_list_repos") == "1.0.0"
-        assert get_tool_version("mahavishnu_trigger_workflow") == "1.1.0"
+        # 2.0.0: the tool now builds the typed envelope, and the request
+        # contract DID change — `params` is filtered to the allowlist
+        # before the adapter sees it, an over-long `task_type` is
+        # refused, and a `target` that leaves the repo is refused. Under
+        # the registry's own policy ("MAJOR: Breaking change (removed
+        # field, changed type, different semantics)") that is MAJOR: a
+        # request that used to succeed can now fail.
+        assert get_tool_version("mahavishnu_trigger_workflow") == "2.0.0"
 
     def test_get_unknown_tool_returns_none(self):
         from mahavishnu.mcp.tool_versions import get_tool_version

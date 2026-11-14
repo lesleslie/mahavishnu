@@ -26,7 +26,7 @@ from __future__ import annotations
 TOOL_VERSIONS: dict[str, str] = {
     # Workflow orchestration
     "mahavishnu_list_repos": "1.0.0",
-    "mahavishnu_trigger_workflow": "1.1.0",
+    "mahavishnu_trigger_workflow": "2.0.0",
     "mahavishnu_get_workflow_status": "1.0.0",
     "mahavishnu_list_workflows": "1.0.0",
     "mahavishnu_cancel_workflow": "1.0.0",

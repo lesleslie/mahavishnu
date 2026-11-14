@@ -18,7 +18,7 @@ class _Counter:
     def __init__(self) -> None:
         self.calls: list[tuple[int, dict | None]] = []
 
-    def add(self, amount: int, attributes: dict[str, str] = None):  # type: ignore[override]
+    def add(self, amount: int, attributes: dict[str, str] | None = None):  # type: ignore[override]
         self.calls.append((amount, attributes))
 
 
@@ -26,12 +26,14 @@ class _Histogram:
     def __init__(self) -> None:
         self.calls: list[tuple[float, dict | None]] = []
 
-    def record(self, amount: float, attributes: dict[str, str] = None):  # type: ignore[override]
+    def record(self, amount: float, attributes: dict[str, str] | None = None):  # type: ignore[override]
         self.calls.append((amount, attributes))
 
 
 class _Tracer:
-    def start_as_current_span(self, name: str, attributes: dict[str, str] = None):  # type: ignore[override]
+    def start_as_current_span(
+        self, name: str, attributes: dict[str, str] | None = None
+    ):  # type: ignore[override]
         class _Span:
             def __enter__(self):
                 return self
@@ -314,7 +316,10 @@ def test_start_and_end_workflow_trace_records_duration(
     assert histogram.calls
     amount, attrs = histogram.calls[0]
     assert amount == 30.0
-    assert attrs["workflow.id"] == "wf-1"
+    # ``workflow.id`` is deliberately NOT a histogram attribute: the id is
+    # unique per execution, so carrying it on a metric mints one time
+    # series per workflow, forever. It stays on the span.
+    assert "workflow.id" not in attrs
     assert attrs["workflow.status"] == "completed"
 
     # no-op for missing workflow id
@@ -330,9 +335,8 @@ def test_repo_trace_and_processing_metric_record() -> None:
     assert span is not None
 
     manager.record_repo_processing_time("/tmp/myrepo", "wf-2", 4.5)
-    assert histogram.calls == [
-        (4.5, {"repo.path": "/tmp/myrepo", "workflow.id": "wf-2"})
-    ]
+    # The same rule as the workflow duration histogram: no id on a metric.
+    assert histogram.calls == [(4.5, {"repo.path": "/tmp/myrepo"})]
 
 
 def test_get_performance_metrics_counts_recent_errors(
