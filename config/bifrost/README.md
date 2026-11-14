@@ -1180,7 +1180,57 @@ Opus, Fable and Mythos ids map to `MiniMax-M3`, MiniMax's reasoning-grade
 model; the Sonnet and Haiku ids map to `MiniMax-M3.1-Flash`, its concise
 counterpart.
 
-### Why Sonnet Is Not MiniMax-M3
+### The Alias Is a Gateway Feature, Not a Client Setting
+
+The alias table lives **in the gateway**. A Claude id is a request the
+*gateway* understands; MiniMax's own endpoint does not know the name and
+answers with its error 2013 (unknown model). So a Claude id is only
+valid while the gateway is in front.
+
+`ANTHROPIC_DEFAULT_*_MODEL` is a different lever, and it is worth being
+precise about which one does what:
+
+- The **alias table** is what rescues a client that *hardcodes* an
+  Anthropic id — the security-review plugin's `claude-opus-5-5` call, for
+  instance. It resolves after key selection and before the provider call.
+- `ANTHROPIC_DEFAULT_*_MODEL` chooses **Claude Code's own per-slot
+  model**. It does not reach a plugin's direct SDK call at all.
+
+The MiniMax ids are **real MiniMax model names, not aliases**: they are
+in the key's allowlist and the gateway serves them unchanged. That is why
+the standing default is the MiniMax ids rather than the Claude ones — the
+same settings work in front of the gateway and behind it, with no
+rewrite either way.
+
+The one asymmetry the id spelling creates is worth stating, because it is
+easy to assume the wrong way round. Measured against this gateway on
+2026-11-14, with a non-trivial prompt:
+
+| Claude Code sends | The gateway serves |
+|---|---|
+| `claude-sonnet-5-5` | `MiniMax-M3.1-Flash` |
+| `MiniMax-M3` | `MiniMax-M3` |
+| `MiniMax-M3.1-Flash` | `MiniMax-M3.1-Flash` |
+
+So writing `claude-sonnet-5-5` into the sonnet slot would **downgrade**
+it to the concise model, not preserve it: the alias decides the model,
+not the spelling the client chose. The gateway's own
+`route-anthropic-native` rule documents the intended mapping — "MiniMax-M3
+for the opus and sonnet slots, MiniMax-M3.1-Flash for the haiku slot" —
+which is exactly what the standing default carries.
+
+`mahavishnu bifrost cc-url direct` puts an upstream-valid id back in any
+slot holding a gateway-only Claude id, and only when the endpoint it
+restores is MiniMax's. A different upstream (Anthropic's own API) serves
+the Claude ids natively, so rewriting them there would break a harness
+that was working.
+
+### Why the Plugin's Fallback Sonnet Is Not MiniMax-M3
+
+This is about the **alias table's** tiering, not about Claude Code's sonnet
+slot — the slot default is `MiniMax-M3` (see the table above). The alias
+table maps the plugin's fallback id onto the concise model for a reason
+the plugin's own budget requires.
 
 The tiering is load-bearing, not cosmetic. The security-review plugin calls
 `claude-opus-5-5` first and falls back to `claude-sonnet-4-6` when the
@@ -1198,6 +1248,17 @@ So the primary attempt keeps the stronger model — on a diff small enough for
 it to finish, the review gets the better analysis — while the fallback id
 carries the model that reliably fits inside the budget. That is what makes
 the fallback land instead of truncating the same way.
+
+**Re-measured 2026-11-14:** the truncation no longer reproduces at the
+plugin's own 16k budget. On a review-sized payload with
+`thinking: {"type": "adaptive"}`, `MiniMax-M3` completed with 3849 output
+tokens (2458 of them thinking), `stop_reason: end_turn`, and a usable
+text block; `MiniMax-M3.1-Flash` completed with 916 (454 thinking),
+`end_turn`, and a text block. The 2026-11-07 measurement is kept above
+as the record of the failure, but the model has since fit inside the
+budget, so the fallback is no longer carrying the load it was added for.
+The tiering stays as it is — the fallback id still lands on the model
+that reliably fits — but the reason to *change* it has gone.
 
 Note the truncation mode is **not** caused by the alias: it also occurred on
 2026-11-06 at 12:59 and 13:40, before any alias existed. The alias moved
