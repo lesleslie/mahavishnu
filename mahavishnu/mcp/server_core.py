@@ -1378,7 +1378,9 @@ class FastMCPServer:
                 return {"status": "error", "error": f"Failed to get active alerts: {e}"}
 
         @server.tool()
-        async def mahavishnu_acknowledge_alert(alert_id: str, user: str) -> dict[str, Any]:
+        async def mahavishnu_acknowledge_alert(
+            alert_id: str, user: str
+        ) -> dict[str, Any]:
             """Acknowledge an alert."""
             try:
                 if not self.app.monitoring_service:

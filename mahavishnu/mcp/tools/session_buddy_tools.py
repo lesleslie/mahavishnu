@@ -70,7 +70,9 @@ def register_session_buddy_tools(
         ``store_code_graph_from_mahavishnu``, and falls back to a local
         filesystem queue if Session-Buddy is unavailable.
         """
-        _warn_code_intel_deprecation("mahavishnu_index_code_graph", "code_index.index_repo")
+        _warn_code_intel_deprecation(
+            "mahavishnu_index_code_graph", "code_index.index_repo"
+        )
         try:
             from ...core.code_index.indexer import index_repo as _index_repo
 
@@ -150,7 +152,9 @@ def register_session_buddy_tools(
         project_path: str, user_id: str | None = None
     ) -> dict[str, Any]:
         """Extract docstrings and index for semantic search in Session Buddy."""
-        _warn_code_intel_deprecation("mahavishnu_index_documentation", "code_index.index_repo")
+        _warn_code_intel_deprecation(
+            "mahavishnu_index_documentation", "code_index.index_repo"
+        )
         try:
             from ...session_buddy.integration import SessionBuddyIntegration
 

@@ -442,7 +442,9 @@ def test_full_round_trip_bridge_publishes_then_hook_consumes(
     bridge_envelope = captured_publish[0]["envelope"]
     assert bridge_envelope["event"] == "PostToolUse"
     assert bridge_envelope["harness"] == "claude"
-    assert bridge_envelope["tool_name"] == "mcp__mahavishnu__mahavishnu_pool_route_execute"
+    assert (
+        bridge_envelope["tool_name"] == "mcp__mahavishnu__mahavishnu_pool_route_execute"
+    )
 
     # Phase 2: that envelope "appears on the bus" as a canonical
     # EventEnvelope (the wire shape read_bodai_events_since decodes).
@@ -473,7 +475,8 @@ def test_full_round_trip_bridge_publishes_then_hook_consumes(
     # Payload keys are alphabetically sorted in the summary format.
     assert (
         "[mahavishnu] post_tool_use status=success tool_name="
-        "mcp__mahavishnu__mahavishnu_pool_route_execute workflow_id=wid_e2e_001" in captured_out
+        "mcp__mahavishnu__mahavishnu_pool_route_execute workflow_id=wid_e2e_001"
+        in captured_out
     ), f"expected summary line not found in hook stdout.\ncaptured={captured_out!r}"
 
     # Phase 4: cursor advanced to the consumed message_id.

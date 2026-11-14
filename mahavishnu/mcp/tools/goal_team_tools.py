@@ -577,7 +577,9 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             return _failure_response(ErrorCode.INTERNAL_ERROR.value, str(e))
 
     @mcp.tool()
-    async def mahavishnu_parse_goal(goal: str, user_id: str | None = None) -> dict[str, Any]:
+    async def mahavishnu_parse_goal(
+        goal: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Parse a goal to see what team would be created.
 
         Structural C901 suppression: parses, validates, broadcasts, and

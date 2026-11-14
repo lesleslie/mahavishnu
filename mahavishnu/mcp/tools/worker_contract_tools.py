@@ -265,7 +265,9 @@ async def mahavishnu_launch_worker(
     }
 
 
-async def mahavishnu_send_input(worker_id: str, input: str, *, submit: bool = True) -> dict:
+async def mahavishnu_send_input(
+    worker_id: str, input: str, *, submit: bool = True
+) -> dict:
     """Deliver text to the worker's pane. ``accepted=False`` means the worker
     is in a state that cannot accept input (already reaped, missing pane, etc.).
     """

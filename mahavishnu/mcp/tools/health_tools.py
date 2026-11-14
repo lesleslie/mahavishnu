@@ -168,9 +168,8 @@ async def _readiness_extra() -> dict[str, Any]:
     time, so the payload reflects live state rather than what was
     configured at registration.
     """
-    from mahavishnu.core.health import aggregate_readiness
-
     from mahavishnu.core.config import MahavishnuSettings
+    from mahavishnu.core.health import aggregate_readiness
 
     try:
         settings = MahavishnuSettings()

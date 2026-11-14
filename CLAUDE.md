@@ -1036,6 +1036,7 @@ See `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 and `docs/decisions/2026-10-03-trunk-based-agent-review.md`.
 
 <!-- atlas:start -->
+
 ## Test on screen with Atlas
 
 This Mac has Atlas: a hidden second macOS login (the helper) where you can run
@@ -1058,4 +1059,5 @@ and test apps without touching my desktop, windows, keyboard or mouse.
 - Never test on my own desktop and never change privacy permissions. If an
   action's outcome is unknown, never repeat it: take a screenshot, run
   `atlas restart` only if that action was yours, look again, and tell me.
+
 <!-- atlas:end -->

@@ -247,9 +247,7 @@ def find_routed_rows(
             latency=_as_float(latency),
             user_agent=str(user_agent or ""),
             request_id=str(request_id) if request_id else None,
-            parent_request_id=(
-                str(parent_request_id) if parent_request_id else None
-            ),
+            parent_request_id=(str(parent_request_id) if parent_request_id else None),
         )
         for (
             rowid,

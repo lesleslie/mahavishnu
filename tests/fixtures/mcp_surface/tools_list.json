@@ -48,7 +48,7 @@
           "signature": "max_hops:\"integer\"|source_id:\"string\"*|target_id:\"string\"*"
         },
         {
-          "description": "Ask the receiver to run a retention sweep now.\n\nThe sweep removes rows older than ``spans_substrate.retention_days``\n(30 by default) from ``spans_substrate``, plus canary rows older\nthan 24 hours and ``_dlq_rows`` older than 24 hours.\n\nUse this when the substrate is under pressure \u2014 the table is\nIN-MEMORY with a 1GB limit \u2014 and reclaiming space now matters more\nthan waiting out the sweep interval.\n\nThe call RETURNS IMMEDIATELY. It queues the request; it does not\nwait for the sweep to finish. Confirm it landed by watching\n``akosha_otlp_sweep_last_completed_unix_nano`` on\n``http://localhost:8682/metrics`` \u2014 it advances when the sweep\ncompletes.\n\nThe request is idempotent while one is pending: calling this twice\nin a row queues ONE sweep, and the second call reports\n``already_pending: true``. The next automatic sweep still runs a\nfull interval after the requested one.",
+          "description": "Ask the receiver to run a retention sweep now.\n\nThe sweep removes rows older than ``spans_substrate.retention_days``\n(30 by default) from ``spans_substrate``, plus canary rows older\nthan 24 hours and ``_dlq_rows`` older than 24 hours.\n\nUse this when the substrate is under pressure — the table is\nIN-MEMORY with a 1GB limit — and reclaiming space now matters more\nthan waiting out the sweep interval.\n\nThe call RETURNS IMMEDIATELY. It queues the request; it does not\nwait for the sweep to finish. Confirm it landed by watching\n``akosha_otlp_sweep_last_completed_unix_nano`` on\n``http://localhost:8682/metrics`` — it advances when the sweep\ncompletes.\n\nThe request is idempotent while one is pending: calling this twice\nin a row queues ONE sweep, and the second call reports\n``already_pending: true``. The next automatic sweep still runs a\nfull interval after the requested one.",
           "name": "akosha_force_retention_sweep",
           "signature": ""
         },
@@ -83,7 +83,7 @@
           "signature": ""
         },
         {
-          "description": "Return the signed metadata + body for one skill.\n\nValidates ``name`` against the B-4 allowlist BEFORE constructing\nthe metadata. Signs the metadata via the lifespan-owned\n:class:`SkillsSigner`. The body is the raw markdown text from\n``skills_catalog/<name>.md`` \u2014 the client (Phase 2 installer)\nwrites this verbatim to ``~/.claude/skills/akosha-<name>/SKILL.md``.",
+          "description": "Return the signed metadata + body for one skill.\n\nValidates ``name`` against the B-4 allowlist BEFORE constructing\nthe metadata. Signs the metadata via the lifespan-owned\n:class:`SkillsSigner`. The body is the raw markdown text from\n``skills_catalog/<name>.md`` — the client (Phase 2 installer)\nwrites this verbatim to ``~/.claude/skills/akosha-<name>/SKILL.md``.",
           "name": "akosha_get_skill",
           "signature": "name:\"string\"*"
         },
@@ -93,17 +93,17 @@
           "signature": "time_range_days:\"integer\""
         },
         {
-          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here \u2014 ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
+          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here — ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
           "name": "akosha_list_agents",
           "signature": ""
         },
         {
-          "description": "List skills across all 5 Bodai servers with partial-failure visibility.\n\nFans out to ``mcp__<server>__list_skills`` on every configured\nBodai server (akosha, mahavishnu, session-buddy, crackerjack).\nEach call has a 1-second budget; per-server circuit breakers\nskip a server that has failed \u22653 times in the last 30 seconds.\nFailures surface in the ``errors`` dict so the caller can\ndistinguish \"server down\" from \"server returned nothing\".",
+          "description": "List skills across all 5 Bodai servers with partial-failure visibility.\n\nFans out to ``mcp__<server>__list_skills`` on every configured\nBodai server (akosha, mahavishnu, session-buddy, crackerjack).\nEach call has a 1-second budget; per-server circuit breakers\nskip a server that has failed ≥3 times in the last 30 seconds.\nFailures surface in the ``errors`` dict so the caller can\ndistinguish \"server down\" from \"server returned nothing\".",
           "name": "akosha_list_ecosystem_skills",
           "signature": "cursor:null|include_installed:\"boolean\"|limit:\"integer\"|query:null"
         },
         {
-          "description": "Return metadata for skills this server publishes.\n\nReturns at least 3 entries (one per static skill in\n``_STATIC_SKILLS``). The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here \u2014 those are populated by\n``akosha_get_skill`` since the signature is over the canonical\npayload WITHOUT the signing fields themselves.",
+          "description": "Return metadata for skills this server publishes.\n\nReturns at least 3 entries (one per static skill in\n``_STATIC_SKILLS``). The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here — those are populated by\n``akosha_get_skill`` since the signature is over the canonical\npayload WITHOUT the signing fields themselves.",
           "name": "akosha_list_skills",
           "signature": ""
         },
@@ -118,7 +118,7 @@
           "signature": "edge_type:null|entity_id:\"string\"*|limit:\"integer\""
         },
         {
-          "description": "Manually trigger one fitness analysis cycle.\n\nPolls all registered Bodai component endpoints for OTel traces,\ncomputes rolling fitness signals (failure_rate, p99 latency) per\n(task_class, selector) pair. Signals are kept in memory on the\nanalyzer instance \u2014 the historical KV-backed persistence layer was\nremoved in 2026-09-26.\n\nThis tool is used for on-demand analysis and testing of the Bodai\nfeedback loop. Normally the FitnessAnalyzer runs as a background\ntask on a 60-second interval.",
+          "description": "Manually trigger one fitness analysis cycle.\n\nPolls all registered Bodai component endpoints for OTel traces,\ncomputes rolling fitness signals (failure_rate, p99 latency) per\n(task_class, selector) pair. Signals are kept in memory on the\nanalyzer instance — the historical KV-backed persistence layer was\nremoved in 2026-09-26.\n\nThis tool is used for on-demand analysis and testing of the Bodai\nfeedback loop. Normally the FitnessAnalyzer runs as a background\ntask on a 60-second interval.",
           "name": "akosha_run_fitness_analysis",
           "signature": ""
         },
@@ -133,12 +133,12 @@
           "signature": "file_pattern:null|limit:\"integer\"|pattern:\"string\"*|scope:\"string\""
         },
         {
-          "description": "Search stored OpenTelemetry spans, newest first.\n\nFilters are exact-match and all optional; an omitted filter is not\napplied. ``since_unix_nano`` is inclusive, ``until_unix_nano``\nexclusive, both against ``received_at_unix_nano`` (not span start).\n\nPagination is keyset-based. To fetch the next page, pass a ``cursor``\nbuilt from the last row of this one as\n``\"<received_at_unix_nano>:<span_id>\"`` \u2014 for example\n``\"1700000000000000000:9f2c1a\"``. A malformed cursor is an error;\nit never silently restarts at page one. Rows ingested after a page\nwas served are newer than that page's cursor and will appear in a\nlater call, not a repeated one.\n\n``limit`` is clamped to [1, 500].",
+          "description": "Search stored OpenTelemetry spans, newest first.\n\nFilters are exact-match and all optional; an omitted filter is not\napplied. ``since_unix_nano`` is inclusive, ``until_unix_nano``\nexclusive, both against ``received_at_unix_nano`` (not span start).\n\nPagination is keyset-based. To fetch the next page, pass a ``cursor``\nbuilt from the last row of this one as\n``\"<received_at_unix_nano>:<span_id>\"`` — for example\n``\"1700000000000000000:9f2c1a\"``. A malformed cursor is an error;\nit never silently restarts at page one. Rows ingested after a page\nwas served are newer than that page's cursor and will appear in a\nlater call, not a repeated one.\n\n``limit`` is clamped to [1, 500].",
           "name": "akosha_search_spans",
           "signature": "cursor:null|limit:\"integer\"|outcome:null|service_name:null|service_namespace:null|since_unix_nano:null|trace_id:null|until_unix_nano:null"
         },
         {
-          "description": "Aggregate the health of one (selector, task_class) pair.\n\nThis is the number the fitness loop is built on: how many scored spans\na pair produced since ``cutoff_unix_nano``, how many of them failed,\nand how slow the slow tail was.\n\n``selector`` and ``task_class`` are matched with NULL-aware equality,\nso passing ``None`` selects the rows where that column IS NULL rather\nthan dropping them. Half-NULL pairs are the common case, and treating\nNULL as \"no match\" would under-report them as healthy zeros.\n\nOnly ``success`` and ``error`` spans are scored \u2014 a span still in\nflight when it landed is neither, and counting it would pad the\nfailure-rate denominator. The p99 is computed over the scored spans\nthat carry a latency, so it is a different population from\n``span_count``.",
+          "description": "Aggregate the health of one (selector, task_class) pair.\n\nThis is the number the fitness loop is built on: how many scored spans\na pair produced since ``cutoff_unix_nano``, how many of them failed,\nand how slow the slow tail was.\n\n``selector`` and ``task_class`` are matched with NULL-aware equality,\nso passing ``None`` selects the rows where that column IS NULL rather\nthan dropping them. Half-NULL pairs are the common case, and treating\nNULL as \"no match\" would under-report them as healthy zeros.\n\nOnly ``success`` and ``error`` spans are scored — a span still in\nflight when it landed is neither, and counting it would pad the\nfailure-rate denominator. The p99 is computed over the scored spans\nthat carry a latency, so it is a different population from\n``span_count``.",
           "name": "akosha_spans_summary",
           "signature": "cutoff_unix_nano:\"integer\"|selector:null|task_class:null"
         },
@@ -153,7 +153,7 @@
           "signature": "query:null"
         },
         {
-          "description": "Get the canonical Akosha health snapshot.\n\nPer ``mcp-backend-wiring-discipline.md`` this returns the same\nverdict as the HTTP ``GET /health`` route \u2014 they share one\nimplementation (:func:`_compute_health_body_and_status`) so\nthe two surfaces cannot drift.",
+          "description": "Get the canonical Akosha health snapshot.\n\nPer ``mcp-backend-wiring-discipline.md`` this returns the same\nverdict as the HTTP ``GET /health`` route — they share one\nimplementation (:func:`_compute_health_body_and_status`) so\nthe two surfaces cannot drift.",
           "name": "get_health",
           "signature": ""
         },
@@ -178,12 +178,12 @@
           "signature": "health_path:\"string\"|host:\"string\"|port:\"integer\"|service_name:\"string\"*|timeout:\"integer\"|use_tls:\"boolean\""
         },
         {
-          "description": "Report whether the PyCharm MCP integration is reachable. Returns a dict with `status` (\"success\" or \"error\"), `healthy` (bool), and `details` holding `pycharm_mcp_available`, `circuit_breaker_open`, `failure_count` and `cache_size`. Do NOT use to diagnose a specific file \u2014 use `akosha_get_code_problems` for that; this tool reports connection state only. `status` is \"error\" and `message` carries the reason when the probe itself raised; a reachable-but-unhealthy integration still reports `status` \"success\" with `healthy` false. Side effect: none; probes the connection only.",
+          "description": "Report whether the PyCharm MCP integration is reachable. Returns a dict with `status` (\"success\" or \"error\"), `healthy` (bool), and `details` holding `pycharm_mcp_available`, `circuit_breaker_open`, `failure_count` and `cache_size`. Do NOT use to diagnose a specific file — use `akosha_get_code_problems` for that; this tool reports connection state only. `status` is \"error\" and `message` carries the reason when the probe itself raised; a reachable-but-unhealthy integration still reports `status` \"success\" with `healthy` false. Side effect: none; probes the connection only.",
           "name": "pycharm_health",
           "signature": ""
         },
         {
-          "description": "Query OTel traces for a task class from the fleet trace store.\n\nFetches traces for a given task_class within an optional absolute\nISO8601 time range, and optionally filtered by source system. Do NOT\nuse to fetch one trace by id \u2014 use `get_otel_trace` on Mahavishnu for\nthat. Returns a list of trace records; an empty list means no trace\nmatched the filter, or the store was unreachable, so an empty result\ndoes not distinguish \"no matches\" from \"query failed\". Pass\n``system_id`` to restrict the search to one source system, or omit it\nto query across all systems. Set `dry_run` to get the raw stored\nmetadata instead of the bulky `content` blob; that mode clamps\n`limit` to 20 and keeps your `system_id` and `task_class` filters in\nforce. Side effect: none; reads the trace store only.",
+          "description": "Query OTel traces for a task class from the fleet trace store.\n\nFetches traces for a given task_class within an optional absolute\nISO8601 time range, and optionally filtered by source system. Do NOT\nuse to fetch one trace by id — use `get_otel_trace` on Mahavishnu for\nthat. Returns a list of trace records; an empty list means no trace\nmatched the filter, or the store was unreachable, so an empty result\ndoes not distinguish \"no matches\" from \"query failed\". Pass\n``system_id`` to restrict the search to one source system, or omit it\nto query across all systems. Set `dry_run` to get the raw stored\nmetadata instead of the bulky `content` blob; that mode clamps\n`limit` to 20 and keeps your `system_id` and `task_class` filters in\nforce. Side effect: none; reads the trace store only.",
           "name": "query_local_traces",
           "signature": "dry_run:\"boolean\"|end_time:null|limit:\"integer\"|start_time:null|system_id:null|task_class:\"string\"*"
         },
@@ -338,12 +338,12 @@
           "signature": "project_root:\"string\"*"
         },
         {
-          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here \u2014 ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
+          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here — ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
           "name": "crackerjack_list_agents",
           "signature": ""
         },
         {
-          "description": "List the skills this server publishes, with unsigned metadata.\n\nThe metadata's ``content_hash`` is computed from the stripped\nbody bytes; the body itself is not inlined \u2014 use ``get_skill``\nfor that. The ``signature`` and ``server_pubkey_id`` fields are\n``None`` here \u2014 ``get_skill`` fills them in, since the\nsignature covers the canonical payload without the signing\nfields themselves.",
+          "description": "List the skills this server publishes, with unsigned metadata.\n\nThe metadata's ``content_hash`` is computed from the stripped\nbody bytes; the body itself is not inlined — use ``get_skill``\nfor that. The ``signature`` and ``server_pubkey_id`` fields are\n``None`` here — ``get_skill`` fills them in, since the\nsignature covers the canonical payload without the signing\nfields themselves.",
           "name": "crackerjack_list_skills",
           "signature": ""
         },
@@ -353,7 +353,7 @@
           "signature": ""
         },
         {
-          "description": "Produce an architectural plan and proactive recommendations.\n\nAssesses the requested feature and its stated complexity, then\nreturns the agents that should be involved and the strategy to\nfollow \u2014 architecture-first by default.",
+          "description": "Produce an architectural plan and proactive recommendations.\n\nAssesses the requested feature and its stated complexity, then\nreturns the agents that should be involved and the strategy to\nfollow — architecture-first by default.",
           "name": "crackerjack_plan_development",
           "signature": "args:\"string\"*|kwargs:\"string\"*"
         },
@@ -373,7 +373,7 @@
           "signature": "args:\"string\"*|kwargs:\"string\"*"
         },
         {
-          "description": "Search the codebase with a regular expression.\n\nReturns a JSON string with `results` (the matches), `count`, `status`\n(\"ok\" when there are matches, \"degraded\" when there are none), and\n`source` (\"pycharm_adapter\" or \"local_fallback\"). Do NOT use for\nmeaning-based lookup \u2014 use `crackerjack_search_semantic` for that; this tool\nmatches literal regular expressions only. Fails soft: when the PyCharm\nconnection is unavailable it falls back to a local file scan, and a\npattern that matches nothing returns `count` 0 with `status`\n\"degraded\" and a `hint`, not an error. Side effect: none; reads files\nonly.",
+          "description": "Search the codebase with a regular expression.\n\nReturns a JSON string with `results` (the matches), `count`, `status`\n(\"ok\" when there are matches, \"degraded\" when there are none), and\n`source` (\"pycharm_adapter\" or \"local_fallback\"). Do NOT use for\nmeaning-based lookup — use `crackerjack_search_semantic` for that; this tool\nmatches literal regular expressions only. Fails soft: when the PyCharm\nconnection is unavailable it falls back to a local file scan, and a\npattern that matches nothing returns `count` 0 with `status`\n\"degraded\" and a `hint`, not an error. Side effect: none; reads files\nonly.",
           "name": "crackerjack_search_code",
           "signature": "file_pattern:null|pattern:\"string\"*"
         },
@@ -403,7 +403,7 @@
           "signature": "level:\"string\"|project_root:\"string\"*|release:\"boolean\""
         },
         {
-          "description": "Return the configured Swift hooks for the project.\n\nRenamed from Rev 1's ``swift_run_hooks``: this is a metadata tool that\nlists hook configs (cli_command, autofix, timeout). It does NOT\nexecute hooks \u2014 see the spec's ``crackerjack_swift_bump_version`` for that.\n\nNo auth required (read-only).",
+          "description": "Return the configured Swift hooks for the project.\n\nRenamed from Rev 1's ``swift_run_hooks``: this is a metadata tool that\nlists hook configs (cli_command, autofix, timeout). It does NOT\nexecute hooks — see the spec's ``crackerjack_swift_bump_version`` for that.\n\nNo auth required (read-only).",
           "name": "crackerjack_swift_list_hooks",
           "signature": "project_root:\"string\"*"
         },
@@ -423,7 +423,7 @@
           "signature": "query:null"
         },
         {
-          "description": "Return the canonical HealthSnapshot envelope for Crackerjack.\n\nWire-shape matches the ``/health`` HTTP route on the same\nserver. Operators can call this MCP tool to get the same\nfeed-state the HTTP route returns without needing a separate\nHTTP client.\n\nThe status field is one of ``healthy`` / ``warming_up`` /\n``degraded`` / ``failed``; ``degraded_feeds`` lists the\nper-feed names where ``healthy=False`` (per plan \u00a71\nacceptance gate).",
+          "description": "Return the canonical HealthSnapshot envelope for Crackerjack.\n\nWire-shape matches the ``/health`` HTTP route on the same\nserver. Operators can call this MCP tool to get the same\nfeed-state the HTTP route returns without needing a separate\nHTTP client.\n\nThe status field is one of ``healthy`` / ``warming_up`` /\n``degraded`` / ``failed``; ``degraded_feeds`` lists the\nper-feed names where ``healthy=False`` (per plan §1\nacceptance gate).",
           "name": "get_health",
           "signature": ""
         },
@@ -448,12 +448,12 @@
           "signature": "health_path:\"string\"|host:\"string\"|port:\"integer\"|service_name:\"string\"*|timeout:\"integer\"|use_tls:\"boolean\""
         },
         {
-          "description": "Report whether the PyCharm MCP integration is reachable.\n\nReturns a JSON string. When the PyCharm MCP context was never\ninitialised the payload carries `healthy` false,\n`pycharm_mcp_available` false, `circuit_breaker_open`,\n`failure_count`, `cache_size`, and an `error` field. When the\ncontext is up it carries `mcp_available` (not `healthy`),\n`circuit_breaker_open`, `failure_count`, `cache_size`, and `status`\n(\"healthy\", or \"degraded\" when the circuit breaker is open after\nrepeated failures). A probe that raises returns `success` false with\nan `error` field. Do NOT use to diagnose a specific file \u2014 use\n`crackerjack_get_ide_diagnostics` for that; this tool reports connection state\nonly. Side effect: none; probes the connection only.",
+          "description": "Report whether the PyCharm MCP integration is reachable.\n\nReturns a JSON string. When the PyCharm MCP context was never\ninitialised the payload carries `healthy` false,\n`pycharm_mcp_available` false, `circuit_breaker_open`,\n`failure_count`, `cache_size`, and an `error` field. When the\ncontext is up it carries `mcp_available` (not `healthy`),\n`circuit_breaker_open`, `failure_count`, `cache_size`, and `status`\n(\"healthy\", or \"degraded\" when the circuit breaker is open after\nrepeated failures). A probe that raises returns `success` false with\nan `error` field. Do NOT use to diagnose a specific file — use\n`crackerjack_get_ide_diagnostics` for that; this tool reports connection state\nonly. Side effect: none; probes the connection only.",
           "name": "pycharm_health",
           "signature": ""
         },
         {
-          "description": "Query OpenTelemetry traces for a task class from the fleet trace store.\n\nReturns a list of trace records; an empty list means no trace matched\nthe filter. Do NOT use to fetch one trace by id \u2014 use `get_otel_trace`\non Mahavishnu for that. Returns an empty list when the trace store is\nunreachable or when `task_class` matches nothing, so an empty result\ndoes not distinguish \"no matches\" from \"query failed\". Filter by an\nabsolute ISO8601 window with `start_time` and `end_time`; omit both to\nsearch all history. Set `dry_run` to get the raw stored metadata\ninstead of the full record; that mode caps results at 20 and keeps\nyour `system_id` and `task_class` filters in force. Side effect: none;\nreads the trace store only.",
+          "description": "Query OpenTelemetry traces for a task class from the fleet trace store.\n\nReturns a list of trace records; an empty list means no trace matched\nthe filter. Do NOT use to fetch one trace by id — use `get_otel_trace`\non Mahavishnu for that. Returns an empty list when the trace store is\nunreachable or when `task_class` matches nothing, so an empty result\ndoes not distinguish \"no matches\" from \"query failed\". Filter by an\nabsolute ISO8601 window with `start_time` and `end_time`; omit both to\nsearch all history. Set `dry_run` to get the raw stored metadata\ninstead of the full record; that mode caps results at 20 and keeps\nyour `system_id` and `task_class` filters in force. Side effect: none;\nreads the trace store only.",
           "name": "query_local_traces",
           "signature": "dry_run:\"boolean\"|end_time:null|limit:\"integer\"|start_time:null|system_id:null|task_class:\"string\"*"
         },
@@ -478,7 +478,7 @@
           "signature": "capability:null|query:null"
         },
         {
-          "description": "Query active or recent channel sessions tracked in Session-Buddy.\n\nAll filter parameters are optional \u2014 omit to retrieve all sessions.\n`user_id` is the principal the RBAC gate authorizes against (it is\ncaller-supplied; the auth middleware may override it from session\ncontext). `sender_id` identifies the end user within the channel.",
+          "description": "Query active or recent channel sessions tracked in Session-Buddy.\n\nAll filter parameters are optional — omit to retrieve all sessions.\n`user_id` is the principal the RBAC gate authorizes against (it is\ncaller-supplied; the auth middleware may override it from session\ncontext). `sender_id` identifies the end user within the channel.",
           "name": "get_channel_sessions",
           "signature": "channel_id:null|channel_type:null|limit:\"integer\"|sender_id:null|session_scope:null|user_id:null"
         },
@@ -518,7 +518,7 @@
           "signature": "message_id:\"string\"*|receiver_repo:\"string\"*"
         },
         {
-          "description": "Audit /health endpoints across Bodai core MCP servers.\n\nCalls ``GET /health`` on each of the 5 Bodai core repos\n(mahavishnu, akosha, crackerjack, session-buddy, oneiric)\nand reports the silent-degraded case \u2014 HTTP 200 returned\nwhile the body claims ``status: degraded | failed``. That\ncase is the mcp-backend-wiring gap the akosha ``cd4733b``\npilot surfaced fleet-wide.\n\nWhen ``repos`` is provided, only the named subset is\naudited. When ``all_repos`` is true, every entry in\n:data:`BODAI_CORE_REPOS` is probed regardless of\n``settings/ecosystem.yaml``. Otherwise the audit is\nfiltered to repos listed in the operator's ecosystem\nmanifest (with a fallback to all 5 if the manifest is\nmissing).\n\nDo NOT use for in-band health checks of a single repo \u2014\nuse ``mahavishnu_mcp_test_connection`` (single) or\n``health_check_all`` (configured dependencies). This tool\nis the fleet-wide monthly audit; it is not a hot-path\nprobe.",
+          "description": "Audit /health endpoints across Bodai core MCP servers.\n\nCalls ``GET /health`` on each of the 5 Bodai core repos\n(mahavishnu, akosha, crackerjack, session-buddy, oneiric)\nand reports the silent-degraded case — HTTP 200 returned\nwhile the body claims ``status: degraded | failed``. That\ncase is the mcp-backend-wiring gap the akosha ``cd4733b``\npilot surfaced fleet-wide.\n\nWhen ``repos`` is provided, only the named subset is\naudited. When ``all_repos`` is true, every entry in\n:data:`BODAI_CORE_REPOS` is probed regardless of\n``settings/ecosystem.yaml``. Otherwise the audit is\nfiltered to repos listed in the operator's ecosystem\nmanifest (with a fallback to all 5 if the manifest is\nmissing).\n\nDo NOT use for in-band health checks of a single repo —\nuse ``mahavishnu_mcp_test_connection`` (single) or\n``health_check_all`` (configured dependencies). This tool\nis the fleet-wide monthly audit; it is not a hot-path\nprobe.",
           "name": "mahavishnu_audit_health",
           "signature": "all_repos:\"boolean\"|repos:null|timeout:\"number\""
         },
@@ -528,7 +528,7 @@
           "signature": "content:\"object\"*|message_type:\"string\"*|priority:\"string\"|sender_repo:\"string\"*|target_repos:null"
         },
         {
-          "description": "Declare a per-workflow budget; the watchdog enforces it.\n\n``workflow_id`` must be unique per call. Re-calling with the\nsame ``workflow_id`` re-bases the cap (intentional \"pause at\nN\" semantics on a running run). The MCP boundary swallows\nMCP failures as ``status: \"failed\"`` rather than raising \u2014\nthe watchdog polls against whatever state was last persisted,\nso a partial write here is acceptable.",
+          "description": "Declare a per-workflow budget; the watchdog enforces it.\n\n``workflow_id`` must be unique per call. Re-calling with the\nsame ``workflow_id`` re-bases the cap (intentional \"pause at\nN\" semantics on a running run). The MCP boundary swallows\nMCP failures as ``status: \"failed\"`` rather than raising —\nthe watchdog polls against whatever state was last persisted,\nso a partial write here is acceptable.",
           "name": "mahavishnu_budget_enforce",
           "signature": "budget_tokens:null|budget_turns:null|budget_wallclock_seconds:null|declared_by:null|workflow_id:\"string\"*"
         },
@@ -558,7 +558,7 @@
           "signature": "detect_until_dry:\"boolean\"|k_empty_rounds:\"integer\"|max_iterations:\"integer\"|min_similarity:\"number\"|repos:null"
         },
         {
-          "description": "Trigger cross-repo clone refactor DAG; returns job-id immediately.\n\nCross-repo extractions are always PROPOSE_APPROVE \u2014 never AUTO_APPLY (M-NEW-5).\nA diverse-refuter ``verify_proposal`` runs before the job-id is\nreturned; the response carries a ``verification`` field with refuter\nverdicts, aggregated consensus, and a ``persisted`` flag.\n\nREQ-CLONE-007: refactor_job_id is UUIDv7.\nREQ-CLONE-009: cluster_state_claim dedups concurrent calls.\nREQ-CLONE-015: cluster_id must match ^[a-z0-9-]{3,64}$.",
+          "description": "Trigger cross-repo clone refactor DAG; returns job-id immediately.\n\nCross-repo extractions are always PROPOSE_APPROVE — never AUTO_APPLY (M-NEW-5).\nA diverse-refuter ``verify_proposal`` runs before the job-id is\nreturned; the response carries a ``verification`` field with refuter\nverdicts, aggregated consensus, and a ``persisted`` flag.\n\nREQ-CLONE-007: refactor_job_id is UUIDv7.\nREQ-CLONE-009: cluster_state_claim dedups concurrent calls.\nREQ-CLONE-015: cluster_id must match ^[a-z0-9-]{3,64}$.",
           "name": "mahavishnu_clone_refactor_group",
           "signature": "cluster_id:\"string\"*|consumer_repos:\"array\"*|consuming_diffs:null|extracted_symbol:\"string\"*|extraction_diff:\"string\"*|target_repo:\"string\"*"
         },
@@ -568,7 +568,7 @@
           "signature": "limit:\"integer\""
         },
         {
-          "description": "Create a backup of the system.\n\nThe backup id is assigned by the backup manager and returned in\nthe response \u2014 callers cannot choose it. Use the returned id\nwith `mahavishnu_restore_backup`.",
+          "description": "Create a backup of the system.\n\nThe backup id is assigned by the backup manager and returned in\nthe response — callers cannot choose it. Use the returned id\nwith `mahavishnu_restore_backup`.",
           "name": "mahavishnu_create_backup",
           "signature": "backup_type:\"string\""
         },
@@ -623,7 +623,7 @@
           "signature": ""
         },
         {
-          "description": "Get currently-firing (non-acknowledged) alerts.\n\nDo NOT use to acknowledge or resolve alerts \u2014 use\n`mahavishnu_acknowledge_alert` for that.\n\nReturns a dict with `alerts` (list of `{id, timestamp, severity,\ntype, title, description, details}`) and `count`. Empty `alerts`\nis a valid output (no alerts currently firing).\n\nFails with `status=\"error\"` if the monitoring subsystem is not\ninitialized.\n\nSide effect: none.",
+          "description": "Get currently-firing (non-acknowledged) alerts.\n\nDo NOT use to acknowledge or resolve alerts — use\n`mahavishnu_acknowledge_alert` for that.\n\nReturns a dict with `alerts` (list of `{id, timestamp, severity,\ntype, title, description, details}`) and `count`. Empty `alerts`\nis a valid output (no alerts currently firing).\n\nFails with `status=\"error\"` if the monitoring subsystem is not\ninitialized.\n\nSide effect: none.",
           "name": "mahavishnu_get_active_alerts",
           "signature": ""
         },
@@ -653,17 +653,17 @@
           "signature": "days_back:\"integer\"|repo_paths:\"array\"*|user_id:null"
         },
         {
-          "description": "Get aggregate log statistics.\n\nDo NOT use to read individual log lines \u2014 use `mahavishnu_search_logs` for\nthat.\n\nReturns a dict with `status` and `statistics` (level counts,\nerror rates by category). Empty `statistics` means no logs are\nindexed yet \u2014 not an error.\n\nFails with `status=\"error\"` if the log index is unreachable.\n\nSide effect: none.",
+          "description": "Get aggregate log statistics.\n\nDo NOT use to read individual log lines — use `mahavishnu_search_logs` for\nthat.\n\nReturns a dict with `status` and `statistics` (level counts,\nerror rates by category). Empty `statistics` means no logs are\nindexed yet — not an error.\n\nFails with `status=\"error\"` if the log index is unreachable.\n\nSide effect: none.",
           "name": "mahavishnu_get_log_statistics",
           "signature": ""
         },
         {
-          "description": "Get the canonical ecosystem status report.\n\nDo NOT use for raw per-tool metrics \u2014 use `mahavishnu_get_observability_metrics`\nor `mahavishnu_get_workflow_statistics` for that.\n\nReturns a dict with `status` and `ecosystem_status` (health roll-up\nacross pools, recovery, and workflows).\n\nFails with `status=\"error\"` if any subsystem backing the report is\nunreachable.\n\nSide effect: none.",
+          "description": "Get the canonical ecosystem status report.\n\nDo NOT use for raw per-tool metrics — use `mahavishnu_get_observability_metrics`\nor `mahavishnu_get_workflow_statistics` for that.\n\nReturns a dict with `status` and `ecosystem_status` (health roll-up\nacross pools, recovery, and workflows).\n\nFails with `status=\"error\"` if any subsystem backing the report is\nunreachable.\n\nSide effect: none.",
           "name": "mahavishnu_get_monitoring_dashboard",
           "signature": ""
         },
         {
-          "description": "Get the current observability snapshot.\n\nDo NOT use to query historical metrics or read log lines \u2014 use\n`mahavishnu_search_logs` for that. Do NOT use for the ecosystem health roll-up\n\u2014 use `mahavishnu_get_monitoring_dashboard` for that.\n\nReturns a dict with `performance_metrics`, `recent_logs_count`,\nand `recent_logs_preview` (last 10 log lines). Empty\n`recent_logs_preview` is a valid output (no logs in window).\n\nFails with `status=\"error\"` if the observability subsystem is not\ninitialized.\n\nSide effect: none.",
+          "description": "Get the current observability snapshot.\n\nDo NOT use to query historical metrics or read log lines — use\n`mahavishnu_search_logs` for that. Do NOT use for the ecosystem health roll-up\n— use `mahavishnu_get_monitoring_dashboard` for that.\n\nReturns a dict with `performance_metrics`, `recent_logs_count`,\nand `recent_logs_preview` (last 10 log lines). Empty\n`recent_logs_preview` is a valid output (no logs in window).\n\nFails with `status=\"error\"` if the observability subsystem is not\ninitialized.\n\nSide effect: none.",
           "name": "mahavishnu_get_observability_metrics",
           "signature": ""
         },
@@ -683,7 +683,7 @@
           "signature": "repo_path:\"string\"*"
         },
         {
-          "description": "Get metrics about error recovery and resilience operations.\n\nDo NOT use to trigger recovery \u2014 use `mahavishnu_heal_workflows` for that.\n\nReturns a dict with `status` and `metrics` (recovery attempt\ncounts, success rates, mean-time-to-recover). Empty `metrics` is\na valid output (no recovery operations have run yet).\n\nFails with `status=\"error\"` if the recovery subsystem is not\ninitialized.\n\nSide effect: none.",
+          "description": "Get metrics about error recovery and resilience operations.\n\nDo NOT use to trigger recovery — use `mahavishnu_heal_workflows` for that.\n\nReturns a dict with `status` and `metrics` (recovery attempt\ncounts, success rates, mean-time-to-recover). Empty `metrics` is\na valid output (no recovery operations have run yet).\n\nFails with `status=\"error\"` if the recovery subsystem is not\ninitialized.\n\nSide effect: none.",
           "name": "mahavishnu_get_recovery_metrics",
           "signature": ""
         },
@@ -703,7 +703,7 @@
           "signature": "service_id:\"string\"*|user_id:null"
         },
         {
-          "description": "Return the signed metadata + body for one skill.\n\nValidates ``name`` against the B-4 allowlist BEFORE constructing\nthe metadata. Signs the metadata via the lifespan-owned\n:class:`SkillsSigner`. The body is the raw markdown text from\n``skills_catalog/<name>.md`` \u2014 the client (Phase 2 installer)\nwrites this verbatim to\n``~/.claude/skills/mahavishnu-<name>/SKILL.md``.",
+          "description": "Return the signed metadata + body for one skill.\n\nValidates ``name`` against the B-4 allowlist BEFORE constructing\nthe metadata. Signs the metadata via the lifespan-owned\n:class:`SkillsSigner`. The body is the raw markdown text from\n``skills_catalog/<name>.md`` — the client (Phase 2 installer)\nwrites this verbatim to\n``~/.claude/skills/mahavishnu-<name>/SKILL.md``.",
           "name": "mahavishnu_get_skill",
           "signature": "name:\"string\"*"
         },
@@ -718,7 +718,7 @@
           "signature": "proposal_id:\"string\"*"
         },
         {
-          "description": "Get aggregate workflow statistics over the corpus.\n\nDo NOT use to enumerate specific workflows \u2014 use `mahavishnu_list_workflows`\nfor that. Do NOT use for per-tool performance \u2014 use\n`mahavishnu_get_observability_metrics` for that.\n\nReturns a dict with `status` and `statistics` (status counts,\nduration distributions). Empty `statistics` means no workflows\nare indexed yet \u2014 not an error.\n\nFails with `status=\"error\"` if the workflow corpus is unreachable.\n\nSide effect: none.",
+          "description": "Get aggregate workflow statistics over the corpus.\n\nDo NOT use to enumerate specific workflows — use `mahavishnu_list_workflows`\nfor that. Do NOT use for per-tool performance — use\n`mahavishnu_get_observability_metrics` for that.\n\nReturns a dict with `status` and `statistics` (status counts,\nduration distributions). Empty `statistics` means no workflows\nare indexed yet — not an error.\n\nFails with `status=\"error\"` if the workflow corpus is unreachable.\n\nSide effect: none.",
           "name": "mahavishnu_get_workflow_statistics",
           "signature": ""
         },
@@ -738,7 +738,7 @@
           "signature": "lexical_weight:\"number\"|limit:\"integer\"|min_score:\"number\"|query:\"string\"*|repository:null|semantic_weight:\"number\""
         },
         {
-          "description": "Index codebase structure for better context in Session Buddy.\n\nDelegates to ``mahavishnu.core.code_index.indexer.index_repo``,\nwhich is the real cross-repo push path \u2014 it parses the repo,\nupserts the code graph to Session-Buddy via\n``store_code_graph_from_mahavishnu``, and falls back to a local\nfilesystem queue if Session-Buddy is unavailable.",
+          "description": "Index codebase structure for better context in Session Buddy.\n\nDelegates to ``mahavishnu.core.code_index.indexer.index_repo``,\nwhich is the real cross-repo push path — it parses the repo,\nupserts the code graph to Session-Buddy via\n``store_code_graph_from_mahavishnu``, and falls back to a local\nfilesystem queue if Session-Buddy is unavailable.",
           "name": "mahavishnu_index_code_graph",
           "signature": "project_path:\"string\"*|user_id:null"
         },
@@ -783,7 +783,7 @@
           "signature": "handle:\"string\"*"
         },
         {
-          "description": "Build a bulk-action plan over open jots.\n\nLazy import keeps module-load cost down when drain is unused (per\nsub-plan 3 \u00a73.7 separation). Returns the plan but performs NO\ndispatch \u2014 callers invoke ``mahavishnu_jot_dispatch`` per selected candidate.",
+          "description": "Build a bulk-action plan over open jots.\n\nLazy import keeps module-load cost down when drain is unused (per\nsub-plan 3 §3.7 separation). Returns the plan but performs NO\ndispatch — callers invoke ``mahavishnu_jot_dispatch`` per selected candidate.",
           "name": "mahavishnu_jot_drain",
           "signature": "include_in_flight:\"boolean\"|limit:\"integer\"|query:null"
         },
@@ -793,7 +793,7 @@
           "signature": "handle:\"string\"*|new_text:\"string\"*"
         },
         {
-          "description": "C-11 board export \u2014 render the markdown board scaffold to disk.\n\nReq: REQ-018\n\nMirrors ``mahavishnu jot export`` at the MCP layer so agents can\npre-stage a board file. The actual dispatch path lives in\n``mahavishnu.jot.markdown_watcher``; this tool only renders.",
+          "description": "C-11 board export — render the markdown board scaffold to disk.\n\nReq: REQ-018\n\nMirrors ``mahavishnu jot export`` at the MCP layer so agents can\npre-stage a board file. The actual dispatch path lives in\n``mahavishnu.jot.markdown_watcher``; this tool only renders.",
           "name": "mahavishnu_jot_export_markdown",
           "signature": "output_path:\"string\"*"
         },
@@ -808,7 +808,7 @@
           "signature": "handle:\"string\"*"
         },
         {
-          "description": "Surface jots relevant to the given trigger + context.\n\nInternal hook entrypoint \u2014 invoked by ``jot-session-start`` and\n``jot-post-tool-use``. Lexical primary, semantic fallback per spec \u00a75.",
+          "description": "Surface jots relevant to the given trigger + context.\n\nInternal hook entrypoint — invoked by ``jot-session-start`` and\n``jot-post-tool-use``. Lexical primary, semantic fallback per spec §5.",
           "name": "mahavishnu_jot_resurface",
           "signature": "context_text:\"string\"*|limit:\"integer\"|trigger:\"string\"*"
         },
@@ -828,7 +828,7 @@
           "signature": "handle:\"string\"*"
         },
         {
-          "description": "Return counts: open, done, dispatch_in_flight, dispatch_failed,\ndeferred, deleted, log_event_count (render sub-plan 3 \u00a73.3 shape).",
+          "description": "Return counts: open, done, dispatch_in_flight, dispatch_failed,\ndeferred, deleted, log_event_count (render sub-plan 3 §3.3 shape).",
           "name": "mahavishnu_jot_vitals",
           "signature": ""
         },
@@ -843,32 +843,32 @@
           "signature": "key:\"string\"*|user_id:null"
         },
         {
-          "description": "List (key, value) pairs whose key starts with ``prefix``.\n\nReturns ``{\"ok\": True, \"items\": [{\"key\", \"value\"}, ...]}``.\nEmpty prefix matches all keys. The plan_index uses this to\nenumerate claim keys during lock takeover.\n\nA prefix that reaches a namespace owned by another domain (an\napproval history, a webhook receipt, a workflow outcome)\nadditionally requires that domain's read permission \u2014 and a\nprefix that merely *truncates* a namespace reaches it too, so\nthe empty prefix and ``\"a\"`` are both covered.",
+          "description": "List (key, value) pairs whose key starts with ``prefix``.\n\nReturns ``{\"ok\": True, \"items\": [{\"key\", \"value\"}, ...]}``.\nEmpty prefix matches all keys. The plan_index uses this to\nenumerate claim keys during lock takeover.\n\nA prefix that reaches a namespace owned by another domain (an\napproval history, a webhook receipt, a workflow outcome)\nadditionally requires that domain's read permission — and a\nprefix that merely *truncates* a namespace reaches it too, so\nthe empty prefix and ``\"a\"`` are both covered.",
           "name": "mahavishnu_kv_list",
           "signature": "prefix:\"string\"*|user_id:null"
         },
         {
-          "description": "Persist a string-shape KV record.\n\n``ttl`` is the record's lifetime in **seconds**. ``None`` (the\ndefault) stores the record with no expiry. A non-``None`` TTL is\nforwarded to the store, which records the deadline and enforces\nit: once the deadline passes the record reads as absent \u2014 a\nlater ``mahavishnu_kv_get`` returns ``null``, and the record no\nlonger appears in ``mahavishnu_kv_list``.\n\nThe domain-owned namespaces (an approval history, a webhook\nreceipt, a workflow outcome) are **write-protected**: they are\nwritten by the server's own producers, in process, and a read\npermission must never authorise a mutation of them.",
+          "description": "Persist a string-shape KV record.\n\n``ttl`` is the record's lifetime in **seconds**. ``None`` (the\ndefault) stores the record with no expiry. A non-``None`` TTL is\nforwarded to the store, which records the deadline and enforces\nit: once the deadline passes the record reads as absent — a\nlater ``mahavishnu_kv_get`` returns ``null``, and the record no\nlonger appears in ``mahavishnu_kv_list``.\n\nThe domain-owned namespaces (an approval history, a webhook\nreceipt, a workflow outcome) are **write-protected**: they are\nwritten by the server's own producers, in process, and a read\npermission must never authorise a mutation of them.",
           "name": "mahavishnu_kv_put",
           "signature": "key:\"string\"*|ttl:null|user_id:null|value:\"string\"*"
         },
         {
-          "description": "Spawn a durable worker with a tmux-backed session.\n\nSpec \u00a77.1: ``session_mode`` drives tmux reuse vs. managed session.\n``current_tmux`` reuses the caller's session (TMUX env var set),\n``managed_tmux`` creates a private Mahavishnu-owned session, and\n``no_tmux`` falls back to the legacy PTY/backend path with a sentinel\nreturn so callers can route accordingly.\n\nREQ-CLEAN-007: ``current_tmux`` is now honored. When the caller is\ninside a tmux session (``TMUX`` env var set), return\n``{state: \"current_tmux\"}`` so the caller can reuse their session\nwithout spawning a new one. When ``TMUX`` is unset, return\n``{state: \"tmux_unavailable\"}`` \u2014 the caller must fall back to\n``managed_tmux`` or ``no_tmux``.",
+          "description": "Spawn a durable worker with a tmux-backed session.\n\nSpec §7.1: ``session_mode`` drives tmux reuse vs. managed session.\n``current_tmux`` reuses the caller's session (TMUX env var set),\n``managed_tmux`` creates a private Mahavishnu-owned session, and\n``no_tmux`` falls back to the legacy PTY/backend path with a sentinel\nreturn so callers can route accordingly.\n\nREQ-CLEAN-007: ``current_tmux`` is now honored. When the caller is\ninside a tmux session (``TMUX`` env var set), return\n``{state: \"current_tmux\"}`` so the caller can reuse their session\nwithout spawning a new one. When ``TMUX`` is unset, return\n``{state: \"tmux_unavailable\"}`` — the caller must fall back to\n``managed_tmux`` or ``no_tmux``.",
           "name": "mahavishnu_launch_worker",
           "signature": "backend:\"string\"|command:null|max_wait_ms:\"integer\"|metadata:null|model:null|prompt:\"string\"*|pty:\"boolean\"|session_mode:\"string\"|worker_id:null|worker_type:\"string\""
         },
         {
-          "description": "List registered engine adapters with per-adapter health.\n\nDo NOT use to dispatch work \u2014 use `mahavishnu_pool_route_execute` for that.\nDo NOT use for one-off adapter queries \u2014 use\n`mahavishnu_get_capability_result` for that.\n\nReturns a dict keyed by adapter name with `enabled`, `health`,\n`type`, and `features`. Missing adapters are absent from the\nresult (not present with `enabled: false`).\n\nFails with `status=\"error\"` if any adapter's health probe\ntimes out.\n\nSide effect: each adapter's `get_health()` may issue a network\nprobe to its backing service.",
+          "description": "List registered engine adapters with per-adapter health.\n\nDo NOT use to dispatch work — use `mahavishnu_pool_route_execute` for that.\nDo NOT use for one-off adapter queries — use\n`mahavishnu_get_capability_result` for that.\n\nReturns a dict keyed by adapter name with `enabled`, `health`,\n`type`, and `features`. Missing adapters are absent from the\nresult (not present with `enabled: false`).\n\nFails with `status=\"error\"` if any adapter's health probe\ntimes out.\n\nSide effect: each adapter's `get_health()` may issue a network\nprobe to its backing service.",
           "name": "mahavishnu_list_adapters",
           "signature": ""
         },
         {
-          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here \u2014 ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
+          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here — ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
           "name": "mahavishnu_list_agents",
           "signature": ""
         },
         {
-          "description": "List available system backups.\n\nDo NOT use to create a backup \u2014 use `mahavishnu_create_backup` for that.\nDo NOT use to restore from a backup \u2014 use `mahavishnu_restore_backup` for\nthat.\n\nReturns a dict with `backups` (list of `{backup_id, timestamp,\nsize_bytes, location, status}`) and `total_count`. Empty\n`backups` means no backups have been taken yet \u2014 not an error.\n\nFails with `status=\"error\"` if the backup directory is\nunreachable.\n\nSide effect: none.",
+          "description": "List available system backups.\n\nDo NOT use to create a backup — use `mahavishnu_create_backup` for that.\nDo NOT use to restore from a backup — use `mahavishnu_restore_backup` for\nthat.\n\nReturns a dict with `backups` (list of `{backup_id, timestamp,\nsize_bytes, location, status}`) and `total_count`. Empty\n`backups` means no backups have been taken yet — not an error.\n\nFails with `status=\"error\"` if the backup directory is\nunreachable.\n\nSide effect: none.",
           "name": "mahavishnu_list_backups",
           "signature": ""
         },
@@ -893,7 +893,7 @@
           "signature": "project:\"string\"*|user_id:null"
         },
         {
-          "description": "List repositories in the registry.\n\nDo NOT use to scan or read repository contents \u2014 this returns the\ncatalog only. Use `mahavishnu_pool_route_execute` to dispatch work against a\nrepo, or `mahavishnu_get_capability_result` to query a registered adapter.\n\nReturns a dict with keys `repos` (list of `{path, exists}`),\n`total_count`, `filtered_count`, and the `tag` filter that was\napplied. Empty `repos` is a valid output \u2014 the registry has no\nentries matching the filter (not an error).\n\nFails with `status=\"error\"` if the registry file is unreadable.\n\nSide effect: none.",
+          "description": "List repositories in the registry.\n\nDo NOT use to scan or read repository contents — this returns the\ncatalog only. Use `mahavishnu_pool_route_execute` to dispatch work against a\nrepo, or `mahavishnu_get_capability_result` to query a registered adapter.\n\nReturns a dict with keys `repos` (list of `{path, exists}`),\n`total_count`, `filtered_count`, and the `tag` filter that was\napplied. Empty `repos` is a valid output — the registry has no\nentries matching the filter (not an error).\n\nFails with `status=\"error\"` if the registry file is unreadable.\n\nSide effect: none.",
           "name": "mahavishnu_list_repos",
           "signature": "limit:null|offset:null|tag:null|user_id:null"
         },
@@ -903,7 +903,7 @@
           "signature": "capability:null|service_type:null|status:null|user_id:null"
         },
         {
-          "description": "Return metadata for skills this server publishes.\n\nReturns at least 3 entries (one per static skill in\n``_STATIC_SKILLS``). The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here \u2014 those are populated by\n``mahavishnu_get_skill`` since the signature is over the\ncanonical payload WITHOUT the signing fields themselves.",
+          "description": "Return metadata for skills this server publishes.\n\nReturns at least 3 entries (one per static skill in\n``_STATIC_SKILLS``). The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here — those are populated by\n``mahavishnu_get_skill`` since the signature is over the\ncanonical payload WITHOUT the signing fields themselves.",
           "name": "mahavishnu_list_skills",
           "signature": ""
         },
@@ -918,7 +918,7 @@
           "signature": ""
         },
         {
-          "description": "List workflows matching optional status filter.\n\nDo NOT use to run a new workflow \u2014 use `mahavishnu_trigger_workflow` for that.\nDo NOT use for aggregate metrics \u2014 use `mahavishnu_get_workflow_statistics`\nfor that.\n\nReturns a dict with `workflows`, `total_count`, and the `status`\nfilter that was applied. Empty `workflows` is a valid output\n(no workflows match the filter).\n\nFails with `status=\"error\"` if the caller lacks the\nLIST_WORKFLOWS permission.\n\nSide effect: none.",
+          "description": "List workflows matching optional status filter.\n\nDo NOT use to run a new workflow — use `mahavishnu_trigger_workflow` for that.\nDo NOT use for aggregate metrics — use `mahavishnu_get_workflow_statistics`\nfor that.\n\nReturns a dict with `workflows`, `total_count`, and the `status`\nfilter that was applied. Empty `workflows` is a valid output\n(no workflows match the filter).\n\nFails with `status=\"error\"` if the caller lacks the\nLIST_WORKFLOWS permission.\n\nSide effect: none.",
           "name": "mahavishnu_list_workflows",
           "signature": "limit:\"integer\"|offset:\"integer\"|status:null|user_id:null"
         },
@@ -1008,7 +1008,7 @@
           "signature": "user_id:null"
         },
         {
-          "description": "SessionStart bootstrap: ensure a default pool exists.\n\nReads ``mahavishnu_pool_health`` (via ``health_check()``); if\n``pools_active == 0``, spawns a default pool via the\nconfig-driven settings (``pools.auto_spawn_*``). Returns\nstructured status so the calling hook script can log/observe\nwithout parsing.\n\nThe bridge handler ``handle_pool_bootstrap`` (separate from\nthis tool) emits audit telemetry for the same event but\ncannot do the work itself \u2014 bridge handlers run in\nsubprocess context without PoolManager access.\n\nCRITICAL: This tool never raises. All failures return\n``{\"status\": \"failed\", \"error\": \"...\"}`` so SessionStart\nhooks that wrap this call cannot be blocked by MCP errors.",
+          "description": "SessionStart bootstrap: ensure a default pool exists.\n\nReads ``mahavishnu_pool_health`` (via ``health_check()``); if\n``pools_active == 0``, spawns a default pool via the\nconfig-driven settings (``pools.auto_spawn_*``). Returns\nstructured status so the calling hook script can log/observe\nwithout parsing.\n\nThe bridge handler ``handle_pool_bootstrap`` (separate from\nthis tool) emits audit telemetry for the same event but\ncannot do the work itself — bridge handlers run in\nsubprocess context without PoolManager access.\n\nCRITICAL: This tool never raises. All failures return\n``{\"status\": \"failed\", \"error\": \"...\"}`` so SessionStart\nhooks that wrap this call cannot be blocked by MCP errors.",
           "name": "mahavishnu_pool_bootstrap",
           "signature": ""
         },
@@ -1038,7 +1038,7 @@
           "signature": "pool_ids:null"
         },
         {
-          "description": "Load-balanced single-task dispatch across registered worker pools.\n\nPlan v3 Phase 2m \u2014 Demo Track. Routes one ad-hoc task to the\nbest-fit pool via the configured selector. Mirrors the documented\nprimary entry point in ``.claude/agents/mahavishnu-specialist.md``\nand ``skills_catalog/pool-route.md``.\n\nAnti-bug guard (memory rule ``mahavishnu-dispatch-prompt-mangling``):\nImplementation MUST call ``await pool_manager.route_task(...)``\ndirectly. Do NOT wrap the prompt in a shell (``sh -lc``) \u2014 that\nre-introduces the prompt-mangling bug.\n\nADR 014 (Honcho/ACL composition contract): ``caller_pool_allowlist``\nis set server-side via ``PoolManager``, not exposed to wire callers.\nThe ``caller_kind`` parameter is for QUOTA ATTRIBUTION only (which\nClientKind bucket the dispatch counts against).",
+          "description": "Load-balanced single-task dispatch across registered worker pools.\n\nPlan v3 Phase 2m — Demo Track. Routes one ad-hoc task to the\nbest-fit pool via the configured selector. Mirrors the documented\nprimary entry point in ``.claude/agents/mahavishnu-specialist.md``\nand ``skills_catalog/pool-route.md``.\n\nAnti-bug guard (memory rule ``mahavishnu-dispatch-prompt-mangling``):\nImplementation MUST call ``await pool_manager.route_task(...)``\ndirectly. Do NOT wrap the prompt in a shell (``sh -lc``) — that\nre-introduces the prompt-mangling bug.\n\nADR 014 (Honcho/ACL composition contract): ``caller_pool_allowlist``\nis set server-side via ``PoolManager``, not exposed to wire callers.\nThe ``caller_kind`` parameter is for QUOTA ATTRIBUTION only (which\nClientKind bucket the dispatch counts against).",
           "name": "mahavishnu_pool_route_execute",
           "signature": "auto_spawn:null|caller_kind:\"string\"|idempotency:null|parent_session_id:null|pool_affinity:null|pool_selector:\"string\"|prompt:\"string\"*|timeout:null|worktree:null"
         },
@@ -1193,7 +1193,7 @@
           "signature": "name:\"string\"*"
         },
         {
-          "description": "Dispatch a session-buddy task to a Mahavishnu workflow.\n\nSingle dispatch edge: looks up the task, starts a durable\nworkflow, then binds the resulting ``workflow_id`` to the task\nthrough session-buddy's ``tasks_link_workflow``. The workflow\nruns FIRE-AND-FORGET, so the task is bound to a workflow that is\nstill running; a failure between steps 2 and 3 emits\n``task.handoff_orphan`` so the sweeper can re-link later.\n\nThe dispatch is scoped to ONE repository. Without an explicit\nscope the durable path fans out over the whole repository\ncatalog, which for a single task is a fleet-wide run \u2014 so the\nscope comes from ``params.repo`` or the task's\n``metadata[\"repo\"]``, and a task with neither is refused.\n\nRate limit: 10 calls/minute per caller.",
+          "description": "Dispatch a session-buddy task to a Mahavishnu workflow.\n\nSingle dispatch edge: looks up the task, starts a durable\nworkflow, then binds the resulting ``workflow_id`` to the task\nthrough session-buddy's ``tasks_link_workflow``. The workflow\nruns FIRE-AND-FORGET, so the task is bound to a workflow that is\nstill running; a failure between steps 2 and 3 emits\n``task.handoff_orphan`` so the sweeper can re-link later.\n\nThe dispatch is scoped to ONE repository. Without an explicit\nscope the durable path fans out over the whole repository\ncatalog, which for a single task is a fleet-wide run — so the\nscope comes from ``params.repo`` or the task's\n``metadata[\"repo\"]``, and a task with neither is refused.\n\nRate limit: 10 calls/minute per caller.",
           "name": "mahavishnu_tasks_handoff_to_workflow",
           "signature": "adapter:\"string\"|params:null|task_id:\"string\"*|timeout:null"
         },
@@ -1293,7 +1293,7 @@
           "signature": "description:\"string\"|severity:\"string\"|title:\"string\""
         },
         {
-          "description": "Trigger a durable workflow execution through a named adapter\n(prefect, llamaindex, agno). Use for multi-step orchestrations that\nspan repos or need durable state across hours or days.\n\nWorkflows run as durable Prefect flows, Agno agent loops, or\nLlamaIndex RAG pipelines depending on `adapter`.\n\nFor ad-hoc single-task dispatch, prefer `mahavishnu_pool_route_execute` instead \u2014\nit's lighter weight and goes through the pool manager. Use\n`mahavishnu_trigger_workflow` when you need durable orchestration, scheduled\nexecution, or cross-adapter composition.\n\n**Adapter selection:**\n- `prefect` \u2014 durable flows with retries, scheduling, observability\n  (best for production workflows)\n- `llamaindex` \u2014 RAG pipelines, document ingestion, semantic search\n- `agno` \u2014 agent loops, multi-step reasoning, tool use\n\nReturns a `workflow_id` immediately (C-NEW-5: fire-and-forget).\nPoll `mahavishnu_get_workflow_status(workflow_id=...)` for results.",
+          "description": "Trigger a durable workflow execution through a named adapter\n(prefect, llamaindex, agno). Use for multi-step orchestrations that\nspan repos or need durable state across hours or days.\n\nWorkflows run as durable Prefect flows, Agno agent loops, or\nLlamaIndex RAG pipelines depending on `adapter`.\n\nFor ad-hoc single-task dispatch, prefer `mahavishnu_pool_route_execute` instead —\nit's lighter weight and goes through the pool manager. Use\n`mahavishnu_trigger_workflow` when you need durable orchestration, scheduled\nexecution, or cross-adapter composition.\n\n**Adapter selection:**\n- `prefect` — durable flows with retries, scheduling, observability\n  (best for production workflows)\n- `llamaindex` — RAG pipelines, document ingestion, semantic search\n- `agno` — agent loops, multi-step reasoning, tool use\n\nReturns a `workflow_id` immediately (C-NEW-5: fire-and-forget).\nPoll `mahavishnu_get_workflow_status(workflow_id=...)` for results.",
           "name": "mahavishnu_trigger_workflow",
           "signature": "adapter:\"string\"*|params:null|repos:null|tag:null|task_type:\"string\"*|timeout:null|user_id:null"
         },
@@ -1318,12 +1318,12 @@
           "signature": "force:\"boolean\"|worker_id:\"string\"*"
         },
         {
-          "description": "Spawn a durable worker AND register a settle record BEFORE any file write.\n\nThe settle record (state=``proposed``) is persisted to MCP (with\nlocal dead-letter fallback) before ``mahavishnu_launch_worker`` is invoked, so\na process crash cannot leave a worker writing files without an\naudit trail. The returned ``run_ref`` is the durable handle for\nsubsequent :func:`mahavishnu_worker_settle` calls.\n\nThe ``bindings`` payload is a JSON-friendly list of ``{\"path\": str,\n\"base\": str}`` dicts \u2014 ``path`` is the binding's location relative\nto the worker repo, ``base`` is the pre-run content snapshot used\nfor the 3-way merge during ``apply``.",
+          "description": "Spawn a durable worker AND register a settle record BEFORE any file write.\n\nThe settle record (state=``proposed``) is persisted to MCP (with\nlocal dead-letter fallback) before ``mahavishnu_launch_worker`` is invoked, so\na process crash cannot leave a worker writing files without an\naudit trail. The returned ``run_ref`` is the durable handle for\nsubsequent :func:`mahavishnu_worker_settle` calls.\n\nThe ``bindings`` payload is a JSON-friendly list of ``{\"path\": str,\n\"base\": str}`` dicts — ``path`` is the binding's location relative\nto the worker repo, ``base`` is the pre-run content snapshot used\nfor the 3-way merge during ``apply``.",
           "name": "mahavishnu_worker_run_with_settle",
           "signature": "backend:\"string\"|bindings:\"array\"*|command:null|max_wait_ms:\"integer\"|metadata:null|model:null|run_ref:null|session_mode:\"string\"|task_signature:\"string\"*|worker_id:null|worker_type:\"string\""
         },
         {
-          "description": "Drive a settle run through its lifecycle.\n\n``action`` is one of ``select | apply | release | discard``. The\nstate machine (:mod:`mahavishnu.settle.state_machine`) enforces\nlegal transitions and raises :class:`SettleTransitionError` for\nillegal ones.\n\nFor ``apply``, callers must pass ``bindings_content`` \u2014 a mapping of\n``path -> ours`` (the worker's candidate content for each binding).\nEach binding is 3-way merged with ``git merge-file`` against the\nbase snapshot captured at ``mahavishnu_worker_run_with_settle`` time. Conflicts\nsurface as a structured :class:`MergeConflictError` payload (the\nmerged-with-markers text is returned so the caller can decide how\nto proceed).\n\n``bindings_theirs`` is an optional mapping of ``path -> theirs`` for\nthe 3-way merge. When omitted, ``theirs`` defaults to the binding's\n``base`` (the \"first apply\" case \u2014 ours is adopted cleanly when it\ndiffers from base in non-overlapping ways).",
+          "description": "Drive a settle run through its lifecycle.\n\n``action`` is one of ``select | apply | release | discard``. The\nstate machine (:mod:`mahavishnu.settle.state_machine`) enforces\nlegal transitions and raises :class:`SettleTransitionError` for\nillegal ones.\n\nFor ``apply``, callers must pass ``bindings_content`` — a mapping of\n``path -> ours`` (the worker's candidate content for each binding).\nEach binding is 3-way merged with ``git merge-file`` against the\nbase snapshot captured at ``mahavishnu_worker_run_with_settle`` time. Conflicts\nsurface as a structured :class:`MergeConflictError` payload (the\nmerged-with-markers text is returned so the caller can decide how\nto proceed).\n\n``bindings_theirs`` is an optional mapping of ``path -> theirs`` for\nthe 3-way merge. When omitted, ``theirs`` defaults to the binding's\n``base`` (the \"first apply\" case — ours is adopted cleanly when it\ndiffers from base in non-overlapping ways).",
           "name": "mahavishnu_worker_settle",
           "signature": "action:\"string\"*|actor:\"string\"|bindings_content:null|bindings_theirs:null|run_ref:\"string\"*"
         },
@@ -1343,7 +1343,7 @@
           "signature": ""
         },
         {
-          "description": "Query OTel traces for a task class from this component's trace store.\n\nFilter by an absolute ISO8601 window: pass `start_time` and `end_time`\nfor a specific range, and omit both to search all history. Do NOT use\nto fetch one trace by id \u2014 use `mahavishnu_get_otel_trace` for that. Returns a list\nof records normalized for the fitness analyzer: `outcome`,\n`duration_ms`, `selector`, `component_name`, `task_class`, `timestamp`.\nReturns an empty list when no trace matches, when the trace store is\nunreachable, or when a parameter fails validation, so an empty result\ndoes not distinguish \"no matches\" from \"query failed\" \u2014 read the\nserver log for the validation message. Set `dry_run` to get the raw\nstored metadata instead of the normalized projection; that mode\nclamps `limit` to 20 and keeps your `system_id` and `task_class`\nfilters in force. Side effect: none; reads the trace store only.",
+          "description": "Query OTel traces for a task class from this component's trace store.\n\nFilter by an absolute ISO8601 window: pass `start_time` and `end_time`\nfor a specific range, and omit both to search all history. Do NOT use\nto fetch one trace by id — use `mahavishnu_get_otel_trace` for that. Returns a list\nof records normalized for the fitness analyzer: `outcome`,\n`duration_ms`, `selector`, `component_name`, `task_class`, `timestamp`.\nReturns an empty list when no trace matches, when the trace store is\nunreachable, or when a parameter fails validation, so an empty result\ndoes not distinguish \"no matches\" from \"query failed\" — read the\nserver log for the validation message. Set `dry_run` to get the raw\nstored metadata instead of the normalized projection; that mode\nclamps `limit` to 20 and keeps your `system_id` and `task_class`\nfilters in force. Side effect: none; reads the trace store only.",
           "name": "query_local_traces",
           "signature": "dry_run:\"boolean\"|end_time:null|limit:\"integer\"|start_time:null|system_id:null|task_class:\"string\"*"
         },
@@ -1373,7 +1373,7 @@
           "signature": "domain:\"string\"*|key:\"string\"*|provider:null|version:null"
         },
         {
-          "description": "Probe adapter health; merge catalog + runtime facts in response.\n\nWire-shape change (Phase 1.6 of 2026-09-26 plan): response moves\nfrom {success, health: {\u2026}} to {success, registry: {\u2026}|null,\nruntime: {\u2026}|null, health: {\u2026}}. Additive \u2014 the existing\n``health`` key is preserved (factory-import probe), and the\n``registry`` (catalog record) + ``runtime`` (last pushed runtime\nfacts) are new. Per pre-1.0 backcompat policy, existing\nconsumers that read ``health`` keep working.",
+          "description": "Probe adapter health; merge catalog + runtime facts in response.\n\nWire-shape change (Phase 1.6 of 2026-09-26 plan): response moves\nfrom {success, health: {…}} to {success, registry: {…}|null,\nruntime: {…}|null, health: {…}}. Additive — the existing\n``health`` key is preserved (factory-import probe), and the\n``registry`` (catalog record) + ``runtime`` (last pushed runtime\nfacts) are new. Per pre-1.0 backcompat policy, existing\nconsumers that read ``health`` keep working.",
           "name": "oneiric_get_adapter_health",
           "signature": "domain:\"string\"*|key:\"string\"*|provider:\"string\"*"
         },
@@ -1403,12 +1403,12 @@
           "signature": "category:null|domain:null"
         },
         {
-          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here \u2014 ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
+          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here — ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
           "name": "oneiric_list_agents",
           "signature": ""
         },
         {
-          "description": "Publish runtime facts for one adapter.\n\nThe caller MUST have an existing catalog entry (call\noneiric_store_adapter first) \u2014 this tool does NOT auto-create\ncatalog entries (would pollute the catalog with unsourced\nruntime facts).\n\nServer-side sanitization is applied BEFORE persistence (see\noneiric.mcp.adapter_registry._sanitize_runtime_facts): secret-\nshaped keys are replaced with \"<redacted>\" and URL userinfo is\nscrubbed. The list of redacted key paths is stored in\nruntime_facts.redacted_secrets.\n\nAn audit record is emitted per call (REQ-RCR-008):\n``runtime-audit caller_pid=<pid> caller_component=<str> domain=<d>\nkey=<k> provider=<p> fact_count=<n> payload_sha256=<hex12>\nstatus=ok|fail reason=<str>``.\n\nReturns the adapter_id + fact_count + payload_sha256 (so the\ncaller can correlate the audit log entry).",
+          "description": "Publish runtime facts for one adapter.\n\nThe caller MUST have an existing catalog entry (call\noneiric_store_adapter first) — this tool does NOT auto-create\ncatalog entries (would pollute the catalog with unsourced\nruntime facts).\n\nServer-side sanitization is applied BEFORE persistence (see\noneiric.mcp.adapter_registry._sanitize_runtime_facts): secret-\nshaped keys are replaced with \"<redacted>\" and URL userinfo is\nscrubbed. The list of redacted key paths is stored in\nruntime_facts.redacted_secrets.\n\nAn audit record is emitted per call (REQ-RCR-008):\n``runtime-audit caller_pid=<pid> caller_component=<str> domain=<d>\nkey=<k> provider=<p> fact_count=<n> payload_sha256=<hex12>\nstatus=ok|fail reason=<str>``.\n\nReturns the adapter_id + fact_count + payload_sha256 (so the\ncaller can correlate the audit log entry).",
           "name": "oneiric_report_runtime",
           "signature": "caller_component:\"string\"*|domain:\"string\"*|key:\"string\"*|provider:\"string\"*|runtime_facts:\"object\"*"
         },
@@ -1473,7 +1473,7 @@
           "signature": "channel_id:null|channel_type:null|limit:\"integer\"|sender_id:null|session_scope:null|token:null"
         },
         {
-          "description": "Return the canonical Session-Buddy health snapshot.\n\nPhase 1.3 (mcp-health-check-enrichment, REQ-HC-001 + REQ-HC-002 +\nREQ-HC-003): this MCP tool surfaces the same feed-state as the\n``GET /health`` HTTP route \u2014 both route through\n:func:`_build_health_snapshot` so they cannot disagree. The body\nshape is the canonical ``HealthSnapshot`` envelope\n(``status``, ``checks``, ``reason_codes``) plus the legacy Phase\n1.5 manifest fields.\n\nThe response includes a ``status_code`` field at the top level\nmirroring the wire code the HTTP route would return (200 for\n``healthy``/``warming_up``; 503 for ``degraded``/``failed``).\nMCP-protocol transport does not honour HTTP status codes, so\ncallers that need a probe-grade \"is the server healthy?\" check\nshould still call ``GET /health``; this tool is the convenience\nsurface for orchestrators and dashboards.",
+          "description": "Return the canonical Session-Buddy health snapshot.\n\nPhase 1.3 (mcp-health-check-enrichment, REQ-HC-001 + REQ-HC-002 +\nREQ-HC-003): this MCP tool surfaces the same feed-state as the\n``GET /health`` HTTP route — both route through\n:func:`_build_health_snapshot` so they cannot disagree. The body\nshape is the canonical ``HealthSnapshot`` envelope\n(``status``, ``checks``, ``reason_codes``) plus the legacy Phase\n1.5 manifest fields.\n\nThe response includes a ``status_code`` field at the top level\nmirroring the wire code the HTTP route would return (200 for\n``healthy``/``warming_up``; 503 for ``degraded``/``failed``).\nMCP-protocol transport does not honour HTTP status codes, so\ncallers that need a probe-grade \"is the server healthy?\" check\nshould still call ``GET /health``; this tool is the convenience\nsurface for orchestrators and dashboards.",
           "name": "get_health",
           "signature": ""
         },
@@ -1598,7 +1598,7 @@
           "signature": "category:null"
         },
         {
-          "description": "BFS-walk the causal graph from ``start_id``.\n\nPhase 1.5 #3. Cycle-safe. Returns a formatted Markdown\nsummary with each edge's ``link_origin`` (observed vs\ninferred) and evidence weight. ``max_depth`` is the cap\non hop count from ``start_id`` (default 3 per the plan).\n\nLLM-free \u2014 pure DuckDB queries (the plan's LLM Cost Ceiling\npins causal inference at 0).",
+          "description": "BFS-walk the causal graph from ``start_id``.\n\nPhase 1.5 #3. Cycle-safe. Returns a formatted Markdown\nsummary with each edge's ``link_origin`` (observed vs\ninferred) and evidence weight. ``max_depth`` is the cap\non hop count from ``start_id`` (default 3 per the plan).\n\nLLM-free — pure DuckDB queries (the plan's LLM Cost Ceiling\npins causal inference at 0).",
           "name": "session_buddy_causal_chain",
           "signature": "max_depth:\"integer\"|start_id:\"string\"*"
         },
@@ -1628,7 +1628,7 @@
           "signature": ""
         },
         {
-          "description": "Clear the entire query cache.\n\nThe substrate adapter stores every entry in a single OrderedDict,\nso there is no L1/L2 distinction to honour \u2014 ``cache_level`` is\naccepted as a no-op positional argument kept for compatibility\nwith older MCP clients that still pass it.\n\nUse this tool to:\n- Force cache refresh when data has changed significantly\n- Free memory when the cache grows large\n- Troubleshoot cache-related issues",
+          "description": "Clear the entire query cache.\n\nThe substrate adapter stores every entry in a single OrderedDict,\nso there is no L1/L2 distinction to honour — ``cache_level`` is\naccepted as a no-op positional argument kept for compatibility\nwith older MCP clients that still pass it.\n\nUse this tool to:\n- Force cache refresh when data has changed significantly\n- Free memory when the cache grows large\n- Troubleshoot cache-related issues",
           "name": "session_buddy_clear_query_cache",
           "signature": ""
         },
@@ -1753,7 +1753,7 @@
           "signature": "pool_id:\"string\"*|timeout:\"number\""
         },
         {
-          "description": "Delete a reflection by its ID.\n\nRemoves the reflection and everything derived from it \u2014 its semantic\nembedding, its MinHash duplicate-detection fingerprint and its tags\nall live on the same row, so one delete clears them together.\n\nIdempotent: an unknown ID is reported as \"not found\" rather than an\nerror. This is the surgical counterpart to\n``reset_reflection_database``, which drops the whole collection.",
+          "description": "Delete a reflection by its ID.\n\nRemoves the reflection and everything derived from it — its semantic\nembedding, its MinHash duplicate-detection fingerprint and its tags\nall live on the same row, so one delete clears them together.\n\nIdempotent: an unknown ID is reported as \"not found\" rather than an\nerror. This is the surgical counterpart to\n``reset_reflection_database``, which drops the whole collection.",
           "name": "session_buddy_delete_reflection",
           "signature": "reflection_id:\"string\"*"
         },
@@ -1798,7 +1798,7 @@
           "signature": "batch_size:\"integer\"|entity_type:null|limit:\"integer\"|threshold:\"number\""
         },
         {
-          "description": "Discover transitive relationships (A\u2192B\u2192C implies A\u2192C).",
+          "description": "Discover transitive relationships (A→B→C implies A→C).",
           "name": "session_buddy_discover_transitive_relationships",
           "signature": "limit:\"integer\"|max_depth:\"integer\"|min_confidence:\"string\""
         },
@@ -1808,7 +1808,7 @@
           "signature": "evidence_threshold:\"integer\"|model:\"string\""
         },
         {
-          "description": "Return a freshness/utility report for the ``distilled_skills`` table.\n\nPhase 1.5 wiring (Item 4 of the bodai-adoption-phase-1.5\nplan). Crackerjack's ``skill_coverage_report`` calls this\ntool via the MCP client \u2014 the data layer is the source of\ntruth, so the read stays ACL-gated and the schema is owned\nby the producer.\n\nEach row in the returned list carries its v2 columns plus\na ``status`` key:\n\n- ``stale`` \u2014 ``last_reinforced_at`` is older than\n  ``threshold_days`` (default 90, per the plan's A4).\n- ``under_utilized`` \u2014 ``importance_score >= 0.9`` AND\n  ``problem_pattern`` does not appear in any\n  ``crackerjack_skill_names`` entry.\n- ``cold`` \u2014 ``evidence_count == 0`` and not under-utilized.\n- ``fresh`` \u2014 anything else.",
+          "description": "Return a freshness/utility report for the ``distilled_skills`` table.\n\nPhase 1.5 wiring (Item 4 of the bodai-adoption-phase-1.5\nplan). Crackerjack's ``skill_coverage_report`` calls this\ntool via the MCP client — the data layer is the source of\ntruth, so the read stays ACL-gated and the schema is owned\nby the producer.\n\nEach row in the returned list carries its v2 columns plus\na ``status`` key:\n\n- ``stale`` — ``last_reinforced_at`` is older than\n  ``threshold_days`` (default 90, per the plan's A4).\n- ``under_utilized`` — ``importance_score >= 0.9`` AND\n  ``problem_pattern`` does not appear in any\n  ``crackerjack_skill_names`` entry.\n- ``cold`` — ``evidence_count == 0`` and not under-utilized.\n- ``fresh`` — anything else.",
           "name": "session_buddy_distilled_skill_health",
           "signature": "crackerjack_skill_names:null|threshold_days:\"integer\""
         },
@@ -2083,7 +2083,7 @@
           "signature": "days_back:\"integer\"|project_path:null"
         },
         {
-          "description": "Return the signed metadata + body for one skill.\n\nValidates ``name`` against the B-4 allowlist BEFORE constructing\nthe metadata. Signs the metadata via the lifespan-owned\n:class:`SkillsSigner`. The body is the raw markdown text from\n``skills_catalog/<name>.md`` \u2014 the client (Phase 2 installer)\nwrites this verbatim to\n``~/.claude/skills/session-buddy-<name>/SKILL.md``.",
+          "description": "Return the signed metadata + body for one skill.\n\nValidates ``name`` against the B-4 allowlist BEFORE constructing\nthe metadata. Signs the metadata via the lifespan-owned\n:class:`SkillsSigner`. The body is the raw markdown text from\n``skills_catalog/<name>.md`` — the client (Phase 2 installer)\nwrites this verbatim to\n``~/.claude/skills/session-buddy-<name>/SKILL.md``.",
           "name": "session_buddy_get_skill",
           "signature": "name:\"string\"*"
         },
@@ -2143,12 +2143,12 @@
           "signature": "context:\"string\"|link_type:\"string\"|source_session_id:\"string\"*|target_session_id:\"string\"*"
         },
         {
-          "description": "Lint a reflection for OWASP memory-guard false-negatives.\n\nPlan 3 Phase 1 Tier 1 Item #3. Detects two patterns the\nwrite-path guard does not screen for:\n\n- ``homoglyph`` \u2014 Cyrillic characters inside an\n  otherwise-ASCII long token (e.g. ``sk\u0430bc...``).\n- ``base64`` \u2014 base64-decodable payloads >= 40 chars.\n\nReturns a list of issue dicts sorted by position; ``[]`` when\nthe content is clean or the reflection is missing.",
+          "description": "Lint a reflection for OWASP memory-guard false-negatives.\n\nPlan 3 Phase 1 Tier 1 Item #3. Detects two patterns the\nwrite-path guard does not screen for:\n\n- ``homoglyph`` — Cyrillic characters inside an\n  otherwise-ASCII long token (e.g. ``skаbc...``).\n- ``base64`` — base64-decodable payloads >= 40 chars.\n\nReturns a list of issue dicts sorted by position; ``[]`` when\nthe content is clean or the reflection is missing.",
           "name": "session_buddy_lint_memory",
           "signature": "reflection_id:\"string\"*"
         },
         {
-          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here \u2014 ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
+          "description": "List the agents this server publishes, with unsigned metadata.\n\nEach entry carries the agent's ``name``, ``description`` and\n``system_prompt`` so a picker can preview the body without a\nsecond round-trip. The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here — ``get_agent`` fills them in, since\nthe signature covers the canonical payload without the\nsigning fields themselves.",
           "name": "session_buddy_list_agents",
           "signature": ""
         },
@@ -2198,7 +2198,7 @@
           "signature": ""
         },
         {
-          "description": "Return metadata for skills this server publishes.\n\nReturns at least 3 entries (one per static skill in\n``_STATIC_SKILLS``). The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here \u2014 those are populated by\n``session_buddy_get_skill`` since the signature is over the\ncanonical payload WITHOUT the signing fields themselves.\n\nH-6 (plan \u00a711): the previously-existing\n``mcp__session_buddy__list_skills`` (returning LEARNED workflow\npatterns) was renamed to\n``mcp__session_buddy__session_buddy_list_workflow_patterns``;\nthis reclaims the bare ``list_skills`` name for the new\npackaging-metadata shape.",
+          "description": "Return metadata for skills this server publishes.\n\nReturns at least 3 entries (one per static skill in\n``_STATIC_SKILLS``). The ``signature`` and ``server_pubkey_id``\nfields are ``None`` here — those are populated by\n``session_buddy_get_skill`` since the signature is over the\ncanonical payload WITHOUT the signing fields themselves.\n\nH-6 (plan §11): the previously-existing\n``mcp__session_buddy__list_skills`` (returning LEARNED workflow\npatterns) was renamed to\n``mcp__session_buddy__session_buddy_list_workflow_patterns``;\nthis reclaims the bare ``list_skills`` name for the new\npackaging-metadata shape.",
           "name": "session_buddy_list_skills",
           "signature": ""
         },
@@ -2223,7 +2223,7 @@
           "signature": "memory_id:\"string\"*"
         },
         {
-          "description": "Run a no-op cleanup pass and report current cache health.\n\nPre-substrate this tool ran a lazy-eviction sweep over the L1/L2\ntiers of ``QueryCacheManager``. The substrate's\n``MemoryCacheAdapter`` uses TTL-on-write, so there is nothing to\nlazily evict. The tool is preserved as a \"is the cache healthy\"\nprobe \u2014 it surfaces the current stats (max_entries,\ncurrent_entries, hits, misses, hit_rate) without trying to\nrecreate the L1/L2 lazy-eviction semantic. Returns the same\nenvelope as :func:`query_cache_stats` for tool symmetry, plus\n``entries_cleaned`` (always 0) for legacy clients that expect it.",
+          "description": "Run a no-op cleanup pass and report current cache health.\n\nPre-substrate this tool ran a lazy-eviction sweep over the L1/L2\ntiers of ``QueryCacheManager``. The substrate's\n``MemoryCacheAdapter`` uses TTL-on-write, so there is nothing to\nlazily evict. The tool is preserved as a \"is the cache healthy\"\nprobe — it surfaces the current stats (max_entries,\ncurrent_entries, hits, misses, hit_rate) without trying to\nrecreate the L1/L2 lazy-eviction semantic. Returns the same\nenvelope as :func:`query_cache_stats` for tool symmetry, plus\n``entries_cleaned`` (always 0) for legacy clients that expect it.",
           "name": "session_buddy_optimize_cache",
           "signature": ""
         },
@@ -2233,7 +2233,7 @@
           "signature": "time_expression:\"string\"*"
         },
         {
-          "description": "Return peer context (representation + recent memories).\n\nPhase 1.5 #2 (Honcho-style theory of mind). Bundles a peer's\nevolving ``representation_text`` with their recent memories\nin the project. When ``target_peer_id`` is set, the response\nalso includes a second peer's model \u2014 useful for agent-vs-user\ntheory of mind.\n\nRequires ``peer_models:read`` ACL (caller's responsibility).\nReturns a formatted Markdown summary.",
+          "description": "Return peer context (representation + recent memories).\n\nPhase 1.5 #2 (Honcho-style theory of mind). Bundles a peer's\nevolving ``representation_text`` with their recent memories\nin the project. When ``target_peer_id`` is set, the response\nalso includes a second peer's model — useful for agent-vs-user\ntheory of mind.\n\nRequires ``peer_models:read`` ACL (caller's responsibility).\nReturns a formatted Markdown summary.",
           "name": "session_buddy_peer_context",
           "signature": "peer_id:\"string\"*|project_id:\"string\"*|recent_limit:\"integer\"|target_peer_id:null"
         },
@@ -2343,7 +2343,7 @@
           "signature": "limit:\"integer\"|session_id:\"string\"*"
         },
         {
-          "description": "Find code snippets recorded in past sessions.\n\nSearches session memory for code that appeared in previous conversations\nand returns a formatted markdown string listing each snippet in a\nfenced code block. Do NOT use to search the source tree for a regular\nexpression \u2014 Crackerjack's `search_code` does that; this tool searches\nwhat was written during past sessions, not the files on disk. Returns\n\"No code patterns found for: <query>\" when nothing matches, and\nreturns at most `limit` snippets. Pass `project` to restrict the search\nto one project. Side effect: none; reads session memory only.",
+          "description": "Find code snippets recorded in past sessions.\n\nSearches session memory for code that appeared in previous conversations\nand returns a formatted markdown string listing each snippet in a\nfenced code block. Do NOT use to search the source tree for a regular\nexpression — Crackerjack's `search_code` does that; this tool searches\nwhat was written during past sessions, not the files on disk. Returns\n\"No code patterns found for: <query>\" when nothing matches, and\nreturns at most `limit` snippets. Pass `project` to restrict the search\nto one project. Side effect: none; reads session memory only.",
           "name": "session_buddy_search_code",
           "signature": "limit:\"integer\"|pattern_type:null|project:null|query:\"string\"*"
         },
@@ -2488,12 +2488,12 @@
           "signature": "enable_fallback:\"boolean\"|method:\"string\""
         },
         {
-          "description": "Mark a task as done. Server-sets completed_by from caller identity.\n\nStrictly a state mutation: ``status='done'``, ``completed_at=now``,\n``completed_by=caller``, optionally ``result_notes``. Does NOT inspect\n``result_notes`` for any dispatch trigger \u2014 the only dispatch edge in\nthe system is ``tasks_handoff_to_workflow`` (T17, mahavishnu PR #2).\nReturns the updated :class:`Task`, or an error envelope on rate\nlimit / pattern mismatch / not_found / not_visible.",
+          "description": "Mark a task as done. Server-sets completed_by from caller identity.\n\nStrictly a state mutation: ``status='done'``, ``completed_at=now``,\n``completed_by=caller``, optionally ``result_notes``. Does NOT inspect\n``result_notes`` for any dispatch trigger — the only dispatch edge in\nthe system is ``tasks_handoff_to_workflow`` (T17, mahavishnu PR #2).\nReturns the updated :class:`Task`, or an error envelope on rate\nlimit / pattern mismatch / not_found / not_visible.",
           "name": "session_buddy_tasks_complete",
           "signature": "result_notes:null|task_id:\"string\"*"
         },
         {
-          "description": "Create a new task. ``owner`` / ``created_by`` are server-derived from caller identity.\n\nReturns either a :class:`Task` envelope on success or a\n``{\"status\": \"error\", ...}`` envelope when the caller has exceeded\nthe 60/min rate limit (spec \u00a7Input Limits + Error Handling Matrix).\nPydantic ``ValidationError`` for missing ``\"task\"`` tag discriminator\nor oversize content propagates so the MCP layer surfaces a 400-class\nresponse to the caller.",
+          "description": "Create a new task. ``owner`` / ``created_by`` are server-derived from caller identity.\n\nReturns either a :class:`Task` envelope on success or a\n``{\"status\": \"error\", ...}`` envelope when the caller has exceeded\nthe 60/min rate limit (spec §Input Limits + Error Handling Matrix).\nPydantic ``ValidationError`` for missing ``\"task\"`` tag discriminator\nor oversize content propagates so the MCP layer surfaces a 400-class\nresponse to the caller.",
           "name": "session_buddy_tasks_create",
           "signature": "content:\"string\"*|due:null|effort:null|metadata:null|owner:null|parent_task_id:null|priority:\"string\"|tags:\"array\"*"
         },
@@ -2503,17 +2503,17 @@
           "signature": "task_id:\"string\"*"
         },
         {
-          "description": "Fetch the change history for a task with cursor-based pagination.\n\nHistory is read from the sidecar ``metadata[\"history\"]`` list written\nby ``_persist_task_update``. Each entry is mapped to a :class:`TaskEvent`\nwith ``event_type=\"updated\"`` (T6 writes diff entries; other event\ntypes are reserved for future use by completion / handoff events).\nEmpty history returns ``TaskHistoryResult(items=[], next_cursor=None)``\n\u2014 NOT an error envelope. Visibility filter is enforced: missing or\ninvisible tasks return 404 (not 403) to avoid leaking existence.",
+          "description": "Fetch the change history for a task with cursor-based pagination.\n\nHistory is read from the sidecar ``metadata[\"history\"]`` list written\nby ``_persist_task_update``. Each entry is mapped to a :class:`TaskEvent`\nwith ``event_type=\"updated\"`` (T6 writes diff entries; other event\ntypes are reserved for future use by completion / handoff events).\nEmpty history returns ``TaskHistoryResult(items=[], next_cursor=None)``\n— NOT an error envelope. Visibility filter is enforced: missing or\ninvisible tasks return 404 (not 403) to avoid leaking existence.",
           "name": "session_buddy_tasks_history",
           "signature": "cursor:null|k:\"integer\"|task_id:\"string\"*"
         },
         {
-          "description": "Bind a task to the workflow it was dispatched to. Link-once.\n\nThe only writer of ``Task.workflow_id``. The caller-supplied\n``metadata`` bag on ``tasks_update`` cannot reach the field \u2014 server-set\nfields are never sourced from a caller-supplied container.\n\nLink-once semantics (contract C3): a task binds to exactly one\nworkflow. Re-linking to the SAME id is an idempotent no-op that returns\nthe task unchanged (the orphan sweeper retries a link after a step-3\nfailure, and a retry must not be an error); re-linking to a DIFFERENT\nid is refused with ``workflow_already_linked``.\n\nReturns the updated :class:`Task``, or an error envelope on rate\nlimit / pattern mismatch / not_found / not_visible / already linked.",
+          "description": "Bind a task to the workflow it was dispatched to. Link-once.\n\nThe only writer of ``Task.workflow_id``. The caller-supplied\n``metadata`` bag on ``tasks_update`` cannot reach the field — server-set\nfields are never sourced from a caller-supplied container.\n\nLink-once semantics (contract C3): a task binds to exactly one\nworkflow. Re-linking to the SAME id is an idempotent no-op that returns\nthe task unchanged (the orphan sweeper retries a link after a step-3\nfailure, and a retry must not be an error); re-linking to a DIFFERENT\nid is refused with ``workflow_already_linked``.\n\nReturns the updated :class:`Task``, or an error envelope on rate\nlimit / pattern mismatch / not_found / not_visible / already linked.",
           "name": "session_buddy_tasks_link_workflow",
           "signature": "task_id:\"string\"*|workflow_id:\"string\"*"
         },
         {
-          "description": "List tasks owned by the caller with optional filters and pagination.\n\nServer-side (spec \u00a7Authz Model + \u00a7Migration):\n\n- ``owner`` filter is forced to ``caller_identity``. A caller-supplied\n  ``owner`` that doesn't match the caller returns an empty result \u2014\n  callers cannot widen past their own privilege to read other users'\n  private tasks.\n- ``enforce_visibility_filter(caller, task)`` is applied to every\n  candidate row (public rows pass; private/team rows require owner\n  match).\n- ``include_legacy=True`` is the only way to surface legacy\n  ``tags=[\"todo\"]`` rows (default ``False`` per \u00a7Migration).",
+          "description": "List tasks owned by the caller with optional filters and pagination.\n\nServer-side (spec §Authz Model + §Migration):\n\n- ``owner`` filter is forced to ``caller_identity``. A caller-supplied\n  ``owner`` that doesn't match the caller returns an empty result —\n  callers cannot widen past their own privilege to read other users'\n  private tasks.\n- ``enforce_visibility_filter(caller, task)`` is applied to every\n  candidate row (public rows pass; private/team rows require owner\n  match).\n- ``include_legacy=True`` is the only way to surface legacy\n  ``tags=[\"todo\"]`` rows (default ``False`` per §Migration).",
           "name": "session_buddy_tasks_list",
           "signature": "cursor:null|include_legacy:\"boolean\"|k:\"integer\"|owner:null|parent_task_id:null|status:null|tag:null"
         },

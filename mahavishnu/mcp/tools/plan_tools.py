@@ -117,7 +117,9 @@ def register_plan_tools(
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
     )
-    async def mahavishnu_plan_show(plan_id: str, user_id: str | None = None) -> dict[str, Any]:
+    async def mahavishnu_plan_show(
+        plan_id: str, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Show one plan by ``plan_id``. Raises ``PlanNotFoundError`` if absent."""
         store = provider()
         record = await store.get(cast("PlanId", plan_id))
@@ -153,7 +155,9 @@ def register_plan_tools(
     @require_mcp_auth(
         rbac_manager=rbac_manager, required_permission=Permission.READ_PLAN_INDEX
     )
-    async def mahavishnu_plan_rebuild_status(user_id: str | None = None) -> dict[str, Any]:
+    async def mahavishnu_plan_rebuild_status(
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
         """Rebuild cycle counters, staleness flag, and (redacted) lock holder."""
         store = provider()
         return cast("dict[str, Any]", await store.rebuild_status())

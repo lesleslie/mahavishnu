@@ -25,7 +25,8 @@ def register_get_capability_result(
     """Register ``mahavishnu_get_capability_result(trace_id: TraceId)`` on ``server``."""
 
     @server.tool(
-        name="mahavishnu_get_capability_result", description="List envelopes for a trace."
+        name="mahavishnu_get_capability_result",
+        description="List envelopes for a trace.",
     )
     async def mahavishnu_get_capability_result(trace_id: TraceId) -> dict[str, object]:
         """Read back persisted envelopes for a trace_id from MCP.

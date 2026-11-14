@@ -1725,9 +1725,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             llama_server_url = getattr(
                 self.config, "llama_server_url", "http://localhost:8081"
             )
-            embedding_model = getattr(
-                self.config, "llm_model", "qwen3-8b-q4_k_m"
-            )
+            embedding_model = getattr(self.config, "llm_model", "qwen3-8b-q4_k_m")
 
             health_details = {
                 "llamaindex_version": "0.14.x",

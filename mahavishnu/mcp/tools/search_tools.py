@@ -192,7 +192,9 @@ async def _fan_out_session_buddy(
         finally:
             await sb_client.aclose()
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.warning("mahavishnu_cross_repo_search: session-buddy fan-out failed: %s", exc)
+        logger.warning(
+            "mahavishnu_cross_repo_search: session-buddy fan-out failed: %s", exc
+        )
         sources.append(
             {
                 "name": "session-buddy",
@@ -250,7 +252,9 @@ async def _broadcast_cross_repo_result(
             )
             await server.broadcast_to_room(channel, msg)
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.warning("mahavishnu_cross_repo_search: websocket broadcast failed: %s", exc)
+        logger.warning(
+            "mahavishnu_cross_repo_search: websocket broadcast failed: %s", exc
+        )
 
 
 # =============================================================================

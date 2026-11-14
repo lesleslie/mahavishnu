@@ -871,7 +871,8 @@ def register_pool_tools(
             Exception
         ) as exc:  # MCP tool error handler — broad catch is the documented contract
             logger.exception(
-                "mahavishnu_pool_spawn: spawn failed", extra={"error_id": "POOL_SPAWN_FAILED"}
+                "mahavishnu_pool_spawn: spawn failed",
+                extra={"error_id": "POOL_SPAWN_FAILED"},
             )
             return {"status": "failed", "error": f"spawn failed: {exc}"}
 

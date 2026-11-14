@@ -70,6 +70,7 @@ contributors. Architectural choices that affect system structure belong in
 - When adding new MCP tools, validate inputs strictly and keep shell execution isolated from user-controlled strings.
 
 <!-- atlas:start -->
+
 ## Test on screen with Atlas
 
 This Mac has Atlas: a hidden second macOS login (the helper) where you can run
@@ -92,4 +93,5 @@ and test apps without touching my desktop, windows, keyboard or mouse.
 - Never test on my own desktop and never change privacy permissions. If an
   action's outcome is unknown, never repeat it: take a screenshot, run
   `atlas restart` only if that action was yours, look again, and tell me.
+
 <!-- atlas:end -->

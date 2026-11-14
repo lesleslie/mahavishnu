@@ -33,6 +33,7 @@ A server that cannot be reached is *skipped* in live mode, not failed:
 the fleet is often partially up, and a guard that reports a fleet
 outage as a tool defect trains people to ignore it.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -131,7 +132,9 @@ class ToolRecord:
 class Surface:
     """The analysed tool surface of a set of servers."""
 
-    tools: dict[str, list[ToolRecord]] = field(default_factory=lambda: defaultdict(list))
+    tools: dict[str, list[ToolRecord]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
     unreachable: list[str] = field(default_factory=list)
 
     @property
@@ -145,13 +148,17 @@ class Surface:
 # ---------------------------------------------------------------------------
 
 
-def _post(url: str, payload: dict[str, Any], session_id: str | None) -> tuple[list[Any], str | None]:
+def _post(
+    url: str, payload: dict[str, Any], session_id: str | None
+) -> tuple[list[Any], str | None]:
     """POST a JSON-RPC message to an MCP HTTP endpoint.
 
     Returns the decoded responses and the session id, if the server
     issued one.
     """
-    request = urllib.request.Request(url, data=json.dumps(payload).encode(), method="POST")
+    request = urllib.request.Request(
+        url, data=json.dumps(payload).encode(), method="POST"
+    )
     request.add_header("Content-Type", "application/json")
     request.add_header("Accept", "application/json, text/event-stream")
     if session_id:
@@ -190,7 +197,9 @@ def fetch_tools(url: str) -> list[dict[str, Any]]:
 
     notify = urllib.request.Request(
         url,
-        data=json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}).encode(),
+        data=json.dumps(
+            {"jsonrpc": "2.0", "method": "notifications/initialized"}
+        ).encode(),
         method="POST",
     )
     notify.add_header("Content-Type", "application/json")
@@ -199,12 +208,16 @@ def fetch_tools(url: str) -> list[dict[str, Any]]:
         notify.add_header("mcp-session-id", session_id)
     try:
         urllib.request.urlopen(notify, timeout=REQUEST_TIMEOUT).read()
-    except (urllib.error.URLError, OSError):
+    except urllib.error.URLError, OSError:
         # The notification is a courtesy; a server that rejects it still
         # serves tools.
         pass
 
-    messages, _ = _post(url, {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, session_id)
+    messages, _ = _post(
+        url,
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+        session_id,
+    )
     for message in messages:
         if "result" in message and "tools" in message["result"]:
             return message["result"]["tools"]
@@ -327,8 +340,10 @@ def check_registry(surface: Surface) -> list[str]:
     served = {record.name for record in surface.tools.get(REGISTRY_OWNER, [])}
     if not served:
         return [
-            f"the {REGISTRY_OWNER} server served no tools, so the registry "
-            "cannot be checked against it"
+            (
+                f"the {REGISTRY_OWNER} server served no tools, so the registry "
+                "cannot be checked against it"
+            )
         ]
     registered = set(TOOL_VERSIONS)
 
@@ -364,9 +379,12 @@ def check_signatures(surface: Surface) -> list[str]:
             for record in records:
                 grouped[record.signature].append(record.server)
             detail = "; ".join(
-                f"{sorted(servers)} -> {signature}" for signature, servers in sorted(grouped.items())
+                f"{sorted(servers)} -> {signature}"
+                for signature, servers in sorted(grouped.items())
             )
-            findings.append(f"{name} has different parameter signatures per server: {detail}")
+            findings.append(
+                f"{name} has different parameter signatures per server: {detail}"
+            )
     return findings
 
 
@@ -423,7 +441,9 @@ def capture(urls: dict[str, str], path: Path) -> int:
         }
     }
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(f"Wrote {path}")
     return 0
 

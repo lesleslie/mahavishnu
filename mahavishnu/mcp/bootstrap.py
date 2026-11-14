@@ -819,7 +819,9 @@ def _register_capability_block(server: FastMCPServer) -> None:
         mcp_url = resolve_mcp_url(server.app.config)
         mcp = MCPClient(base_url=mcp_url, timeout=10.0, internal=True)
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        logger.warning("Skipping mahavishnu_get_capability_result registration: %s", exc)
+        logger.warning(
+            "Skipping mahavishnu_get_capability_result registration: %s", exc
+        )
         return
 
     try:
@@ -827,7 +829,8 @@ def _register_capability_block(server: FastMCPServer) -> None:
         logger.info("Registered mahavishnu_get_capability_result tool with MCP server")
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning(
-            "Skipping mahavishnu_get_capability_result registration after MCP init: %s", exc
+            "Skipping mahavishnu_get_capability_result registration after MCP init: %s",
+            exc,
         )
 
 
@@ -844,7 +847,9 @@ def _register_search_block(server: FastMCPServer) -> None:
     from ..mcp.tools.search_tools import register_search_tools
 
     register_search_tools(server.server)
-    logger.info("Registered search-tools group (mahavishnu_hybrid_search + mahavishnu_cross_repo_search)")
+    logger.info(
+        "Registered search-tools group (mahavishnu_hybrid_search + mahavishnu_cross_repo_search)"
+    )
 
 
 def _register_ecosystem_publish_url_block(server: FastMCPServer) -> None:

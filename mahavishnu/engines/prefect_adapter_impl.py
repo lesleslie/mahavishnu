@@ -778,7 +778,11 @@ class PrefectAdapter(OrchestratorAdapter):
         # Configure client for Prefect Cloud if workspace is specified.
         # Some test and sandbox environments can't start Prefect's local server
         # at all, so fall back to a lightweight HTTP shim for lifecycle checks.
-        from prefect.settings import PREFECT_API_KEY, PREFECT_API_URL, temporary_settings
+        from prefect.settings import (
+            PREFECT_API_KEY,
+            PREFECT_API_URL,
+            temporary_settings,
+        )
 
         api_url_base = self._resolved_api_url().rstrip("/")
         if api_url_base.endswith("/api"):

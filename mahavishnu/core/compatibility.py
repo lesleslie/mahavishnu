@@ -55,7 +55,11 @@ CONTRACT_MATRIX: tuple[dict[str, Any], ...] = (
     {
         "name": "mcp_health_tool_registration",
         "component": "mcp/tools/health_tools",
-        "required_tools": ("mahavishnu_mcp_list_tools", "mahavishnu_mcp_test_connection", "mahavishnu_mcp_get_metrics"),
+        "required_tools": (
+            "mahavishnu_mcp_list_tools",
+            "mahavishnu_mcp_test_connection",
+            "mahavishnu_mcp_get_metrics",
+        ),
     },
     {
         "name": "tool_version_registry",
