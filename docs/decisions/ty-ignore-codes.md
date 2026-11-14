@@ -7,9 +7,13 @@ last_reviewed: 2026-11-14
 topic: ty-ignore-codes
 ---
 
-# `ty: ignore[...]` policy for `*-mcp`
+# `ty: ignore[...]` policy for the fleet
 
 One-line summary: use precise ty diagnostic codes for verified type-checker boundaries; never hide ty diagnostics behind mypy/ruff ignore syntax.
+
+**ty is the only type checker in the fleet.** mypy has no configuration and no
+dependency anywhere — it was never run by CI in any repo. Every suppression in
+every repo is therefore spelled for ty.
 
 ## Context
 
@@ -18,6 +22,13 @@ bare `# type: ignore` comments or mypy/ruff codes such as `assignment` and
 `attr-defined`. Those comments can look like suppressions while leaving the ty
 diagnostic active, so bare `# type: ignore` and stray mypy/ruff codes are
 common and silently fail to suppress.
+
+The fleet carried 2,711 bracketed mypy directives and 105 blanket ones. Every
+bracketed directive was inert — ty never read the bracketed form at all, so
+those 2,711 comments suppressed nothing at all while reading like suppressions.
+The fleet-wide migration on 2026-11-14 deleted them, converted the live blanket
+directives into specific ty rules, and removed mypy's configuration. The two
+`NameError` defects that the blanket directives had been hiding are fixed.
 
 A useful gotcha from the audit: malformed `session.run` suppression comments
 swallowed commas and arguments, producing cascading `missing-attribute`
@@ -36,7 +47,8 @@ annotation, `cast`, an overload, or a typed adapter.
   syntax — bare `# type: ignore` and `# type: ignore[<code>]` — because ty
   does not interpret it, so those comments suppress nothing while reading
   like suppressions. It also rejects a line that carries both spellings.
-  The hook is opt-in (`hooks.enable_ty_ignore_syntax`), off by default.
+  The hook is **on by default** (`hooks.enable_ty_ignore_syntax`); a repo
+  that needs an exception sets it to `false`.
 - **Rule-name validity.** ty itself. It reports `ignore-comment-unknown-rule`
   and exits non-zero for a code it does not know, which is what makes the
   rename coupling described below safe.
@@ -176,10 +188,22 @@ not the enforcement list.
 
 ## Status
 
-Active. This decision applies to all Bodai `*-mcp` repositories. It is a
-classification and review policy, not a blanket allowance for new suppressions.
-Existing comments may be migrated during normal touch-ups, but each migration
-must be checked with ty rather than mechanically translated from mypy syntax.
+Active. This decision applies to every repository in the fleet, not only the
+`*-mcp` ones. It is a classification and review policy, not a blanket allowance
+for new suppressions.
+
+**The migration is complete.** As of 2026-11-14:
+
+- No mypy configuration remains: no `mypy.ini`, no `[tool.mypy]` section, no
+  mypy dependency in any repo's dependency groups.
+- No mypy-syntax directive remains in any committed repo. The
+  `ty-ignore-syntax` gate reports 0 findings across the fleet.
+- Every live suppression names a specific ty rule.
+
+Any suppression added from here on must be `# ty: ignore[<rule>]`. A bare
+`# type: ignore` is rejected by the gate: it reads like a suppression but
+suppresses nothing in ty, so it silently hides nothing while convincing the
+author that a diagnostic was silenced.
 
 **Rule-name version coupling.** The codes named below are the ty >= 0.0.104
 spellings. ty 0.0.104 renamed three of them: `unresolved-attribute` became
@@ -200,7 +224,14 @@ does not tell you which rule applies to a given site.
 
 - `# type: ignore` (bare), or `# type: ignore[assignment]`, `arg-type`,
   `attr-defined`, `union-attr`, `call-overload`, or another mypy/ruff code.
-  Replace it with a real fix or the exact code ty reports.
+  Replace it with a real fix or the exact code ty reports. The
+  `ty-ignore-syntax` gate rejects both spellings, and it is on by default:
+  a mypy-syntax comment is a comment that looks like a suppression and
+  suppresses nothing.
+- A blanket `# ty: ignore` with no rule name. ty honours the bare form as a
+  blanket per-line suppression, so it *does* silence a diagnostic — but it
+  silences every diagnostic on that line, and the next one to appear is
+  silenced with no record of why. Name the rule.
 - Keeping both forms on one line, for example
   `# type: ignore[attr-defined]  # ty: ignore[missing-attribute]`.
 - Letting a single file accumulate more than 5 ty suppressions without a
