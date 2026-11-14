@@ -467,7 +467,7 @@
             "claude-opus-5.5": "MiniMax-M3",
             "claude-sonnet-4-6": "MiniMax-M3.1-Flash",
             "claude-sonnet-4.6": "MiniMax-M3.1-Flash",
-            "claude-sonnet-5-5": "MiniMax-M3.1-Flash"
+            "claude-sonnet-5-5": "MiniMax-M3"
           },
           "models": [
             "MiniMax-M3",
@@ -516,7 +516,7 @@
             "claude-opus-5.5": "MiniMax-M3",
             "claude-sonnet-4-6": "MiniMax-M3.1-Flash",
             "claude-sonnet-4.6": "MiniMax-M3.1-Flash",
-            "claude-sonnet-5-5": "MiniMax-M3.1-Flash"
+            "claude-sonnet-5-5": "MiniMax-M3"
           },
           "models": [
             "MiniMax-M3",
