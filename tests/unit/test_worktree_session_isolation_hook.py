@@ -690,6 +690,14 @@ def _load_with_stderr(
         monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE", raising=False)
     if root is not None:
         monkeypatch.setenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", root)
+        # The hook resolves the canonical variable FIRST
+        # (``MAHAVISHNU_WORKTREE_BASE_PATH``), and the operator shell sets
+        # it. Setting only the legacy alias left the hook resolving the
+        # operator's real worktree root -- which exists, so the discovery
+        # hint was suppressed and the test failed on any configured
+        # machine. Pin both to the same value so the resolution is
+        # deterministic.
+        monkeypatch.setenv("MAHAVISHNU_WORKTREE_BASE_PATH", root)
     elif "MAHAVISHNU_AUTO_WORKTREE_ROOT" in env:
         monkeypatch.setenv(
             "MAHAVISHNU_AUTO_WORKTREE_ROOT", env["MAHAVISHNU_AUTO_WORKTREE_ROOT"]

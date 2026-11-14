@@ -443,19 +443,19 @@ class TestWorktreePathValidator:
 
     def test_get_safe_worktree_path_default_base(self, tmp_path) -> None:
         """Test safe worktree path generation with default base directory."""
+        from mahavishnu.core.paths import get_worktree_base_path
+
         validator = WorktreePathValidator(allowed_roots=[tmp_path / "worktrees"])
 
-        # Don't specify base_dir (should default to ~/worktrees)
+        # Don't specify base_dir (should default to the XDG worktree root)
         worktree_path = validator.get_safe_worktree_path(
             repo_nickname="mahavishnu", branch="main"
         )
 
-        # Should use home directory
-        import pathlib
-
-        assert (
-            worktree_path == pathlib.Path.home() / "worktrees" / "mahavishnu" / "main"
-        )
+        # The default base is the canonical worktree root -- the XDG state
+        # dir, overridable by MAHAVISHNU_WORKTREE_BASE_PATH -- not
+        # ~/worktrees, which was the pre-ADR-015 location.
+        assert worktree_path == get_worktree_base_path() / "mahavishnu" / "main"
 
     def test_get_safe_worktree_path_empty_branch(self, tmp_path) -> None:
         """Test that empty branch names are sanitized to 'unnamed'."""
