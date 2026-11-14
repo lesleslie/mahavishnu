@@ -704,7 +704,7 @@ client-side:
    `"host_wait"`, waiting up to that many ms for the MCP hosts to
    connect. With the tools present from request one, the `tools` array
    never changes and the prefix never breaks.
-2. **`"alwaysLoad": true`** on an MCP server's entry in
+1. **`"alwaysLoad": true`** on an MCP server's entry in
    `~/.claude.json` — set for `bodai`. Claude Code's own description:
    *"all tools from this server are always included in the prompt and
    never deferred behind tool search … As a side effect, true also
@@ -1313,6 +1313,7 @@ Two upstream requirements that are easy to miss:
    dispatching upstream. If `text-embedding-3-small` is absent from that list,
    every embedding attempt fails locally with `no_key_supports_model` and the
    request never reaches OpenAI — so no amount of upstream credit fixes it.
+
 1. **The embedding model has an 8192-token input limit.** The plugin embeds
    the request's key material with no truncation, and long agentic turns
    exceed the limit — the embedding request comes back as

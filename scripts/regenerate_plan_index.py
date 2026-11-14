@@ -711,7 +711,9 @@ def _render_ecosystem_acceptance(
         for supporting in track["supporting"]:
             supporting_path = str(supporting)
             supporting_entry = entries_by_rel.get(supporting_path)
-            supporting_status = supporting_entry.status if supporting_entry else "missing"
+            supporting_status = (
+                supporting_entry.status if supporting_entry else "missing"
+            )
             supporting_cells.append(
                 f"{_entry_link(supporting_path, 'docs/plans/')} ({supporting_status})"
             )
@@ -731,10 +733,7 @@ def _validate_ecosystem_acceptance_tracks(
     entries_by_rel: dict[str, Entry],
 ) -> None:
     """Reject generated indexes whose acceptance links no longer resolve."""
-    referenced = {
-        str(track["owner"])
-        for track in ECOSYSTEM_ACCEPTANCE_TRACKS
-    }
+    referenced = {str(track["owner"]) for track in ECOSYSTEM_ACCEPTANCE_TRACKS}
     referenced.update(
         str(supporting)
         for track in ECOSYSTEM_ACCEPTANCE_TRACKS
@@ -744,8 +743,7 @@ def _validate_ecosystem_acceptance_tracks(
     if missing:
         missing_text = ", ".join(missing)
         raise ValueError(
-            "ecosystem acceptance track references missing plan files: "
-            f"{missing_text}"
+            f"ecosystem acceptance track references missing plan files: {missing_text}"
         )
 
 
