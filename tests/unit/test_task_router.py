@@ -225,7 +225,7 @@ class TestGetModelForTask:
             "default-model",
         )
         assert cat == TaskCategory.CODE_GENERATION
-        assert model == "qwen3.5"
+        assert model == "qwen3-8b-q4_k_m"
 
     def test_fallback_to_default_for_unknown(self):
         """Unknown categories fall back to default model."""
@@ -285,7 +285,9 @@ class TestGetModelForTask:
             model, _ = get_model_for_task(
                 "do something", DEFAULT_LLAMA_SERVER_ROUTING, "x"
             )
-            assert model == "qwen3.5", f"Expected qwen3.5 for {cat}, got {model}"
+            assert model == "qwen3-8b-q4_k_m", (
+                f"Expected qwen3-8b-q4_k_m for {cat}, got {model}"
+            )
 
 
 class TestRoutingToTaskMap:

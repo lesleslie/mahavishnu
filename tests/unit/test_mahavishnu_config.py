@@ -886,7 +886,7 @@ class TestLLMConfig:
     def test_default_values(self):
         """Test LLMConfig defaults."""
         config = LLMConfig()
-        assert config.model == "qwen3.5"
+        assert config.model == "qwen3-8b-q4_k_m"
         assert config.base_url == "http://localhost:8081"
 
 

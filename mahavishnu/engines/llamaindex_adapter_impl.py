@@ -511,7 +511,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
 
         if config is None:
             config = SimpleNamespace(
-                llm_model="qwen3.5",
+                llm_model="qwen3-8b-q4_k_m",
                 llama_server_url=api_url or "http://localhost:8081",
                 opensearch_endpoint="http://localhost:9200",
                 opensearch_index_name="mahavishnu_code",
@@ -529,7 +529,7 @@ class LlamaIndexAdapter(OrchestratorAdapter):
         self.documents: dict[str, list[_DocumentT]] = {}
 
         # Configure llama-server embedding model
-        llama_server_model = getattr(config, "llm_model", "qwen3.5")
+        llama_server_model = getattr(config, "llm_model", "qwen3-8b-q4_k_m")
         llama_server_url = getattr(config, "llama_server_url", "http://localhost:8081")
 
         # Auto-discover the actual model from llama-server if the
@@ -1725,7 +1725,9 @@ class LlamaIndexAdapter(OrchestratorAdapter):
             llama_server_url = getattr(
                 self.config, "llama_server_url", "http://localhost:8081"
             )
-            embedding_model = getattr(self.config, "llm_model", "qwen3.5")
+            embedding_model = getattr(
+                self.config, "llm_model", "qwen3-8b-q4_k_m"
+            )
 
             health_details = {
                 "llamaindex_version": "0.14.x",

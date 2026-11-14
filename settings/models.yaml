@@ -13,7 +13,7 @@
 #
 # Provider chain:
 #   1. minimax  - MiniMax M3 (primary cloud, API key required)
-#   2. llama_server - llama.cpp server with qwen3.5 (local, no auth)
+#   2. llama_server - llama.cpp server with qwen3-8b-q4_k_m (local, no auth)
 #
 # Related files:
 #   - mahavishnu/core/model_routing.py - routing tables and the loader
@@ -71,7 +71,7 @@ minimax:
 # LOCAL PROVIDERS (no auth required, always available when running)
 # =============================================================================
 
-# llama-server (llama.cpp) - Secondary local provider with qwen3.5
+# llama-server (llama.cpp) - Secondary local provider with qwen3-8b-q4_k_m
 llama_server:
   enabled: true
   require_auth: false
@@ -80,22 +80,22 @@ llama_server:
   timeout: 60
   max_retries: 2
   task_routing:
-    CODE_GENERATION: "qwen3.5"
-    CODE_REVIEW: "qwen3.5"
-    DEBUGGING: "qwen3.5"
-    REFACTORING: "qwen3.5"
-    TESTING: "qwen3.5"
-    REASONING: "qwen3.5"
-    GENERAL: "qwen3.5"
-    ANALYSIS: "qwen3.5"
-    DOCUMENTATION: "qwen3.5"
-    SWARM: "qwen3.5"
-    QUICK: "qwen3.5"
-    ML_INFERENCE: "qwen3.5"
-    AGENT_LOOP: "qwen3.5"
-    CREATIVE: "qwen3.5"
-    EMBEDDING: "qwen3.5"
-    VISION: "qwen3.5"
+    CODE_GENERATION: "qwen3-8b-q4_k_m"
+    CODE_REVIEW: "qwen3-8b-q4_k_m"
+    DEBUGGING: "qwen3-8b-q4_k_m"
+    REFACTORING: "qwen3-8b-q4_k_m"
+    TESTING: "qwen3-8b-q4_k_m"
+    REASONING: "qwen3-8b-q4_k_m"
+    GENERAL: "qwen3-8b-q4_k_m"
+    ANALYSIS: "qwen3-8b-q4_k_m"
+    DOCUMENTATION: "qwen3-8b-q4_k_m"
+    SWARM: "qwen3-8b-q4_k_m"
+    QUICK: "qwen3-8b-q4_k_m"
+    ML_INFERENCE: "qwen3-8b-q4_k_m"
+    AGENT_LOOP: "qwen3-8b-q4_k_m"
+    CREATIVE: "qwen3-8b-q4_k_m"
+    EMBEDDING: "qwen3-8b-q4_k_m"
+    VISION: "qwen3-8b-q4_k_m"
 
 # =============================================================================
 # CLOUD PUBLIC-ENDPOINT PROVIDERS (RunPod Public Endpoints REST substrate)

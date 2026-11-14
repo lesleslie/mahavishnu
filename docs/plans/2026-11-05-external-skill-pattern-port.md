@@ -3,7 +3,7 @@ status: partial
 role: implementation
 kind: plan
 date: 2026-11-05
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-10
 superseded_by: null
 blocks_on: []
 topic: convergence-control-plane
@@ -58,6 +58,11 @@ Success signal: `python scripts/audit_doc_drift.py --json` exits non-zero on
 a seeded drift fixture and exits 0 on the live tree; the gate appears in
 `tests/integration/test_ci_gates.py`; the finding gate is referenced by at
 least one project agent and one workflow.
+
+The deterministic gates are eligible for the ecosystem acceptance packet
+once their live-tree and seeded-drift evidence is attached. The broader
+review heuristics in Phases 3–5 remain a separately deferred follow-up; they
+are not prerequisites for the control-plane or CLI-demo acceptance tracks.
 
 ## 2. Goals
 

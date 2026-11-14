@@ -3,7 +3,7 @@ status: partial
 role: canonical
 kind: plan
 date: 2026-11-01
-last_reviewed: 2026-11-08
+last_reviewed: 2026-11-10
 superseded_by: null
 topic: bifrost-cache-eviction-and-threshold
 title: "Bifrost cache eviction sweep and cache-tuning retune"
@@ -148,6 +148,11 @@ The intended beneficiary — the Mahavishnu worker path — has **one**
 entries in three days. The worker path is wired correctly
 (`mahavishnu/workers/cloud_worker.py:140` and
 `mahavishnu/engines/agno_adapter_impl.py:568`) but has not been exercised.
+
+The acceptance packet separates cache hygiene from cache tuning. Eviction and
+scheduled reclamation must produce cleanup evidence; threshold retuning is
+deferred until representative semantic-cache traffic exists and the benefit
+band can be measured without relying on an empty worker population.
 
 So: the semantic cache works, and almost nothing is using it.
 

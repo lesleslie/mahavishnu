@@ -430,8 +430,7 @@
       "keys": [
         {
           "models": [
-            "qwen3-8b-q4_k_m",
-            "qwen3.5"
+            "qwen3-8b-q4_k_m"
           ],
           "name": "llama-server-local",
           "value": "env.LLAMA_SERVER_API_KEY",

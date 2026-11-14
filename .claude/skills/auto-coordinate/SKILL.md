@@ -1,6 +1,6 @@
 ---
 name: auto-coordinate
-description: Link coordination state to git branches so the work survives across sessions. Triggers after Claude runs `mahavishnu coord create-issue` / `create-todo` / `close-issue` / `complete-todo`, or after calling `mcp__session-buddy__tasks_create` / `mcp__session-buddy__tasks_complete`. Checks the active git branch, suggests a branch name, and records the branch link on the task.
+description: Link coordination state to git branches so the work survives across sessions. Triggers after Claude runs `mahavishnu coord create-issue` / `create-todo` / `close-issue` / `complete-todo`, or after calling `mcp__session-buddy__session_buddy_tasks_create` / `mcp__session-buddy__session_buddy_tasks_complete`. Checks the active git branch, suggests a branch name, and records the branch link on the task.
 ---
 
 # Auto-Coordinate
@@ -26,8 +26,8 @@ Two coordination surfaces are live, and this skill covers both:
 
 | Trigger | Action |
 |---|---|
-| `mcp__session-buddy__tasks_create` | Check the git branch, suggest a branch name, persist the link via `tasks_update` |
-| `mcp__session-buddy__tasks_complete` | Check for uncommitted work, remind to commit/push, suggest branch cleanup |
+| `mcp__session-buddy__session_buddy_tasks_create` | Check the git branch, suggest a branch name, persist the link via `tasks_update` |
+| `mcp__session-buddy__session_buddy_tasks_complete` | Check for uncommitted work, remind to commit/push, suggest branch cleanup |
 | `mahavishnu coord create-issue` | Check the git branch, suggest a branch name from the issue ID |
 | `mahavishnu coord create-todo` | Check for blocking issues, suggest dependencies |
 | `mahavishnu coord close-issue` | Check for uncommitted work, remind to commit/push, suggest branch cleanup |
@@ -63,8 +63,8 @@ digraph activation {
 
 **Use when:**
 
-- Claude just called `mcp__session-buddy__tasks_create` — link the task to a branch
-- Claude just called `mcp__session-buddy__tasks_complete` — wrap up the git state
+- Claude just called `mcp__session-buddy__session_buddy_tasks_create` — link the task to a branch
+- Claude just called `mcp__session-buddy__session_buddy_tasks_complete` — wrap up the git state
 - Claude just ran `mahavishnu coord create-issue` — link the issue to a branch
 - Claude just ran `mahavishnu coord create-todo` — check for blockers
 - Claude just ran `mahavishnu coord close-issue` or `complete-todo` — wrap up the git state
@@ -97,13 +97,13 @@ mahavishnu coord create-todo --task "Add tests" --description "..." \
 mahavishnu coord complete-todo TODO-007        # ID is positional
 
 # --- Session-Buddy task (MCP) ---
-mcp__session-buddy__tasks_create(
+mcp__session-buddy__session_buddy_tasks_create(
     content="Refactor authz middleware",
     tags=["task"],
 )
 #   → returns a Task whose id is t-<32 hex chars>
 
-mcp__session-buddy__tasks_update(
+mcp__session-buddy__session_buddy_tasks_update(
     task_id="t-0190a3b4c5d6f7e8a9b0c1d2e3f4a5b",
     request={"metadata": {"branch": "t-0190a3b4c5d6-refactor-authz-middleware"}},
 )
@@ -117,7 +117,7 @@ mcp__session-buddy__tasks_update(
 
 ## Implementation
 
-### Step 1: After creating a task (`mcp__session-buddy__tasks_create`)
+### Step 1: After creating a task (`mcp__session-buddy__session_buddy_tasks_create`)
 
 1. **Check the active git branch** in the worktree where the change will
    land: `git branch --show-current`
@@ -128,7 +128,7 @@ mcp__session-buddy__tasks_update(
    ```
 3. **If already on a feature branch**, persist the link:
    ```
-   mcp__session-buddy__tasks_update(
+   mcp__session-buddy__session_buddy_tasks_update(
        task_id="t-0190a3b4c5d6f7e8a9b0c1d2e3f4a5b",
        request={"metadata": {"branch": "<branch-name>"}},
    )
@@ -144,7 +144,7 @@ mcp__session-buddy__tasks_update(
 5. **Do NOT** set `task.branch` by direct attribute access — `branch` lives
    in the `metadata` dict.
 
-### Step 2: After completing a task (`mcp__session-buddy__tasks_complete`)
+### Step 2: After completing a task (`mcp__session-buddy__session_buddy_tasks_complete`)
 
 1. **Check for uncommitted changes**: `git status --short` in the worktree
 2. **If a branch was linked in Step 1**, remind to commit and push:

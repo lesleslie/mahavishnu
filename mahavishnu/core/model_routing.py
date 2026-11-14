@@ -218,9 +218,9 @@ TASK_PATTERNS: dict[TaskCategory, list[str]] = {
 }
 
 
-# Default model routing for llama-server (qwen3.5 — single model, all categories)
+# Default model routing for llama-server (Qwen3 8B — single model, all categories)
 DEFAULT_LLAMA_SERVER_ROUTING: dict[TaskCategory, str] = dict.fromkeys(
-    TaskCategory, "qwen3.5"
+    TaskCategory, "qwen3-8b-q4_k_m"
 )
 
 # Default model routing for MiniMax cloud provider

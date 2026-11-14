@@ -113,7 +113,7 @@ export MAHAVISHNU_PG_PASSWORD="your_password"
 
 # llama-server configuration
 export MAHAVISHNU_LLM__BASE_URL="http://localhost:8081"
-export MAHAVISHNU_LLM__MODEL="qwen3.5"
+export MAHAVISHNU_LLM__MODEL="qwen3-8b-q4_k_m"
 ```
 
 #### Step 3: Start Mahavishnu MCP Server
@@ -212,7 +212,7 @@ export MAHAVISHNU_PG_DATABASE="mahavishnu"
 
 # llama-server configuration
 export MAHAVISHNU_LLM__BASE_URL="http://localhost:8081"
-export MAHAVISHNU_LLM__MODEL="qwen3.5"
+export MAHAVISHNU_LLM__MODEL="qwen3-8b-q4_k_m"
 ```
 
 #### Step 3: Use Mahavishnu Inside Qwen
@@ -745,7 +745,7 @@ postgresql:
   max_overflow: 50
 
 # llama-server
-llm_model: "qwen3.5"
+llm_model: "qwen3-8b-q4_k_m"
 llm_base_url: "http://llama-server.internal:8081"
 
 # Adapters
@@ -798,7 +798,7 @@ postgresql:
   max_overflow: 20
 
 # llama-server (local)
-llm_model: "qwen3.5"
+llm_model: "qwen3-8b-q4_k_m"
 llm_base_url: "http://localhost:8081"
 
 # Adapters
@@ -859,7 +859,7 @@ postgresql:
   max_overflow: 40
 
 # llama-server
-llm_model: "qwen3.5"
+llm_model: "qwen3-8b-q4_k_m"
 llm_base_url: "http://localhost:8081"
 
 # Adapters
@@ -1014,7 +1014,7 @@ asyncio.run(test())
 ```bash
 # Test embedding generation via llama-server
 curl http://localhost:8081/v1/embeddings -d '{
-  "model": "qwen3.5",
+  "model": "qwen3-8b-q4_k_m",
   "input": "test"
 }'
 

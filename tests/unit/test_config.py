@@ -721,7 +721,7 @@ class TestMonitoringConfigDefaults:
 class TestLLMConfigDefaults:
     def test_defaults(self):
         cfg = LLMConfig()
-        assert cfg.model == "qwen3.5"
+        assert cfg.model == "qwen3-8b-q4_k_m"
         assert cfg.base_url == "http://localhost:8081"
 
 

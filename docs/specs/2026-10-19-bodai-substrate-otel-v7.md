@@ -3,7 +3,7 @@ status: active
 role: canonical
 kind: spec
 date: 2026-10-19
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-10
 superseded_by: null
 blocks_on: []
 topic: substrate-otel
@@ -84,6 +84,12 @@ In scope (the 8 items, refined from v1/v2):
 6. **OTel attribute normalization** (dotted → underscore) — OTel exporter handles this; **server-side normalizer in OTLPReceiver** re-checks (older SDK / non-standard producers fall back through the normalizer).
 7. **`service.namespace` migration** (`mcp-ecosystem` → dual-label → `bodai`) with explicit consumer-file-path enumeration + per-repo owners + CI gate.
 8. **Heartbeat-watcher known-server roster** — separate `known_mcp_servers` field; empty roster is itself a P0 condition.
+
+The v7 substrate is expected to supply trace evidence to the ecosystem
+acceptance packet. The packet will record the receiver and query component
+commits, the active namespace label, ingestion/readiness result, and the
+trace identifiers used by the canonical demos. This does not promote the
+deferred FSM or projection machinery into the v7 scope.
 
 ## 3. Non-goals
 
@@ -1206,8 +1212,8 @@ curl -fsS http://localhost:8682/metrics \
   | grep -E "^akosha_otlp_(spans_received|spans_inserted|spans_rejected)_total"
 
 # 5. Verify spans_substrate is present and populated, via the read path:
-#    mcp__akosha__akosha_search_spans {limit: 5}   -- the rows
-#    mcp__akosha__akosha_spans_summary {}          -- the counts
+#    mcp__akosha__search_spans {limit: 5}   -- the rows
+#    mcp__akosha__spans_summary {}          -- the counts
 ```
 
 ### 11.2 P0-B query-failure threshold
@@ -1312,7 +1318,7 @@ an `endpoint`. The receiver's metrics ride the MCP server's own
    either wait for the next interval or ask for a sweep now:
 
    ```
-   mcp__akosha__akosha_force_retention_sweep()
+   mcp__akosha__force_retention_sweep()
      -> {"requested": true, "already_pending": false,
          "interval_s": 21600,
          "watch": "akosha_otlp_sweep_last_completed_unix_nano"}
@@ -1329,10 +1335,10 @@ an `endpoint`. The receiver's metrics ride the MCP server's own
    than the shell. The retention cutoff is
    `now - spans_substrate.retention_days`, and it filters on
    `received_at_unix_nano` (the receiver's clock — §15's cardinal rule):
-   - `mcp__akosha__akosha_spans_summary` with `cutoff_unix_nano` set to the
+   - `mcp__akosha__spans_summary` with `cutoff_unix_nano` set to the
      cutoff boundary returns the count of rows that fall OUTSIDE the
      retention window.
-   - `mcp__akosha__akosha_search_spans` with `since_unix_nano` set to the same
+   - `mcp__akosha__search_spans` with `since_unix_nano` set to the same
      boundary returns those rows.
 
 ### 11.1.6 Cardinality alarm (v8 — rewritten 2026-10-27)
@@ -1354,7 +1360,7 @@ curl -fsS http://localhost:8682/metrics | grep "^akosha_otlp_resource_drift_valu
 
 # 4. Row counts per (selector, task_class) pair, via the substrate read
 #    path rather than a shell:
-#    mcp__akosha__akosha_spans_summary {selector: ..., task_class: ..., cutoff_unix_nano: 0}
+#    mcp__akosha__spans_summary {selector: ..., task_class: ..., cutoff_unix_nano: 0}
 ```
 
 2. If the sweep is alive (last_completed > 0) AND the row count is
@@ -1571,9 +1577,9 @@ The operator interface is therefore:
 | Is the sweep healthy? | `akosha_otlp_sweep_first_started_unix_nano` / `akosha_otlp_sweep_last_completed_unix_nano` / `akosha_otlp_retention_sweep_failed_total{table}` |
 | Why was a span rejected? | `akosha_otlp_spans_rejected_total{field=…}` — labelled by the field that failed |
 | Which producers are reporting? | `akosha_otlp_heartbeat_*` (PR-A5) |
-| What is in the substrate? | `mcp__akosha__akosha_search_spans`, `mcp__akosha__akosha_spans_summary` |
+| What is in the substrate? | `mcp__akosha__search_spans`, `mcp__akosha__spans_summary` |
 | Change the retention horizon? | `spans_substrate.retention_days` in `akosha/settings/akosha.yaml` |
-| Force a sweep now? | `mcp__akosha__akosha_force_retention_sweep` — returns `{"requested": true, "already_pending": false, "interval_s": …, "watch": "akosha_otlp_sweep_last_completed_unix_nano"}` |
+| Force a sweep now? | `mcp__akosha__force_retention_sweep` — returns `{"requested": true, "already_pending": false, "interval_s": …, "watch": "akosha_otlp_sweep_last_completed_unix_nano"}` |
 
 **The trigger SIGNALS; it never deletes.** The sweep loop owns the single
 DuckDB connection to the substrate. A caller that ran the sweep itself
@@ -2114,7 +2120,7 @@ All `@pytest.mark.slow`; the fast feedback lane (`pytest -m "not slow"`) skips t
 | **v7** `stop_event` is an explicit positional arg | Declared at lifespan scope, passed to retention_sweep + canary_metrics_bridge | v6 referenced `stop_event` as a free variable in the bridge body; spec never pinned where it came from. |
 | **v7** `HealthFeedState("name")` is not valid Python | `HealthFeedState(entities_count=…, last_updated_timestamp=…, …)` (kwarg-only dataclass at `mcp_common.health.feed`) + a module-level `_known_mcp_servers_roster: list[str]` for the roster itself | The pos-arg notation crossed §11, §11.4, §13.6, §15 (four sites). Implementers copy-pasting hit a TypeError. Spec replaces with the kwarg shape + a separate roster list. |
 | **v7** PR-A8 retires `AKOSHA_SKIP_OTEL_INGESTER` env var | Remove the `if not _env_truthy("AKOSHA_SKIP_OTEL_INGESTER"):` block at `akosha/mcp/server.py:627` | v6's §15 "no env-var shim" decision was incorrect for this var — operators with launchd plists setting `=1` get the poller silently re-enabled post-PR-A8. Pre-1.0 no-backcompat rule applied retroactively. |
-| **v7** CLI Typer hierarchy | **superseded 2026-10-27 → no CLI ships; the operator interface is the metrics route + the MCP tools + the settings file** | v7 required new `admin`/`otel`/`retention` and `migrations` top-level sub-apps on `akosha.cli.app`, because v6 referenced commands (`akosha admin otel retention manual-run`, `akosha migrations up`) that don't exist. Two reasons that requirement is dropped: (1) there is no migration framework in the fleet — the migration-framework row above records what replaced it, and a `migrations` CLI would wrap a framework that does not exist; (2) the sweep is a self-driving lifespan task, so the operator needs to SEE it (metrics route) and change its horizon (settings file), not drive it from a shell. §11.4a now carries the operator-interface table. **v9 (2026-10-27) adds the one operation that did need a trigger — `mcp__akosha__akosha_force_retention_sweep` — and the reason it is an MCP tool rather than a CLI is architectural, not a preference: the substrate is IN-MEMORY inside the running akosha process and the receiver is a process-local singleton, so a CLI subprocess could not have reached either.** |
+| **v7** CLI Typer hierarchy | **superseded 2026-10-27 → no CLI ships; the operator interface is the metrics route + the MCP tools + the settings file** | v7 required new `admin`/`otel`/`retention` and `migrations` top-level sub-apps on `akosha.cli.app`, because v6 referenced commands (`akosha admin otel retention manual-run`, `akosha migrations up`) that don't exist. Two reasons that requirement is dropped: (1) there is no migration framework in the fleet — the migration-framework row above records what replaced it, and a `migrations` CLI would wrap a framework that does not exist; (2) the sweep is a self-driving lifespan task, so the operator needs to SEE it (metrics route) and change its horizon (settings file), not drive it from a shell. §11.4a now carries the operator-interface table. **v9 (2026-10-27) adds the one operation that did need a trigger — `mcp__akosha__force_retention_sweep` — and the reason it is an MCP tool rather than a CLI is architectural, not a preference: the substrate is IN-MEMORY inside the running akosha process and the receiver is a process-local singleton, so a CLI subprocess could not have reached either.** |
 | **v10** Producer reporting lives in mcp-common's launcher | `mcp_common.server.launcher.launch` installs the tracer provider and starts the liveness emitter; `component_name` is the service identity | Every core service already starts through that launcher and already passes a `component_name` equal to its roster entry, so this is ONE seam for the whole fleet rather than five copies — and no second naming scheme to keep in step with the roster. The alternative (a per-service exporter setup) would have left the roster and the producers free to drift apart again, which is exactly how the roster came to name five services that had never reported a span. |
 | **v10** A liveness span, not a request span, is the heartbeat | `_service_liveness`, emitted every 30s by the producer | An MCP server emits a span when somebody calls a tool, so request-driven spans cannot distinguish an idle service from a dead one — a 60s window with a two-cycle threshold fires on a healthy idle fleet by construction. Measured: mahavishnu was alive and reporting spans that were 195s old, and the watcher still read it as absent. The liveness span mirrors the §11.3 canary one layer up: the canary proves the write path, the liveness span proves the export path. |
 | **v10** The producer exporter is opt-in | `configure_producer_tracing` installs nothing unless `OTEL_EXPORTER_OTLP_ENDPOINT` (or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) is set | The launcher is shared with the standalone MCP servers outside the Bodai core set. Making the wiring unconditional would have every one of them start exporting to the substrate without an operator asking for it. The plist is the opt-in, and the plist is where the destination lives. |
@@ -2361,8 +2367,8 @@ So the procedure is short:
 1. Stop akosha's MCP server (the lifespan shutdown drains the receiver).
 2. The substrate is gone with the process. To inspect what was in it
    before stopping, use the read path:
-   - `mcp__akosha__akosha_search_spans` — the rows
-   - `mcp__akosha__akosha_spans_summary` — the counts per pair
+   - `mcp__akosha__search_spans` — the rows
+   - `mcp__akosha__spans_summary` — the counts per pair
 3. The receiver's two operational tables (`_dlq_rows`,
    `_akosha_otel_receiver_state`) are created by the receiver's
    `_ensure_operational_tables` call and are likewise in-memory. There

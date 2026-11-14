@@ -93,7 +93,7 @@ class MemberConfig(BaseModel):
         description="Role description for the agent",
     )
     model: str = Field(
-        default="qwen3.5",
+        default="qwen3-8b-q4_k_m",
         description="LLM model identifier",
     )
     instructions: str = Field(

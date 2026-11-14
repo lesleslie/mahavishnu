@@ -667,7 +667,7 @@ class LLMProviderFactory:
         ignored here.
 
         Args:
-            model_id: llama.cpp model identifier (e.g., 'qwen3.5', 'llama2')
+            model_id: llama.cpp model identifier (e.g., 'qwen3-8b-q4_k_m', 'llama2')
             endpoint: Resolved endpoint and credential.
 
         Returns:

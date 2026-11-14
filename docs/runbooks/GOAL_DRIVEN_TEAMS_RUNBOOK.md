@@ -945,7 +945,7 @@ agno:
   enabled: true
   llm:
     provider: llama_server
-    model_id: qwen3.5
+    model_id: qwen3-8b-q4_k_m
     base_url: http://localhost:8081
     temperature: 0.7
   memory:

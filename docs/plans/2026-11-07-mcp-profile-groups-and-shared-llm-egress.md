@@ -3,7 +3,7 @@ status: active
 role: implementation
 kind: plan
 date: 2026-11-07
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-10
 superseded_by: null
 blocks_on: []
 related:
@@ -83,6 +83,11 @@ When this plan ships:
   from the Bifrost semantic cache (one write, one hit), evidenced by
   `x-bifrost-cache-*` response headers.
 
+The profile commands feed the ecosystem acceptance packet with the selected
+profile, member servers, resolved URLs/transports, per-server reachability,
+and the LLM egress route. The packet must show that Bifrost remains an LLM
+gateway only; it must not reappear as an MCP aggregation hop.
+
 ## 2. Goals
 
 1. **Make the tool surface task-shaped.** Group servers so a session sees the
@@ -161,7 +166,7 @@ Bodai servers behind one Bifrost `/mcp` endpoint. Verified on 2026-11-07:
 - Blast radius: `grep -c 'mcp__' mahavishnu/core/skill_mcp_validator.py` → **105**
   exact-match strings in `KNOWN_TOOLS`; 268 executable/config references;
   **525** doc mentions. `skill_mcp_validator.py` already documents a
-  triple-underscore edge case (`mcp__session-buddy__session_buddy__code_get_symbol_graph_impl`),
+  triple-underscore edge case (`mcp__session-buddy___code_get_symbol_graph_impl`),
   so the convention is already load-bearing and brittle.
 
 ### 4.3 Aggregation does not reduce the tool surface — it adds to it

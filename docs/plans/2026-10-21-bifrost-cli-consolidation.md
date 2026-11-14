@@ -3,7 +3,7 @@ status: partial
 role: implementation
 kind: plan
 date: 2026-10-21
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-10
 superseded_by: null
 topic: bifrost-cli-consolidation
 title: "Bifrost CLI Consolidation — one Typer app replacing seven scripts"
@@ -59,6 +59,12 @@ requirements:
 > `docs/specs/2026-10-20-bifrost-anthropic-baseurl-cutover-design.md` still
 > cite the retired script paths, and `scripts/bifrost_perf_compare.py` remains
 > (it was never one of the eight). Hence `partial`, not `complete`.
+
+The final reference sweep must attach the Bifrost CLI verification output to
+the ecosystem acceptance packet: gateway/process version, enforcement state,
+resolved virtual-key route, harness used, and request result. Once that
+packet entry and the retired-script sweep are both clean, this plan can move
+to `complete`.
 
 ## 1. Outcome
 

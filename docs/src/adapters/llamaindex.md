@@ -13,7 +13,7 @@ LlamaIndex is ideal for creating RAG pipelines with document ingestion, vector e
 ```yaml
 llamaindex:
   enabled: true
-  llm_model: "qwen3.5"  # llama-server embedding model
+  llm_model: "qwen3-8b-q4_k_m"  # llama-server embedding model
   base_url: "http://localhost:8081"
 ```
 
@@ -43,7 +43,7 @@ mahavishnu query --query "authentication patterns" --adapter llamaindex
 
 The adapter includes real llama-server integration:
 
-- llama-server embedding model integration (`qwen3.5`)
+- llama-server embedding model integration (`qwen3-8b-q4_k_m`)
 - llama-server LLM integration for generation
 - Document processing and chunking
 - Vector store operations
@@ -56,7 +56,7 @@ The adapter includes real llama-server integration:
 from mahavishnu.engines import LlamaIndexAdapter
 
 adapter = LlamaIndexAdapter(
-    config={"llm_model": "qwen3.5", "base_url": "http://localhost:8081"}
+    config={"llm_model": "qwen3-8b-q4_k_m", "base_url": "http://localhost:8081"}
 )
 
 # Ingest documents

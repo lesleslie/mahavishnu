@@ -379,14 +379,14 @@ Set `adapters.hatchet_enabled: true` and provide `HATCHET_CLIENT_TOKEN` to activ
 
 **`llm`**:
 
-- `model` — `str`, default `qwen3.5`; embedding/LLM model name.
+- `model` — `str`, default `qwen3-8b-q4_k_m`; embedding/LLM model name.
 - `base_url` — `str`, default `http://localhost:8081`; llama-server (llama.cpp) endpoint.
 
 **`agno`**:
 
 - `enabled` — `bool`, default `True`; enables the Agno adapter.
 - `llm.provider` — `LLMProvider`, default `minimax`; provider enum (`anthropic`, `openai`, `minimax`, `llama_server`).
-- `llm.model_id` — `str`; provider model. Defaults per provider: `MiniMax-M3`, `claude-sonnet-5-5`, `gpt-5.4`, `qwen3.5`.
+- `llm.model_id` — `str`; provider model. Defaults per provider: `MiniMax-M3`, `claude-sonnet-5-5`, `gpt-5.4`, `qwen3-8b-q4_k_m`.
 - `llm.api_key_env` — `str | null`, default `None`; environment variable containing the provider key. Derived per provider when unset.
 - `llm.base_url` — `str | null`, default `None`; endpoint override. `None` lets each provider resolve its own endpoint (llama-server → `http://localhost:8081`; cloud providers → the Bifrost gateway when routed, otherwise their public API).
 - `llm.fallback_providers` — `list[LLMProvider]`, default `[llama_server]`; ordered providers tried when the primary has no usable credential. The first available provider wins.
@@ -564,7 +564,7 @@ See `scripts/check_merge_driver.py` for the full pre-flight matrix (binary PATH 
 
 ## LLM Provider Configuration
 
-See `settings/models.yaml` for the provider registry and task-based model routing. MiniMax M3 is the primary cloud provider; MiniMax M3.1-Flash is the fallback model (M2.7/M2.7-highspeed retired 2026-11-18). Local `llama_server` (qwen3.5) remains a secondary fallback.
+See `settings/models.yaml` for the provider registry and task-based model routing. MiniMax M3 is the primary cloud provider; MiniMax M3.1-Flash is the fallback model (M2.7/M2.7-highspeed retired 2026-11-18). Local `llama_server` (`qwen3-8b-q4_k_m`) remains a secondary fallback.
 
 Task-based routing maps categories to optimal models via `mahavishnu/core/model_routing.py` (Phase 3b atomic migration from `mahavishnu/workers/task_router.py`). The `task_routing` block under each provider in `settings/models.yaml` is the **authoritative** source: edit it and the routing resolves to the model you named — no code change, no redeploy. (A cloud worker snapshots the routing into its provider chain when it starts, so a worker that is already running keeps the pre-edit routing until it restarts.) The in-code `DEFAULT_*_ROUTING` tables are the built-in fallback, serving deployments that do not ship the file and filling in any category the file omits. Set `MAHAVISHNU_MODELS_PATH` to route the loader at a different file.
 

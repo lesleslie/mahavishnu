@@ -47,7 +47,7 @@ def member_config() -> MemberConfig:
     return MemberConfig(
         name="test_member",
         role="Test role",
-        model="qwen3.5",
+        model="qwen3-8b-q4_k_m",
         instructions="Test instructions for the member",
         tools=["search_code", "read_file"],
         temperature=0.7,
@@ -130,7 +130,7 @@ class TestMemberConfig:
         """Test that a valid member config is created correctly."""
         assert member_config.name == "test_member"
         assert member_config.role == "Test role"
-        assert member_config.model == "qwen3.5"
+        assert member_config.model == "qwen3-8b-q4_k_m"
         assert member_config.instructions == "Test instructions for the member"
         assert member_config.tools == ["search_code", "read_file"]
         assert member_config.temperature == 0.7
@@ -143,7 +143,7 @@ class TestMemberConfig:
             role="role",
             instructions="instructions",
         )
-        assert config.model == "qwen3.5"
+        assert config.model == "qwen3-8b-q4_k_m"
         assert config.tools == []
         assert config.temperature == 0.7
         assert config.max_tokens == 4096

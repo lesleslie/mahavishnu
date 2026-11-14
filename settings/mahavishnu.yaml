@@ -38,7 +38,7 @@ hatchet:
 
 # LLM configuration for LlamaIndex and Agno
 llm:
-  model: qwen3.5  # Embedding model for llama-server
+  model: qwen3-8b-q4_k_m  # Embedding model for llama-server
   base_url: http://localhost:8081  # llama-server (llama.cpp) API endpoint
 
 # Agno adapter LLM routing.

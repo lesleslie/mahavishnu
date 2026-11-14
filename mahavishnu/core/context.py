@@ -81,7 +81,7 @@ class LLMFactory(Protocol):
         """Get the default model ID.
 
         Returns:
-            Default model ID (e.g., "qwen3.5", "claude-sonnet-4-6")
+            Default model ID (e.g., "qwen3-8b-q4_k_m", "claude-sonnet-4-6")
         """
         ...
 

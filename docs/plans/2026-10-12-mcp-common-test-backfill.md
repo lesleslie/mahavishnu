@@ -3,7 +3,7 @@ status: partial
 role: implementation
 kind: plan
 date: 2026-10-12
-last_reviewed: 2026-11-08
+last_reviewed: 2026-11-10
 superseded_by: null
 blocks_on: []
 topic: mcpserver-settings-convention
@@ -21,15 +21,19 @@ title: "mcp-common CommonMCPClient + HealthFeedState Test Backfill"
 > fires: `git grep Implements.REQ-00. mcp_common/health/` returns 0 hits,
 > and `tests/unit/health/test_feed.py` carries no `req` markers.
 
-**Goal:** close the Phase 1b test gap in the umbrella plan `docs/plans/2026-09-14-common-mcp-client-transport-unification.md`. Phase 1a shipped code without Phase 1b tests; this plan backfills the 20 planned tests + 2 standalone smoke scripts and **does not re-do work the umbrella already shipped**. Out of scope for this plan: URL default normalization (umbrella Phase 2), call-site migration (umbrella Phase 3), and the per-repo health aggregator migration (now under `docs/plans/2026-10-09-mcp-health-check-enrichment.md`, shipped 2026-10-09).
+**Goal:** close the Phase 1b test gap from the completed umbrella plan `docs/plans/2026-09-14-common-mcp-client-transport-unification.md`. Phase 1a shipped code without Phase 1b tests; this plan backfills the 20 planned tests + 2 standalone smoke scripts and **does not re-do work the umbrella already shipped**. Out of scope for this plan: URL default normalization, call-site migration, and the per-repo health aggregator migration, which are tracked by their own current plans or completed successors.
+
+The completed unit and offline smoke evidence may be attached to the MCP
+fleet-contract acceptance track. Cross-process compatibility remains a
+separate umbrella-plan concern and must not be implied by this backfill.
 
 **Architecture:** New test files under `mcp-common/tests/unit/clients/` and `mcp-common/tests/unit/health/` mirror the umbrella's Phase 1 task 7 + task 8 enumeration. New offline smoke scripts under `mcp-common/scripts/` give operators a no-deps way to verify the SDK at runtime. Each test ships with `@pytest.mark.req(["REQ-NNN"])` so the umbrella's `audit_requirements.py` REQ trace machinery closes the canary that `audit-passed` (Phase 1 exit criteria) never picked up.
 
 **Tech Stack:** Python 3.14, Pytest 8+, `pytest-asyncio` (config `asyncio_mode = "auto"` per mcp-common standard), `respx` for HTTP mocking (PyJWT JWKS path), `mcp.client.streamable_http` for offline streamable-HTTP shape tests (test shapes only — no real server in unit tests).
 
-**Parent plan:** `docs/plans/2026-09-14-common-mcp-client-transport-unification.md` (now `status: partial`, `superseded_by: docs/plans/2026-10-09-mcp-health-check-enrichment.md` for the Phase 4 portion).
+**Parent plan:** `docs/plans/2026-09-14-common-mcp-client-transport-unification.md` (`status: complete`). This backfill preserves the Phase 1b audit trail; it does not claim that unrelated cross-process integration work is covered.
 
-**Why this plan exists as a separate file:** the umbrella plan is partially-superseded; preserving a single committed plan file per topic would force either (a) expanding the umbrella to track test backfill (drift) or (b) forking the umbrella to remove Phases 2–4 (loss of audit trail). Splitting the unfinished Phase 1b work into a focused plan keeps both readable.
+**Why this plan exists as a separate file:** the umbrella plan is complete for its shipped scope; preserving a single committed plan file per topic would force either (a) expanding the umbrella to track this later test backfill (drift) or (b) rewriting the umbrella and losing its historical audit trail. Keeping the unfinished Phase 1b work in a focused plan preserves both records.
 
 ## 1. Outcome
 
@@ -55,7 +59,7 @@ title: "mcp-common CommonMCPClient + HealthFeedState Test Backfill"
 
 1. **URL default normalization** — that's umbrella Phase 2. Out of scope.
 2. **Per-repo call-site migration** — that's umbrella Phase 3. Out of scope.
-3. **Per-repo `/health` aggregator wiring** — that's now under `2026-10-09-mcp-health-check-enrichment.md` (shipped). Out of scope.
+3. **Per-repo `/health` aggregator wiring** — shipped separately and out of scope for this test-only backfill.
 4. **Removing `KNOWN_SERVICES` / cross-compile shared fixtures** — those were audit suggestions, not part of the umbrella's deliverable list. Skip.
 5. **Bumping `mcp-common` version** — per the umbrella's §3 Non-Goals #7 and `feedback-mcp-common-version-bump-is-user.md`, user owns the version. This plan is purely test backfill; no public surface change.
 6. **Re-running tests under `pytest -m slow` markers** — the umbrella didn't ask for slow tests; this plan stays `unit`.
@@ -91,7 +95,7 @@ Target per the umbrella: 0.25.3 → 0.26.0. **Actual: 0.30.5** (verified from `p
 
 ### 4.3 Integration-test gap (acknowledged but out of scope)
 
-The umbrella's `tests/integration/mcp/test_common_mcp_client.py` (Phase 3 deliverable, spins up akosha + session-buddy in subprocesses) is **NOT** part of this backfill. Backfill is unit tests only. Per `mcp-backend-wiring-discipline.md`, integration tests are required at plan-time, but this plan backfills an already-shipped code surface — integration tests for `CommonMCPClient` are Part 2 of Phase 3, scheduled under umbrella Phase 3, which is itself in ❓ UNVERIFIED state. This plan's exit does NOT promote Plan 2 to "complete"; only the test gap (Phase 1b) closes.
+The umbrella's `tests/integration/mcp/test_common_mcp_client.py` (Phase 3 deliverable, spins up akosha + session-buddy in subprocesses) is **NOT** part of this backfill. Backfill is unit tests only. Per `mcp-backend-wiring-discipline.md`, integration tests are required at plan-time, but this plan backfills an already-shipped code surface. Cross-process integration remains an explicitly unverified follow-up outside this plan. This plan's exit does NOT promote the umbrella's later phases to "complete"; only the test gap (Phase 1b) closes.
 
 ### 4.4 `audit_requirements.py` canary
 
@@ -243,7 +247,7 @@ Plan is **done enough** when:
 2. The 2 smoke scripts exist; `smoke_health_feed.py` exits 0; `smoke_common_mcp_client.py --help` exits 0.
 3. `python -m pytest mcp-common/tests/ --cov=mcp_common --cov-fail-under=80` exits 0 (coverage gate holds).
 4. The CHANGELOG `[Unreleased]` entry exists. `pyproject.toml` version is **unchanged**.
-5. The umbrella plan `docs/plans/2026-09-14-common-mcp-client-transport-unification.md` is re-promoted from `status: partial` → `status: active` (the active pieces are: Phase 1a done, Phase 1b now done, Phase 3 unverified, Phase 4 superseded). The umbrella frontmatter `superseded_by` field stays pointed at the health-enrichment plan.
+5. The completed umbrella plan `docs/plans/2026-09-14-common-mcp-client-transport-unification.md` remains the historical source for the Phase 1 contract; this backfill does not change its lifecycle or claim the separate Phase 3 integration work.
 
 Plan is **not done** when:
 - Any source file in `mcp_common/{clients,health}/` is modified (this plan is test-only — the SDK was the umbrella's delivery).
@@ -253,11 +257,10 @@ Plan is **not done** when:
 
 ## 10. References
 
-- `docs/plans/2026-09-14-common-mcp-client-transport-unification.md` — parent umbrella (status: partial; Phase 1a done; Phase 1b backfilled here; Phases 3, 4 decoupled)
-- `docs/plans/2026-10-09-mcp-health-check-enrichment.md` — Phase 4 successor (shipped 2026-10-09)
-- `docs/specs/2026-09-06-mcp-common-auth-primitives-design.md` — historical reference; not directly related to this backfill but cites the `mcp_common/auth` package as the established pattern for these tests
-- `docs/plans/2026-09-05-mcp-common-phase1.md` — Phase 1 of `2026-09-05-mcp-common-phase1-design.md`; documents the `auth` package's test conventions this plan follows
-- `mcp-backend-wiring-discipline.md` — Bodai-wide rule that integration tests are required; this plan's scope is **unit** tests (per umbrella scope); integration tests for `CommonMCPClient` remain an open piece under umbrella Phase 3
+- `docs/plans/2026-09-14-common-mcp-client-transport-unification.md` — completed parent umbrella; Phase 1b is backfilled here
+- `docs/specs/.archive/2026-09-06-mcp-common-auth-primitives-design.md` — historical reference; not directly related to this backfill but cites the `mcp_common/auth` package as the established pattern for these tests
+- `docs/plans/.archive/2026-09-05-mcp-common-phase1.md` — historical Phase 1 reference; documents the `auth` package's test conventions this plan follows
+- `mcp-backend-wiring-discipline.md` — Bodai-wide rule that integration tests are required; this plan's scope is **unit** tests; cross-process integration for `CommonMCPClient` remains an open follow-up outside this backfill
 - `feedback-mcp-common-version-bump-is-user.md` — version bumps are user-owned; this plan excludes `pyproject.toml`
 - `feedback-keep-plan-files-tracked.md` — `git add docs/plans/*.md` first; this plan follows that
 - `feedback-no-backwards-compat-pre-1.0.md` — `mcp-common` pre-1.0; if a test reveals missing behavior, the fix replaces the gap, it does not paper over it

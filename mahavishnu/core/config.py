@@ -130,19 +130,19 @@ class LLMProvider(StrEnum):
 #: Default model identifier per LLM provider.
 #:
 #: ``AgnoLLMConfig.model_id`` is *provider-scoped*: ``MiniMax-M3`` is
-#: meaningless to llama-server and ``qwen3.5`` is meaningless to the
+#: meaningless to llama-server and the local Qwen id is meaningless to the
 #: MiniMax API (its endpoint rejects unknown model names). A single shared
 #: default therefore cannot serve a provider chain, so the default is
 #: derived from the provider instead.
 #:
-#: The llama-server entry matches the repo-wide ``qwen3.5`` label
+#: The llama-server entry matches the repo-wide Qwen3 8B label
 #: (``core.model_routing.DEFAULT_LLAMA_SERVER_ROUTING`` and
 #: ``settings/models.yaml`` ``llama_server.task_routing``). llama.cpp
 #: ignores the id when a single model is loaded, so this is a label
 #: rather than a selector. The Bifrost gateway is *not* indifferent to
 #: the label: it resolves a request against the key's model allowlist
-#: before the call is made, so ``qwen3.5`` has to be on that allowlist
-#: too. It is -- see the ``llama-server-local`` key in
+#: before the call is made, so the configured Qwen id has to be on that
+#: allowlist too. It is -- see the ``llama-server-local`` key in
 #: ``config/bifrost/config.template.json``.
 #:
 #: The Anthropic and OpenAI entries track the model families the
@@ -153,7 +153,7 @@ PROVIDER_DEFAULT_MODEL: dict[LLMProvider, str] = {
     LLMProvider.MINIMAX: "MiniMax-M3",
     LLMProvider.ANTHROPIC: "claude-sonnet-5-5",
     LLMProvider.OPENAI: "gpt-5.4",
-    LLMProvider.LLAMA_SERVER: "qwen3.5",
+    LLMProvider.LLAMA_SERVER: "qwen3-8b-q4_k_m",
 }
 
 #: Model id for the Anthropic provider when the endpoint resolves through
@@ -224,7 +224,7 @@ class AgnoLLMConfig(BaseModel):
         default=PROVIDER_DEFAULT_MODEL[LLMProvider.MINIMAX],
         description=(
             "Model identifier for the selected provider (e.g., claude-sonnet-5-5, "
-            "gpt-5.4, MiniMax-M3, qwen3.5). Defaults to the provider's own model "
+            "gpt-5.4, and qwen3-8b-q4_k_m). Defaults to the provider's own model "
             "when not set explicitly."
         ),
     )
@@ -296,7 +296,7 @@ class AgnoLLMConfig(BaseModel):
         """Resolve ``model_id`` from the provider when the operator did not pin one.
 
         ``model_id`` is provider-scoped, so a shared default would send
-        ``MiniMax-M3`` to llama-server (or ``qwen3.5`` to the MiniMax API,
+        ``MiniMax-M3`` to llama-server (or the local Qwen id to the MiniMax API,
         which rejects unknown model names). When the model id is left
         unset, it is derived from ``provider`` instead.
 
@@ -1989,8 +1989,8 @@ class LLMConfig(BaseModel):
     """LLM configuration for LlamaIndex and Agno."""
 
     model: str = Field(
-        default="qwen3.5",
-        description="LLM model name (e.g., qwen3.5, llama2)",
+        default="qwen3-8b-q4_k_m",
+        description="LLM model name (e.g., qwen3-8b-q4_k_m, llama2)",
     )
     base_url: str = Field(
         default="http://localhost:8081",

@@ -916,7 +916,7 @@ export MAHAVISHNU_PG_PASSWORD="your_password"
 
 # llama-server
 export MAHAVISHNU_LLM__BASE_URL="http://localhost:8081"
-export MAHAVISHNU_LLM__MODEL="qwen3.5"
+export MAHAVISHNU_LLM__MODEL="qwen3-8b-q4_k_m"
 ```
 
 ______________________________________________________________________

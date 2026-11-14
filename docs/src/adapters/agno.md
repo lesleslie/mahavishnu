@@ -15,7 +15,7 @@ agno:
   enabled: false  # Experimental - set to true for evaluation
   llm_providers:
     - provider: "llama_server"
-      model: "qwen3.5"
+      model: "qwen3-8b-q4_k_m"
     - provider: "anthropic"
       model: "claude-3-5-sonnet-20241022"
     - provider: "minimax"

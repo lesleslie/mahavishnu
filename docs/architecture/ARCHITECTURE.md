@@ -360,7 +360,7 @@ adapters:
   hatchet: true     # Production-ready
 
 # LLM Configuration
-llm_model: "qwen3.5"  # llama-server LLM model
+llm_model: "qwen3-8b-q4_k_m"  # llama-server LLM model
 llm_base_url: "http://localhost:8081"  # llama-server (llama.cpp) endpoint
 
 # Quality Control

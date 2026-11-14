@@ -219,7 +219,7 @@ def _build_fallback_chain(config: CloudWorkerConfig) -> FallbackChain:
 class CloudWorker(BaseWorker):
     """Worker that executes tasks via a two-tier FallbackChain.
 
-    Provider order: MiniMax (primary cloud) → llama-server/qwen3.5
+    Provider order: MiniMax (primary cloud) → llama-server/qwen3-8b-q4_k_m
     (local fallback).
 
     Args:

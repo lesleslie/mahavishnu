@@ -169,7 +169,7 @@ adapters:
 
 # LLM configuration
 llm:
-  model: qwen3.5
+  model: qwen3-8b-q4_k_m
   base_url: http://localhost:8081
 
 # Pool management

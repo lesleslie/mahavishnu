@@ -86,7 +86,7 @@ class SkillConfig:
     role: str
     instructions: str
     tools: list[str] = field(default_factory=list)
-    model: str = "qwen3.5"
+    model: str = "qwen3-8b-q4_k_m"
     temperature: float = 0.7
 
 
