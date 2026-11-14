@@ -122,12 +122,12 @@ the bare `# type: ignore` — ty silently ignores mypy/ruff syntax.
 - `# ty: ignore[invalid-argument-type]` for None-to-required-T fixes.
   Prefer `assert x is not None` or `t.cast("T", value)` at structural
   boundaries over blanket suppression.
-- `# ty: ignore[unresolved-attribute]` only after verifying the attribute
+- `# ty: ignore[missing-attribute]` only after verifying the attribute
   *should* exist (often a typo — see Phase I.A: 8 broken-control-flow bugs
   found via mass-suppression audit).
-- `# ty: ignore[call-non-callable]` only if the call site cannot be None.
+- `# ty: ignore[not-callable]` only if the call site cannot be None.
   Otherwise add the None-check.
-- `# ty: ignore[unresolved-import]` only for TYPE_CHECKING imports; for
+- `# ty: ignore[import-not-found]` only for TYPE_CHECKING imports; for
   runtime imports, fix the path.
 
 **Mass suppressions are a smell.** If you find yourself adding more than

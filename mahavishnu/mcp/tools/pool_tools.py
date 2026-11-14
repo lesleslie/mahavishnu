@@ -852,7 +852,7 @@ def register_pool_tools(
             # NOTE: the import alias `RuntimePoolConfig` is required because
             # the settings class is also called `PoolConfig` (see task header).
             # The alias is bound at module top by Task 4 step 3; the
-            # call-non-callable suppression below is because the except
+            # not-callable suppression below is because the except
             # branch in the defensive import at module top can rebind the
             # alias to None.
             pool_config = RuntimePoolConfig(  # ty: ignore[not-callable]
@@ -985,7 +985,7 @@ def register_pool_tools(
         try:
             # Use RuntimePoolConfig (the runtime dataclass, not the
             # settings class). The alias is bound at module top by
-            # Task 4 step 3; the call-non-callable suppression below
+            # Task 4 step 3; the not-callable suppression below
             # is because the except branch in the defensive import at
             # module top can rebind the alias to None.
             pool_config = RuntimePoolConfig(  # ty: ignore[not-callable]

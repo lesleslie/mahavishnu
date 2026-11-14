@@ -3,7 +3,7 @@ status: active
 role: canonical
 kind: decision
 date: 2026-07-26
-last_reviewed: 2026-07-26
+last_reviewed: 2026-11-14
 topic: ty-ignore-codes
 ---
 
@@ -20,7 +20,7 @@ diagnostic active, so bare `# type: ignore` and stray mypy/ruff codes are
 common and silently fail to suppress.
 
 A useful gotcha from the audit: malformed `session.run` suppression comments
-swallowed commas and arguments, producing cascading `unresolved-attribute`
+swallowed commas and arguments, producing cascading `missing-attribute`
 diagnostics that looked like helper-method indentation problems. The comment
 placement matters as much as the code choice.
 
@@ -49,11 +49,11 @@ annotation, `cast`, an overload, or a typed adapter.
    are third-party API/stub boundaries and are a review signal, not the model
    for a new `None` suppression.
 
-2. **A dynamically provided attribute** uses `unresolved-attribute` only when
+2. **A dynamically provided attribute** uses `missing-attribute` only when
    runtime setup demonstrably creates that attribute:
 
    ```python
-   app._penpot_client = client  # ty: ignore[unresolved-attribute]
+   app._penpot_client = client  # ty: ignore[missing-attribute]
    ```
 
    This matches `penpot-api-mcp/penpot_api_mcp/server.py:54` and the analogous
@@ -76,11 +76,11 @@ annotation, `cast`, an overload, or a typed adapter.
    preserves the contract without suppressing the assignment.
 
 4. **An optional, type-checking-only import** may use
-   `unresolved-import` when the package is intentionally absent at runtime:
+   `import-not-found` when the package is intentionally absent at runtime:
 
    ```python
    if TYPE_CHECKING:
-       from optional_dependency import ProtocolType  # ty: ignore[unresolved-import]
+       from optional_dependency import ProtocolType  # ty: ignore[import-not-found]
    ```
 
    This is for an optional type-only dependency, not a missing production import.
@@ -123,7 +123,7 @@ annotation, `cast`, an overload, or a typed adapter.
    widen the annotation. A suppression turned every one of these into a silent
    contract drift; the right fix is the import plus the annotation.
 
-7. **`invalid-return-type` is the legitimate narrow case.** Some patterns
+7. **`invalid-explicit-return` is the legitimate narrow case.** Some patterns
    legitimately need the suppression when the narrow type is intentional and
    the widening would mislead callers — for example, decorator factories
    that return `Callable[..., T]` while their inner closure returns
@@ -132,7 +132,7 @@ annotation, `cast`, an overload, or a typed adapter.
    annotation (Rule #6) over suppressing with this code.
 
    ```python
-   def async_wrapper(...) -> Callable[..., T]:  # ty: ignore[invalid-return-type]
+   def async_wrapper(...) -> Callable[..., T]:  # ty: ignore[invalid-explicit-return]
        ...
    ```
 
@@ -164,18 +164,25 @@ classification and review policy, not a blanket allowance for new suppressions.
 Existing comments may be migrated during normal touch-ups, but each migration
 must be checked with ty rather than mechanically translated from mypy syntax.
 
+**Rule-name version coupling.** The codes named below are the ty >= 0.0.104
+spellings. ty 0.0.104 renamed three of them: `unresolved-attribute` became
+`missing-attribute`, `unresolved-import` became `import-not-found`, and
+`invalid-return-type` became `invalid-explicit-return`. A directive naming a
+pre-0.0.104 spelling is not a no-op — ty reports it as
+`renamed-rule-in-ignore-comment`, and ty exits non-zero on warnings alone.
+
 ## Anti-patterns
 
 - `# type: ignore` (bare), or `# type: ignore[assignment]`, `arg-type`,
   `attr-defined`, `union-attr`, `call-overload`, or another mypy/ruff code.
   Replace it with a real fix or the exact code ty reports.
 - Keeping both forms on one line, for example
-  `# type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]`.
+  `# type: ignore[attr-defined]  # ty: ignore[missing-attribute]`.
 - Letting a single file accumulate more than 5 ty suppressions without a
   forced audit. `neo4j-mcp/neo4j_mcp/client.py` is the current mass-suppression
   signal.
-- Using `unresolved-attribute` for a possibly misspelled or never-initialized
-  attribute, or `unresolved-import` for an import that production code needs.
+- Using `missing-attribute` for a possibly misspelled or never-initialized
+  attribute, or `import-not-found` for an import that production code needs.
 - Using `invalid-argument-type` to silence an unexamined library-stub mismatch,
   or placing multiple ignore directives on one argument line. The post-fix Neo4j
   comments are now attached to the flagged argument/call; preserve that placement.

@@ -422,7 +422,7 @@ def _mock_app() -> MagicMock:
 def _label_values(counter: object, label: str, **match: str) -> set[str]:
     """The values of ``label`` across the counter's samples matching ``match``."""
     values: set[str] = set()
-    for metric in counter.collect():  # ty: ignore[unresolved-attribute]
+    for metric in counter.collect():  # ty: ignore[missing-attribute]
         for sample in metric.samples:
             if all(sample.labels.get(k) == v for k, v in match.items()):
                 values.add(sample.labels.get(label, ""))

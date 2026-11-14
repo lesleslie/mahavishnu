@@ -82,7 +82,7 @@ async def _call(
 ) -> dict[str, Any]:
     """Call a registered tool and return its result payload."""
     tool = next(t for t in await server.list_tools() if t.name == name)
-    result = await tool.fn(**arguments)  # ty: ignore[unresolved-attribute]
+    result = await tool.fn(**arguments)  # ty: ignore[missing-attribute]
     return result
 
 
