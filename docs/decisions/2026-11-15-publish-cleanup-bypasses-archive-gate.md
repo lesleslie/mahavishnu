@@ -22,7 +22,9 @@ Nothing enforces that gate in the tool that actually moves files.
 
 `crackerjack`'s `documentation_cleanup` phase decides what to archive by
 **filename regex**, in
-`crackerjack/services/doc_categorizer.py:DocumentationCategorizer.get_archivable_files()`.
+`crackerjack/services/doc_categorizer.py:DocumentationCategorizer.get_archivable_files()`
+(the gated build renamed it `get_archival_candidates()`, because it now
+returns candidates rather than a verdict).
 The `implementation_reports` category matches `.*-implementation\.md`, so
 any plan whose name ends in `-implementation.md` is swept into
 `docs/plans/.archive/implementation-reports/` regardless of its frontmatter.
@@ -72,10 +74,11 @@ false`) until the tool enforces the gate itself.
   file, per rule 2 of the archive policy. A filename regex cannot
   distinguish "a progress report named `*-implementation.md`" from "a
   canonical plan named `*-implementation.md`".
-- Until that lands in crackerjack, do not re-enable `auto_cleanup_on_publish`
-  in this repo. The blast radius is small — every other document in the
-  tree is already clean of the categorizer's patterns, so the sweep has
-  nothing else to take — but what it does take is exactly the live plans.
+- Until that ships in a crackerjack release this repo installs, do not
+  re-enable `auto_cleanup_on_publish` in this repo. The blast radius is
+  small — every other document in the tree is already clean of the
+  categorizer's patterns, so the sweep has nothing else to take — but what
+  it does take is exactly the live plans.
 - Disabling the phase does not drop frontmatter validation:
   `scripts/audit_doc_frontmatter.py` gates it repo-side and is wired into
   `mahavishnu/core/code_index/git_hooks.py:51`.
@@ -100,6 +103,43 @@ a manual `crackerjack run -C` would create `__002` copies of them. The
 older plain-named copies in the same directory predate this sweep and are
 kept.
 
-**Open (cross-repo):** crackerjack should gate the categorizer on
-`status: shipped`. That is the permanent fix; the settings guard is
-interim.
+### The permanent fix has landed in crackerjack's `main` — the guard stays
+
+Crackerjack's `main` now gates the cleanup on the document's declared
+lifecycle, at a single choke point: a document carrying YAML frontmatter
+is archived only when its `status:` is `shipped`. Measured against this
+repo's tree, through the real cleanup entry point
+(`DocumentationCleanup._detect_archivable_files()`):
+
+| crackerjack | archivable candidates |
+|---|---|
+| the package installed in this checkout's venv (0.94.0, from PyPI) | **2** — both OTel substrate plans |
+| the gated build | **0** — both protected |
+
+That is the whole point of the gate: the two files that were lost five times
+are exactly the two the filename sweep takes, and the gate takes neither.
+
+**The guard is still load-bearing.** This repo consumes crackerjack from
+PyPI (`crackerjack>=0.89.2`), and neither the version this repo's
+`uv.lock` resolves (0.93.0) nor the one its venv has installed (0.94.0)
+carries a gate. The merge into crackerjack's `main` changed the tool's
+source, not the artifact this repo runs. Re-enabling
+`auto_cleanup_on_publish` before the gated package is published and
+installed would re-arm the exact failure this record describes — on the
+next publish, silently.
+
+**Remaining steps, in order:**
+
+1. Push crackerjack's `main` — the gate merge is local-only, and a
+   publish has to come from a `main` that is actually pushed.
+2. Publish crackerjack — from `main`, which is the branch carrying the
+   gate, not from the feature branch (the publish stage is the
+   operator's).
+3. Bump this repo's `crackerjack` pin and re-lock.
+4. Re-measure — `_detect_archivable_files()` on this repo must return 0.
+5. Then drop the `auto_cleanup_on_publish: false` guard from
+   `settings/crackerjack.yaml` and mark this record superseded.
+
+Until step 5 lands, the guard stays. The permanent fix lives in the tool;
+the interim guard covers the gap between the tool's source and the package
+this repo installs.
