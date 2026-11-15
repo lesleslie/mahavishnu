@@ -21,13 +21,31 @@ class TestMahavishnuPool:
 
     @pytest.fixture
     def pool_config(self):
-        """Create a test PoolConfig."""
+        """Create a test PoolConfig.
+
+        ``terminal-shell`` is a *persistent* SHELL worker: the pool
+        pre-spawns ``min_workers`` sessions at ``start()`` and hands each
+        task to one of them. That is the model this file exercises --
+        "start spawns min workers", "execute_task selects first available
+        worker", "metrics report 2 active workers".
+
+        ``terminal-claude`` is a *one-shot* SHELL worker (the registry
+        explains why: ``-p`` print mode makes the CLI read the prompt from
+        the command line and exit). A one-shot pool pre-spawns nothing and
+        submits a session per task, so none of the assertions below hold
+        for it. The one-shot contract has its own coverage in
+        ``tests/unit/pools/test_mahavishnu_pool_coverage.py``.
+
+        Both types are ``RuntimeKind.SHELL``, so the task-shape adapter
+        (``_adapt_task_for_worker``) behaves identically for either -- the
+        only difference the fixture exercises is the pre-spawned model.
+        """
         return PoolConfig(
             name="test-pool",
             pool_type="mahavishnu",
             min_workers=2,
             max_workers=5,
-            worker_type="terminal-claude",
+            worker_type="terminal-shell",
         )
 
     def _create_mock_worker_manager(self):
