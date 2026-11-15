@@ -721,7 +721,14 @@ class OverviewScreen(VerticalScroll):
         yield Label("", id="overview-timestamp", classes="dim-label")
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         data = await fetch_system_overview()
@@ -759,7 +766,14 @@ class SweepScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         data = await fetch_sweep_history()
@@ -793,7 +807,14 @@ class RoutingScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         data = await fetch_routing_stats()
@@ -845,7 +866,14 @@ class AlertsScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         alerts = await fetch_active_alerts()
@@ -882,7 +910,14 @@ class ReviewsScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         drafts = await fetch_skill_drafts()
@@ -938,7 +973,14 @@ class SessionScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         data = await fetch_session_summary()
@@ -967,7 +1009,14 @@ class RecoveryScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         data = await fetch_recovery_summary()
@@ -1004,7 +1053,14 @@ class ApprovalsScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         approvals = await fetch_pending_approvals()
@@ -1079,7 +1135,14 @@ class FilesScreen(VerticalScroll):
         yield diffs
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         file_views = await fetch_file_views()
@@ -1133,7 +1196,14 @@ class EventStreamScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         events = await fetch_event_activity()
@@ -1168,7 +1238,14 @@ class AgnoScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         activity = await fetch_agno_activity()
@@ -1212,7 +1289,14 @@ class TraceScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         data = await fetch_correlation_trace()
@@ -1270,7 +1354,14 @@ class BodaiComponentScreen(VerticalScroll):
         yield table
 
     def on_mount(self) -> None:
-        self.run_worker(self._fetch(), exclusive=True)
+        # Defer past compose(). The fetch worker queries widgets that
+        # ``compose()`` yields, and a worker started here can resume before
+        # those children are mounted -- the query then raises NoMatches and
+        # the worker dies. ``call_after_refresh`` runs the callback after
+        # the screen has been refreshed, by which point the composed
+        # children exist. The lambda defers creating the coroutine too, so
+        # a screen that never refreshes leaves no un-awaited coroutine.
+        self.call_after_refresh(lambda: self.run_worker(self._fetch(), exclusive=True))
 
     async def _fetch(self) -> None:
         data = await _fetch_health(self._base_url)

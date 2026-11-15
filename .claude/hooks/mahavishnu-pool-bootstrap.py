@@ -73,7 +73,9 @@ def _invoke_bootstrap() -> dict[str, object] | None:
             session_id = init_session(client, mcp_url)
             if session_id is None:
                 return None
-            result = call_tool(client, mcp_url, "pool_bootstrap", session_id, {})
+            result = call_tool(
+                client, mcp_url, "mahavishnu_pool_bootstrap", session_id, {}
+            )
     except (
         Exception  # noqa: BLE001  # hook handler — broad catch is the documented contract
     ) as exc:

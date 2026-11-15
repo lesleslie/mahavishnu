@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Guard the Bodai fleet's MCP tool surface.
 
+# Implements: REQ-MCPTD-007
+
 Implements Phase 4 of ``docs/plans/2026-11-07-mcp-tool-disambiguation.md``.
 The plan's own framing is the reason this exists: *the next duplicate
 fails the build instead of waiting to be found.*

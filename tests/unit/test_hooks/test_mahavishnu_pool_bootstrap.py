@@ -70,18 +70,30 @@ def test_invoke_bootstrap_sends_jsonrpc_envelope(
 
     class _FakeResponse:
         status_code = 200
+        headers = {"mcp-session-id": "sess-1"}
+
+        def __init__(self, payload: dict[str, object]) -> None:
+            self._payload = payload
+            self.text = json.dumps(payload)
 
         def json(self) -> dict[str, object]:
-            return {
-                "jsonrpc": "2.0",
-                "id": str(uuid.uuid4()),
-                "result": {"status": "spawned", "pool_id": "abc"},
-            }
+            return self._payload
 
     def _fake_post(self: object, url: str, **kwargs: object) -> _FakeResponse:
         captured["url"] = url
         captured["body"] = kwargs.get("json")
-        return _FakeResponse()
+        method = (kwargs.get("json") or {}).get("method")
+        if method == "initialize":
+            return _FakeResponse({"jsonrpc": "2.0", "id": "1", "result": {}})
+        return _FakeResponse(
+            {
+                "jsonrpc": "2.0",
+                "id": str(uuid.uuid4()),
+                "result": {
+                    "structuredContent": {"status": "spawned", "pool_id": "abc"}
+                },
+            }
+        )
 
     monkeypatch.setattr(httpx.Client, "post", _fake_post)
     out = mod._invoke_bootstrap()

@@ -853,12 +853,22 @@ def reset_goal_team_metrics() -> None:
     """
     _instances.clear()
 
-    # Clear Prometheus registry if available
+    # Clear Prometheus registry if available.
+    #
+    # Clear ONLY the goal-team-owned collectors. Clearing every collector
+    # (the previous behaviour) destroyed cross-portfolio counters that
+    # sibling modules registered -- including ``EVENTBRIDGE_PUBLISH_TOTAL``,
+    # which ``mahavishnu.core.events.publisher`` imports BY VALUE. Any
+    # module holding the old counter object kept incrementing an
+    # unregistered collector, so a test reading the re-imported one saw
+    # no movement. The sibling resets in ``mahavishnu/websocket/metrics.py``
+    # and ``mahavishnu/core/routing_metrics.py`` filter by prefix for the
+    # same reason.
     if PROMETHEUS_AVAILABLE:
-        # Clear all collectors from default registry
-        for collector in list(REGISTRY._collector_to_names.keys()):
-            REGISTRY.unregister(collector)
-        logger.info("Cleared Prometheus registry")
+        for collector, names in list(REGISTRY._collector_to_names.items()):
+            if any(n.startswith("mahavishnu_goal_team") for n in names):
+                REGISTRY.unregister(collector)
+        logger.info("Cleared goal-team Prometheus collectors")
 
     logger.info("Reset all goal team metrics instances")
 

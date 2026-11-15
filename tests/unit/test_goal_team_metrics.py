@@ -151,12 +151,29 @@ def test_start_server_getter_and_reset(monkeypatch: pytest.MonkeyPatch) -> None:
     assert c is not a
 
 
-def test_reset_clears_registry_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reset_clears_only_goal_team_collectors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The reset unregisters goal-team collectors and nothing else.
+
+    Clearing every collector (the previous behaviour) destroyed
+    cross-portfolio counters that sibling modules registered — including
+    ``EVENTBRIDGE_PUBLISH_TOTAL``, which
+    ``mahavishnu.core.events.publisher`` imports BY VALUE. The sibling
+    resets in ``mahavishnu/websocket/metrics.py`` and
+    ``mahavishnu/core/routing_metrics.py`` filter by prefix for the same
+    reason.
+    """
     unregistered: list[object] = []
+    goal_team = object()
+    sibling = object()
 
     class _Registry:
         def __init__(self) -> None:
-            self._collector_to_names = {object(): {"x"}, object(): {"y"}}
+            self._collector_to_names = {
+                goal_team: {"mahavishnu_goal_teams_created_total"},
+                sibling: {"mahavishnu_producer_writes_attempted_total"},
+            }
 
         def unregister(self, collector: object) -> None:
             unregistered.append(collector)
@@ -166,7 +183,7 @@ def test_reset_clears_registry_when_available(monkeypatch: pytest.MonkeyPatch) -
     gtm._instances["tmp"] = gtm.GoalTeamMetrics("tmp")
     gtm.reset_goal_team_metrics()
     assert gtm._instances == {}
-    assert len(unregistered) == 2
+    assert unregistered == [goal_team]
 
 
 def test_fallback_module_import_and_dummy_metrics(
