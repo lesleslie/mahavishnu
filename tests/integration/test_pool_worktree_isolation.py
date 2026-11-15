@@ -2,7 +2,7 @@
 
 Round-8 corrections applied:
 - ``tmp_git_repo`` fixture provided HERE (it does NOT exist in conftest_wireups.py).
-- ``finally`` cleanup test patches ``_repo_has_git`` so the test works on a
+- ``finally`` cleanup test patches ``_validate_repo_path`` so the test works on a
   non-git ``tmp_path``.
 - Concurrent-caller test uses ``asyncio.gather`` to fire two simultaneous
   dispatches, ensuring exactly one observes ``WorktreeLockedError``.
@@ -11,9 +11,9 @@ Round-8 corrections applied:
 from __future__ import annotations
 
 import asyncio
-import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
+import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -21,12 +21,10 @@ import pytest
 from mahavishnu.core.errors import WorktreeLockedError
 from mahavishnu.core.worktree_manager import (
     WorktreeCompletion,
-    WorktreeError,
     WorktreeInfo,
     WorktreeManager,
 )
 from mahavishnu.core.worktree_options import WorktreeOptions
-
 
 # ---------------------------------------------------------------------------
 # Round-8 FIX #1: ``tmp_git_repo`` fixture (does NOT exist in conftest_wireups).
@@ -255,8 +253,8 @@ class TestPoolRouteExecuteWorktree:
 
         with (
             patch(
-                "mahavishnu.mcp.tools.pool_tools._repo_has_git",
-                new=AsyncMock(return_value=True),
+                "mahavishnu.mcp.tools.pool_tools._validate_repo_path",
+                side_effect=lambda path: (path, "allowed"),
             ),
             patch(
                 "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
@@ -306,8 +304,8 @@ class TestPoolRouteExecuteWorktree:
 
         with (
             patch(
-                "mahavishnu.mcp.tools.pool_tools._repo_has_git",
-                new=AsyncMock(return_value=True),
+                "mahavishnu.mcp.tools.pool_tools._validate_repo_path",
+                side_effect=lambda path: (path, "allowed"),
             ),
             patch(
                 "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
@@ -395,8 +393,8 @@ class TestPoolRouteExecuteWorktree:
         opts = WorktreeOptions(isolation="worktree")
         with (
             patch(
-                "mahavishnu.mcp.tools.pool_tools._repo_has_git",
-                new=AsyncMock(return_value=True),
+                "mahavishnu.mcp.tools.pool_tools._validate_repo_path",
+                side_effect=lambda path: (path, "allowed"),
             ),
             patch.object(
                 WorktreeManager,
@@ -414,6 +412,10 @@ class TestPoolRouteExecuteWorktree:
             patch(
                 "mahavishnu.mcp.tools.pool_tools._resolve_repo_path",
                 return_value=Path("/tmp/test-repo"),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._path_is_git_repo",
+                new=AsyncMock(return_value=True),
             ),
         ):
             results = await asyncio.gather(
@@ -437,7 +439,7 @@ class TestPoolRouteExecuteWorktree:
         """The ``finally`` block in ``pool_route_execute`` MUST run
         ``cleanup_worktree`` even when the dispatch raises.
 
-        Round-8 FIX: patch ``_repo_has_git`` so the worktree path
+        Round-8 FIX: patch ``_validate_repo_path`` so the worktree path
         activates even though the test cwd is not a git repo.
         """
         pool_route_execute = _capture_pool_route_execute(MagicMock())
@@ -466,8 +468,8 @@ class TestPoolRouteExecuteWorktree:
                 new=AsyncMock(side_effect=RuntimeError("dispatch failed")),
             ),
             patch(
-                "mahavishnu.mcp.tools.pool_tools._repo_has_git",
-                new=AsyncMock(return_value=True),  # FIX round-8: activate worktree path
+                "mahavishnu.mcp.tools.pool_tools._validate_repo_path",
+                side_effect=lambda path: (path, "allowed"),  # FIX round-8: activate worktree path
             ),
         ):
             with pytest.raises(RuntimeError, match="dispatch failed"):
@@ -504,3 +506,215 @@ class TestPoolRouteExecuteWorktree:
             assert result["status"] == "success"
             assert "worktree" not in result
             mock_create.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# The discarded worktree must not leave its branch behind
+# ---------------------------------------------------------------------------
+
+
+def _feature_branches(repo: Path) -> list[str]:
+    """The ephemeral branches a worktree creation leaves in the repo."""
+    output = subprocess.run(
+        ["git", "branch", "--list", "feature/*"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return [line.strip() for line in output.splitlines() if line.strip()]
+
+
+@pytest.mark.req(["REQ-010"])
+class TestTheDiscardedWorktreeLeavesNoBranch:
+    """``git worktree add -b`` creates a branch as a side effect.
+
+    Removing the worktree does not remove that branch, so every
+    worktree-isolated dispatch leaked one branch into the repository —
+    three per merge with the concurrent ensemble review, accumulating
+    in the branch list forever. The ``on_completion="discard"`` mode
+    is the one that throws the work away, so it is the one that
+    deletes the branch; the other modes keep it, because there the
+    branch is where the work still lives.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_discarded_worktree_leaves_no_branch(
+        self, tmp_git_repo: Path
+    ) -> None:
+        pool_route_execute = _capture_pool_route_execute(MagicMock())
+        opts = WorktreeOptions(
+            isolation="worktree",
+            base_branch="main",
+            on_completion="discard",
+        )
+
+        async def _fake_dispatch(**kwargs: object) -> dict[str, object]:
+            return {"status": "success", "result": "ok"}
+
+        with (
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._validate_repo_path",
+                side_effect=lambda path: (path, "allowed"),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+                new=_fake_dispatch,
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_nickname",
+                new=AsyncMock(return_value=tmp_git_repo.name),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_path",
+                return_value=tmp_git_repo,
+            ),
+        ):
+            result = await pool_route_execute(
+                prompt=f"edit {tmp_git_repo.name}",
+                pool_selector="least_loaded",
+                worktree=opts,
+            )
+
+        assert result["status"] == "success"
+        leaked = _feature_branches(tmp_git_repo)
+        assert leaked == [], f"the discarded worktree leaked a branch: {leaked!r}"
+
+    @pytest.mark.asyncio
+    async def test_a_returned_diff_worktree_keeps_its_branch(
+        self, tmp_git_repo: Path
+    ) -> None:
+        """The other modes keep the branch — there the work still lives."""
+        pool_route_execute = _capture_pool_route_execute(MagicMock())
+        opts = WorktreeOptions(isolation="worktree", base_branch="main")
+
+        async def _fake_dispatch(**kwargs: object) -> dict[str, object]:
+            return {"status": "success", "result": "ok"}
+
+        with (
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._validate_repo_path",
+                side_effect=lambda path: (path, "allowed"),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+                new=_fake_dispatch,
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_nickname",
+                new=AsyncMock(return_value=tmp_git_repo.name),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_path",
+                return_value=tmp_git_repo,
+            ),
+        ):
+            result = await pool_route_execute(
+                prompt=f"edit {tmp_git_repo.name}",
+                pool_selector="least_loaded",
+                worktree=opts,
+            )
+
+        assert result["status"] == "success"
+        assert _feature_branches(tmp_git_repo) != []
+
+
+# ---------------------------------------------------------------------------
+# The repository the worktree is forked from
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.req(["REQ-010"])
+class TestTheIsolatedRepositoryIsNamed:
+    """The caller knows which repository the work belongs to.
+
+    The server's own heuristic reads a ``.git``-suffixed token out of
+    the dispatch prompt and resolves it against the server's working
+    directory — so it can only ever name the server's repository. A
+    merge reviewing a branch in another repository has to say which
+    repository it means; without that, the worktree is forked from
+    the wrong place and every cross-repo merge dies at stage 2.
+    """
+
+    @pytest.mark.asyncio
+    async def test_an_absolute_repository_token_names_the_repository(
+        self, tmp_git_repo: Path
+    ) -> None:
+        """The prompt names the repository the worktree is forked from.
+
+        The pool resolves the repository out of the dispatch prompt,
+        because the server's working directory is its *own* checkout:
+        a relative token can only ever name a repository beside it. A
+        merge reviewing a branch in another repository has to name it
+        in full.
+        """
+        pool_route_execute = _capture_pool_route_execute(MagicMock())
+        opts = WorktreeOptions(isolation="worktree", base_branch="main")
+
+        captured: dict[str, object] = {}
+
+        async def _fake_dispatch(**kwargs: object) -> dict[str, object]:
+            captured.update(kwargs)
+            return {"status": "success", "result": "ok"}
+
+        with (
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._validate_repo_path",
+                side_effect=lambda path: (path, "allowed"),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+                new=_fake_dispatch,
+            ),
+        ):
+            result = await pool_route_execute(
+                prompt=f"review this branch\nRepository: {tmp_git_repo}/.git",
+                pool_selector="least_loaded",
+                worktree=opts,
+            )
+
+        assert result["status"] == "success"
+        cwd = captured.get("cwd")
+        assert cwd is not None, "the dispatch received no working directory"
+        assert Path(str(cwd)).parent == tmp_git_repo / ".worktrees"
+
+    @pytest.mark.asyncio
+    async def test_an_unresolvable_repository_refuses_before_the_dispatch(
+        self, tmp_git_repo: Path
+    ) -> None:
+        """Isolation was asked for and could not be provided.
+
+        Dispatching anyway would run the worker in the shared
+        checkout — the exact harm the isolation exists to prevent —
+        and the caller would only find out afterwards, once the harm
+        was done. So the dispatch must not happen at all.
+        """
+        pool_route_execute = _capture_pool_route_execute(MagicMock())
+        opts = WorktreeOptions(isolation="worktree", base_branch="main")
+
+        dispatched = False
+
+        async def _fake_dispatch(**kwargs: object) -> dict[str, object]:
+            nonlocal dispatched
+            dispatched = True
+            return {"status": "success", "result": "ok"}
+
+        with (
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._validate_repo_path",
+                return_value=(None, "unresolved"),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+                new=_fake_dispatch,
+            ),
+        ):
+            result = await pool_route_execute(
+                prompt="review this branch",
+                pool_selector="least_loaded",
+                worktree=opts,
+            )
+
+        assert dispatched is False, "the worker ran without an isolated checkout"
+        assert result["status"] == "failed"
+        assert "isolation was requested" in result["error"]

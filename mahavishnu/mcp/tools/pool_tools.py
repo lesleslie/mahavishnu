@@ -20,6 +20,12 @@ from uuid import uuid4
 # would silently never run.
 from mcp_common.fastmcp import Context  # noqa: TC002
 
+from mahavishnu.core._producer_metrics import (
+    WORKTREE_ACTIVE_COUNT,
+    WORKTREE_CREATION_TOTAL,
+    WORKTREE_ISOLATION_REFUSALS_TOTAL,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from pathlib import Path
@@ -145,21 +151,51 @@ def set_concurrency_gate(gate: ConcurrencyGate | None) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def _resolve_repo_nickname(prompt: str) -> str:
-    """Best-effort extraction of a repo nickname from a dispatch prompt.
+#: The marker a dispatch prompt uses to name the repository a
+#: worktree-isolated run should fork from. The token is read only from
+#: a line that starts with this marker, so a prompt that merely
+#: *mentions* a repository does not silently become the isolation
+#: target.
+REPOSITORY_MARKER = "Repository:"
 
-    Returns an empty string when no nickname is detectable — callers
-    MUST treat the empty string as "unknown repo, skip worktree path".
-    The implementation is intentionally lightweight (string contains);
-    the actual repo resolution lives in the pool routing layer.
+
+async def _resolve_repo_nickname(prompt: str) -> str:
+    """Read the repository a dispatch asks to isolate, if it names one.
+
+    Returns an empty string when the prompt names no repository — the
+    caller then isolates in the server's own working directory, which
+    is what a dispatch without a named repository has always done.
+
+    The token is read from a line introduced by ``Repository:`` and
+    ending in ``.git``. It may be relative — resolved against the
+    server's working directory — or absolute, which is what a dispatch
+    about another repository has to use: the server's working directory
+    is its *own* checkout, so a relative token can only ever name a
+    repository beside it. The absolute form is checked against the
+    operator's allowed repository roots before anything is created (see
+    :func:`_validate_repo_path`).
+
+    Scanning the whole prompt for a ``.git`` token was the first
+    implementation, and it was wrong in a way that broke ordinary
+    dispatches: a prompt that merely mentions a repository — a URL in a
+    bug report, an SSH remote in a clone instruction — turned the
+    dispatch into a refusal, because the mentioned path is not the
+    repository the caller wanted isolated and is usually not a local
+    path at all. Only a line that names the repository counts now.
+
+    The original text is scanned, not a lowercased copy of it: a path
+    carries case, and a lowercased path is a different path.
     """
     if not prompt:
         return ""
-    lowered = prompt.lower()
-    for token in lowered.replace("\n", " ").split():
-        if token.startswith(("@", "/")):
+    marker = REPOSITORY_MARKER.lower()
+    for line in prompt.splitlines():
+        stripped = line.strip()
+        if not stripped.lower().startswith(marker):
             continue
-        if token.endswith(".git"):
+        value = stripped[len(REPOSITORY_MARKER) :].strip()
+        token = value.split()[0] if value else ""
+        if token.lower().endswith(".git"):
             return token[: -len(".git")]
     return ""
 
@@ -167,15 +203,43 @@ async def _resolve_repo_nickname(prompt: str) -> str:
 def _resolve_repo_path(repo_nickname: str) -> Path:
     """Resolve ``repo_nickname`` to a filesystem path.
 
-    Falls back to the current working directory joined with the nickname
-    when the nickname is empty — pool_tools tests exercise this branch
-    to keep the worktree path deterministic.
+    An absolute nickname is taken as it stands; a relative one is
+    resolved against the current working directory. An empty nickname
+    means the server's own working directory — pool_tools tests
+    exercise this branch to keep the worktree path deterministic.
     """
     from pathlib import Path as _Path
 
     if not repo_nickname:
         return _Path.cwd()
+    candidate = _Path(repo_nickname)
+    if candidate.is_absolute():
+        return candidate
     return _Path.cwd() / repo_nickname
+
+
+async def _path_is_git_repo(path: Path) -> bool:
+    """Return True when ``path`` is a git working tree.
+
+    Returns ``False`` when the path does not exist or is not a git
+    working tree.
+    """
+    if not path.exists():
+        return False
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "-C",
+            str(path),
+            "rev-parse",
+            "--is-inside-work-tree",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+    except Exception:  # subprocess probing helper — broad catch to return False on any failure  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        return False
+    return proc.returncode == 0 and stdout.decode().strip() == "true"
 
 
 async def _repo_has_git(repo_nickname: str) -> bool:
@@ -186,23 +250,157 @@ async def _repo_has_git(repo_nickname: str) -> bool:
     ``mahavishnu_pool_route_execute``.
     """
 
-    repo_path = _resolve_repo_path(repo_nickname)
-    if not repo_path.exists():
-        return False
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "git",
-            "-C",
-            str(repo_path),
-            "rev-parse",
-            "--is-inside-work-tree",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+    return await _path_is_git_repo(_resolve_repo_path(repo_nickname))
+
+
+async def _resolve_worktree_repo(prompt: str) -> tuple[Path | None, str]:
+    """Resolve the repository the isolated worktree is forked from.
+
+    The dispatch prompt names the repository, by a ``.git``-suffixed
+    token on a ``Repository:`` line: relative for the server's own
+    repository, absolute for any other one. The absolute form is
+    checked against the operator's allowed repository roots before
+    anything is created — creating a worktree of a repository is a
+    security boundary, and an unchecked path would let a dispatch name
+    anything readable on the host.
+
+    Returns ``(path, REPO_ALLOWED)`` when the repository resolved and
+    is authorized, and ``(None, reason)`` otherwise. The caller turns
+    the refusal into a message that names the reason, because the
+    operator's remedy is different for each.
+    """
+    repo_nickname = await _resolve_repo_nickname(prompt)
+    candidate = _resolve_repo_path(repo_nickname)
+    validated, reason = _validate_repo_path(candidate)
+    if validated is None:
+        return None, reason
+    if not await _path_is_git_repo(validated):
+        logger.warning(
+            "repository %s is not a git working tree",
+            validated,
+            extra={"error_id": "WORKTREE_REPO_NOT_A_GIT_REPO"},
         )
-        stdout, _ = await proc.communicate()
-    except Exception:  # subprocess probing helper — broad catch to return False on any failure  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-        return False
-    return proc.returncode == 0 and stdout.decode().strip() == "true"
+        return None, REPO_NOT_A_GIT_REPO
+    return validated, REPO_ALLOWED
+
+
+#: Why a repository was refused. The reasons are separate because the
+#: operator's remedy differs for each: a repository that does not
+#: resolve is a wrong prompt, a repository that is not authorized is a
+#: policy decision, and settings that cannot be read is a broken
+#: server. Reporting all three as "could not be resolved" sends the
+#: operator to fix the wrong thing.
+REPO_ALLOWED = "allowed"
+REPO_NOT_AUTHORIZED = "not_authorized"
+REPO_UNRESOLVED = "unresolved"
+REPO_NOT_A_GIT_REPO = "not_a_git_repo"
+REPO_SETTINGS_UNAVAILABLE = "settings_unavailable"
+
+
+def _isolation_refusal_message(reason: str) -> str:
+    """The refusal text for a repository that cannot be isolated.
+
+    The refusal is the operator's only signal — the dispatch did not
+    happen, so nothing else will tell them why — so it has to name the
+    thing to fix. A wrong prompt, a policy decision and a broken
+    server are three different problems, and one message covering all
+    three sends the operator to fix the wrong one.
+    """
+    if reason == REPO_NOT_AUTHORIZED:
+        return (
+            "worktree isolation was requested but the repository named in "
+            "the dispatch prompt is not inside an allowed repository root; "
+            "the task was not dispatched rather than run in the shared "
+            "checkout. Add the repository to 'allowed_repo_paths' in the "
+            "Mahavishnu settings, or name an allowed repository in the "
+            "dispatch prompt as '<repo path>/.git'."
+        )
+    if reason == REPO_UNRESOLVED:
+        return (
+            "worktree isolation was requested but the repository named in "
+            "the dispatch prompt does not resolve to a local path; the task "
+            "was not dispatched rather than run in the shared checkout. "
+            "Name the repository in the dispatch prompt as '<repo path>/.git'."
+        )
+    if reason == REPO_NOT_A_GIT_REPO:
+        return (
+            "worktree isolation was requested but the repository named in "
+            "the dispatch prompt is not a git working tree; the task was not "
+            "dispatched rather than run in the shared checkout. Name a git "
+            "repository in the dispatch prompt as '<repo path>/.git'."
+        )
+    if reason == REPO_SETTINGS_UNAVAILABLE:
+        return (
+            "worktree isolation was requested but the allowed repository "
+            "roots could not be read, so no repository could be trusted to "
+            "isolate; the task was not dispatched rather than run in the "
+            "shared checkout. Check the Mahavishnu settings, then retry."
+        )
+    return (
+        "worktree isolation was requested but the repository to isolate "
+        "could not be resolved; the task was not dispatched rather than run "
+        "in the shared checkout. Name the repository in the dispatch prompt "
+        "as '<repo path>/.git'."
+    )
+
+
+def _validate_repo_path(path: Path) -> tuple[Path | None, str]:
+    """Return the canonical repository path and the reason it was refused.
+
+    The pool may create a worktree of a repository, so the repository
+    it is allowed to name is a security boundary. The operator's
+    authorized roots come from the settings (``allowed_repo_paths``),
+    and the same ``PathValidator`` the rest of the codebase uses does
+    the checking: it resolves the path, rejects traversal, and refuses
+    a path outside the allowed roots.
+
+    Returns ``(path, REPO_ALLOWED)`` when the path is authorized, and
+    ``(None, reason)`` otherwise. A repository the operator has not
+    authorized is refused the same way an unresolvable one is: the
+    dispatch does not happen.
+    """
+    if get_settings is None:
+        return None, REPO_SETTINGS_UNAVAILABLE
+    try:
+        settings = get_settings()
+    except Exception:  # settings are a boundary, not a dependency
+        logger.exception(
+            "cannot read the allowed repository roots; refusing to isolate",
+            extra={"error_id": "WORKTREE_REPO_VALIDATION_UNAVAILABLE"},
+        )
+        return None, REPO_SETTINGS_UNAVAILABLE
+    allowed = list(getattr(settings, "allowed_repo_paths", []) or [])
+    if not allowed:
+        logger.warning(
+            "no allowed repository roots are configured; refusing to isolate",
+            extra={"error_id": "WORKTREE_REPO_NOT_ALLOWED"},
+        )
+        return None, REPO_NOT_AUTHORIZED
+
+    # A path that does not exist is a different failure from a path
+    # outside the allowed roots, and the validator reports both the
+    # same way. The existence check comes first so the refusal can
+    # name the real reason.
+    if not path.exists():
+        logger.warning(
+            "repository %s does not exist",
+            path,
+            extra={"error_id": "WORKTREE_REPO_UNRESOLVED"},
+        )
+        return None, REPO_UNRESOLVED
+
+    from mahavishnu.core.validators import PathValidator
+
+    validator = PathValidator(allowed_base_dirs=allowed)
+    try:
+        return validator.validate_path(path, must_exist=True), REPO_ALLOWED
+    except Exception:  # an unauthorized path is refused, not raised  # noqa: BLE001
+        logger.warning(
+            "repository %s is not inside an allowed repository root",
+            path,
+            extra={"error_id": "WORKTREE_REPO_NOT_ALLOWED"},
+        )
+        return None, REPO_NOT_AUTHORIZED
 
 
 def _get_worktree_manager() -> WorktreeManager | None:
@@ -611,11 +809,23 @@ async def _prepare_worktree(
     if wt_manager is None or WorktreeOptions is None:
         return None, None, None
 
-    repo_nickname = await _resolve_repo_nickname(prompt)
-    if not await _repo_has_git(repo_nickname):
-        return None, None, None
+    repo_path, reason = await _resolve_worktree_repo(prompt)
+    if repo_path is None:
+        # Isolation was asked for and could not be set up. Dispatching
+        # anyway would run the worker in the shared checkout — the
+        # exact harm the isolation exists to prevent — and the caller
+        # would only find out afterwards, once the damage was done.
+        # Fail before the dispatch instead, and say which thing to fix.
+        WORKTREE_ISOLATION_REFUSALS_TOTAL.labels(reason=reason).inc()
+        return (
+            None,
+            None,
+            {
+                "status": "failed",
+                "error": _isolation_refusal_message(reason),
+            },
+        )
 
-    repo_path = _resolve_repo_path(repo_nickname)
     branch = f"feature/{execution_id}-{uuid4().hex[:8]}"
     try:
         worktree_info = await wt_manager.create_worktree(
@@ -633,6 +843,7 @@ async def _prepare_worktree(
                 "worktree lock conflict",
                 extra={"error_id": "WORKTREE_LOCK_CONFLICT"},
             )
+            WORKTREE_CREATION_TOTAL.labels(result="lock_conflict").inc()
             return (
                 None,
                 None,
@@ -645,7 +856,10 @@ async def _prepare_worktree(
             "worktree creation failed",
             extra={"error_id": "WORKTREE_CREATION_FAILED"},
         )
+        WORKTREE_CREATION_TOTAL.labels(result="error").inc()
         raise
+    WORKTREE_CREATION_TOTAL.labels(result="success").inc()
+    WORKTREE_ACTIVE_COUNT.set(len(wt_manager.list_worktrees()))
     return worktree_info, repo_path, None
 
 
@@ -686,6 +900,13 @@ async def _finalize_worktree(
         )
         worktree_info = completion.info
         result["worktree"] = {
+            # Where the worker actually ran. Without it the caller
+            # cannot tell an isolated run from a shared-checkout run,
+            # and a dispatch that silently fell back to the shared
+            # checkout is indistinguishable from one that isolated.
+            "path": getattr(worktree_info, "worktree_path", None),
+            "branch": getattr(worktree_info, "branch_name", None),
+            "base_branch": getattr(worktree_info, "base_branch", None),
             "diff": worktree_info.diff,
             "merge": worktree_info.merge,
             "files_touched": list(worktree_info.files_touched),
@@ -700,6 +921,59 @@ async def _finalize_worktree(
         result["worktree"] = {"error": str(exc)}
 
 
+async def _discard_worktree_branch(
+    worktree_info: Any,
+    repo_path: Path | None,
+) -> None:
+    """Delete the ephemeral branch a discarded worktree left behind.
+
+    ``git worktree add -b`` creates a branch as a side effect of
+    creating the worktree. Removing the worktree does not remove that
+    branch, so every worktree-isolated dispatch leaked one branch.
+    Three concurrent reviewers leaked three per merge, and they
+    accumulate in the repository's branch list forever.
+
+    Only ``on_completion="discard"`` deletes the branch: that mode
+    means the work is thrown away, and the diff has already been
+    captured into the dispatch result before cleanup runs. The other
+    modes keep the branch, because there the branch is where the work
+    still lives.
+
+    A deletion failure is non-fatal: a leftover branch is untidy, not
+    dangerous, and the worktree itself is already gone.
+    """
+    branch_name = getattr(worktree_info, "branch_name", None)
+    if not branch_name or repo_path is None:
+        return
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "branch",
+            "-D",
+            str(branch_name),
+            cwd=str(repo_path),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            logger.warning(
+                "worktree branch discard failed for %s: %s",
+                branch_name,
+                stderr.decode(errors="replace").strip(),
+                extra={"error_id": "WORKTREE_BRANCH_DISCARD_FAILED"},
+            )
+        else:
+            logger.info("Discarded worktree branch %s", branch_name)
+    except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        logger.warning(
+            "worktree branch discard failed for %s: %s",
+            branch_name,
+            exc,
+            extra={"error_id": "WORKTREE_BRANCH_DISCARD_FAILED"},
+        )
+
+
 async def _cleanup_worktree(
     wt_manager: Any,
     worktree_info: Any,
@@ -711,6 +985,10 @@ async def _cleanup_worktree(
             worktree_id=worktree_info.worktree_id,
             repo_path=repo_path,
         )
+        # The gauge counts what is still on disk, so it has to come
+        # down with the worktree. A gauge that only ever climbs is a
+        # lie the on-call engineer acts on.
+        WORKTREE_ACTIVE_COUNT.set(len(wt_manager.list_worktrees()))
     except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
         logger.warning(
             "worktree cleanup failed: %s",
@@ -1426,6 +1704,20 @@ def register_pool_tools(
                         worktree_info,
                         worktree_repo_path,
                     )
+                    # ``discard`` means the work is thrown away, and the
+                    # branch the worktree creation created goes with it.
+                    # Without this, every isolated dispatch leaked a
+                    # branch into the repository.
+                    on_completion = (
+                        worktree.on_completion
+                        if worktree is not None
+                        else "return_diff"
+                    )
+                    if on_completion == "discard":
+                        await _discard_worktree_branch(
+                            worktree_info,
+                            worktree_repo_path,
+                        )
 
             if (
                 existing_event is not None

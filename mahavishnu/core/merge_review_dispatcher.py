@@ -59,6 +59,15 @@ DEFAULT_MCP_URL: str = "http://localhost:8680/mcp"
 #: was still working through the changed files, and at 1800 s the
 #: domain specialist was still working through them: it made eighty
 #: tool calls at about twenty seconds each.
+#:
+#: This is the **server-side** budget: how long the pool will let the
+#: worker run. It is not how long the caller waits. The MCP client's
+#: read timeout bounds the call itself -- a response stream that has
+#: gone quiet is cut -- so the budget the reviewer actually has is
+#: minutes, not an hour, and the review is lost rather than reported
+#: as a timeout when the transport wins the race. The prompt states
+#: the budget that is real (see ``build_review_prompt``), and this
+#: constant stays the ceiling the server enforces under it.
 REVIEW_DISPATCH_TIMEOUT: float = 3600.0
 
 #: Bound on the diff context embedded in the review prompt. A repo-wide
@@ -129,13 +138,26 @@ def collect_diff_context(branch: str, base: str, worktree_root: Path) -> str:
     return "\n\n".join(sections)
 
 
-def build_review_prompt(branch: str, base: str, worktree_root: Path) -> str:
+def build_review_prompt(
+    branch: str,
+    base: str,
+    worktree_root: Path,
+    repo_path: Path | None = None,
+) -> str:
     """Build the review prompt shared by the reviewers.
 
     The prompt carries the exact diff context and the worktree path so a
     reviewer can read the full diff itself. Without the diff context the
     reviewer has nothing to judge, which is what made the previous
     one-line prompt useless.
+
+    It also carries the **repository**: the pool forks the reviewer's
+    isolated worktree from the repository the branch belongs to, and it
+    resolves that from the prompt. Without the repository named, the
+    pool falls back to its own working directory — right for the
+    server's own repository, wrong for every other one, so a merge
+    reviewing a branch in another repository asked for a worktree of a
+    branch that does not exist there.
 
     The prompt is reviewer-agnostic: ``run_review`` hands the same prompt
     to each of the three reviewers, and the per-reviewer role is added by
@@ -146,16 +168,26 @@ def build_review_prompt(branch: str, base: str, worktree_root: Path) -> str:
         f"Review the diff on branch {branch!r} relative to {base!r}.",
         f"Worktree: {worktree_root}",
     ]
+    if repo_path is not None:
+        # The ``.git`` suffix is the token the pool reads to resolve
+        # the repository; the path itself is the repository's root.
+        parts.append(f"Repository: {repo_path}/.git")
     if diff_context:
         parts.append(diff_context)
-        parts.append(
-            "Read the full diff from the worktree path above before judging it."
-        )
+        parts.append("Read the diff from the worktree path above before judging it.")
     else:
         parts.append(
             "The diff could not be summarized automatically; read it from "
             "the worktree path above."
         )
+    parts.append(
+        "You have about three minutes of wall clock. The dispatch that runs "
+        "you is cut off after that -- not by a timeout you can see, but by "
+        "the transport the reply travels over -- and a reviewer that is cut "
+        "off has no verdict at all, so its review counts for nothing. Work "
+        "from the summary above and read only the files you need to judge, "
+        "not every changed file."
+    )
     parts.append(
         "You are reviewing, not implementing: do not modify any file in "
         "the worktree. Do not run pytest, crackerjack, tox, nox, or any "
@@ -165,19 +197,24 @@ def build_review_prompt(branch: str, base: str, worktree_root: Path) -> str:
         "confirming, read the code that shows it."
     )
     parts.append(
-        "Your shell's working directory is not the worktree -- it is the "
-        "main checkout, which does not have this branch in it. Read every "
-        "path under the worktree path above, spelled out in full; a "
-        "relative path reads code that is not under review."
+        "Your shell starts in an isolated checkout of the branch under "
+        "review -- a different directory holding the same commit, so the "
+        "code you are looking at is the code under review. Read files by "
+        "the absolute path under the worktree path above; a relative path "
+        "reads whatever your shell happens to be in."
     )
     parts.append(
         "Reply with the verdict block and nothing outside it: "
         "<verdict>decision: pass|needs_adjustment|block note: ...</verdict>, "
         "with the note under 600 characters and the findings that justify "
-        "it inside the note. The pool captures the last screenful of your "
-        "reply, so prose in front of the block arrives with the block's "
-        "opening tag cut off -- and a verdict that arrives truncated "
-        "cannot be read."
+        "it inside the note.\n\n"
+        "Your whole reply has a budget of about 1,500 characters: the pool "
+        "captures the last screenful of your terminal and drops everything "
+        "before it. So the block must be the LAST thing you write -- put "
+        "any analysis before it, never after it -- and the reply as a "
+        "whole must fit. A reply that runs past the screen arrives with "
+        "its beginning cut off, and a verdict that arrives truncated "
+        "cannot be read, so the review would be lost rather than counted."
     )
     return "\n\n".join(parts)
 
@@ -211,6 +248,156 @@ def _extract_reply_text(payload: Any) -> str:
         return json.dumps(payload, default=str)
 
     return str(payload)
+
+
+#: The pool the review pipeline provisions. The name is the spawn
+#: tool's idempotency key, so a second merge reuses the pool instead of
+#: accumulating one pool per merge.
+REVIEW_POOL_NAME = "merge-review"
+
+#: The worker type that can start a session in a named directory. Only
+#: a one-shot SHELL worker can: its session begins when the task
+#: arrives, so the task's ``cwd`` can point at the worktree. A
+#: pre-spawned worker is already running, in the directory it was
+#: launched in.
+REVIEW_POOL_WORKER_TYPE = "terminal-claude"
+
+
+def _pools_from_listing(payload: Any) -> list[dict[str, Any]]:
+    """Read the pool list out of a ``mahavishnu_pool_list`` result."""
+    text = _extract_reply_text(payload)
+    try:
+        parsed = json.loads(text)
+    except TypeError, ValueError:
+        return []
+    if isinstance(parsed, Mapping):
+        for key in ("result", "pools", "output"):
+            nested = parsed.get(key)
+            if isinstance(nested, list):
+                return [p for p in nested if isinstance(p, Mapping)]
+        return []
+    if isinstance(parsed, list):
+        return [p for p in parsed if isinstance(p, Mapping)]
+    return []
+
+
+def _spawn_outcome(payload: Any) -> tuple[str, str]:
+    """Read the ``(status, error)`` a pool spawn reported.
+
+    The spawn tool never raises: it returns ``{"status": "failed",
+    "error": "..."}`` so a failure reaches the caller as data. A
+    provisioning step that ignored that data would report success for
+    a pool that was never created.
+    """
+    text = _extract_reply_text(payload)
+    try:
+        parsed = json.loads(text)
+    except TypeError, ValueError:
+        return "unknown", text
+    if not isinstance(parsed, Mapping):
+        return "unknown", text
+    status = parsed.get("status")
+    error = parsed.get("error")
+    return (
+        status if isinstance(status, str) else "unknown",
+        error if isinstance(error, str) else "",
+    )
+
+
+async def _review_pool_registered(client: Any) -> bool:
+    """Whether the pool the reviews run in is registered.
+
+    The check is by name, not by capability: the capability belongs to
+    the server, which is where the routing happens, and a client that
+    had to read the server's capability field would break against a
+    server that does not carry it. The server refuses a task it cannot
+    honour, and its refusal names the pool — so the operator learns
+    that the pool of that name is the wrong kind from the error that
+    actually stopped the dispatch.
+    """
+    listed = await client.call_tool("mahavishnu_pool_list", {})
+    return any(
+        pool.get("name") == REVIEW_POOL_NAME for pool in _pools_from_listing(listed)
+    )
+
+
+async def ensure_review_pool_async(
+    mcp_url: str | None = None,
+    timeout: float = 60.0,
+) -> bool:
+    """Make sure a pool that can isolate a review exists.
+
+    Worktree isolation needs a pool whose worker session *starts* in
+    the worktree, and only a one-shot SHELL worker does that. The
+    auto-spawned pool is a pre-spawned shepherd pool, which cannot —
+    so a merge that asked for isolation found no pool able to honour
+    it, and every merge stopped at stage 2 with a message telling the
+    operator to spawn one by hand. The capability constraint was
+    enforced; nothing supplied the capability it required.
+
+    This supplies it: the review pool is created once, keyed by name,
+    and reused by every later merge.
+
+    Returns ``True`` when the review pool is registered — and it says
+    so only after *looking*, because the spawn tool reports failure as
+    a ``status`` rather than by raising. A spawn that failed leaves
+    the merge without the pool it needs, and saying "provisioned" then
+    would replace the real reason with a misleading one.
+
+    A failure here is logged rather than raised: the dispatch that
+    follows produces the real error, and a provisioning failure that
+    masked it would replace the reason with a misleading one.
+    """
+    url = mcp_url or resolve_mcp_url()
+    from mcp_common.clients.common_mcp_client import CommonMCPClient
+
+    try:
+        async with CommonMCPClient(base_url=url, timeout=timeout) as client:
+            if await _review_pool_registered(client):
+                return True
+            spawned = await client.call_tool(
+                "mahavishnu_pool_spawn",
+                {
+                    "name": REVIEW_POOL_NAME,
+                    "pool_type": "mahavishnu",
+                    "worker_type": REVIEW_POOL_WORKER_TYPE,
+                    "min_workers": 1,
+                    "max_workers": 10,
+                },
+            )
+            status, error = _spawn_outcome(spawned)
+            if status not in {"spawned", "exists"}:
+                logger.warning(
+                    "the %r pool could not be provisioned (status=%r): %s",
+                    REVIEW_POOL_NAME,
+                    status,
+                    error,
+                )
+                return False
+            logger.info(
+                "provisioned the %r pool for worktree-isolated reviews",
+                REVIEW_POOL_NAME,
+            )
+            return True
+    except (Exception, asyncio.CancelledError) as exc:  # noqa: BLE001
+        logger.warning("could not provision a worktree-capable review pool: %r", exc)
+        return False
+
+
+def ensure_review_pool(
+    mcp_url: str | None = None,
+    timeout: float = 60.0,
+) -> bool:
+    """Synchronous wrapper around :func:`ensure_review_pool_async`.
+
+    The merge pipeline is synchronous end to end, so the async core is
+    bridged here the same way :func:`dispatch_review` bridges its own.
+    """
+    try:
+        return asyncio.run(ensure_review_pool_async(mcp_url=mcp_url, timeout=timeout))
+    except (Exception, asyncio.CancelledError) as exc:  # noqa: BLE001
+        logger.warning("could not provision a worktree-capable review pool: %r", exc)
+        return False
 
 
 #: A worker runs Claude Code with ``--output-format stream-json``, so
@@ -341,14 +528,94 @@ def _pool_failure_message(payload: Any) -> str | None:
     return message
 
 
+def _worktree_context(payload: Any) -> dict[str, Any] | None:
+    """The worktree context the pool attached to a dispatch result.
+
+    ``mahavishnu_pool_route_execute`` adds a ``worktree`` key to its
+    result when isolation engaged, carrying the checkout the worker
+    ran in. Returns ``None`` when the key is absent — which means the
+    dispatch did **not** run in an isolated checkout.
+
+    The context is **server-attested**, not agent-controlled. It is a
+    sibling key of the envelope, set by the pool tool's own code path
+    after ``create_worktree`` succeeds; the reviewer's reply travels
+    in the separate ``output`` field, where a string cannot forge a
+    sibling key of the envelope it sits in. The signal is that the key
+    exists and is non-empty.
+    """
+    if isinstance(payload, str):
+        stripped = payload.strip()
+        if not stripped.startswith("{"):
+            return None
+        try:
+            payload = json.loads(stripped)
+        except TypeError, ValueError:
+            return None
+    if not isinstance(payload, Mapping):
+        return None
+    context = payload.get("worktree")
+    if isinstance(context, Mapping):
+        return dict(context)
+    nested = payload.get("result")
+    if isinstance(nested, Mapping):
+        inner = nested.get("worktree")
+        if isinstance(inner, Mapping):
+            return dict(inner)
+    return None
+
+
+#: A reply carrying this prefix is not a reviewer's answer: the
+#: dispatch itself failed, so there is no verdict to read. It is
+#: retried exactly like an unreadable verdict — a server that could
+#: not be reached is worth one more try — and the reason travels with
+#: it so the operator is told what actually happened.
+DISPATCH_FAILED_PREFIX = "the dispatch failed: "
+
+
+def _isolation_failure(agent: str) -> str:
+    """The fail-loud reply for a dispatch that did not isolate.
+
+    Isolation was requested and the pool did not provide it: either
+    the worktree could not be created, or the pool type cannot honour
+    a working directory. Both leave the reviewer in the shared
+    checkout — the exact situation where a reviewer ran ``git stash``
+    in another session's work on 2026-11-06. The review is abandoned
+    rather than run unsafely.
+    """
+    return (
+        f"<verdict>decision: block note: worktree isolation was "
+        f"requested for {agent!r} but the dispatch ran without an "
+        f"isolated checkout, so the reviewer would have shared the "
+        f"repository's main checkout with every other session. The "
+        f"review is not safe to run in that state.</verdict>"
+    )
+
+
 async def dispatch_review_async(
     agent: str,
     prompt: str,
     *,
     mcp_url: str | None = None,
     timeout: float = REVIEW_DISPATCH_TIMEOUT,
+    worktree: dict[str, Any] | None = None,
 ) -> str:
     """Dispatch one review to the pool and return the reviewer's reply.
+
+    ``worktree`` is passed straight through to
+    ``mahavishnu_pool_route_execute``. The merge pipeline sets it to
+    ``{"isolation": "worktree", "on_completion": "discard"}`` because the
+    three reviewers now run **concurrently**: the repo's rule for
+    parallel agents on one repo is worktree isolation, and a reviewer
+    that ran ``git stash`` in a shared checkout on 2026-11-06 disturbed
+    another reviewer's work. With isolation, each reviewer gets its own
+    checkout and its edits are discarded.
+
+    When isolation is requested it is **verified**, not assumed: the
+    pool skips the worktree silently when it cannot resolve the
+    repository, and a pool type that cannot honour a working directory
+    refuses the task outright. A dispatch that came back without an
+    isolated checkout returns an explicit block verdict rather than a
+    review that ran in the shared checkout.
 
     Fail-loud: any transport, protocol, or server error returns a reply
     that carries no parseable verdict, which the caller's verdict parser
@@ -365,13 +632,16 @@ async def dispatch_review_async(
     )
     try:
         async with CommonMCPClient(base_url=url, timeout=timeout) as client:
+            tool_args: dict[str, Any] = {
+                "prompt": routed_prompt,
+                "pool_selector": "least_loaded",
+                "timeout": timeout,
+            }
+            if worktree is not None:
+                tool_args["worktree"] = worktree
             call_result = await client.call_tool(
                 "mahavishnu_pool_route_execute",
-                {
-                    "prompt": routed_prompt,
-                    "pool_selector": "least_loaded",
-                    "timeout": timeout,
-                },
+                tool_args,
             )
     except (Exception, asyncio.CancelledError) as exc:  # noqa: BLE001
         # Fail-loud: a blocked merge, not a crash. ``CancelledError`` is
@@ -386,6 +656,20 @@ async def dispatch_review_async(
         )
 
     reply = _extract_reply_text(call_result)
+
+    # A reply that carries no pool envelope is not a result at all: the
+    # server raised, and the error text came back instead of the
+    # dispatch's answer. That happens when the dispatch could not be
+    # made at all — no pool can honour the directory the task named, or
+    # the repository to isolate could not be resolved. Reporting that
+    # as an isolation failure would replace the real reason with a
+    # misleading one, so it is reported as what it is.
+    if _pool_envelope(reply) is None:
+        detail = reply.strip() or "the dispatch returned no pool envelope"
+        return (
+            f"<verdict>decision: block note: {DISPATCH_FAILED_PREFIX}{detail}</verdict>"
+        )
+
     failure = _pool_failure_message(reply)
     if failure is not None:
         # The pool reached a worker but the run did not finish. Turn it
@@ -396,6 +680,42 @@ async def dispatch_review_async(
         # output -- which is where a cut-off review ends up -- has no
         # status at all.
         return f"<verdict>decision: block note: {failure}</verdict>"
+
+    # Isolation was requested. Confirm it engaged rather than assuming
+    # it: the pool skips the worktree silently when it cannot resolve
+    # the repository, and a pool type that cannot honour a working
+    # directory refuses the task outright. Either way the reviewer
+    # would be sharing the main checkout with every other session,
+    # which is the situation the isolation exists to prevent.
+    #
+    # The signal is the ``worktree`` key the pool sets after it
+    # created a worktree. It is server-attested — a sibling key of the
+    # envelope, not part of the reviewer's reply — and it is absent
+    # exactly when no worktree was created. The check is fail-closed:
+    # a missing key *and* an empty context both mean the isolation
+    # cannot be shown to have happened, and the review is abandoned.
+    #
+    # The path is logged when the pool reports it. A server that
+    # predates that field still verifies on the key's presence, which
+    # is what keeps this working across a rolling upgrade.
+    if worktree is not None:
+        context = _worktree_context(reply)
+        if not context:
+            logger.warning(
+                "review dispatch for agent %r ran without an isolated "
+                "worktree; the review is abandoned",
+                agent,
+            )
+            return _isolation_failure(agent)
+        logger.info(
+            "review dispatch for agent %r ran in isolated worktree %s "
+            "(branch %s, based on %s)",
+            agent,
+            context.get("path"),
+            context.get("branch"),
+            context.get("base_branch"),
+        )
+
     return _extract_agent_text(_parse_pool_result(reply))
 
 
@@ -405,6 +725,7 @@ def dispatch_review(
     *,
     mcp_url: str | None = None,
     timeout: float = REVIEW_DISPATCH_TIMEOUT,
+    worktree: dict[str, Any] | None = None,
 ) -> str:
     """Synchronous wrapper around :func:`dispatch_review_async`.
 
@@ -419,7 +740,13 @@ def dispatch_review(
     """
     try:
         return asyncio.run(
-            dispatch_review_async(agent, prompt, mcp_url=mcp_url, timeout=timeout)
+            dispatch_review_async(
+                agent,
+                prompt,
+                mcp_url=mcp_url,
+                timeout=timeout,
+                worktree=worktree,
+            )
         )
     except (Exception, asyncio.CancelledError) as exc:  # noqa: BLE001
         logger.warning("review dispatch failed for agent %r: %r", agent, exc)

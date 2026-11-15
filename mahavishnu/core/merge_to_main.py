@@ -10,14 +10,17 @@ Implements: REQ-004, REQ-009, REQ-013, REQ-014
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 import fcntl
+from functools import partial
 import json
 from pathlib import Path
 import random
 import re
 import subprocess
 import sys
+import time
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -210,6 +213,30 @@ def parse_verdict(agent_text: str) -> dict[str, str]:
 
 # In-repo generalist pool per spec §4.4 (verified 2026-10-03). The random
 # generalist is drawn uniformly from this list; each invocation re-shuffles.
+#: A review that produced no answer is worth one more try: the
+#: reply could not be read, or the dispatch itself failed. Both mean
+#: the review did not happen, which is not the same as a reviewer
+#: that had no opinion.
+_RETRYABLE_NOTE_PREFIXES: tuple[str, ...] = ("malformed",)
+
+
+def _is_retryable(note: str) -> bool:
+    """Whether a reply that produced this note should be retried.
+
+    Two ways a review fails to arrive: the reply could not be read
+    (``malformed: ...``), or the dispatch itself failed
+    (``the dispatch failed: ...``). Both are retried once, because a
+    server that could not be reached and a reviewer whose reply was
+    cut off are both worth another try — and a second failure still
+    blocks, so the gate is not weakened.
+    """
+    from .merge_review_dispatcher import DISPATCH_FAILED_PREFIX
+
+    return note.startswith(_RETRYABLE_NOTE_PREFIXES) or note.startswith(
+        DISPATCH_FAILED_PREFIX
+    )
+
+
 AGENT_POOL: list[str] = [
     "performance-review-specialist",
     "test-coverage-review-specialist",
@@ -236,10 +263,19 @@ def run_review(
 ) -> list[dict[str, str]]:
     """Run a 3-agent ensemble review (REQ-004, spec §4.4).
 
-    Dispatches the prompt to three reviewers in order:
+    Dispatches the prompt to three reviewers:
       1. ``domain_specialist`` (worker-supplied; default ``python-pro`` upstream)
       2. ``_CODE_QUALITY_AGENT`` (constant)
       3. one random pick from ``generalist_pool`` (default ``AGENT_POOL``)
+
+    The three run **concurrently**. Each dispatch is an I/O-bound MCP
+    round trip to a Mahavishnu worker pool, so dispatching them one
+    after another paid the slowest reviewer's latency three times over —
+    a twenty-minute review that was really three concurrent reviews.
+    Threading keeps the synchronous dispatcher signature and the
+    per-agent retry loop exactly as they were, and each dispatch already
+    owns its event loop (``asyncio.run`` per call), so the three do not
+    share one.
 
     Each agent's response is parsed via ``parse_verdict``; missing or
     malformed verdict blocks already fail-loud to ``decision='block'``.
@@ -253,18 +289,20 @@ def run_review(
     dropped connection.
 
     Returns a list of three ``{'agent', 'decision', 'note'}`` dicts in
-    dispatch order. The caller is responsible for applying the verdict
+    dispatch order, each carrying the wall-clock seconds that reviewer's
+    dispatch took. The caller is responsible for applying the verdict
     rule order (any block → block; ≥2 pass → proceed; else iterate).
     """
     generalist = random.choice(generalist_pool)
     selected = (domain_specialist, _CODE_QUALITY_AGENT, generalist)
-    results: list[dict[str, str]] = []
-    for agent in selected:
+
+    def _review_one(agent: str) -> dict[str, str]:
         verdict = parse_verdict("")
+        started = time.monotonic()
         for attempt in range(1, max(1, attempts) + 1):
             response = dispatcher(agent, prompt)
             verdict = parse_verdict(response)
-            if not verdict["note"].startswith("malformed"):
+            if not _is_retryable(verdict["note"]):
                 break
             if attempt < attempts:
                 print(
@@ -272,14 +310,19 @@ def run_review(
                     f"verdict ({verdict['note']}); retrying",
                     file=sys.stderr,
                 )
-        results.append(
-            {
-                "agent": agent,
-                "decision": verdict["decision"],
-                "note": verdict["note"],
-            }
-        )
-    return results
+        elapsed = time.monotonic() - started
+        return {
+            "agent": agent,
+            "decision": verdict["decision"],
+            "note": verdict["note"],
+            "elapsed_s": f"{elapsed:.1f}",
+        }
+
+    with ThreadPoolExecutor(max_workers=len(selected)) as executor:
+        futures = [executor.submit(_review_one, agent) for agent in selected]
+        # Collected in submission order, so the verdict list is in
+        # dispatch order however the reviews interleave.
+        return [future.result() for future in futures]
 
 
 def _format_verdicts(verdicts: list[dict[str, str]]) -> str:
@@ -292,7 +335,11 @@ def _format_verdicts(verdicts: list[dict[str, str]]) -> str:
     """
     lines = ["[merge_to_main] stage 2 ensemble review:"]
     for verdict in verdicts:
-        lines.append(f"  {verdict['agent']}: {verdict['decision']} - {verdict['note']}")
+        elapsed = verdict.get("elapsed_s")
+        suffix = f" ({elapsed}s)" if elapsed else ""
+        lines.append(
+            f"  {verdict['agent']}: {verdict['decision']} - {verdict['note']}{suffix}"
+        )
     return "\n".join(lines)
 
 
@@ -485,7 +532,12 @@ def run_squash_merge(
     # ``git merge --squash`` adds my files to that index, and Step 5's
     # bare ``git commit`` would then sweep everything in (the
     # ``feedback-squash-merge-pollutes-parent-index`` failure mode).
-    # Stash first, pop after the commit lands.
+    # Stash first, restore after the commit lands.
+    #
+    # The stash stack is shared by every worktree and every session in
+    # the repo, so the entry this pipeline creates has to be restored by
+    # identity, not by position. ``stash_ref`` holds the unique message
+    # that identifies the entry.
     stash_ref: str | None = None
     status_result = subprocess.run(  # nosec B603 — argv-list, no shell
         ["git", "status", "--porcelain"],
@@ -510,10 +562,24 @@ def run_squash_merge(
             text=True,
             check=False,
         )
-        if stash_result.returncode == 0:
+        # ``git stash push`` exits 0 when it had nothing to save -- it
+        # prints "No local changes to save" and creates no entry. A
+        # dirty tree can still be unstaged away by the time the push
+        # runs (another session committing under us), so the exit code
+        # alone does not say an entry exists. Recording a stash that was
+        # never created is what made the restore step pop whatever
+        # happened to be on top of the shared stack.
+        stash_created = "No local changes to save" not in stash_result.stdout
+        if stash_result.returncode == 0 and stash_created:
             stash_ref = stash_message
             print(
                 f"[merge_to_main] captured main_checkout dirty tree: {stash_message}",
+                file=sys.stderr,
+            )
+        elif stash_result.returncode == 0:
+            print(
+                "[merge_to_main] main_checkout had no changes to stash "
+                "after all; nothing captured",
                 file=sys.stderr,
             )
         else:
@@ -576,8 +642,54 @@ def run_squash_merge(
     return (commit_result.returncode, commit_result.stderr)
 
 
+def _find_stash_entry(main_checkout: Path, message: str) -> tuple[str, str] | None:
+    """Find the stash entry carrying ``message``.
+
+    Returns ``(sha, ref)`` — the entry's commit SHA and its
+    ``stash@{n}`` selector — or ``None`` when no entry matches.
+
+    The stash stack is shared by every worktree and every session in
+    the repo, so an entry is only addressable by identity. ``%gd``
+    gives the positional selector git's ``drop`` wants, ``%H`` the
+    SHA that ``apply`` accepts, and ``%gs`` the reflog subject the
+    message is a substring of (``stash push -m`` prefixes the subject
+    with ``On <branch>:``).
+    """
+    list_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "stash", "list", "--format=%gd %H %gs"],
+        cwd=main_checkout,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if list_result.returncode != 0:
+        return None
+    for line in list_result.stdout.splitlines():
+        parts = line.split(" ", 2)
+        if len(parts) != 3:
+            continue
+        ref, sha, subject = parts
+        if message in subject:
+            return sha, ref
+    return None
+
+
 def _pop_stash_safely(main_checkout: Path, stash_ref: str) -> None:
-    """Pop a stash and log (don't crash) if pop has conflicts.
+    """Restore the stash entry this pipeline created, and drop it.
+
+    ``stash_ref`` is the unique message the entry was created with.
+    The entry is restored by **identity**, never by position: a bare
+    ``git stash pop`` pops whatever is on top of the shared stack,
+    which — if another session stashed in between — is not this
+    pipeline's entry at all. Popping it would land another session's
+    work in the main checkout and leave this pipeline's own entry
+    buried. That is the failure the ``stash_ref`` parameter was
+    always meant to prevent.
+
+    So the entry is resolved to its SHA, applied by SHA (git accepts
+    any stash commit here), and then dropped by a ``stash@{n}`` that
+    is re-resolved and re-verified against the SHA immediately
+    beforehand — ``drop`` takes no SHA, only a position.
 
     Stash pop conflicts are common when the user's prior dirty tree
     state overlapped with files modified by the squash-merge (e.g.
@@ -588,27 +700,81 @@ def _pop_stash_safely(main_checkout: Path, stash_ref: str) -> None:
     work overlapped with the new commit — the commit has already
     landed on ``main`` and is the source of truth going forward.
     """
-    pop_result = subprocess.run(  # nosec B603 — argv-list, no shell
-        ["git", "stash", "pop"],
+    entry = _find_stash_entry(main_checkout, stash_ref)
+    if entry is None:
+        print(
+            f"[merge_to_main] warning: no stash entry matching "
+            f"{stash_ref!r} was found; the main_checkout's pre-merge "
+            f"state was not restored automatically. Inspect the stack "
+            f"with `git stash list`.",
+            file=sys.stderr,
+        )
+        return
+    sha, _ref = entry
+
+    apply_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "stash", "apply", sha],
         cwd=main_checkout,
         capture_output=True,
         text=True,
         check=False,
     )
-    if pop_result.returncode == 0:
+    if apply_result.returncode != 0:
         print(
-            "[merge_to_main] restored main_checkout dirty tree from stash",
+            f"[merge_to_main] warning: restoring the main_checkout "
+            f"dirty tree from stash {sha[:12]} failed. The user's "
+            f"pre-existing dirty tree state is still in the stash; "
+            f"manual resolution required. git stash apply stdout: "
+            f"{apply_result.stdout!r}; stderr: {apply_result.stderr!r}",
             file=sys.stderr,
         )
-    else:
+        return
+
+    # The apply succeeded. Drop the entry — but only the entry just
+    # applied. ``drop`` accepts a positional ``stash@{n}``, so the
+    # position is re-resolved from the message and re-checked against
+    # the SHA before it is used. A push by another session appends and
+    # leaves positions alone; only a concurrent pop could shift one,
+    # and that is a single-command window rather than the whole merge.
+    drop_target = _find_stash_entry(main_checkout, stash_ref)
+    if drop_target is None:
         print(
-            f"[merge_to_main] warning: git stash pop failed in "
-            f"main_checkout. The user's pre-existing dirty tree "
-            f"state is in the stash; manual resolution required. "
-            f"git stash pop stdout: {pop_result.stdout!r}; "
-            f"git stash pop stderr: {pop_result.stderr!r}",
+            f"[merge_to_main] restored the main_checkout dirty tree, but "
+            f"the stash entry {sha[:12]} could not be re-resolved for "
+            f"removal; it is still in the stack. Drop it with "
+            f"`git stash drop` once you have confirmed it is the right "
+            f"entry.",
             file=sys.stderr,
         )
+        return
+    drop_sha, drop_ref = drop_target
+    if drop_sha != sha:
+        print(
+            f"[merge_to_main] warning: the stash position {drop_ref!r} "
+            f"holds {drop_sha[:12]} rather than the entry that was "
+            f"applied ({sha[:12]}); leaving the stack untouched.",
+            file=sys.stderr,
+        )
+        return
+    drop_result = subprocess.run(  # nosec B603 — argv-list, no shell
+        ["git", "stash", "drop", drop_ref],
+        cwd=main_checkout,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if drop_result.returncode != 0:
+        print(
+            f"[merge_to_main] restored the main_checkout dirty tree, but "
+            f"dropping the stash entry {drop_ref} failed; it is still in "
+            f"the stack. git stash drop stderr: {drop_result.stderr!r}",
+            file=sys.stderr,
+        )
+        return
+    print(
+        "[merge_to_main] restored main_checkout dirty tree from stash",
+        file=sys.stderr,
+    )
 
 
 def run_push(base_ref: str = "main") -> tuple[int, str]:
@@ -1032,13 +1198,24 @@ def _write_sticky_failure_marker(
         pass  # best-effort; dev log still captures the state
 
 
-def _default_dispatcher(agent: str, prompt: str) -> str:
+def _default_dispatcher(
+    agent: str,
+    prompt: str,
+    *,
+    worktree: dict[str, Any] | None = None,
+) -> str:
     """Default stage-2 dispatcher.
 
     Routes the prompt to ``agent`` via the Mahavishnu pool — the
     ``pool_route_execute`` MCP tool — and returns the reviewer's reply
     text. The routing itself lives in
     :mod:`mahavishnu.core.merge_review_dispatcher`.
+
+    ``worktree`` is forwarded to the pool tool. The pipeline sets it
+    because the three reviewers run concurrently: the repo's rule for
+    parallel agents on one repo is worktree isolation, and a reviewer
+    that ran ``git stash`` in the shared checkout on 2026-11-06
+    disturbed another reviewer's work.
 
     Fail-loud: a dispatch failure returns a reply carrying no parseable
     verdict, which :func:`parse_verdict` maps to ``decision="block"``. A
@@ -1047,7 +1224,7 @@ def _default_dispatcher(agent: str, prompt: str) -> str:
     """
     from .merge_review_dispatcher import dispatch_review
 
-    return dispatch_review(agent, prompt)
+    return dispatch_review(agent, prompt, worktree=worktree)
 
 
 def _run_cleanup(worktree_root: Path) -> tuple[int, str]:
@@ -1200,14 +1377,75 @@ def run_pipeline(
 
     # Stage 2 — ensemble review (REQ-004).
     if review_mode != "none":
-        from .merge_review_dispatcher import build_review_prompt
+        from .merge_review_dispatcher import build_review_prompt, ensure_review_pool
 
-        prompt = build_review_prompt(branch, base, worktree_root)
+        # The repository the branch belongs to. The pool forks the
+        # reviewer's isolated worktree from it, and it resolves that
+        # from the prompt — without it the pool falls back to its own
+        # working directory, so a merge reviewing a branch in another
+        # repository asked for a worktree of a branch that does not
+        # exist there. The main checkout is the right answer: it is
+        # the same repository the branch belongs to, and it is inside
+        # the operator's allowed repository roots (a worktree under
+        # ``~/.local/state`` is not).
+        repo_root = _find_main_checkout_path(worktree_root)
+        if repo_root is None:
+            print(
+                "[merge_to_main] cannot locate the main checkout of "
+                f"{worktree_root}; the review needs the repository the "
+                "branch belongs to",
+                file=sys.stderr,
+            )
+            # Stage 2 could not run, so this is a review failure. The
+            # rebase-conflict code means "stage 4 could not land the
+            # merge", and reporting that here sent the operator
+            # looking for a conflict that does not exist.
+            return EXIT_REVIEW_FAILURE
+
+        prompt = build_review_prompt(branch, base, worktree_root, repo_root)
+        # The three reviewers run concurrently, so each gets its own
+        # checkout: the repo's rule for parallel agents on one repo is
+        # worktree isolation, and a reviewer that ran ``git stash`` in
+        # the shared checkout on 2026-11-06 disturbed another
+        # reviewer's work. ``on_completion="discard"`` — a reviewer
+        # must not merge anything back.
+        #
+        # ``base_branch`` is the branch **under review**, not the merge
+        # base. The worktree is created from that ref, so a checkout of
+        # the merge base would put the reviewer on the trunk's code and
+        # not on the code it was asked to judge — the reviewer would
+        # have to read the diff by absolute path to see the change at
+        # all. The branch is created *from* the reviewed ref (the
+        # worktree manager makes a new branch), so the reviewed branch
+        # staying checked out elsewhere is not a conflict.
+        worktree_options: dict[str, Any] = {
+            "isolation": "worktree",
+            "base_branch": branch,
+            "on_completion": "discard",
+        }
+        # Isolation needs a pool whose worker session starts in the
+        # worktree, and only a one-shot SHELL worker does that. The
+        # auto-spawned pool is a pre-spawned shepherd pool, which
+        # cannot, so without this the dispatch below finds no pool
+        # able to honour the directory and every merge stops at stage
+        # 2 with an instruction to spawn one by hand. The pipeline
+        # knows it needs the capability, so the pipeline provides it.
+        if not ensure_review_pool():
+            # The dispatch would fail with the router's generic
+            # message, and the remedy that message names is a no-op
+            # when a pool of that name already exists in the wrong
+            # form. Say what actually happened instead.
+            print(
+                "[merge_to_main] could not provision a pool that can "
+                "isolate the review; the review was not dispatched",
+                file=sys.stderr,
+            )
+            return EXIT_REVIEW_FAILURE
         verdicts = run_review(
             domain_specialist="python-pro",
             generalist_pool=AGENT_POOL,
             prompt=prompt,
-            dispatcher=_default_dispatcher,
+            dispatcher=partial(_default_dispatcher, worktree=worktree_options),
         )
         verdict = aggregate_verdicts(verdicts)
         print(_format_verdicts(verdicts), file=sys.stderr)

@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from monitoring.metrics import pool_workers_active
 
+from ..core._producer_metrics import WORKTREE_ISOLATION_REFUSALS_TOTAL
 from ..core.errors import RateLimitError
 from ..mcp.protocols.message_bus import MessageBus
 from ._registry import get_pool_factory, list_pool_types
@@ -26,6 +27,8 @@ from .peer_routing import DEFAULT_ACL_PROVIDER, PeerRouteResolver
 from .routing_fitness import RoutingFitnessReader
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .base import BasePool
 from .base import PoolConfig
 
@@ -528,6 +531,68 @@ class PoolManager:
 
         return None
 
+    async def _get_pool_for_working_directory(
+        self,
+        pool_affinity: str | None,
+        caller_pool_allowlist: set[str] | None,
+        selector: PoolSelector,
+    ) -> str | None:
+        """Pick a pool that can honour a named directory, inside the caller's allowlist.
+
+        Only pools that report ``supports_working_directory`` qualify.
+        Among those, the least-loaded wins — the same rule the
+        ordinary selector applies, restricted to the pools that can
+        actually honour the task.
+
+        ADR-014: the caller's allowlist is the authorization boundary,
+        so the capable candidates are the pools *inside* it. A task
+        that names a directory must not escape the set the caller
+        declared — the same rule the affinity fallback follows.
+
+        An explicitly selected pool is honoured when it is both
+        allowed and capable. When the selector named a pool that is
+        not capable, the selection falls back to the allowlist's
+        capable set rather than quietly running the task somewhere
+        else.
+
+        Returns ``None`` when no registered pool qualifies, which the
+        caller turns into an actionable error rather than a dispatch
+        that quietly runs in the wrong directory.
+        """
+        if selector == PoolSelector.AFFINITY and pool_affinity:
+            # An allowlist of None means the caller declared no
+            # restriction, and ADR-014 gives affinity nothing to
+            # check -- the same reason ``_route_by_affinity`` refuses
+            # to honour affinity in that case.
+            if caller_pool_allowlist is not None:
+                if self._is_pool_in_allowlist(
+                    pool_affinity, caller_pool_allowlist
+                ) and self._pool_supports_working_directory(pool_affinity):
+                    return pool_affinity
+
+        if caller_pool_allowlist is not None:
+            candidates = [
+                pool_id for pool_id in self._pools if pool_id in caller_pool_allowlist
+            ]
+        else:
+            candidates = list(self._pools.keys())
+
+        capable = [
+            (pool_id, self._pools[pool_id])
+            for pool_id in candidates
+            if self._pool_supports_working_directory(pool_id)
+        ]
+        if not capable:
+            return None
+        return min(capable, key=lambda item: len(item[1]._workers))[0]
+
+    def _pool_supports_working_directory(self, pool_id: str) -> bool:
+        """Whether a registered pool can honour a named directory."""
+        pool = self._pools.get(pool_id)
+        if pool is None:
+            return False
+        return bool(getattr(pool, "supports_working_directory", False))
+
     async def _select_least_loaded_in_allowlist(
         self,
         allowlist: set[str],
@@ -787,7 +852,43 @@ class PoolManager:
         task_class = task.get("task_class") or task.get("category", "")
         selector = await self._apply_fitness_aware_routing(selector, task_class)
 
-        if selector == PoolSelector.AFFINITY:
+        # A task that names a working directory must only be routed to
+        # a pool that can honour it. Worktree isolation depends on the
+        # worker actually running inside the worktree; a pool whose
+        # workers are already running elsewhere cannot start there, and
+        # handing it the task anyway means the isolation protected
+        # nothing — silently, because the caller has no way to tell
+        # from the result.
+        requires_working_directory = bool(task.get("cwd"))
+        if requires_working_directory:
+            pool_id = await self._get_pool_for_working_directory(
+                pool_affinity,
+                caller_pool_allowlist,
+                selector,
+            )
+            if pool_id is None:
+                # A task that names a working directory cannot be
+                # routed anywhere safe, so the dispatch fails here.
+                # The refusal is counted: "every merge stopped at
+                # stage 2" is otherwise a silence, and the runbook
+                # that says how to detect it had no signal to cite.
+                WORKTREE_ISOLATION_REFUSALS_TOTAL.labels(reason="no_capable_pool").inc()
+                raise RuntimeError(
+                    "No pool available that can honour task['cwd']. A task "
+                    "naming a working directory needs a pool whose worker "
+                    "sessions start in that directory -- a one-shot SHELL "
+                    "worker pool -- and that the caller is authorized to "
+                    "use. Spawn one (for example "
+                    "mahavishnu pool spawn --type mahavishnu --name "
+                    "merge-review --worker-type terminal-claude) and retry. "
+                    "The spawn is idempotent by name: if a pool of that "
+                    "name already exists in a form that cannot honour a "
+                    "directory, the spawn reports 'exists' and changes "
+                    "nothing, so close that pool first "
+                    "(mahavishnu pool close <pool-id>)."
+                )
+            reason = "working_directory_capable"
+        elif selector == PoolSelector.AFFINITY:
             pool_id, reason = await self._route_by_affinity(
                 pool_affinity, caller_pool_allowlist
             )
@@ -820,16 +921,60 @@ class PoolManager:
         #   inner_selector -> queueing_re_rank -> GPU_override -> execute
         # For single-candidate selectors (AFFINITY / PEER_AFFINITY)
         # the queueing signal only advises; pool_id is unchanged.
+        #
+        # A task that names a working directory must land in a pool
+        # that can honour one, and the re-ranks are pool *choices*:
+        # the queueing re-rank picks the pool with the lowest predicted
+        # wait across the candidate set, and the GPU override prefers a
+        # runpod pool. Either can move the decision to a pool that
+        # ignores the directory (SessionBuddyPool, RunPodPool and
+        # PiPool all do), which puts the worker in the shared checkout
+        # -- the 2026-11-06 failure -- while the isolation check still
+        # passes, because the worktree key says a worktree was
+        # *created*, not where the worker ran. So the capability
+        # constraint travels with the re-rank: it narrows the
+        # candidate set rather than being checked once and forgotten.
+        capability_filter: Callable[[str], bool] | None = None
+        if requires_working_directory:
+            capability_filter = self._pool_supports_working_directory
+
         (
             pool_id,
             predicted_wait_s,
             effective_selector_str,
             _queueing_affected,
-        ) = self._apply_queueing_penalty(pool_id, selector, caller_pool_allowlist)
+        ) = self._apply_queueing_penalty(
+            pool_id,
+            selector,
+            caller_pool_allowlist,
+            capability_filter,
+        )
 
         pool_id, reason = self._apply_gpu_category_override(
-            pool_id, reason, task, caller_pool_allowlist
+            pool_id,
+            reason,
+            task,
+            caller_pool_allowlist,
+            capability_filter,
         )
+
+        # Fail closed: whatever the re-ranks decided, a task that named
+        # a directory must still land in a pool that can honour it.
+        # A pool type that silently ignores the directory would run the
+        # worker somewhere the caller did not ask for, with no sign
+        # that it did -- so this refuses instead.
+        if requires_working_directory and not self._pool_supports_working_directory(
+            pool_id
+        ):
+            WORKTREE_ISOLATION_REFUSALS_TOTAL.labels(
+                reason="rerank_moved_the_task"
+            ).inc()
+            raise RuntimeError(
+                f"Routing a task that names a working directory selected "
+                f"pool {pool_id!r}, which cannot honour task['cwd']. The "
+                f"re-ranking step must not move a directory-bearing task "
+                f"off a pool that can honour one."
+            )
 
         # REQ-MATH-008: record the inter-arrival time for this routing
         # call so the per-pool observation buffer can fit an
@@ -928,6 +1073,7 @@ class PoolManager:
         inner_pool_id: str,
         selector: PoolSelector,
         caller_pool_allowlist: set[str] | None = None,
+        pool_filter: Callable[[str], bool] | None = None,
     ) -> tuple[str, float | None, str, bool]:
         """Re-rank candidates by M/M/c predicted wait time.
 
@@ -987,6 +1133,13 @@ class PoolManager:
         pool_ids = list(self._pools.keys())
         if caller_pool_allowlist is not None:
             pool_ids = [pid for pid in pool_ids if pid in caller_pool_allowlist]
+        # The caller's own constraints narrow the candidate set; a
+        # re-rank may only choose among the pools the inner selector
+        # was allowed to choose. A task that names a working directory
+        # passes a capability filter here: re-ranking must not move it
+        # to a pool that ignores the directory.
+        if pool_filter is not None:
+            pool_ids = [pid for pid in pool_ids if pool_filter(pid)]
 
         # Multi-candidate selectors: rank by predicted_wait across
         # the candidate set that has a fitted model.
@@ -1284,6 +1437,7 @@ class PoolManager:
         reason: str,
         task: dict[str, Any],
         caller_pool_allowlist: set[str] | None = None,
+        pool_filter: Callable[[str], bool] | None = None,
     ) -> tuple[str, str]:
         """Prefer a RunPod pool for GPU-bound task categories; no-op otherwise.
 
@@ -1292,12 +1446,25 @@ class PoolManager:
         the GPU override is skipped — the caller has not declared
         authorization to dispatch into the RunPod pool. Symmetric to
         the S-4 fix in ``_apply_queueing_penalty``.
+
+        ``pool_filter`` narrows the override the same way: the
+        override is a *preference*, so a runpod pool that fails the
+        filter is simply not preferred. A task that names a working
+        directory passes a capability filter, and ``RunPodPool`` has
+        no working-directory concept — so the override yields to the
+        isolation guarantee rather than routing the task to a pool
+        that would run the worker somewhere else.
         """
         task_category = task.get("category", "")
         if task_category not in {"vision", "ml_inference", "embedding"}:
             return pool_id, reason
         runpod_pool_id = next(
-            (pid for pid, p in self._pools.items() if p.config.pool_type == "runpod"),
+            (
+                pid
+                for pid, p in self._pools.items()
+                if p.config.pool_type == "runpod"
+                and (pool_filter is None or pool_filter(pid))
+            ),
             None,
         )
         if runpod_pool_id and (
@@ -1528,6 +1695,15 @@ class PoolManager:
                 "workers": len(pool._workers),
                 "min_workers": pool.config.min_workers,
                 "max_workers": pool.config.max_workers,
+                # Whether this pool can start a session in a named
+                # directory. A caller that needs worktree isolation
+                # cannot tell from the rest of this dict: a pool that
+                # reports True is the only kind that can honour
+                # ``task["cwd"]``, and picking the wrong one puts the
+                # worker in the shared checkout.
+                "supports_working_directory": bool(
+                    getattr(pool, "supports_working_directory", False)
+                ),
             }
 
         # Execute all status checks concurrently

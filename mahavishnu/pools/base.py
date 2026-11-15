@@ -131,6 +131,26 @@ class BasePool(ABC):
         self._status = PoolStatus.PENDING
         self._workers: dict[str, Any] = {}
 
+    @property
+    def supports_working_directory(self) -> bool:
+        """Whether this pool can start a task in a specific directory.
+
+        A task carrying ``task["cwd"]`` names the directory its worker
+        session must start in. A pool whose workers are already running
+        somewhere else cannot honour that: the session exists, and it
+        exists where it was launched. Worktree isolation depends on the
+        worker actually running inside the worktree — a pool that
+        ignores the directory protects nothing, and the caller cannot
+        tell that it ignored it.
+
+        Routing uses this to keep a task that names a directory away
+        from pools that cannot honour it, instead of handing the task
+        over and finding out afterwards.
+
+        The default is ``False``: a pool must opt in by saying it can.
+        """
+        return False
+
     @abstractmethod
     async def start(self) -> str:
         """Initialize pool and spawn initial workers.

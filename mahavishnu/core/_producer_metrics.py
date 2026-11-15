@@ -58,10 +58,24 @@ WORKTREE_CREATION_TOTAL: Counter = Counter(
 
 WORKTREE_ACTIVE_COUNT: Gauge = Gauge(
     "worktree_active_count",
-    "Currently active worktrees.",
+    "Worktrees this server currently holds.",
 )
 
-WORKTREE_DISK_BYTES: Gauge = Gauge(
-    "worktree_disk_bytes",
-    "Total disk bytes consumed by active worktrees.",
+WORKTREE_ISOLATION_REFUSALS_TOTAL: Counter = Counter(
+    "worktree_isolation_refusals_total",
+    "Worktree-isolated dispatches refused before the worker ran, labeled by reason.",
+    labelnames=["reason"],
+    # The reason labels are the ``REPO_*`` constants in
+    # ``mahavishnu/mcp/tools/pool_tools.py``, plus ``no_capable_pool``
+    # from the pool router. They are spelled here rather than imported
+    # because this module is the one the pool tools import; the
+    # spelling is pinned by a test that reads these lines, so a
+    # dashboard query written from this comment keeps matching.
+    #
+    #     unresolved            -- the named repository is not a local path
+    #     not_authorized        -- outside the operator's allowed roots
+    #     not_a_git_repo        -- the path is not a git working tree
+    #     settings_unavailable  -- the allowed roots could not be read
+    #     no_capable_pool       -- no pool can start a session in a directory
+    #     rerank_moved_the_task -- the re-ranking picked a pool that cannot
 )

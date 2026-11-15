@@ -17,6 +17,14 @@ log_level: INFO
 # Repository manifest path (falls back to settings/repos.yaml if not found)
 repos_path: settings/ecosystem.yaml
 
+# Base paths a worktree-isolated dispatch may isolate a repository from.
+# Creating a worktree of a repository and running a worker in it makes the
+# repository a privilege, so the set is explicit and checked with the same
+# PathValidator the rest of the codebase uses. The server's own checkout
+# is the default; this adds the sibling repositories the fleet merges.
+allowed_repo_paths:
+  - /Users/les/Projects
+
 # Concurrency settings
 max_concurrent_workflows: 10
 

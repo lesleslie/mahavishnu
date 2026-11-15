@@ -3053,8 +3053,14 @@ class MahavishnuSettings(BaseSettings):
         description="Path to ecosystem.yaml configuration file",
     )
     allowed_repo_paths: list[str] = Field(
-        default_factory=lambda: ["/Users/les/Projects"],
-        description="List of allowed base paths for repositories (for security)",
+        default_factory=lambda: [str(Path.cwd())],
+        description=(
+            "List of allowed base paths for repositories (for security). "
+            "The default is the server's own checkout, which is the one "
+            "repository every install has and the operator necessarily "
+            "authorized. A dispatch that isolates a branch in another "
+            "repository needs that repository here too."
+        ),
     )
 
     # Concurrency configuration

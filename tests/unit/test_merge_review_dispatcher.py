@@ -16,6 +16,7 @@ as a block.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Self
 
@@ -29,6 +30,7 @@ from mahavishnu.core.merge_review_dispatcher import (
     _pool_failure_message,
     build_review_prompt,
     dispatch_review_async,
+    ensure_review_pool_async,
 )
 from mahavishnu.core.merge_to_main import parse_verdict
 
@@ -219,8 +221,8 @@ class TestTheDispatchReportsWhyItFailed:
 
 
 class TestTheReviewBudget:
-    def test_the_budget_outlasts_a_real_review(self) -> None:
-        """A review of a multi-commit diff takes minutes, not seconds.
+    def test_the_server_side_budget_outlasts_a_real_review(self) -> None:
+        """The ceiling the pool enforces has to carry a full review.
 
         At 300 s the worker was cut off mid-review; the pool reported a
         timeout with a partial pane, the reply carried no verdict, and
@@ -232,6 +234,34 @@ class TestTheReviewBudget:
         at about twenty seconds each.
         """
         assert REVIEW_DISPATCH_TIMEOUT >= 3600
+
+    def test_the_prompt_states_the_budget_the_reviewer_really_has(self) -> None:
+        """The reviewer is told the budget that is real.
+
+        The server-side budget above is not what the caller waits for:
+        the MCP client's read timeout cuts a response stream that has
+        gone quiet, so the call ends after minutes rather than an
+        hour, and the reviewer is torn down mid-review. A reviewer
+        that is cut off has no verdict at all, so the prompt has to
+        state the budget that binds -- otherwise it spends the time
+        reading every changed file and the review is lost rather than
+        counted.
+
+        Pinning the constant instead would not catch this: the
+        constant can be an hour while the transport allows three
+        minutes.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+
+        assert "about three minutes" in prompt
+        assert "read only the files you need" in prompt
+
+    def test_the_budget_is_stated_even_without_a_diff_summary(self) -> None:
+        """The budget is a property of the dispatch, not the summary."""
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+
+        assert "could not be summarized automatically" in prompt
+        assert "about three minutes" in prompt
 
 
 class TestTheReviewPrompt:
@@ -289,12 +319,329 @@ class TestTheReviewPrompt:
         assert "worktree path above" in prompt
 
     def test_the_prompt_pins_every_path_to_the_worktree(self) -> None:
-        """The reviewer's shell starts in the wrong tree.
+        """The reviewer's shell starts in an isolated checkout.
 
-        The pool launches the worker's CLI in the server's working
-        directory -- the main checkout -- not in the branch's worktree.
-        A reviewer that reads a relative path would review the code
-        that does not have the branch in it.
+        The pool launches the worker's CLI in the worktree it created
+        for this review -- a different directory holding the same
+        commit as the branch under review. It is no longer the server's
+        working directory, so the prompt says so: a reviewer that
+        reads a relative path would review whatever its shell happens
+        to be in, so every path is spelled out.
         """
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
-        assert "working directory is not the worktree" in prompt
+        assert "isolated checkout of the branch under review" in prompt
+        assert "absolute path under the worktree path above" in prompt
+
+    def test_the_prompt_requires_the_verdict_block_last(self) -> None:
+        """The capture keeps the tail, so the block has to be at the end.
+
+        The pool captures the last screenful of the worker's terminal
+        and drops everything before it. A verdict block written before
+        the cut is simply gone, so the block must be the last thing
+        the reviewer writes.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+        assert "LAST thing you write" in prompt
+        assert "1,500 characters" in prompt
+
+
+class TestTheRepositoryTokenRoundTrips:
+    """The prompt's repository token and the pool's reader agree.
+
+    The cross-repo fix is a seam between two sides: the merge pipeline
+    writes the repository into the prompt, and the pool reads it back
+    out to know where to fork the reviewer's worktree. A test on
+    either side alone would pass while the seam was broken — and the
+    seam is the whole fix. A merge reviewing a branch in another
+    repository asked for a worktree of a branch that did not exist
+    there, and every cross-repo merge died at stage 2.
+    """
+
+    @pytest.mark.asyncio
+    async def test_the_token_the_prompt_writes_is_the_one_the_pool_reads(
+        self, tmp_path: Path
+    ) -> None:
+        from mahavishnu.mcp.tools.pool_tools import _resolve_repo_nickname
+
+        repo = tmp_path / "crackerjack"
+        repo.mkdir()
+
+        prompt = build_review_prompt("feat/x", "main", tmp_path, repo)
+
+        assert f"Repository: {repo}/.git" in prompt
+        nickname = await _resolve_repo_nickname(prompt)
+        assert Path(nickname) == repo
+
+    def test_without_a_repository_the_prompt_names_none(self) -> None:
+        """The prompt says nothing about a repository it was not told."""
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+
+        assert "Repository:" not in prompt
+
+
+class _PoolClient:
+    """A ``CommonMCPClient`` stand-in that answers the pool tools.
+
+    It models what the server does: a successful spawn puts the new
+    pool in the listing, so the next list call reports a pool that
+    can honour a working directory.
+    """
+
+    def __init__(self, pools: list[dict[str, Any]]) -> None:
+        self._pools = pools
+        #: Every tool call made, so a test can assert what the
+        #: dispatcher asked the server for.
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return None
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> _CallResult:
+        self.calls.append((name, arguments))
+        if name == "mahavishnu_pool_list":
+            return _CallResult(json.dumps(self._pools))
+        self._pools.append(
+            {
+                "name": arguments.get("name"),
+                "supports_working_directory": True,
+            }
+        )
+        return _CallResult(json.dumps({"status": "spawned"}))
+
+
+class TestTheReviewPoolIsProvisioned:
+    """Isolation needs a pool that can honour a working directory.
+
+    Only a one-shot SHELL worker starts its session when the task
+    arrives, so it can start *in* the worktree. The auto-spawned pool
+    is a pre-spawned shepherd pool, which cannot — so a merge that
+    asked for isolation found no pool able to honour the directory and
+    every merge stopped at stage 2 with an instruction to spawn one by
+    hand. The pipeline knows it needs the capability, so the pipeline
+    provides it.
+    """
+
+    @pytest.mark.asyncio
+    async def test_the_review_pool_is_spawned_when_it_is_not_registered(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        client = _PoolClient([{"name": "default", "supports_working_directory": False}])
+        monkeypatch.setattr(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient",
+            lambda **kwargs: client,
+        )
+
+        assert await ensure_review_pool_async() is True
+
+        spawns = [c for c in client.calls if c[0] == "mahavishnu_pool_spawn"]
+        assert len(spawns) == 1
+        _name, args = spawns[0]
+        assert args["name"] == "merge-review"
+        assert args["worker_type"] == "terminal-claude"
+
+    @pytest.mark.asyncio
+    async def test_a_registered_review_pool_is_left_alone(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The pool is created once, not once per merge."""
+        client = _PoolClient([{"name": "merge-review", "supports_working_directory": True}])
+        monkeypatch.setattr(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient",
+            lambda **kwargs: client,
+        )
+
+        assert await ensure_review_pool_async() is True
+
+        assert [c for c in client.calls if c[0] == "mahavishnu_pool_spawn"] == []
+
+    @pytest.mark.asyncio
+    async def test_the_check_is_by_name_not_by_capability(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The client does not need the server to report the capability.
+
+        The capability belongs to the server, which is where the
+        routing happens. A client that had to read a capability field
+        would break against a server that does not carry it, and the
+        merge would stop at stage 2 for a reason that has nothing to
+        do with the code being merged.
+        """
+        client = _PoolClient([{"name": "merge-review"}])
+        monkeypatch.setattr(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient",
+            lambda **kwargs: client,
+        )
+
+        assert await ensure_review_pool_async() is True
+
+        assert [c for c in client.calls if c[0] == "mahavishnu_pool_spawn"] == []
+
+    @pytest.mark.asyncio
+    async def test_a_server_that_cannot_be_reached_does_not_raise(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The dispatch that follows reports the real error.
+
+        A provisioning failure that masked the dispatch's own error
+        would replace the reason with a misleading one.
+        """
+
+        class _Broken:
+            async def __aenter__(self) -> Self:
+                raise RuntimeError("the server is down")
+
+            async def __aexit__(self, *exc_info: object) -> None:
+                return None
+
+            async def call_tool(self, name: str, arguments: dict[str, Any]) -> _CallResult:
+                raise RuntimeError("the server is down")
+
+        monkeypatch.setattr(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient",
+            lambda **kwargs: _Broken(),
+        )
+
+        assert await ensure_review_pool_async() is False
+
+
+class TestTheProvisioningOutcomeIsChecked:
+    """The spawn tool reports failure as data, not as an exception.
+
+    ``mahavishnu_pool_spawn`` never raises: it returns
+    ``{"status": "failed", "error": "..."}``. A provisioning step that
+    ignored that data would report success for a pool that was never
+    created, and the operator would then be told to spawn one by hand
+    — advice the pipeline had already tried.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_failed_spawn_is_not_reported_as_provisioned(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """The spawn's own reason survives, and success is not claimed.
+
+        The failure the operator has to act on is the spawn's, not a
+        later, vaguer one. Logging "provisioned" for a pool that was
+        never created would send them looking in the wrong place.
+        """
+
+        class _FailingSpawn(_PoolClient):
+            async def call_tool(
+                self, name: str, arguments: dict[str, Any]
+            ) -> _CallResult:
+                self.calls.append((name, arguments))
+                if name == "mahavishnu_pool_list":
+                    return _CallResult(json.dumps([]))
+                return _CallResult(
+                    json.dumps({"status": "failed", "error": "no capacity"})
+                )
+
+        client = _FailingSpawn([])
+        monkeypatch.setattr(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient",
+            lambda **kwargs: client,
+        )
+
+        with caplog.at_level(logging.WARNING):
+            assert await ensure_review_pool_async() is False
+
+        assert "no capacity" in caplog.text, "the spawn's reason was lost"
+        assert "provisioned the" not in caplog.text, "success was claimed"
+
+    @pytest.mark.asyncio
+    async def test_a_pool_of_that_name_in_the_wrong_form_is_the_servers_refusal(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The client cannot tell, so the server refuses and says so.
+
+        A pool named ``merge-review`` that cannot honour a directory
+        is a real state — the operator may have created it as a
+        shepherd pool. The client cannot see that, but the server can,
+        and the server's refusal names the pool and the remedy. What
+        the client must not do is report success it did not verify.
+        """
+
+        class _IncapablePool(_PoolClient):
+            async def call_tool(
+                self, name: str, arguments: dict[str, Any]
+            ) -> _CallResult:
+                self.calls.append((name, arguments))
+                if name == "mahavishnu_pool_list":
+                    return _CallResult(
+                        json.dumps(
+                            [{"name": "merge-review", "supports_working_directory": False}]
+                        )
+                    )
+                return _CallResult(json.dumps({"status": "exists"}))
+
+        client = _IncapablePool([])
+        monkeypatch.setattr(
+            "mcp_common.clients.common_mcp_client.CommonMCPClient",
+            lambda **kwargs: client,
+        )
+
+        # The pool exists, so the client has nothing to provision and
+        # does not claim to have provisioned anything.
+        assert await ensure_review_pool_async() is True
+
+
+class TestTheRefusalLabelsAreTheOnesTheCodeEmits:
+    """A dashboard query written from the docs has to match.
+
+    The counter's reason labels are documented in the metrics module
+    and cited by the runbook. They drifted from the code once already:
+    the comment said ``repo_unresolved`` and ``repo_not_authorized``
+    while the code emitted ``unresolved`` and ``not_authorized``, so
+    two of the five labels never appeared on the counter the runbook
+    told the on-call engineer to read.
+    """
+
+    def test_the_documented_labels_are_the_emitted_ones(self) -> None:
+        from mahavishnu.core import _producer_metrics
+        from mahavishnu.mcp.tools.pool_tools import (
+            REPO_NOT_A_GIT_REPO,
+            REPO_NOT_AUTHORIZED,
+            REPO_SETTINGS_UNAVAILABLE,
+            REPO_UNRESOLVED,
+        )
+
+        emitted = {
+            REPO_UNRESOLVED,
+            REPO_NOT_AUTHORIZED,
+            REPO_NOT_A_GIT_REPO,
+            REPO_SETTINGS_UNAVAILABLE,
+            "no_capable_pool",
+        }
+        source = Path(_producer_metrics.__file__).read_text()
+
+        for label in emitted:
+            assert f"#     {label} " in source, (
+                f"{label!r} is emitted but not documented in the metrics module"
+            )
+
+    def test_the_runbook_cites_only_emitted_labels(self) -> None:
+        from pathlib import Path as _Path
+
+        from mahavishnu.mcp.tools.pool_tools import (
+            REPO_NOT_A_GIT_REPO,
+            REPO_NOT_AUTHORIZED,
+            REPO_SETTINGS_UNAVAILABLE,
+            REPO_UNRESOLVED,
+        )
+
+        emitted = {
+            REPO_UNRESOLVED,
+            REPO_NOT_AUTHORIZED,
+            REPO_NOT_A_GIT_REPO,
+            REPO_SETTINGS_UNAVAILABLE,
+            "no_capable_pool",
+        }
+        runbook = _Path("docs/runbooks/WORKTREE_ISOLATION.md").read_text()
+
+        for label in emitted:
+            assert f'reason="{label}"' in runbook, (
+                f"{label!r} is emitted but the runbook does not cite it"
+            )

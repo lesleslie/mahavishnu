@@ -4,8 +4,10 @@ agent-review workflow (REQ-004, REQ-013, REQ-014).
 
 from __future__ import annotations
 
+from pathlib import Path
 import subprocess
-from typing import TYPE_CHECKING
+import threading
+from typing import Any
 
 import pytest
 
@@ -15,6 +17,7 @@ from mahavishnu.core.merge_to_main import (
     CRACKERJACK_INVOCATION,
     EXIT_CRACKERJACK_FAILURE,
     EXIT_OK,
+    EXIT_REBASE_CONFLICT,
     EXIT_REVIEW_FAILURE,
     REVIEW_STATE_SCHEMA_VERSION,
     _check_pending_commit_eligibility,
@@ -32,9 +35,6 @@ from mahavishnu.core.merge_to_main import (
     run_squash_merge,
     write_review_state,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def test_review_state_round_trip(tmp_path: Path) -> None:
@@ -157,19 +157,104 @@ def test_run_review_three_agents_in_dispatch_order(
 
     results = run_review(domain, pool, "review this diff", dispatcher)
 
-    assert calls == [
-        (domain, "review this diff"),
-        (_CODE_QUALITY_AGENT, "review this diff"),
-        (pool[1], "review this diff"),
+    # The three dispatches now run concurrently, so the order in which
+    # they *start* is not defined. The results are still in dispatch
+    # order -- that is the contract the caller aggregates on.
+    assert sorted(agent for agent, _ in calls) == sorted(
+        [domain, _CODE_QUALITY_AGENT, pool[1]]
+    )
+    assert all(prompt == "review this diff" for _, prompt in calls)
+    # Each verdict carries the wall-clock seconds its dispatch took, so
+    # the concurrency win is measurable rather than asserted.
+    assert [r["agent"] for r in results] == [
+        domain,
+        _CODE_QUALITY_AGENT,
+        pool[1],
     ]
-    assert results == [
-        {"agent": domain, "decision": "pass", "note": "looks good"},
-        {"agent": _CODE_QUALITY_AGENT, "decision": "needs_adjustment", "note": "lint"},
-        {"agent": pool[1], "decision": "pass", "note": "ok"},
+    assert [r["decision"] for r in results] == [
+        "pass",
+        "needs_adjustment",
+        "pass",
     ]
+    assert [r["note"] for r in results] == ["looks good", "lint", "ok"]
+    assert all(float(r["elapsed_s"]) >= 0.0 for r in results)
     assert len(AGENT_POOL) == 7
     # The spec allows _CODE_QUALITY_AGENT to overlap with AGENT_POOL; we don't
     # assert membership either way, but we do confirm the pool is the documented size.
+
+
+def test_run_review_dispatches_the_three_reviewers_concurrently() -> None:
+    """The three reviews overlap in time rather than running one after another.
+
+    The ensemble is three I/O-bound MCP round trips to a worker pool.
+    Dispatching them sequentially paid the slowest reviewer's latency
+    three times over; a barrier only releases if all three are in flight
+    at the same moment, so a sequential implementation times out here.
+    """
+    # The barrier is generous on purpose: the dispatches are MCP round
+    # trips, not instant calls, and a tight timeout turns a slow start
+    # into an opaque BrokenBarrierError.
+    barrier = threading.Barrier(3, timeout=30.0)
+
+    def dispatcher(agent: str, prompt: str) -> str:
+        barrier.wait()
+        return "<verdict>decision: pass note: ok</verdict>"
+
+    results = run_review(
+        "python-pro",
+        ["performance-review-specialist"],
+        "review this diff",
+        dispatcher,
+        attempts=1,
+    )
+
+    assert [r["decision"] for r in results] == ["pass", "pass", "pass"]
+
+
+def test_run_review_pairs_each_verdict_with_its_own_agent() -> None:
+    """A verdict is never attributed to the wrong reviewer.
+
+    The three reviews finish in whatever order they finish in, so the
+    pairing of decision to agent has to survive the collection. Each
+    reviewer reports its own name, and each name must come back with
+    its own verdict.
+    """
+
+    def dispatcher(agent: str, prompt: str) -> str:
+        return f"<verdict>decision: pass note: {agent}</verdict>"
+
+    results = run_review(
+        "alpha",
+        ["beta"],
+        "review this diff",
+        dispatcher,
+        attempts=1,
+    )
+
+    assert [r["agent"] for r in results] == ["alpha", _CODE_QUALITY_AGENT, "beta"]
+    assert [r["note"] for r in results] == ["alpha", _CODE_QUALITY_AGENT, "beta"]
+
+
+def test_run_review_propagates_a_dispatcher_exception() -> None:
+    """A dispatcher that raises surfaces the exception.
+
+    The fail-loud path is the verdict contract: a dispatch that cannot
+    be read comes back as an unparsable verdict, which blocks. An
+    exception that escaped the dispatcher entirely must not be turned
+    into a silent pass.
+    """
+
+    def dispatcher(agent: str, prompt: str) -> str:
+        raise RuntimeError("dispatch exploded")
+
+    with pytest.raises(RuntimeError, match="dispatch exploded"):
+        run_review(
+            "alpha",
+            ["beta"],
+            "review this diff",
+            dispatcher,
+            attempts=1,
+        )
 
 
 def test_aggregate_any_block_blocks() -> None:
@@ -300,6 +385,12 @@ def _stub_helpers_for_pipeline(
     monkeypatch.setattr(
         "mahavishnu.core.merge_to_main.run_review",
         lambda *args, **kwargs: verdicts,
+    )
+    # The review names the repository the branch belongs to, so the pool
+    # forks the reviewer's worktree from the right place.
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._find_main_checkout_path",
+        lambda *args, **kwargs: Path("/tmp/review-repo"),
     )
     monkeypatch.setattr(
         "mahavishnu.core.merge_to_main.run_crackerjack_gate",
@@ -476,6 +567,102 @@ def test_run_pipeline_crackerjack_failure_blocks_merge(
     rc = run_pipeline(tmp_path, branch="feat-test", base="main")
     assert rc == EXIT_CRACKERJACK_FAILURE
     assert squash_called == [], "stage 4 must not run after crackerjack failure"
+
+
+def test_run_pipeline_isolates_the_reviewers_on_the_branch_under_review(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The reviewer's checkout holds the code being reviewed.
+
+    The isolated worktree is created *from* a ref. Pointing it at the
+    merge base would put the reviewer on the trunk's code and not on
+    the code it was asked to judge — the reviewer would have to read
+    the diff by absolute path to see the change at all. The base
+    branch belongs to stage 4's rebase, not to the reviewer's
+    checkout.
+    """
+    seen: dict[str, Any] = {}
+
+    def fake_run_review(*args: Any, **kwargs: Any) -> list[dict[str, str]]:
+        dispatcher = kwargs["dispatcher"]
+        dispatcher("python-pro", "review this")
+        return [
+            {"agent": "python-pro", "decision": "pass", "note": "ok"},
+            {"agent": "critical-audit-specialist", "decision": "pass", "note": "ok"},
+            {
+                "agent": "performance-review-specialist",
+                "decision": "pass",
+                "note": "ok",
+            },
+        ]
+
+    def fake_dispatch(
+        agent: str,
+        prompt: str,
+        *,
+        worktree: dict[str, Any] | None = None,
+    ) -> str:
+        seen["worktree"] = worktree
+        return "<verdict>decision: pass note: ok</verdict>"
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_review_dispatcher.dispatch_review", fake_dispatch
+    )
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=[])
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.run_review", fake_run_review)
+
+    rc = run_pipeline(tmp_path, branch="feat-under-review", base="main")
+
+    assert rc == EXIT_OK
+    option = seen["worktree"]
+    assert option is not None
+    assert option["isolation"] == "worktree"
+    assert option["on_completion"] == "discard"
+    assert option["base_branch"] == "feat-under-review"
+    assert option["base_branch"] != "main"
+
+
+def test_run_pipeline_names_the_repository_in_the_review_prompt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The prompt names the repository the branch belongs to.
+
+    The pool forks the reviewer's isolated worktree from the
+    repository named in the prompt. Without that name the pool falls
+    back to its own working directory, and a merge reviewing a branch
+    in another repository asked for a worktree of a branch that does
+    not exist there — every cross-repo merge died at stage 2.
+
+    The repository is the **main checkout**, not the reviewer's
+    worktree: a worktree under ``~/.local/state`` is outside the
+    operator's allowed repository roots.
+    """
+    repo_root = tmp_path / "the-repo"
+    seen: dict[str, Any] = {}
+
+    def fake_run_review(*args: Any, **kwargs: Any) -> list[dict[str, str]]:
+        seen["prompt"] = kwargs["prompt"]
+        return [
+            {"agent": "python-pro", "decision": "pass", "note": "ok"},
+            {"agent": "critical-audit-specialist", "decision": "pass", "note": "ok"},
+            {
+                "agent": "performance-review-specialist",
+                "decision": "pass",
+                "note": "ok",
+            },
+        ]
+
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=[])
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._find_main_checkout_path",
+        lambda *args, **kwargs: repo_root,
+    )
+    monkeypatch.setattr("mahavishnu.core.merge_to_main.run_review", fake_run_review)
+
+    rc = run_pipeline(tmp_path, branch="feat-cross-repo", base="main")
+
+    assert rc == EXIT_OK
+    assert f"Repository: {repo_root}/.git" in seen["prompt"]
 
 
 # ── run_pipeline: stage 4.5 pre-push consolidation gate ────────────────
@@ -1164,8 +1351,14 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
     main_checkout's pre-staged files (from prior sessions) are
     swept into the squash-merge commit. With the stash: ``git
     status --porcelain`` triggers ``git stash push
-    --include-untracked``, then ``git stash pop`` runs after the
+    --include-untracked``, then the entry is restored after the
     commit succeeds.
+
+    The restore is by **identity**, not by position: the entry is
+    applied by its SHA and dropped by a re-verified ``stash@{n}``.
+    A bare ``git stash pop`` would pop whatever is on top of the
+    shared stack, which is another session's entry whenever anyone
+    else stashes in between.
     """
     worktree = tmp_path / "worktree"
     main_checkout = tmp_path / "main"
@@ -1184,22 +1377,32 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
     # ``git status --porcelain`` returns a dirty state (M / A / ??).
     # All other calls succeed.
     calls: list[tuple[list[str], dict[str, object]]] = []
+    pushed_message: str | None = None
+    stash_sha = "a" * 40
 
     def fake_run(cmd: list[str], **kwargs: object) -> _FakeProc:
+        nonlocal pushed_message
         # First call: ``git status --porcelain`` — return dirty state.
         if cmd[:3] == ["git", "status", "--porcelain"]:
             proc = _FakeProc(
                 returncode=0,
                 stdout="M  mahavishnu/core/config.py\n?? untracked_file.txt\n",
             )
-        # ``git stash push --include-untracked -m …`` — succeed.
-        elif (
-            cmd[:3] == ["git", "stash", "push"]
-            or cmd[:2] == ["git", "stash"]
-            and len(cmd) == 3
-            and cmd[2] == "pop"
-        ):
+        # ``git stash push --include-untracked -m …`` — succeed, and
+        # remember the message so the stack can be described back.
+        elif cmd[:3] == ["git", "stash", "push"]:
+            pushed_message = cmd[cmd.index("-m") + 1]
             proc = _FakeProc(returncode=0, stdout="", stderr="")
+        # ``git stash list`` — report the entry this pipeline pushed.
+        elif cmd[:3] == ["git", "stash", "list"]:
+            assert pushed_message is not None, (
+                "stash list was queried before the stash was pushed"
+            )
+            proc = _FakeProc(
+                returncode=0,
+                stdout=f"stash@{{0}} {stash_sha} On main: {pushed_message}\n",
+                stderr="",
+            )
         else:
             proc = _FakeProc(returncode=0, stdout="", stderr="")
         calls.append((cmd, kwargs))
@@ -1210,16 +1413,16 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
     rc, _stderr = run_squash_merge(worktree, "origin/main", "feature-x")
     assert rc == 0
 
-    # Find the stash-push, stash-pop, and commit calls (by argv signature,
-    # normalizing the stash-push message which varies per run).
+    # Find the stash-push, stash-apply, and commit calls (by argv
+    # signature, normalizing the stash-push message which varies per run).
     stash_push_kwargs: dict[str, object] | None = None
-    stash_pop_kwargs: dict[str, object] | None = None
+    stash_apply_kwargs: dict[str, object] | None = None
     commit_kwargs: dict[str, object] | None = None
     for cmd, kw in calls:
         if cmd[:3] == ["git", "stash", "push"]:
             stash_push_kwargs = kw
-        elif cmd[:2] == ["git", "stash"] and len(cmd) == 3 and cmd[2] == "pop":
-            stash_pop_kwargs = kw
+        elif cmd[:3] == ["git", "stash", "apply"]:
+            stash_apply_kwargs = kw
         elif cmd[:2] == ["git", "commit"]:
             commit_kwargs = kw
 
@@ -1237,13 +1440,21 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
         next(c for c, _ in calls if c[:3] == ["git", "stash", "push"])
     ), "stash push must include --include-untracked flag"
 
-    # The stash pop must happen (the commit succeeded).
-    assert stash_pop_kwargs is not None, (
-        "expected `git stash pop` after successful commit; not found"
+    # The restore must happen (the commit succeeded), and it must
+    # restore by SHA — never by a bare positional pop.
+    assert stash_apply_kwargs is not None, (
+        "expected `git stash apply` after successful commit; not found"
     )
-    assert stash_pop_kwargs["cwd"] == main_checkout, (
-        f"stash pop cwd must be main_checkout, got {stash_pop_kwargs['cwd']!r}"
+    assert stash_apply_kwargs["cwd"] == main_checkout, (
+        f"stash apply cwd must be main_checkout, got {stash_apply_kwargs['cwd']!r}"
     )
+    apply_argv = next(c for c, _ in calls if c[:3] == ["git", "stash", "apply"])
+    assert apply_argv[3] == stash_sha, (
+        f"stash apply must address the entry by SHA; got {apply_argv[3]!r}"
+    )
+    assert not any(
+        c[:2] == ["git", "stash"] and len(c) == 3 and c[2] == "pop" for c, _ in calls
+    ), "a bare `git stash pop` must not run against the shared stack"
 
     # The commit must still happen exactly once, in main_checkout.
     assert commit_kwargs is not None, "expected `git commit` in call sequence"
@@ -1252,16 +1463,14 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
     )
 
     # Verify ordering: status → stash push → checkout → squash → commit
-    # → stash pop. The push must come BEFORE the squash-merge; the
-    # pop must come AFTER the commit.
+    # → stash apply. The push must come BEFORE the squash-merge; the
+    # restore must come AFTER the commit.
     argvs = [c for c, _ in calls]
     push_idx = next(i for i, c in enumerate(argvs) if c[:3] == ["git", "stash", "push"])
     squash_idx = next(i for i, c in enumerate(argvs) if c[:2] == ["git", "merge"])
     commit_idx = next(i for i, c in enumerate(argvs) if c[:2] == ["git", "commit"])
-    pop_idx = next(
-        i
-        for i, c in enumerate(argvs)
-        if c[:2] == ["git", "stash"] and len(c) == 3 and c[2] == "pop"
+    apply_idx = next(
+        i for i, c in enumerate(argvs) if c[:3] == ["git", "stash", "apply"]
     )
     assert push_idx < squash_idx, (
         f"stash push must precede squash-merge; "
@@ -1271,8 +1480,9 @@ def test_run_squash_merge_captures_dirty_tree_in_main_checkout(
         f"squash-merge must precede commit; "
         f"squash_idx={squash_idx}, commit_idx={commit_idx}"
     )
-    assert commit_idx < pop_idx, (
-        f"commit must precede stash pop; commit_idx={commit_idx}, pop_idx={pop_idx}"
+    assert commit_idx < apply_idx, (
+        f"commit must precede the stash restore; "
+        f"commit_idx={commit_idx}, apply_idx={apply_idx}"
     )
 
 
@@ -1472,3 +1682,93 @@ def _fake_subprocess(
     """Returns a single _FakeProc; tests that need branching
     behavior should define their own fake_run instead."""
     return _FakeProc(returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+def test_run_pipeline_provisions_a_pool_that_can_isolate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The pipeline supplies the capability its own dispatch needs.
+
+    Isolation needs a pool whose worker session starts in the
+    worktree, and only a one-shot SHELL worker does that. The
+    auto-spawned pool is a pre-spawned shepherd pool, which cannot,
+    so without this the dispatch finds no pool able to honour the
+    directory and the merge stops at stage 2 with an instruction to
+    spawn one by hand.
+    """
+    provisioned: list[bool] = []
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_review_dispatcher.ensure_review_pool",
+        lambda *args, **kwargs: provisioned.append(True) or True,
+    )
+    _stub_helpers_for_pipeline(
+        monkeypatch,
+        verdicts=[
+            {"agent": "python-pro", "decision": "pass", "note": "ok"},
+            {"agent": "critical-audit-specialist", "decision": "pass", "note": "ok"},
+            {
+                "agent": "performance-review-specialist",
+                "decision": "pass",
+                "note": "ok",
+            },
+        ],
+    )
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+
+    assert rc == EXIT_OK
+    assert provisioned == [True], "the review pool was never provisioned"
+
+
+def test_run_pipeline_stops_when_the_review_pool_cannot_be_provisioned(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A provisioning failure is reported as itself.
+
+    Without this the dispatch fails with the router's generic message,
+    whose remedy -- spawn a pool named ``merge-review`` -- is a no-op
+    when a pool of that name already exists in the wrong form. The
+    operator would be sent to do something that changes nothing.
+    """
+    dispatched: list[bool] = []
+
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_review_dispatcher.ensure_review_pool",
+        lambda *args, **kwargs: False,
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main.run_review",
+        lambda *args, **kwargs: dispatched.append(True) or [],
+    )
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=[])
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+
+    assert rc == EXIT_REVIEW_FAILURE
+    assert dispatched == [], "the review must not be dispatched"
+
+
+def test_run_pipeline_reports_a_missing_main_checkout_as_a_review_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Stage 2 could not run, so it is a review failure.
+
+    The rebase-conflict code means "stage 4 could not land the merge",
+    and reporting that here sent the operator looking for a conflict
+    that does not exist.
+    """
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._find_main_checkout_path",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_review_dispatcher.ensure_review_pool",
+        lambda *args, **kwargs: True,
+    )
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=[])
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+
+    assert rc == EXIT_REVIEW_FAILURE
+    assert rc != EXIT_REBASE_CONFLICT

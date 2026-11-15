@@ -7,7 +7,7 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 - `worktree_creation_total{result="lock_conflict"}` rate spikes
 - Operators see `worktree_conflict` envelopes in Akosha
 - Idempotency store unavailable while worktree-isolated dispatch is in flight
-- Disk usage from worktrees climbs (`worktree_disk_bytes` gauge)
+- Worktrees accumulate on disk (the `worktree_active_count` gauge climbs, or `git worktree list` shows more than the dispatches in flight)
 
 ## Scenario 1: `worktree_conflict` envelope flood
 
@@ -29,7 +29,7 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 1. **If lock holder is hung**: `kill -TERM <pid>`; the `finally` block in `pool_route_execute` cleans up the worktree
 1. **If lock holder is a misbehaving test**: `pytest --collect-only` to find orphaned tests; cancel them with `pytest --exitfirst`
 1. **If concurrent dispatches are over-subscribed**: lower `worktree_storage.max_concurrent` in settings; restart Mahavishnu
-1. **If disk is full**: `git worktree remove --force <path>` for stale worktrees; check `worktree_disk_bytes > 80%` alert
+1. **If disk is full**: `git worktree remove --force <path>` for stale worktrees; the disk signal is `df -h`, not a gauge — see the note on `worktree_disk_bytes` below
 
 **Verification:**
 
@@ -103,7 +103,7 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 
 **Symptoms:**
 
-- `worktree_disk_bytes` gauge grows monotonically over 24h
+- `worktree_active_count` gauge grows monotonically over 24h, or `git worktree list` shows more worktrees than the dispatches in flight
 - `worktree_active_count` > `worktree_storage.max_concurrent` (impossible per spec)
 - `ls ~/.local/share/mahavishnu/worktrees/` shows directories older than `ttl_seconds`
 
@@ -121,7 +121,7 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 
 **Verification:**
 
-- `worktree_disk_bytes` decreases to baseline
+- `worktree_active_count` returns to baseline
 - `worktree_active_count` matches expected concurrent dispatches
 - `git worktree list` shows no orphans
 
@@ -131,6 +131,59 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 - Time-to-leak (worktree creation time vs current time)
 - Whether owner process was alive (and if so, what it was doing)
 - Whether `finally` block ran in the trace logs
+
+## Scenario 5: Every merge stops at stage 2
+
+**Symptoms:**
+
+- The merge pipeline reports `worktree isolation was requested but ...`
+  and stops before any reviewer runs
+- `worktree_isolation_refusals_total` is climbing
+- The reviewer never started: nothing in the pool's task history
+
+**Diagnosis:**
+
+1. Read the reason off the counter: `curl http://localhost:8680/metrics | grep worktree_isolation_refusals_total`
+1. `reason="no_capable_pool"` — no registered pool can start a session
+   in a named directory. The merge pipeline provisions one
+   (`merge-review`, a one-shot `terminal-claude` pool); a pool of that
+   name that reports `supports_working_directory: false` is the wrong
+   kind. Check `curl http://localhost:8680/mcp` → `mahavishnu_pool_list`.
+1. `reason="not_authorized"` — the repository named in the
+   dispatch prompt is outside `allowed_repo_paths`. Either the
+   repository is not allowed (add it) or the prompt named the wrong
+   one.
+1. `reason="unresolved"` — the named repository is not a local
+   path. The prompt's `Repository:` line must name a path on this host.
+1. `reason="not_a_git_repo"` — the named path is not a git working
+   tree; a worktree cannot be forked from it.
+1. `reason="settings_unavailable"` — the server could not read its
+   settings. Check `curl http://localhost:8680/health`.
+1. `reason="rerank_moved_the_task"` — the re-ranking picked a pool that
+   cannot honour a directory. That is a routing bug, not an operator
+   action; the counter is the only signal that it happened.
+
+**Recovery:**
+
+1. Fix the reason the counter names — the refusal message carries the
+   same text the operator sees.
+1. Re-run the merge. The refusal happens *before* the worker runs, so
+   nothing was started and nothing needs cleaning up.
+
+**Verification:**
+
+- `worktree_isolation_refusals_total` stops climbing
+- The merge reaches stage 3 (the crackerjack gate)
+
+## Note on the worktree metrics
+
+`worktree_creation_total`, `worktree_active_count` and
+`worktree_isolation_refusals_total` are the worktree signals, and all
+three are incremented by the dispatch path that owns them. There is no
+`worktree_disk_bytes` gauge: it was declared and never written, so it
+read zero while worktrees existed — worse than no signal, because it
+told the on-call engineer the disk was free. Use `df -h` for the disk
+and `git worktree list` for the worktrees.
 
 ## Related
 

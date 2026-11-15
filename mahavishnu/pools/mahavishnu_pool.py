@@ -293,6 +293,18 @@ class MahavishnuPool(BasePool):
         except OSError:
             return False
 
+    @property
+    def supports_working_directory(self) -> bool:
+        """Whether this pool can start a task in a specific directory.
+
+        Only the one-shot path can: it launches the session per task,
+        so the session starts in the directory the task names. The
+        pre-spawned path cannot — those sessions already exist, in
+        the directory they were launched in — and ``execute_task``
+        refuses such a task rather than running it somewhere else.
+        """
+        return self._is_one_shot
+
     async def start(self) -> str:
         """Initialize pool and spawn initial workers.
 

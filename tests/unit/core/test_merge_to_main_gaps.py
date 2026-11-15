@@ -215,6 +215,34 @@ class TestAReviewThatCouldNotBeReadIsRetried:
         run_review("python-pro", ["generalist"], "prompt", dispatcher)
         assert len(calls) == 3
 
+    def test_the_retry_belongs_to_one_reviewer_not_to_the_dispatch(self) -> None:
+        """Each reviewer retries on its own account.
+
+        The retry loop moved into the per-reviewer closure when the
+        three reviews became concurrent, so a retry is now a
+        *per-reviewer* property rather than a property of the dispatch
+        order: one reviewer's unreadable reply must not spend another
+        reviewer's attempt, and the reviewers that answered first time
+        must not be called again.
+        """
+        counts: dict[str, int] = {}
+
+        def dispatcher(agent: str, prompt: str) -> str:
+            # Each agent is handled by exactly one thread, so the
+            # per-agent counter is never contended.
+            counts[agent] = counts.get(agent, 0) + 1
+            if agent == "python-pro" and counts[agent] == 1:
+                return "the reviewer never answered"
+            return f"<verdict>decision: pass note: {agent}</verdict>"
+
+        results = run_review("python-pro", ["generalist"], "prompt", dispatcher)
+
+        assert counts["python-pro"] == 2
+        assert counts["generalist"] == 1
+        assert counts[merge_to_main._CODE_QUALITY_AGENT] == 1
+        assert [r["decision"] for r in results] == ["pass", "pass", "pass"]
+        assert results[0]["note"] == "python-pro"
+
 
 class TestDispatcher:
     """The stub dispatcher must be gone, and failures must block."""
@@ -224,9 +252,15 @@ class TestDispatcher:
     ) -> None:
         seen: dict[str, Any] = {}
 
-        def fake_dispatch(agent: str, prompt: str) -> str:
+        def fake_dispatch(
+            agent: str,
+            prompt: str,
+            *,
+            worktree: dict[str, Any] | None = None,
+        ) -> str:
             seen["agent"] = agent
             seen["prompt"] = prompt
+            seen["worktree"] = worktree
             return "<verdict>decision: pass note: ok</verdict>"
 
         monkeypatch.setattr(
@@ -235,7 +269,37 @@ class TestDispatcher:
         reply = _default_dispatcher("python-pro", "review this")
         assert seen["agent"] == "python-pro"
         assert seen["prompt"] == "review this"
+        assert seen["worktree"] is None
         assert parse_verdict(reply)["decision"] == "pass"
+
+    def test_default_dispatcher_forwards_the_worktree_option(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The isolation option reaches the pool tool.
+
+        The three reviewers run concurrently, so each needs its own
+        checkout: the repo's rule for parallel agents on one repo is
+        worktree isolation. The option is what carries that.
+        """
+        seen: dict[str, Any] = {}
+
+        def fake_dispatch(
+            agent: str,
+            prompt: str,
+            *,
+            worktree: dict[str, Any] | None = None,
+        ) -> str:
+            seen["worktree"] = worktree
+            return "<verdict>decision: pass note: ok</verdict>"
+
+        monkeypatch.setattr(
+            "mahavishnu.core.merge_review_dispatcher.dispatch_review", fake_dispatch
+        )
+
+        option = {"isolation": "worktree", "on_completion": "discard"}
+        _default_dispatcher("python-pro", "review this", worktree=option)
+
+        assert seen["worktree"] == option
 
     def test_dispatch_failure_returns_unparseable_reply(self) -> None:
         """An unreachable pool must fail loud, not return a synthetic pass.
