@@ -20,5 +20,37 @@
 #
 # Interim guard until the tool defers to the repo's own script. Tracked in
 # crackerjack docs/plans/2026-10-29-plan-index-sync-delegate-to-repo-script.md
+#
+# `auto_cleanup_on_publish` is disabled for the same class of reason, with
+# one extra failure mode. The `documentation_cleanup` phase classifies files
+# by FILENAME REGEX (crackerjack/services/doc_categorizer.py:
+# DocumentationCategorizer.get_archivable_files) — `.*-implementation\.md`
+# matches the `implementation_reports` category — and has no frontmatter
+# gate. So a publish sweeps `status: complete` plans out of docs/plans/ and
+# into docs/plans/.archive/, which is gitignored: the plan is untracked and
+# leaves the repo. That is exactly what
+# docs/decisions/2026-10-18-archive-completed-plans.md rule 2 forbids —
+# "Plans being archived must have `status: shipped` first. Mechanical
+# 'complete -> archive' is not allowed."
+#
+# Because `auto_plan_index_sync_on_publish` is false (above), the index is
+# NOT regenerated after that sweep, so PLAN_INDEX.md keeps rows pointing at
+# files that are gone and the `check-local-links` fast hook fails. That is
+# how 2026-10-19-bodai-substrate-otel-v7-implementation.md and
+# 2026-10-20-bodai-otel-substrate-read-path-implementation.md were lost on
+# 2026-11-08 and 2026-11-13, and how they were already lost once before
+# (8f149717, 2026-10-28) and had to be restored by eaf9e162.
+#
+# Blast radius here is exactly those two plans: every other document in the
+# tree is already clean of the categorizer's patterns, so the sweep has
+# nothing else to take. Frontmatter conformance is NOT lost with the phase —
+# scripts/audit_doc_frontmatter.py gates it repo-side
+# (mahavishnu/core/code_index/git_hooks.py:51).
+#
+# Permanent fix belongs in crackerjack: gate the categorizer on
+# `status: shipped` so the policy in
+# docs/decisions/2026-10-18-archive-completed-plans.md is enforced by the
+# tool rather than by hand.
 documentation:
   auto_plan_index_sync_on_publish: false
+  auto_cleanup_on_publish: false
