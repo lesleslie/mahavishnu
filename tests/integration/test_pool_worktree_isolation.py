@@ -372,22 +372,32 @@ class TestPoolRouteExecuteWorktree:
             base_branch="main",
             created_at=datetime.now(UTC),
             ttl_seconds=3600,
+            worktree_path=Path("/tmp/test-repo/.worktrees/wt-conflict-test"),
         )
 
         # Side-effect function: first call returns success, second raises.
+        #
+        # It is a coroutine function because ``create_worktree`` is one.
+        # A side effect that returns a coroutine *object* hands the
+        # caller an un-awaited coroutine instead of a ``WorktreeInfo``:
+        # the defensive ``getattr`` in ``_worktree_cwd`` reads it as "no
+        # worktree", so the dispatch silently loses its directory. The
+        # test still passed that way -- it asserted the statuses, not
+        # the routing -- which is exactly why the mock has to be right.
         call_count = {"n": 0}
 
-        def _create_side_effect(*args: object, **kwargs: object):
+        async def _create_side_effect(
+            *args: object, **kwargs: object
+        ) -> WorktreeInfo:
             call_count["n"] += 1
             if call_count["n"] == 1:
-
-                async def _ok() -> WorktreeInfo:
-                    return mock_wt
-
-                return _ok()
+                return mock_wt
             raise WorktreeLockedError("test conflict")
 
+        dispatched_cwds: list[object] = []
+
         async def _fake_dispatch(**kwargs: object) -> dict[str, object]:
+            dispatched_cwds.append(kwargs.get("cwd"))
             return {"status": "success", "result": "ok"}
 
         opts = WorktreeOptions(isolation="worktree")
@@ -433,6 +443,12 @@ class TestPoolRouteExecuteWorktree:
             )
             statuses = {r["status"] for r in results}
             assert statuses == {"success", "worktree_conflict"}
+            # The dispatch that succeeded must have been handed the
+            # worktree's directory. A lock conflict proves the second
+            # dispatch failed; it says nothing about where the first
+            # one ran, and a worker that ran in the source checkout
+            # isolates nothing.
+            assert str(mock_wt.worktree_path) in [str(c) for c in dispatched_cwds]
 
     @pytest.mark.asyncio
     async def test_finally_block_cleans_up_worktree_on_dispatch_failure(self) -> None:
