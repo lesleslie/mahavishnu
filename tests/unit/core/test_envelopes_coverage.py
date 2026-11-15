@@ -13,9 +13,15 @@ from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
 @pytest.mark.asyncio
 async def test_read_envelope_raises_when_mcp_returns_none() -> None:
-    """Line 55: read_envelope raises MahavishnuError when call_tool('get') returns None."""
+    """read_envelope raises MahavishnuError when the KV read returns None.
+
+    The read goes through ``MCPClient.kv_get`` — the live KV tool, not the
+    retired service's bare ``get`` name. Mocking the raw ``call_tool`` here
+    leaves ``kv_get`` returning a mock, and the test fails with a Pydantic
+    ``ValidationError`` that looks like a model bug rather than a stale stub.
+    """
     mcp = AsyncMock()
-    mcp.call_tool.return_value = None
+    mcp.kv_get.return_value = None
     addr = EnvelopeAddress(
         trace_id=TraceId("0" * 32),
         envelope_id=EnvelopeId("12345678-1234-4234-8234-123456789012"),
