@@ -1733,13 +1733,22 @@ class TestPoolSpawn:
         assert result.exit_code == 1
         assert "disabled" in result.output
 
+    @patch("mahavishnu._main_cli._dispatch_pool_spawn_via_mcp")
     @patch("mahavishnu.mcp.protocols.message_bus.MessageBus")
     @patch("mahavishnu.pools.PoolManager")
     @patch("mahavishnu.terminal.manager.TerminalManager")
     @patch("mahavishnu._main_cli.MahavishnuApp")
     def test_pool_spawn_error(
-        self, mock_app_cls, mock_tm_cls, mock_pm_cls, mock_mb_cls
+        self, mock_app_cls, mock_tm_cls, mock_pm_cls, mock_mb_cls, mock_dispatch
     ):
+        # Force the in-process transient fallback path (post ca04ad1b +
+        # MCP-dispatch adoption). Without this the test dispatches to a live
+        # MCP server on :8680, so its outcome depends on whether one happens
+        # to be running on the host.
+        from mahavishnu._main_cli import _MCPUnreachableError
+
+        mock_dispatch.side_effect = _MCPUnreachableError("http://localhost:8680/mcp")
+
         mock_app = _make_mock_app()
         mock_app_cls.return_value = mock_app
         mock_tm = MagicMock()

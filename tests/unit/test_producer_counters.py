@@ -43,14 +43,19 @@ def _ensure_producer_counters_registered():
         "mahavishnu_producer_writes_skipped_total",
     )
     if any(name not in REGISTRY._names_to_collectors for name in needed):
-        import importlib
-
-        importlib.reload(_producer_metrics_module)
-        # Rebind COUNTERS to the freshly-reloaded module's singleton so
-        # the tests use the new Counter instances (the old ones were
-        # unregistered and any subsequent ``.labels(...).inc()`` would
-        # raise ``ValueError`` from a stale reference).
-        globals()["COUNTERS"] = _producer_metrics_module.COUNTERS
+        # Re-register the EXISTING collector objects. Reloading the module
+        # would create NEW Counter instances, while every sibling module that
+        # imported a counter BY VALUE still holds the old one -- so their
+        # increments would land on a collector this test cannot see. That
+        # is how ``test_publisher.py`` came to read a counter that
+        # ``safe_publish`` was incrementing a different instance of.
+        for counter in (
+            _producer_metrics_module.COUNTERS.attempted,
+            _producer_metrics_module.COUNTERS.succeeded,
+            _producer_metrics_module.COUNTERS.skipped,
+        ):
+            if counter._name not in REGISTRY._names_to_collectors:
+                REGISTRY.register(counter)
     yield
 
 

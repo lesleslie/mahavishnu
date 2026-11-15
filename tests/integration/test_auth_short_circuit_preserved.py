@@ -112,6 +112,10 @@ def test_mahavishnu_settings_reads_substrate_auth(
     """
     from mahavishnu.core.config import load_settings, reset_settings
 
+    # Drop any instance cached by an earlier test in this worker first,
+    # otherwise the first read returns a settings object built before the
+    # env var was set and the assertion reads stale state.
+    reset_settings()
     monkeypatch.setenv("ONEIRIC__SUBSTRATE__AUTH__ENABLED", "true")
     s = load_settings()
     assert s.auth_enabled is True

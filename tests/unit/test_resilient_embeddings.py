@@ -195,14 +195,17 @@ class TestCircuitBreakerRecovery:
 
     def test_recovery_allows_one_trial_after_timeout(self) -> None:
         """Circuit should allow one trial after recovery timeout elapses."""
-        cb = CircuitBreaker(failure_threshold=2, recovery_timeout=0.01)
+        # A 10 ms recovery window races the wall clock -- the elapsed time
+        # between the second failure and the assertion can exceed it under
+        # load. Use a window that cannot expire, then open it explicitly.
+        cb = CircuitBreaker(failure_threshold=2, recovery_timeout=60.0)
         cb.record_failure()
         cb.record_failure()
         assert cb.is_open is True
         assert cb.can_execute() is False
 
-        # Wait beyond recovery_timeout
-        time.sleep(0.02)
+        # Recovery window elapsed
+        cb.recovery_timeout = 0.0
         # Recovery attempt: one call allowed
         assert cb.can_execute() is True
 

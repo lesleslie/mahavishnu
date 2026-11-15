@@ -18,12 +18,16 @@ from pathlib import Path
 import pytest
 import yaml
 
-# These 3 drafts had YAML-invalid frontmatter pre-Phase 1. They are quoted
+# These 3 plans had YAML-invalid frontmatter pre-Phase 1. They are quoted
 # in commit 1/2/3 of the plan and must parse cleanly afterward.
+# They were archived out of ``docs/plans/drafts/`` by commit 0d769ccc, and
+# the archive tree is UNTRACKED per the ``**/.archive/`` gitignore policy
+# (see docs/decisions/2026-10-18-archive-completed-plans.md) -- so they may
+# be absent on a clean checkout. Skip then.
 DRAFTS = [
-    "docs/plans/drafts/2026-09-27-akosha-eval-metric-sink.md",
-    "docs/plans/drafts/2026-09-27-akosha-tool-call-feed-lifecycle.md",
-    "docs/plans/drafts/2026-09-26-eval-methodology.md",
+    "docs/plans/.archive/2026-09-27-akosha-eval-metric-sink.md",
+    "docs/plans/.archive/2026-09-27-akosha-tool-call-feed-lifecycle.md",
+    "docs/plans/.archive/2026-09-26-eval-methodology.md",
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -50,6 +54,11 @@ def _split_frontmatter(text: str) -> str:
 def test_draft_frontmatter_parses(rel_path: str) -> None:
     """Each draft's frontmatter is YAML-valid (smoke for the 3 known-bad files)."""
     p = REPO_ROOT / rel_path
+    if not p.exists():
+        pytest.skip(
+            f"{rel_path} is archived and untracked "
+            "(see docs/decisions/2026-10-18-archive-completed-plans.md)"
+        )
     fm_text = _split_frontmatter(p.read_text(encoding="utf-8"))
     parsed = yaml.safe_load(fm_text)
     assert isinstance(parsed, dict), (

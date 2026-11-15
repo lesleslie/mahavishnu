@@ -12,10 +12,10 @@ Req: REQ-PI-009
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
-from opentelemetry import metrics
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.resources import Resource
@@ -37,43 +37,66 @@ if TYPE_CHECKING:
 
 @pytest.fixture(scope="session")
 def _otel_test_provider() -> Iterator[MeterProvider]:
-    """Install a session-wide MeterProvider with InMemoryMetricReader.
+    """Create a session-wide MeterProvider with InMemoryMetricReader.
 
-    OTel's ``set_meter_provider`` is one-shot per process — once a real
-    provider is installed, subsequent ``set_meter_provider`` calls are
-    silent no-ops (logged as "Overriding of current MeterProvider is
-    not allowed"). Eagerly creating instruments at import time would
-    lock the module to whatever provider is installed when
-    ``pi_observability`` first imports, breaking tests that install an
-    ``InMemoryMetricReader`` fixture. The ``_get_*`` helpers resolve
-    instruments on first call, which lets the module-level meter
-    proxy pick up whichever ``MeterProvider`` is active at the moment
-    of the first emit.
+    The provider is deliberately NOT installed as the process-global OTel
+    provider. ``metrics.set_meter_provider`` is set-once per process: once
+    any module in the same pytest-xdist worker has installed a provider, a
+    later call is a silent no-op (logged as "Overriding of current
+    MeterProvider is not allowed") and this reader stays permanently empty.
+
+    That is not hypothetical — building a real ``ObservabilityManager``
+    installs a reader-less provider (``mahavishnu/core/observability.py``),
+    so which of those modules runs first in a given worker decides whether
+    these assertions can see anything at all. The provider is therefore
+    injected per test (see ``metric_reader``) rather than installed
+    globally, and the assertions do not depend on test order.
     """
     reader = InMemoryMetricReader()
     provider = MeterProvider(
         resource=Resource.create({"service.name": "mahavishnu-pi-test"}),
         metric_readers=[reader],
     )
-    metrics.set_meter_provider(provider)
     yield provider
 
 
 @pytest.fixture
-def metric_reader(_otel_test_provider: MeterProvider) -> Iterator[InMemoryMetricReader]:
-    """Per-test fixture: yield the shared reader; reset cache on entry.
+def metric_reader(
+    monkeypatch: pytest.MonkeyPatch,
+    _otel_test_provider: MeterProvider,
+) -> Iterator[InMemoryMetricReader]:
+    """Per-test fixture: yield the shared reader; bind instruments to it.
+
+    ``mahavishnu.pools.pi_observability`` resolves its instruments through
+    ``opentelemetry.metrics.get_meter``, which resolves the process-global
+    MeterProvider. Pointing that lookup at this test's provider is what
+    makes the emissions land in this reader regardless of what else ran
+    first in the worker. Production code is untouched and still records
+    against the real global provider.
+
+    The patch replaces the module attribute rather than mutating the shared
+    ``opentelemetry.metrics`` package, so nothing outside
+    ``pi_observability`` is affected.
 
     Data accumulates across tests (a session-scoped reader does not
     reset), so each test takes a ``before`` snapshot and asserts on
     the delta. The lazy-instrument cache in
-    :mod:`mahavishnu.pools.pi_observability` is cleared so the first
-    emit in this test rebinds instruments to the test provider (in
-    case any other module already triggered lazy resolution against a
-    different provider).
+    :mod:`mahavishnu.pools.pi_observability` is cleared on entry and exit
+    so the first emit in this test rebinds instruments to the test
+    provider and the next test starts from a clean slate.
     """
     reader = _otel_test_provider._metric_readers[0]
+    provider = _otel_test_provider
+    monkeypatch.setattr(
+        pi_observability,
+        "metrics",
+        SimpleNamespace(
+            get_meter=lambda name, *_args, **_kwargs: provider.get_meter(name)
+        ),
+    )
     pi_observability._reset_instrument_cache()
     yield reader
+    pi_observability._reset_instrument_cache()
 
 
 def _snapshot(reader: InMemoryMetricReader) -> dict[str, dict[tuple, float]]:
