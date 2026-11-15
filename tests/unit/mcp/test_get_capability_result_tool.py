@@ -1,6 +1,14 @@
 """Tests for the ``get_capability_result`` MCP tool.
 
 Mocks the MCP client so no live storage is required.
+
+The stub boundary is ``MCPClient.kv_list`` -- the helper the envelope
+transport actually reads through. It returns ``(key, value)`` pairs, not
+bare keys, and it replaced the retired service's raw
+``call_tool("list_keys", ...)`` path in ``a4084dcb``. Mocking the raw
+``call_tool`` here leaves ``kv_list`` as an unawaitable ``MagicMock`` and
+the test fails with "object can't be awaited" instead of exercising the
+tool.
 """
 
 from __future__ import annotations
@@ -43,7 +51,7 @@ async def test_get_capability_result_returns_dict_with_envelopes() -> None:
     """
     envelope_id = EnvelopeId("12345678-1234-4234-8234-123456789012")
     mcp = MagicMock()
-    mcp.call_tool = AsyncMock(return_value=[_envelope_key(envelope_id)])
+    mcp.kv_list = AsyncMock(return_value=[(_envelope_key(envelope_id), "{}")])
 
     server = FastMCP("test-invoke")
     register_get_capability_result(server, mcp=mcp)
@@ -62,15 +70,15 @@ async def test_get_capability_result_returns_dict_with_envelopes() -> None:
     assert result["status"] == "completed"
     assert result["error"] is None
     assert result["envelopes"] == [_envelope_key(envelope_id)]
-    mcp.call_tool.assert_awaited_once_with(
-        "list_keys", {"prefix": f"envelopes/{trace_id}/"}
-    )
+    mcp.kv_list.assert_awaited_once_with(f"envelopes/{trace_id}/")
+    # The transport reads through the KV helper, not a raw tool call.
+    mcp.call_tool.assert_not_called()
 
 
 async def test_get_capability_result_returns_pending_when_no_envelopes() -> None:
     """Empty MCP result surfaces ``status='pending'`` and empty envelope list."""
     mcp = MagicMock()
-    mcp.call_tool = AsyncMock(return_value=[])
+    mcp.kv_list = AsyncMock(return_value=[])
 
     server = FastMCP("test-empty")
     register_get_capability_result(server, mcp=mcp)
@@ -101,7 +109,7 @@ async def test_get_capability_result_fails_loudly_when_mcp_call_raises() -> None
     from mahavishnu.core.errors import ErrorCode, MahavishnuError
 
     mcp = MagicMock()
-    mcp.call_tool = AsyncMock(
+    mcp.kv_list = AsyncMock(
         side_effect=MahavishnuError(
             "mcp unavailable", error_code=ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE
         )
