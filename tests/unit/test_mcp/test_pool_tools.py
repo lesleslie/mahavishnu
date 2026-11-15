@@ -105,9 +105,12 @@ EXPECTED_TOOL_NAMES = {
     "mahavishnu_pool_close_all",
     "mahavishnu_pool_health",
     "mahavishnu_pool_search_memory",
-    "mahavishnu_budget_enforce",
     "mahavishnu_pool_route_execute",
 }
+# ``mahavishnu_budget_enforce`` is NOT in this set. It was extracted out of
+# ``register_pool_tools`` into ``mahavishnu.mcp.tools.budget_tools`` and is
+# registered by ``register_budget_tools`` from ``mahavishnu.mcp.bootstrap``.
+# The wire name is unchanged; the owner of the registration changed.
 
 
 # =============================================================================
@@ -490,6 +493,8 @@ async def test_pool_route_execute_auto_spawn_default_from_config(
     """When auto_spawn is None, pool_route_execute reads pools.auto_spawn from settings."""
     from mahavishnu.core.config import (
         MahavishnuSettings,
+    )
+    from mahavishnu.core.config import (
         PoolConfig as SettingsPoolConfig,
     )
 

@@ -3,11 +3,25 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+from functools import partial
 import logging
-from typing import TYPE_CHECKING, Any
+import time
+from typing import TYPE_CHECKING, Any, Protocol
 from uuid import uuid4
 
+# Runtime import, NOT a type-checking-only import. FastMCP resolves the
+# injected-context parameter via ``get_type_hints(fn)``; under
+# ``from __future__ import annotations`` that call evaluates the annotation
+# string against the module globals. A TYPE_CHECKING-only import would
+# leave ``Context`` absent from the globals, ``get_type_hints`` would
+# raise NameError, FastMCP would fall back to the raw string annotation,
+# and the context would never be injected -- the progress heartbeat
+# would silently never run.
+from mcp_common.fastmcp import Context  # noqa: TC002
+
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from pathlib import Path
 
     from mcp_common.fastmcp import FastMCP
@@ -255,6 +269,78 @@ async def _dispatch_internal(
         parent_session_id=parent_session_id,
         auto_spawn=auto_spawn,
     )
+
+
+# How often the dispatch heartbeat reports liveness. The MCP client's
+# idle timer is reset by every progress notification, so the interval
+# only has to be comfortably below that timer -- it does not need to be
+# short. 20s keeps a 600s idle window refreshed with a wide margin.
+_PROGRESS_HEARTBEAT_SECONDS = 20.0
+
+
+class _ProgressReporter(Protocol):
+    """The one method of FastMCP's ``Context`` the heartbeat needs.
+
+    Declaring the dependency structurally keeps the heartbeat testable
+    without constructing a live request context, and keeps the helper
+    independent of which FastMCP version supplies ``Context``.
+    """
+
+    async def report_progress(
+        self, progress: float, total: float | None = None, message: str | None = None
+    ) -> None: ...
+
+
+async def _dispatch_with_progress(
+    ctx: _ProgressReporter | None,
+    dispatch: Callable[[], Awaitable[dict[str, Any]]],
+    *,
+    interval: float = _PROGRESS_HEARTBEAT_SECONDS,
+) -> dict[str, Any]:
+    """Await a dispatch, reporting liveness while it runs.
+
+    A pool dispatch can legitimately take longer than the MCP client's
+    idle window: a multi-file refactor runs for minutes with nothing to
+    say. The client's idle timer aborts a tool call that produces
+    neither a response nor a progress notification for that window, so a
+    long dispatch dies at the idle timeout even though the server is
+    working perfectly.
+
+    The heartbeat closes that gap. While the dispatch is in flight it
+    emits a periodic progress notification, which resets the client's
+    idle clock. It does NOT extend the client's wall-clock cap -- a
+    wedged dispatch still dies at the cap rather than hanging forever.
+
+    ``ctx`` is ``None`` when the tool is called directly (the test
+    suite) or when the client did not supply a progress token. In both
+    cases the dispatch runs exactly as it did before, with no heartbeat
+    and no behaviour change.
+
+    Progress reporting is best-effort: a disconnected client must not
+    turn a successful dispatch into a failed one.
+    """
+    if ctx is None:
+        return await dispatch()
+
+    async def _heartbeat() -> None:
+        started = time.monotonic()
+        while True:
+            await asyncio.sleep(interval)
+            elapsed = int(time.monotonic() - started)
+            try:
+                await ctx.report_progress(
+                    elapsed, None, f"pool dispatch in progress ({elapsed}s elapsed)"
+                )
+            except Exception:  # progress is advisory; never fail the dispatch
+                logger.debug("dispatch progress report failed", exc_info=True)
+
+    heartbeat = asyncio.create_task(_heartbeat())
+    try:
+        return await dispatch()
+    finally:
+        heartbeat.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await heartbeat
 
 
 async def _hash_prompt(prompt: str) -> str:
@@ -1186,6 +1272,7 @@ def register_pool_tools(
         auto_spawn: bool | None = None,
         idempotency: IdempotencyOptions | None = None,
         worktree: WorktreeOptions | None = None,
+        ctx: Context | None = None,
     ) -> dict[str, Any]:
         """Load-balanced single-task dispatch across registered worker pools.
 
@@ -1203,6 +1290,13 @@ def register_pool_tools(
         is set server-side via ``PoolManager``, not exposed to wire callers.
         The ``caller_kind`` parameter is for QUOTA ATTRIBUTION only (which
         ClientKind bucket the dispatch counts against).
+
+        Liveness: a dispatch can outlast the MCP client's idle window. The
+        injected ``ctx`` carries the client's progress token, and a
+        heartbeat reports liveness while the dispatch runs, so the client's
+        idle timer is reset instead of aborting a healthy call. The
+        parameter is excluded from the tool schema and is ``None`` for
+        direct (non-MCP) calls, which run unchanged.
 
         Returns:
             - On success: the dispatch result dict (carries ``pool_id``,
@@ -1294,17 +1388,21 @@ def register_pool_tools(
                         resolve_model_id(task_category),
                         task_category.value,
                     )
-                result = await _dispatch_internal(
-                    prompt=prompt,
-                    pool_selector=selector_enum,
-                    execution_id=execution_id,
-                    pool_affinity=pool_affinity,
-                    coerced_kind=coerced_kind,
-                    parent_session_id=parent_session_id,
-                    auto_spawn=resolved_auto_spawn,
-                    pool_manager=pool_manager,
-                    timeout=timeout,
-                    cwd=_worktree_cwd(worktree_info),
+                result = await _dispatch_with_progress(
+                    ctx,
+                    partial(
+                        _dispatch_internal,
+                        prompt=prompt,
+                        pool_selector=selector_enum,
+                        execution_id=execution_id,
+                        pool_affinity=pool_affinity,
+                        coerced_kind=coerced_kind,
+                        parent_session_id=parent_session_id,
+                        auto_spawn=resolved_auto_spawn,
+                        pool_manager=pool_manager,
+                        timeout=timeout,
+                        cwd=_worktree_cwd(worktree_info),
+                    ),
                 )
 
                 if worktree_info is not None:
