@@ -405,6 +405,29 @@ class StateManager:
         )
 
 
+def _candidate_capabilities(candidate: Any) -> list[str]:
+    """Extract the capability names advertised by an adapter candidate.
+
+    Prefers the direct attribute (test mocks), falling back to the metadata
+    dict.
+    """
+    direct = getattr(candidate, "capabilities", None)
+    if direct is not None:
+        return list(direct)
+    meta = getattr(candidate, "metadata", None) or {}
+    return list(meta.get("capabilities", []))
+
+
+def _matching_adapters(candidates: list, required_caps: list[str]) -> list:
+    """Filter adapter candidates down to those covering every required cap."""
+    required_caps_set = set(required_caps)
+    return [
+        c
+        for c in candidates
+        if required_caps_set.issubset(set(_candidate_capabilities(c)))
+    ]
+
+
 class CapabilityRouter:
     """Route tasks based on adapter capabilities, not hardcoded mappings.
 
@@ -461,6 +484,79 @@ class CapabilityRouter:
             f"cache_enabled={self._cache is not None}"
         )
 
+    def _cached_decision(self, cache_key: str) -> Any:
+        """Return a cached routing decision, or None on a cache miss."""
+        if self._cache:
+            cached = self._cache.get(cache_key)
+            if cached:
+                logger.debug(f"Cache hit for {cache_key}")
+                return cached
+        return None
+
+    async def _resolve_candidates(self, required_caps: list[str]) -> list:
+        """Resolve the adapter candidates exposed by the registry.
+
+        Two supported interfaces:
+        1. Oneiric ``Resolver.list_active("adapter")`` — returns Candidates.
+        2. Legacy ``HybridAdapterRegistry.find_by_capabilities(caps)`` —
+           returns AdapterMetadata-shaped objects.
+
+        The legacy interface is preserved during the migration so
+        existing test mocks continue to work; once Phase 2 ships the
+        mocks are updated to use the new shape (see the test file
+        comments).
+        """
+        if hasattr(self.registry, "list_active"):
+            # Oneiric ``Resolver`` path — exception propagates so
+            # callers see the substrate error in the route result.
+            return list(self.registry.list_active("adapter"))
+        if hasattr(self.registry, "find_by_capabilities"):
+            # Legacy path: ``find_by_capabilities`` may be sync or async.
+            result = self.registry.find_by_capabilities(required_caps)
+            if hasattr(result, "__await__"):
+                return list(await result)
+            return list(result)
+        return []
+
+    def _build_resolution(
+        self,
+        best_adapter: Any,
+        task_type: TaskType,
+        required_caps: list[str],
+        resolution_time_ms: float,
+        cache_key: str,
+    ) -> Any:
+        """Build the routing decision (or its dict fallback) for one adapter."""
+        if CAPABILITY_ROUTING_AVAILABLE and RoutingDecision is not None:
+            decision = RoutingDecision(
+                adapter_name=best_adapter.adapter_id,
+                adapter=None,  # Lazy-loaded by registry
+                matched_capabilities=[
+                    cap
+                    for cap in required_caps
+                    if cap in _candidate_capabilities(best_adapter)
+                ],
+                resolution_time_ms=resolution_time_ms,
+                fallback_used=False,
+                explanation=f"Selected {best_adapter.adapter_id} based on capabilities: {required_caps}",
+            )
+
+            # Cache the decision
+            if self._cache:
+                self._cache.set(cache_key, decision)
+
+            return decision
+
+        return {
+            "success": True,
+            "adapter": best_adapter.adapter_id,
+            "task_type": task_type.value,
+            "matched_capabilities": [
+                cap for cap in required_caps if cap in best_adapter.capabilities
+            ],
+            "resolution_time_ms": resolution_time_ms,
+        }
+
     async def route(
         self,
         task_type: TaskType,
@@ -479,11 +575,9 @@ class CapabilityRouter:
         """
         # Check cache first
         cache_key = f"{domain}:{task_type.value}:{additional_capabilities or []}"
-        if self._cache:
-            cached = self._cache.get(cache_key)
-            if cached:
-                logger.debug(f"Cache hit for {cache_key}")
-                return cached
+        cached = self._cached_decision(cache_key)
+        if cached:
+            return cached
 
         # Get required capabilities for task type
         required_caps = list(self.TASK_CAPABILITY_REQUIREMENTS.get(task_type, []))
@@ -505,41 +599,8 @@ class CapabilityRouter:
         start_time = time.time()
 
         try:
-            # Resolve candidates. Two supported interfaces:
-            # 1. Oneiric ``Resolver.list_active("adapter")`` — returns Candidates.
-            # 2. Legacy ``HybridAdapterRegistry.find_by_capabilities(caps)`` —
-            #    returns AdapterMetadata-shaped objects.
-            # The legacy interface is preserved during the migration so
-            # existing test mocks continue to work; once Phase 2 ships the
-            # mocks are updated to use the new shape (see the test file
-            # comments).
-            candidates_iter: list = []
-            if hasattr(self.registry, "list_active"):
-                # Oneiric ``Resolver`` path — exception propagates so
-                # callers see the substrate error in the route result.
-                candidates_iter = list(self.registry.list_active("adapter"))
-            elif hasattr(self.registry, "find_by_capabilities"):
-                # Legacy path: ``find_by_capabilities`` may be sync or async.
-                result = self.registry.find_by_capabilities(required_caps)
-                if hasattr(result, "__await__"):
-                    candidates_iter = list(await result)
-                else:
-                    candidates_iter = list(result)
-
-            def _cand_capabilities(cand: Any) -> list[str]:
-                # Prefer direct attribute (test mocks), fall back to metadata dict
-                direct = getattr(cand, "capabilities", None)
-                if direct is not None:
-                    return list(direct)
-                meta = getattr(cand, "metadata", None) or {}
-                return list(meta.get("capabilities", []))
-
-            required_caps_set = set(required_caps)
-            matching_adapters = [
-                c
-                for c in candidates_iter
-                if required_caps_set.issubset(set(_cand_capabilities(c)))
-            ]
+            candidates_iter = await self._resolve_candidates(required_caps)
+            matching_adapters = _matching_adapters(candidates_iter, required_caps)
 
             if not matching_adapters:
                 return {
@@ -554,35 +615,13 @@ class CapabilityRouter:
             resolution_time_ms = (time.time() - start_time) * 1000
 
             # Create routing decision
-            if CAPABILITY_ROUTING_AVAILABLE and RoutingDecision is not None:
-                decision = RoutingDecision(
-                    adapter_name=best_adapter.adapter_id,
-                    adapter=None,  # Lazy-loaded by registry
-                    matched_capabilities=[
-                        cap
-                        for cap in required_caps
-                        if cap in _cand_capabilities(best_adapter)
-                    ],
-                    resolution_time_ms=resolution_time_ms,
-                    fallback_used=False,
-                    explanation=f"Selected {best_adapter.adapter_id} based on capabilities: {required_caps}",
-                )
-
-                # Cache the decision
-                if self._cache:
-                    self._cache.set(cache_key, decision)
-
-                return decision
-            else:
-                return {
-                    "success": True,
-                    "adapter": best_adapter.adapter_id,
-                    "task_type": task_type.value,
-                    "matched_capabilities": [
-                        cap for cap in required_caps if cap in best_adapter.capabilities
-                    ],
-                    "resolution_time_ms": resolution_time_ms,
-                }
+            return self._build_resolution(
+                best_adapter,
+                task_type,
+                required_caps,
+                resolution_time_ms,
+                cache_key,
+            )
 
         except Exception as e:  # task router — broad catch logs the routing failure and returns an error response  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.error(f"Capability routing failed: {e}")

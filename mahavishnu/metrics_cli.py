@@ -1032,19 +1032,12 @@ def _routing_async_callback(value: dict[str, Any]) -> bool:
     return isinstance(raw, bool) and raw
 
 
-def _render_verification_output(
-    entries: list[dict[str, Any]],
-    *,
-    cutoff: datetime | None,
-    output_format: str,
-    mcp_url: str,
-) -> None:
-    """Render the `mahavishnu metrics verification` output."""
-    filtered = _filter_by_window(entries, cutoff)
-
+def _collect_verification_stats(
+    filtered: list[dict[str, Any]],
+) -> tuple[dict[str, int], int, int, list[dict[str, Any]]]:
+    """Aggregate consensus counts, persist failures, and the recent verdicts."""
     consensus_counts: dict[str, int] = defaultdict(int)
     persist_failures = 0
-    total = len(filtered)
     recent: list[dict[str, Any]] = []
 
     for entry in filtered[-20:]:
@@ -1064,6 +1057,77 @@ def _render_verification_output(
         consensus_counts[_verification_consensus(value)] += 1
         if not _verification_persisted(value):
             persist_failures += 1
+
+    return consensus_counts, persist_failures, len(filtered), recent
+
+
+def _render_verification_summary_table(
+    total: int,
+    consensus_counts: dict[str, int],
+    reject_rate: float,
+    persist_failure_rate: float,
+) -> None:
+    """Render the verification summary table."""
+    summary = Table(title="Summary", show_header=True, header_style="bold magenta")
+    summary.add_column("Metric", style="cyan")
+    summary.add_column("Value", style="white")
+    summary.add_row("Total verdicts", str(total))
+    summary.add_row(
+        "Reject rate",
+        f"{reject_rate * 100:.1f}%",
+    )
+    summary.add_row(
+        "Persist-failure rate",
+        f"{persist_failure_rate * 100:.1f}%",
+    )
+    for consensus_name in sorted(consensus_counts.keys()):
+        summary.add_row(
+            f"Consensus={consensus_name}", str(consensus_counts[consensus_name])
+        )
+    console.print(summary)
+
+
+def _render_verification_recent_table(recent: list[dict[str, Any]]) -> None:
+    """Render the most-recent-verdicts table (or the empty-window notice)."""
+    if recent:
+        console.print()
+        recent_table = Table(
+            title="Most Recent Verdicts (last 20)",
+            show_header=True,
+            header_style="bold magenta",
+        )
+        recent_table.add_column("Timestamp", style="dim", width=19)
+        recent_table.add_column("Consensus", style="cyan")
+        recent_table.add_column("Persisted", style="white")
+        recent_table.add_column("Proposal Key", style="dim")
+        for row in recent:
+            ts_display = row["timestamp"] or "n/a"
+            if ts_display != "n/a":
+                ts_display = ts_display[:19]
+            persisted_display = (
+                "[green]yes[/green]" if row["persisted"] else "[red]no[/red]"
+            )
+            recent_table.add_row(
+                ts_display, row["consensus"], persisted_display, row["key"]
+            )
+        console.print(recent_table)
+    else:
+        console.print("\n[yellow]No verification records in window.[/yellow]")
+
+
+def _render_verification_output(
+    entries: list[dict[str, Any]],
+    *,
+    cutoff: datetime | None,
+    output_format: str,
+    mcp_url: str,
+) -> None:
+    """Render the `mahavishnu metrics verification` output."""
+    filtered = _filter_by_window(entries, cutoff)
+
+    consensus_counts, persist_failures, total, recent = _collect_verification_stats(
+        filtered
+    )
 
     persist_failure_rate = (persist_failures / total) if total > 0 else 0.0
     reject_rate = (consensus_counts.get("reject", 0) / total) if total > 0 else 0.0
@@ -1098,48 +1162,13 @@ def _render_verification_output(
         f"[dim]Window: since {cutoff.isoformat() if cutoff else 'all'}[/dim]\n"
     )
 
-    summary = Table(title="Summary", show_header=True, header_style="bold magenta")
-    summary.add_column("Metric", style="cyan")
-    summary.add_column("Value", style="white")
-    summary.add_row("Total verdicts", str(total))
-    summary.add_row(
-        "Reject rate",
-        f"{reject_rate * 100:.1f}%",
+    _render_verification_summary_table(
+        total,
+        consensus_counts,
+        reject_rate,
+        persist_failure_rate,
     )
-    summary.add_row(
-        "Persist-failure rate",
-        f"{persist_failure_rate * 100:.1f}%",
-    )
-    for consensus_name in sorted(consensus_counts.keys()):
-        summary.add_row(
-            f"Consensus={consensus_name}", str(consensus_counts[consensus_name])
-        )
-    console.print(summary)
-
-    if recent:
-        console.print()
-        recent_table = Table(
-            title="Most Recent Verdicts (last 20)",
-            show_header=True,
-            header_style="bold magenta",
-        )
-        recent_table.add_column("Timestamp", style="dim", width=19)
-        recent_table.add_column("Consensus", style="cyan")
-        recent_table.add_column("Persisted", style="white")
-        recent_table.add_column("Proposal Key", style="dim")
-        for row in recent:
-            ts_display = row["timestamp"] or "n/a"
-            if ts_display != "n/a":
-                ts_display = ts_display[:19]
-            persisted_display = (
-                "[green]yes[/green]" if row["persisted"] else "[red]no[/red]"
-            )
-            recent_table.add_row(
-                ts_display, row["consensus"], persisted_display, row["key"]
-            )
-        console.print(recent_table)
-    else:
-        console.print("\n[yellow]No verification records in window.[/yellow]")
+    _render_verification_recent_table(recent)
 
 
 @metrics_app.command("verification")

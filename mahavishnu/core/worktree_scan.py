@@ -807,6 +807,87 @@ def _format_text_footer(
     )
 
 
+def _json_base_entry(c: WorktreeClassification) -> dict:
+    """Build the common per-worktree JSON record."""
+    return {
+        "tier": c.tier,
+        "is_dirty": c.is_dirty,
+        "is_locked": c.is_locked,
+        "pid_liveness": c.pid_liveness,
+        "stash_count": c.stash_count,
+        "modified_count": c.modified_count,
+        "untracked_count": c.untracked_count,
+        "cross_repo_group_id": c.cross_repo_group_id,
+        "notes": c.notes,
+        "repo_nickname": c.repo_nickname,
+        "branch": c.branch,
+        "worktree_path": str(c.worktree_path) if c.worktree_path else None,
+    }
+
+
+def _group_by_tier(
+    classifications: list[WorktreeClassification],
+) -> dict[str, list[dict]]:
+    """Bucket the JSON records by tier, preserving the canonical tier order."""
+    by_tier: dict[str, list[dict]] = {tier: [] for tier in _TIER_ORDER}
+    for c in classifications:
+        by_tier.setdefault(c.tier, []).append(_json_base_entry(c))
+    return by_tier
+
+
+def _tier_x_group_record(group_id: str, classes: list[WorktreeClassification]) -> dict:
+    """Build one tier_x_cross_repo_orphan record for a single group."""
+    # date is the first 10 chars (YYYY-MM-DD); pattern is the rest.
+    date = group_id[:10] if len(group_id) >= 10 else ""
+    pattern = group_id[11:] if len(group_id) > 11 else group_id
+    entries = [
+        {
+            "repo": cls.repo_nickname,
+            "path": str(cls.worktree_path) if cls.worktree_path else None,
+            "branch": cls.branch,
+        }
+        for cls in classes
+    ]
+    return {
+        "group_id": group_id,
+        "date": date,
+        "pattern": pattern,
+        "entries": entries,
+    }
+
+
+def _group_tier_x_cross_repo(
+    classifications: list[WorktreeClassification],
+) -> list[dict]:
+    """Build tier_x_cross_repo_orphan[] — group tier X entries by group_id.
+
+    group_id format is `<YYYY-MM-DD>-<pattern-slug>` (date is 10 chars).
+    """
+    tier_x_by_group: dict[str, list[WorktreeClassification]] = {}
+    for c in classifications:
+        if c.tier != "X" or c.cross_repo_group_id is None:
+            continue
+        tier_x_by_group.setdefault(c.cross_repo_group_id, []).append(c)
+    return [
+        _tier_x_group_record(group_id, classes)
+        for group_id, classes in sorted(tier_x_by_group.items())
+    ]
+
+
+def _locked_live_entries(classifications: list[WorktreeClassification]) -> list[dict]:
+    """Build locked_live[] — only entries with a parsed PID, real values."""
+    return [
+        {
+            **_json_base_entry(c),
+            "pid": c.lock_pid,
+            "command": c.lock_command,
+            "liveness": c.pid_liveness,
+        }
+        for c in classifications
+        if c.pid_liveness == "alive" and c.lock_pid is not None
+    ]
+
+
 def _format_json(
     classifications: list[WorktreeClassification],
     *,
@@ -826,66 +907,9 @@ def _format_json(
     """
     failed_repos = failed_repos or []
 
-    def _base_entry(c: WorktreeClassification) -> dict:
-        return {
-            "tier": c.tier,
-            "is_dirty": c.is_dirty,
-            "is_locked": c.is_locked,
-            "pid_liveness": c.pid_liveness,
-            "stash_count": c.stash_count,
-            "modified_count": c.modified_count,
-            "untracked_count": c.untracked_count,
-            "cross_repo_group_id": c.cross_repo_group_id,
-            "notes": c.notes,
-            "repo_nickname": c.repo_nickname,
-            "branch": c.branch,
-            "worktree_path": str(c.worktree_path) if c.worktree_path else None,
-        }
-
-    by_tier: dict[str, list[dict]] = {tier: [] for tier in _TIER_ORDER}
-    for c in classifications:
-        by_tier.setdefault(c.tier, []).append(_base_entry(c))
-
-    # F21 §3: tier_x_cross_repo_orphan[] — group by group_id.
-    # group_id format is `<YYYY-MM-DD>-<pattern-slug>` (date is 10 chars).
-    tier_x_by_group: dict[str, list[WorktreeClassification]] = {}
-    for c in classifications:
-        if c.tier != "X" or c.cross_repo_group_id is None:
-            continue
-        tier_x_by_group.setdefault(c.cross_repo_group_id, []).append(c)
-    tier_x_cross_repo_orphan: list[dict] = []
-    for group_id, classes in sorted(tier_x_by_group.items()):
-        # date is the first 10 chars (YYYY-MM-DD); pattern is the rest.
-        date = group_id[:10] if len(group_id) >= 10 else ""
-        pattern = group_id[11:] if len(group_id) > 11 else group_id
-        entries = [
-            {
-                "repo": cls.repo_nickname,
-                "path": str(cls.worktree_path) if cls.worktree_path else None,
-                "branch": cls.branch,
-            }
-            for cls in classes
-        ]
-        tier_x_cross_repo_orphan.append(
-            {
-                "group_id": group_id,
-                "date": date,
-                "pattern": pattern,
-                "entries": entries,
-            }
-        )
-
-    # F21 §2: locked_live[] — only entries with a parsed PID, real values.
-    locked_live = [
-        {
-            **_base_entry(c),
-            "pid": c.lock_pid,
-            "command": c.lock_command,
-            "liveness": c.pid_liveness,
-        }
-        for c in classifications
-        if c.pid_liveness == "alive" and c.lock_pid is not None
-    ]
+    by_tier = _group_by_tier(classifications)
+    tier_x_cross_repo_orphan = _group_tier_x_cross_repo(classifications)
+    locked_live = _locked_live_entries(classifications)
 
     # F19: scan_metadata carries failed_repos for the Task 2.7 CLI.
     output = {
@@ -905,12 +929,12 @@ def _format_json(
         "tier_d": by_tier.get("D", []),
         "locked_live": locked_live,
         "locked_orphan": [
-            _base_entry(c) for c in classifications if c.pid_liveness == "dead"
+            _json_base_entry(c) for c in classifications if c.pid_liveness == "dead"
         ],
         "locked_unknown": [
-            _base_entry(c) for c in classifications if c.pid_liveness == "unknown"
+            _json_base_entry(c) for c in classifications if c.pid_liveness == "unknown"
         ],
-        "dirty": [_base_entry(c) for c in classifications if c.is_dirty],
+        "dirty": [_json_base_entry(c) for c in classifications if c.is_dirty],
     }
     return json.dumps(output, indent=2)
 

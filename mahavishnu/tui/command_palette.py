@@ -226,6 +226,101 @@ class CommandPalette:
         """List commands by category."""
         return [cmd for cmd in self._commands.values() if cmd.category == category]
 
+    def _match_identity(
+        self,
+        cmd: Command,
+        query: str,
+        best_score: float,
+        match_type: str,
+        matched_text: str,
+    ) -> tuple[float, str, str]:
+        """Score the command's own identity fields: name and shortcut."""
+        # Check name
+        name_score = self._matcher.score(query, cmd.name)
+        if name_score > best_score:
+            best_score = name_score
+            match_type = "exact" if name_score == 1.0 else "fuzzy"
+            matched_text = cmd.name
+
+        # Check shortcut
+        if cmd.shortcut:
+            shortcut_score = self._matcher.score(query, cmd.shortcut)
+            if shortcut_score > best_score:
+                best_score = shortcut_score
+                match_type = "shortcut"
+                matched_text = cmd.shortcut
+
+        return best_score, match_type, matched_text
+
+    def _match_keywords(
+        self,
+        cmd: Command,
+        query: str,
+        best_score: float,
+        match_type: str,
+        matched_text: str,
+    ) -> tuple[float, str, str]:
+        """Score the command's keywords."""
+        for keyword in cmd.keywords:
+            keyword_score = self._matcher.score(query, keyword)
+            if keyword_score > best_score:
+                best_score = keyword_score
+                match_type = "keyword"
+                matched_text = keyword
+
+        return best_score, match_type, matched_text
+
+    def _match_metadata(
+        self,
+        cmd: Command,
+        query: str,
+        best_score: float,
+        match_type: str,
+        matched_text: str,
+    ) -> tuple[float, str, str]:
+        """Score the command's description and id."""
+        # Check description
+        if cmd.description:
+            desc_score = self._matcher.score(query, cmd.description) * 0.8
+            if desc_score > best_score:
+                best_score = desc_score
+                match_type = "description"
+                matched_text = cmd.description
+
+        # Check ID
+        id_score = self._matcher.score(query, cmd.id) * 0.7
+        if id_score > best_score:
+            best_score = id_score
+            match_type = "id"
+            matched_text = cmd.id
+
+        return best_score, match_type, matched_text
+
+    def _score_command(self, cmd: Command, query: str) -> CommandMatch | None:
+        """Best fuzzy match for one command, or ``None`` below the threshold."""
+        best_score = 0.0
+        match_type = "fuzzy"
+        matched_text = ""
+
+        best_score, match_type, matched_text = self._match_identity(
+            cmd, query, best_score, match_type, matched_text
+        )
+        best_score, match_type, matched_text = self._match_keywords(
+            cmd, query, best_score, match_type, matched_text
+        )
+        best_score, match_type, matched_text = self._match_metadata(
+            cmd, query, best_score, match_type, matched_text
+        )
+
+        if best_score >= self._min_score:
+            return CommandMatch(
+                command=cmd,
+                score=best_score,
+                match_type=match_type,
+                matched_text=matched_text,
+            )
+        return None
+
     def search(self, query: str) -> list[CommandMatch]:
         """Search commands with fuzzy matching.
 
@@ -256,57 +351,9 @@ class CommandPalette:
             if not cmd.enabled:
                 continue
 
-            best_score = 0.0
-            match_type = "fuzzy"
-            matched_text = ""
-
-            # Check name
-            name_score = self._matcher.score(query, cmd.name)
-            if name_score > best_score:
-                best_score = name_score
-                match_type = "exact" if name_score == 1.0 else "fuzzy"
-                matched_text = cmd.name
-
-            # Check shortcut
-            if cmd.shortcut:
-                shortcut_score = self._matcher.score(query, cmd.shortcut)
-                if shortcut_score > best_score:
-                    best_score = shortcut_score
-                    match_type = "shortcut"
-                    matched_text = cmd.shortcut
-
-            # Check keywords
-            for keyword in cmd.keywords:
-                keyword_score = self._matcher.score(query, keyword)
-                if keyword_score > best_score:
-                    best_score = keyword_score
-                    match_type = "keyword"
-                    matched_text = keyword
-
-            # Check description
-            if cmd.description:
-                desc_score = self._matcher.score(query, cmd.description) * 0.8
-                if desc_score > best_score:
-                    best_score = desc_score
-                    match_type = "description"
-                    matched_text = cmd.description
-
-            # Check ID
-            id_score = self._matcher.score(query, cmd.id) * 0.7
-            if id_score > best_score:
-                best_score = id_score
-                match_type = "id"
-                matched_text = cmd.id
-
-            if best_score >= self._min_score:
-                matches.append(
-                    CommandMatch(
-                        command=cmd,
-                        score=best_score,
-                        match_type=match_type,
-                        matched_text=matched_text,
-                    )
-                )
+            match = self._score_command(cmd, query)
+            if match is not None:
+                matches.append(match)
 
         # Sort by score, then priority, then name
         matches.sort(key=lambda m: (-m.score, -m.command.priority, m.command.name))

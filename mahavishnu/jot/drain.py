@@ -1164,6 +1164,51 @@ class _Throttle:
 _THROTTLE: _Throttle = _Throttle()
 
 
+def _surface_lexical_hits(
+    eligible: list[JotSummary], ctx_tokens: set[str]
+) -> list[tuple[JotSummary, float]]:
+    """Lexical scoring pass over the eligible jots."""
+    scored: list[tuple[JotSummary, float]] = []
+    for jot in eligible:
+        jot_tokens = _tokenize(jot.text)
+        score = _lexical_score(jot_tokens, ctx_tokens)
+        scored.append((jot, score))
+    return [(j, s) for j, s in scored if s >= LEXICAL_THRESHOLD]
+
+
+def _surface_lexical_result(
+    lexical_hits: list[tuple[JotSummary, float]], limit: int
+) -> SurfacingResult:
+    """Build the result for the lexical-match path."""
+    lexical_hits.sort(key=lambda x: (-x[1], x[0].last_modified_ms))
+    return SurfacingResult(
+        matches=[j for j, _ in lexical_hits[:limit]],
+        score_threshold_used=LEXICAL_THRESHOLD,
+        surface_degraded=False,
+        surface_reason="matches",
+    )
+
+
+def _surface_semantic_hits(
+    eligible: list[JotSummary], context_text: str, limit: int
+) -> tuple[list[JotSummary], bool]:
+    """Semantic fallback — only used when zero lexical hits.
+
+    Failures inside ``_semantic_score`` set ``_last_surface_degraded`` so
+    the caller learns the embeddings layer was the cause.
+    """
+    embeddings = _build_embeddings_adapter()
+    sem_scored: list[tuple[JotSummary, float]] = []
+    for jot in eligible:
+        score = _semantic_score(jot.text, context_text, embeddings)
+        sem_scored.append((jot, score))
+
+    sem_scored.sort(key=lambda x: (-x[1], x[0].last_modified_ms))
+    sem_matches = [j for j, s in sem_scored if s >= LEXICAL_THRESHOLD][:limit]
+
+    return sem_matches, _last_surface_degraded
+
+
 def surface_relevant(
     trigger: str,
     context_text: str,
@@ -1224,37 +1269,11 @@ def surface_relevant(
             surface_reason="no_match",
         )
 
-    # Lexical scoring pass.
-    scored: list[tuple[JotSummary, float]] = []
-    for jot in eligible:
-        jot_tokens = _tokenize(jot.text)
-        score = _lexical_score(jot_tokens, ctx_tokens)
-        scored.append((jot, score))
-
-    lexical_hits = [(j, s) for j, s in scored if s >= LEXICAL_THRESHOLD]
-
+    lexical_hits = _surface_lexical_hits(eligible, ctx_tokens)
     if lexical_hits:
-        lexical_hits.sort(key=lambda x: (-x[1], x[0].last_modified_ms))
-        return SurfacingResult(
-            matches=[j for j, _ in lexical_hits[:limit]],
-            score_threshold_used=LEXICAL_THRESHOLD,
-            surface_degraded=False,
-            surface_reason="matches",
-        )
+        return _surface_lexical_result(lexical_hits, limit)
 
-    # Semantic fallback — only when zero lexical hits. Failures inside
-    # _semantic_score set _last_surface_degraded so the caller learns the
-    # embeddings layer was the cause.
-    embeddings = _build_embeddings_adapter()
-    sem_scored: list[tuple[JotSummary, float]] = []
-    for jot in eligible:
-        score = _semantic_score(jot.text, context_text, embeddings)
-        sem_scored.append((jot, score))
-
-    sem_scored.sort(key=lambda x: (-x[1], x[0].last_modified_ms))
-    sem_matches = [j for j, s in sem_scored if s >= LEXICAL_THRESHOLD][:limit]
-
-    degraded = _last_surface_degraded
+    sem_matches, degraded = _surface_semantic_hits(eligible, context_text, limit)
     return SurfacingResult(
         matches=sem_matches,
         score_threshold_used=LEXICAL_THRESHOLD,

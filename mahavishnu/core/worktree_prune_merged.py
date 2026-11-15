@@ -189,6 +189,81 @@ def _direct_worktree_paths(repo_path: Path) -> list[Path]:
     ]
 
 
+async def _candidate_worktree_paths(
+    repo_path: Path,
+    repo_nickname: str | None,
+    coordinator: WorktreeCoordinator | None,
+) -> list[Path]:
+    """Enumerate the worktree paths to inspect for this repository."""
+    if coordinator is not None:
+        try:
+            listed = await coordinator.list_worktrees(repo_nickname=repo_nickname)
+        except Exception:  # candidate enumeration — broad catch to return empty candidates when coordinator is unavailable  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+            return []
+        if not listed.get("success"):
+            return []
+        return [
+            Path(entry["path"])
+            for entry in listed.get("worktrees", [])
+            if isinstance(entry, dict) and entry.get("path")
+        ]
+    return _direct_worktree_paths(repo_path)
+
+
+def _within_ttl(last_touched_at: str | None, ttl_days: int) -> bool:
+    """Return True when the worktree is still inside its TTL window."""
+    if ttl_days <= 0 or not last_touched_at:
+        return False
+    try:
+        touched = datetime.fromisoformat(last_touched_at)
+    except ValueError:
+        return True
+    return (datetime.now(UTC) - touched).days < ttl_days
+
+
+def _prune_candidate_for(
+    worktree_path: Path,
+    *,
+    repo_path: Path,
+    repo_nickname: str,
+    main_branch: str,
+    include_dirty: bool,
+    ttl_days: int,
+    registry_lookup: Callable[[str], str | None] | None,
+) -> WorktreePruneCandidate | None:
+    """Return the prune candidate for one worktree, or None when filtered out."""
+    if worktree_path.resolve() == repo_path.resolve():
+        return None
+    branch = _git_current_branch(worktree_path)
+    if branch is None or branch in {main_branch, "master"}:
+        return None
+    merge_status = classify_merge_status(worktree_path, main_branch=main_branch)
+    if merge_status != "merged":
+        return None
+    dirty_status = _git_dirty_count(worktree_path)
+    if dirty_status == "undetermined" or (
+        dirty_status == "dirty" and not include_dirty
+    ):
+        return None
+    head_sha = _git_head_sha(worktree_path)
+    if head_sha is None:
+        return None
+    last_touched_at = registry_lookup(str(worktree_path)) if registry_lookup else None
+    if _within_ttl(last_touched_at, ttl_days):
+        return None
+    return WorktreePruneCandidate(
+        repo_path=repo_path,
+        repo_nickname=repo_nickname,
+        worktree_path=worktree_path,
+        branch=branch,
+        head_sha=head_sha,
+        merge_status=merge_status,
+        dirty_status=dirty_status,
+        behind=_git_behind(worktree_path, main_branch),
+        last_touched_at=last_touched_at,
+    )
+
+
 async def find_merged_worktrees(
     repo_path: Path,
     *,
@@ -200,63 +275,22 @@ async def find_merged_worktrees(
     coordinator: WorktreeCoordinator | None = None,
 ) -> list[WorktreePruneCandidate]:
     """Identify fail-closed merged-worktree removal candidates."""
-    if coordinator is not None:
-        try:
-            listed = await coordinator.list_worktrees(repo_nickname=repo_nickname)
-        except Exception:  # candidate enumeration — broad catch to return empty candidates when coordinator is unavailable  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return []
-        if not listed.get("success"):
-            return []
-        paths = [
-            Path(entry["path"])
-            for entry in listed.get("worktrees", [])
-            if isinstance(entry, dict) and entry.get("path")
-        ]
-    else:
-        paths = _direct_worktree_paths(repo_path)
+    paths = await _candidate_worktree_paths(repo_path, repo_nickname, coordinator)
 
     resolved_nickname = repo_nickname or repo_path.name
     candidates: list[WorktreePruneCandidate] = []
     for worktree_path in paths:
-        if worktree_path.resolve() == repo_path.resolve():
-            continue
-        branch = _git_current_branch(worktree_path)
-        if branch is None or branch in {main_branch, "master"}:
-            continue
-        merge_status = classify_merge_status(worktree_path, main_branch=main_branch)
-        if merge_status != "merged":
-            continue
-        dirty_status = _git_dirty_count(worktree_path)
-        if dirty_status == "undetermined" or (
-            dirty_status == "dirty" and not include_dirty
-        ):
-            continue
-        head_sha = _git_head_sha(worktree_path)
-        if head_sha is None:
-            continue
-        last_touched_at = (
-            registry_lookup(str(worktree_path)) if registry_lookup else None
+        candidate = _prune_candidate_for(
+            worktree_path,
+            repo_path=repo_path,
+            repo_nickname=resolved_nickname,
+            main_branch=main_branch,
+            include_dirty=include_dirty,
+            ttl_days=ttl_days,
+            registry_lookup=registry_lookup,
         )
-        if ttl_days > 0 and last_touched_at:
-            try:
-                touched = datetime.fromisoformat(last_touched_at)
-            except ValueError:
-                continue
-            if (datetime.now(UTC) - touched).days < ttl_days:
-                continue
-        candidates.append(
-            WorktreePruneCandidate(
-                repo_path=repo_path,
-                repo_nickname=resolved_nickname,
-                worktree_path=worktree_path,
-                branch=branch,
-                head_sha=head_sha,
-                merge_status=merge_status,
-                dirty_status=dirty_status,
-                behind=_git_behind(worktree_path, main_branch),
-                last_touched_at=last_touched_at,
-            )
-        )
+        if candidate is not None:
+            candidates.append(candidate)
     return sorted(candidates, key=lambda item: str(item.worktree_path))
 
 

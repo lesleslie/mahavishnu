@@ -43,6 +43,18 @@ class TestWorktreeInfo:
         assert info.merge is False
         assert info.files_touched == []
 
+    def test_worktree_path_defaults_to_none(self) -> None:
+        """An info built without a path has none — back-compat default."""
+        info = WorktreeInfo(
+            worktree_id="wt-123",
+            repo_path=Path("/tmp/repo"),
+            branch_name="feature/wt-123",
+            base_branch="main",
+            created_at=datetime.now(UTC),
+            ttl_seconds=3600,
+        )
+        assert info.worktree_path is None
+
     def test_worktree_info_to_dict_includes_new_fields(self) -> None:
         info = WorktreeInfo(
             worktree_id="wt-001",
@@ -178,6 +190,12 @@ class TestCreateWorktree:
             assert info.base_branch == "main"
             assert info.ttl_seconds == 3600
             assert info.diff == ""
+            # The path must survive on the info object: it is what the
+            # dispatched worker runs in, and dropping it left the
+            # worktree isolation path creating a worktree nobody entered.
+            assert info.worktree_path is not None
+            assert info.worktree_path.is_dir()
+            assert info.worktree_path == repo / ".worktrees" / info.worktree_id
             assert mgr.worktree_exists(info.worktree_id)
         finally:
             # Best-effort cleanup

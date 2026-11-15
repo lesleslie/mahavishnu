@@ -506,6 +506,104 @@ def list_teams(
             console.print()
 
 
+def _render_learning_summary_table(summary: dict[str, Any]) -> None:
+    """Render the headline learning statistics table."""
+    table = Table(show_header=False, box=None)
+    table.add_column("Property", style="cyan")
+    table.add_column("Value", style="white")
+
+    table.add_row("Total Outcomes", str(summary["total_outcomes"]))
+    table.add_row("Skill Combinations", str(summary["skill_combinations"]))
+    table.add_row("Intents Tracked", str(summary["intents_tracked"]))
+    table.add_row("Modes Tracked", str(summary["modes_tracked"]))
+    table.add_row("Intent-Mode Combos", str(summary["intent_mode_combinations"]))
+    table.add_row("Recent Success Rate", f"{summary['recent_success_rate']:.0%}")
+
+    console.print(table)
+
+
+def _render_mode_performance(summary: dict[str, Any]) -> None:
+    """Render the per-mode success/latency table."""
+    if summary["mode_performance"]:
+        console.print("\n[bold]Mode Performance:[/bold]")
+        mode_table = Table(show_header=True, header_style="bold magenta")
+        mode_table.add_column("Mode", style="cyan")
+        mode_table.add_column("Success Rate", style="green")
+        mode_table.add_column("Avg Latency", style="yellow")
+        mode_table.add_column("Executions", style="white")
+
+        for mode, stats in summary["mode_performance"].items():
+            mode_table.add_row(
+                mode,
+                f"{stats['success_rate']:.0%}",
+                f"{stats['avg_latency_ms']:.0f}ms",
+                str(stats["executions"]),
+            )
+
+        console.print(mode_table)
+
+
+def _render_intent_performance(summary: dict[str, Any]) -> None:
+    """Render the per-intent success/latency table."""
+    if summary["intent_performance"]:
+        console.print("\n[bold]Intent Performance:[/bold]")
+        intent_table = Table(show_header=True, header_style="bold magenta")
+        intent_table.add_column("Intent", style="cyan")
+        intent_table.add_column("Success Rate", style="green")
+        intent_table.add_column("Avg Latency", style="yellow")
+        intent_table.add_column("Executions", style="white")
+
+        for intent, stats in summary["intent_performance"].items():
+            intent_table.add_row(
+                intent,
+                f"{stats['success_rate']:.0%}",
+                f"{stats['avg_latency_ms']:.0f}ms",
+                str(stats["executions"]),
+            )
+
+        console.print(intent_table)
+
+
+def _render_top_skills(summary: dict[str, Any]) -> None:
+    """Render the top-performing skill combination table."""
+    if summary["top_skills"]:
+        console.print("\n[bold]Top Performing Skill Combinations:[/bold]")
+        skills_table = Table(show_header=True, header_style="bold magenta")
+        skills_table.add_column("Skills", style="cyan")
+        skills_table.add_column("Success Rate", style="green")
+        skills_table.add_column("Avg Latency", style="yellow")
+        skills_table.add_column("Executions", style="white")
+
+        for skill_data in summary["top_skills"]:
+            skills_table.add_row(
+                skill_data["skills"][:40] + "..."
+                if len(skill_data["skills"]) > 40
+                else skill_data["skills"],
+                f"{skill_data['success_rate']:.0%}",
+                f"{skill_data['avg_latency_ms']:.0f}ms",
+                str(skill_data["executions"]),
+            )
+
+        console.print(skills_table)
+
+
+def _render_recent_outcomes(engine: team_learning.TeamLearningEngine) -> None:
+    """Render the most recent recorded execution outcomes."""
+    recent = engine.get_recent_outcomes(limit=5)
+    if recent:
+        console.print("\n[bold]Recent Outcomes:[/bold]")
+        for i, outcome in enumerate(recent, 1):
+            status = (
+                "[green]success[/green]" if outcome["success"] else "[red]failed[/red]"
+            )
+            console.print(
+                f"  {i}. {outcome['team_id']} - {status} ({outcome['latency_ms']:.0f}ms)"
+            )
+            console.print(
+                f"     Mode: {outcome['team_mode']}, Intent: {outcome['parsed_intent']}"
+            )
+
+
 @app.command("learning")
 def learning_stats(
     verbose: bool = typer.Option(
@@ -562,96 +660,21 @@ def learning_stats(
     console.print("\n[bold cyan]Team Learning Statistics[/bold cyan]\n")
 
     # Summary table
-    table = Table(show_header=False, box=None)
-    table.add_column("Property", style="cyan")
-    table.add_column("Value", style="white")
-
-    table.add_row("Total Outcomes", str(summary["total_outcomes"]))
-    table.add_row("Skill Combinations", str(summary["skill_combinations"]))
-    table.add_row("Intents Tracked", str(summary["intents_tracked"]))
-    table.add_row("Modes Tracked", str(summary["modes_tracked"]))
-    table.add_row("Intent-Mode Combos", str(summary["intent_mode_combinations"]))
-    table.add_row("Recent Success Rate", f"{summary['recent_success_rate']:.0%}")
-
-    console.print(table)
+    _render_learning_summary_table(summary)
 
     # Show mode performance
-    if summary["mode_performance"]:
-        console.print("\n[bold]Mode Performance:[/bold]")
-        mode_table = Table(show_header=True, header_style="bold magenta")
-        mode_table.add_column("Mode", style="cyan")
-        mode_table.add_column("Success Rate", style="green")
-        mode_table.add_column("Avg Latency", style="yellow")
-        mode_table.add_column("Executions", style="white")
-
-        for mode, stats in summary["mode_performance"].items():
-            mode_table.add_row(
-                mode,
-                f"{stats['success_rate']:.0%}",
-                f"{stats['avg_latency_ms']:.0f}ms",
-                str(stats["executions"]),
-            )
-
-        console.print(mode_table)
+    _render_mode_performance(summary)
 
     # Show intent performance
-    if summary["intent_performance"]:
-        console.print("\n[bold]Intent Performance:[/bold]")
-        intent_table = Table(show_header=True, header_style="bold magenta")
-        intent_table.add_column("Intent", style="cyan")
-        intent_table.add_column("Success Rate", style="green")
-        intent_table.add_column("Avg Latency", style="yellow")
-        intent_table.add_column("Executions", style="white")
-
-        for intent, stats in summary["intent_performance"].items():
-            intent_table.add_row(
-                intent,
-                f"{stats['success_rate']:.0%}",
-                f"{stats['avg_latency_ms']:.0f}ms",
-                str(stats["executions"]),
-            )
-
-        console.print(intent_table)
+    _render_intent_performance(summary)
 
     # Show top skills
-    if summary["top_skills"]:
-        console.print("\n[bold]Top Performing Skill Combinations:[/bold]")
-        skills_table = Table(show_header=True, header_style="bold magenta")
-        skills_table.add_column("Skills", style="cyan")
-        skills_table.add_column("Success Rate", style="green")
-        skills_table.add_column("Avg Latency", style="yellow")
-        skills_table.add_column("Executions", style="white")
-
-        for skill_data in summary["top_skills"]:
-            skills_table.add_row(
-                skill_data["skills"][:40] + "..."
-                if len(skill_data["skills"]) > 40
-                else skill_data["skills"],
-                f"{skill_data['success_rate']:.0%}",
-                f"{skill_data['avg_latency_ms']:.0f}ms",
-                str(skill_data["executions"]),
-            )
-
-        console.print(skills_table)
+    _render_top_skills(summary)
 
     # Verbose output
     if verbose:
         # Show recent outcomes
-        recent = engine.get_recent_outcomes(limit=5)
-        if recent:
-            console.print("\n[bold]Recent Outcomes:[/bold]")
-            for i, outcome in enumerate(recent, 1):
-                status = (
-                    "[green]success[/green]"
-                    if outcome["success"]
-                    else "[red]failed[/red]"
-                )
-                console.print(
-                    f"  {i}. {outcome['team_id']} - {status} ({outcome['latency_ms']:.0f}ms)"
-                )
-                console.print(
-                    f"     Mode: {outcome['team_mode']}, Intent: {outcome['parsed_intent']}"
-                )
+        _render_recent_outcomes(engine)
 
     console.print(
         "\n[dim]Use --verbose for more details, --export for JSON, or --clear to reset[/dim]"

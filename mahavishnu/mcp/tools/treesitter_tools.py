@@ -48,6 +48,90 @@ def _ensure_grammar_loaded(language: str) -> bool:
         return False
 
 
+def _resolve_search_directory(search_directory: str | None, path: Path) -> Path:
+    """Resolve the directory to search for usages.
+
+    Defaults to the definition file's own directory.
+    """
+    return Path(search_directory) if search_directory else path.parent
+
+
+def _locate_symbol(result: Any, symbol_name: str) -> tuple[bool, Any]:
+    """Locate ``symbol_name`` among the parsed symbols.
+
+    Returns ``(found, symbol)``; ``symbol`` is ``None`` when the name
+    is absent.
+    """
+    for symbol in result.symbols:
+        if symbol.name == symbol_name:
+            return True, symbol
+    return False, None
+
+
+def _search_extension_for_language(lang: Any) -> str:
+    """Return the file extension to search for the detected language."""
+    extensions = {
+        "python": ".py",
+        "go": ".go",
+        "javascript": ".js",
+        "typescript": ".ts",
+    }
+    return extensions.get(lang.value, ".py")
+
+
+def _collect_symbol_usages(
+    search_dir: Path,
+    path: Path,
+    symbol_name: str,
+    ext: str,
+) -> list[dict[str, Any]]:
+    """Grep the search directory for the lines that mention the symbol."""
+    usages: list[dict[str, Any]] = []
+    for candidate in search_dir.glob(f"**/*{ext}"):
+        if candidate == path:
+            continue
+        try:
+            content = candidate.read_text()
+            if symbol_name in content:
+                # Find line numbers
+                for i, line in enumerate(content.split("\n"), 1):
+                    if symbol_name in line:
+                        usages.append(
+                            {
+                                "file": str(candidate),
+                                "line": i,
+                                "context": line.strip()[:80],
+                            }
+                        )
+        except Exception as e:  # per-file read may fail with any IO/decoding error; skip silently  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+            logger.debug("Tree-sitter pattern match skipped: %s", e)
+            continue
+    return usages
+
+
+def _build_find_usages_result(
+    path: Path,
+    symbol: Any,
+    symbol_name: str,
+    usages: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Assemble the find-usages success payload."""
+    return {
+        "success": True,
+        "symbol_name": symbol_name,
+        "definition": {
+            "file": str(path),
+            "line_start": symbol.line_start if symbol else None,
+            "line_end": symbol.line_end if symbol else None,
+            "kind": symbol.kind.value if symbol else None,
+        }
+        if symbol
+        else None,
+        "usages": usages[:50],  # Limit results
+        "total_usages": len(usages),
+    }
+
+
 def register_treesitter_tools(mcp: FastMCP) -> None:
     """Register 5 tree-sitter tools for Mahavishnu.
 
@@ -186,7 +270,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
             path = Path(file_path)
 
             # Determine search directory
-            search_dir = Path(search_directory) if search_directory else path.parent
+            search_dir = _resolve_search_directory(search_directory, path)
 
             # Parse the definition file first
             result = await parser.parse_file(path)
@@ -198,7 +282,7 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                 }
 
             # Find the symbol in the definition
-            symbol_found = any(s.name == symbol_name for s in result.symbols)
+            symbol_found, symbol = _locate_symbol(result, symbol_name)
             if not symbol_found:
                 return {
                     "success": True,
@@ -208,56 +292,13 @@ def register_treesitter_tools(mcp: FastMCP) -> None:
                     "message": f"Symbol '{symbol_name}' not found in {file_path}",
                 }
 
-            # Get symbol details
-            symbol = next((s for s in result.symbols if s.name == symbol_name), None)
+            # Get files to search based on language
+            ext = _search_extension_for_language(parser.detect_language(path))
 
             # Search for usages (basic implementation - grep for symbol name)
-            usages = []
+            usages = _collect_symbol_usages(search_dir, path, symbol_name, ext)
 
-            # Get files to search based on language
-            lang = parser.detect_language(path)
-            extensions = {
-                "python": ".py",
-                "go": ".go",
-                "javascript": ".js",
-                "typescript": ".ts",
-            }
-            ext = extensions.get(lang.value, ".py")
-
-            for candidate in search_dir.glob(f"**/*{ext}"):
-                if candidate == path:
-                    continue
-                try:
-                    content = candidate.read_text()
-                    if symbol_name in content:
-                        # Find line numbers
-                        for i, line in enumerate(content.split("\n"), 1):
-                            if symbol_name in line:
-                                usages.append(
-                                    {
-                                        "file": str(candidate),
-                                        "line": i,
-                                        "context": line.strip()[:80],
-                                    }
-                                )
-                except Exception as e:  # per-file read may fail with any IO/decoding error; skip silently  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                    logger.debug("Tree-sitter pattern match skipped: %s", e)
-                    continue
-
-            return {
-                "success": True,
-                "symbol_name": symbol_name,
-                "definition": {
-                    "file": str(path),
-                    "line_start": symbol.line_start if symbol else None,
-                    "line_end": symbol.line_end if symbol else None,
-                    "kind": symbol.kind.value if symbol else None,
-                }
-                if symbol
-                else None,
-                "usages": usages[:50],  # Limit results
-                "total_usages": len(usages),
-            }
+            return _build_find_usages_result(path, symbol, symbol_name, usages)
 
         except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.error(f"Failed to find usages: {e}")

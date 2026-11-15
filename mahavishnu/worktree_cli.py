@@ -1,5 +1,7 @@
 """CLI commands for worktree management."""
 
+from __future__ import annotations
+
 import asyncio
 import inspect
 import json
@@ -508,6 +510,83 @@ def prune_merged_worktrees(
     _run_async(_run())
 
 
+async def _prune_stale_metadata_for_repos(
+    coordinator: Any,
+    repos: list[Any],
+    dry_run: bool,
+) -> list[dict[str, Any]]:
+    """Prune stale worktree metadata across the selected repos.
+
+    A repo whose prune raises is reported on stderr and skipped, so one
+    bad repo does not abort the whole sweep. A repo without a canonical
+    nickname is reported and skipped.
+    """
+    all_results: list[dict[str, Any]] = []
+    for repo_info in repos:
+        if not getattr(repo_info, "nickname", None):
+            typer.echo(
+                f"Repo has no canonical nickname: {repo_info.name}",
+                err=True,
+            )
+            continue
+        try:
+            result = await coordinator.prune_stale_metadata(
+                repo_info.nickname,
+                dry_run=dry_run,
+            )
+        except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
+            typer.echo(
+                f"Error pruning stale metadata for {repo_info.nickname}: {exc}",
+                err=True,
+            )
+            continue
+        all_results.append(result)
+    return all_results
+
+
+def _render_prune_stale_results(
+    all_results: list[dict[str, Any]],
+    dry_run: bool,
+    json_output: bool,
+) -> None:
+    """Print the outcome of the stale-metadata prune."""
+    if json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "dry_run": dry_run,
+                    "results": all_results,
+                    "total_removed": sum(
+                        r.get("removed_count", 0) for r in all_results
+                    ),
+                },
+                indent=2,
+            )
+        )
+        return
+
+    total_removed = sum(r.get("removed_count", 0) for r in all_results)
+    total_locked = sum(len(r.get("skipped_locked", [])) for r in all_results)
+    prefix = "[DRY-RUN] " if dry_run else ""
+    typer.echo(
+        f"{prefix}stale-metadata prune: removed={total_removed} "
+        f"locked={total_locked} repos={len(all_results)}"
+    )
+    for r in all_results:
+        typer.echo(
+            f"  {r['repo_nickname']}: removed={r['removed_count']} "
+            f"locked_skipped={len(r.get('skipped_locked', []))}"
+        )
+        for entry in r.get("removed", []):
+            typer.echo(
+                f"    - {entry['metadata']}  "
+                f"worktree={entry['worktree_path']}  "
+                f"branch={entry['branch']}"
+            )
+        for locked in r.get("skipped_locked", []):
+            typer.echo(f"    ! skipped (locked): {locked}")
+
+
 @worktree_app.command("prune-stale-metadata")
 def prune_stale_metadata(
     repo: str | None = typer.Option(
@@ -549,71 +628,14 @@ def prune_stale_metadata(
             typer.echo("Repository manager not available", err=True)
             raise typer.Exit(code=1)
 
-        if repo is not None:
-            resolved = repo_manager.get_repo(repo)
-            if resolved is None:
-                typer.echo(f"Repo not found: {repo}", err=True)
-                raise typer.Exit(code=1)
-            repos = [resolved]
-        else:
-            repos = list(_configured_repos(repo_manager))
+        repos = _resolve_prune_repos(repo, repo_manager)
 
-        all_results: list[dict[str, Any]] = []
-        for repo_info in repos:
-            if not getattr(repo_info, "nickname", None):
-                typer.echo(
-                    f"Repo has no canonical nickname: {repo_info.name}",
-                    err=True,
-                )
-                continue
-            try:
-                result = await coordinator.prune_stale_metadata(
-                    repo_info.nickname,
-                    dry_run=dry_run,
-                )
-            except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
-                typer.echo(
-                    f"Error pruning stale metadata for {repo_info.nickname}: {exc}",
-                    err=True,
-                )
-                continue
-            all_results.append(result)
-
-        if json_output:
-            typer.echo(
-                json.dumps(
-                    {
-                        "dry_run": dry_run,
-                        "results": all_results,
-                        "total_removed": sum(
-                            r.get("removed_count", 0) for r in all_results
-                        ),
-                    },
-                    indent=2,
-                )
-            )
-            return
-
-        total_removed = sum(r.get("removed_count", 0) for r in all_results)
-        total_locked = sum(len(r.get("skipped_locked", [])) for r in all_results)
-        prefix = "[DRY-RUN] " if dry_run else ""
-        typer.echo(
-            f"{prefix}stale-metadata prune: removed={total_removed} "
-            f"locked={total_locked} repos={len(all_results)}"
+        all_results = await _prune_stale_metadata_for_repos(
+            coordinator,
+            repos,
+            dry_run,
         )
-        for r in all_results:
-            typer.echo(
-                f"  {r['repo_nickname']}: removed={r['removed_count']} "
-                f"locked_skipped={len(r.get('skipped_locked', []))}"
-            )
-            for entry in r.get("removed", []):
-                typer.echo(
-                    f"    - {entry['metadata']}  "
-                    f"worktree={entry['worktree_path']}  "
-                    f"branch={entry['branch']}"
-                )
-            for locked in r.get("skipped_locked", []):
-                typer.echo(f"    ! skipped (locked): {locked}")
+        _render_prune_stale_results(all_results, dry_run, json_output)
 
     _run_async(_run())
 

@@ -1311,6 +1311,90 @@ class ObservabilityManager:
             span_attributes["host"],
         )
 
+    def _increment_drift_warning_counter(
+        self,
+        metric_name: str,
+        detector_name: str,
+    ) -> None:
+        """Increment the drift-warning Prometheus counter (best-effort)."""
+        try:
+            counter = getattr(self, "drift_warning_counter", None)
+            if counter is not None:
+                counter.add(
+                    1,
+                    attributes={
+                        "metric_name": metric_name,
+                        "detector": detector_name,
+                    },
+                )
+        except Exception as exc:  # drift warning counter write is best-effort; structured log still fires  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+            self._log_debug("drift warning counter increment failed: %s", exc)
+
+    def _build_drift_warning_span_attributes(
+        self,
+        metric_name: str,
+        detector_name: str,
+        warn_result,
+        value: float,
+        baseline_mean: float,
+        baseline_std: float,
+        trace_id_str: str,
+    ) -> dict[str, object]:
+        """Build the drift-warning OTel span attribute set."""
+        import os
+        import socket
+
+        return {
+            "metric_name": metric_name,
+            "detector": detector_name,
+            "changepoint.detector": detector_name,
+            "score_high": float(warn_result.score_high),
+            "score_low": float(warn_result.score_low),
+            "score": float(warn_result.score),
+            "threshold": float(warn_result.threshold),
+            "samples_since_reset": int(warn_result.samples_since_reset),
+            "direction": str(warn_result.direction),
+            "current_value": float(value),
+            "baseline_mean": float(baseline_mean),
+            "baseline_std": float(baseline_std),
+            "host": socket.gethostname(),
+            "instance_id": os.environ.get("MAHAVISHNU_INSTANCE_ID", "default"),
+            "trace_id": trace_id_str,
+            "runbook_url": self._resolve_drift_runbook_url(),
+        }
+
+    def _emit_drift_warning_span(
+        self,
+        metric_name: str,
+        detector_name: str,
+        warn_result,
+        value: float,
+        baseline_mean: float,
+        baseline_std: float,
+        trace_id_str: str,
+    ) -> None:
+        """Build and emit the drift-warning OTel span (best-effort)."""
+        try:
+            span_attributes = self._build_drift_warning_span_attributes(
+                metric_name,
+                detector_name,
+                warn_result,
+                value,
+                baseline_mean,
+                baseline_std,
+                trace_id_str,
+            )
+            if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
+                # Cast to Any: real OTel accepts Mapping[str, primitive];
+                # MockTracer takes narrower dict[str, str].
+                with self.tracer.start_as_current_span(
+                    "mahavishnu.observability.drift_warning",
+                    attributes=cast("Any", span_attributes),
+                ):
+                    pass
+        except Exception as exc:  # OTel span emission is best-effort; structured log records the warning either way  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+            self._log_debug("drift warning span emission failed: %s", exc)
+
     def _on_drift_warning(self, metric_name: str, value: float, result) -> None:
         """OTel span + counter emission for a drift WARNING (warn detector fired).
 
@@ -1322,7 +1406,6 @@ class ObservabilityManager:
         rate; if this rate spikes on stationary traffic, the operator should
         re-tune the warn threshold (lower = more sensitive, more warnings).
         """
-        import os
         import socket
 
         from mahavishnu.observability.changepoint.two_stage import TwoStageResult
@@ -1346,92 +1429,27 @@ class ObservabilityManager:
                 "detector": detector_name,
             }
         )
-        try:
-            counter = getattr(self, "drift_warning_counter", None)
-            if counter is not None:
-                counter.add(
-                    1,
-                    attributes={
-                        "metric_name": metric_name,
-                        "detector": detector_name,
-                    },
-                )
-        except Exception as exc:  # drift warning counter write is best-effort; structured log still fires  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            self._log_debug("drift warning counter increment failed: %s", exc)
+
+        self._increment_drift_warning_counter(metric_name, detector_name)
 
         # Compute baseline statistics from the recent sampler window so the
         # operator can compare the warning's current value against the
         # in-control mean + std without leaving the trace viewer. Mirrors
         # the drift_detected emission so both signals carry the same context.
-        baseline_mean = 0.0
-        baseline_std = 0.0
-        try:
-            recent = self._get_metric_sampler().values(metric_name)[-60:]
-            if recent:
-                baseline_mean = sum(recent) / len(recent)
-                if len(recent) >= 2:
-                    variance = sum((v - baseline_mean) ** 2 for v in recent) / (
-                        len(recent) - 1
-                    )
-                    baseline_std = math.sqrt(variance) if variance > 0 else 0.0
-        except Exception:  # baseline stats are advisory; emit zero on failure rather than dropping the event
-            self.logger.debug(
-                "baseline stddev calculation failed; using 0.0", exc_info=True
-            )
+        baseline_mean, baseline_std = self._compute_drift_baseline_stats(metric_name)
 
-        # Resolve the runbook URL the same way as the drift_detected path
-        # so the warning span advertises the operator-handling doc.
-        def _resolve_runbook_url() -> str:
-            default = "docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md"
-            try:
-                cfg = getattr(self.config, "observability", None)
-                override = getattr(cfg, "drift_runbook_url", None)
-            except Exception:  # config read best-effort; fall back to default runbook URL  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-                override = None
-            return override or default
-
-        trace_id_str = ""
-        if OTEL_AVAILABLE:
-            try:
-                from opentelemetry import trace as _otel_trace
-
-                ctx_span = _otel_trace.get_current_span()
-                ctx = ctx_span.get_span_context() if ctx_span else None
-                if ctx and ctx.trace_id:
-                    trace_id_str = _otel_trace.format_trace_id(ctx.trace_id)
-            except Exception:  # trace context may be missing; emit empty trace_id
-                self.logger.debug("OTel trace context unavailable", exc_info=True)
+        trace_id_str = self._get_otel_trace_id()
 
         # OTel span + structured log (best-effort)
-        try:
-            span_attributes = {
-                "metric_name": metric_name,
-                "detector": detector_name,
-                "changepoint.detector": detector_name,
-                "score_high": float(warn_result.score_high),
-                "score_low": float(warn_result.score_low),
-                "score": float(warn_result.score),
-                "threshold": float(warn_result.threshold),
-                "samples_since_reset": int(warn_result.samples_since_reset),
-                "direction": str(warn_result.direction),
-                "current_value": float(value),
-                "baseline_mean": float(baseline_mean),
-                "baseline_std": float(baseline_std),
-                "host": socket.gethostname(),
-                "instance_id": os.environ.get("MAHAVISHNU_INSTANCE_ID", "default"),
-                "trace_id": trace_id_str,
-                "runbook_url": _resolve_runbook_url(),
-            }
-            if OTEL_AVAILABLE and getattr(self, "tracer", None) is not None:
-                # Cast to Any: real OTel accepts Mapping[str, primitive];
-                # MockTracer takes narrower dict[str, str].
-                with self.tracer.start_as_current_span(
-                    "mahavishnu.observability.drift_warning",
-                    attributes=cast("Any", span_attributes),
-                ):
-                    pass
-        except Exception as exc:  # OTel span emission is best-effort; structured log records the warning either way  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            self._log_debug("drift warning span emission failed: %s", exc)
+        self._emit_drift_warning_span(
+            metric_name,
+            detector_name,
+            warn_result,
+            value,
+            baseline_mean,
+            baseline_std,
+            trace_id_str,
+        )
 
         self._log_warning(
             "drift_warning metric=%s detector=%s value=%.3f baseline_mean=%.3f baseline_std=%.3f score=%.3f threshold=%.3f severity=%s direction=%s samples=%d trace_id=%s host=%s",

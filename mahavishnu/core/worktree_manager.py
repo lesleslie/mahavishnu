@@ -73,6 +73,13 @@ class WorktreeInfo:
     created_at: datetime
     ttl_seconds: int
 
+    # The absolute path of the worktree checkout. Populated by
+    # create_worktree(); this is the path the dispatched worker must run
+    # in, so it must survive on the info object — it used to be computed
+    # and dropped, which left pool_route_execute's worktree isolation
+    # creating a worktree that no worker ever entered.
+    worktree_path: Path | None = None
+
     # Populated by complete_worktree(). Empty before completion.
     diff: str = ""
     merge: bool = False
@@ -211,6 +218,7 @@ class WorktreeManager:
             info = WorktreeInfo(
                 worktree_id=worktree_id,
                 repo_path=repo_path_p,
+                worktree_path=worktree_path,
                 branch_name=branch_name,
                 base_branch=base_branch,
                 created_at=datetime.now(UTC),

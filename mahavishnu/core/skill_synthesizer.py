@@ -124,11 +124,7 @@ class SkillSynthesizer:
         conditions: list[str] = []
 
         all_goals: list[str] = [e.goal for e in evidence]
-        repo_extensions: set[str] = set()
-        for path in cluster.repo_paths or []:
-            ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
-            if ext and len(ext) <= 10:
-                repo_extensions.add(ext)
+        repo_extensions = _collect_repo_extensions(cluster.repo_paths or [])
 
         lang_map: dict[str, str] = {
             "py": "Python",
@@ -146,17 +142,8 @@ class SkillSynthesizer:
             if ext in repo_extensions:
                 conditions.append(f"{lang} task")
 
-        goal_keywords: set[str] = set()
-        for goal in all_goals:
-            for word in goal.lower().split():
-                if len(word) >= 4:
-                    goal_keywords.add(word)
-
-        frequent_keywords = [
-            kw
-            for kw in goal_keywords
-            if sum(1 for g in all_goals if kw in g.lower()) >= 2
-        ]
+        goal_keywords = _collect_goal_keywords(all_goals)
+        frequent_keywords = _frequent_keywords(all_goals, goal_keywords)
         for kw in frequent_keywords[:3]:
             conditions.append(f"Goal mentions '{kw}'")
 
@@ -164,6 +151,60 @@ class SkillSynthesizer:
             conditions.append(f"Recurring pattern in {cluster.member_count} sessions")
 
         return conditions
+
+
+# =============================================================================
+# TRIGGER CONDITION HELPERS
+# =============================================================================
+
+
+def _collect_repo_extensions(repo_paths: list[str]) -> set[str]:
+    """Collect the file extensions present in a cluster's repository paths.
+
+    Args:
+        repo_paths: Repository paths belonging to the evidence cluster
+
+    Returns:
+        Set of lowercase file extensions
+    """
+    repo_extensions: set[str] = set()
+    for path in repo_paths:
+        ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+        if ext and len(ext) <= 10:
+            repo_extensions.add(ext)
+    return repo_extensions
+
+
+def _collect_goal_keywords(all_goals: list[str]) -> set[str]:
+    """Collect words of four or more characters from a cluster's goals.
+
+    Args:
+        all_goals: Goal statements for the evidence cluster
+
+    Returns:
+        Set of lowercase keywords
+    """
+    goal_keywords: set[str] = set()
+    for goal in all_goals:
+        for word in goal.lower().split():
+            if len(word) >= 4:
+                goal_keywords.add(word)
+    return goal_keywords
+
+
+def _frequent_keywords(all_goals: list[str], goal_keywords: set[str]) -> list[str]:
+    """Select the keywords that appear in at least two of a cluster's goals.
+
+    Args:
+        all_goals: Goal statements for the evidence cluster
+        goal_keywords: Candidate keywords extracted from the goals
+
+    Returns:
+        List of keywords mentioned by two or more goals
+    """
+    return [
+        kw for kw in goal_keywords if sum(1 for g in all_goals if kw in g.lower()) >= 2
+    ]
 
 
 __all__ = [

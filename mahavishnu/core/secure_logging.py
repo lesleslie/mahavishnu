@@ -145,6 +145,43 @@ class CredentialPatterns:
 # =============================================================================
 
 
+def _default_sensitive_keys() -> list[str]:
+    """Return the built-in list of key fragments treated as sensitive.
+
+    Returns:
+        A fresh list of lowercase key fragments to match against
+    """
+    return [
+        "password",
+        "passwd",
+        "pass",
+        "secret",
+        "token",
+        "key",
+        "credential",
+        "api_key",
+        "apikey",
+        "auth_token",
+        "access_token",
+        "refresh_token",
+        "ssh_key",
+        "private_key",
+        "passphrase",
+        "jwt_secret",
+        "session_token",
+        "bearer_token",
+        "basic_auth",
+        "authorization",
+        "cookie",
+        "session_id",
+        "connection_string",
+        "database_url",
+        "db_url",
+        "dsn",
+        "host",
+    ]
+
+
 class CredentialRedactor:
     """Redact credentials from strings and dictionaries."""
 
@@ -241,37 +278,9 @@ class CredentialRedactor:
             Dictionary with credentials redacted
         """
         if sensitive_keys is None:
-            sensitive_keys = [
-                "password",
-                "passwd",
-                "pass",
-                "secret",
-                "token",
-                "key",
-                "credential",
-                "api_key",
-                "apikey",
-                "auth_token",
-                "access_token",
-                "refresh_token",
-                "ssh_key",
-                "private_key",
-                "passphrase",
-                "jwt_secret",
-                "session_token",
-                "bearer_token",
-                "basic_auth",
-                "authorization",
-                "cookie",
-                "session_id",
-                "connection_string",
-                "database_url",
-                "db_url",
-                "dsn",
-                "host",
-            ]
+            sensitive_keys = _default_sensitive_keys()
 
-        redacted = {}
+        redacted: dict[str, Any] = {}
 
         for key, value in data.items():
             key_lower = key.lower()
@@ -279,42 +288,89 @@ class CredentialRedactor:
             # Check if this is a sensitive key
             is_sensitive = any(sensitive in key_lower for sensitive in sensitive_keys)
 
-            if is_sensitive:
-                # Redact the entire value
-                if isinstance(value, str):
-                    # Show first 4 characters for debugging
-                    preview = value[:4] if len(value) > 4 else value
-                    redacted[key] = f"{preview}{self.redaction_string}"
-                elif isinstance(value, SecretStr):
-                    redacted[key] = self.redaction_string
-                else:
-                    redacted[key] = self.redaction_string
-            elif isinstance(value, SecretStr):
-                # Pydantic SecretStr
-                redacted[key] = self.redaction_string
-            elif isinstance(value, dict):
-                # Recursively redact nested dictionaries
-                redacted[key] = self.redact_dict(value, sensitive_keys)
-            elif isinstance(value, list):
-                # Redact list items
-                redacted[key] = [
-                    self.redact_dict(item, sensitive_keys)
-                    if isinstance(item, dict)
-                    else self.redact_string
-                    if is_sensitive
-                    else item
-                    for item in value
-                ]
-            elif isinstance(value, str):
-                # Redact credentials from string values
-                if is_sensitive:
-                    redacted[key] = self.redaction_string
-                else:
-                    redacted[key] = self.redact_string(value)
-            else:
-                redacted[key] = value
+            redacted[key] = self._redact_entry(value, is_sensitive, sensitive_keys)
 
         return redacted
+
+    def _redact_entry(
+        self,
+        value: Any,
+        is_sensitive: bool,
+        sensitive_keys: list[str],
+    ) -> Any:
+        """Redact a single dictionary entry according to its value type.
+
+        Args:
+            value: The value to redact
+            is_sensitive: Whether the owning key matched a sensitive pattern
+            sensitive_keys: List of keys to always redact
+
+        Returns:
+            The redacted value
+        """
+        if is_sensitive:
+            # Redact the entire value
+            return self._redact_sensitive_value(value)
+        elif isinstance(value, SecretStr):
+            # Pydantic SecretStr
+            return self.redaction_string
+        elif isinstance(value, dict):
+            # Recursively redact nested dictionaries
+            return self.redact_dict(value, sensitive_keys)
+        elif isinstance(value, list):
+            # Redact list items
+            return self._redact_list_items(value, is_sensitive, sensitive_keys)
+        elif isinstance(value, str):
+            # Redact credentials from string values
+            if is_sensitive:
+                return self.redaction_string
+            else:
+                return self.redact_string(value)
+        else:
+            return value
+
+    def _redact_sensitive_value(self, value: Any) -> Any:
+        """Redact a value whose key matched a sensitive pattern.
+
+        Args:
+            value: The value to redact
+
+        Returns:
+            The redacted value
+        """
+        if isinstance(value, str):
+            # Show first 4 characters for debugging
+            preview = value[:4] if len(value) > 4 else value
+            return f"{preview}{self.redaction_string}"
+        elif isinstance(value, SecretStr):
+            return self.redaction_string
+        else:
+            return self.redaction_string
+
+    def _redact_list_items(
+        self,
+        value: list[Any],
+        is_sensitive: bool,
+        sensitive_keys: list[str],
+    ) -> list[Any]:
+        """Redact the items of a list value.
+
+        Args:
+            value: The list whose items should be redacted
+            is_sensitive: Whether the owning key matched a sensitive pattern
+            sensitive_keys: List of keys to always redact
+
+        Returns:
+            List with redacted items
+        """
+        return [
+            self.redact_dict(item, sensitive_keys)
+            if isinstance(item, dict)
+            else self.redact_string
+            if is_sensitive
+            else item
+            for item in value
+        ]
 
     def redact_log_message(
         self, message: str, **kwargs: Any

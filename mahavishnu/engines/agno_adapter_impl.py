@@ -1061,6 +1061,91 @@ class NativeToolsRegistry:
 
 
 # ============================================================================
+# Legacy LLM configuration resolution
+# ============================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class _LegacyLLMFields:
+    """The values the legacy flat ``llm`` block contributes.
+
+    A missing legacy block contributes nothing, so every field stays
+    ``None``.
+    """
+
+    model_id: str | None = None
+    base_url: str | None = None
+    api_key_env: str | None = None
+    temperature: int | float | None = None
+    max_tokens: int | float | None = None
+
+
+def _clean_str(value: Any) -> str | None:
+    """Return ``value`` when it is a non-empty string, else ``None``."""
+    return value if isinstance(value, str) and value else None
+
+
+def _clean_number(value: Any) -> int | float | None:
+    """Return ``value`` when it is an int or float, else ``None``."""
+    return value if isinstance(value, (int, float)) else None
+
+
+def _legacy_llm_fields(llm_config: Any) -> _LegacyLLMFields:
+    """Read the legacy flat ``llm`` block.
+
+    The model id falls back from ``model_id`` to ``model``; every other
+    field is taken as named.
+    """
+    if llm_config is None:
+        return _LegacyLLMFields()
+    model_id = _clean_str(getattr(llm_config, "model_id", None)) or _clean_str(
+        getattr(llm_config, "model", None)
+    )
+    base_url = _clean_str(getattr(llm_config, "base_url", None))
+    api_key_env = _clean_str(getattr(llm_config, "api_key_env", None))
+    temperature = _clean_number(getattr(llm_config, "temperature", None))
+    max_tokens = _clean_number(getattr(llm_config, "max_tokens", None))
+    return _LegacyLLMFields(
+        model_id=model_id,
+        base_url=base_url,
+        api_key_env=api_key_env,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+
+
+def _agno_llm_config(
+    parent_llm: AgnoLLMConfig,
+    provider: LLMProvider,
+    model_id: str | None,
+    api_key_env: str | None,
+    base_url: str | None,
+    temperature: float,
+    max_tokens: float,
+) -> AgnoLLMConfig:
+    """Build the resolved Agno LLM configuration.
+
+    The model id, credential, and endpoint are all provider-scoped.
+    Only inherit them from the parent config when the legacy shape
+    resolves to the *same* provider — otherwise the MiniMax model id
+    would be sent to llama-server (or the MiniMax endpoint to the
+    Anthropic SDK), and the derived credential would name the wrong
+    env var.
+    """
+    same_provider = provider == parent_llm.provider
+    return AgnoLLMConfig(
+        provider=provider,
+        model_id=model_id
+        or (parent_llm.model_id if same_provider else default_model_for(provider)),
+        api_key_env=api_key_env or (parent_llm.api_key_env if same_provider else None),
+        base_url=base_url or (parent_llm.base_url if same_provider else None),
+        fallback_providers=list(parent_llm.fallback_providers),
+        temperature=temperature,
+        max_tokens=int(max_tokens),
+    )
+
+
+# ============================================================================
 # Main AgnoAdapter Implementation
 # ============================================================================
 
@@ -1609,6 +1694,26 @@ class AgnoAdapter(OrchestratorAdapter):
             return True
         return isinstance(getattr(self.config, "agno", None), AgnoAdapterConfig)
 
+    def _resolve_llm_provider(self, provider_value: Any) -> LLMProvider:
+        """Turn a legacy provider value into an ``LLMProvider``.
+
+        Raises:
+            ConfigurationError: when the provider name is not supported.
+        """
+        try:
+            return (
+                provider_value
+                if isinstance(provider_value, LLMProvider)
+                else LLMProvider(provider_value)
+                if isinstance(provider_value, str)
+                else self.agno_config.llm.provider
+            )
+        except ValueError as exc:
+            raise ConfigurationError(
+                f"Unsupported LLM provider: {provider_value}",
+                details={"provider": provider_value},
+            ) from exc
+
     def _resolve_legacy_llm_config(self) -> AgnoLLMConfig:
         """Resolve the Agno LLM configuration.
 
@@ -1640,80 +1745,32 @@ class AgnoAdapter(OrchestratorAdapter):
 
         llm_config = getattr(self.config, "llm", None)
 
-        def _clean_str(value: Any) -> str | None:
-            return value if isinstance(value, str) and value else None
-
-        def _clean_number(value: Any) -> int | float | None:
-            return value if isinstance(value, (int, float)) else None
-
         provider_value = getattr(self.config, "llm_provider", None)
         if provider_value is None and llm_config is not None:
             provider_value = getattr(llm_config, "provider", None)
 
-        model_id = None
-        if llm_config is not None:
-            model_id = _clean_str(getattr(llm_config, "model_id", None)) or _clean_str(
-                getattr(llm_config, "model", None)
-            )
-
-        base_url = None
-        if llm_config is not None:
-            base_url = _clean_str(getattr(llm_config, "base_url", None))
-
-        api_key_env = (
-            _clean_str(getattr(llm_config, "api_key_env", None))
-            if llm_config is not None
-            else None
-        )
-        temperature = (
-            _clean_number(getattr(llm_config, "temperature", None))
-            if llm_config is not None
-            else None
-        )
-        max_tokens = (
-            _clean_number(getattr(llm_config, "max_tokens", None))
-            if llm_config is not None
-            else None
-        )
+        legacy = _legacy_llm_fields(llm_config)
+        model_id = legacy.model_id
+        base_url = legacy.base_url
+        api_key_env = legacy.api_key_env
+        temperature = legacy.temperature
+        max_tokens = legacy.max_tokens
 
         if temperature is None:
             temperature = self.agno_config.llm.temperature
         if max_tokens is None:
             max_tokens = self.agno_config.llm.max_tokens
 
-        try:
-            provider = (
-                provider_value
-                if isinstance(provider_value, LLMProvider)
-                else LLMProvider(provider_value)
-                if isinstance(provider_value, str)
-                else self.agno_config.llm.provider
-            )
-        except ValueError as exc:
-            raise ConfigurationError(
-                f"Unsupported LLM provider: {provider_value}",
-                details={"provider": provider_value},
-            ) from exc
+        provider = self._resolve_llm_provider(provider_value)
 
-        # The model id, credential, and endpoint are all provider-scoped.
-        # Only inherit them from the parent config when the legacy shape
-        # resolves to the *same* provider — otherwise the MiniMax model id
-        # would be sent to llama-server (or the MiniMax endpoint to the
-        # Anthropic SDK), and the derived credential would name the wrong
-        # env var.
-        parent_llm = self.agno_config.llm
-        same_provider = provider == parent_llm.provider
-
-        return AgnoLLMConfig(
+        return _agno_llm_config(
+            parent_llm=self.agno_config.llm,
             provider=provider,
-            model_id=model_id
-            or (parent_llm.model_id if same_provider else default_model_for(provider)),
-            api_key_env=api_key_env
-            or (parent_llm.api_key_env if same_provider else None),
-            base_url=base_url or (parent_llm.base_url if same_provider else None),
-            fallback_providers=list(parent_llm.fallback_providers),
+            model_id=model_id,
+            api_key_env=api_key_env,
+            base_url=base_url,
             temperature=temperature,
-            max_tokens=int(max_tokens),
+            max_tokens=max_tokens,
         )
 
     def _get_llm(self) -> Any:

@@ -311,6 +311,66 @@ async def _validate_runtime_connectivity(
     return checks
 
 
+def _resolve_runtime_settings(config_dir: Path) -> tuple[MahavishnuSettings, str]:
+    """Load runtime settings for ``config_dir`` and report their source.
+
+    Returns:
+        The loaded settings and a label describing where they came from.
+    """
+    if config_dir.resolve() == Path("settings").resolve():
+        return MahavishnuSettings(), "settings"
+    return _load_settings_from_dir(config_dir), str(config_dir)
+
+
+def _collect_runtime_validations(
+    settings: MahavishnuSettings,
+) -> list[ValidationResult]:
+    """Collect runtime settings validations plus the skill/agent drift report."""
+    runtime_validations = _validate_runtime_settings(settings)
+    # Drift check: find .claude/ in project dir first, fall back to global
+    claude_dir = Path(__file__).parents[2] / ".claude"
+    if not claude_dir.exists():
+        claude_dir = Path.home() / ".claude"
+    drift_report = check_skill_agent_drift(
+        agents_dir=claude_dir / "agents",
+        skills_dir=claude_dir / "skills",
+    )
+    drift_errors = [
+        ValidationResult(valid=False, message=e, path="mcp_drift")
+        for e in drift_report.errors
+    ]
+    drift_warnings = [
+        ValidationResult(valid=True, message=w, path="mcp_drift")
+        for w in drift_report.warnings
+    ]
+    runtime_validations.extend(drift_errors)
+    runtime_validations.extend(drift_warnings)
+    return runtime_validations
+
+
+def _build_validation_summary(
+    static_report: ConfigValidationReport,
+    runtime_checks: list[RuntimeValidationCheck],
+    runtime_validations: list[ValidationResult],
+    runtime_errors: list[RuntimeValidationCheck],
+    runtime_validation_errors: list[ValidationResult],
+) -> dict[str, int]:
+    """Build the error/warning counts for a validation report."""
+    return {
+        "error_count": len(static_report.get_errors())
+        + len(runtime_errors)
+        + len(runtime_validation_errors),
+        "warning_count": len(static_report.warnings)
+        + sum(
+            1
+            for check in runtime_checks
+            if check.valid and check.details.get("severity") == "warning"
+        ),
+        "runtime_check_count": len(runtime_checks),
+        "runtime_validation_count": len(runtime_validations),
+    }
+
+
 async def run_validation(
     config_dir: str | Path = "settings", full: bool = False
 ) -> dict[str, Any]:
@@ -323,12 +383,7 @@ async def run_validation(
 
     if static_report.valid:
         try:
-            if config_dir.resolve() == Path("settings").resolve():
-                settings = MahavishnuSettings()
-                runtime_settings_source = "settings"
-            else:
-                settings = _load_settings_from_dir(config_dir)
-                runtime_settings_source = str(config_dir)
+            settings, runtime_settings_source = _resolve_runtime_settings(config_dir)
         except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
             runtime_validations.append(
                 ValidationResult(
@@ -338,25 +393,7 @@ async def run_validation(
                 )
             )
         else:
-            runtime_validations = _validate_runtime_settings(settings)
-            # Drift check: find .claude/ in project dir first, fall back to global
-            claude_dir = Path(__file__).parents[2] / ".claude"
-            if not claude_dir.exists():
-                claude_dir = Path.home() / ".claude"
-            drift_report = check_skill_agent_drift(
-                agents_dir=claude_dir / "agents",
-                skills_dir=claude_dir / "skills",
-            )
-            drift_errors = [
-                ValidationResult(valid=False, message=e, path="mcp_drift")
-                for e in drift_report.errors
-            ]
-            drift_warnings = [
-                ValidationResult(valid=True, message=w, path="mcp_drift")
-                for w in drift_report.warnings
-            ]
-            runtime_validations.extend(drift_errors)
-            runtime_validations.extend(drift_warnings)
+            runtime_validations = _collect_runtime_validations(settings)
             if full:
                 runtime_checks = await _validate_runtime_connectivity(settings)
 
@@ -376,19 +413,13 @@ async def run_validation(
         "runtime_checks": [check.to_dict() for check in runtime_checks],
         "runtime_check_count": len(runtime_checks),
         "runtime_validation_count": len(runtime_validations),
-        "summary": {
-            "error_count": len(static_report.get_errors())
-            + len(runtime_errors)
-            + len(runtime_validation_errors),
-            "warning_count": len(static_report.warnings)
-            + sum(
-                1
-                for check in runtime_checks
-                if check.valid and check.details.get("severity") == "warning"
-            ),
-            "runtime_check_count": len(runtime_checks),
-            "runtime_validation_count": len(runtime_validations),
-        },
+        "summary": _build_validation_summary(
+            static_report,
+            runtime_checks,
+            runtime_validations,
+            runtime_errors,
+            runtime_validation_errors,
+        ),
     }
 
 

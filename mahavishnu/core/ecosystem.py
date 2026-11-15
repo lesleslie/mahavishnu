@@ -280,55 +280,14 @@ class EcosystemLoader:
         Returns:
             Dictionary with 'errors' and 'warnings' keys containing lists of messages
         """
-        errors = []
-        warnings = []
+        errors: list[str] = []
+        warnings: list[str] = []
+        servers = self.config.mcp_servers
 
-        for server in self.config.mcp_servers:
-            # Check if path exists
-            if server.path and server.path != "npx":
-                path = Path(server.path)
-                if not path.exists():
-                    errors.append(f"{server.name}: Path does not exist: {server.path}")
-
-                # Check if package is installed (for local projects)
-                if server.package and path.is_dir():
-                    # Try to import the package
-                    try:
-                        __import__(server.package)
-                    except ImportError:
-                        errors.append(
-                            f"{server.name}: Package '{server.package}' not installed or not importable"
-                        )
-
-            # Check for port conflicts
-            if server.port:
-                conflicting = [
-                    s
-                    for s in self.config.mcp_servers
-                    if s.name != server.name
-                    and s.port == server.port
-                    and s.status == server.status == "enabled"
-                ]
-                if conflicting:
-                    errors.append(
-                        f"{server.name}: Port {server.port} conflicts with: "
-                        f"{', '.join(s.name for s in conflicting)}"
-                    )
-
-            # Check if dependencies exist
-            for dep in server.dependencies:
-                dep_server = next(
-                    (s for s in self.config.mcp_servers if s.name == dep), None
-                )
-                if not dep_server:
-                    errors.append(
-                        f"{server.name}: Dependency '{dep}' not found in MCP servers"
-                    )
-                elif dep_server.status != "enabled":
-                    warnings.append(
-                        f"{server.name}: Dependency '{dep}' is disabled, "
-                        f"server may not function correctly"
-                    )
+        for server in servers:
+            _validate_server_path(server, errors)
+            _validate_server_port(server, servers, errors)
+            _validate_server_dependencies(server, servers, errors, warnings)
 
         return {"errors": errors, "warnings": warnings}
 
@@ -441,6 +400,89 @@ class EcosystemLoader:
                 message=f"Failed to save ecosystem configuration: {e}",
                 details={"path": str(self.config_path)},
             ) from e
+
+
+# =============================================================================
+# MCP SERVER VALIDATION HELPERS
+# =============================================================================
+
+
+def _validate_server_path(server: MCPServerConfig, errors: list[str]) -> None:
+    """Validate a server's path and the importability of its package.
+
+    Args:
+        server: Server configuration to validate
+        errors: Accumulator for validation error messages
+    """
+    # Check if path exists
+    if server.path and server.path != "npx":
+        path = Path(server.path)
+        if not path.exists():
+            errors.append(f"{server.name}: Path does not exist: {server.path}")
+
+        # Check if package is installed (for local projects)
+        if server.package and path.is_dir():
+            # Try to import the package
+            try:
+                __import__(server.package)
+            except ImportError:
+                errors.append(
+                    f"{server.name}: Package '{server.package}' not installed or not importable"
+                )
+
+
+def _validate_server_port(
+    server: MCPServerConfig,
+    servers: list[MCPServerConfig],
+    errors: list[str],
+) -> None:
+    """Validate that a server's port does not conflict with another enabled server.
+
+    Args:
+        server: Server configuration to validate
+        servers: All configured MCP servers
+        errors: Accumulator for validation error messages
+    """
+    # Check for port conflicts
+    if server.port:
+        conflicting = [
+            s
+            for s in servers
+            if s.name != server.name
+            and s.port == server.port
+            and s.status == server.status == "enabled"
+        ]
+        if conflicting:
+            errors.append(
+                f"{server.name}: Port {server.port} conflicts with: "
+                f"{', '.join(s.name for s in conflicting)}"
+            )
+
+
+def _validate_server_dependencies(
+    server: MCPServerConfig,
+    servers: list[MCPServerConfig],
+    errors: list[str],
+    warnings: list[str],
+) -> None:
+    """Validate that a server's declared dependencies exist and are enabled.
+
+    Args:
+        server: Server configuration to validate
+        servers: All configured MCP servers
+        errors: Accumulator for validation error messages
+        warnings: Accumulator for validation warning messages
+    """
+    # Check if dependencies exist
+    for dep in server.dependencies:
+        dep_server = next((s for s in servers if s.name == dep), None)
+        if not dep_server:
+            errors.append(f"{server.name}: Dependency '{dep}' not found in MCP servers")
+        elif dep_server.status != "enabled":
+            warnings.append(
+                f"{server.name}: Dependency '{dep}' is disabled, "
+                f"server may not function correctly"
+            )
 
 
 # Singleton instance for easy access

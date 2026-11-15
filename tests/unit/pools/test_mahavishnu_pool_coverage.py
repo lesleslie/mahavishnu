@@ -401,6 +401,39 @@ async def test_one_shot_pool_launches_a_session_per_task(
     assert result["output"] == "done"
 
 
+async def test_one_shot_pool_launches_the_session_in_the_requested_cwd(
+    one_shot_pool_config: PoolConfig,
+    mock_terminal_manager: MagicMock,
+) -> None:
+    """The session starts in the directory the dispatch named.
+
+    The worktree isolation path sets ``task["cwd"]`` to the worktree it
+    created. If the cwd never reached the launch, the worker would edit
+    the source repo while the diff was captured from the untouched
+    worktree — isolation that isolates nothing.
+    """
+    mock_wm = _build_mock_worker_manager()
+    mock_wm.execute_batch.return_value = {
+        "worker-1": WorkerResult(
+            worker_id="worker-1",
+            status=WorkerStatus.COMPLETED,
+            output="done",
+            error=None,
+            exit_code=0,
+            duration_seconds=0.1,
+        )
+    }
+    pool = _make_pool(one_shot_pool_config, mock_terminal_manager, mock_wm)
+
+    await pool.execute_task({"prompt": "do the thing", "cwd": "/tmp/worktree"})
+
+    mock_wm.submit_workers.assert_awaited_once_with(
+        "terminal-claude",
+        ["do the thing"],
+        runtime_kwargs={"cwd": "/tmp/worktree"},
+    )
+
+
 async def test_one_shot_pool_requires_a_prompt(
     one_shot_pool_config: PoolConfig,
     mock_terminal_manager: MagicMock,

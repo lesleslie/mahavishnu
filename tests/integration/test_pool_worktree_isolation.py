@@ -281,6 +281,83 @@ class TestPoolRouteExecuteWorktree:
         assert "files_touched" in result["worktree"]
 
     @pytest.mark.asyncio
+    async def test_dispatch_runs_in_the_worktree(self, tmp_git_repo: Path) -> None:
+        """The dispatched task names the worktree as its working directory.
+
+        Without this the worker edits the source repo while the diff is
+        captured from the untouched worktree: isolation that isolates
+        nothing, and an empty diff that reads like "the worker did
+        nothing". The worktree path is checked for existence *inside* the
+        dispatch because the finally-block removes the worktree before
+        the assertion runs.
+        """
+        pool_route_execute = _capture_pool_route_execute(MagicMock())
+        opts = WorktreeOptions(isolation="worktree", base_branch="main")
+
+        captured: dict[str, object] = {}
+
+        async def _fake_dispatch(**kwargs: object) -> dict[str, object]:
+            captured.update(kwargs)
+            cwd_value = kwargs.get("cwd")
+            captured["cwd_existed"] = (
+                Path(str(cwd_value)).is_dir() if cwd_value else False
+            )
+            return {"status": "success", "result": "ok"}
+
+        with (
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._repo_has_git",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+                new=_fake_dispatch,
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_nickname",
+                new=AsyncMock(return_value=tmp_git_repo.name),
+            ),
+            patch(
+                "mahavishnu.mcp.tools.pool_tools._resolve_repo_path",
+                return_value=tmp_git_repo,
+            ),
+        ):
+            result = await pool_route_execute(
+                prompt=f"edit {tmp_git_repo.name}",
+                pool_selector="least_loaded",
+                worktree=opts,
+            )
+
+        assert result["status"] == "success"
+        cwd = captured.get("cwd")
+        assert cwd is not None, "the dispatch received no working directory"
+        assert captured["cwd_existed"] is True
+        assert Path(str(cwd)).parent == tmp_git_repo / ".worktrees"
+
+    @pytest.mark.asyncio
+    async def test_no_worktree_leaves_cwd_unset(self) -> None:
+        """A dispatch without worktree isolation must not invent a cwd."""
+        pool_route_execute = _capture_pool_route_execute(MagicMock())
+
+        captured: dict[str, object] = {}
+
+        async def _fake_dispatch(**kwargs: object) -> dict[str, object]:
+            captured.update(kwargs)
+            return {"status": "success", "result": "ok"}
+
+        with patch(
+            "mahavishnu.mcp.tools.pool_tools._dispatch_internal",
+            new=_fake_dispatch,
+        ):
+            result = await pool_route_execute(
+                prompt="edit something",
+                pool_selector="least_loaded",
+            )
+
+        assert result["status"] == "success"
+        assert captured.get("cwd") is None
+
+    @pytest.mark.asyncio
     async def test_worktree_lock_conflict_returns_error(self) -> None:
         """Two concurrent dispatches with ``isolation="worktree"``: one
         succeeds, one observes ``WorktreeLockedError`` and returns

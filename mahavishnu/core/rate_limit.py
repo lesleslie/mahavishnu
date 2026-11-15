@@ -165,48 +165,57 @@ class RateLimiter:
             if not self._violations[key]:
                 del self._violations[key]
 
-    async def is_allowed(
+    def _is_exempt(self, key: str, config: RateLimitConfig | None) -> bool:
+        """Return True when rate limiting does not apply to this key.
+
+        Covers the disabled-configuration case and the exempt-IP case; both
+        bypass limiting entirely.
+        """
+        if not config:
+            return False
+
+        if not config.enabled:
+            return True
+
+        return key in config.exempt_ips
+
+    def _check_violation_cooldown(
         self,
         key: str,
-        config: RateLimitConfig | None = None,
-    ) -> tuple[bool, RateLimitInfo]:
-        """Check if a request is allowed under rate limits.
+        now: float,
+    ) -> RateLimitInfo | None:
+        """Return a denial when the key sits in its violation cooldown.
 
-        Args:
-            key: Unique identifier for the client (IP, user ID, etc.)
-            config: Optional rate limit configuration
-
-        Returns:
-            Tuple of (allowed: bool, rate_limit_info: RateLimitInfo)
+        Five or more violations within the last minute extend the rate limit
+        for five minutes.
         """
-        if config and not config.enabled:
-            return True, RateLimitInfo(limited=False)
+        if not self._violations.get(key):
+            return None
 
-        if config and key in config.exempt_ips:
-            return True, RateLimitInfo(limited=False)
+        # Check if there was a recent violation (within last minute)
+        recent_violations = [v for v in self._violations[key] if now - v < 60]
+        if len(recent_violations) >= 5:
+            # Too many recent violations, extend rate limit
+            retry_after = 300  # 5 minutes
+            return RateLimitInfo(
+                limited=True,
+                retry_after=retry_after,
+                reset_time=now + retry_after,
+            )
 
-        now = time.time()
+        return None
 
-        # Check if key is currently in violation cooldown
-        if self._violations.get(key):
-            # Check if there was a recent violation (within last minute)
-            recent_violations = [v for v in self._violations[key] if now - v < 60]
-            if len(recent_violations) >= 5:
-                # Too many recent violations, extend rate limit
-                retry_after = 300  # 5 minutes
-                return False, RateLimitInfo(
-                    limited=True,
-                    retry_after=retry_after,
-                    reset_time=now + retry_after,
-                )
-
-        # Check per-minute limit
+    def _recent_requests(
+        self,
+        key: str,
+        now: float,
+    ) -> list[tuple[float, int]]:
+        """Return the request records inside the trailing one-minute window."""
         minute_ago = now - 60
-        recent_requests = [
-            (ts, count) for ts, count in self._requests[key] if ts > minute_ago
-        ]
+        return [(ts, count) for ts, count in self._requests[key] if ts > minute_ago]
 
-        # Check token bucket for burst control
+    def _consume_token(self, key: str, now: float) -> RateLimitInfo | None:
+        """Refill and consume one burst token; return a denial when empty."""
         tokens = self._tokens[key]
         last_update = self._last_update[key]
         time_passed = now - last_update
@@ -221,7 +230,7 @@ class RateLimiter:
         if tokens < 1:
             # Token bucket exhausted
             retry_after = int((1 - tokens) / refill_rate) + 1
-            return False, RateLimitInfo(
+            return RateLimitInfo(
                 limited=True,
                 retry_after=retry_after,
                 reset_time=now + retry_after,
@@ -229,28 +238,41 @@ class RateLimiter:
 
         # Consume a token
         self._tokens[key] = tokens - 1
+        return None
 
-        # Check per-minute limit (sum of recent request counts)
-        total_requests = sum(count for _, count in recent_requests)
-
+    def _check_minute_limit(
+        self,
+        total_requests: int,
+        recent_requests: list[tuple[float, int]],
+        now: float,
+    ) -> RateLimitInfo | None:
+        """Return a denial when the per-minute request limit is exceeded."""
         if total_requests >= self.per_minute:
             # Rate limited
             retry_after = (
                 60 - int(now - recent_requests[0][0]) if recent_requests else 60
             )
-            return False, RateLimitInfo(
+            return RateLimitInfo(
                 limited=True,
                 retry_after=retry_after,
                 reset_time=now + retry_after,
             )
 
+        return None
+
+    def _check_long_window_limits(
+        self,
+        key: str,
+        now: float,
+    ) -> RateLimitInfo | None:
+        """Return a denial when the per-hour or per-day limits are exceeded."""
         # Check per-hour limit
         hour_ago = now - 3600
         hour_requests = sum(count for ts, count in self._requests[key] if ts > hour_ago)
 
         if hour_requests >= self.per_hour:
             retry_after = 3600 - int(now - hour_ago) + 1
-            return False, RateLimitInfo(
+            return RateLimitInfo(
                 limited=True,
                 retry_after=retry_after,
                 reset_time=now + retry_after,
@@ -262,11 +284,57 @@ class RateLimiter:
 
         if day_requests >= self.per_day:
             retry_after = 86400 - int(now - day_ago) + 1
-            return False, RateLimitInfo(
+            return RateLimitInfo(
                 limited=True,
                 retry_after=retry_after,
                 reset_time=now + retry_after,
             )
+
+        return None
+
+    # req: REQ-CX2-002
+    async def is_allowed(
+        self,
+        key: str,
+        config: RateLimitConfig | None = None,
+    ) -> tuple[bool, RateLimitInfo]:
+        """Check if a request is allowed under rate limits.
+
+        Args:
+            key: Unique identifier for the client (IP, user ID, etc.)
+            config: Optional rate limit configuration
+
+        Returns:
+            Tuple of (allowed: bool, rate_limit_info: RateLimitInfo)
+        """
+        if self._is_exempt(key, config):
+            return True, RateLimitInfo(limited=False)
+
+        now = time.time()
+
+        # Check if key is currently in violation cooldown
+        cooldown = self._check_violation_cooldown(key, now)
+        if cooldown is not None:
+            return False, cooldown
+
+        # Check per-minute limit
+        recent_requests = self._recent_requests(key, now)
+
+        # Check token bucket for burst control
+        token_denial = self._consume_token(key, now)
+        if token_denial is not None:
+            return False, token_denial
+
+        # Check per-minute limit (sum of recent request counts)
+        total_requests = sum(count for _, count in recent_requests)
+
+        minute_denial = self._check_minute_limit(total_requests, recent_requests, now)
+        if minute_denial is not None:
+            return False, minute_denial
+
+        long_window_denial = self._check_long_window_limits(key, now)
+        if long_window_denial is not None:
+            return False, long_window_denial
 
         # Request is allowed, record it
         self._requests[key].append((now, 1))

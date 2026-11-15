@@ -727,6 +727,205 @@ def _prepare_bifrost_backup(
         _save_backup(harness, prior_url, existing_key is not None, dry_run)
 
 
+def _bifrost_route_installed(
+    settings: dict[str, Any], harness: HarnessDescriptor
+) -> bool:
+    """Whether the harness already carries the route signal it expects.
+
+    The route header is a routing *signal*, not a credential, so it is
+    installed independently of the virtual key. A host that was already
+    pointed at Bifrost before the route existed must still receive it --
+    otherwise the gateway rule never fires and the provider choice stays
+    ambiguous.
+    """
+    route_header = harness.route_header
+    if route_header is None:
+        return True
+    return _read_route_header(settings, harness) == route_header[1]
+
+
+def _bifrost_principal(
+    settings: dict[str, Any],
+    harness: HarnessDescriptor,
+    virtual_key: str | None,
+) -> str | None:
+    """The credential the request will present.
+
+    The virtual key when the toggle is writing one, otherwise the one
+    already in the settings. The cache bucket is derived from it, so it
+    has to be the credential that actually authenticates the request.
+    """
+    return virtual_key or _read_credential(settings, harness)
+
+
+def _bifrost_expected_bucket(
+    harness: HarnessDescriptor, principal: str | None
+) -> str | None:
+    """The cache bucket this harness should carry, if it uses the cache."""
+    if harness.cache_traffic_class is None:
+        return None
+    return resolve_cache_bucket(harness.cache_traffic_class, principal)
+
+
+def _bifrost_cache_installed(
+    harness: HarnessDescriptor,
+    current_bucket: str | None,
+    expected_bucket: str | None,
+) -> bool:
+    """Whether the cache-bucket header is already in the right state.
+
+    A harness that does not use the response cache is "installed" when no
+    bucket header is present -- so a header left behind by an earlier
+    version reads as something to remove, not something to keep in sync.
+    """
+    if not harness.cache_enabled:
+        return current_bucket is None
+    if harness.cache_traffic_class is None:
+        return True
+    return current_bucket == expected_bucket
+
+
+def _bifrost_already_configured(
+    settings: dict[str, Any],
+    harness: HarnessDescriptor,
+    existing: str | None,
+    url: str,
+    virtual_key: str | None,
+) -> bool:
+    """Whether the harness already points at ``url`` with ``virtual_key``."""
+    return existing == url and _read_credential(settings, harness) == virtual_key
+
+
+def _bifrost_finish_configured(
+    settings: dict[str, Any],
+    harness: HarnessDescriptor,
+    url: str,
+    strays: list[str],
+    dry_run: bool,
+) -> None:
+    """Report the already-configured harness, clearing any stray headers.
+
+    A copy of the headers stranded in a block the harness does not read is
+    not a no-op: for the credential it is a second copy of a secret, in the
+    one block that would send it to whatever endpoint an unmatched model
+    uses.
+    """
+    if not strays:
+        typer.echo(
+            f"{harness.label} already points at {url} with a matching key; no-op"
+        )
+        return
+    if dry_run:
+        typer.echo(
+            f"[dry-run] would remove the stray {', '.join(strays)} header(s) from the "
+            f"generic model block in {harness.settings_path}"
+        )
+        return
+    _strip_generic_model_headers(settings, harness)
+    _write_settings(harness.settings_path, settings)
+    typer.echo(
+        f"removed the stray {', '.join(strays)} header(s) from the generic model block "
+        f"in {harness.settings_path}"
+    )
+
+
+def _bifrost_install_routing(
+    settings: dict[str, Any],
+    harness: HarnessDescriptor,
+    route_header: tuple[str, str] | None,
+    route_installed: bool,
+    cache_installed: bool,
+    principal: str | None,
+    virtual_key: str | None,
+    dry_run: bool,
+) -> None:
+    """Install the routing concerns a configured harness is missing.
+
+    Only the routing concerns are missing. Install them without touching
+    the URL, the credential, or the backup: the backup holds the
+    pre-toggle upstream that `direct` restores, and overwriting it with
+    the Bifrost URL would strand the harness on the gateway.
+    """
+    installed: list[str] = []
+    if route_header is not None and not route_installed:
+        header, value = route_header
+        _set_route_header(settings, harness)
+        installed.append(f"{header}: {value}")
+    if not cache_installed:
+        change = _sync_cache_header(settings, harness, principal)
+        if change:
+            installed.append(change)
+    if dry_run:
+        typer.echo(
+            f"[dry-run] would apply {', '.join(installed)} in {harness.settings_path}"
+        )
+        return
+    _write_settings(harness.settings_path, settings)
+    for item in installed:
+        typer.echo(f"applied {item} in {harness.settings_path}")
+    if virtual_key is None:
+        _warn_no_virtual_key(harness)
+    typer.echo(f"note: {harness.restart_note}")
+
+
+def _bifrost_write_endpoint_and_routing(
+    settings: dict[str, Any],
+    harness: HarnessDescriptor,
+    url: str,
+    virtual_key: str | None,
+    route_header: tuple[str, str] | None,
+    route_installed: bool,
+    cache_installed: bool,
+    principal: str | None,
+) -> None:
+    """Point the harness at Bifrost and install the routing concerns.
+
+    The route header is a routing signal, not a credential, so it is
+    installed on every path that leaves the harness pointed at Bifrost --
+    including the one where no virtual key was available. Otherwise a
+    host with a stale credential in its settings never receives it, the
+    gateway rule never fires, and the provider choice stays ambiguous.
+
+    The cache bucket is derived, not chosen, and it belongs to this
+    harness's own namespace rather than the gateway's shared default.
+    It travels with the route header because both are routing concerns
+    rather than credentials. The bucket follows the credential that will
+    actually authenticate the request: the virtual key when the toggle is
+    writing one, otherwise the one already in the settings. A harness
+    that does not use the response cache has the header removed instead.
+    """
+    _set_url(settings, harness, url)
+    if virtual_key:
+        _set_credential(settings, harness, virtual_key)
+    else:
+        _warn_no_virtual_key(harness)
+    if route_header is not None and not route_installed:
+        _set_route_header(settings, harness)
+    if not cache_installed:
+        _sync_cache_header(settings, harness, principal)
+
+
+def _bifrost_report_written(
+    settings: dict[str, Any],
+    harness: HarnessDescriptor,
+    url: str,
+    dry_run: bool,
+) -> None:
+    """Report the endpoint the toggle wrote (or would have written)."""
+    if dry_run:
+        typer.echo(
+            f"[dry-run] would point {_endpoint_label(settings, harness)} at {url} "
+            f"in {harness.settings_path}"
+        )
+        return
+    _write_settings(harness.settings_path, settings)
+    typer.echo(
+        f"wrote {_endpoint_label(settings, harness)}={url} in {harness.settings_path}"
+    )
+    typer.echo(f"note: {harness.restart_note}")
+
+
+# req: REQ-CX2-004
 def _action_bifrost(
     harness: HarnessDescriptor,
     host: str,
@@ -742,91 +941,32 @@ def _action_bifrost(
     url = provider_url or harness.bifrost_url(host, port)
     existing = _get_url(settings, harness)
 
-    # The route header is a routing *signal*, not a credential, so it is
-    # installed independently of the virtual key. A host that was already
-    # pointed at Bifrost before the route existed must still receive it --
-    # otherwise the gateway rule never fires and the provider choice stays
-    # ambiguous.
     route_header = harness.route_header
-    route_installed = (
-        route_header is None or _read_route_header(settings, harness) == route_header[1]
-    )
-    # The credential the request will present: the virtual key when the
-    # toggle is writing one, otherwise the one already in the settings.
-    # The cache bucket is derived from it, so it has to be the credential
-    # that actually authenticates the request.
-    principal = virtual_key or _read_credential(settings, harness)
-    expected_bucket = (
-        resolve_cache_bucket(harness.cache_traffic_class, principal)
-        if harness.cache_traffic_class is not None
-        else None
-    )
+    route_installed = _bifrost_route_installed(settings, harness)
+    principal = _bifrost_principal(settings, harness, virtual_key)
+    expected_bucket = _bifrost_expected_bucket(harness, principal)
     current_bucket = _read_cache_header(settings, harness)
-    if not harness.cache_enabled:
-        # A harness that does not use the response cache is "installed"
-        # when no bucket header is present -- so a header left behind by an
-        # earlier version reads as something to remove, not something to
-        # keep in sync.
-        cache_installed = current_bucket is None
-    elif harness.cache_traffic_class is None:
-        cache_installed = True
-    else:
-        cache_installed = current_bucket == expected_bucket
-    already_configured = (
-        existing == url and _read_credential(settings, harness) == virtual_key
+    cache_installed = _bifrost_cache_installed(harness, current_bucket, expected_bucket)
+    already_configured = _bifrost_already_configured(
+        settings, harness, existing, url, virtual_key
     )
     strays = _stray_headers(settings, harness)
 
-    if already_configured and route_installed and cache_installed and not strays:
-        typer.echo(
-            f"{harness.label} already points at {url} with a matching key; no-op"
-        )
-        return
-
-    if already_configured and route_installed and cache_installed and strays:
-        # Configured correctly, but a copy of these headers is stranded in a
-        # block the harness does not read. That is not a no-op: for the
-        # credential it is a second copy of a secret, in the one block that
-        # would send it to whatever endpoint an unmatched model uses.
-        if dry_run:
-            typer.echo(
-                f"[dry-run] would remove the stray {', '.join(strays)} header(s) from the "
-                f"generic model block in {harness.settings_path}"
-            )
-            return
-        _strip_generic_model_headers(settings, harness)
-        _write_settings(harness.settings_path, settings)
-        typer.echo(
-            f"removed the stray {', '.join(strays)} header(s) from the generic model block "
-            f"in {harness.settings_path}"
-        )
+    if already_configured and route_installed and cache_installed:
+        _bifrost_finish_configured(settings, harness, url, strays, dry_run)
         return
 
     if already_configured and (not route_installed or not cache_installed):
-        # Only the routing concerns are missing. Install them without
-        # touching the URL, the credential, or the backup: the backup holds
-        # the pre-toggle upstream that `direct` restores, and overwriting it
-        # with the Bifrost URL would strand the harness on the gateway.
-        installed: list[str] = []
-        if route_header is not None and not route_installed:
-            header, value = route_header
-            _set_route_header(settings, harness)
-            installed.append(f"{header}: {value}")
-        if not cache_installed:
-            change = _sync_cache_header(settings, harness, principal)
-            if change:
-                installed.append(change)
-        if dry_run:
-            typer.echo(
-                f"[dry-run] would apply {', '.join(installed)} in {harness.settings_path}"
-            )
-            return
-        _write_settings(harness.settings_path, settings)
-        for item in installed:
-            typer.echo(f"applied {item} in {harness.settings_path}")
-        if virtual_key is None:
-            _warn_no_virtual_key(harness)
-        typer.echo(f"note: {harness.restart_note}")
+        _bifrost_install_routing(
+            settings,
+            harness,
+            route_header,
+            route_installed,
+            cache_installed,
+            principal,
+            virtual_key,
+            dry_run,
+        )
         return
 
     _prepare_bifrost_backup(
@@ -839,42 +979,17 @@ def _action_bifrost(
         force,
     )
 
-    _set_url(settings, harness, url)
-    if virtual_key:
-        _set_credential(settings, harness, virtual_key)
-    else:
-        _warn_no_virtual_key(harness)
-
-    # The route header is a routing signal, not a credential, so it is
-    # installed on every path that leaves the harness pointed at Bifrost --
-    # including the one where no virtual key was available. Otherwise a
-    # host with a stale credential in its settings never receives it, the
-    # gateway rule never fires, and the provider choice stays ambiguous.
-    if route_header is not None and not route_installed:
-        _set_route_header(settings, harness)
-
-    # The cache bucket is derived, not chosen, and it belongs to this
-    # harness's own namespace rather than the gateway's shared default.
-    # It travels with the route header because both are routing concerns
-    # rather than credentials. The bucket follows the credential that will
-    # actually authenticate the request: the virtual key when the toggle is
-    # writing one, otherwise the one already in the settings. A harness
-    # that does not use the response cache has the header removed instead.
-    if not cache_installed:
-        _sync_cache_header(settings, harness, principal)
-
-    if dry_run:
-        typer.echo(
-            f"[dry-run] would point {_endpoint_label(settings, harness)} at {url} "
-            f"in {harness.settings_path}"
-        )
-        return
-
-    _write_settings(harness.settings_path, settings)
-    typer.echo(
-        f"wrote {_endpoint_label(settings, harness)}={url} in {harness.settings_path}"
+    _bifrost_write_endpoint_and_routing(
+        settings,
+        harness,
+        url,
+        virtual_key,
+        route_header,
+        route_installed,
+        cache_installed,
+        principal,
     )
-    typer.echo(f"note: {harness.restart_note}")
+    _bifrost_report_written(settings, harness, url, dry_run)
 
 
 def _present_harness_headers(

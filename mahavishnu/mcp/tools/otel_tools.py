@@ -21,6 +21,317 @@ def _read_json_file(path: Path) -> Any:
 
 logger = getLogger(__name__)
 
+# Sentinel returned by :func:`_extract_traces_from_file` when a log-file
+# payload is neither a list nor a dict. A dedicated object (rather than
+# ``None``) keeps the "invalid format" path distinguishable from a
+# payload whose ``traces`` key legitimately holds ``None`` — the latter
+# is a per-file failure, not a format error.
+_INVALID_TRACES = object()
+
+
+def _ingest_error_result(
+    system_id: str,
+    error: str,
+    errors: list[str],
+    storage_backend: str = "duckdb_hotstore",
+) -> dict[str, Any]:
+    """Build the error envelope the ingestion tool returns on failure."""
+    return {
+        "status": "error",
+        "error": error,
+        "traces_ingested": 0,
+        "files_processed": 0,
+        "errors": errors,
+        "system_id": system_id,
+        "storage_backend": storage_backend,
+    }
+
+
+def _extract_traces_from_file(
+    file_data: Any,
+    log_file: str,
+    errors: list[str],
+) -> Any:
+    """Pull the trace list out of a parsed log-file payload.
+
+    Returns :data:`_INVALID_TRACES` when the payload is neither a list
+    nor a dict; the caller skips the file in that case.
+    """
+    if isinstance(file_data, list):
+        return file_data
+    if isinstance(file_data, dict):
+        # Extract traces from dict format
+        return file_data.get("traces", file_data.get("data", []))
+    errors.append(f"Invalid format in {log_file}")
+    return _INVALID_TRACES
+
+
+def _stamp_system_id(traces: Any, system_id: str) -> None:
+    """Add ``system_id`` to every trace that does not already carry one."""
+    for trace in traces:
+        if isinstance(trace, dict):
+            trace.setdefault("system_id", system_id)
+
+
+async def _ingest_log_files(
+    ingester: Any,
+    log_files: list[str],
+    system_id: str,
+) -> tuple[int, int, list[str]]:
+    """Ingest traces from the given log files.
+
+    Returns ``(traces_ingested, files_processed, errors)``.
+    """
+    traces_ingested = 0
+    files_processed = 0
+    errors: list[str] = []
+
+    for log_file in log_files:
+        try:
+            file_path = Path(log_file)
+            if not file_path.exists():
+                errors.append(f"File not found: {log_file}")
+                continue
+
+            # Read and parse JSON log file
+            file_data = await asyncio.to_thread(_read_json_file, file_path)
+
+            # Handle different file formats
+            traces = _extract_traces_from_file(file_data, log_file, errors)
+            if traces is _INVALID_TRACES:
+                continue
+
+            # Add system_id to each trace if not present
+            _stamp_system_id(traces, system_id)
+
+            # Batch ingest traces from file
+            await ingester.ingest_batch(traces)
+            traces_ingested += len(traces)
+            files_processed += 1
+            logger.info(f"Ingested {len(traces)} traces from {log_file}")
+
+        except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+            error_msg = f"Failed to process {log_file}: {e!s}"
+            logger.error(error_msg)
+            errors.append(error_msg)
+
+    return traces_ingested, files_processed, errors
+
+
+async def _ingest_direct_traces(
+    ingester: Any,
+    trace_data: list[dict],
+    system_id: str,
+) -> tuple[int, list[str]]:
+    """Ingest directly supplied trace records.
+
+    Returns ``(traces_ingested, errors)``.
+    """
+    errors: list[str] = []
+    try:
+        # Add system_id to each trace if not present
+        _stamp_system_id(trace_data, system_id)
+
+        await ingester.ingest_batch(trace_data)
+        logger.info(f"Ingested {len(trace_data)} direct traces")
+        return len(trace_data), errors
+    except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+        error_msg = f"Failed to process direct traces: {e!s}"
+        logger.error(error_msg)
+        errors.append(error_msg)
+        return 0, errors
+
+
+async def _ingest_otel_traces(
+    app: Any,
+    log_files: list[str] | None,
+    trace_data: list[dict] | None,
+    system_id: str,
+) -> dict[str, Any]:
+    """Ingest OpenTelemetry traces from log files or direct trace data."""
+    try:
+        # Import native OTel ingester (uses Akosha HotStore)
+        from mahavishnu.ingesters.otel_ingester import OtelIngester
+
+        # Validate inputs - either log_files or trace_data must be provided
+        if not log_files and not trace_data:
+            return _ingest_error_result(
+                system_id,
+                "Either log_files or trace_data must be provided",
+                ["No input data provided"],
+            )
+
+        # Initialize ingester — OtelIngester creates HotStore internally
+        # using storage_type from config (duckdb or postgresql)
+        ingester = OtelIngester(
+            embedding_model=app.config.otel_ingester.embedding_model,
+            cache_size=app.config.otel_ingester.cache_size,
+            turboquant_bits=app.config.otel_ingester.turboquant_bits,
+            duckdb_path=app.config.otel_ingester.hot_store_path,
+        )
+        await ingester.initialize()
+
+        traces_ingested = 0
+        errors: list[str] = []
+        files_processed = 0
+
+        # Process log files if provided
+        if log_files:
+            file_traces, file_count, file_errors = await _ingest_log_files(
+                ingester, log_files, system_id
+            )
+            traces_ingested += file_traces
+            files_processed += file_count
+            errors.extend(file_errors)
+
+        # Process direct trace data if provided
+        if trace_data:
+            direct_traces, direct_errors = await _ingest_direct_traces(
+                ingester, trace_data, system_id
+            )
+            traces_ingested += direct_traces
+            errors.extend(direct_errors)
+
+        await ingester.close()
+
+        return {
+            "status": "success" if traces_ingested > 0 else "warning",
+            "traces_ingested": traces_ingested,
+            "files_processed": files_processed,
+            "errors": errors,
+            "system_id": system_id,
+            "storage_backend": "duckdb_hotstore",
+        }
+
+    except ImportError as e:
+        return _ingest_error_result(
+            system_id,
+            f"OtelIngester not available: {e!s}",
+            [str(e)],
+            storage_backend="none",
+        )
+    except Exception as e:
+        logger.exception("Unexpected error during trace ingestion")
+        if "ingester" in dir() and ingester is not None:
+            await ingester.close()
+        return _ingest_error_result(
+            system_id,
+            f"Unexpected error: {e!s}",
+            [str(e)],
+        )
+
+
+def _validate_query_local_traces(task_class: str, limit: int) -> bool:
+    """Validate the ``query_local_traces`` parameters.
+
+    Returns ``False`` — after logging the reason — when a parameter
+    cannot be used.
+    """
+    if not task_class or not isinstance(task_class, str):
+        logger.error("query_local_traces: task_class must be a non-empty string")
+        return False
+    if not isinstance(limit, int) or limit <= 0 or limit > 1000:
+        logger.error("query_local_traces: limit must be 1-1000")
+        return False
+    return True
+
+
+def _parse_time_window(
+    start_time: str | None,
+    end_time: str | None,
+) -> tuple[str | None, str | None] | None:
+    """Normalise the query window to UTC.
+
+    The trace table holds naive-UTC timestamps, so an offset-bearing
+    bound would otherwise be compared as if the offset were UTC.
+
+    Returns ``(window_start, window_end)``, or ``None`` when a bound is
+    not a valid ISO8601 timestamp.
+    """
+    from datetime import UTC, datetime
+
+    window_start: str | None = None
+    window_end: str | None = None
+    for _label, _value in (("start_time", start_time), ("end_time", end_time)):
+        if _value is None:
+            continue
+        try:
+            _parsed = datetime.fromisoformat(_value)
+        except TypeError, ValueError:
+            logger.error(
+                "query_local_traces: %s must be an ISO8601 timestamp, got %r",
+                _label,
+                _value,
+            )
+            return None
+        if _parsed.tzinfo is None:
+            _parsed = _parsed.replace(tzinfo=UTC)
+        else:
+            _parsed = _parsed.astimezone(UTC)
+        if _label == "start_time":
+            window_start = _parsed.isoformat()
+        else:
+            window_end = _parsed.isoformat()
+    return window_start, window_end
+
+
+def _extract_trace_attributes(metadata_raw: Any) -> Any:
+    """Pull the ``attributes`` mapping out of a stored metadata payload.
+
+    The metadata column may hold a JSON string or an already-decoded
+    dict, depending on the HotStore schema.
+    """
+    if isinstance(metadata_raw, str):
+        try:
+            return json.loads(metadata_raw).get("attributes", {})
+        except json.JSONDecodeError:
+            return {}
+    if isinstance(metadata_raw, dict):
+        return metadata_raw.get("attributes", {})
+    return {}
+
+
+def _normalize_trace_records(
+    results: list[dict[str, Any]],
+    task_class: str,
+    system_id: str | None,
+    dry_run: bool,
+) -> list[dict[str, Any]]:
+    """Normalize result format for fitness analyzer consumption.
+
+    FitnessAnalyzer expects: outcome, duration_ms, selector, component_name
+    """
+    normalized: list[dict[str, Any]] = []
+    for r in results:
+        # Parse metadata JSON (may be str or dict per HotStore schema)
+        metadata_raw = r.get("metadata", "{}")
+        attrs = _extract_trace_attributes(metadata_raw)
+
+        if dry_run:
+            # Diagnostic mode: return the raw stored metadata so an
+            # operator can inspect the actual JSON shape rather than
+            # the fitness-analyzer projection.
+            normalized.append(
+                {
+                    "system_id": r.get("system_id"),
+                    "timestamp": str(r.get("timestamp", "")),
+                    "metadata": metadata_raw,
+                }
+            )
+            continue
+
+        normalized.append(
+            {
+                "outcome": attrs.get("outcome", "unknown"),
+                "duration_ms": attrs.get("duration_ms", 0),
+                "selector": attrs.get("selector", "unknown"),
+                "component_name": system_id or r.get("system_id", "unknown"),
+                "task_class": task_class,
+                "timestamp": str(r.get("timestamp", "")),
+            }
+        )
+    return normalized
+
 
 def register_otel_tools(server, app, mcp_client):
     """Register OTel trace management tools with the MCP server.
@@ -28,11 +339,12 @@ def register_otel_tools(server, app, mcp_client):
     Uses Akosha HotStore (DuckDB) for zero-dependency storage with semantic search.
     No Docker, PostgreSQL, or pgvector required.
 
-    Structural C901 suppression: FastMCP's ``@server.tool()`` decorator
-    requires each tool function to be defined inline so it can introspect
-    the function name and signature for the MCP tool schema. The tools
-    registered here are intentionally kept inline; the complexity is the
-    cost of the FastMCP API contract, not bad code.
+    Structural note: FastMCP's ``@server.tool()`` decorator requires each
+    tool function to be defined inline so it can introspect the function
+    name and signature for the MCP tool schema. The tools registered here
+    are intentionally kept inline; their decision logic lives in the
+    module-level ``_``-prefixed helpers so every tool function stays
+    within the cyclomatic-complexity ceiling.
 
     Args:
         server: FastMCP server instance
@@ -47,126 +359,7 @@ def register_otel_tools(server, app, mcp_client):
         system_id: str = "unknown",
     ) -> dict[str, Any]:
         """Ingest OpenTelemetry traces from log files or direct trace data."""
-        try:
-            # Import native OTel ingester (uses Akosha HotStore)
-            from mahavishnu.ingesters.otel_ingester import OtelIngester
-
-            # Validate inputs - either log_files or trace_data must be provided
-            if not log_files and not trace_data:
-                return {
-                    "status": "error",
-                    "error": "Either log_files or trace_data must be provided",
-                    "traces_ingested": 0,
-                    "files_processed": 0,
-                    "errors": ["No input data provided"],
-                    "system_id": system_id,
-                    "storage_backend": "duckdb_hotstore",
-                }
-
-            # Initialize ingester — OtelIngester creates HotStore internally
-            # using storage_type from config (duckdb or postgresql)
-            ingester = OtelIngester(
-                embedding_model=app.config.otel_ingester.embedding_model,
-                cache_size=app.config.otel_ingester.cache_size,
-                turboquant_bits=app.config.otel_ingester.turboquant_bits,
-                duckdb_path=app.config.otel_ingester.hot_store_path,
-            )
-            await ingester.initialize()
-
-            traces_ingested = 0
-            errors = []
-            files_processed = 0
-
-            # Process log files if provided
-            if log_files:
-                for log_file in log_files:
-                    try:
-                        file_path = Path(log_file)
-                        if not file_path.exists():
-                            errors.append(f"File not found: {log_file}")
-                            continue
-
-                        # Read and parse JSON log file
-                        file_data = await asyncio.to_thread(_read_json_file, file_path)
-
-                        # Handle different file formats
-                        if isinstance(file_data, list):
-                            traces = file_data
-                        elif isinstance(file_data, dict):
-                            # Extract traces from dict format
-                            traces = file_data.get("traces", file_data.get("data", []))
-                        else:
-                            errors.append(f"Invalid format in {log_file}")
-                            continue
-
-                        # Add system_id to each trace if not present
-                        for trace in traces:
-                            if isinstance(trace, dict):
-                                trace.setdefault("system_id", system_id)
-
-                        # Batch ingest traces from file
-                        await ingester.ingest_batch(traces)
-                        traces_ingested += len(traces)
-                        files_processed += 1
-                        logger.info(f"Ingested {len(traces)} traces from {log_file}")
-
-                    except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                        error_msg = f"Failed to process {log_file}: {e!s}"
-                        logger.error(error_msg)
-                        errors.append(error_msg)
-
-            # Process direct trace data if provided
-            if trace_data:
-                try:
-                    # Add system_id to each trace if not present
-                    for trace in trace_data:
-                        if isinstance(trace, dict):
-                            trace.setdefault("system_id", system_id)
-
-                    await ingester.ingest_batch(trace_data)
-                    traces_ingested += len(trace_data)
-                    logger.info(f"Ingested {len(trace_data)} direct traces")
-                except Exception as e:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-                    error_msg = f"Failed to process direct traces: {e!s}"
-                    logger.error(error_msg)
-                    errors.append(error_msg)
-
-            await ingester.close()
-
-            return {
-                "status": "success" if traces_ingested > 0 else "warning",
-                "traces_ingested": traces_ingested,
-                "files_processed": files_processed,
-                "errors": errors,
-                "system_id": system_id,
-                "storage_backend": "duckdb_hotstore",
-            }
-
-        except ImportError as e:
-            return {
-                "status": "error",
-                "error": f"OtelIngester not available: {e!s}",
-                "traces_ingested": 0,
-                "files_processed": 0,
-                "errors": [str(e)],
-                "system_id": system_id,
-                "storage_backend": "none",
-            }
-        except (
-            Exception
-        ) as e:  # MCP tool error handler — broad catch is the documented contract
-            logger.exception("Unexpected error during trace ingestion")
-            if "ingester" in dir() and ingester is not None:
-                await ingester.close()
-            return {
-                "status": "error",
-                "error": f"Unexpected error: {e!s}",
-                "traces_ingested": 0,
-                "files_processed": 0,
-                "errors": [str(e)],
-                "system_id": system_id,
-                "storage_backend": "duckdb_hotstore",
-            }
+        return await _ingest_otel_traces(app, log_files, trace_data, system_id)
 
     @server.tool()
     async def mahavishnu_search_otel_traces(
@@ -293,41 +486,17 @@ def register_otel_tools(server, app, mcp_client):
         """
         # Implements: REQ-MCPTD-003
         # Input validation (C3)
-        if not task_class or not isinstance(task_class, str):
-            logger.error("query_local_traces: task_class must be a non-empty string")
-            return []
-        if not isinstance(limit, int) or limit <= 0 or limit > 1000:
-            logger.error("query_local_traces: limit must be 1-1000")
+        if not _validate_query_local_traces(task_class, limit):
             return []
 
         try:
-            from datetime import UTC, datetime
-
             # Normalise the window to UTC before it reaches the store: the
             # trace table holds naive-UTC timestamps, so an offset-bearing
             # bound would otherwise be compared as if the offset were UTC.
-            window_start: str | None = None
-            window_end: str | None = None
-            for _label, _value in (("start_time", start_time), ("end_time", end_time)):
-                if _value is None:
-                    continue
-                try:
-                    _parsed = datetime.fromisoformat(_value)
-                except TypeError, ValueError:
-                    logger.error(
-                        "query_local_traces: %s must be an ISO8601 timestamp, got %r",
-                        _label,
-                        _value,
-                    )
-                    return []
-                if _parsed.tzinfo is None:
-                    _parsed = _parsed.replace(tzinfo=UTC)
-                else:
-                    _parsed = _parsed.astimezone(UTC)
-                if _label == "start_time":
-                    window_start = _parsed.isoformat()
-                else:
-                    window_end = _parsed.isoformat()
+            window = _parse_time_window(start_time, end_time)
+            if window is None:
+                return []
+            window_start, window_end = window
 
             # ``dry_run`` is a *shape* switch, not a scope switch: it returns
             # the raw stored metadata instead of the normalized projection and
@@ -376,47 +545,9 @@ def register_otel_tools(server, app, mcp_client):
 
             # Normalize result format for fitness analyzer consumption
             # FitnessAnalyzer expects: outcome, duration_ms, selector, component_name
-            normalized = []
-            for r in results:
-                # Parse metadata JSON (may be str or dict per HotStore schema)
-                import json
-
-                metadata_raw = r.get("metadata", "{}")
-                if isinstance(metadata_raw, str):
-                    try:
-                        attrs = json.loads(metadata_raw).get("attributes", {})
-                    except json.JSONDecodeError:
-                        attrs = {}
-                else:
-                    attrs = (
-                        metadata_raw.get("attributes", {})
-                        if isinstance(metadata_raw, dict)
-                        else {}
-                    )
-
-                if dry_run:
-                    # Diagnostic mode: return the raw stored metadata so an
-                    # operator can inspect the actual JSON shape rather than
-                    # the fitness-analyzer projection.
-                    normalized.append(
-                        {
-                            "system_id": r.get("system_id"),
-                            "timestamp": str(r.get("timestamp", "")),
-                            "metadata": metadata_raw,
-                        }
-                    )
-                    continue
-
-                normalized.append(
-                    {
-                        "outcome": attrs.get("outcome", "unknown"),
-                        "duration_ms": attrs.get("duration_ms", 0),
-                        "selector": attrs.get("selector", "unknown"),
-                        "component_name": system_id or r.get("system_id", "unknown"),
-                        "task_class": task_class,
-                        "timestamp": str(r.get("timestamp", "")),
-                    }
-                )
+            normalized = _normalize_trace_records(
+                results, task_class, system_id, dry_run
+            )
 
             logger.info(
                 f"query_local_traces returned {len(normalized)} records for task_class={task_class}"

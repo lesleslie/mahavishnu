@@ -207,6 +207,175 @@ def _enrich_ctx(
     return enriched
 
 
+def _group_events_by_id(sorted_events: list[JotEvent]) -> dict[str, list[JotEvent]]:
+    """Map of jot-id -> list of events that reference that id (in HLC order).
+
+    Used for deriving dispatch chain state per id after the 2-pass fold.
+    """
+    events_by_id: dict[str, list[JotEvent]] = {}
+    for ev in sorted_events:
+        events_by_id.setdefault(ev.id, []).append(ev)
+    return events_by_id
+
+
+def _make_summary(
+    base_id: str,
+    text: str,
+    status: Literal["open", "done"],
+    wall_ms: int,
+    id_events: list[JotEvent],
+) -> JotSummary:
+    """Build a JotSummary with base fields + derived drain fields."""
+    (
+        d_state,
+        d_attempt,
+        d_wf,
+        d_started,
+        d_deferred,
+        d_deleted,
+    ) = _derive_dispatch_fields(id_events)
+    return JotSummary(
+        id=base_id,
+        short_id=base_id[-6:],
+        text=text,
+        status=status,
+        last_modified_ms=wall_ms,
+        dispatch_state=d_state,
+        dispatch_workflow_id=d_wf,
+        current_attempt=d_attempt,
+        dispatch_started_at_ms=d_started,
+        deferred_until=d_deferred,
+        deleted=d_deleted,
+    )
+
+
+def _apply_event(
+    states_by_id: dict[str, JotSummary],
+    events_by_id: dict[str, list[JotEvent]],
+    ctx_by_id: dict[str, Mapping[str, str | list[str] | None]],
+    ev: JotEvent,
+    *,
+    enrich: bool,
+    text: str,
+    status: Literal["open", "done"],
+    wall_ms: int,
+) -> None:
+    """Fold one event into the per-id bucket.
+
+    Writes the derived summary for ``ev`` and, when enriching, the
+    event's context. Every pass-1 and pass-2 arm used to repeat this
+    pair of writes verbatim; hoisting them here keeps the ``match``
+    arms to a single call each.
+
+    ``base_id`` is ``ev.id``: the ``states_by_id`` invariant is that
+    an entry's ``id`` equals its dict key, so ``states_by_id[ev.id].id
+    == ev.id`` always held at the former call sites too.
+    """
+    states_by_id[ev.id] = _make_summary(
+        base_id=ev.id,
+        text=text,
+        status=status,
+        wall_ms=wall_ms,
+        id_events=events_by_id[ev.id],
+    )
+    if enrich:
+        ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
+
+
+def _fold_pass_one(
+    sorted_events: list[JotEvent],
+    events_by_id: dict[str, list[JotEvent]],
+    states_by_id: dict[str, JotSummary],
+    parked: list[JotEvent],
+    ctx_by_id: dict[str, Mapping[str, str | list[str] | None]],
+    enrich: bool,
+) -> None:
+    """Pass 1: fold every event in HLC order, parking the orphaned ones."""
+    for ev in sorted_events:
+        match ev.op:
+            case "capture":
+                _apply_event(
+                    states_by_id,
+                    events_by_id,
+                    ctx_by_id,
+                    ev,
+                    enrich=enrich,
+                    text=ev.text,
+                    status="open",
+                    wall_ms=ev.hlc.wall_ms,
+                )
+            case "edit":
+                if ev.id not in states_by_id:
+                    parked.append(ev)
+                else:
+                    s = states_by_id[ev.id]
+                    _apply_event(
+                        states_by_id,
+                        events_by_id,
+                        ctx_by_id,
+                        ev,
+                        enrich=enrich,
+                        text=ev.text,
+                        status=s.status,
+                        wall_ms=ev.hlc.wall_ms,
+                    )
+            case "done" | "reopen":
+                if ev.id not in states_by_id:
+                    parked.append(ev)
+                else:
+                    s = states_by_id[ev.id]
+                    _apply_event(
+                        states_by_id,
+                        events_by_id,
+                        ctx_by_id,
+                        ev,
+                        enrich=enrich,
+                        text=s.text,
+                        status="done" if ev.op == "done" else "open",
+                        wall_ms=ev.hlc.wall_ms,
+                    )
+
+
+def _fold_pass_two(
+    parked: list[JotEvent],
+    events_by_id: dict[str, list[JotEvent]],
+    states_by_id: dict[str, JotSummary],
+    ctx_by_id: dict[str, Mapping[str, str | list[str] | None]],
+    enrich: bool,
+) -> list[JotEvent]:
+    """Pass 2: replay parked events; the genuine orphans become errors."""
+    errors: list[JotEvent] = []
+    for ev in parked:
+        if ev.id not in states_by_id:
+            errors.append(ev)
+            continue
+        s = states_by_id[ev.id]
+        match ev.op:
+            case "edit":
+                _apply_event(
+                    states_by_id,
+                    events_by_id,
+                    ctx_by_id,
+                    ev,
+                    enrich=enrich,
+                    text=ev.text,
+                    status=s.status,
+                    wall_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
+                )
+            case "done" | "reopen":
+                _apply_event(
+                    states_by_id,
+                    events_by_id,
+                    ctx_by_id,
+                    ev,
+                    enrich=enrich,
+                    text=s.text,
+                    status="done" if ev.op == "done" else "open",
+                    wall_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
+                )
+    return errors
+
+
 def build_states(
     events: list[JotEvent],
     *,
@@ -240,122 +409,27 @@ def build_states(
     """
     sorted_events = sorted(events, key=_hlc_sort_key)
 
-    # Map of jot-id -> list of events that reference that id (in HLC order).
-    # Used for deriving dispatch chain state per id after the 2-pass fold.
-    events_by_id: dict[str, list[JotEvent]] = {}
-    for ev in sorted_events:
-        events_by_id.setdefault(ev.id, []).append(ev)
+    events_by_id = _group_events_by_id(sorted_events)
 
     states_by_id: dict[str, JotSummary] = {}
     parked: list[JotEvent] = []
     ctx_by_id: dict[str, Mapping[str, str | list[str] | None]] = {}
 
-    def _make_summary(
-        base_id: str,
-        text: str,
-        status: Literal["open", "done"],
-        wall_ms: int,
-        id_events: list[JotEvent],
-    ) -> JotSummary:
-        """Build a JotSummary with base fields + derived drain fields."""
-        (
-            d_state,
-            d_attempt,
-            d_wf,
-            d_started,
-            d_deferred,
-            d_deleted,
-        ) = _derive_dispatch_fields(id_events)
-        return JotSummary(
-            id=base_id,
-            short_id=base_id[-6:],
-            text=text,
-            status=status,
-            last_modified_ms=wall_ms,
-            dispatch_state=d_state,
-            dispatch_workflow_id=d_wf,
-            current_attempt=d_attempt,
-            dispatch_started_at_ms=d_started,
-            deferred_until=d_deferred,
-            deleted=d_deleted,
-        )
-
-    def _apply_event(
-        ev: JotEvent,
-        *,
-        text: str,
-        status: Literal["open", "done"],
-        wall_ms: int,
-    ) -> None:
-        """Fold one event into the per-id bucket.
-
-        Writes the derived summary for ``ev`` and, when enriching, the
-        event's context. Every pass-1 and pass-2 arm used to repeat
-        this pair of writes verbatim; hoisting them here keeps the
-        ``match`` arms to a single call each.
-
-        ``base_id`` is ``ev.id``: the ``states_by_id`` invariant is that
-        an entry's ``id`` equals its dict key, so ``states_by_id[ev.id].id
-        == ev.id`` always held at the former call sites too.
-        """
-        states_by_id[ev.id] = _make_summary(
-            base_id=ev.id,
-            text=text,
-            status=status,
-            wall_ms=wall_ms,
-            id_events=events_by_id[ev.id],
-        )
-        if enrich:
-            ctx_by_id[ev.id] = dict(ev.ctx) if ev.ctx else {}
-
-    for ev in sorted_events:
-        match ev.op:
-            case "capture":
-                _apply_event(ev, text=ev.text, status="open", wall_ms=ev.hlc.wall_ms)
-            case "edit":
-                if ev.id not in states_by_id:
-                    parked.append(ev)
-                else:
-                    s = states_by_id[ev.id]
-                    _apply_event(
-                        ev,
-                        text=ev.text,
-                        status=s.status,
-                        wall_ms=ev.hlc.wall_ms,
-                    )
-            case "done" | "reopen":
-                if ev.id not in states_by_id:
-                    parked.append(ev)
-                else:
-                    s = states_by_id[ev.id]
-                    _apply_event(
-                        ev,
-                        text=s.text,
-                        status="done" if ev.op == "done" else "open",
-                        wall_ms=ev.hlc.wall_ms,
-                    )
-
-    errors: list[JotEvent] = []
-    for ev in parked:
-        if ev.id not in states_by_id:
-            errors.append(ev)
-            continue
-        s = states_by_id[ev.id]
-        match ev.op:
-            case "edit":
-                _apply_event(
-                    ev,
-                    text=ev.text,
-                    status=s.status,
-                    wall_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
-                )
-            case "done" | "reopen":
-                _apply_event(
-                    ev,
-                    text=s.text,
-                    status="done" if ev.op == "done" else "open",
-                    wall_ms=max(s.last_modified_ms, ev.hlc.wall_ms),
-                )
+    _fold_pass_one(
+        sorted_events,
+        events_by_id,
+        states_by_id,
+        parked,
+        ctx_by_id,
+        enrich,
+    )
+    errors = _fold_pass_two(
+        parked,
+        events_by_id,
+        states_by_id,
+        ctx_by_id,
+        enrich,
+    )
 
     final_states = sorted(
         states_by_id.values(),

@@ -29,6 +29,7 @@ import logging
 import os
 from pathlib import Path
 import re
+import shlex
 import tempfile
 import time
 from typing import TYPE_CHECKING, Any
@@ -138,6 +139,7 @@ def render_command(
     permission_mode: str | None,
     *,
     prompt_file: bool = False,
+    cwd: str | Path | None = None,
 ) -> str:
     """Render the registry command with the resolved permission mode.
 
@@ -161,6 +163,12 @@ def render_command(
     The file's content is captured by command substitution into a variable
     and expanded quoted: it is never re-parsed as shell text, so this
     keeps the injection property the env-var delivery had.
+
+    When ``cwd`` is set, the session starts in that directory. The change
+    is applied as ``cd <dir> && ( ... )`` so the whole command — including
+    the prompt prologue — is skipped when the directory cannot be entered.
+    Chaining it with ``&&`` alone would leave the trailing ``;``-separated
+    commands running in the wrong directory when ``cd`` fails.
     """
     command = config.command
     if "{permission_mode}" in command:
@@ -182,6 +190,8 @@ def render_command(
             f'{PROMPT_ENV_VAR}="$(cat "${PROMPT_FILE_ENV_VAR}")"; '
             f"export {PROMPT_ENV_VAR}; {command}"
         )
+    if cwd is not None:
+        command = f"cd {shlex.quote(str(cwd))} && ( {command} )"
     return command
 
 
@@ -317,6 +327,7 @@ class ShellWorker(BaseWorker):
         terminal_manager: TerminalManager | None,
         session_buddy_client: Any | None = None,
         permission_mode: str | None = None,
+        cwd: str | Path | None = None,
     ) -> None:
         super().__init__(worker_type=config.worker_type)
         self.config = config
@@ -324,6 +335,10 @@ class ShellWorker(BaseWorker):
         # CLI's allowlist by :func:`resolve_permission_mode`. ``None`` means
         # "use the registry default", resolved at start().
         self._permission_mode = permission_mode
+        # The directory the session starts in. Set by the worktree
+        # isolation path (``pool_route_execute`` -> task["cwd"]) so the
+        # worker edits the isolated checkout instead of the source repo.
+        self._cwd = cwd
         # terminal_manager may be None at __init__ time when the
         # pool hasn't finished wiring it; the first ``start()``
         # call surfaces the diagnostic. We don't pre-validate
@@ -378,7 +393,12 @@ class ShellWorker(BaseWorker):
             # it waits for the CLI to finish instead.
             self._prompt_delivered = True
 
-        command = render_command(self.config, mode, prompt_file=prompt is not None)
+        command = render_command(
+            self.config,
+            mode,
+            prompt_file=prompt is not None,
+            cwd=self._cwd,
+        )
 
         # The one-shot commands send the CLI's stderr to a file rather
         # than to the pane, where the MCP servers' startup noise would sit

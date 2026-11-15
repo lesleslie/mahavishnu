@@ -533,6 +533,7 @@ class WorkerManager:
                 terminal_manager=self.terminal_manager,
                 session_buddy_client=self.session_buddy_client,
                 permission_mode=self._resolve_permission_mode(config, permission_mode),
+                cwd=kwargs.get("cwd"),
             )
         return self._create_isolated_worker_from_config(config, kwargs)
 

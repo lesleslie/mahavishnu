@@ -452,6 +452,286 @@ async def _dispatch_workflow(
 
 
 # ---------------------------------------------------------------------------
+# Handoff step helpers
+# ---------------------------------------------------------------------------
+#
+# The tool body below owns the rate-limit gate and delegates the
+# three-step flow to :func:`_execute_handoff`. Each helper here owns ONE
+# decision (dependency binding, repo scope, timeout, one orphan reason),
+# so the flow stays readable and every function stays under the pyscn
+# complexity ceiling.
+
+
+def _resolve_handoff_dependencies(
+    session_buddy_client: Any | None,
+    workflow_dispatch_fn: Any | None,
+) -> tuple[Any, Any, Any]:
+    """Bind the injected dependencies (if any) at call time.
+
+    A registration-time miss must not blow up test discovery, so the
+    unbound case falls back to the module-level stubs that raise a clear
+    ``NotImplementedError``.
+    """
+    get_task = (
+        session_buddy_client.tasks_get
+        if session_buddy_client is not None
+        else _session_buddy_get_task
+    )
+    link_workflow = (
+        session_buddy_client.tasks_link_workflow
+        if session_buddy_client is not None
+        else _session_buddy_link_workflow
+    )
+    dispatch = (
+        workflow_dispatch_fn if workflow_dispatch_fn is not None else _dispatch_workflow
+    )
+    return get_task, link_workflow, dispatch
+
+
+def _normalize_repo_scope(value: Any) -> str | None:
+    """Return a usable repo scope, or ``None`` when there is none.
+
+    An empty or whitespace-only value is no scope at all.
+    """
+    if not isinstance(value, str):
+        return None
+    return value.strip() or None
+
+
+def _task_repo_scope(task: dict[str, Any]) -> str | None:
+    """Return the repo scope named by the task's metadata, if any."""
+    task_metadata = task.get("metadata")
+    candidate = task_metadata.get("repo") if isinstance(task_metadata, dict) else None
+    if isinstance(candidate, str) and candidate.strip():
+        return candidate.strip()
+    return None
+
+
+def _resolve_repo_scope(
+    params: HandoffParams | None,
+    task: dict[str, Any],
+    task_id: str,
+) -> str:
+    """Resolve the repository scope, or refuse the dispatch.
+
+    The scope is normalised here, once, because the call site turns a
+    falsy repo into ``repos=None`` -- the *unrestricted* dispatch this
+    check exists to refuse. An empty or whitespace-only value is no
+    scope at all, so it falls back to the task's metadata and is refused
+    if the metadata does not name one either.
+    """
+    repo = _normalize_repo_scope(params.repo if params else None)
+    if not repo:
+        repo = _task_repo_scope(task)
+    if not repo:
+        raise NoRepoScopeError(task_id)
+    return repo
+
+
+def _resolve_dispatch_timeout(
+    params: HandoffParams | None,
+    timeout: int | None,
+) -> float | None:
+    """Resolve the dispatch timeout: ``params`` first, then the argument."""
+    dispatch_timeout = (
+        params.timeout_seconds
+        if (params and params.timeout_seconds is not None)
+        else timeout
+    )
+    return float(dispatch_timeout) if dispatch_timeout is not None else None
+
+
+def _raise_if_workflow_id_missing(
+    task_id: str,
+    workflow_id: str,
+    dispatch_result: dict[str, Any],
+) -> None:
+    """Refuse a dispatch that came back without a usable workflow id.
+
+    The dispatch succeeded but didn't give us a usable ``workflow_id``.
+    Don't emit an orphan -- the sweeper would chase a phantom (Fix
+    Round 1 #5). Surface as a typed caller-visible error instead.
+
+    ``"unknown"`` is the literal the durable path returns when the
+    adapter produced no id, so it has to be rejected here or every task
+    would end up bound to a workflow called "unknown".
+    """
+    if not workflow_id or workflow_id == "unknown":
+        raise WorkflowNotReturnedError(
+            task_id=task_id,
+            dispatch_result=dispatch_result,
+        )
+
+
+def _emit_step2_dispatch_orphan(task_id: str) -> None:
+    """Emit the step-2 orphan marker (no workflow exists yet).
+
+    Step 2 dispatch failure -- no workflow exists, so emit an orphan
+    with ``workflow_id=""`` so the v1.1 sweeper can tell step-2 from
+    step-3 failures (Fix Round 1 #4).
+    """
+    _publish_task_handoff_orphan(
+        task_id=task_id,
+        reason=_ORPHAN_REASON_STEP_2_DISPATCH_FAILED,
+        workflow_id="",
+    )
+
+
+def _emit_step3_update_orphan(task_id: str, workflow_id: str) -> None:
+    """Emit the step-3 orphan marker (the workflow is alive, unlinked).
+
+    Workflow is running, task not linked -> orphan with the canonical
+    step-3 reason (Fix Round 1 #4).
+    """
+    _publish_task_handoff_orphan(
+        task_id=task_id,
+        reason=_ORPHAN_REASON_STEP_3_UPDATE_FAILED,
+        workflow_id=workflow_id,
+    )
+
+
+def _emit_caller_disconnected_orphan(
+    task_id: str,
+    workflow_id: str | None,
+) -> None:
+    """Emit the cancellation orphan marker (the caller vanished mid-flight).
+
+    Caller disconnected between step 2 and step 3 -- workflow is
+    running, task not updated. Emit orphan so v1.1 sweeper can re-link,
+    then the caller sees the cancellation.
+    """
+    _publish_task_handoff_orphan(
+        task_id=task_id,
+        reason="caller_disconnected",
+        workflow_id=workflow_id or "",
+    )
+
+
+def _emit_unexpected_orphan(task_id: str, workflow_id: str) -> None:
+    """Emit the unexpected-failure orphan marker.
+
+    Catch-all for anything the inner branches didn't tag. If step 2
+    returned a workflow_id but the failure happened AFTER (e.g. step 3
+    fault OR a downstream consumer error), tag the orphan with the
+    unexpected_error reason so the v1.1 sweeper can disambiguate.
+    """
+    _publish_task_handoff_orphan(
+        task_id=task_id,
+        reason=_ORPHAN_REASON_UNEXPECTED,
+        workflow_id=workflow_id,
+    )
+
+
+async def _execute_handoff(
+    task_id: str,
+    adapter: _ADAPTER,
+    params: HandoffParams | None,
+    timeout: int | None,
+    caller_key: str,
+    session_buddy_client: Any | None,
+    workflow_dispatch_fn: Any | None,
+) -> HandoffResult:
+    """Run the three-step handoff and return the result envelope.
+
+    Step 1 loads the task, step 2 dispatches the durable workflow, step
+    3 binds the resulting ``workflow_id`` back to the task. Steps 2 + 3
+    live in one try/except so a disconnect between them emits
+    ``task.handoff_orphan`` before re-raising.
+    """
+    get_task, link_workflow, dispatch = _resolve_handoff_dependencies(
+        session_buddy_client,
+        workflow_dispatch_fn,
+    )
+
+    # ---- Step 1: lookup ----
+    try:
+        task = await get_task(task_id=task_id)
+    except Exception as exc:  # session-buddy lookup — broad catch re-raises typed TaskNotFoundError regardless of underlying session-buddy exception
+        raise TaskNotFoundError(task_id, details={"cause": type(exc).__name__}) from exc
+
+    # Content must be dispatch-safe (mirrors session-buddy's sanitizer).
+    task_content = _validate_task_content_for_dispatch(str(task.get("content", "")))
+
+    # Repo scope. A durable workflow with no scope runs over every
+    # repository in the catalog, so an unscoped dispatch is refused
+    # rather than fanned out.
+    repo = _resolve_repo_scope(params, task, task_id)
+
+    # ---- Event: handoff_started ----
+    started_at = datetime.now(UTC)
+    _publish_task_handoff_started(task_id=task_id, actor=caller_key)
+
+    # ---- Steps 2 + 3 in try/finally so orphan is emitted on disconnect ----
+    workflow_id: str | None = None
+    dispatch_status = "running"
+    repos_processed = 0
+    # Set to True by any inner ``except`` that has already emitted an
+    # orphan event. The outer ``except Exception`` checks this flag
+    # to avoid double-emission when step 3's failure bubbles up.
+    orphan_handled = False
+    try:
+        dispatch_timeout = _resolve_dispatch_timeout(params, timeout)
+
+        try:
+            dispatch_result = await dispatch(
+                prompt=task_content,
+                adapter=adapter,
+                repo=repo,
+                timeout=dispatch_timeout,
+            )
+        except Exception:  # step-2 dispatch failure — broad catch to emit orphan marker then re-raise as typed HandoffError
+            _emit_step2_dispatch_orphan(task_id)
+            orphan_handled = True
+            raise
+
+        workflow_id = str(dispatch_result.get("workflow_id", "") or "")
+        dispatch_status = str(dispatch_result.get("status", "running") or "running")
+        repos_processed = int(dispatch_result.get("repos_processed", 0) or 0)
+
+        _raise_if_workflow_id_missing(task_id, workflow_id, dispatch_result)
+
+        # ---- Step 3: bind the workflow to the task ----
+        # req: REQ-TASKLINK-006, REQ-TASKLINK-001
+        try:
+            await link_workflow(
+                task_id=task_id,
+                workflow_id=workflow_id,
+            )
+        except Exception:  # step-3 back-link failure — broad catch to emit orphan marker then re-raise (workflow is alive, just task not updated)
+            _emit_step3_update_orphan(task_id, workflow_id)
+            orphan_handled = True
+            raise
+
+        # ---- Event: handoff_completed ----
+        _publish_task_handoff_completed(
+            task_id=task_id,
+            workflow_id=workflow_id,
+            adapter=adapter,
+            actor=caller_key,
+        )
+
+        return HandoffResult(
+            task_id=task_id,
+            workflow_id=workflow_id,
+            adapter=adapter,
+            started_at=started_at,
+            status=dispatch_status,
+            repos_processed=repos_processed,
+        )
+    except asyncio.CancelledError:
+        if not orphan_handled:
+            _emit_caller_disconnected_orphan(task_id, workflow_id)
+        raise
+    except WorkflowNotReturnedError:
+        # Already typed — never emitted an orphan. Re-raise as-is.
+        raise
+    except Exception:  # MCP tool error handler — broad catch tags unexpected failure as orphan (workflow_id unknown) then re-raises
+        if workflow_id and not orphan_handled:
+            _emit_unexpected_orphan(task_id, workflow_id)
+        raise
+
+
+# ---------------------------------------------------------------------------
 # Tool registration
 # ---------------------------------------------------------------------------
 
@@ -501,6 +781,7 @@ def register_tasks_handoff_tools(
         )
         return False
 
+    # req: REQ-CX2-001
     @mcp.tool()
     async def mahavishnu_tasks_handoff_to_workflow(  # req: REQ-TASKLINK-007
         task_id: Annotated[str, Field(pattern=TASK_ID_PATTERN)],
@@ -538,178 +819,17 @@ def register_tasks_handoff_tools(
             raise
 
         # Bind the injected dependencies (if any) at call time so a
-        # registration-time miss doesn't blow up test discovery.
-        get_task = (
-            session_buddy_client.tasks_get
-            if session_buddy_client is not None
-            else _session_buddy_get_task
+        # registration-time miss doesn't blow up test discovery, then
+        # run the three-step flow.
+        return await _execute_handoff(
+            task_id=task_id,
+            adapter=adapter,
+            params=params,
+            timeout=timeout,
+            caller_key=caller_key,
+            session_buddy_client=session_buddy_client,
+            workflow_dispatch_fn=workflow_dispatch_fn,
         )
-        link_workflow = (
-            session_buddy_client.tasks_link_workflow
-            if session_buddy_client is not None
-            else _session_buddy_link_workflow
-        )
-        dispatch = (
-            workflow_dispatch_fn
-            if workflow_dispatch_fn is not None
-            else _dispatch_workflow
-        )
-
-        # ---- Step 1: lookup ----
-        try:
-            task = await get_task(task_id=task_id)
-        except Exception as exc:  # session-buddy lookup — broad catch re-raises typed TaskNotFoundError regardless of underlying session-buddy exception
-            raise TaskNotFoundError(
-                task_id, details={"cause": type(exc).__name__}
-            ) from exc
-
-        # Content must be dispatch-safe (mirrors session-buddy's sanitizer).
-        task_content = _validate_task_content_for_dispatch(str(task.get("content", "")))
-
-        # Repo scope. A durable workflow with no scope runs over every
-        # repository in the catalog, so an unscoped dispatch is refused
-        # rather than fanned out.
-        #
-        # The scope is normalised here, once, because the call site turns
-        # a falsy repo into ``repos=None`` -- the *unrestricted* dispatch
-        # this check exists to refuse. An empty or whitespace-only value
-        # is no scope at all, so it falls back to the task's metadata and
-        # is refused if the metadata does not name one either.
-        repo = params.repo if params else None
-        repo = repo.strip() if isinstance(repo, str) else None
-        if not repo:
-            task_metadata = task.get("metadata")
-            candidate = (
-                task_metadata.get("repo") if isinstance(task_metadata, dict) else None
-            )
-            repo = (
-                candidate.strip()
-                if isinstance(candidate, str) and candidate.strip()
-                else None
-            )
-        if not repo:
-            raise NoRepoScopeError(task_id)
-
-        # ---- Event: handoff_started ----
-        started_at = datetime.now(UTC)
-        _publish_task_handoff_started(task_id=task_id, actor=caller_key)
-
-        # ---- Steps 2 + 3 in try/finally so orphan is emitted on disconnect ----
-        workflow_id: str | None = None
-        dispatch_status = "running"
-        repos_processed = 0
-        # Set to True by any inner ``except`` that has already emitted an
-        # orphan event. The outer ``except Exception`` checks this flag
-        # to avoid double-emission when step 3's failure bubbles up.
-        orphan_handled = False
-        try:
-            dispatch_timeout = (
-                params.timeout_seconds
-                if (params and params.timeout_seconds is not None)
-                else timeout
-            )
-
-            try:
-                dispatch_result = await dispatch(
-                    prompt=task_content,
-                    adapter=adapter,
-                    repo=repo,
-                    timeout=float(dispatch_timeout)
-                    if dispatch_timeout is not None
-                    else None,
-                )
-            except Exception:  # step-2 dispatch failure — broad catch to emit orphan marker then re-raise as typed HandoffError
-                # Step 2 dispatch failure — no workflow exists, so emit
-                # an orphan with workflow_id="" so the v1.1 sweeper can
-                # tell step-2 from step-3 failures (Fix Round 1 #4).
-                _publish_task_handoff_orphan(
-                    task_id=task_id,
-                    reason=_ORPHAN_REASON_STEP_2_DISPATCH_FAILED,
-                    workflow_id="",
-                )
-                orphan_handled = True
-                raise
-
-            workflow_id = str(dispatch_result.get("workflow_id", "") or "")
-            dispatch_status = str(dispatch_result.get("status", "running") or "running")
-            repos_processed = int(dispatch_result.get("repos_processed", 0) or 0)
-
-            if not workflow_id or workflow_id == "unknown":
-                # The dispatch succeeded but didn't give us a usable
-                # workflow_id. Don't emit an orphan — the sweeper would
-                # chase a phantom (Fix Round 1 #5). Surface as a typed
-                # caller-visible error instead.
-                #
-                # ``"unknown"`` is the literal the durable path returns
-                # when the adapter produced no id, so it has to be
-                # rejected here or every task would end up bound to a
-                # workflow called "unknown".
-                raise WorkflowNotReturnedError(
-                    task_id=task_id,
-                    dispatch_result=dispatch_result,
-                )
-
-            # ---- Step 3: bind the workflow to the task ----
-            # req: REQ-TASKLINK-006, REQ-TASKLINK-001
-            try:
-                await link_workflow(
-                    task_id=task_id,
-                    workflow_id=workflow_id,
-                )
-            except Exception:  # step-3 back-link failure — broad catch to emit orphan marker then re-raise (workflow is alive, just task not updated)
-                # Workflow is running, task not linked → orphan
-                # with the canonical step-3 reason (Fix Round 1 #4).
-                _publish_task_handoff_orphan(
-                    task_id=task_id,
-                    reason=_ORPHAN_REASON_STEP_3_UPDATE_FAILED,
-                    workflow_id=workflow_id,
-                )
-                orphan_handled = True
-                raise
-
-            # ---- Event: handoff_completed ----
-            _publish_task_handoff_completed(
-                task_id=task_id,
-                workflow_id=workflow_id,
-                adapter=adapter,
-                actor=caller_key,
-            )
-
-            return HandoffResult(
-                task_id=task_id,
-                workflow_id=workflow_id,
-                adapter=adapter,
-                started_at=started_at,
-                status=dispatch_status,
-                repos_processed=repos_processed,
-            )
-        except asyncio.CancelledError:
-            # Caller disconnected between step 2 and step 3 — workflow is
-            # running, task not updated. Emit orphan so v1.1 sweeper can
-            # re-link, then re-raise so callers see the cancellation.
-            if not orphan_handled:
-                _publish_task_handoff_orphan(
-                    task_id=task_id,
-                    reason="caller_disconnected",
-                    workflow_id=workflow_id or "",
-                )
-            raise
-        except WorkflowNotReturnedError:
-            # Already typed — never emitted an orphan. Re-raise as-is.
-            raise
-        except Exception:  # MCP tool error handler — broad catch tags unexpected failure as orphan (workflow_id unknown) then re-raises
-            # Catch-all for anything the inner branches didn't tag. If
-            # step 2 returned a workflow_id but the failure happened
-            # AFTER (e.g. step 3 fault OR a downstream consumer error),
-            # tag the orphan with the unexpected_error reason so the
-            # v1.1 sweeper can disambiguate.
-            if workflow_id and not orphan_handled:
-                _publish_task_handoff_orphan(
-                    task_id=task_id,
-                    reason=_ORPHAN_REASON_UNEXPECTED,
-                    workflow_id=workflow_id,
-                )
-            raise
 
     # The tool is registered. Returning ``True`` is the contract the caller
     # checks; without it the function falls off the end and implicitly

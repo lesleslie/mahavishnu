@@ -439,6 +439,19 @@ class MahavishnuPool(BasePool):
         if self._is_one_shot:
             return await self._execute_one_shot_task(task)
 
+        # A cwd names the directory the worker session must start in. A
+        # pre-spawned session is already running somewhere else, so the
+        # request cannot be honoured. Failing loudly beats running the
+        # worker in the wrong directory — that is the exact failure the
+        # worktree isolation path exists to prevent.
+        if task.get("cwd"):
+            raise ValueError(
+                f"Pool {self.pool_id!r} runs a pre-spawned worker and cannot "
+                f"honour task['cwd']={task['cwd']!r}. Worktree isolation "
+                f"requires a one-shot worker whose session is launched in "
+                f"the target directory."
+            )
+
         # Get first available worker
         if not self._workers:
             raise RuntimeError("No workers available in pool")
@@ -492,10 +505,23 @@ class MahavishnuPool(BasePool):
             )
 
         start_time = time.time()
-        worker_ids = await self.worker_manager.submit_workers(
-            self.config.worker_type,
-            [prompt],
-        )
+        # The dispatch may name the directory the worker must run in — the
+        # worktree isolation path sets task["cwd"]. It is applied when the
+        # session is launched, so it travels through the worker factory
+        # kwargs rather than through execute(). Without a cwd the call
+        # shape is unchanged, so the default session start is untouched.
+        cwd = task.get("cwd")
+        if cwd:
+            worker_ids = await self.worker_manager.submit_workers(
+                self.config.worker_type,
+                [prompt],
+                runtime_kwargs={"cwd": str(cwd)},
+            )
+        else:
+            worker_ids = await self.worker_manager.submit_workers(
+                self.config.worker_type,
+                [prompt],
+            )
         worker_id = worker_ids[0]
         try:
             results = await self.worker_manager.execute_batch(worker_ids, [task])

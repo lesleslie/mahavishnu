@@ -76,6 +76,104 @@ def _build_args(
     return args
 
 
+def _build_files_result(
+    pattern: str,
+    root: Path,
+    format: Format,
+    stdout: str,
+    limit: int,
+) -> RgResult:
+    """Format handler for ``files_with_matches`` — file paths only."""
+    files = [line for line in stdout.splitlines() if line]
+    truncated = len(files) > limit
+    capped = files[:limit]
+    return RgResult(
+        engine="ripgrep",
+        pattern=pattern,
+        path=str(root),
+        format=format,
+        matches=capped,
+        total_found=len(capped),
+        truncated=truncated,
+    )
+
+
+def _build_json_result(
+    pattern: str,
+    root: Path,
+    format: Format,
+    stdout: str,
+    limit: int,
+) -> RgResult:
+    """Format handler for ``json`` — per-line raw JSON dicts from rg."""
+    matches: list[dict[str, object]] = []
+    for line in stdout.splitlines():
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if obj.get("type") != "match":
+            continue
+        matches.append(obj)
+    truncated = len(matches) > limit
+    capped = matches[:limit]
+    return RgResult(
+        engine="ripgrep",
+        pattern=pattern,
+        path=str(root),
+        format=format,
+        matches=capped,
+        total_found=len(capped),
+        truncated=truncated,
+    )
+
+
+def _parse_content_match(line: str, line_numbers: bool) -> RgMatch | None:
+    """Parse one ``<file>:<line>:<col>:<text>`` line into a match.
+
+    Returns ``None`` when the line does not carry a usable position.
+    """
+    # rg default: <file>:<line>:<col>:<text>  (col may be omitted with -F)
+    parts = line.split(":", 3)
+    if len(parts) < 3:
+        return None
+    try:
+        ln = int(parts[1])
+        col = int(parts[2]) if line_numbers and len(parts) >= 4 else 0
+    except ValueError:
+        return None
+    match_text = parts[3] if len(parts) >= 4 else parts[-1]
+    return RgMatch(file=parts[0], line_number=ln, column=col, match=match_text)
+
+
+def _build_content_result(
+    pattern: str,
+    root: Path,
+    format: Format,
+    stdout: str,
+    limit: int,
+    line_numbers: bool,
+) -> RgResult:
+    """Format handler for the default ``content`` format."""
+    matches_list: list[RgMatch] = []
+    for line in stdout.splitlines():
+        match = _parse_content_match(line, line_numbers)
+        if match is None:
+            continue
+        matches_list.append(match)
+    truncated = len(matches_list) > limit
+    capped = matches_list[:limit]
+    return RgResult(
+        engine="ripgrep",
+        pattern=pattern,
+        path=str(root),
+        format=format,
+        matches=capped,
+        total_found=len(capped),
+        truncated=truncated,
+    )
+
+
 async def rg_search(
     pattern: str,
     settings: CrowSettings,
@@ -117,65 +215,10 @@ async def rg_search(
         raise RuntimeError(f"ripgrep failed (rc={proc.returncode}): {stderr}")
     stdout = cast("bytes", proc.stdout).decode(errors="replace")
     if format == "files_with_matches":
-        files = [line for line in stdout.splitlines() if line]
-        truncated = len(files) > limit
-        capped = files[:limit]
-        return RgResult(
-            engine="ripgrep",
-            pattern=pattern,
-            path=str(root),
-            format=format,
-            matches=capped,
-            total_found=len(capped),
-            truncated=truncated,
-        )
+        return _build_files_result(pattern, root, format, stdout, limit)
     if format == "json":
-        matches: list[dict[str, object]] = []
-        for line in stdout.splitlines():
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if obj.get("type") != "match":
-                continue
-            matches.append(obj)
-        truncated = len(matches) > limit
-        capped = matches[:limit]
-        return RgResult(
-            engine="ripgrep",
-            pattern=pattern,
-            path=str(root),
-            format=format,
-            matches=capped,
-            total_found=len(capped),
-            truncated=truncated,
-        )
-    matches_list: list[RgMatch] = []
-    for line in stdout.splitlines():
-        # rg default: <file>:<line>:<col>:<text>  (col may be omitted with -F)
-        parts = line.split(":", 3)
-        if len(parts) < 3:
-            continue
-        try:
-            ln = int(parts[1])
-            col = int(parts[2]) if line_numbers and len(parts) >= 4 else 0
-        except ValueError:
-            continue
-        match_text = parts[3] if len(parts) >= 4 else parts[-1]
-        matches_list.append(
-            RgMatch(file=parts[0], line_number=ln, column=col, match=match_text)
-        )
-    truncated = len(matches_list) > limit
-    capped = matches_list[:limit]
-    return RgResult(
-        engine="ripgrep",
-        pattern=pattern,
-        path=str(root),
-        format=format,
-        matches=capped,
-        total_found=len(capped),
-        truncated=truncated,
-    )
+        return _build_json_result(pattern, root, format, stdout, limit)
+    return _build_content_result(pattern, root, format, stdout, limit, line_numbers)
 
 
 def _tool_decorator(server: FastMCP | StandardServer) -> Any:

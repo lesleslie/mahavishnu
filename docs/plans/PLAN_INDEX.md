@@ -193,6 +193,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/decisions/2026-11-15-dispatch-worker-working-directory.md`](../../docs/decisions/2026-11-15-dispatch-worker-working-directory.md) | 2026-11-15 | `active` | `canonical` |  | `dispatch-isolation` | A dispatched worker runs in the directory the dispatch names |
 | [`docs/decisions/2026-11-15-publish-cleanup-bypasses-archive-gate.md`](../../docs/decisions/2026-11-15-publish-cleanup-bypasses-archive-gate.md) | 2026-11-15 | `active` | `canonical` | `decision` | `archive-completed-plans` | Publish-time documentation cleanup bypasses the archive gate |
 | [`docs/decisions/2026-11-14-hooks-log-to-stderr.md`](../../docs/decisions/2026-11-14-hooks-log-to-stderr.md) | 2026-11-14 | `active` | `canonical` | `decision` | `observability` | Hooks must pin structlog to stderr |
 | [`docs/decisions/2026-11-12-mcp-tool-description-required.md`](../../docs/decisions/2026-11-12-mcp-tool-description-required.md) | 2026-11-12 | `active` | `canonical` | `decision` | `mcp-tool-descriptions` | Every MCP Tool Must Publish a Non-Empty Description |
@@ -341,6 +342,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-11-15-pyscn-complexity-ceiling-15.md`](2026-11-15-pyscn-complexity-ceiling-15.md) | 2026-11-15 | `complete` | `implementation` |  | `quality-gate-complexity` | Bring 27 functions under the pyscn cyclomatic ceiling of 15 |
 | [`docs/plans/2026-11-14-ty-only-migration.md`](2026-11-14-ty-only-migration.md) | 2026-11-14 | `complete` | `implementation` |  | `ty-only-migration` | Ty-Only Migration Implementation Plan |
 | [`docs/plans/2026-11-07-archived-requirements-registry.md`](2026-11-07-archived-requirements-registry.md) | 2026-11-07 | `active` | `canonical` | `reference` | `archived-requirements-registry` | Archived requirements registry — declarations carried forward from retired plans |
 | [`docs/plans/2026-11-07-bifrost-complexity-accounting.md`](2026-11-07-bifrost-complexity-accounting.md) | 2026-11-07 | `complete` | `implementation` |  | `bifrost-complexity-accounting` | Complexity-router accounting — price the classifier, watch the session binding |
@@ -563,7 +565,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (167 entries)
+### `plan` (169 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -575,10 +577,10 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 5 | 65 | 6 | 2 | 20 | **98** |
-| `implementation` | 4 | 6 | 6 | 6 | 26 | **48** |
+| `canonical` | 5 | 66 | 6 | 2 | 20 | **99** |
+| `implementation` | 4 | 6 | 6 | 6 | 27 | **49** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 33 | **33** |
 | `superseded` | · | · | · | · | 11 | **11** |
 
-| **Total** | **9** | **71** | **12** | **8** | **91** | **191** |
+| **Total** | **9** | **72** | **12** | **8** | **92** | **193** |

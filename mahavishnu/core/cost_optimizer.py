@@ -268,6 +268,102 @@ class CostOptimizer:
             and percentage >= Decimal(str(budget.alert_threshold)),
         }
 
+    async def _violated_budgets(
+        self,
+        adapter: AdapterType,
+        task_type: TaskType,
+    ) -> list[dict[str, Any]]:
+        """Return the over-budget entries applying to this adapter/task."""
+        violated_budgets: list[dict[str, Any]] = []
+        for budget in self.budgets:
+            # Check if budget applies to this adapter/task type
+            if budget.adapter and budget.adapter != adapter:
+                continue
+            if budget.task_type and budget.task_type != task_type:
+                continue
+
+            # Check if budget is active
+            if not budget.is_active():
+                continue
+
+            status = await self.get_budget_status(budget)
+
+            # Check if over budget
+            if status["is_over_budget"]:
+                violated_budgets.append(
+                    {
+                        "budget_type": budget.budget_type.value,
+                        "limit_usd": status["limit_usd"],
+                        "spent_usd": status["spent_usd"],
+                        "over_by": float(status["remaining_usd"]),
+                    }
+                )
+        return violated_budgets
+
+    def _estimate_actual_latency_ms(
+        self,
+        adapter: AdapterType,
+        task_type: TaskType,
+        adapter_executions: list,
+    ) -> int:
+        """Estimate the observed latency for an adapter/task pair.
+
+        Prefers latencies measured by the execution tracker; falls back to the
+        tracked cost scaled by the adapter's per-second cost.
+        """
+        actual_latency_ms = 0
+        if adapter_executions:
+            latencies = [
+                execution.latency_ms
+                for execution in adapter_executions
+                if execution.latency_ms
+            ]
+            if latencies:
+                actual_latency_ms = int(np.mean(latencies))
+        else:
+            tracked_cost = self._get_tracked_cost(adapter, task_type)
+            cost_per_second = ADAPTER_COSTS.get(adapter)
+            if tracked_cost > 0 and cost_per_second:
+                actual_latency_ms = int(
+                    (tracked_cost / cost_per_second) * Decimal(1000)
+                )
+        return actual_latency_ms
+
+    async def _evaluate_sla(
+        self,
+        adapter: AdapterType,
+        task_type: TaskType,
+        sla: dict[str, Any],
+        metrics_tracker: ExecutionTracker | None,
+    ) -> dict[str, Any]:
+        """Evaluate the SLA constraint for an adapter/task pair."""
+        max_latency_ms = sla.get("max_latency_ms", self.max_latency_ms)
+        min_success_rate = sla.get("min_success_rate", self.min_success_rate)
+
+        tracker = metrics_tracker or get_execution_tracker()
+        stats = await tracker.get_adapter_stats(adapter)
+        recent = await tracker.get_recent_executions(limit=100)
+        adapter_executions = [
+            execution
+            for execution in recent
+            if execution.adapter == adapter and execution.task_type == task_type
+        ]
+
+        actual_latency_ms = self._estimate_actual_latency_ms(
+            adapter, task_type, adapter_executions
+        )
+
+        success_rate = stats["success_rate"] if stats is not None else 0.0
+
+        return {
+            "max_latency_ms": max_latency_ms,
+            "min_success_rate": min_success_rate,
+            "actual_latency_ms": actual_latency_ms,
+            "actual_success_rate": success_rate,
+            "satisfied": actual_latency_ms <= max_latency_ms
+            and success_rate >= min_success_rate,
+        }
+
     async def check_budget_constraints(
         self,
         adapter: AdapterType,
@@ -285,75 +381,16 @@ class CostOptimizer:
             Constraint check results
         """
         constraints_ok = True
-        violated_budgets = []
+        violated_budgets = await self._violated_budgets(adapter, task_type)
+        if violated_budgets:
+            constraints_ok = False
         sla_result: dict[str, Any] | None = None
-
-        for budget in self.budgets:
-            # Check if budget applies to this adapter/task type
-            if budget.adapter and budget.adapter != adapter:
-                continue
-            if budget.task_type and budget.task_type != task_type:
-                continue
-
-            # Check if budget is active
-            if not budget.is_active():
-                continue
-
-            status = await self.get_budget_status(budget)
-
-            # Check if over budget
-            if status["is_over_budget"]:
-                constraints_ok = False
-                violated_budgets.append(
-                    {
-                        "budget_type": budget.budget_type.value,
-                        "limit_usd": status["limit_usd"],
-                        "spent_usd": status["spent_usd"],
-                        "over_by": float(status["remaining_usd"]),
-                    }
-                )
 
         if constraints and constraints.get("sla"):
             sla = constraints["sla"]
-            max_latency_ms = sla.get("max_latency_ms", self.max_latency_ms)
-            min_success_rate = sla.get("min_success_rate", self.min_success_rate)
-
-            tracker = metrics_tracker or get_execution_tracker()
-            stats = await tracker.get_adapter_stats(adapter)
-            recent = await tracker.get_recent_executions(limit=100)
-            adapter_executions = [
-                execution
-                for execution in recent
-                if execution.adapter == adapter and execution.task_type == task_type
-            ]
-
-            actual_latency_ms = 0
-            if adapter_executions:
-                latencies = [
-                    execution.latency_ms
-                    for execution in adapter_executions
-                    if execution.latency_ms
-                ]
-                if latencies:
-                    actual_latency_ms = int(np.mean(latencies))
-            else:
-                tracked_cost = self._get_tracked_cost(adapter, task_type)
-                cost_per_second = ADAPTER_COSTS.get(adapter)
-                if tracked_cost > 0 and cost_per_second:
-                    actual_latency_ms = int(
-                        (tracked_cost / cost_per_second) * Decimal(1000)
-                    )
-
-            success_rate = stats["success_rate"] if stats is not None else 0.0
-
-            sla_result = {
-                "max_latency_ms": max_latency_ms,
-                "min_success_rate": min_success_rate,
-                "actual_latency_ms": actual_latency_ms,
-                "actual_success_rate": success_rate,
-                "satisfied": actual_latency_ms <= max_latency_ms
-                and success_rate >= min_success_rate,
-            }
+            sla_result = await self._evaluate_sla(
+                adapter, task_type, sla, metrics_tracker
+            )
 
             if not sla_result["satisfied"]:
                 constraints_ok = False

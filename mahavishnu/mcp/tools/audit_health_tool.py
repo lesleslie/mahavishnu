@@ -253,6 +253,50 @@ async def audit_one_repo(
     }
 
 
+def _select_repos_to_audit(repos: list[str] | None, all_repos: bool) -> list[str]:
+    """Resolve the repo names the audit should probe.
+
+    An explicit ``repos`` list wins (names outside
+    :data:`BODAI_CORE_REPOS` are dropped — the audit is fleet-bounded).
+    ``all_repos`` audits every core repo. Otherwise the audit is
+    filtered to the repos listed in the operator's ecosystem manifest,
+    falling back to all core repos when that manifest is missing or
+    empty.
+    """
+    if repos is not None:
+        return [name for name in repos if name in BODAI_CORE_REPOS]
+    if all_repos:
+        return list(BODAI_CORE_REPOS.keys())
+    active = _load_ecosystem_repo_names()
+    if not active:
+        return list(BODAI_CORE_REPOS.keys())
+    return [name for name in BODAI_CORE_REPOS if name in active]
+
+
+def _count_health_outcomes(
+    results: list[dict[str, Any]],
+) -> tuple[int, int, int, int]:
+    """Aggregate the per-repo rows into the audit counters.
+
+    Returns ``(silent_degraded_count, skipped_count, healthy_count,
+    degraded_count)``.
+    """
+    silent_degraded_count = sum(1 for r in results if r.get("silent_degraded"))
+    skipped_count = sum(1 for r in results if r.get("skipped"))
+    healthy_count = sum(
+        1
+        for r in results
+        if r.get("http_code") == 200 and r.get("body_status") in HEALTHY_STATUSES
+    )
+    degraded_count = sum(
+        1
+        for r in results
+        if r.get("http_code") == 200
+        and r.get("body_status") in SILENT_DEGRADED_STATUSES
+    )
+    return silent_degraded_count, skipped_count, healthy_count, degraded_count
+
+
 async def audit_health_async(
     repos: list[str] | None = None,
     *,
@@ -277,16 +321,7 @@ async def audit_health_async(
         JSON-serializable as-is for both the CLI's stdout and the
         MCP tool's response envelope.
     """
-    if repos is not None:
-        selected = [name for name in repos if name in BODAI_CORE_REPOS]
-    elif all_repos:
-        selected = list(BODAI_CORE_REPOS.keys())
-    else:
-        active = _load_ecosystem_repo_names()
-        if not active:
-            selected = list(BODAI_CORE_REPOS.keys())
-        else:
-            selected = [name for name in BODAI_CORE_REPOS if name in active]
+    selected = _select_repos_to_audit(repos, all_repos)
 
     if not selected:
         return {
@@ -310,19 +345,12 @@ async def audit_health_async(
     ]
     results = await asyncio.gather(*probes)
 
-    silent_degraded_count = sum(1 for r in results if r.get("silent_degraded"))
-    skipped_count = sum(1 for r in results if r.get("skipped"))
-    healthy_count = sum(
-        1
-        for r in results
-        if r.get("http_code") == 200 and r.get("body_status") in HEALTHY_STATUSES
-    )
-    degraded_count = sum(
-        1
-        for r in results
-        if r.get("http_code") == 200
-        and r.get("body_status") in SILENT_DEGRADED_STATUSES
-    )
+    (
+        silent_degraded_count,
+        skipped_count,
+        healthy_count,
+        degraded_count,
+    ) = _count_health_outcomes(results)
 
     return {
         "results": list(results),

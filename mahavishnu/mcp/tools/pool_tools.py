@@ -224,6 +224,7 @@ async def _dispatch_internal(
     auto_spawn: bool | None,
     pool_manager: Any,
     timeout: float | None = None,
+    cwd: str | None = None,
 ):
     """Internal dispatch helper used when a worktree path is active.
 
@@ -236,10 +237,16 @@ async def _dispatch_internal(
     worker's default (300s) applies regardless of what the caller asked
     for, so a long-running task is killed mid-flight while the caller
     believes it was given a larger budget.
+
+    ``cwd`` rides the task dict the same way, and names the directory the
+    worker session starts in. It is how worktree isolation reaches the
+    worker: the pool reads ``task["cwd"]`` and launches the session there.
     """
     task = {"prompt": prompt}
     if timeout is not None:
         task["timeout"] = timeout
+    if cwd is not None:
+        task["cwd"] = cwd
     return await pool_manager.route_task(
         task=task,
         pool_selector=pool_selector,
@@ -549,6 +556,26 @@ async def _prepare_worktree(
         )
         raise
     return worktree_info, repo_path, None
+
+
+def _worktree_cwd(worktree_info: Any) -> str | None:
+    """Resolve the directory the dispatched worker must run in.
+
+    Worktree isolation only isolates if the worker actually runs inside
+    the worktree. The path rides the task dict; the pool reads
+    ``task["cwd"]`` and launches the session there. Without this the
+    worker edits the source repo and the captured diff is empty — the
+    isolation protected nothing.
+
+    Returns ``None`` when no worktree is active, so a dispatch without
+    isolation keeps the default session start.
+    """
+    if worktree_info is None:
+        return None
+    wt_path = getattr(worktree_info, "worktree_path", None)
+    if wt_path is None:
+        return None
+    return str(wt_path)
 
 
 async def _finalize_worktree(
@@ -1277,6 +1304,7 @@ def register_pool_tools(
                     auto_spawn=resolved_auto_spawn,
                     pool_manager=pool_manager,
                     timeout=timeout,
+                    cwd=_worktree_cwd(worktree_info),
                 )
 
                 if worktree_info is not None:

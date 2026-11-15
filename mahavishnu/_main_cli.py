@@ -1,5 +1,7 @@
 """CLI module for Mahavishnu orchestrator."""
 
+from __future__ import annotations
+
 import asyncio
 import json
 from typing import Any, NoReturn
@@ -50,7 +52,7 @@ from .cli.team_cli import add_team_commands
 # Import coordination CLI
 from .coordination_cli import add_coordination_commands, add_repo_commands
 from .core.app import MahavishnuApp
-from .core.health import HealthStatus
+from .core.health import HealthResponse, HealthStatus, ReadyResponse
 from .core.metrics_schema import TaskType
 from .core.subscription_auth import MultiAuthHandler
 from .core.task_envelope import TaskControlParams, TaskEnvelope, TaskParams
@@ -973,6 +975,110 @@ def mcp_audit_health(
         raise typer.Exit(code=2)
 
 
+def _health_disabled_payload() -> dict[str, Any]:
+    """Build the payload reported when health checks are disabled."""
+    return {
+        "service": "mahavishnu",
+        "status": HealthStatus.UNHEALTHY.value,
+        "reason": "Health checks are disabled in configuration",
+    }
+
+
+def _render_health_disabled(section: str | None, json_output: bool) -> None:
+    """Render the response for a service whose health endpoint is disabled."""
+    if section is not None and section != "status":
+        # The endpoint is disabled, so any requested section except
+        # the envelope status is unavailable. Surface the envelope
+        # itself so the user can still see why.
+        typer.echo(
+            f"section '{section}' unavailable: health checks are disabled",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    if json_output:
+        typer.echo(json.dumps(_health_disabled_payload(), indent=2))
+    else:
+        typer.echo("Service: ✗ unhealthy")
+        typer.echo("Reason: Health checks are disabled in configuration")
+
+
+def _health_dependency_details(readiness: ReadyResponse) -> dict[str, dict[str, Any]]:
+    """Flatten readiness dependency statuses into JSON-safe fragments."""
+    return {
+        name: {
+            "status": dep.status.value,
+            "latency_ms": dep.latency_ms,
+            "error": dep.error,
+            "last_check": dep.last_check.isoformat() if dep.last_check else None,
+        }
+        for name, dep in readiness.dependencies.items()
+    }
+
+
+def _health_overall_status(
+    liveness: HealthResponse, readiness: ReadyResponse
+) -> HealthStatus:
+    """Derive the overall health status from the dependency statuses."""
+    dependency_statuses = [dep.status for dep in readiness.dependencies.values()]
+    if any(status == HealthStatus.UNHEALTHY for status in dependency_statuses):
+        return HealthStatus.UNHEALTHY
+    if any(status == HealthStatus.DEGRADED for status in dependency_statuses):
+        return HealthStatus.DEGRADED
+    return liveness.status
+
+
+def _render_health_section(payload: dict[str, Any], section: str) -> None:
+    """Render a single requested section of the health payload."""
+    if section == "status":
+        # ``status`` is a 3-key envelope summary, not a single value
+        # even though ``payload["status"]`` is the bare string. The
+        # envelope is the operator-friendly "is everything ok?" view.
+        typer.echo(
+            json.dumps(
+                {
+                    "service": payload["service"],
+                    "version": payload["version"],
+                    "status": payload["status"],
+                },
+                indent=2,
+                default=str,
+            )
+        )
+        return
+    if section not in payload:
+        typer.echo(
+            f"unknown section '{section}'. Supported: {', '.join(sorted(payload.keys()))}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    typer.echo(json.dumps(payload[section], indent=2, default=str))
+
+
+def _render_health_human(
+    payload: dict[str, Any],
+    liveness: HealthResponse,
+    readiness: ReadyResponse,
+    dependency_details: dict[str, dict[str, Any]],
+    overall_status: HealthStatus,
+) -> None:
+    """Render the operator-friendly health summary."""
+    status_symbol = {"ok": "✓", "degraded": "!", "unhealthy": "✗"}[overall_status.value]
+    typer.echo(f"Service: {status_symbol} {payload['status']}")
+    typer.echo(f"Name: {payload['service']}")
+    typer.echo(f"Version: {payload['version']}")
+    typer.echo(f"Uptime: {liveness.uptime_seconds:.1f}s")
+    typer.echo(f"Readiness: {'ready' if readiness.ready else 'not ready'}")
+    if dependency_details:
+        typer.echo("Dependencies:")
+        for name, dep in dependency_details.items():
+            line = f"  - {name}: {dep['status']}"
+            if dep["latency_ms"] is not None:
+                line += f" ({dep['latency_ms']:.1f}ms)"
+            if dep["error"]:
+                line += f" - {dep['error']}"
+            typer.echo(line)
+
+
 @app.command("health")
 def health_command(
     json_output: bool = typer.Option(
@@ -993,30 +1099,13 @@ def health_command(
 ) -> None:
     """Check the current Mahavishnu service health."""
 
+    # req: REQ-CX2-003
     async def _health():
         maha_app = MahavishnuApp()
         endpoint = maha_app.health_endpoint
 
         if endpoint is None:
-            payload = {
-                "service": "mahavishnu",
-                "status": HealthStatus.UNHEALTHY.value,
-                "reason": "Health checks are disabled in configuration",
-            }
-            if section is not None and section != "status":
-                # The endpoint is disabled, so any requested section except
-                # the envelope status is unavailable. Surface the envelope
-                # itself so the user can still see why.
-                typer.echo(
-                    f"section '{section}' unavailable: health checks are disabled",
-                    err=True,
-                )
-                raise typer.Exit(code=1)
-            if json_output:
-                typer.echo(json.dumps(payload, indent=2))
-            else:
-                typer.echo("Service: ✗ unhealthy")
-                typer.echo("Reason: Health checks are disabled in configuration")
+            _render_health_disabled(section, json_output)
             return
 
         liveness = await endpoint.liveness()
@@ -1032,25 +1121,10 @@ def health_command(
 
         merge_driver_payload: dict[str, object] = merge_driver_health()
 
-        dependency_details = {
-            name: {
-                "status": dep.status.value,
-                "latency_ms": dep.latency_ms,
-                "error": dep.error,
-                "last_check": dep.last_check.isoformat() if dep.last_check else None,
-            }
-            for name, dep in readiness.dependencies.items()
-        }
+        dependency_details = _health_dependency_details(readiness)
+        overall_status = _health_overall_status(liveness, readiness)
 
-        dependency_statuses = [dep.status for dep in readiness.dependencies.values()]
-        if any(status == HealthStatus.UNHEALTHY for status in dependency_statuses):
-            overall_status = HealthStatus.UNHEALTHY
-        elif any(status == HealthStatus.DEGRADED for status in dependency_statuses):
-            overall_status = HealthStatus.DEGRADED
-        else:
-            overall_status = liveness.status
-
-        payload = {
+        payload: dict[str, Any] = {
             "service": readiness.service,
             "version": liveness.version,
             "status": overall_status.value,
@@ -1061,52 +1135,20 @@ def health_command(
         }
 
         if section is not None:
-            if section == "status":
-                # ``status`` is a 3-key envelope summary, not a single value
-                # even though ``payload["status"]`` is the bare string. The
-                # envelope is the operator-friendly "is everything ok?" view.
-                typer.echo(
-                    json.dumps(
-                        {
-                            "service": payload["service"],
-                            "version": payload["version"],
-                            "status": payload["status"],
-                        },
-                        indent=2,
-                        default=str,
-                    )
-                )
-                return
-            if section not in payload:
-                typer.echo(
-                    f"unknown section '{section}'. Supported: {', '.join(sorted(payload.keys()))}",
-                    err=True,
-                )
-                raise typer.Exit(code=2)
-            typer.echo(json.dumps(payload[section], indent=2, default=str))
+            _render_health_section(payload, section)
             return
 
         if json_output:
             typer.echo(json.dumps(payload, indent=2, default=str))
             return
 
-        status_symbol = {"ok": "✓", "degraded": "!", "unhealthy": "✗"}[
-            overall_status.value
-        ]
-        typer.echo(f"Service: {status_symbol} {payload['status']}")
-        typer.echo(f"Name: {payload['service']}")
-        typer.echo(f"Version: {payload['version']}")
-        typer.echo(f"Uptime: {liveness.uptime_seconds:.1f}s")
-        typer.echo(f"Readiness: {'ready' if readiness.ready else 'not ready'}")
-        if dependency_details:
-            typer.echo("Dependencies:")
-            for name, dep in dependency_details.items():
-                line = f"  - {name}: {dep['status']}"
-                if dep["latency_ms"] is not None:
-                    line += f" ({dep['latency_ms']:.1f}ms)"
-                if dep["error"]:
-                    line += f" - {dep['error']}"
-                typer.echo(line)
+        _render_health_human(
+            payload,
+            liveness,
+            readiness,
+            dependency_details,
+            overall_status,
+        )
 
     asyncio.run(_health())
 

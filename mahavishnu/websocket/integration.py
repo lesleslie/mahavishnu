@@ -30,6 +30,94 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _tls_enabled_from_env(raw: object) -> bool | None:
+    """Interpret the environment's ``tls_enabled`` value.
+
+    ``None`` means the environment said nothing usable, so the caller
+    keeps whatever it already had.
+    """
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        return raw.lower() in ("true", "1", "yes", "on")
+    return None
+
+
+def _verify_client_from_env(raw: object, verify_client: bool) -> bool:
+    """Interpret the environment's ``verify_client`` value.
+
+    The caller's own choice always wins — the environment can only turn
+    the check on, never off.
+    """
+    if isinstance(raw, bool):
+        return bool(verify_client or raw)
+    if isinstance(raw, str):
+        return bool(verify_client or raw.lower() in ("true", "1", "yes", "on"))
+    return bool(verify_client)
+
+
+def _resolve_tls_settings(
+    cert_file: str | None,
+    key_file: str | None,
+    ca_file: str | None,
+    verify_client: bool,
+) -> tuple[bool | None, str | None, str | None, str | None, bool]:
+    """Resolve the TLS block from the environment.
+
+    The environment only fills in what the caller left unset.
+
+    Returns:
+        ``(tls_enabled, cert_file, key_file, ca_file, verify_client)``.
+    """
+    env_tls = get_websocket_tls_config()
+    tls_enabled = _tls_enabled_from_env(env_tls["tls_enabled"])
+    cert_file = (
+        env_tls["cert_file"] if isinstance(env_tls["cert_file"], str) else cert_file
+    )
+    key_file = env_tls["key_file"] if isinstance(env_tls["key_file"], str) else key_file
+    ca_file = env_tls["ca_file"] if isinstance(env_tls["ca_file"], str) else ca_file
+    verify_client = _verify_client_from_env(
+        env_tls.get("verify_client", False), verify_client
+    )
+    return tls_enabled, cert_file, key_file, ca_file, verify_client
+
+
+async def _start_event_consumer(
+    server: MahavishnuWebSocketServer,
+    event_transport: RedisEventTransport,
+    notification_router: NotificationRouter | None,
+    dead_letter_queue: DeadLetterQueue | None,
+) -> None:
+    """Wire the Redis event transport into the running server."""
+    dlq_handler = (
+        DLQEventHandler(dead_letter_queue) if dead_letter_queue is not None else None
+    )
+    websocket_handler = RetryingEventEnvelopeHandler(
+        handler=server,
+        handler_name="websocket",
+        dead_letter_handler=dlq_handler,
+    )
+    handler = websocket_handler
+    if notification_router is not None:
+        notification_handler = RetryingEventEnvelopeHandler(
+            handler=NotificationEventHandler(notification_router),
+            handler_name="notification",
+            dead_letter_handler=dlq_handler,
+        )
+        handler = CompositeEventEnvelopeHandler(
+            (
+                websocket_handler,
+                notification_handler,
+            )
+        )
+    event_consumer = EventBusConsumer(
+        transport=event_transport,
+        handler=handler,
+    )
+    await event_consumer.start()
+    cast("Any", server).event_consumer = event_consumer
+
+
 async def start_websocket_server(
     pool_manager,
     settings: MahavishnuSettings,
@@ -79,30 +167,13 @@ async def start_websocket_server(
 
     # Get TLS configuration from environment if not explicitly provided
     if tls_enabled is None:
-        env_tls = get_websocket_tls_config()
-        _raw_tls_enabled = env_tls["tls_enabled"]
-        if isinstance(_raw_tls_enabled, bool):
-            tls_enabled = _raw_tls_enabled
-        elif isinstance(_raw_tls_enabled, str):
-            tls_enabled = _raw_tls_enabled.lower() in ("true", "1", "yes", "on")
-        else:
-            tls_enabled = None
-        cert_file = (
-            env_tls["cert_file"] if isinstance(env_tls["cert_file"], str) else cert_file
-        )
-        key_file = (
-            env_tls["key_file"] if isinstance(env_tls["key_file"], str) else key_file
-        )
-        ca_file = env_tls["ca_file"] if isinstance(env_tls["ca_file"], str) else ca_file
-        _raw_verify = env_tls.get("verify_client", False)
-        if isinstance(_raw_verify, bool):
-            verify_client = bool(verify_client or _raw_verify)
-        elif isinstance(_raw_verify, str):
-            verify_client = bool(
-                verify_client or _raw_verify.lower() in ("true", "1", "yes", "on")
-            )
-        else:
-            verify_client = bool(verify_client)
+        (
+            tls_enabled,
+            cert_file,
+            key_file,
+            ca_file,
+            verify_client,
+        ) = _resolve_tls_settings(cert_file, key_file, ca_file, verify_client)
 
     try:
         # Create WebSocket server
@@ -124,35 +195,12 @@ async def start_websocket_server(
         await server.start()
 
         if event_transport is not None:
-            dlq_handler = (
-                DLQEventHandler(dead_letter_queue)
-                if dead_letter_queue is not None
-                else None
+            await _start_event_consumer(
+                server,
+                event_transport,
+                notification_router,
+                dead_letter_queue,
             )
-            websocket_handler = RetryingEventEnvelopeHandler(
-                handler=server,
-                handler_name="websocket",
-                dead_letter_handler=dlq_handler,
-            )
-            handler = websocket_handler
-            if notification_router is not None:
-                notification_handler = RetryingEventEnvelopeHandler(
-                    handler=NotificationEventHandler(notification_router),
-                    handler_name="notification",
-                    dead_letter_handler=dlq_handler,
-                )
-                handler = CompositeEventEnvelopeHandler(
-                    (
-                        websocket_handler,
-                        notification_handler,
-                    )
-                )
-            event_consumer = EventBusConsumer(
-                transport=event_transport,
-                handler=handler,
-            )
-            await event_consumer.start()
-            cast("Any", server).event_consumer = event_consumer
 
         scheme = "wss" if server.ssl_context else "ws"
         logger.info(f"WebSocket server started on {scheme}://{host}:{port}")

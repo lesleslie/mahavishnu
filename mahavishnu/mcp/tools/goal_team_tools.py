@@ -388,6 +388,191 @@ async def _execute_team_task(
     return run_summary
 
 
+# ---------------------------------------------------------------------------
+# mahavishnu_parse_goal decomposition.
+# req: REQ-CX-002
+#
+# The parse tool owns one output shape (a strict dict the MCP client
+# reads), so its helpers own the individual decisions instead: the
+# feature-flag gate, the goal-length check, the optional LLM factory,
+# the metric record, the broadcast, and the learning-system mode
+# recommendation.
+# ---------------------------------------------------------------------------
+
+
+def _goal_team_feature_error() -> dict[str, Any] | None:
+    """Return the failure payload when a goal-team feature flag is off.
+
+    ``None`` when both the master switch and the MCP-tools switch are
+    on. The master switch is checked first, exactly as the tool body
+    checked it.
+    """
+    if not is_feature_enabled("enabled"):
+        return _failure_response(
+            ErrorCode.FEATURE_DISABLED.value,
+            "Goal-Driven Teams feature is disabled. Enable it in "
+            "settings/mahavishnu.yaml under goal_teams.enabled",
+        )
+    if not is_feature_enabled("mcp_tools_enabled"):
+        return _failure_response(
+            ErrorCode.FEATURE_DISABLED.value,
+            "Goal-Driven Teams MCP tools are disabled. Enable "
+            "mcp_tools_enabled in feature_flags",
+        )
+    return None
+
+
+async def _broadcast_parse_goal_error(
+    ws_server: Any,
+    error_code: str,
+    message: str,
+    user_id: str | None,
+) -> None:
+    """Broadcast a parse failure to the WebSocket clients."""
+    if ws_server:
+        await ws_server.broadcast_team_error(
+            team_id="",
+            error_code=error_code,
+            message=message,
+            user_id=user_id,
+        )
+
+
+async def _validate_parse_goal_text(
+    goal: str,
+    metrics: GoalTeamMetrics,
+    ws_server: Any,
+    user_id: str | None,
+) -> None:
+    """Reject a goal too short to describe a task.
+
+    Raises ``GoalParsingError`` after the matching error event has been
+    broadcast, so the client sees the event before the failure returns.
+    """
+    if len(goal.strip()) < 10:
+        metrics.record_error(error_code=ErrorCode.GOAL_TOO_SHORT.value)
+        error = GoalParsingError(
+            goal=goal,
+            reason="Goal is too short. Provide at least 10 characters.",
+            error_code=ErrorCode.GOAL_TOO_SHORT,
+        )
+        # Broadcast error
+        await _broadcast_parse_goal_error(
+            ws_server, ErrorCode.GOAL_TOO_SHORT.value, error.message, user_id
+        )
+        raise error
+
+
+def _resolve_parse_llm_factory() -> Any:
+    """Return the LLM factory used for goal parsing (may not be available)."""
+    llm_factory = None
+    if is_context_initialized():
+        with contextlib.suppress(Exception):
+            llm_factory = get_llm_factory()
+    return llm_factory
+
+
+def _record_parse_goal_metrics(parsed: ParsedGoal, metrics: GoalTeamMetrics) -> None:
+    """Record the goal-parsing counters (if Prometheus metrics enabled)."""
+    if is_feature_enabled("prometheus_metrics_enabled"):
+        metrics.record_goal_parsed(
+            intent=parsed.intent,
+            domain=parsed.domain,
+            method=parsed.metadata.get("method", "unknown"),
+            confidence=parsed.confidence,
+        )
+
+
+async def _broadcast_parse_goal_parsed(
+    ws_server: Any,
+    goal: str,
+    parsed: ParsedGoal,
+    user_id: str | None,
+) -> None:
+    """Broadcast the parsed-goal event (if WebSocket broadcasts enabled)."""
+    if ws_server and is_feature_enabled("websocket_broadcasts_enabled"):
+        await ws_server.broadcast_team_parsed(
+            goal=goal,
+            intent=parsed.intent,
+            skills=parsed.skills,
+            confidence=parsed.confidence,
+            user_id=user_id,
+        )
+
+
+def _resolve_recommended_mode(
+    parsed: ParsedGoal,
+    metrics: GoalTeamMetrics,
+) -> dict[str, Any] | None:
+    """Ask the learning system for a mode recommendation (Phase 3).
+
+    Best-effort: a failing learning engine leaves the recommendation
+    unset rather than failing the parse.
+    """
+    recommended_mode = None
+    if is_feature_enabled("learning_system_enabled"):
+        try:
+            learning_engine = team_learning.get_learning_engine()
+            recommendation = learning_engine.get_mode_recommendation(parsed.intent)
+            if recommendation is not None:
+                recommended_mode = (
+                    recommendation.model_dump()
+                    if hasattr(recommendation, "model_dump")
+                    else {
+                        "mode": recommendation.mode,
+                        "confidence": recommendation.confidence,
+                        "success_rate": recommendation.success_rate,
+                        "sample_count": recommendation.sample_count,
+                        "reason": recommendation.reason,
+                    }
+                )
+                metrics.record_mode_recommendation(
+                    intent=parsed.intent,
+                    mode=recommendation.mode,
+                    confidence=recommendation.confidence,
+                )
+        except Exception:
+            logger.debug(
+                "Mode recommendation failed; continuing without recommendation",
+                exc_info=True,
+            )
+    return recommended_mode
+
+
+def _build_parse_goal_result(
+    parsed: ParsedGoal,
+    team_config: TeamConfig,
+    recommended_mode: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Assemble the success payload for a parsed goal."""
+    return {
+        "success": True,
+        "parsed": {
+            "intent": parsed.intent,
+            "domain": parsed.domain,
+            "skills": parsed.skills,
+            "confidence": parsed.confidence,
+            "method": parsed.metadata.get("method", "unknown"),
+            "raw_goal": parsed.raw_goal,
+        },
+        "suggested_team": {
+            "name": team_config.name,
+            "mode": team_config.mode.value,
+            "member_count": len(team_config.members),
+            "members": [
+                {
+                    "name": m.name,
+                    "role": m.role,
+                    "model": m.model,
+                }
+                for m in team_config.members
+            ],
+            "has_leader": team_config.leader is not None,
+        },
+        "recommended_mode": recommended_mode,
+    }
+
+
 def register_goal_team_tools(mcp: FastMCP) -> None:
     """Register goal-driven team management tools.
 
@@ -594,47 +779,15 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
 
         try:
             # Check feature flags first
-            if not is_feature_enabled("enabled"):
-                return {
-                    "success": False,
-                    "error": {
-                        "code": ErrorCode.FEATURE_DISABLED.value,
-                        "message": "Goal-Driven Teams feature is disabled. Enable it in settings/mahavishnu.yaml under goal_teams.enabled",
-                    },
-                }
-
-            if not is_feature_enabled("mcp_tools_enabled"):
-                return {
-                    "success": False,
-                    "error": {
-                        "code": ErrorCode.FEATURE_DISABLED.value,
-                        "message": "Goal-Driven Teams MCP tools are disabled. Enable mcp_tools_enabled in feature_flags",
-                    },
-                }
+            feature_error = _goal_team_feature_error()
+            if feature_error is not None:
+                return feature_error
 
             # Validate inputs
-            if len(goal.strip()) < 10:
-                metrics.record_error(error_code=ErrorCode.GOAL_TOO_SHORT.value)
-                error = GoalParsingError(
-                    goal=goal,
-                    reason="Goal is too short. Provide at least 10 characters.",
-                    error_code=ErrorCode.GOAL_TOO_SHORT,
-                )
-                # Broadcast error
-                if ws_server:
-                    await ws_server.broadcast_team_error(
-                        team_id="",
-                        error_code=ErrorCode.GOAL_TOO_SHORT.value,
-                        message=error.message,
-                        user_id=user_id,
-                    )
-                raise error
+            await _validate_parse_goal_text(goal, metrics, ws_server, user_id)
 
             # Try to get LLM factory for fallback (may not be available)
-            llm_factory = None
-            if is_context_initialized():
-                with contextlib.suppress(Exception):
-                    llm_factory = get_llm_factory()
+            llm_factory = _resolve_parse_llm_factory()
 
             # Import factory
             from mahavishnu.engines.goal_team_factory import GoalDrivenTeamFactory
@@ -648,84 +801,18 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             parsed = await factory.parse_goal(goal)
 
             # Record goal parsing metrics (if Prometheus metrics enabled)
-            if is_feature_enabled("prometheus_metrics_enabled"):
-                metrics.record_goal_parsed(
-                    intent=parsed.intent,
-                    domain=parsed.domain,
-                    method=parsed.metadata.get("method", "unknown"),
-                    confidence=parsed.confidence,
-                )
+            _record_parse_goal_metrics(parsed, metrics)
 
             # Broadcast goal parsed event (if WebSocket broadcasts enabled)
-            if ws_server and is_feature_enabled("websocket_broadcasts_enabled"):
-                await ws_server.broadcast_team_parsed(
-                    goal=goal,
-                    intent=parsed.intent,
-                    skills=parsed.skills,
-                    confidence=parsed.confidence,
-                    user_id=user_id,
-                )
+            await _broadcast_parse_goal_parsed(ws_server, goal, parsed, user_id)
 
             # Generate suggested team config
             team_config = await factory.create_team_from_goal(goal)
 
             # Check learning system for mode recommendation (Phase 3)
-            recommended_mode = None
-            if is_feature_enabled("learning_system_enabled"):
-                try:
-                    learning_engine = team_learning.get_learning_engine()
-                    recommendation = learning_engine.get_mode_recommendation(
-                        parsed.intent
-                    )
-                    if recommendation is not None:
-                        recommended_mode = (
-                            recommendation.model_dump()
-                            if hasattr(recommendation, "model_dump")
-                            else {
-                                "mode": recommendation.mode,
-                                "confidence": recommendation.confidence,
-                                "success_rate": recommendation.success_rate,
-                                "sample_count": recommendation.sample_count,
-                                "reason": recommendation.reason,
-                            }
-                        )
-                        metrics.record_mode_recommendation(
-                            intent=parsed.intent,
-                            mode=recommendation.mode,
-                            confidence=recommendation.confidence,
-                        )
-                except Exception:
-                    logger.debug(
-                        "Mode recommendation failed; continuing without recommendation",
-                        exc_info=True,
-                    )
+            recommended_mode = _resolve_recommended_mode(parsed, metrics)
 
-            return {
-                "success": True,
-                "parsed": {
-                    "intent": parsed.intent,
-                    "domain": parsed.domain,
-                    "skills": parsed.skills,
-                    "confidence": parsed.confidence,
-                    "method": parsed.metadata.get("method", "unknown"),
-                    "raw_goal": parsed.raw_goal,
-                },
-                "suggested_team": {
-                    "name": team_config.name,
-                    "mode": team_config.mode.value,
-                    "member_count": len(team_config.members),
-                    "members": [
-                        {
-                            "name": m.name,
-                            "role": m.role,
-                            "model": m.model,
-                        }
-                        for m in team_config.members
-                    ],
-                    "has_leader": team_config.leader is not None,
-                },
-                "recommended_mode": recommended_mode,
-            }
+            return _build_parse_goal_result(parsed, team_config, recommended_mode)
 
         except FeatureDisabledError as e:
             return {
@@ -739,13 +826,9 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
         except GoalParsingError as e:
             metrics.record_error(error_code=e.error_code.value)
             # Broadcast error
-            if ws_server:
-                await ws_server.broadcast_team_error(
-                    team_id="",
-                    error_code=e.error_code.value,
-                    message=e.message,
-                    user_id=user_id,
-                )
+            await _broadcast_parse_goal_error(
+                ws_server, e.error_code.value, e.message, user_id
+            )
             return {
                 "success": False,
                 "error": {
@@ -758,13 +841,9 @@ def register_goal_team_tools(mcp: FastMCP) -> None:
             logger.exception("Failed to parse goal")
             metrics.record_error(error_code=ErrorCode.INTERNAL_ERROR.value)
             # Broadcast error
-            if ws_server:
-                await ws_server.broadcast_team_error(
-                    team_id="",
-                    error_code=ErrorCode.INTERNAL_ERROR.value,
-                    message=str(e),
-                    user_id=user_id,
-                )
+            await _broadcast_parse_goal_error(
+                ws_server, ErrorCode.INTERNAL_ERROR.value, str(e), user_id
+            )
             return {
                 "success": False,
                 "error": {
