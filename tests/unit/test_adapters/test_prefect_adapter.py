@@ -644,7 +644,21 @@ async def test_get_health_includes_prefect_details(prefect_config):
     """Test health check includes Prefect-specific details."""
     adapter = PrefectAdapter(config=prefect_config)
 
-    health = await adapter.get_health()
+    # get_health() probes connectivity through the Prefect SDK client, not
+    # through httpx. Without a mock the test depends on a live Prefect
+    # server on :4200 and cannot pass in CI.
+    mock_client = MagicMock()
+    mock_client.api_url = "http://localhost:4200"
+    mock_client.read_health = AsyncMock(return_value={"status": "healthy"})
+    mock_client.api_healthcheck = AsyncMock(return_value={"status": "healthy"})
+
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        mock_get_client.return_value = MagicMock(
+            __aenter__=AsyncMock(return_value=mock_client),
+            __aexit__=AsyncMock(return_value=None),
+        )
+
+        health = await adapter.get_health()
 
     assert "details" in health
     assert "prefect_version" in health["details"]

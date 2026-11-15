@@ -378,8 +378,10 @@ class TestGetVerificationResult:
         from mahavishnu.mcp.tools.clone_tools import CloneTools
 
         # Force the store to be None by skipping the default build.
+        # The name is imported BY VALUE into clone_tools, so patching it at
+        # its source module has no effect -- patch where it is used.
         with patch(
-            "mahavishnu.core.verification.build_default_store", return_value=None
+            "mahavishnu.mcp.tools.clone_tools.build_default_store", return_value=None
         ):
             tools = CloneTools(mock_app)
             result = await tools.get_verification_result(proposal_id="missing")

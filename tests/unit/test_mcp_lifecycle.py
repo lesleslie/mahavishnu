@@ -231,19 +231,25 @@ async def test_stop_server_handles_client_stop() -> None:
 
 
 @pytest.mark.asyncio
-async def test_stop_server_handles_client_stop_failure(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
+async def test_stop_server_handles_client_stop_failure() -> None:
+    from structlog.testing import capture_logs
+
     async def _boom() -> None:
         raise RuntimeError("boom")
 
     client = SimpleNamespace(_client=SimpleNamespace(stop=_boom))
     server = SimpleNamespace(mcp_client=client)
 
-    with caplog.at_level(logging.WARNING):
+    # ``mahavishnu.mcp.lifecycle`` logs through structlog (oneiric's
+    # ``get_logger``), so the stdlib ``caplog`` fixture never sees the
+    # record -- capture the structlog events instead.
+    with capture_logs() as logs:
         await stop_server(server)
 
-    assert "Error stopping embedded MCP client" in caplog.text
+    assert any(
+        "Error stopping embedded MCP client" in entry.get("event", "")
+        for entry in logs
+    )
 
 
 @pytest.mark.asyncio

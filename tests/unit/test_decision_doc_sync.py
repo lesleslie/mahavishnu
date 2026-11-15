@@ -1,4 +1,4 @@
-"""Sync tests for `docs/decisions/worktree-cleanup-policy.md`.
+"""Sync tests for `docs/decisions/2026-10-13-worktree-policy.md`.
 
 These tests guard doc/code parity so that the decision doc stays the canonical
 exposition of the worktree cleanup policy. If the Tier literal, the
@@ -15,11 +15,16 @@ from mahavishnu.core.worktree_scan import (
     Tier,
 )
 
+# The decisions store moved from ``.claude/decisions/`` to
+# ``docs/decisions/`` (commit d3aaf815), and the three former worktree
+# decisions were consolidated into this one document. The constant was left
+# pointing at the deleted directory, so the tests failed on a missing file
+# rather than on the drift they exist to catch.
 DECISION_DOC = (
     Path(__file__).resolve().parents[2]
-    / ".claude"
+    / "docs"
     / "decisions"
-    / "worktree-cleanup-policy.md"
+    / "2026-10-13-worktree-policy.md"
 )
 
 

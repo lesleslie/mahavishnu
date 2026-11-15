@@ -3,7 +3,7 @@
 These tests are skipped if prefect is not installed (optional dependency).
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -79,8 +79,19 @@ async def test_prefect_adapter_health_check(prefect_config):
     """Test Prefect adapter health check."""
     adapter = PrefectAdapter(prefect_config)
 
-    with patch("httpx2.AsyncClient.get") as mock_get:
-        mock_get.return_value = MagicMock(status_code=200)
+    # get_health() probes through the Prefect SDK client, not through httpx,
+    # so patching httpx2.AsyncClient.get leaves the probe hitting a real
+    # server on :4200.
+    mock_client = MagicMock()
+    mock_client.api_url = "http://localhost:4200"
+    mock_client.read_health = AsyncMock(return_value={"status": "healthy"})
+    mock_client.api_healthcheck = AsyncMock(return_value={"status": "healthy"})
+
+    with patch("mahavishnu.engines.prefect_adapter_impl.get_client") as mock_get_client:
+        mock_get_client.return_value = MagicMock(
+            __aenter__=AsyncMock(return_value=mock_client),
+            __aexit__=AsyncMock(return_value=None),
+        )
 
         await adapter.initialize()
         health = await adapter.get_health()
@@ -126,13 +137,14 @@ async def test_agno_adapter_initialize_success():
     """Test successful Agno adapter initialization."""
     adapter = AgnoAdapter(api_url="http://localhost:8000")
 
-    with patch("httpx2.AsyncClient.get") as mock_get:
-        mock_get.return_value = MagicMock(status_code=200)
+    # No HTTP call is expected: the "compatibility ping" was removed in
+    # 210ebe6d ("agno init, sse->streamable-http, compat-ping removal")
+    # because it raced the FastMCP server's bind() at startup and only
+    # emitted cosmetic connection-failure noise. init() now just constructs
+    # MCPTools; ``_client`` is kept for shutdown().
+    await adapter.initialize()
 
-        await adapter.initialize()
-
-        assert adapter._client is not None
-        mock_get.assert_called_once()
+    assert adapter._client is not None
 
 
 @pytest.mark.asyncio

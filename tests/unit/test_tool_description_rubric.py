@@ -20,9 +20,13 @@ from typing import ClassVar
 
 import pytest
 
+# The decisions store moved from ``.claude/decisions/`` to
+# ``docs/decisions/`` (commit d3aaf815). The constant was left pointing at
+# the deleted directory, so every test in this file failed on a missing file
+# instead of on the rubric's structure.
 RUBRIC_PATH = (
     Path(__file__).resolve().parent.parent.parent
-    / ".claude"
+    / "docs"
     / "decisions"
     / "tool-description-rubric.md"
 )

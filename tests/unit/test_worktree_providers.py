@@ -314,7 +314,18 @@ class TestSessionBuddyHealthCheck:
         mock_socket = MagicMock()
         mock_socket.connect_ex.return_value = 0
 
-        with patch("socket.socket", return_value=mock_socket):
+        # health_check() is a two-stage probe since 89844c57: TCP reachability
+        # AND a tools/list probe confirming list_worktrees is registered.
+        # Patching the socket alone leaves the HTTP stage running against a
+        # MagicMock, which fails the probe.
+        with (
+            patch("socket.socket", return_value=mock_socket),
+            patch.object(
+                SessionBuddyWorktreeProvider,
+                "_probe_list_worktrees_registered",
+                return_value=True,
+            ),
+        ):
             assert provider.health_check() is True
 
     def test_unreachable(self):
@@ -338,7 +349,14 @@ class TestSessionBuddyHealthCheck:
         mock_socket = MagicMock()
         mock_socket.connect_ex.return_value = 0
 
-        with patch("socket.socket", return_value=mock_socket):
+        with (
+            patch("socket.socket", return_value=mock_socket),
+            patch.object(
+                SessionBuddyWorktreeProvider,
+                "_probe_list_worktrees_registered",
+                return_value=True,
+            ),
+        ):
             assert provider.health_check() is True
             mock_socket.connect_ex.assert_called_once_with(("example.com", 9999))
 

@@ -1640,10 +1640,16 @@ class TestEntryPoint:
 
         assert isinstance(result, list)
         assert len(result) == 1
-        assert result[0]["provider"] == "prefect"
-        assert result[0]["category"] == "orchestration"
-        assert "factory_path" in result[0]
-        assert "capabilities" in result[0]
+        # The entry point returns ``AdapterMetadata`` models (oneiric's
+        # plugin-discovery shape), so the fields are attribute access, not
+        # subscript access.
+        entry = result[0]
+        assert entry.provider == "prefect"
+        assert entry.category == "orchestration"
+        assert entry.factory == (
+            "mahavishnu.engines.prefect_adapter_impl.PrefectAdapter"
+        )
+        assert "deploy_flows" in entry.capabilities
 
 
 if __name__ == "__main__":

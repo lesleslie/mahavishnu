@@ -53,15 +53,32 @@ def test_default_key_prefix_is_canonical() -> None:
 
 
 def _make_inmemory_cache() -> WorktreeCache:
-    """Build a WorktreeCache with L1 only (no L2 connection attempted)."""
+    """Build a WorktreeCache with L1 only (no L2 connection attempted).
+
+    ``l2_enabled=False`` is load-bearing. ``MultiTierCacheAdapter`` AUTO-BUILDS
+    a Redis L2 when ``l2_enabled`` is true (the default) and coredis is
+    importable -- passing ``l2_cache=None`` does not disable it, it only fails
+    to supply one. coredis became a mahavishnu dependency on 2026-09-15, so
+    the adapter now tries to open a Redis connection during ``init()`` and the
+    tests die with "Connection pool is not initialized or has exited". The
+    helper's intent (L1 only, no Redis) is unchanged; how it asks for "no L2"
+    is what oneiric's contract moved.
+    """
     from oneiric.adapters.cache.memory import (
         MemoryCacheAdapter,
         MemoryCacheSettings,
     )
-    from oneiric.adapters.cache.multitier import MultiTierCacheAdapter
+    from oneiric.adapters.cache.multitier import (
+        MultiTierCacheAdapter,
+        MultiTierCacheSettings,
+    )
 
     l1 = MemoryCacheAdapter(settings=MemoryCacheSettings(max_entries=10))
-    multi = MultiTierCacheAdapter(l1_cache=l1, l2_cache=None)
+    multi = MultiTierCacheAdapter(
+        settings=MultiTierCacheSettings(l2_enabled=False),
+        l1_cache=l1,
+        l2_cache=None,
+    )
     return WorktreeCache(multi_tier=multi)
 
 

@@ -1177,8 +1177,10 @@ An alias **substitutes** a model: a caller that asked for `claude-opus-5-5`
 is served `MiniMax-M3`. It is a graceful-degradation mechanism for clients
 that hardcode Anthropic model ids, not a claim that MiniMax is Claude. The
 Opus, Fable and Mythos ids map to `MiniMax-M3`, MiniMax's reasoning-grade
-model; the Sonnet and Haiku ids map to `MiniMax-M3.1-Flash`, its concise
-counterpart.
+model; the current Sonnet id (`claude-sonnet-5-5`) also maps to `MiniMax-M3`,
+because the alias decides the model rather than the spelling the client
+chose; the older Sonnet and Haiku ids map to `MiniMax-M3.1-Flash`, its
+concise counterpart.
 
 ### The Alias Is a Gateway Feature, Not a Client Setting
 
@@ -1208,7 +1210,7 @@ easy to assume the wrong way round. Measured against this gateway on
 
 | Claude Code sends | The gateway serves |
 |---|---|
-| `claude-sonnet-5-5` | `MiniMax-M3.1-Flash` |
+| `claude-sonnet-5-5` | `MiniMax-M3` |
 | `MiniMax-M3` | `MiniMax-M3` |
 | `MiniMax-M3.1-Flash` | `MiniMax-M3.1-Flash` |
 

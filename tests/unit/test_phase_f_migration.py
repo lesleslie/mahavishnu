@@ -76,7 +76,12 @@ def test_no_bifrost_base_url_references() -> None:
             text = full.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        if "BIFROST_BASE_URL" in text:
+        # Match the retired bare name only. A plain substring search also
+        # matched ``ONEIRIC_BIFROST_BASE_URL`` — oneiric's own operator-facing
+        # override, which is a different, live variable that mahavishnu must
+        # not read. Underscore is a word character, so a word boundary
+        # excludes the prefixed form.
+        if re.search(r"(?<![A-Za-z0-9_])BIFROST_BASE_URL", text):
             offenders.append(path)
     assert not offenders, (
         "BIFROST_BASE_URL still referenced in production files: " + ", ".join(offenders)

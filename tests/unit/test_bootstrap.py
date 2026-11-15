@@ -742,16 +742,21 @@ class TestBootstrapDeepHelpers:
 
         fake_pools_module.PoolManager = BoomPoolManager
         with caplog.at_level(logging.WARNING):
-            assert bootstrap.init_pool_manager(app) is None
+            # A hard pool-init failure is a real bug: production logs the
+            # traceback and re-raises (Plan v3 Phase 1m) rather than
+            # degrading to None.
+            with pytest.raises(RuntimeError, match="boom"):
+                bootstrap.init_pool_manager(app)
 
     def test_init_memory_and_learning_pipeline(self, monkeypatch, caplog):
         fake_memory_module = types.ModuleType("mahavishnu.pools.memory_aggregator")
         fake_learning_module = types.ModuleType("mahavishnu.core.learning_pipeline")
 
         class FakeMemoryAggregator:
-            def __init__(self, session_buddy_url, akosha_url, sync_interval):
+            # REQ-CLEAN-003 removed the Akosha sync path: the constructor no
+            # longer takes ``akosha_url``.
+            def __init__(self, session_buddy_url, sync_interval):
                 self.session_buddy_url = session_buddy_url
-                self.akosha_url = akosha_url
                 self.sync_interval = sync_interval
 
         class FakeLearningPipelineService:

@@ -51,7 +51,10 @@ EXEMPT_PATHS = {
     # Worktree-management guide uses literal `~/worktrees` paths
     # throughout CLI examples; rewriting the whole document is out of
     # scope for this fix (the canonical helper still owns resolution).
-    "docs/WORKTREE_MANAGEMENT.md",
+    # The guide moved into the `docs/worktree/` topic cluster in
+    # fe13b23e ("docs: consolidate topic clusters and archive legacy
+    # plans") -- the exemption key had to move with it.
+    "docs/worktree/WORKTREE_MANAGEMENT.md",
     # The historical multi-agent review ADR enumerates the exact
     # drift this test guards against — keeping the literal references
     # is the whole point of the doc.

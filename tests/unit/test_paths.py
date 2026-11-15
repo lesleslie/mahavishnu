@@ -110,13 +110,19 @@ def test_get_worktree_base_path_falls_back_to_legacy_env_var(
     assert paths.get_worktree_base_path() == legacy.resolve()
 
 
-def test_get_worktree_base_path_defaults_to_home_worktrees(
+def test_get_worktree_base_path_defaults_to_state_dir_worktrees(
     tmp_path: Path, monkeypatch: object
 ) -> None:
-    """When neither env var is set, default to Path.home() / 'worktrees'."""
+    """When neither env var is set, default to STATE_DIR / 'worktrees'.
+
+    The default moved from ``Path.home() / "worktrees"`` to the XDG state
+    directory in 97776db4 ("apply worktree convention (XDG path default)").
+    ``STATE_DIR`` is looked up as a module global at call time, so patching
+    it here controls the resolution.
+    """
     monkeypatch.delenv("MAHAVISHNU_WORKTREE_BASE_PATH", raising=False)
     monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", raising=False)
-    monkeypatch.setattr(paths.Path, "home", staticmethod(lambda: tmp_path))
+    monkeypatch.setattr(paths, "STATE_DIR", tmp_path)
     assert paths.get_worktree_base_path() == (tmp_path / "worktrees").resolve()
 
 
@@ -138,7 +144,7 @@ def test_get_worktree_base_path_expanduser_on_tilde(
 
 def test_get_worktree_path_joins_parts(tmp_path: Path, monkeypatch: object) -> None:
     """get_worktree_path is shorthand for get_worktree_base_path() / *parts."""
-    monkeypatch.setattr(paths.Path, "home", staticmethod(lambda: tmp_path))
+    monkeypatch.setattr(paths, "STATE_DIR", tmp_path)
     monkeypatch.delenv("MAHAVISHNU_WORKTREE_BASE_PATH", raising=False)
     monkeypatch.delenv("MAHAVISHNU_AUTO_WORKTREE_ROOT", raising=False)
     assert (

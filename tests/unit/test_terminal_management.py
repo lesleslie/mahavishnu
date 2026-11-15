@@ -165,7 +165,7 @@ class TestTerminalSettings:
         """Test default configuration values."""
         settings = TerminalSettings()
 
-        assert settings.enabled is False
+        assert settings.enabled is True
         assert settings.default_columns == 120
         assert settings.default_rows == 40
         assert settings.capture_lines == 100

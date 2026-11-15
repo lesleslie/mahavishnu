@@ -245,8 +245,24 @@ def test_pool_runpod_preconditions_pass_when_key_and_endpoint_present() -> None:
     failures = _check_pool_runpod_preconditions(
         endpoint_id="ep-test-1234",
         env_getter=lambda name: "rp-secret" if name == "RUNPOD_API_KEY" else None,
+        # The RunPod SDK is deliberately NOT a project dependency (the "gpu"
+        # group was emptied on 2026-10-24), so probe it as present here.
+        # The SDK-missing precondition is asserted separately below.
+        import_probe=lambda name: object(),
     )
     assert failures == []
+
+
+def test_pool_runpod_preconditions_fail_when_sdk_not_installed() -> None:
+    """The SDK-missing precondition still fires when the SDK is absent."""
+    from mahavishnu.cli.demo_cli import _check_pool_runpod_preconditions
+
+    failures = _check_pool_runpod_preconditions(
+        endpoint_id="ep-test-1234",
+        env_getter=lambda name: "rp-secret" if name == "RUNPOD_API_KEY" else None,
+        import_probe=lambda name: None,
+    )
+    assert any("'runpod' SDK is not installed" in f for f in failures)
 
 
 def test_pool_runpod_preconditions_fail_when_api_key_missing() -> None:

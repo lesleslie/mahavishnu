@@ -177,8 +177,13 @@ class TestRBACManager:
         """Test that admin role has all permissions."""
         admin_role = rbac_manager.roles["admin"]
 
-        assert len(admin_role.permissions) == len(Permission)
-        assert all(perm in admin_role.permissions for perm in Permission)
+        # The admin role carries every ``Permission`` member plus the four
+        # mcp_common string permissions ("read", "write", "delete", "admin"),
+        # so a superset check is the contract -- not a count.
+        assert set(Permission).issubset(set(admin_role.permissions))
+        assert {"read", "write", "delete", "admin"}.issubset(
+            set(admin_role.permissions)
+        )
         assert admin_role.allowed_repos is None  # None means all repos
 
     def test_developer_role_has_limited_permissions(self, rbac_manager):

@@ -231,7 +231,9 @@ def test_mcp_helpers_and_renderers() -> None:
 
 def test_fetch_mcp_entries_and_commands() -> None:
     client = AsyncMock()
-    client.call_tool.return_value = [{"key": "a", "value": {"x": 1}}, {"bad": 1}, "x"]
+    # ``MCPClient.kv_list`` returns ``(key, value)`` pairs; the value is the
+    # JSON-encoded payload the CLI decodes.
+    client.kv_list.return_value = [("a", json.dumps({"x": 1}))]
     fake = SimpleNamespace(MCPClient=MagicMock(return_value=client))
     with patch.dict("sys.modules", {"mahavishnu.core.mcp_adapter": fake}):
         assert asyncio.run(m._fetch_mcp_entries("u", "p")) == [

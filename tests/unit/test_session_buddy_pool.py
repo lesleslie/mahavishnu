@@ -112,7 +112,15 @@ class TestStart:
     @pytest.mark.asyncio
     async def test_start_success(self) -> None:
         pool = _make_pool()
-        pool._call_mcp_tool = AsyncMock(return_value={"result": ["w0", "w1", "w2"]})
+        pool._call_mcp_tool = AsyncMock(
+            return_value={
+                "success": True,
+                "pool_id": "sbpool-abc123",
+                "status": "running",
+                "workers_count": 3,
+                "queue_size": 0,
+            }
+        )
 
         pool_id = await pool.start()
         assert pool_id == pool.pool_id
@@ -122,7 +130,11 @@ class TestStart:
     @pytest.mark.asyncio
     async def test_start_non_list_result_uses_empty(self) -> None:
         pool = _make_pool()
-        pool._call_mcp_tool = AsyncMock(return_value={"result": None})
+        # create_pool's contract is {"success": True, "pool_id": str, ...};
+        # an empty pool_id means no worker ids can be synthesised.
+        pool._call_mcp_tool = AsyncMock(
+            return_value={"success": True, "pool_id": ""}
+        )
 
         await pool.start()
         assert pool._workers == {}
@@ -157,12 +169,19 @@ class TestExecuteTask:
         pool = _make_pool()
         pool._workers = {"w0": "worker_w0"}
         pool._call_mcp_tool = AsyncMock(
-            return_value={"result": {"status": "completed", "output": "ok"}}
+            return_value={
+                "success": True,
+                "pool_id": "w0",
+                "worker_id": "w0",
+                "result": {"status": "completed", "output": "ok"},
+            }
         )
 
         result = await pool.execute_task({"prompt": "run this"})
         assert result["status"] == "completed"
-        assert result["output"] == "ok"
+        # execute_on_pool returns the whole worker result dict; the pool
+        # passes it through as ``output``.
+        assert result["output"] == {"status": "completed", "output": "ok"}
         assert pool._tasks_completed == 1
         assert pool._tasks_failed == 0
         assert len(pool._task_durations) == 1
@@ -172,11 +191,13 @@ class TestExecuteTask:
         pool = _make_pool()
         pool._workers = {"w0": "worker_w0"}
         pool._call_mcp_tool = AsyncMock(
-            return_value={"result": {"status": "error", "error": "oops"}}
+            return_value={"success": False, "pool_id": "w0", "error": "oops"}
         )
 
         result = await pool.execute_task({"prompt": "x"})
-        assert result["status"] == "error"
+        # The pool normalises upstream status to "completed" | "failed".
+        assert result["status"] == "failed"
+        assert result["error"] == "oops"
         assert pool._tasks_failed == 1
 
     @pytest.mark.asyncio
@@ -209,11 +230,19 @@ class TestExecuteBatch:
         pool._workers = {"w0": "worker_w0", "w1": "worker_w1"}
         pool._call_mcp_tool = AsyncMock(
             return_value={
-                "result": {"t0": {"status": "completed"}, "t1": {"status": "error"}}
+                "success": True,
+                "pool_id": "w0",
+                "results_count": 2,
+                "results": [
+                    {"status": "completed", "output": "a", "error": None},
+                    {"status": "failed", "output": None, "error": "boom"},
+                ],
             }
         )
 
-        results = await pool.execute_batch([{"prompt": "a"}, {"prompt": "b"}])
+        results = await pool.execute_batch(
+            [{"task_id": "t0", "prompt": "a"}, {"task_id": "t1", "prompt": "b"}]
+        )
         assert "t0" in results
         assert results["t0"]["pool_id"] == pool.pool_id
         assert pool._tasks_completed == 1
@@ -254,7 +283,13 @@ class TestHealthCheck:
     async def test_healthy_when_workers_meet_min(self) -> None:
         pool = _make_pool()
         pool._workers = {"w0": "x", "w1": "y"}
-        pool._call_mcp_tool = AsyncMock(return_value={"result": {"status": "healthy"}})
+        pool._call_mcp_tool = AsyncMock(
+            return_value={
+                "success": True,
+                "pool_id": "w0",
+                "health": {"status": "healthy"},
+            }
+        )
 
         result = await pool.health_check()
         assert result["status"] == "healthy"
@@ -270,14 +305,27 @@ class TestHealthCheck:
         assert result["status"] in ("degraded", "unhealthy")
 
     @pytest.mark.asyncio
-    async def test_server_error_returns_unhealthy(self) -> None:
+    async def test_server_error_surfaces_upstream_error(self) -> None:
+        """An upstream health-check failure surfaces the error, not a silent ok.
+
+        The pool's contract is "local status wins; upstream provides
+        supplementary worker_health" -- so the status reflects the local
+        worker count (1 worker against min_workers=3 is "degraded"), and the
+        upstream error is propagated so the operator sees why the check
+        failed. It is not "unhealthy": the pool still holds a live worker.
+
+        The upstream call only happens when the pool has a pool_id, so the
+        pool needs at least one worker.
+        """
         pool = _make_pool()
+        pool.config.min_workers = 3
+        pool._workers = {"w0": "x"}
         pool._call_mcp_tool = AsyncMock(
             side_effect=MCPServerError("health check failed")
         )
 
         result = await pool.health_check()
-        assert result["status"] == "unhealthy"
+        assert result["status"] == "degraded"
         assert "health check failed" in result["error"]
 
 

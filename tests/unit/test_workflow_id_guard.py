@@ -9,6 +9,8 @@ match it but are traversal segments, and a trailing newline slips past
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from mahavishnu.mcp.tools._workflow_id_guard import (
@@ -63,8 +65,12 @@ def test_the_guard_agrees_with_session_buddy() -> None:
         pytest.skip("session-buddy does not expose the task-system models")
 
     for value in ("wf_ok-1.2", ".", "..", "wf abc", "wf_abc\n", ""):
+        # session-buddy's WORKFLOW_ID_PATTERN is a raw string (Pydantic's
+        # ``pattern=`` needs a string, not a compiled pattern), so it has to
+        # be compiled before ``fullmatch``. The two patterns are textually
+        # identical -- only this test's use of the constant was wrong.
         upstream_ok = value not in WORKFLOW_ID_FORBIDDEN_SEGMENTS and bool(
-            WORKFLOW_ID_PATTERN.fullmatch(value)
+            re.compile(WORKFLOW_ID_PATTERN).fullmatch(value)
         )
         local_ok = validate_workflow_id(value)
         assert upstream_ok == local_ok, f"the repos disagree on {value!r}"

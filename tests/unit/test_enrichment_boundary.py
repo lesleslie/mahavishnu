@@ -63,8 +63,14 @@ def test_mcp_common_telemetry_unchanged() -> None:
     # carrying the old default. Cross-repo coordination and operator
     # sign-off obtained; the version bump in mcp-common's pyproject is the
     # operator's to make, not the agent's.
+    # Re-pinned 2026-11-15 after mcp-common 5778ad9 ("chore(mcp-common):
+    # remove bracketed mypy ignore directives"), which dropped three
+    # ``# type: ignore[assignment]`` comments from the optional-OTel import
+    # block. Comment-only, no behaviour change, and the change came from
+    # mcp-common -- the mahavishnu-side boundary (subclass, no mcp_common
+    # edit) is unchanged.
     pinned_pre_phase1_hash = (
-        "e8b996df082883f1a94e66132fd1c72df1aa200dcfc55012bfc1ef2f72a0000a"
+        "20dd6b5c8f9b5aecde8473af6c492312af03e1d46db279ee276b7f086997b112"
     )
     assert expected_hash == pinned_pre_phase1_hash, (
         f"mcp_common/server/telemetry.py sha256 changed "

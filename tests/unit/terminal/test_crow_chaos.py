@@ -18,9 +18,17 @@ def mock_mcp() -> AsyncMock:
 
 
 @pytest.mark.unit
-async def test_capture_output_failure_raises_terminal_error(
+async def test_send_command_failure_raises_terminal_error(
     mock_mcp: AsyncMock,
 ) -> None:
+    """A crow-mcp failure surfaces as TerminalError(MHV-307).
+
+    ``capture_output`` no longer talks to the server — the crow-mcp
+    ``terminal`` tool is one-shot and returns its output inline, so
+    ``capture_output`` is a local cache read (commit b892ab46). The
+    invariant this test guards therefore lives on ``send_command``, which
+    is the method that still calls the MCP server.
+    """
     adapter = CrowTerminalAdapter(mcp_client=mock_mcp)
     session_id = await adapter.launch_session("bash", columns=80, rows=24)
 
@@ -28,7 +36,7 @@ async def test_capture_output_failure_raises_terminal_error(
     mock_mcp.call_tool.side_effect = Exception("session not found in crow-mcp")
 
     with pytest.raises(TerminalError) as exc_info:
-        await adapter.capture_output(session_id)
+        await adapter.send_command(session_id, "ls")
 
     assert exc_info.value.error_code == "MHV-307"
 

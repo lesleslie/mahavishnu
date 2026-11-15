@@ -249,8 +249,8 @@ reproduction.
 
 ## See also
 
-- Plan: `docs/plans/2026-07-26-mahavishnu-acp-server.md` (the v1.0 plan)
-- Spec: `docs/specs/2026-07-15-mahavishnu-acp-server-design.md`
+- Plan: `docs/plans/.archive/2026-07-26-mahavishnu-acp-server.md` (the v1.0 plan; shipped and archived)
+- Spec: `docs/specs/.archive/2026-07-15-mahavishnu-acp-server-design.md` (shipped and archived)
 - Followups: `docs/followups/2026-07-27-acp-v15-followups.md`
 - Wire format: `mahavishnu/acp/protocol.py` (Pydantic models)
 - Dispatcher: `mahavishnu/acp/server.py` (JSON-RPC loop)

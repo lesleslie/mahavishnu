@@ -214,7 +214,7 @@ class TestAFailedCliIsNotASuccess:
         assert _parse_exit_code("... __MAHAVISHNU_DONE__\n") is None
 
     async def test_a_non_zero_exit_is_reported_as_a_failure(self) -> None:
-        from mahavishnu.workers.base import WorkerStatus
+        from mahavishnu.core.status import WorkerStatus
 
         manager = _RecordingManager()
         worker = ShellWorker(
@@ -234,7 +234,7 @@ class TestAFailedCliIsNotASuccess:
         assert "status 1" in (result.error or "")
 
     async def test_a_zero_exit_is_reported_as_a_success(self) -> None:
-        from mahavishnu.workers.base import WorkerStatus
+        from mahavishnu.core.status import WorkerStatus
 
         manager = _RecordingManager()
         worker = ShellWorker(

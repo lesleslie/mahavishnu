@@ -103,6 +103,10 @@ class TestWorkerStatusIdentity:
             line
             for line in matches
             if not line.startswith("mahavishnu/workers/__init__.py:")
+            # This guard file necessarily contains the legacy pattern in its
+            # own identity assertion, its docstring and its grep invocation,
+            # so it has to exempt itself or it can never pass.
+            and not line.startswith("tests/unit/test_worker_status_identity.py:")
         ]
         assert not offenders, (
             f"WorkerStatus must be imported from mahavishnu.core.status, "

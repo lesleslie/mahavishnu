@@ -173,6 +173,15 @@ def test_prefect_runs_with_default_flow_when_server_up(monkeypatch) -> None:
     monkeypatch.setattr(
         demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200)
     )
+    # The work-pool probe POSTs {api_url}/work_pools/filter (added in
+    # 98249c86) — stub it too, else the demo hits a real server on :4200.
+    monkeypatch.setattr(
+        demo_cli.httpx,
+        "post",
+        lambda url, json=None, timeout=None: MagicMock(
+            status_code=200, json=lambda: [{"name": "default", "status": "READY"}]
+        ),
+    )
 
     captured: dict = {}
 
@@ -209,6 +218,15 @@ def test_prefect_keep_flag_propagates(monkeypatch) -> None:
     monkeypatch.setattr(
         demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200)
     )
+    # The work-pool probe POSTs {api_url}/work_pools/filter (added in
+    # 98249c86) — stub it too, else the demo hits a real server on :4200.
+    monkeypatch.setattr(
+        demo_cli.httpx,
+        "post",
+        lambda url, json=None, timeout=None: MagicMock(
+            status_code=200, json=lambda: [{"name": "default", "status": "READY"}]
+        ),
+    )
     captured: dict = {}
 
     async def fake_run(**kwargs: object) -> dict[str, object]:
@@ -238,6 +256,15 @@ def test_prefect_custom_flow_override(monkeypatch) -> None:
     monkeypatch.setattr(demo_cli, "_default_settings_getter", lambda: settings_mock)
     monkeypatch.setattr(
         demo_cli.httpx, "get", lambda url, timeout: MagicMock(status_code=200)
+    )
+    # The work-pool probe POSTs {api_url}/work_pools/filter (added in
+    # 98249c86) — stub it too, else the demo hits a real server on :4200.
+    monkeypatch.setattr(
+        demo_cli.httpx,
+        "post",
+        lambda url, json=None, timeout=None: MagicMock(
+            status_code=200, json=lambda: [{"name": "default", "status": "READY"}]
+        ),
     )
     captured: dict = {}
 

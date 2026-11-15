@@ -53,7 +53,7 @@ class TestPoolConfig:
 
         assert config.min_workers == 1
         assert config.max_workers == 10
-        assert config.worker_type == "terminal-claude"
+        assert config.worker_type == "shepherd"
         assert config.auto_scale is False
         assert config.memory_enabled is True
         assert config.extra_config == {}

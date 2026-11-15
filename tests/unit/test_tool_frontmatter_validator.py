@@ -25,16 +25,19 @@ from pathlib import Path
 from tool_frontmatter_validator import ToolFrontmatterValidator
 
 # A representative sample of the real frontmatter used in the repo.
-# Captured verbatim from
-# .claude/commands/tools/deployment/release-management.md
 # (line 1 is a 70-underscore delimiter).
+#
+# The id is a 32-char UUID7 in lowercase hex with the version nibble set
+# to 7. The ULID form was retired on 2026-10-11
+# (docs/plans/.archive/2026-10-12-ulid-surface-elimination.md) and the
+# validator now rejects it outright.
 REAL_TOOL_FRONTMATTER_LINES = [
     "_" * 70,
     "title: Release Management Playbook",
     "owner: Delivery Operations",
     "last_reviewed: 2025-02-06",
     "status: active",
-    "id: 01HQZ4K9M3R7T8B5N2W1V0A3F4",  # 26-char ULID
+    "id: 0192f3a47c8d7e2b9c4d5e6f70819a2b",  # 32-char UUID7 hex
     "category: deployment",
     "_" * 70,
     "",

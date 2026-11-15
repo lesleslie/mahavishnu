@@ -515,12 +515,25 @@ def test_alias_targets_land_on_the_right_minimax_counterpart() -> None:
                         f"{target!r}; the reasoning-grade Claude ids map to "
                         f"MiniMax-M3"
                     )
-                if any(family in alias for family in ("sonnet", "haiku")):
+                if alias == "claude-sonnet-5-5":
+                    # The current-generation Sonnet id maps to the PRIMARY
+                    # model (commit 04e1b2cb): the alias decides the model, not
+                    # the spelling the client chose. ANTHROPIC_DEFAULT_SONNET_MODEL
+                    # is already MiniMax-M3, so sending this id to the concise
+                    # model gave the caller a weaker model than the slot it asked
+                    # for. The older sonnet ids stay on MiniMax-M3.1-Flash --
+                    # they are the security-review plugin's budget-limited
+                    # fallback and have to fit inside its max_tokens budget.
+                    assert target == "MiniMax-M3", (
+                        f"{provider_id}/{key['name']}: {alias!r} resolves to "
+                        f"{target!r}; the current Sonnet id maps to MiniMax-M3"
+                    )
+                elif any(family in alias for family in ("sonnet", "haiku")):
                     assert target == "MiniMax-M3.1-Flash", (
                         f"{provider_id}/{key['name']}: {alias!r} resolves to "
-                        f"{target!r}; the Sonnet and Haiku ids map to the "
-                        f"concise MiniMax-M3.1-Flash -- the Sonnet id is what "
-                        f"the security-review plugin falls back to, and it has "
+                        f"{target!r}; the older Sonnet and Haiku ids map to the "
+                        f"concise MiniMax-M3.1-Flash -- they are what the "
+                        f"security-review plugin falls back to, and they have "
                         f"to fit inside the plugin's max_tokens budget"
                     )
 

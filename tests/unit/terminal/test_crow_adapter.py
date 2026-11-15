@@ -56,7 +56,13 @@ async def test_send_command_unknown_session_raises_session_not_found() -> None:
 
 
 @pytest.mark.unit
-async def test_capture_output_pty_crash_raises_terminal_error_with_mhv307() -> None:
+async def test_send_command_pty_crash_raises_terminal_error_with_mhv307() -> None:
+    """A PTY crash in crow-mcp surfaces as TerminalError(MHV-307).
+
+    ``capture_output`` is a local cache read since the crow-mcp terminal
+    tool became one-shot (commit b892ab46); ``send_command`` is the method
+    that still reaches the server, so that is where the failure surfaces.
+    """
     from mahavishnu.terminal.adapters.crow import CrowTerminalAdapter
 
     mcp = make_mock_mcp()
@@ -67,7 +73,7 @@ async def test_capture_output_pty_crash_raises_terminal_error_with_mhv307() -> N
     mcp.call_tool.side_effect = RuntimeError("PTY crashed")
 
     with pytest.raises(TerminalError) as exc_info:
-        await adapter.capture_output("session-x")
+        await adapter.send_command("session-x", "ls")
 
     assert exc_info.value.error_code == ErrorCode.CROW_MCP_UNAVAILABLE
 
