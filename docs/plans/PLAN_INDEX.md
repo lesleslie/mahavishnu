@@ -342,6 +342,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-11-15-pool-dispatch-progress-heartbeat.md`](2026-11-15-pool-dispatch-progress-heartbeat.md) | 2026-11-15 | `complete` | `implementation` |  | `mcp-dispatch-liveness` | Report pool dispatch liveness so long calls survive the client idle timeout |
 | [`docs/plans/2026-11-15-pyscn-complexity-ceiling-15.md`](2026-11-15-pyscn-complexity-ceiling-15.md) | 2026-11-15 | `complete` | `implementation` |  | `quality-gate-complexity` | Bring 27 functions under the pyscn cyclomatic ceiling of 15 |
 | [`docs/plans/2026-11-14-ty-only-migration.md`](2026-11-14-ty-only-migration.md) | 2026-11-14 | `complete` | `implementation` |  | `ty-only-migration` | Ty-Only Migration Implementation Plan |
 | [`docs/plans/2026-11-07-archived-requirements-registry.md`](2026-11-07-archived-requirements-registry.md) | 2026-11-07 | `active` | `canonical` | `reference` | `archived-requirements-registry` | Archived requirements registry — declarations carried forward from retired plans |
@@ -565,7 +566,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (169 entries)
+### `plan` (170 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -578,9 +579,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 5 | 66 | 6 | 2 | 20 | **99** |
-| `implementation` | 4 | 6 | 6 | 6 | 27 | **49** |
+| `implementation` | 4 | 6 | 6 | 6 | 28 | **50** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 33 | **33** |
 | `superseded` | · | · | · | · | 11 | **11** |
 
-| **Total** | **9** | **72** | **12** | **8** | **92** | **193** |
+| **Total** | **9** | **72** | **12** | **8** | **93** | **194** |

@@ -53,6 +53,7 @@ class _FakeContext:
 
 
 @pytest.mark.asyncio
+@pytest.mark.req(["REQ-DSPROG-001"])
 async def test_heartbeat_reports_progress_while_the_dispatch_runs() -> None:
     """The heartbeat emits at least one progress notification before the end."""
     ctx = _FakeContext()
@@ -76,6 +77,7 @@ async def test_heartbeat_reports_progress_while_the_dispatch_runs() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.req(["REQ-DSPROG-003"])
 async def test_dispatch_without_context_runs_unattended() -> None:
     """``ctx=None`` (direct call / no progress token) runs the dispatch as-is."""
     ctx = _FakeContext()
@@ -162,6 +164,7 @@ async def test_heartbeat_does_not_delay_a_fast_dispatch() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.req(["REQ-DSPROG-002"])
 async def test_context_parameter_is_excluded_from_the_tool_schema() -> None:
     """``ctx`` is injected by FastMCP, never part of the wire contract.
 

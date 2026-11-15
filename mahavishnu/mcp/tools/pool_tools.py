@@ -295,7 +295,7 @@ async def _dispatch_with_progress(
     ctx: _ProgressReporter | None,
     dispatch: Callable[[], Awaitable[dict[str, Any]]],
     *,
-    interval: float = _PROGRESS_HEARTBEAT_SECONDS,
+    interval: float | None = None,
 ) -> dict[str, Any]:
     """Await a dispatch, reporting liveness while it runs.
 
@@ -320,12 +320,17 @@ async def _dispatch_with_progress(
     turn a successful dispatch into a failed one.
     """
     if ctx is None:
+        # req: REQ-DSPROG-003 -- no client progress token: run untouched.
         return await dispatch()
+    # Resolved at call time, not bound as a default, so the module
+    # constant stays the single source of truth for the interval.
+    tick = _PROGRESS_HEARTBEAT_SECONDS if interval is None else interval
 
     async def _heartbeat() -> None:
+        # req: REQ-DSPROG-001 -- report liveness for the whole dispatch.
         started = time.monotonic()
         while True:
-            await asyncio.sleep(interval)
+            await asyncio.sleep(tick)
             elapsed = int(time.monotonic() - started)
             try:
                 await ctx.report_progress(
@@ -1272,6 +1277,7 @@ def register_pool_tools(
         auto_spawn: bool | None = None,
         idempotency: IdempotencyOptions | None = None,
         worktree: WorktreeOptions | None = None,
+        # req: REQ-DSPROG-002 -- injected by FastMCP, excluded from the schema.
         ctx: Context | None = None,
     ) -> dict[str, Any]:
         """Load-balanced single-task dispatch across registered worker pools.
