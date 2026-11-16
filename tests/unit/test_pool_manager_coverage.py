@@ -805,9 +805,10 @@ async def test_route_task_affinity_no_allowlist_uses_the_server_policy(
 
     ADR-014 keeps the allowlist server-side: a wire caller names a pool
     and never names the set of pools it may use. The router therefore
-    derives the allowlist from ``pools.caller_pool_allowlist`` when the
-    caller supplied none — which is what makes AFFINITY reachable at all.
-    Under the default policy the named pool is honoured.
+    takes the operator's policy — ``MAHAVISHNU_PEER_AFFINITY_ALLOWLIST``
+    or ``pools.caller_pool_allowlist`` — when the caller supplied none,
+    which is what makes AFFINITY reachable at all. Under this
+    deployment's policy the named pool is honoured.
     """
     r = await pool_mgr_with_pools.route_task(
         task={"prompt": "x"},

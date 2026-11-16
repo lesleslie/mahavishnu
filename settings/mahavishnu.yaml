@@ -159,16 +159,28 @@ pools:
   enabled: true  # Enable pool management
   default_type: "mahavishnu"  # Default pool type (mahavishnu, session-buddy, runpod)
   routing_strategy: "least_loaded"  # Pool selection (round_robin, least_loaded, random, affinity)
-  # ADR-014 caller-side authorization for the AFFINITY selector. Maps a
-  # caller kind to the pools it may dispatch into. Pools are named by
-  # NAME (stable across restarts; pool ids are generated per spawn) or
-  # by pool id, and ["*"] means "every currently-registered pool".
+  # ADR-014 server-side authorization for the specific-pool selectors
+  # (AFFINITY, PEER_AFFINITY): the pools a caller may pin.
   #
-  # The router derives this server-side, so a wire caller cannot widen
-  # or narrow it — `caller_kind` stays attribution-only. Without an
-  # entry for a caller kind the "*" entry applies.
-  caller_pool_allowlist:
-    "*": ["*"]
+  # This is the OPERATOR's deployment policy, not a per-caller one. It is
+  # deliberately not keyed on `caller_kind` -- that parameter is quota
+  # attribution only, so keying authorization on it would let a caller
+  # choose its own permissions.
+  #
+  # Pools are named by NAME (stable across restarts; pool ids are
+  # generated per spawn) or by pool id, and ["*"] means every
+  # currently-registered pool.
+  #
+  # This deployment's pools are all dispatchable, so the policy is the
+  # wildcard. To confine pinning, name the pools instead -- e.g.
+  #   caller_pool_allowlist: ["merge-review"]
+  # An empty list means "no pinned pool is authorized": the router
+  # refuses a pinned pool and falls back to LEAST_LOADED.
+  #
+  # The env var MAHAVISHNU_PEER_AFFINITY_ALLOWLIST (comma-separated)
+  # overrides this value -- see
+  # docs/adr/014-honcho-peer-model-routing-precedence.md.
+  caller_pool_allowlist: ["*"]
   min_workers: 1  # Default minimum workers per pool
   max_workers: 10  # Default maximum workers per pool
   memory_aggregation_enabled: true  # Enable memory aggregation across pools

@@ -616,24 +616,27 @@ class PoolConfig(BaseModel):
         default="least_loaded",
         description="Pool selection strategy (round_robin, least_loaded, random, affinity)",
     )
-    # ADR-014 caller-side authorization for the AFFINITY selector.
-    # Maps a caller kind (claude_code, workflow, cli, ultracode,
-    # unknown — or "*" for the fallback) to the pools that kind may
-    # dispatch into. Each entry names pools by NAME (stable across
-    # restarts; pool ids are generated per spawn) or by pool id, and
-    # ["*"] means "every currently-registered pool".
+    # ADR-014 server-side authorization for the specific-pool selectors
+    # (AFFINITY, PEER_AFFINITY). The pools a caller may pin: names or
+    # ids, and ["*"] means every currently-registered pool.
     #
-    # The router derives the allowlist from this map when a caller does
-    # not supply one, so a wire caller can neither widen nor narrow it:
-    # `caller_kind` stays attribution-only. Without an entry for a
-    # caller kind the "*" entry applies, and without any "*" entry the
-    # router allows every registered pool.
-    caller_pool_allowlist: dict[str, list[str]] = Field(
-        default_factory=lambda: {"*": ["*"]},
+    # This is a SERVER-SIDE policy. It is deliberately NOT keyed on any
+    # wire-supplied value: `caller_kind` is quota attribution only
+    # (ADR-014), so a caller that chose its own authorization bucket
+    # would be choosing its own permissions. The env var
+    # MAHAVISHNU_PEER_AFFINITY_ALLOWLIST (comma-separated) overrides
+    # this value — see docs/adr/014-honcho-peer-model-routing-precedence.md.
+    #
+    # None (the default) means no specific-pool authorization is
+    # declared: the router refuses to honour a pinned pool and falls back
+    # to its own LEAST_LOADED choice. That is the fail-closed default.
+    caller_pool_allowlist: list[str] | None = Field(
+        default=None,
         description=(
-            "Per-caller-kind pool authorization for the affinity selector. "
-            'Keys are caller kinds (or "*"), values are pool names/ids, '
-            'and ["*"] means every registered pool.'
+            "Server-side pools a caller may pin with the affinity "
+            "selectors. Pool names or ids; ['*'] means every registered "
+            "pool. None means no pinned pool is authorized. Env var: "
+            "MAHAVISHNU_PEER_AFFINITY_ALLOWLIST."
         ),
     )
     min_workers: int = Field(

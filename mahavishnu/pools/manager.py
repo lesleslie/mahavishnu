@@ -9,6 +9,7 @@ from enum import Enum, StrEnum
 import heapq
 import logging
 import math
+import os
 import random
 import time
 from typing import TYPE_CHECKING, Any, cast
@@ -33,6 +34,10 @@ if TYPE_CHECKING:
 from .base import PoolConfig
 
 logger = logging.getLogger(__name__)
+
+#: Whether the effective caller-pool allowlist has been logged. The
+#: policy is a process-level fact, so it is recorded once.
+_effective_allowlist_logged = False
 
 
 async def _await_if_needed(value: Any) -> Any:
@@ -644,62 +649,110 @@ class PoolManager:
             return pool_id in self._pools
         return pool_id in allowlist
 
-    def _resolve_caller_allowlist(
-        self,
-        caller_kind: CallerKind | str,
-    ) -> set[str] | None:
-        """The pools this caller kind is authorized to dispatch into.
+    def _server_pool_allowlist(self) -> set[str] | None:
+        """The pools a caller is authorized to pin, per the server-side policy.
 
-        ADR-014 keeps this server-side: the allowlist comes from
-        settings, never from the wire. A wire caller names a pool
-        (``pool_affinity``) and the router decides whether that pool is
-        one this caller kind may use.
+        ADR-014 keeps this server-side. The policy is read from
+        ``MAHAVISHNU_PEER_AFFINITY_ALLOWLIST`` (comma-separated) when that
+        env var is set, otherwise from ``pools.caller_pool_allowlist`` in
+        the settings — both are operator-controlled, and neither is
+        reachable from the wire.
 
-        The policy is ``pools.caller_pool_allowlist`` in the settings —
-        a mapping of caller kind to pool names/ids. Names are resolved
-        to ids here because a pool id is generated per spawn and a
-        config file can only name a pool stably by its name. A token
-        that is not a known name is kept verbatim, so an operator can
-        also pin a specific id.
+        It is deliberately NOT keyed on ``caller_kind``. That parameter is
+        quota attribution (which ClientKind bucket a dispatch counts
+        against), so keying an authorization policy on it would let a
+        caller pick its own permissions by picking a string.
 
-        An entry for the exact caller kind wins; otherwise the ``"*"``
-        entry applies; otherwise every registered pool is allowed.
+        Names are resolved to ids here because a pool id is generated per
+        spawn and a config file can only name a pool stably by its name.
+        A token that is not a known name is kept verbatim, so an operator
+        can also pin a specific id.
 
-        Returns ``None`` when the settings cannot be read: that is the
-        pre-policy state, and the router refuses a pinned pool rather
-        than guessing. A boundary that opens on a read failure is not a
-        boundary.
+        Returns ``None`` when no policy is declared — and ``None`` means
+        the router refuses to honour a pinned pool and falls back to its
+        own LEAST_LOADED choice (ADR-014's contract). It is also what a
+        settings read failure yields, so a failure cannot widen the set.
 
+        Audit of the ``None`` branches: the specific-pool paths
+        (AFFINITY, PEER_AFFINITY) refuse the caller's choice under
+        ``None``; the working-directory path and the queueing re-rank
+        fall back to the server's own routing decision, which is the
+        behaviour that predates the allowlist and is not widened by it.
         """
         # Implements: REQ-AFFINITY-001, REQ-AFFINITY-002
-        policy = self._caller_allowlist_policy()
-        if policy is None:
+        tokens = self._allowlist_tokens()
+        if tokens is None:
+            self._log_effective_allowlist(None)
             return None
-        kind = (
-            caller_kind.value
-            if isinstance(caller_kind, CallerKind)
-            else str(caller_kind)
-        )
-        tokens = list(policy.get(kind, policy.get("*", ["*"])))
         if "*" in tokens:
+            if len(tokens) > 1:
+                logger.warning(
+                    "caller_pool_allowlist mixes the '*' wildcard with "
+                    "specific pools %s — the wildcard already covers them; "
+                    "treating the policy as '*'",
+                    sorted(t for t in tokens if t != "*"),
+                )
+            self._log_effective_allowlist({"*"})
             return {"*"}
-        return {self._pools_by_name.get(token, token) for token in tokens}
+        resolved = {self._pools_by_name.get(token, token) for token in tokens}
+        self._log_effective_allowlist(resolved)
+        return resolved
 
     @staticmethod
-    def _caller_allowlist_policy() -> dict[str, list[str]] | None:
-        """The configured allowlist policy, or ``None`` if unreadable.
+    def _log_effective_allowlist(allowlist: set[str] | None) -> None:
+        """Record the effective policy once, so an operator can see it.
 
-        Settings are read per call rather than cached: the policy is
-        operator-configurable and a reload should take effect without a
-        server restart.
+        The policy is a process-level fact, so it is logged once rather
+        than on every dispatch. Without it there is no way to tell, from
+        the outside, whether a pinned pool was refused because the policy
+        excludes it or because no policy was ever declared.
         """
+        global _effective_allowlist_logged
+        if _effective_allowlist_logged:
+            return
+        _effective_allowlist_logged = True
+        if allowlist is None:
+            logger.info(
+                "caller_pool_allowlist: no policy declared — a pinned pool "
+                "is refused and the router falls back to LEAST_LOADED"
+            )
+        else:
+            logger.info(
+                "caller_pool_allowlist: effective policy %s",
+                sorted(allowlist),
+            )
+
+    @staticmethod
+    def _allowlist_tokens() -> list[str] | None:
+        """The raw allowlist policy: the env var first, then the settings.
+
+        Returns ``None`` when no policy is declared, and an empty list
+        only when the policy was declared but empty — which is treated as
+        no policy, because an empty set would fail every pool-selection
+        path with a runtime error rather than expressing "nothing is
+        authorized".
+        """
+        env_value = os.environ.get("MAHAVISHNU_PEER_AFFINITY_ALLOWLIST")
+        if env_value is not None:
+            tokens = [t.strip() for t in env_value.split(",") if t.strip()]
+            if not tokens:
+                logger.warning(
+                    "MAHAVISHNU_PEER_AFFINITY_ALLOWLIST is set but empty — "
+                    "treating it as no policy declared"
+                )
+                return None
+            return tokens
         try:
             from mahavishnu.core.config import get_settings
 
-            policy = get_settings().pools.caller_pool_allowlist
+            configured = get_settings().pools.caller_pool_allowlist
         except Exception:  # settings are optional here — a read failure must fail closed  # noqa: BLE001, RUF100
             return None
-        return dict(policy or {})
+        if not configured:
+            return None
+        return [
+            str(token).strip() for token in configured if str(token).strip()
+        ] or None
 
     async def execute_on_pool(
         self,
@@ -839,9 +892,12 @@ class PoolManager:
             caller_pool_allowlist: Caller-side authorization contract
                 (ADR-014). The set of pool IDs the CALLER is
                 authorized to dispatch into. When ``None``, the
-                router derives it from the operator's policy for
-                this caller kind (``pools.caller_pool_allowlist`` in
-                the settings) — a wire caller cannot supply it.
+                router takes the server-side policy —
+                ``MAHAVISHNU_PEER_AFFINITY_ALLOWLIST`` or
+                ``pools.caller_pool_allowlist`` — which a wire
+                caller cannot influence. When that policy declares
+                nothing, ``None`` stands and the router refuses to
+                honour a pinned pool, falling back to LEAST_LOADED.
                 When a non-empty set is supplied, only pools in
                 the intersection of the allowlist and the registered
                 pools are valid candidates. When the intersection
@@ -910,12 +966,12 @@ class PoolManager:
 
         # ADR-014: the allowlist is server-side. A wire caller names a
         # pool (``pool_affinity``); it never supplies the set of pools it
-        # may use. When no caller supplied one, derive it from the
-        # operator's policy for this caller kind — otherwise AFFINITY
-        # could never be honoured, because the router refuses a
+        # may use, and the policy is not keyed on any wire value. When no
+        # caller supplied one, take the operator's policy — otherwise the
+        # router could never honour a pinned pool, because it refuses a
         # specific-pool path whose caller has declared no allowlist.
         if caller_pool_allowlist is None:
-            caller_pool_allowlist = self._resolve_caller_allowlist(caller_kind)
+            caller_pool_allowlist = self._server_pool_allowlist()
 
         # Phase 3 Task 3.2: per-caller_kind fixed-window quota. This
         # is the FIRST gate inside route_task — it must run before any
