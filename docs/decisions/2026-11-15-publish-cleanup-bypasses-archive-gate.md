@@ -103,43 +103,45 @@ a manual `crackerjack run -C` would create `__002` copies of them. The
 older plain-named copies in the same directory predate this sweep and are
 kept.
 
-### The permanent fix has landed in crackerjack's `main` — the guard stays
+### The permanent fix has landed — the guard is retired
 
-Crackerjack's `main` now gates the cleanup on the document's declared
-lifecycle, at a single choke point: a document carrying YAML frontmatter
-is archived only when its `status:` is `shipped`. Measured against this
-repo's tree, through the real cleanup entry point
+Crackerjack now gates the cleanup on the document's declared lifecycle, at a
+single choke point: a document carrying YAML frontmatter is archived only
+when its `status:` is `shipped`. Measured against this repo's tree, through
+the real cleanup entry point
 (`DocumentationCleanup._detect_archivable_files()`):
 
 | crackerjack | archivable candidates |
 |---|---|
-| the package installed in this checkout's venv (0.94.0, from PyPI) | **2** — both OTel substrate plans |
-| the gated build | **0** — both protected |
+| the package this repo used to run (0.94.0, from PyPI) | **2** — both OTel substrate plans |
+| 0.95.0, from PyPI, carrying the gate | **2** found, **0** archived — both held |
 
 That is the whole point of the gate: the two files that were lost five times
-are exactly the two the filename sweep takes, and the gate takes neither.
+are exactly the two the filename sweep takes, and the gate takes neither. The
+candidate list stays non-empty — the filename patterns still match — so the
+gate, not the patterns, is what protects them.
 
-**The guard is still load-bearing.** This repo consumes crackerjack from
-PyPI (`crackerjack>=0.89.2`), and neither the version this repo's
-`uv.lock` resolves (0.93.0) nor the one its venv has installed (0.94.0)
-carries a gate. The merge into crackerjack's `main` changed the tool's
-source, not the artifact this repo runs. Re-enabling
-`auto_cleanup_on_publish` before the gated package is published and
-installed would re-arm the exact failure this record describes — on the
-next publish, silently.
+**The guard was never the fix; it was the workaround for the missing one.**
+It is retired now that every step below is satisfied:
 
-**Remaining steps, in order:**
+1. Push crackerjack's `main` — done; the gate shipped in 0.95.0.
+2. Publish crackerjack — done; 0.95.0 is on PyPI.
+3. Bump this repo's `crackerjack` pin and re-lock — done; the floor is
+   `crackerjack>=0.95.0` and the lock resolves 0.95.0.
+4. Re-measure — done; `_detect_archivable_files()` returns 0 on 0.95.0.
+5. Drop the `auto_cleanup_on_publish: false` guard — done, below.
 
-1. Push crackerjack's `main` — the gate merge is local-only, and a
-   publish has to come from a `main` that is actually pushed.
-2. Publish crackerjack — from `main`, which is the branch carrying the
-   gate, not from the feature branch (the publish stage is the
-   operator's).
-3. Bump this repo's `crackerjack` pin and re-lock.
-4. Re-measure — `_detect_archivable_files()` on this repo must return 0.
-5. Then drop the `auto_cleanup_on_publish: false` guard from
-   `settings/crackerjack.yaml` and mark this record superseded.
+So `settings/crackerjack.yaml` no longer disables publish-time cleanup, and
+with it the frontmatter validation that ran inside that phase comes back.
+The guard cost this repo that validation while it stood.
 
-Until step 5 lands, the guard stays. The permanent fix lives in the tool;
-the interim guard covers the gap between the tool's source and the package
-this repo installs.
+**The floor is now load-bearing.** The guard was version-independent; the
+gate is not. A lower `crackerjack` floor re-resolves to a release with no
+gate, and the sweep takes the plans again — silently, on the next publish.
+That is why the floor moved in the same release as the guard's removal.
+
+The rule this decision records still stands: **a plan may only be archived
+once its `status:` is `shipped`.** The enforcement moved from a settings
+flag in this repo to the tool that moves the files, which is where it
+belongs — a repo cannot enforce its own archive policy against a tool that
+ignores lifecycles.

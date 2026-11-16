@@ -21,36 +21,32 @@
 # Interim guard until the tool defers to the repo's own script. Tracked in
 # crackerjack docs/plans/2026-10-29-plan-index-sync-delegate-to-repo-script.md
 #
-# `auto_cleanup_on_publish` is disabled for the same class of reason, with
-# one extra failure mode. The `documentation_cleanup` phase classifies files
-# by FILENAME REGEX (crackerjack/services/doc_categorizer.py:
-# DocumentationCategorizer.get_archivable_files) — `.*-implementation\.md`
-# matches the `implementation_reports` category — and has no frontmatter
-# gate. So a publish sweeps `status: complete` plans out of docs/plans/ and
-# into docs/plans/.archive/, which is gitignored: the plan is untracked and
-# leaves the repo. That is exactly what
+# `auto_cleanup_on_publish` is back to its default (true). It was disabled
+# here on 2026-11-15 as an interim guard, because the `documentation_cleanup`
+# phase classified files by FILENAME REGEX with no frontmatter gate — so a
+# publish swept `status: complete` plans out of docs/plans/ and into
+# docs/plans/.archive/, which is gitignored: the plan was untracked and left
+# the repo. That is what
 # docs/decisions/2026-10-18-archive-completed-plans.md rule 2 forbids —
 # "Plans being archived must have `status: shipped` first. Mechanical
-# 'complete -> archive' is not allowed."
+# 'complete -> archive' is not allowed." It cost this repo the OTel
+# substrate plans on 2026-10-21, 2026-10-27, 2026-10-28 (8f149717),
+# 2026-11-08 and 2026-11-13.
 #
-# Because `auto_plan_index_sync_on_publish` is false (above), the index is
-# NOT regenerated after that sweep, so PLAN_INDEX.md keeps rows pointing at
-# files that are gone and the `check-local-links` fast hook fails. That is
-# how 2026-10-19-bodai-substrate-otel-v7-implementation.md and
-# 2026-10-20-bodai-otel-substrate-read-path-implementation.md were lost on
-# 2026-11-08 and 2026-11-13, and how they were already lost once before
-# (8f149717, 2026-10-28) and had to be restored by eaf9e162.
+# The permanent fix now lives in crackerjack: the cleanup gates on the
+# document's declared lifecycle, at a single choke point, so a governed
+# document is archived only when its `status:` is `shipped`. See crackerjack
+# docs/plans/2026-11-15-archive-lifecycle-gate.md and
+# docs/decisions/2026-11-15-archive-lifecycle-gate.md.
 #
-# Blast radius here is exactly those two plans: every other document in the
-# tree is already clean of the categorizer's patterns, so the sweep has
-# nothing else to take. Frontmatter conformance is NOT lost with the phase —
-# scripts/audit_doc_frontmatter.py gates it repo-side
-# (mahavishnu/core/code_index/git_hooks.py:51).
-#
-# Permanent fix belongs in crackerjack: gate the categorizer on
-# `status: shipped` so the policy in
-# docs/decisions/2026-10-18-archive-completed-plans.md is enforced by the
-# tool rather than by hand.
+# With the gate in place, publish-time cleanup is safe again, and with it
+# the frontmatter validation that runs inside that phase. Measured against
+# this repo's tree through the real cleanup entry point
+# (`DocumentationCleanup._detect_archivable_files()`) on crackerjack 0.95.0:
+# the categorizer still finds 2 candidates — the two OTel substrate plans,
+# whose filenames still match the `implementation_reports` pattern — and the
+# gate holds BOTH, because each declares `status: complete`, not `shipped`.
+# So 0 files are archived. The candidates being non-empty is the point:
+# the gate, not the filename patterns, is what protects them.
 documentation:
   auto_plan_index_sync_on_publish: false
-  auto_cleanup_on_publish: false
