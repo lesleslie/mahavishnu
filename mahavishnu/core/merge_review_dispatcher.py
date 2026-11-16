@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
+from contextlib import AsyncExitStack
 import json
 import logging
 import os
@@ -672,6 +673,54 @@ def _isolation_failure(agent: str) -> str:
     )
 
 
+async def _call_tool_over_http(
+    url: str,
+    name: str,
+    arguments: dict[str, Any],
+    *,
+    read_timeout: float,
+) -> Any:
+    """Call an MCP tool over streamable HTTP, with a read timeout that fits.
+
+    The MCP SDK builds its default HTTP client with a 300 s read
+    timeout (``MCP_DEFAULT_SSE_READ_TIMEOUT`` in
+    ``mcp/shared/_httpx_utils.py``), and ``CommonMCPClient`` only hands
+    its own ``timeout`` to that client when the server requires a token.
+    So a review dispatch runs on the SDK's default, whatever budget the
+    caller asked for.
+
+    A review dispatch is idle for minutes: the reviewer reads the diff,
+    reads the files it touches, and thinks before it answers. An idle
+    stream is exactly what a read timeout cuts. The call comes back at
+    300 s with no reply, the review is lost, and it reads as a
+    malformed verdict rather than as a reviewer that ran out of time --
+    so the merge blocks on a review that never happened, and the retry
+    does the same.
+
+    So the review dispatch opens its own session, with the read timeout
+    set to the dispatch's budget. The SDK is used directly for this
+    because the shared client does not expose the transport it builds.
+    """
+    import httpx2
+    from mcp.client.session import ClientSession
+    from mcp.client.streamable_http import streamable_http_client
+
+    timeout = httpx2.Timeout(30.0, read=read_timeout)
+    async with AsyncExitStack() as stack:
+        http_client = await stack.enter_async_context(
+            httpx2.AsyncClient(timeout=timeout)
+        )
+        streams = await stack.enter_async_context(
+            streamable_http_client(url, http_client=http_client)
+        )
+        read_stream, write_stream = streams
+        session = await stack.enter_async_context(
+            ClientSession(read_stream, write_stream)
+        )
+        await session.initialize()
+        return await session.call_tool(name, arguments)
+
+
 async def dispatch_review_async(
     agent: str,
     prompt: str,
@@ -702,8 +751,6 @@ async def dispatch_review_async(
     that carries no parseable verdict, which the caller's verdict parser
     turns into ``decision="block"``.
     """
-    from mcp_common.clients.common_mcp_client import CommonMCPClient
-
     url = mcp_url or resolve_mcp_url()
     routed_prompt = (
         f"You are acting as the {agent!r} specialist reviewer.\n\n"
@@ -712,18 +759,19 @@ async def dispatch_review_async(
         "verdict block."
     )
     try:
-        async with CommonMCPClient(base_url=url, timeout=timeout) as client:
-            tool_args: dict[str, Any] = {
-                "prompt": routed_prompt,
-                "pool_selector": "least_loaded",
-                "timeout": timeout,
-            }
-            if worktree is not None:
-                tool_args["worktree"] = worktree
-            call_result = await client.call_tool(
-                "mahavishnu_pool_route_execute",
-                tool_args,
-            )
+        tool_args: dict[str, Any] = {
+            "prompt": routed_prompt,
+            "pool_selector": "least_loaded",
+            "timeout": timeout,
+        }
+        if worktree is not None:
+            tool_args["worktree"] = worktree
+        call_result = await _call_tool_over_http(
+            url,
+            "mahavishnu_pool_route_execute",
+            tool_args,
+            read_timeout=timeout,
+        )
     except (Exception, asyncio.CancelledError) as exc:  # noqa: BLE001
         # Fail-loud: a blocked merge, not a crash. ``CancelledError`` is
         # a ``BaseException``, so it has to be named explicitly — the

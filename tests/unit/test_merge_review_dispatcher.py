@@ -25,6 +25,7 @@ import pytest
 from mahavishnu.core.merge_review_dispatcher import (
     REVIEW_DISPATCH_TIMEOUT,
     REVIEW_REPLY_BUDGET_CHARS,
+    _call_tool_over_http,
     _extract_agent_text,
     _extract_reply_text,
     _parse_pool_result,
@@ -66,6 +67,22 @@ def _envelope(output: str) -> str:
             "output": output,
         }
     )
+
+
+
+def _fake_call(envelope: str) -> Any:
+    """A stand-in for the dispatch's MCP call, returning ``envelope``."""
+
+    async def _call(
+        url: str,
+        name: str,
+        arguments: dict[str, Any],
+        *,
+        read_timeout: float,
+    ) -> _CallResult:
+        return _CallResult(envelope)
+
+    return _call
 
 
 class TestTheAgentTextIsExtracted:
@@ -269,8 +286,8 @@ class TestTheDispatchReportsWhyItFailed:
             }
         )
         monkeypatch.setattr(
-            "mcp_common.clients.common_mcp_client.CommonMCPClient",
-            lambda **kwargs: _FakeClient(envelope),
+            "mahavishnu.core.merge_review_dispatcher._call_tool_over_http",
+            _fake_call(envelope),
         )
         reply = await dispatch_review_async("python-pro", "review this")
         verdict = parse_verdict(reply)
@@ -283,8 +300,8 @@ class TestTheDispatchReportsWhyItFailed:
     ) -> None:
         envelope = _envelope(STREAM_FRAGMENT)
         monkeypatch.setattr(
-            "mcp_common.clients.common_mcp_client.CommonMCPClient",
-            lambda **kwargs: _FakeClient(envelope),
+            "mahavishnu.core.merge_review_dispatcher._call_tool_over_http",
+            _fake_call(envelope),
         )
         reply = await dispatch_review_async("python-pro", "review this")
         verdict = parse_verdict(reply)
@@ -919,3 +936,128 @@ class TestTheRefusalLabelsAreTheOnesTheCodeEmits:
             assert f'reason="{label}"' in runbook, (
                 f"{label!r} is emitted but the runbook does not cite it"
             )
+
+
+class _FakeHttpClient:
+    """An httpx client stand-in that records the timeout it was built with."""
+
+    def __init__(self, *, timeout: Any = None, **kwargs: Any) -> None:
+        captured_timeouts.append(timeout)
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return None
+
+
+class _FakeSession:
+    """An MCP session stand-in."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        return None
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return None
+
+    async def initialize(self) -> None:
+        return None
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        called_tools.append(name)
+        return "ok"
+
+
+class _FakeStreams:
+    """The transport's stand-in: it yields the two streams, and nothing else."""
+
+    def __init__(self, value: Any) -> None:
+        self._value = value
+
+    async def __aenter__(self) -> Any:
+        return self._value
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return None
+
+
+#: The timeouts the fake HTTP clients were built with, and the tools
+#: the fake sessions were asked for.
+captured_timeouts: list[Any] = []
+called_tools: list[str] = []
+
+
+def _patch_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make the transport and the SDK's client stand-ins."""
+
+    def _fake_transport(url: str, *, http_client: Any = None, **kwargs: Any) -> Any:
+        return _FakeStreams((object(), object()))
+
+    monkeypatch.setattr("httpx2.AsyncClient", _FakeHttpClient)
+    monkeypatch.setattr(
+        "mcp.client.streamable_http.streamable_http_client", _fake_transport
+    )
+    monkeypatch.setattr("mcp.client.session.ClientSession", _FakeSession)
+
+
+class TestTheTransportCarriesTheBudget:
+    """The call must last as long as the review does.
+
+    The MCP SDK builds its default HTTP client with a 300 s read
+    timeout, and the shared client only hands its own ``timeout`` to
+    that client when the server requires a token. A review dispatch is
+    idle for minutes while the reviewer reads the diff and thinks, and
+    an idle stream is exactly what a read timeout cuts: the call comes
+    back with no reply and the review reads as a malformed verdict
+    rather than as a reviewer that ran out of time.
+
+    Measured: a dispatch whose worker slept 420 s was cut at 324 s,
+    before the work was done.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _reset(self) -> None:
+        captured_timeouts.clear()
+        called_tools.clear()
+
+    async def test_the_read_timeout_is_the_one_the_caller_asked_for(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The transport is built with the budget, not with a default."""
+        _patch_transport(monkeypatch)
+
+        result = await _call_tool_over_http(
+            "http://localhost:8680/mcp",
+            "mahavishnu_pool_route_execute",
+            {"prompt": "review this"},
+            read_timeout=3600.0,
+        )
+
+        assert result == "ok"
+        assert called_tools == ["mahavishnu_pool_route_execute"]
+        assert captured_timeouts, "the transport was built with no timeout"
+        timeout = captured_timeouts[0]
+        assert timeout.read == 3600.0, (
+            "the read timeout is the budget the review was given"
+        )
+
+    async def test_the_transport_does_not_fall_back_to_the_sdk_default(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The SDK's 300 s default must not be what a review runs on."""
+        import mcp.shared._httpx_utils as httpx_utils
+
+        _patch_transport(monkeypatch)
+
+        await _call_tool_over_http(
+            "http://localhost:8680/mcp",
+            "mahavishnu_pool_route_execute",
+            {},
+            read_timeout=REVIEW_DISPATCH_TIMEOUT,
+        )
+
+        assert captured_timeouts[0].read == REVIEW_DISPATCH_TIMEOUT
+        assert captured_timeouts[0].read != httpx_utils.MCP_DEFAULT_SSE_READ_TIMEOUT

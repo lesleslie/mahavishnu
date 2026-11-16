@@ -14,7 +14,7 @@ So isolation is verified, not assumed.
 from __future__ import annotations
 
 import json
-from typing import Any, Self
+from typing import Any
 
 import pytest
 
@@ -49,19 +49,13 @@ class _CallResult:
 
 
 class _FakeClient:
-    """A ``CommonMCPClient`` stand-in that returns one envelope."""
+    """A stand-in for the dispatch's MCP call that returns one envelope."""
 
     def __init__(self, envelope: str) -> None:
         self._envelope = envelope
         #: Every tool call made, so a test can assert what the
         #: dispatcher asked the pool for.
         self.calls: list[tuple[str, dict[str, Any]]] = []
-
-    async def __aenter__(self) -> Self:
-        return self
-
-    async def __aexit__(self, *args: object) -> None:
-        return None
 
     async def call_tool(self, name: str, args: dict[str, Any]) -> _CallResult:
         self.calls.append((name, args))
@@ -81,11 +75,21 @@ def _envelope(output: str, worktree: dict[str, Any] | None = None) -> str:
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, envelope: str) -> _FakeClient:
-    """Install the fake client and return it, for call assertions."""
+    """Install the fake call and return it, for call assertions."""
     client = _FakeClient(envelope)
+
+    async def _call(
+        url: str,
+        name: str,
+        arguments: dict[str, Any],
+        *,
+        read_timeout: float,
+    ) -> _CallResult:
+        return await client.call_tool(name, arguments)
+
     monkeypatch.setattr(
-        "mcp_common.clients.common_mcp_client.CommonMCPClient",
-        lambda **kwargs: client,
+        "mahavishnu.core.merge_review_dispatcher._call_tool_over_http",
+        _call,
     )
     return client
 
