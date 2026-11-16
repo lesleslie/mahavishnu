@@ -30,6 +30,25 @@ now enriches the error envelope with the current `PATH` and a
 `scripts/launch_mcp.py` PATH bootstrap. Pinned by
 `tests/unit/workers/test_manager_validate_tool.py` (130 LOC).
 
+**Correction 2026-11-16** — the premise of item 1 was wrong, and the fix
+was reverted in `docs/plans/2026-11-16-pool-affinity-and-worker-type-allowlist.md`.
+
+The 2026-09-24 decision retired the *isolated* backends —
+`apple_container` and `e2b_sandbox`, whose modules were deleted — and
+narrowed `_create_isolated_worker` to `shepherd`. It did **not** retire
+the SHELL AI-CLI workers: `WorkerManager._create_worker` routes every
+`RuntimeKind.SHELL` entry to `ShellWorker`, and `terminal-claude`,
+`terminal-qwen` and `terminal-codex` had been running live pool tasks
+the whole time. The CLI refused the working types; the MCP
+`mahavishnu_pool_spawn`, validating against the raw registry, accepted
+the genuinely dead ones (`apple-container`, `e2b-sandbox`).
+
+The allowlist is now derived — `pool_capable_worker_types()` in
+`mahavishnu/workers/registry.py` — and the CLI and the MCP tool read the
+same set, so a copy cannot drift from the registry again.
+`tests/unit/cli/test_spawn_allowlist.py` now pins the corrected
+behaviour (the AI-CLI shells accepted, the retired backends refused).
+
 **Test run:** `12 passed` across the two new test files
 (`test_spawn_allowlist.py` 7 tests + `test_manager_validate_tool.py` 5 tests).
 The orphan's full diff was applied with two targeted edits instead

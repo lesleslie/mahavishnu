@@ -155,6 +155,42 @@ command. Prose dispatched to an isolated worker is refused by the guard
 with *"Command 'write' is not in the allowed list"*. Prose runs on a
 SHELL worker, whose prompt channel is a session, not a command line.
 
+**Which worker types can back a pool** is derived, not curated:
+`mahavishnu.workers.registry.pool_capable_worker_types()` returns every
+`RuntimeKind.SHELL` registry entry (the AI-CLI terminals —
+`terminal-claude`, `terminal-qwen`, `terminal-codex` — and the rest),
+plus `shepherd`, plus `gateway-openclaw`. Both the CLI
+(`mahavishnu pool spawn --worker-type`) and the MCP `pool_spawn` tool
+read that one set, so the two surfaces cannot drift apart and a new
+registry entry needs no matching allowlist edit.
+
+The retired backends — `apple-container`, `e2b-sandbox`,
+`container-executor` — are not in it: their modules were deleted by
+`docs/decisions/2026-09-24-legacy-worker-deprecation.md`. That decision
+retired the *isolated* backends only; the SHELL AI-CLI workers were never
+retired and have been running live pool tasks throughout.
+
+**Targeting a specific pool.** `pool_route_execute` takes
+`pool_selector="affinity"` with `pool_affinity="<pool_id>"`, but the
+selector is authorization-gated (ADR-014): the router honours a pinned
+pool only when the caller's allowlist contains it. The allowlist is
+server-side — a wire caller names a pool, never the set of pools it may
+use — and comes from `pools.caller_pool_allowlist` in the settings:
+
+```yaml
+pools:
+  caller_pool_allowlist:
+    "*": ["*"]            # every caller kind may use every registered pool
+    workflow: ["merge-review"]   # except a workflow, which is pinned
+```
+
+Keys are caller kinds (`claude_code`, `workflow`, `cli`, `ultracode`,
+`unknown`) or `"*"` for the fallback; values are pool **names** (stable
+across restarts — a pool id is generated per spawn) or pool ids, and
+`["*"]` means every currently-registered pool. An entry for the exact
+caller kind wins over the `"*"`. If the settings cannot be read the
+router fails closed and refuses a pinned pool rather than guessing.
+
 **Architecture**:
 
 ```
