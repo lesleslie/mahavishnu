@@ -33,8 +33,28 @@ PRE_COMMIT_CONTENT = """#!/bin/sh
 # Managed by mahavishnu index install-hooks
 # Remove with: mahavishnu index uninstall-hooks <path>
 # Enforces docs/decisions/2026-08-24-bodai-mcp-routing-pattern.md §1.
+#
+# Scope: these are cheap, repo-scoped gates. The full quality suite is
+# the merge gate (``crackerjack run -v -f``; see
+# mahavishnu/core/merge_to_main.py) and is deliberately NOT run per
+# commit.
+#
+# License-deletion guard. Moved here from the global ~/.git-hooks
+# pre-commit (2026-11-15) when the fleet consolidated on one hook
+# location per repo: <repo>/.git/hooks.
+PROTECTED_FILES="LICENSE COPYING NOTICE README.md CLAUDE.md AGENTS.md"
+DELETED=$(git diff --cached --diff-filter=D --name-only)
+if [ -n "$DELETED" ]; then
+    for protected in $PROTECTED_FILES; do
+        if echo "$DELETED" | grep -qx "$protected"; then
+            echo "BLOCKED: refusing to delete tracked $protected" >&2
+            echo "If the deletion is intentional, re-run with: git commit --no-verify" >&2
+            exit 1
+        fi
+    done
+fi
 if [ -f "scripts/audit_no_secrets_in_mcp.py" ]; then
-    python3 scripts/audit_no_secrets_in_mcp.py || exit 1
+    python3 scripts/audit_no_secrets_in_mcp.py "$(pwd)" || exit 1
 fi
 # TYPE_CHECKING → runtime reference gate (2026-08-31). Catches the latent
 # bug class where `from __future__ import annotations` + `if TYPE_CHECKING:`

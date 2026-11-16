@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 from typing import Any, NoReturn
 import uuid
 
@@ -104,36 +105,6 @@ app.name = app.info.name  # ty: ignore[missing-attribute]
 app.main = app.__call__  # ty: ignore[missing-attribute]
 DEFAULT_MCP_HOST = "127.0.0.1"
 DEFAULT_MCP_PORT = 8680
-
-# Phase 12 Task 3: git-hook Typer subcommand. Replaces per-clone bash
-# action lines in .git/hooks/{pre-commit,post-commit,post-merge,
-# post-rewrite}. The handlers live in mahavishnu.git_hook_handlers.
-from pathlib import Path as _Path_cli
-import sys as _sys_cli
-
-from .git_hook_handlers import dispatch_git_hook
-
-git_hook_app = typer.Typer(help="Git lifecycle hook dispatchers.")
-
-
-@git_hook_app.command()
-def git_hook(event: str = typer.Argument(...)) -> None:
-    """Run a git-event hook handler (pre-commit|post-commit|post-merge|post-rewrite)
-    and publish the event to the bus via the bodai_hook_bridge.
-
-    Mirrors the bash action lines that the legacy .git/hooks/<event>
-    scripts ran. Per spec §4.13.3, the action's exit code propagates;
-    bridge publish is fire-and-forget.
-    """
-    # Make ``mahavishnu.bodai_hook_bridge`` importable for the
-    # ``from bodai_hook_bridge import handle`` inside
-    # ``git_hook_handlers._publish_git_event`` when invoked via
-    # ``mahavishnu git-hook <event>`` outside an installed wheel.
-    _sys_cli.path.insert(0, str(_Path_cli(__file__).resolve().parent))
-    _sys_cli.exit(dispatch_git_hook(event))
-
-
-app.add_typer(git_hook_app, name="git-hook")
 
 
 def _resolve_crow_mcp_client(config: Any) -> Any:
@@ -1807,7 +1778,7 @@ async def _dispatch_dag_nodes(
         )
         raise typer.Exit(code=1)
 
-    work_dir = repo or str(_Path_cli(__file__).resolve().parent.parent)
+    work_dir = repo or str(Path(__file__).resolve().parent.parent)
     typer.echo(f"\n🚀 Dispatching {len(nodes)} node(s) in {work_dir}")
 
     task = {

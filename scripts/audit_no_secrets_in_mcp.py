@@ -21,10 +21,32 @@ Allowed exceptions (non-secret config):
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
 from typing import Any, cast
+
+
+# Directory names pruned from the scan. These hold dependency trees and
+# VCS metadata, never a checked-in ``.mcp.json``; descending into them
+# is what made a fleet-wide scan take minutes instead of seconds.
+PRUNED_DIR_NAMES: frozenset[str] = frozenset(
+    {
+        ".eggs",
+        ".git",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".tox",
+        ".venv",
+        ".worktrees",
+        "__pycache__",
+        "node_modules",
+        "site-packages",
+        "venv",
+    }
+)
 
 
 # Pattern matches env var names whose value should never be inlined.
@@ -140,21 +162,20 @@ def scan_file(path: Path) -> list[tuple[str, str, str]]:
 def find_mcp_json_files(roots: list[Path]) -> list[Path]:
     """Find all ``.mcp.json`` files under the given roots.
 
-    Excludes worktree subdirectories to avoid double-scanning and
-    excludes any path under a hidden ``.git`` directory.
+    Walks with ``os.walk`` and prunes dependency/VCS directories in
+    place. ``Path.rglob`` cannot prune, so it descends into every
+    ``.venv`` and ``node_modules`` tree on the machine — that traversal,
+    not the matching, dominated a fleet-wide scan (measured 103 s before
+    pruning).
     """
     found: set[Path] = set()
     for root in roots:
         if not root.exists():
             continue
-        for path in root.rglob(".mcp.json"):
-            # Skip .git internals
-            if "/.git/" in str(path) or path.parts and ".git" in path.parts:
-                continue
-            # Skip worktree metadata files (avoid double-scanning)
-            if "/.worktrees/" in str(path):
-                continue
-            found.add(path)
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in PRUNED_DIR_NAMES]
+            if ".mcp.json" in filenames:
+                found.add(Path(dirpath) / ".mcp.json")
     return sorted(found)
 
 

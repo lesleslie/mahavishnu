@@ -147,3 +147,27 @@ class TestHookContent:
         assert "scripts/audit_doc_frontmatter.py" in pre_commit
         assert '[ -f "scripts/audit_doc_frontmatter.py" ]' in pre_commit
         assert "|| exit 1" in pre_commit
+
+    def test_pre_commit_guards_against_deleting_protected_files(self) -> None:
+        """pre-commit hook blocks deletion of tracked LICENSE/guidance files.
+
+        The guard moved here from the global ``~/.git-hooks/pre-commit``
+        (2026-11-15) when the fleet consolidated on one hook location
+        per repo: ``<repo>/.git/hooks``. A commit that deletes a
+        protected file must fail rather than land silently.
+        """
+        pre_commit = _HOOK_TEMPLATES["pre-commit"]
+        assert "git diff --cached --diff-filter=D --name-only" in pre_commit
+        for protected in ("LICENSE", "COPYING", "NOTICE"):
+            assert protected in pre_commit
+        assert "exit 1" in pre_commit
+
+    def test_pre_commit_scopes_secrets_audit_to_the_repo(self) -> None:
+        """The secrets audit is passed the repo root, not left on its default.
+
+        ``audit_no_secrets_in_mcp.py`` scans ``/Users/les/Projects`` when
+        given no arguments, which took 103 s per commit. Passing
+        ``$(pwd)`` scopes the scan to the repo being committed to.
+        """
+        pre_commit = _HOOK_TEMPLATES["pre-commit"]
+        assert 'audit_no_secrets_in_mcp.py "$(pwd)"' in pre_commit

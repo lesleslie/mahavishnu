@@ -2,15 +2,15 @@
 
 The producer→bus→consumer contract spans three components:
 
-  Claude/Qwen/git hook → ``bodai_hook_bridge.handle()``
-                          ↓ (publishes CanonicalEnvelope)
-                       Oneiric EventBridge
-                          ↓ (decodes EventEnvelope)
-                       ``bodai-activity-post-tool-use.py``
-                          ↓ (emits summary line)
+  Claude/Qwen hook → ``bodai_hook_bridge.handle()``
+                       ↓ (publishes CanonicalEnvelope)
+                    Oneiric EventBridge
+                       ↓ (decodes EventEnvelope)
+                    ``bodai-activity-post-tool-use.py``
+                       ↓ (emits summary line)
 
-The unit suites (see ``mahavishnu/tests/unit/test_bodai_hook_bridge.py``,
-``test_git_hook_handlers.py``, and ``tests/integration/test_bodai_activity_hooks.py``)
+The unit suites (see ``mahavishnu/tests/unit/test_bodai_hook_bridge.py``
+and ``tests/integration/test_bodai_activity_hooks.py``)
 assert each half of this loop independently. **This suite proves the
 two halves connect** — that the bytes the bridge emits can be read by
 the hook, with the expected summary surfacing in stdout.
@@ -228,35 +228,6 @@ def test_pre_tool_use_returns_exit_two_for_blocking() -> None:
     assert exit_code == 2
 
 
-def test_git_hook_dispatch_publishes_to_bus(monkeypatch: pytest.MonkeyPatch) -> None:
-    """git-hook sub-command publishes a git-event envelope via the bridge.
-
-    Verifies the dispatcher routes through ``_publish_git_event``
-    with the right event name and that the subprocess action still
-    runs (action + publish are not in conflict).
-    """
-    from unittest.mock import MagicMock
-
-    from mahavishnu import git_hook_handlers
-    from mahavishnu.git_hook_handlers import dispatch_git_hook
-
-    # Stub subprocess.run so the test doesn't depend on mahavishnu
-    # being on PATH (crackerjack/jot would otherwise be invoked).
-    def _fake_run(argv: list[str], **_kwargs: Any) -> MagicMock:
-        result = MagicMock()
-        result.returncode = 0
-        result.stdout = b""
-        result.stderr = b""
-        return result
-
-    monkeypatch.setattr(git_hook_handlers.subprocess, "run", _fake_run)
-
-    with patch("mahavishnu.git_hook_handlers._publish_git_event") as pub:
-        dispatch_git_hook(event="post-commit")
-
-    pub.assert_called_once_with("post-commit")
-
-
 # ---------------------------------------------------------------------------
 # Expansion tests — the "full assertion" Task 6 calls for
 # ---------------------------------------------------------------------------
@@ -371,11 +342,6 @@ def test_every_documented_event_maps_to_expected_channel() -> None:
         "SessionEnd": "bodai.hooks.session-end",
         "SubagentStop": "bodai.hooks.subagent-stop",
         "Stop": "bodai.hooks.stop",
-        # git lifecycle (Phase 12a task 3) — same namespace:
-        "GitPreCommit": "bodai.hooks.git-pre-commit",
-        "GitPostCommit": "bodai.hooks.git-post-commit",
-        "GitPostMerge": "bodai.hooks.git-post-merge",
-        "GitPostRewrite": "bodai.hooks.git-post-rewrite",
     }
     for event, want in expected.items():
         assert _channel_for(event) == want, (
