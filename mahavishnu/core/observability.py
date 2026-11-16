@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from enum import Enum
 import logging
 import math
+import os
 import time
 from typing import TYPE_CHECKING, Any, cast
 
@@ -17,12 +18,20 @@ if TYPE_CHECKING:
     from ..core.config import MahavishnuSettings
 
 # Try to import OpenTelemetry components
+#
+# The OTLP *exporter* imports are deliberately NOT at module scope.
+# ``opentelemetry.exporter.otlp.proto.grpc`` pulls in grpcio, and grpcio's
+# background threads make every ``fork()`` in this process unsafe on macOS:
+# the child inherits a libdispatch ``dispatch_once`` that the vanished thread
+# owned, and dies with SIGILL ("BUG IN CLIENT OF LIBDISPATCH: trying to lock
+# recursively"). Mahavishnu forks constantly -- git, tmux, workers, the
+# plan-index rebuild -- so a grpc-loaded process kills its own children.
+# See ``docs/decisions/2026-11-16-no-grpc-in-forking-processes.md``.
+#
+# The exporters are therefore imported lazily, inside the builders below, and
+# the transport is chosen per signal.
 try:
     from opentelemetry import metrics, trace
-    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
-        OTLPMetricExporter,
-    )
-    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
     from opentelemetry.sdk.resources import Resource
@@ -32,6 +41,76 @@ try:
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
+
+# OTLP transport selection. Mirrors ``mcp_common.server.producer_telemetry``
+# so the launcher-installed provider and this module never disagree about
+# which transport they speak.
+_OTLP_PROTOCOL_ENV = "OTEL_EXPORTER_OTLP_PROTOCOL"
+_DEFAULT_OTLP_PROTOCOL = "http/protobuf"
+_TRACES_PATH = "/v1/traces"
+_METRICS_PATH = "/v1/metrics"
+
+
+def _resolve_otlp_protocol() -> str:
+    """Resolve the OTLP transport: ``http/protobuf`` or ``grpc``.
+
+    ``http/protobuf`` is the default, and it is the default for a reason:
+    the substrate speaks OTLP/HTTP on :4318, and HTTP keeps grpcio out of a
+    process that forks. An operator who explicitly asks for gRPC gets it --
+    but must then live with the fork hazard documented in the decision above.
+    """
+    return (os.getenv(_OTLP_PROTOCOL_ENV) or _DEFAULT_OTLP_PROTOCOL).strip().lower()
+
+
+def _http_signal_endpoint(endpoint: str, signal_path: str) -> str:
+    """Give an explicit OTLP/HTTP endpoint its signal path.
+
+    The HTTP exporter treats an explicit endpoint as the complete URL, so a
+    base URL like ``http://127.0.0.1:4318`` would be posted to as-is and the
+    receiver would answer 404. Appending the path when it is missing makes
+    an explicit endpoint mean the same thing as the environment variable it
+    mirrors.
+    """
+    trimmed = endpoint.rstrip("/")
+    if trimmed.endswith(signal_path):
+        return trimmed
+    return f"{trimmed}{signal_path}"
+
+
+def _build_span_exporter(endpoint: str, protocol: str) -> Any:
+    """Build the OTLP span exporter for ``protocol``.
+
+    The gRPC branch is the only thing in the codebase that imports grpcio,
+    and it is imported lazily so that a process which never exports over
+    gRPC never maps ``cygrpc`` at all.
+    """
+    if protocol.startswith("grpc"):
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
+
+        return OTLPSpanExporter(endpoint=endpoint)
+
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+    return OTLPSpanExporter(endpoint=_http_signal_endpoint(endpoint, _TRACES_PATH))
+
+
+def _build_metric_exporter(endpoint: str, protocol: str) -> Any:
+    """Build the OTLP metric exporter for ``protocol``."""
+    if protocol.startswith("grpc"):
+        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
+            OTLPMetricExporter,
+        )
+
+        return OTLPMetricExporter(endpoint=endpoint)
+
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
+        OTLPMetricExporter,
+    )
+
+    return OTLPMetricExporter(endpoint=_http_signal_endpoint(endpoint, _METRICS_PATH))
+
 
 # ``SystemMetricsInstrumentor`` is an *optional* dependency — only required
 # when the operator wants auto-instrumented host CPU/RAM metrics. The
@@ -218,7 +297,10 @@ class ObservabilityManager:
         ``_init_otel_components``.
         """
         return BatchSpanProcessor(
-            OTLPSpanExporter(endpoint=self.config.observability.otlp_endpoint)
+            _build_span_exporter(
+                self.config.observability.otlp_endpoint,
+                _resolve_otlp_protocol(),
+            )
         )
 
     def _init_otel_components(self):
@@ -258,20 +340,26 @@ class ObservabilityManager:
             # AttributeError at runtime. Nothing is exported either way.
             metric_readers: list[Any] = []
             if self._metrics_export_enabled():
-                # Metrics and traces share one endpoint. The substrate
-                # receiver on :4317 implements MetricsService as well as
-                # TraceService, so there is no second receiver to configure
-                # and no separate metric sink to point at.
+                # Metrics and traces go to DIFFERENT receivers, over the
+                # same transport.
                 #
-                # The interim split sent metrics to Alloy's receiver on
-                # :14317 because this receiver was trace-only. That split is
-                # retired: the field that configured it is gone, and with it
-                # the possibility of the two paths pointing at different
-                # receivers and one of them failing every export.
-                metrics_endpoint = self.config.observability.otlp_endpoint
+                # Traces -> the substrate receiver on :4318, which persists
+                # spans into ``spans_substrate``. Metrics -> Alloy on
+                # :14318, which exports them to prometheus on :12345 for
+                # Grafana. The substrate's OTLP/HTTP listener serves
+                # /v1/traces only, so metrics cannot ride the trace endpoint
+                # over HTTP; they used to share the gRPC :4317 port, which
+                # is exactly the transport that made this process fork-unsafe.
+                #
+                # Both paths are HTTP so that grpcio never loads into a
+                # process that forks -- see the module docstring.
+                metrics_endpoint = self.config.observability.otlp_metrics_endpoint
                 metric_readers.append(
                     PeriodicExportingMetricReader(
-                        OTLPMetricExporter(endpoint=metrics_endpoint)
+                        _build_metric_exporter(
+                            metrics_endpoint,
+                            _resolve_otlp_protocol(),
+                        )
                     )
                 )
                 self.logger.info(

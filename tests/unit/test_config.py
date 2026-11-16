@@ -68,7 +68,8 @@ def test_default_config_values(monkeypatch: pytest.MonkeyPatch):
     # that could flip this is deleted above.
     assert config.observability.metrics_enabled is False
     assert config.observability.tracing_enabled is True
-    assert config.observability.otlp_endpoint == "http://localhost:4317"
+    assert config.observability.otlp_endpoint == "http://localhost:4318"
+    assert config.observability.otlp_metrics_endpoint == "http://localhost:14318"
     assert config.auth.enabled is False
     # SECURITY: Empty connection string by default, not default credentials
     assert config.otel_storage.connection_string == ""
@@ -691,7 +692,8 @@ class TestObservabilityConfigDefaults:
         # MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED=true.
         assert cfg.metrics_enabled is False
         assert cfg.tracing_enabled is True
-        assert cfg.otlp_endpoint == "http://localhost:4317"
+        assert cfg.otlp_endpoint == "http://localhost:4318"
+        assert cfg.otlp_metrics_endpoint == "http://localhost:14318"
 
 
 class TestQualityControlConfigDefaults:

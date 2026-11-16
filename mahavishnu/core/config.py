@@ -1530,13 +1530,14 @@ class ObservabilityConfig(BaseModel):
         default=False,
         description=(
             "Enable OpenTelemetry metric export. Off by default because "
-            "export is a deployment choice, not a capability one: the "
-            "substrate receiver on :4317 implements MetricsService as well "
-            "as TraceService, so metrics and traces share one endpoint "
-            "(observability.otlp_endpoint) and there is no separate "
-            "metrics sink to configure. Instruments still record "
-            "in-process -- this gates export, not collection. Flip on when "
-            "a deployment wants its series exported."
+            "export is a deployment choice, not a capability one. Metrics "
+            "and traces have SEPARATE destinations -- metrics go to "
+            "observability.otlp_metrics_endpoint (Alloy, :14318), traces "
+            "to observability.otlp_endpoint (the substrate, :4318) -- "
+            "because the substrate's OTLP/HTTP listener serves /v1/traces "
+            "only. Instruments still record in-process -- this gates export, "
+            "not collection. Flip on when a deployment wants its series "
+            "exported."
         ),
     )
     tracing_enabled: bool = Field(
@@ -1558,8 +1559,25 @@ class ObservabilityConfig(BaseModel):
         ),
     )
     otlp_endpoint: str = Field(
-        default="http://localhost:4317",
-        description="OTLP endpoint for metrics/traces",
+        default="http://localhost:4318",
+        description=(
+            "OTLP/HTTP endpoint for TRACES. Points at the substrate "
+            "receiver, which persists spans into ``spans_substrate``. "
+            "HTTP is not a preference: this process forks (git, tmux, "
+            "workers), and the OTLP/gRPC exporter loads grpcio, whose "
+            "background threads make every fork produce a child that dies "
+            "with SIGILL on macOS. See "
+            "docs/decisions/2026-11-16-no-grpc-in-forking-processes.md."
+        ),
+    )
+    otlp_metrics_endpoint: str = Field(
+        default="http://localhost:14318",
+        description=(
+            "OTLP/HTTP endpoint for METRICS. Points at Alloy, which "
+            "exports the series to prometheus on :12345 for Grafana. "
+            "Separate from otlp_endpoint because the substrate's OTLP/HTTP "
+            "listener serves /v1/traces only."
+        ),
     )
     # R3-L2 (round-4 observability review): the field was claimed in
     # the runbook and code but never declared on ObservabilityConfig.

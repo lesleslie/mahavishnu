@@ -94,6 +94,13 @@ dependencies = [
     # which silently turned off the host CPU/RAM auto-instrumentation
     # (core/observability.py falls back to SYSTEM_METRICS_AVAILABLE=False).
     "opentelemetry-instrumentation-system-metrics>=0.66b1",
+    # OTLP exporters. The HTTP one is the DEFAULT transport: mahavishnu
+    # forks constantly, and the gRPC exporter loads grpcio, whose threads
+    # make every fork produce a SIGILL'd child on macOS. See
+    # docs/decisions/2026-11-16-no-grpc-in-forking-processes.md. The gRPC
+    # exporter stays declared for operators who explicitly select it via
+    # OTEL_EXPORTER_OTLP_PROTOCOL=grpc.
+    "opentelemetry-exporter-otlp-proto-http>=1.45.1",
     "opentelemetry-exporter-otlp-proto-grpc>=1.45.1",
     # Prometheus metrics
     "prometheus-client>=0.26.0",

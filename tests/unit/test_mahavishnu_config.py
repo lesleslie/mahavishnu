@@ -783,7 +783,8 @@ class TestObservabilityConfig:
         # MAHAVISHNU_OBSERVABILITY__METRICS_ENABLED=true.
         assert config.metrics_enabled is False
         assert config.tracing_enabled is True
-        assert config.otlp_endpoint == "http://localhost:4317"
+        assert config.otlp_endpoint == "http://localhost:4318"
+        assert config.otlp_metrics_endpoint == "http://localhost:14318"
 
 
 # ============================================================================

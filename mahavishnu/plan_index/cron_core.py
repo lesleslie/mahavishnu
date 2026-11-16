@@ -316,16 +316,62 @@ def _coerce_blocks_on(value: Any) -> list[str]:
     return []
 
 
-def _git_blob_sha(repo_root: Path, rel_path: str) -> str:
-    """Return `git rev-parse HEAD:<rel_path>` if available, else empty string.
+def _git_blob_shas(repo_root: Path) -> dict[str, str]:
+    """Return ``{rel_path: blob_sha}`` for every file tracked at HEAD.
 
-    Empty string (rather than a placeholder hash) signals "sha unknown" — the
-    PlanRecord sha field is allowed to be any string, so consumers can detect
-    missing SHAs by length.
+    ONE fork for the whole tree, not one per record. The per-record
+    ``git rev-parse`` this replaces cost 60 forks per rebuild cycle, and
+    that is not a cosmetic number: this module runs inside the MCP server,
+    which forks. On macOS a fork taken while grpcio's threads are live
+    produces a child that dies with SIGILL ("BUG IN CLIENT OF LIBDISPATCH:
+    trying to lock recursively") — see
+    ``docs/decisions/2026-11-16-no-grpc-in-forking-processes.md``. Every
+    fork removed here is a crash removed.
+
+    A path missing from the map (untracked, or staged-but-uncommitted)
+    means "sha unknown" — the PlanRecord sha field is allowed to be any
+    string, so consumers detect missing SHAs by length.
     """
     try:
         result = subprocess.run(
-            ["git", "rev-parse", f"HEAD:{rel_path}"],
+            ["git", "ls-tree", "-r", "--full-tree", "HEAD"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except OSError, subprocess.TimeoutExpired:
+        return {}
+    if result.returncode != 0:
+        return {}
+    shas: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        # "<mode> <type> <object> <path>" — the path may contain spaces, so
+        # split at most three times and let the rest be the path.
+        parts = line.split(maxsplit=3)
+        if len(parts) != 4:
+            continue
+        _mode, obj_type, obj_name, path = parts
+        if obj_type != "blob":
+            continue
+        if not re.match(r"^[0-9a-f]{40}$", obj_name):
+            continue
+        shas[path] = obj_name
+    return shas
+
+
+def _git_remote_url(repo_root: Path) -> str:
+    """Return the repository's ``origin`` remote URL, or "" if unavailable.
+
+    Used as the fallback ``repo`` for plan documents whose frontmatter does
+    not declare one. Without it, ``normalize_repo_url`` rejects the empty
+    URL and EVERY record fails to index — which is what an empty plan index
+    with 60 errors looks like.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
             cwd=str(repo_root),
             capture_output=True,
             text=True,
@@ -336,11 +382,7 @@ def _git_blob_sha(repo_root: Path, rel_path: str) -> str:
         return ""
     if result.returncode != 0:
         return ""
-    sha = result.stdout.strip()
-    # Guard against pathological whitespace output.
-    if not re.match(r"^[0-9a-f]{40}$", sha):
-        return ""
-    return sha
+    return result.stdout.strip()
 
 
 def _derive_plan_id(rel_path: str) -> str:
@@ -419,6 +461,11 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
     # Only walk docs/plans/ and docs/specs/ — the actual plan_index scope.
     plan_dirs = [repo_root / "docs" / name for name in ("plans", "specs")]
 
+    # ONE fork for every blob SHA in the tree, and ONE for the remote URL.
+    # Both were per-record before; see _git_blob_shas for why that matters.
+    blob_shas = _git_blob_shas(repo_root)
+    default_repo: str | None = None
+
     for plan_dir in plan_dirs:
         if not plan_dir.is_dir():
             continue
@@ -440,7 +487,15 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
             title = _coerce_str(fm.get("title"))
             if not status or not title or status not in accepted_statuses:
                 continue
+            # A plan document need not declare its own repo: the index
+            # indexes THIS repository's plans, so the repository's own
+            # remote is the correct fallback. Without it the empty URL is
+            # rejected by normalize_repo_url and no record is ever indexed.
             repo = _normalize_repo_url(_coerce_str(fm.get("repo")))
+            if not repo:
+                if default_repo is None:
+                    default_repo = _normalize_repo_url(_git_remote_url(repo_root))
+                repo = default_repo
             plan_id = _derive_plan_id(rel)
 
             role = _coerce_str(fm.get("role")) or "implementation"
@@ -462,7 +517,7 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
             )
 
             blocks_on = _coerce_blocks_on(fm.get("blocks_on"))
-            sha = _git_blob_sha(repo_root, rel)
+            sha = blob_shas.get(rel, "")
             updated_at_ms = int(datetime.now(tz=UTC).timestamp() * 1000)
 
             records.append(

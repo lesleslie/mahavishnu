@@ -1,13 +1,22 @@
-"""The metric exporter's endpoint after the interim split was retired.
+"""Where the OTLP exporters send their signals, and over what transport.
 
-``observability.otlp_metrics_endpoint`` existed because akosha's :4317
-receiver implemented TraceService only, so metrics had to go somewhere else
-(Alloy's receiver on :14317). The receiver now implements MetricsService too,
-so metrics and traces share one endpoint and the interim field is gone.
+``observability.otlp_metrics_endpoint`` was removed once akosha's :4317
+receiver implemented MetricsService beside TraceService, so metrics and
+traces could share one endpoint. That was true for the **gRPC** transport
+only.
 
-These tests pin the REMOVAL as well as the new behaviour. A field that
-silently came back would re-split the two paths, and the symptom would be
-metrics failing to export again -- with no config change to point at.
+The gRPC transport is what had to go: mahavishnu forks constantly, and
+grpcio's background threads make every fork produce a child that dies with
+SIGILL on macOS ("BUG IN CLIENT OF LIBDISPATCH: trying to lock
+recursively"). See ``docs/decisions/2026-11-16-no-grpc-in-forking-processes.md``.
+
+Over OTLP/HTTP the two signals MUST diverge, because the substrate's HTTP
+listener serves ``/v1/traces`` only. So the split comes back -- with the
+destinations the canonical port-ownership decision already names: traces to
+the substrate (:4318), metrics to Alloy (:14318) and on to Grafana.
+
+These tests pin the split, the transport, and the fact that the field is a
+real, honored knob rather than a decoration.
 """
 
 from __future__ import annotations
@@ -26,7 +35,8 @@ from mahavishnu.core.config import (
 
 # A deliberately unresolvable host: the exporters are lazy about connecting,
 # but a real endpoint here would let a test pass by reaching a live server.
-_FAKE_OTLP = "http://substrate.invalid:4317"
+_FAKE_TRACES = "http://substrate.invalid:4318"
+_FAKE_METRICS = "http://alloy.invalid:14318"
 
 
 @pytest.fixture
@@ -64,10 +74,12 @@ class _StubExporter:
     def export(self, *args: Any, **kwargs: Any) -> None:
         return None
 
-    def force_flush(self, *args: Any, **kwargs: Any) -> bool:
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
         return True
 
     def shutdown(self, *args: Any, **kwargs: Any) -> None:
+        # The SDK calls ``shutdown(timeout=...)``; the stub must accept it
+        # or the atexit hook raises and buries the real test output.
         return None
 
 
@@ -76,7 +88,8 @@ def _config(*, metrics: bool = True) -> Any:
         observability = ObservabilityConfig(
             metrics_enabled=metrics,
             tracing_enabled=True,
-            otlp_endpoint=_FAKE_OTLP,
+            otlp_endpoint=_FAKE_TRACES,
+            otlp_metrics_endpoint=_FAKE_METRICS,
         )
         # The top-level switch is an OR with the nested one. It is off here
         # so the nested flag alone decides, which is the only way to
@@ -92,9 +105,17 @@ def _config(*, metrics: bool = True) -> Any:
 def _capture_endpoints(
     mod: Any, monkeypatch: pytest.MonkeyPatch
 ) -> dict[str, list[str]]:
-    """Record the endpoint every exporter was built with."""
+    """Record the endpoint every exporter was built with.
+
+    The exporters are imported lazily inside the builders, so the seam is
+    the exporter MODULE -- patching a name on the observability module would
+    be patching nothing.
+    """
+    from opentelemetry.exporter.otlp.proto.http import metric_exporter as http_metric
+    from opentelemetry.exporter.otlp.proto.http import trace_exporter as http_trace
+
     captured: dict[str, list[str]] = {"metric": [], "span": []}
-    real_metric = mod.OTLPMetricExporter
+    real_metric = http_metric.OTLPMetricExporter
 
     def _metric_spy(**kwargs: Any) -> Any:
         captured["metric"].append(str(kwargs.get("endpoint")))
@@ -108,83 +129,78 @@ def _capture_endpoints(
         captured["span"].append(str(kwargs.get("endpoint")))
         return _StubExporter(**kwargs)
 
-    monkeypatch.setattr(mod, "OTLPMetricExporter", _metric_spy)
-    monkeypatch.setattr(mod, "OTLPSpanExporter", _span_spy)
+    monkeypatch.setattr(http_metric, "OTLPMetricExporter", _metric_spy)
+    monkeypatch.setattr(http_trace, "OTLPSpanExporter", _span_spy)
     return captured
 
 
-def test_the_interim_field_is_gone() -> None:
-    """The field must not linger as a no-op.
+def test_the_metrics_field_is_declared_and_honored() -> None:
+    """The field must be a real knob, not a decoration.
 
-    A field that stayed would re-split the two paths the moment somebody set
-    it, and nothing in the config would say why.
+    An operator who points metrics at a different receiver needs the field
+    to exist; a field that is ignored would send the series somewhere the
+    operator did not choose and report success.
     """
-    assert "otlp_metrics_endpoint" not in ObservabilityConfig.model_fields
-    assert not hasattr(ObservabilityConfig(), "otlp_metrics_endpoint")
+    assert "otlp_metrics_endpoint" in ObservabilityConfig.model_fields
+    config = ObservabilityConfig()
+    assert config.otlp_metrics_endpoint
+    assert config.otlp_endpoint != config.otlp_metrics_endpoint, (
+        "traces and metrics must not default to the same receiver: the "
+        "substrate's OTLP/HTTP listener serves /v1/traces only"
+    )
 
 
-def test_setting_the_removed_field_is_an_error() -> None:
-    """The nested model rejects a key it no longer declares.
-
-    This is the ``extra="forbid"`` half of the behaviour; the env-var half,
-    which is the one an operator actually hits, is tested below.
-    """
-    with pytest.raises(ValidationError):
-        ObservabilityConfig.model_validate(
-            {"otlp_metrics_endpoint": "http://127.0.0.1:14317"}
-        )
-
-
-def test_the_removed_env_var_is_fatal(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An operator who still exports the old variable gets a loud failure.
-
-    The YAML path is filtered (see the fail-soft test below), but the
-    ``MAHAVISHNU_OBSERVABILITY__*`` overlay merges AFTER that filter, so the
-    env var reaches validation and is rejected -- the operator gets a startup
-    error naming the removed key, instead of metrics quietly going to a dead
-    path.
+def test_the_metrics_env_var_is_accepted() -> None:
+    """``MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT`` is honored.
 
     Exercised through the settings model rather than through
     ``ObservabilityConfig`` directly, because only the settings model reads
     env vars: the property under test is about the ENV VAR.
     """
-    monkeypatch.setenv(
-        "MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT",
-        "http://127.0.0.1:14317",
-    )
-    with pytest.raises(ValidationError):
-        MahavishnuSettings()
+    import os
+
+    os.environ["MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT"] = _FAKE_METRICS
+    try:
+        settings = MahavishnuSettings()
+    finally:
+        del os.environ["MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT"]
+    assert settings.observability.otlp_metrics_endpoint == _FAKE_METRICS
 
 
-def test_a_dead_yaml_key_is_dropped_rather_than_raising() -> None:
+def test_a_yaml_key_for_a_field_that_does_not_exist_is_dropped() -> None:
     """The operator's ``local.yaml`` is not allowed to break the CLI.
 
     ``_filter_subconfig_keys`` strips keys the sub-config does not declare
     BEFORE ``MahavishnuSettings(**merged)`` runs, so a leftover key under
-    ``observability:`` is ignored rather than fatal. That is why removing
-    the field did not require removing the key from ``local.yaml`` first --
-    but the key is still removed, because a dead key that names a retired
-    path reads as configuration.
+    ``observability:`` is ignored rather than fatal.
     """
     annotation = MahavishnuSettings.model_fields["observability"].annotation
     filtered = _filter_subconfig_keys(
         {
             "metrics_enabled": True,
-            "otlp_metrics_endpoint": "http://127.0.0.1:14317",
+            "otlp_metrics_endpoint": _FAKE_METRICS,
         },
         annotation,
     )
-    assert filtered == {"metrics_enabled": True}
+    assert filtered == {
+        "metrics_enabled": True,
+        "otlp_metrics_endpoint": _FAKE_METRICS,
+    }
 
 
-def test_the_metric_exporter_targets_the_shared_endpoint(
+def test_an_undeclared_key_is_still_rejected_by_the_model() -> None:
+    """The nested model rejects a key it does not declare.
+
+    This is the ``extra="forbid"`` half of the behaviour.
+    """
+    with pytest.raises(ValidationError):
+        ObservabilityConfig.model_validate({"otlp_metrics_endpiont": "typo"})
+
+
+def test_the_two_signals_target_different_receivers(
     mod: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Metrics and traces must go to the SAME receiver.
-
-    The interim field let them diverge, and when they did the metric path
-    failed every export while the trace path kept working -- a split that
-    looked like a metrics problem and was really a config one.
+    """Traces go to the substrate; metrics go to Alloy.
 
     The fallback assertion is load-bearing. ``_init_otel_components`` catches
     every exception and falls back to mocks, and the exporters are built
@@ -197,8 +213,8 @@ def test_the_metric_exporter_targets_the_shared_endpoint(
 
     manager = mod.ObservabilityManager(_config(metrics=True))
 
-    assert captured["metric"] == [_FAKE_OTLP]
-    assert captured["span"] == [_FAKE_OTLP]
+    assert captured["span"] == [f"{_FAKE_TRACES}/v1/traces"]
+    assert captured["metric"] == [f"{_FAKE_METRICS}/v1/metrics"]
     assert not isinstance(manager.meter, mod.MockMeter), (
         "the manager fell back to mocks: OTel init raised after the "
         "exporters were built, so the endpoints look right while nothing "
@@ -212,9 +228,9 @@ def test_disabling_metrics_still_builds_no_metric_exporter(
 ) -> None:
     """The flag still gates export; only the endpoint changed.
 
-    Without this, "the exporter targets otlp_endpoint" could be satisfied by
-    an exporter that is always built -- which would export the series whether
-    or not the operator asked for it.
+    Without this, "the exporter targets otlp_metrics_endpoint" could be
+    satisfied by an exporter that is always built -- which would export the
+    series whether or not the operator asked for it.
 
     The assertion is about the exporter being CONSTRUCTED, not about the
     manager's meter: OTel's global meter provider is set once per process,
@@ -227,7 +243,7 @@ def test_disabling_metrics_still_builds_no_metric_exporter(
     manager = mod.ObservabilityManager(_config(metrics=False))
 
     assert captured["metric"] == []
-    assert captured["span"] == [_FAKE_OTLP]
+    assert captured["span"] == [f"{_FAKE_TRACES}/v1/traces"]
     assert not isinstance(manager.tracer, mod.MockTracer), (
         "tracing must still be real when metrics are off -- that "
         "independence is the property the gating tests exist for"

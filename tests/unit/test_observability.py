@@ -9,6 +9,13 @@ import sys
 import types
 from types import SimpleNamespace
 
+# The OTLP exporters are imported LAZILY, inside the builders in
+# core/observability.py -- the gRPC one must never be imported at module
+# scope, because grpcio's threads make every fork() in this process kill its
+# own child on macOS. So the stubbing seam is the exporter MODULE, not a
+# name in the observability module.
+from opentelemetry.exporter.otlp.proto.http import metric_exporter as _http_metric
+from opentelemetry.exporter.otlp.proto.http import trace_exporter as _http_trace
 import pytest
 
 import mahavishnu.core.observability as obs
@@ -132,7 +139,9 @@ def _force_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
 def _config(metrics_enabled: bool = True) -> SimpleNamespace:
     return SimpleNamespace(
         observability=SimpleNamespace(
-            metrics_enabled=metrics_enabled, otlp_endpoint="http://otel"
+            metrics_enabled=metrics_enabled,
+            otlp_endpoint="http://otel",
+            otlp_metrics_endpoint="http://otel",
         ),
         log_level="INFO",
     )
@@ -156,11 +165,11 @@ def _stub_otel_globals(
     monkeypatch.setattr(obs, "Resource", _Resource, raising=False)
     monkeypatch.setattr(obs, "TracerProvider", _TraceProvider, raising=False)
     monkeypatch.setattr(obs, "BatchSpanProcessor", _BatchSpanProcessor, raising=False)
-    monkeypatch.setattr(obs, "OTLPSpanExporter", _Exporter, raising=False)
+    monkeypatch.setattr(_http_trace, "OTLPSpanExporter", _Exporter, raising=False)
     monkeypatch.setattr(
         obs, "PeriodicExportingMetricReader", _MetricReader, raising=False
     )
-    monkeypatch.setattr(obs, "OTLPMetricExporter", _Exporter, raising=False)
+    monkeypatch.setattr(_http_metric, "OTLPMetricExporter", _Exporter, raising=False)
     monkeypatch.setattr(
         obs, "MeterProvider", lambda **kwargs: SimpleNamespace(**kwargs), raising=False
     )
@@ -577,7 +586,7 @@ def test_span_export_does_not_block_the_calling_thread(
 
     exporter = _RecordingExporter("http://otel")
     monkeypatch.setattr(
-        obs, "OTLPSpanExporter", lambda endpoint: exporter, raising=False
+        _http_trace, "OTLPSpanExporter", lambda endpoint: exporter, raising=False
     )
     # Pin the REAL processor class. ``importlib.reload`` reuses the module
     # namespace, so a sibling test that reloads obs with faked opentelemetry
@@ -598,6 +607,7 @@ def test_span_export_does_not_block_the_calling_thread(
         observability=SimpleNamespace(
             metrics_enabled=False,
             otlp_endpoint="http://otel",
+            otlp_metrics_endpoint="http://otel",
         ),
         log_level="INFO",
     )

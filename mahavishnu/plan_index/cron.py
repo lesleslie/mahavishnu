@@ -68,9 +68,17 @@ class PeriodicTaskRunner:
         self._task: asyncio.Task[None] | None = None
         self._stop_event = asyncio.Event()
 
-    def start(self) -> None:
+    def start(self, *, run_immediately: bool = True) -> None:
+        """Start the periodic loop.
+
+        ``run_immediately=False`` skips the first cycle. A caller that has
+        already awaited :meth:`force_run` — the MCP server's startup path
+        does, so it can log the outcome — would otherwise run the cycle
+        twice back to back: two full rebuild passes, and two sets of
+        forks, seconds apart.
+        """
         if self._task is None:
-            self._task = asyncio.create_task(self._run_loop())
+            self._task = asyncio.create_task(self._run_loop(run_immediately))
 
     async def stop(self) -> None:
         self._stop_event.set()
@@ -86,12 +94,20 @@ class PeriodicTaskRunner:
             repo_root=self._repo_root,
         )
 
-    async def _run_loop(self) -> None:
+    async def _wait_for_next_cycle(self) -> bool:
+        """Wait for the next cycle. Returns True if the loop should stop."""
+        try:
+            await asyncio.wait_for(
+                self._stop_event.wait(), timeout=self._cron_every_seconds
+            )
+        except TimeoutError:
+            return False
+        return True
+
+    async def _run_loop(self, run_immediately: bool) -> None:
+        if not run_immediately and await self._wait_for_next_cycle():
+            return
         while not self._stop_event.is_set():
             await self.force_run()
-            try:
-                await asyncio.wait_for(
-                    self._stop_event.wait(), timeout=self._cron_every_seconds
-                )
-            except TimeoutError:
-                pass  # Time to run again
+            if await self._wait_for_next_cycle():
+                return

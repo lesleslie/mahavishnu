@@ -186,7 +186,9 @@ def build_post_start_lifespan(server: Any) -> Any:
                 repo_root = Path.cwd() if Path("docs/plans").is_dir() else None
                 runner = PeriodicTaskRunner(store=store, repo_root=repo_root)
                 outcome = await runner.force_run()
-                runner.start()  # schedule the periodic loop for subsequent cycles
+                # The cycle above IS the startup cycle; the periodic loop
+                # must not run it a second time back to back.
+                runner.start(run_immediately=False)
                 server._plan_index_runner = runner
                 logger.info(
                     f"plan_index cycle complete: success={outcome.success} "

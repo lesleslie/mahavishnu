@@ -275,6 +275,23 @@ resilience:
 # dying. The env var above is still the way to override the ENDPOINT: the
 # endpoint belongs to the substrate's receiver (:4317), NOT to Alloy, which
 # no longer has a trace pipeline since the port cutover.
+#
+# 2026-11-16: the endpoint is now :4318, the substrate's OTLP/HTTP port --
+# not :4317, which is its gRPC port. Two reasons, and the second is not
+# negotiable:
+#
+#   1. The v7 spec and the port-ownership decision both name :4318 for
+#      mahavishnu (docs/specs/2026-10-19-bodai-substrate-otel-v7.md,
+#      docs/decisions/2026-10-21-otel-substrate-port-ownership.md).
+#   2. The OTLP/gRPC exporter loads grpcio, and mahavishnu FORKS. A fork
+#      taken while grpcio's threads are live produces a child that dies
+#      with SIGILL on macOS -- which killed this server's own `git diff`
+#      children and silently broke the merge-review path.
+#      docs/decisions/2026-11-16-no-grpc-in-forking-processes.md.
+#
+# Metrics have their own endpoint: the substrate's OTLP/HTTP listener
+# serves /v1/traces only, so metrics go to Alloy (:14318) and on to
+# Grafana. Override with MAHAVISHNU_OBSERVABILITY__OTLP_METRICS_ENDPOINT.
 
 # Tier 1 Phase 8: change-point detector on observability metrics.
 # Top-level block (matches pi_pool:, runpod_pool:, caller_quota:,

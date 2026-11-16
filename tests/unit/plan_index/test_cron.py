@@ -8,6 +8,8 @@ asyncio).
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from mahavishnu.plan_index.cron import PeriodicTaskRunner
@@ -33,3 +35,23 @@ class TestPeriodicTaskRunner:
         v = await store.vitals()
         assert v["total"] == 0
         assert v["cycles_total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_start_without_run_immediately_does_not_cycle(self) -> None:
+        """The startup cycle must not run twice back to back.
+
+        The MCP server's startup path awaits ``force_run()`` so it can log
+        the outcome, and then starts the periodic loop. If the loop also ran
+        immediately, the cycle ran twice seconds apart -- two rebuild
+        passes and two sets of forks, for no reason.
+        """
+        store = PlanIndexStore(FakeMCP())
+        runner = PeriodicTaskRunner(store=store, cron_every_seconds=3600)
+        await runner.force_run()
+        runner.start(run_immediately=False)
+        # Let the loop task get far enough to have run a cycle if it were
+        # going to.
+        await asyncio.sleep(0.05)
+        status = await store.rebuild_status()
+        assert status["cycles_total"] == 1
+        await runner.stop()
