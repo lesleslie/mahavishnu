@@ -377,9 +377,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | [`docs/plans/2026-10-27-bodai-producer-span-reporting.md`](2026-10-27-bodai-producer-span-reporting.md) | 2026-10-27 | `complete` | `canonical` |  | `otel-producer-reporting` | Producer Span Reporting — make the heartbeat roster mean something |
 | [`docs/plans/2026-10-27-otel-metrics-service.md`](2026-10-27-otel-metrics-service.md) | 2026-10-27 | `complete` | `implementation` |  | `substrate-otel` | OTLP MetricsService in the Bodai Substrate — Implementation Plan |
 | [`docs/plans/2026-10-21-bifrost-cli-consolidation.md`](2026-10-21-bifrost-cli-consolidation.md) | 2026-10-21 | `partial` | `implementation` |  | `bifrost-cli-consolidation` | 2026 10 21 bifrost cli consolidation |
-| [`docs/plans/2026-10-20-bodai-otel-substrate-read-path-implementation.md`](2026-10-20-bodai-otel-substrate-read-path-implementation.md) | 2026-10-20 | `shipped` | `implementation` |  | `substrate-otel` | Bodai OTel Substrate — Read Path Implementation Plan |
 | [`docs/plans/2026-10-19-bifrost-mcp-skills-aggregation.md`](2026-10-19-bifrost-mcp-skills-aggregation.md) | 2026-10-19 | `complete` | `superseded` |  | `bifrost-mcp-skills-aggregation` | Bifrost MCP aggregation + Skills distribution — local single-VK plan |
-| [`docs/plans/2026-10-19-bodai-substrate-otel-v7-implementation.md`](2026-10-19-bodai-substrate-otel-v7-implementation.md) | 2026-10-19 | `shipped` | `implementation` |  | `substrate-otel` | Bodai OTel Substrate v7 — Implementation Plan |
 | [`docs/plans/2026-10-17-bifrost-oneiric-gateway-adapter.md`](2026-10-17-bifrost-oneiric-gateway-adapter.md) | 2026-10-17 | `complete` | `implementation` |  | `bifrost-oneiric-gateway-adapter` | Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation |
 | [`docs/plans/2026-10-15-ble001-triage-and-refactor.md`](2026-10-15-ble001-triage-and-refactor.md) | 2026-10-15 | `partial` | `canonical` |  | `lint-coverage-gap` | BLE001 Triage and Per-Site Refactor |
 | [`docs/plans/2026-10-14-decision-adapter-category.md`](2026-10-14-decision-adapter-category.md) | 2026-10-14 | `active` | `implementation` |  | `decision-adapter-category` | Decision Adapter Category Implementation Plan |
@@ -573,7 +571,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (173 entries)
+### `plan` (171 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -586,9 +584,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 5 | 71 | 6 | 2 | 20 | **104** |
-| `implementation` | 4 | 6 | 6 | 8 | 26 | **50** |
+| `implementation` | 4 | 6 | 6 | 6 | 26 | **48** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 33 | **33** |
 | `superseded` | · | · | · | · | 11 | **11** |
 
-| **Total** | **9** | **77** | **12** | **10** | **91** | **199** |
+| **Total** | **9** | **77** | **12** | **8** | **91** | **197** |
