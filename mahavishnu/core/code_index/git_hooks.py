@@ -66,8 +66,11 @@ fi
 # Repos that keep version claims provide scripts/stamp_version.py; it
 # rewrites them from pyproject and stages the result. No-op in repos without
 # that script.
+# `-I` runs the script in isolated mode, which takes its own directory off
+# sys.path — otherwise a sibling file in scripts/ named re.py or subprocess.py
+# would shadow the standard library module the stamper imports.
 if [ -f "scripts/stamp_version.py" ]; then
-    python3 scripts/stamp_version.py --stage "$(pwd)" || exit 1
+    python3 -I scripts/stamp_version.py --stage "$(pwd)" || exit 1
 fi
 # TYPE_CHECKING → runtime reference gate (2026-08-31). Catches the latent
 # bug class where `from __future__ import annotations` + `if TYPE_CHECKING:`
