@@ -16,6 +16,17 @@ picking a string.
 These tests pin the resolution rules (env var precedence, pool names
 resolved to ids, the wildcard, an empty policy) and the fail-closed
 behaviour when no policy is declared.
+
+Two rules govern what the policy gates, and both are load-bearing:
+
+- A pool reference is resolved to its canonical id on BOTH sides of
+  the authorization test. A config file can only name a pool by its
+  name (an id is generated per spawn), so a name-based request has to
+  resolve for a name-based policy to be satisfiable at all.
+- The operator's policy is a PIN gate. It names the pools a caller
+  may CHOOSE; it does not restrict where the server routes, because a
+  pool the server chose is not the caller's choice. A caller that
+  declares its own allowlist is bound by it everywhere.
 """
 
 from __future__ import annotations
@@ -162,6 +173,97 @@ async def test_pool_names_resolve_to_ids(pool_mgr: PoolManager) -> None:
         )
 
     assert result["pool_id"] == "pool_b"
+
+
+@pytest.mark.unit
+async def test_a_name_request_matches_a_name_policy(pool_mgr: PoolManager) -> None:
+    """The two sides of the authorization test speak the same namespace.
+
+    A config file can only name a pool by its NAME — a pool id is
+    generated per spawn — so a name-based policy is the only kind an
+    operator can write. The policy's tokens resolve to ids, so the
+    caller's reference has to resolve too.
+
+    Before this, the policy resolved to ``{"pool_a", "pool_b"}`` while
+    the request stayed the string ``"beta"``, so the two never met and
+    the caller's pinned pool was refused by the very policy that named
+    it. The policy here names BOTH pools so the refusal is visible:
+    the fallback would land on ``pool_a`` (the least loaded), so
+    landing on ``pool_b`` means the pin was honoured.
+    """
+    with _with_settings(["alpha", "beta"]):
+        result = await pool_mgr.route_task(
+            task={"prompt": "x"},
+            pool_selector=PoolSelector.AFFINITY,
+            pool_affinity="beta",
+        )
+
+    assert result["pool_id"] == "pool_b"
+
+
+@pytest.mark.unit
+async def test_the_wildcard_accepts_a_name_request(pool_mgr: PoolManager) -> None:
+    """The wildcard means "every registered pool", not "every id".
+
+    The wildcard test reads ``pool_id in self._pools``, and that
+    registry is keyed by id — so a caller that named a pool by name
+    was refused even under the wildcard, and the refusal looked like
+    a permission problem rather than a namespace mismatch.
+    """
+    with _with_settings(["*"]):
+        result = await pool_mgr.route_task(
+            task={"prompt": "x"},
+            pool_selector=PoolSelector.AFFINITY,
+            pool_affinity="beta",
+        )
+
+    assert result["pool_id"] == "pool_b"
+
+
+@pytest.mark.unit
+async def test_the_operator_policy_does_not_gate_server_chosen_routing(
+    pool_mgr: PoolManager,
+) -> None:
+    """The operator's policy is a PIN gate, not a dispatch restriction.
+
+    A pool the SERVER chose is not the caller's choice: the caller
+    asked for a task, not for that pool. The policy names the pools a
+    caller may pin, so it does not restrict where the server routes.
+
+    This is what makes a narrow policy usable at all. Under the older
+    semantics the policy also filtered the queueing re-rank's
+    candidate set, so a pool it did not name became unroutable and an
+    ordinary dispatch failed with an authorization error about a pool
+    the caller never asked for. Pools here are spawned on demand by
+    name, so no fixed list can name them all.
+    """
+    with _with_settings(["beta"]):
+        result = await pool_mgr.route_task(
+            task={"prompt": "x"},
+            pool_selector=PoolSelector.LEAST_LOADED,
+        )
+
+    # pool_a is the least loaded and is NOT in the policy.
+    assert result["pool_id"] == "pool_a"
+
+
+@pytest.mark.unit
+async def test_a_caller_declared_allowlist_still_restricts_dispatch(
+    pool_mgr: PoolManager,
+) -> None:
+    """A caller that declares its own set is bound by it everywhere.
+
+    It said where its tasks may go, so the server's own pick is
+    refused when it falls outside — the round-2 security review's
+    invariant, and the contract ``route_task`` documents for a
+    supplied ``caller_pool_allowlist``.
+    """
+    with pytest.raises(RuntimeError, match="not in caller_pool_allowlist"):
+        await pool_mgr.route_task(
+            task={"prompt": "x"},
+            pool_selector=PoolSelector.LEAST_LOADED,
+            caller_pool_allowlist={"pool_b"},
+        )
 
 
 @pytest.mark.unit

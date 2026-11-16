@@ -171,16 +171,25 @@ pools:
   # generated per spawn) or by pool id, and ["*"] means every
   # currently-registered pool.
   #
-  # This deployment's pools are all dispatchable, so the policy is the
-  # wildcard. To confine pinning, name the pools instead -- e.g.
-  #   caller_pool_allowlist: ["merge-review"]
-  # An empty list means "no pinned pool is authorized": the router
-  # refuses a pinned pool and falls back to LEAST_LOADED.
+  # This is a PIN GATE, not a dispatch restriction: it names the pools
+  # a caller may CHOOSE. It does not restrict where the server routes,
+  # because a pool the server chose is not the caller's choice -- so a
+  # pool spawned by hand is still routable, it just cannot be pinned.
+  #
+  # These are the pools this deployment names in its own code and agent
+  # documentation:
+  #   merge-review -- the one-shot terminal-claude pool the merge
+  #     reviewer provisions (core/merge_review_dispatcher.py).
+  #   claude-pool  -- the agent pool the specialist agent documents for
+  #     an affinity dispatch (.claude/agents/mahavishnu-specialist.md).
+  # To pin another pool, add its name here. An empty list means "no
+  # pinned pool is authorized": the router refuses a pinned pool and
+  # falls back to LEAST_LOADED.
   #
   # The env var MAHAVISHNU_PEER_AFFINITY_ALLOWLIST (comma-separated)
   # overrides this value -- see
   # docs/adr/014-honcho-peer-model-routing-precedence.md.
-  caller_pool_allowlist: ["*"]
+  caller_pool_allowlist: ["merge-review", "claude-pool"]
   min_workers: 1  # Default minimum workers per pool
   max_workers: 10  # Default maximum workers per pool
   memory_aggregation_enabled: true  # Enable memory aggregation across pools

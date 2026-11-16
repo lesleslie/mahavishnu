@@ -179,7 +179,7 @@ use — and comes from the operator's configuration:
 
 ```yaml
 pools:
-  caller_pool_allowlist: ["*"]      # every currently-registered pool
+  caller_pool_allowlist: ["merge-review", "claude-pool"]
 ```
 
 or, per process, from the env var ADR-014 names:
@@ -190,12 +190,24 @@ export MAHAVISHNU_PEER_AFFINITY_ALLOWLIST="merge-review,claude-pool"
 
 Values are pool **names** (stable across restarts — a pool id is
 generated per spawn) or pool ids, and `*` means every currently-registered
-pool. The env var overrides the settings value.
+pool. The env var overrides the settings value. Both the policy's values
+and the caller's `pool_affinity` are resolved to a pool's id before they
+are compared, so a name on either side matches a name on the other.
 
 The policy is deliberately **not** keyed on `caller_kind`. That parameter
 is quota attribution (which ClientKind bucket a dispatch counts against),
 so a policy keyed on it would let a caller choose its own permissions by
 choosing a string. It is one operator-level policy for the deployment.
+
+The policy is a **pin gate**, not a dispatch restriction. It names the
+pools a caller may *choose*; it does not restrict where the server routes,
+because a pool the server chose is not the caller's choice. A pool spawned
+by hand is therefore still routable — it just cannot be pinned until the
+operator names it. This matters because pools here are spawned on demand
+by name, so a policy that also restricted server-chosen pools would have to
+name every pool the deployment would ever use, and an ordinary dispatch
+would fail with an authorization error about a pool the caller never asked
+for.
 
 With no policy declared — the default, and what a settings read failure
 yields — the router refuses a pinned pool and makes the choice itself

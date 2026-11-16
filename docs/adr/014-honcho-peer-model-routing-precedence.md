@@ -138,3 +138,46 @@ the explicit `caller_pool_allowlist` argument, or from the
 `MAHAVISHNU_PEER_AFFINITY_ALLOWLIST` environment variable as
 a comma-separated list, or `*` for all registered pools).
 Authorization is enforced inside the manager.
+
+## Addendum — the gate is a pin gate (2026-11-16)
+
+The first line of the section above says the parameter "is the gate
+for any selector that resolves to a specific pool (AFFINITY and
+PEER_AFFINITY)". The implementation had drifted from that: the
+queueing re-rank (S-4) and the GPU override also filtered their
+candidates by the same set, so the policy became a de-facto
+whitelist of every pool the deployment may use. Because no
+production caller ever supplies the parameter, the operator's policy
+always landed in that slot.
+
+The drift made the policy unusable as written. Pools here are spawned
+on demand by name, so a policy that also restricted server-chosen
+pools would have to name every pool the deployment would ever use,
+and an ordinary dispatch failed with an authorization error about a
+pool the caller never asked for:
+
+```
+RuntimeError: Queueing fallback would route to pool 'mahavishnu_9999'
+which is not in caller_pool_allowlist ['merge-review']
+```
+
+Two rules now hold:
+
+- **The operator's policy is a pin gate.** It names the pools a caller
+  may *choose*. It does not restrict where the server routes, because
+  a pool the server chose is not the caller's choice. A caller that
+  supplies its own `caller_pool_allowlist` is bound by it everywhere —
+  it said where its tasks may go.
+- **Both sides of the comparison are resolved to a pool's id.** The
+  policy's values are names (a config file cannot hold a per-spawn
+  id), so they resolve to ids; the caller's `pool_affinity` resolves
+  too. Before this, a name-based request was compared verbatim
+  against a resolved id, so a name-based policy was satisfiable only
+  by an id no config file can contain.
+
+The shipped policy is now the two pools this deployment names in its
+own code and agent documentation: `merge-review` (the merge reviewer
+provisions it) and `claude-pool` (the pool the specialist agent
+documents for an affinity dispatch).
+
+Plan: `docs/plans/2026-11-16-narrow-the-affinity-policy.md`.

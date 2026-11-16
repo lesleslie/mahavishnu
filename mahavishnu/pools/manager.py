@@ -39,6 +39,12 @@ logger = logging.getLogger(__name__)
 #: policy is a process-level fact, so it is recorded once.
 _effective_allowlist_logged = False
 
+#: Routing reasons that mean the caller's pinned pool was ADMITTED by the
+#: pin gate. Every other reason means the pin was refused and the inner
+#: pick is the server's own choice — a fallback, which the pin gate does
+#: not speak for.
+_HONORED_PIN_REASONS = frozenset({"affinity", "peer_affinity"})
+
 
 async def _await_if_needed(value: Any) -> Any:
     if hasattr(value, "__await__"):
@@ -539,26 +545,27 @@ class PoolManager:
     async def _get_pool_for_working_directory(
         self,
         pool_affinity: str | None,
-        caller_pool_allowlist: set[str] | None,
+        pin_allowlist: set[str] | None,
+        dispatch_allowlist: set[str] | None,
         selector: PoolSelector,
     ) -> str | None:
-        """Pick a pool that can honour a named directory, inside the caller's allowlist.
+        """Pick a pool that can honour a named directory.
 
         Only pools that report ``supports_working_directory`` qualify.
         Among those, the least-loaded wins — the same rule the
         ordinary selector applies, restricted to the pools that can
         actually honour the task.
 
-        ADR-014: the caller's allowlist is the authorization boundary,
-        so the capable candidates are the pools *inside* it. A task
-        that names a directory must not escape the set the caller
-        declared — the same rule the affinity fallback follows.
-
-        An explicitly selected pool is honoured when it is both
-        allowed and capable. When the selector named a pool that is
-        not capable, the selection falls back to the allowlist's
-        capable set rather than quietly running the task somewhere
+        ADR-014: the pin gate is the authorization boundary for a pool
+        the CALLER chose, so an explicitly selected pool is honoured
+        only when it is both allowed and capable. When the selector
+        named a pool that is not capable, the selection falls back to
+        the capable set rather than quietly running the task somewhere
         else.
+
+        The dispatch restriction applies to the server-chosen
+        candidates: a caller that declared its own allowlist said
+        where its tasks may go, so they must not escape that set.
 
         Returns ``None`` when no registered pool qualifies, which the
         caller turns into an actionable error rather than a dispatch
@@ -569,20 +576,21 @@ class PoolManager:
             # restriction, and ADR-014 gives affinity nothing to
             # check -- the same reason ``_route_by_affinity`` refuses
             # to honour affinity in that case.
-            if caller_pool_allowlist is not None:
+            if pin_allowlist is not None:
+                requested = self._canonical_pool_ref(pool_affinity)
                 if self._is_pool_in_allowlist(
-                    pool_affinity, caller_pool_allowlist
-                ) and self._pool_supports_working_directory(pool_affinity):
-                    return pool_affinity
+                    requested, pin_allowlist
+                ) and self._pool_supports_working_directory(requested):
+                    return requested
 
-        if caller_pool_allowlist is not None:
+        if dispatch_allowlist is not None:
             # ``_is_pool_in_allowlist`` honours the "*" wildcard; a raw
             # membership test would read it as "no pool matches" and
             # refuse every directory-bearing task.
             candidates = [
                 pool_id
                 for pool_id in self._pools
-                if self._is_pool_in_allowlist(pool_id, caller_pool_allowlist)
+                if self._is_pool_in_allowlist(pool_id, dispatch_allowlist)
             ]
         else:
             candidates = list(self._pools.keys())
@@ -633,21 +641,47 @@ class PoolManager:
             key=lambda pid: self._pool_worker_counts.get(pid, 0),
         )
 
+    def _canonical_pool_ref(self, pool_ref: str) -> str:
+        """Resolve a pool reference to its canonical id.
+
+        A pool is addressable two ways: by its NAME — stable across
+        restarts, and the only form a config file can hold, because a
+        pool id is generated per spawn — and by its id. The registry
+        maps name to id, so a name resolves and an id is already
+        canonical. An unknown reference comes back unchanged, so the
+        caller's mistake surfaces as "no such pool" rather than as a
+        silent substitution.
+
+        Both sides of the authorization test need this. The policy's
+        tokens are names (a config file cannot hold an id), so they
+        resolve to ids; if the caller's reference did not resolve too,
+        the two sides would speak different namespaces and a
+        name-based request would be refused by the very policy that
+        names it.
+        """
+        # Implements: REQ-POLICY-002
+        return self._pools_by_name.get(pool_ref, pool_ref)
+
     def _is_pool_in_allowlist(
         self,
-        pool_id: str,
+        pool_ref: str,
         allowlist: set[str],
     ) -> bool:
-        """Test whether ``pool_id`` is authorized by ``allowlist``.
+        """Test whether ``pool_ref`` is authorized by ``allowlist``.
 
         Honors the ``"*"`` wildcard as "every currently-registered
         pool". A pool not in the live registry is NEVER
         authorized by the wildcard — the wildcard is a per-call
         gate against the current registry, not a blanket bypass.
+
+        The reference is resolved to its canonical id first, so a
+        caller that names a pool by name is judged against the same
+        namespace the allowlist is written in.
         """
+        canonical = self._canonical_pool_ref(pool_ref)
         if "*" in allowlist:
-            return pool_id in self._pools
-        return pool_id in allowlist
+            return canonical in self._pools
+        return canonical in allowlist
 
     def _server_pool_allowlist(self) -> set[str] | None:
         """The pools a caller is authorized to pin, per the server-side policy.
@@ -888,12 +922,13 @@ class PoolManager:
         Args:
             task: Task specification
             pool_selector: Selection strategy (default: PoolManager default)
-            pool_affinity: Specific pool ID if using AFFINITY strategy
+            pool_affinity: Specific pool ID if using AFFINITY strategy.
+                May also be the pool's stable NAME — both resolve to
+                the pool's canonical id before the authorization test.
             caller_pool_allowlist: Caller-side authorization contract
-                (ADR-014). The set of pool IDs the CALLER is
-                authorized to dispatch into. When ``None``, the
-                router takes the server-side policy —
-                ``MAHAVISHNU_PEER_AFFINITY_ALLOWLIST`` or
+                (ADR-014). The set of pools the CALLER may dispatch
+                into. When ``None``, the router takes the server-side
+                policy — ``MAHAVISHNU_PEER_AFFINITY_ALLOWLIST`` or
                 ``pools.caller_pool_allowlist`` — which a wire
                 caller cannot influence. When that policy declares
                 nothing, ``None`` stands and the router refuses to
@@ -904,6 +939,14 @@ class PoolManager:
                 is empty, the router falls back to LEAST_LOADED
                 within the allowlist (or raises if no allowlist
                 pools are registered).
+
+                The operator's policy is a PIN gate: it names the
+                pools a caller may CHOOSE (the AFFINITY and
+                PEER_AFFINITY selectors). It does not restrict where
+                the server routes — a pool the server chose is not
+                the caller's choice. A caller that supplies its own
+                set is bound by it everywhere, because it said where
+                its tasks may go.
             caller_kind: Who is calling (used for quota + audit).
                 Accepts a ``CallerKind`` enum or the underlying
                 string value. Any unrecognized string is coerced to
@@ -970,8 +1013,28 @@ class PoolManager:
         # caller supplied one, take the operator's policy — otherwise the
         # router could never honour a pinned pool, because it refuses a
         # specific-pool path whose caller has declared no allowlist.
+        #
+        # The operator's policy is a PIN gate, not a dispatch
+        # restriction: it names the pools a caller may choose. A pool
+        # the SERVER chose is not the caller's choice, and the caller
+        # gained no control over it — so the policy does not restrict
+        # it. If it also restricted server-chosen pools it would have to
+        # name every pool this deployment will ever use, and pools here
+        # are spawned on demand by name (``auto-spawned``, the review
+        # pool, the agent pool). No fixed list satisfies that, and an
+        # ordinary dispatch would fail with an authorization error about
+        # a pool the caller never asked for.
+        #
+        # A caller that DID supply its own allowlist is bound by it
+        # everywhere: it said where its tasks may go.
+        #
+        # Implements: REQ-POLICY-001
         if caller_pool_allowlist is None:
-            caller_pool_allowlist = self._server_pool_allowlist()
+            pin_allowlist = self._server_pool_allowlist()
+            dispatch_allowlist = None
+        else:
+            pin_allowlist = caller_pool_allowlist
+            dispatch_allowlist = caller_pool_allowlist
 
         # Phase 3 Task 3.2: per-caller_kind fixed-window quota. This
         # is the FIRST gate inside route_task — it must run before any
@@ -1010,7 +1073,8 @@ class PoolManager:
         if requires_working_directory:
             pool_id = await self._get_pool_for_working_directory(
                 pool_affinity,
-                caller_pool_allowlist,
+                pin_allowlist,
+                dispatch_allowlist,
                 selector,
             )
             if pool_id is None:
@@ -1037,11 +1101,11 @@ class PoolManager:
             reason = "working_directory_capable"
         elif selector == PoolSelector.AFFINITY:
             pool_id, reason = await self._route_by_affinity(
-                pool_affinity, caller_pool_allowlist
+                pool_affinity, pin_allowlist, dispatch_allowlist
             )
         elif selector == PoolSelector.PEER_AFFINITY:
             pool_id, reason = await self._route_by_peer_affinity(
-                task, caller_pool_allowlist
+                task, pin_allowlist, dispatch_allowlist
             )
         elif selector == PoolSelector.LEAST_LOADED:
             pool_id = await self._get_least_loaded_pool()
@@ -1093,15 +1157,17 @@ class PoolManager:
         ) = self._apply_queueing_penalty(
             pool_id,
             selector,
-            caller_pool_allowlist,
+            dispatch_allowlist,
+            pin_allowlist,
             capability_filter,
+            reason,
         )
 
         pool_id, reason = self._apply_gpu_category_override(
             pool_id,
             reason,
             task,
-            caller_pool_allowlist,
+            dispatch_allowlist,
             capability_filter,
         )
 
@@ -1219,8 +1285,10 @@ class PoolManager:
         self,
         inner_pool_id: str,
         selector: PoolSelector,
-        caller_pool_allowlist: set[str] | None = None,
+        dispatch_allowlist: set[str] | None = None,
+        pin_allowlist: set[str] | None = None,
         pool_filter: Callable[[str], bool] | None = None,
+        reason: str = "",
     ) -> tuple[str, float | None, str, bool]:
         """Re-rank candidates by M/M/c predicted wait time.
 
@@ -1238,14 +1306,21 @@ class PoolManager:
             registered pools that have a fitted model AND that the
             caller is authorized to use.
 
-        S-4 (round-2 review): the queueing re-rank must respect
-        ``caller_pool_allowlist`` (ADR-014). When the caller has
-        declared a restricted pool set, the re-rank cannot route
-        outside that set, even if a pool outside the set has a lower
-        predicted wait. The candidate iteration is restricted to
-        ``self._pools.keys() & allowlist`` when an allowlist is set;
-        when the allowlist is None, the original behavior (all
-        pools) is preserved.
+        S-4 (round-2 review): the queueing re-rank must respect a
+        caller's declared pool set. When the caller declared one, the
+        re-rank cannot route outside that set, even if a pool outside
+        the set has a lower predicted wait. The candidate iteration is
+        restricted to ``self._pools.keys() & allowlist`` when a
+        dispatch allowlist is set; when it is None, the original
+        behavior (all pools) is preserved.
+
+        The two allowlists differ in what they gate. The pin gate
+        admits a pool the CALLER chose, so the re-rank must not move
+        that task off it. The dispatch restriction admits where a
+        caller-supplied set allows the task to land at all. The
+        operator's policy is only a pin gate — a pool the server
+        chose is not the caller's choice — so it never restricts the
+        re-rank's candidates.
 
         Returns:
             (pool_id, predicted_wait_s, effective_selector_str,
@@ -1259,31 +1334,38 @@ class PoolManager:
         # code must independently verify this invariant — otherwise a
         # future refactor of those inner selectors could silently
         # bypass the allowlist.
+        #
+        # The check applies to a HONORED pin. When the pin was refused
+        # the inner pick is the server's own choice — a fallback — and
+        # the server's choice is not a caller's choice, so the pin gate
+        # does not speak for it. The dispatch restriction does.
         if selector in (PoolSelector.AFFINITY, PoolSelector.PEER_AFFINITY):
-            if caller_pool_allowlist is not None and not self._is_pool_in_allowlist(
-                inner_pool_id, caller_pool_allowlist
+            if (
+                reason in _HONORED_PIN_REASONS
+                and pin_allowlist is not None
+                and not self._is_pool_in_allowlist(inner_pool_id, pin_allowlist)
             ):
                 raise RuntimeError(
                     f"Queueing fallback would route to pool "
                     f"{inner_pool_id!r} which is not in caller_pool_allowlist "
-                    f"{sorted(caller_pool_allowlist)}"
+                    f"{sorted(pin_allowlist)}"
                 )
             buffer = self._queueing_buffers.get(inner_pool_id)
             wait = self._compute_predicted_wait(buffer)
             return inner_pool_id, wait, selector.value, False
 
-        # S-4: restrict the candidate set to the caller's allowlist
-        # before computing predicted waits. We snapshot pool_ids
+        # S-4: restrict the candidate set to the caller's declared pool
+        # set before computing predicted waits. We snapshot pool_ids
         # before iteration to avoid RuntimeError on concurrent
         # spawn/close (M-7 round-2 finding).
         pool_ids = list(self._pools.keys())
-        if caller_pool_allowlist is not None:
+        if dispatch_allowlist is not None:
             # Wildcard-aware: a raw membership test would read "*" as
             # "no pool matches" and empty the candidate set.
             pool_ids = [
                 pid
                 for pid in pool_ids
-                if self._is_pool_in_allowlist(pid, caller_pool_allowlist)
+                if self._is_pool_in_allowlist(pid, dispatch_allowlist)
             ]
         # The caller's own constraints narrow the candidate set; a
         # re-rank may only choose among the pools the inner selector
@@ -1304,16 +1386,17 @@ class PoolManager:
 
         # No predictions available: fall back to the inner pick with
         # no predicted-wait label. Defensive check (round-2 security
-        # review): if caller_pool_allowlist is set and the inner pick
-        # isn't in it, raise rather than silently bypass the allowlist.
+        # review): if the caller declared a restricted pool set and the
+        # inner pick isn't in it, raise rather than silently bypass the
+        # allowlist.
         if not predicted_waits:
-            if caller_pool_allowlist is not None and not self._is_pool_in_allowlist(
-                inner_pool_id, caller_pool_allowlist
+            if dispatch_allowlist is not None and not self._is_pool_in_allowlist(
+                inner_pool_id, dispatch_allowlist
             ):
                 raise RuntimeError(
                     f"Queueing fallback would route to pool "
                     f"{inner_pool_id!r} which is not in caller_pool_allowlist "
-                    f"{sorted(caller_pool_allowlist)}"
+                    f"{sorted(dispatch_allowlist)}"
                 )
             return inner_pool_id, None, selector.value, False
 
@@ -1447,51 +1530,80 @@ class PoolManager:
             logger.debug("MCP selector override skipped: %s", e)
         return selector
 
+    async def _fallback_pool_id(
+        self,
+        dispatch_allowlist: set[str] | None,
+    ) -> str | None:
+        """The pool that replaces a refused pin.
+
+        A refusal discards the CALLER's choice; what replaces it is
+        the server's choice, so the server's own routing rules apply.
+        A caller that declared its own pool set still bounds it — it
+        said where its tasks may go.
+
+        The operator's pin policy does NOT bound it. That policy names
+        the pools a caller may pin; it says nothing about where the
+        server may route, so bounding the fallback by it would make a
+        refused pin land on a different class of pool than the same
+        task would have reached without a pin at all.
+        """
+        if dispatch_allowlist is None:
+            return await self._get_least_loaded_pool()
+        return await self._select_least_loaded_in_allowlist(dispatch_allowlist)
+
     async def _route_by_affinity(
         self,
         pool_affinity: str | None,
-        caller_pool_allowlist: set[str] | None,
+        pin_allowlist: set[str] | None,
+        dispatch_allowlist: set[str] | None,
     ) -> tuple[str, str]:
-        """ADR-014 caller-side authorization for AFFINITY selector."""
+        """ADR-014 caller-side authorization for AFFINITY selector.
+
+        The caller may name the pool by its stable name or by its id.
+        The reference is resolved to the pool's id here, so the
+        authorization test and the dispatch both speak the registry's
+        namespace — the id is what the dispatch needs, and the name is
+        what a policy can hold.
+        """
         if not pool_affinity:
             raise ValueError("pool_affinity required for AFFINITY strategy")
-        if caller_pool_allowlist is None:
+        requested = self._canonical_pool_ref(pool_affinity)
+        if pin_allowlist is None:
             logger.warning(
                 "affinity_no_caller_allowlist: pool_affinity=%r — "
                 "refusing to honor affinity, falling back to LEAST_LOADED",
                 pool_affinity,
             )
-            pool_id = await self._get_least_loaded_pool()
+            pool_id = await self._fallback_pool_id(dispatch_allowlist)
             if pool_id is None:
                 raise RuntimeError("No pools available for routing")
             return pool_id, "affinity_no_caller_allowlist_fallback"
-        if not self._is_pool_in_allowlist(pool_affinity, caller_pool_allowlist):
+        if not self._is_pool_in_allowlist(requested, pin_allowlist):
             logger.warning(
                 "affinity_not_in_allowlist: pool_affinity=%r allowlist=%r — "
-                "falling back to LEAST_LOADED within allowlist",
+                "refusing to honor affinity, falling back to LEAST_LOADED",
                 pool_affinity,
-                sorted(caller_pool_allowlist),
+                sorted(pin_allowlist),
             )
-            pool_id = await self._select_least_loaded_in_allowlist(
-                caller_pool_allowlist
-            )
+            pool_id = await self._fallback_pool_id(dispatch_allowlist)
             if pool_id is None:
                 raise RuntimeError(
                     "No pools available for routing within caller_pool_allowlist"
                 )
             return pool_id, "affinity_allowlist_filtered_fallback"
-        return pool_affinity, "affinity"
+        return requested, "affinity"
 
     async def _route_by_peer_affinity(
         self,
         task: dict[str, Any],
-        caller_pool_allowlist: set[str] | None,
+        pin_allowlist: set[str] | None,
+        dispatch_allowlist: set[str] | None,
     ) -> tuple[str, str]:
         """ADR-014 caller-side authorization for PEER_AFFINITY selector.
 
-        The peer model is a routing hint; the caller's declared allowlist is the gate.
-        Falls back to LEAST_LOADED within the allowlist whenever the hint is absent,
-        stale, or unauthorized.
+        The peer model is a routing hint; the pin gate is the gate.
+        Falls back to the server's own LEAST_LOADED whenever the hint is
+        absent, stale, or unauthorized.
         """
         peer_id = task.get("peer_id")
         project_id = task.get("project_id")
@@ -1504,14 +1616,14 @@ class PoolManager:
                 "PEER_AFFINITY selector requires PoolManager to be "
                 "constructed with session_buddy_client or a manually set _peer_resolver"
             )
-        if caller_pool_allowlist is None:
+        if pin_allowlist is None:
             logger.debug(
                 "peer_affinity_no_caller_allowlist: peer_id=%r project_id=%r — "
                 "refusing to route via peer hint, falling back to LEAST_LOADED",
                 peer_id,
                 project_id,
             )
-            pool_id = await self._get_least_loaded_pool()
+            pool_id = await self._fallback_pool_id(dispatch_allowlist)
             if pool_id is None:
                 raise RuntimeError("No pools available for routing")
             return pool_id, "peer_affinity_no_caller_allowlist_fallback"
@@ -1520,28 +1632,29 @@ class PoolManager:
             peer_id=peer_id,
             project_id=project_id,
         )
+        if resolved_pool_id is not None:
+            resolved_pool_id = self._canonical_pool_ref(resolved_pool_id)
         return await self._resolve_peer_affinity_pool(
-            peer_id, resolved_pool_id, caller_pool_allowlist, project_id
+            peer_id, resolved_pool_id, pin_allowlist, dispatch_allowlist, project_id
         )
 
     async def _resolve_peer_affinity_pool(
         self,
         peer_id: str,
         resolved_pool_id: str | None,
-        caller_pool_allowlist: set[str],
+        pin_allowlist: set[str],
+        dispatch_allowlist: set[str] | None,
         project_id: str,
     ) -> tuple[str, str]:
         """Select final pool_id from a peer resolver result, applying allowlist + staleness checks."""
         if resolved_pool_id is None:
             logger.debug(
                 "peer_affinity_no_hint: peer_id=%r project_id=%r — "
-                "falling back to LEAST_LOADED within allowlist",
+                "falling back to LEAST_LOADED",
                 peer_id,
                 project_id,
             )
-            pool_id = await self._select_least_loaded_in_allowlist(
-                caller_pool_allowlist
-            )
+            pool_id = await self._fallback_pool_id(dispatch_allowlist)
             if pool_id is None:
                 raise RuntimeError(
                     "No pools available for routing within caller_pool_allowlist"
@@ -1551,30 +1664,27 @@ class PoolManager:
             # Normal during pool respawns — log and fall back rather than crash.
             logger.debug(
                 "peer_affinity_pool_unknown: peer_id=%r recommended=%r "
-                "— falling back to LEAST_LOADED within allowlist",
+                "— falling back to LEAST_LOADED",
                 peer_id,
                 resolved_pool_id,
             )
-            pool_id = await self._select_least_loaded_in_allowlist(
-                caller_pool_allowlist
-            )
+            pool_id = await self._fallback_pool_id(dispatch_allowlist)
             if pool_id is None:
                 raise RuntimeError(
                     "No pools available for routing within caller_pool_allowlist"
                 )
             return pool_id, "peer_affinity_pool_unknown_fallback"
-        if not self._is_pool_in_allowlist(resolved_pool_id, caller_pool_allowlist):
-            # Allowlist is authoritative — discard the hint and fall back within it.
+        if not self._is_pool_in_allowlist(resolved_pool_id, pin_allowlist):
+            # The pin gate is authoritative — discard the hint and let the
+            # server choose.
             logger.debug(
                 "peer_affinity_hint_not_in_allowlist: peer_id=%r "
-                "recommended=%r allowlist=%r — falling back to LEAST_LOADED within allowlist",
+                "recommended=%r allowlist=%r — falling back to LEAST_LOADED",
                 peer_id,
                 resolved_pool_id,
-                sorted(caller_pool_allowlist),
+                sorted(pin_allowlist),
             )
-            pool_id = await self._select_least_loaded_in_allowlist(
-                caller_pool_allowlist
-            )
+            pool_id = await self._fallback_pool_id(dispatch_allowlist)
             if pool_id is None:
                 raise RuntimeError(
                     "No pools available for routing within caller_pool_allowlist"
@@ -1587,16 +1697,19 @@ class PoolManager:
         pool_id: str,
         reason: str,
         task: dict[str, Any],
-        caller_pool_allowlist: set[str] | None = None,
+        dispatch_allowlist: set[str] | None = None,
         pool_filter: Callable[[str], bool] | None = None,
     ) -> tuple[str, str]:
         """Prefer a RunPod pool for GPU-bound task categories; no-op otherwise.
 
-        Security (round-2 fix): honor ``caller_pool_allowlist``.
-        If a RunPod pool exists but is NOT in the caller's allowlist,
-        the GPU override is skipped — the caller has not declared
-        authorization to dispatch into the RunPod pool. Symmetric to
-        the S-4 fix in ``_apply_queueing_penalty``.
+        Security (round-2 fix): honor a caller's declared pool set.
+        If a RunPod pool exists but is NOT in the caller's dispatch
+        allowlist, the GPU override is skipped — the caller has not
+        declared authorization to dispatch into the RunPod pool.
+        Symmetric to the S-4 fix in ``_apply_queueing_penalty``.
+
+        The override is a SERVER choice, so the operator's pin policy
+        does not gate it — only a caller's own declared set does.
 
         ``pool_filter`` narrows the override the same way: the
         override is a *preference*, so a runpod pool that fails the
@@ -1619,8 +1732,8 @@ class PoolManager:
             None,
         )
         if runpod_pool_id and (
-            caller_pool_allowlist is None
-            or self._is_pool_in_allowlist(runpod_pool_id, caller_pool_allowlist)
+            dispatch_allowlist is None
+            or self._is_pool_in_allowlist(runpod_pool_id, dispatch_allowlist)
         ):
             logger.debug(
                 "GPU task category=%r — routing to runpod pool %s",

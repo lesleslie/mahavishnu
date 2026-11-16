@@ -347,6 +347,8 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/plans/2026-11-16-narrow-the-affinity-policy.md`](2026-11-16-narrow-the-affinity-policy.md) | 2026-11-16 | `active` | `implementation` |  | `pool-routing-affinity` | Narrow the shipped affinity policy to the deployment's pinnable pools |
+| [`docs/plans/2026-11-16-pool-affinity-and-worker-type-allowlist.md`](2026-11-16-pool-affinity-and-worker-type-allowlist.md) | 2026-11-16 | `complete` | `implementation` |  | `pool-routing-affinity` | Make pool affinity reachable and the worker-type allowlist agree with the registry |
 | [`docs/plans/2026-11-15-pool-dispatch-progress-heartbeat.md`](2026-11-15-pool-dispatch-progress-heartbeat.md) | 2026-11-15 | `complete` | `implementation` |  | `mcp-dispatch-liveness` | Report pool dispatch liveness so long calls survive the client idle timeout |
 | [`docs/plans/2026-11-15-pyscn-complexity-ceiling-15.md`](2026-11-15-pyscn-complexity-ceiling-15.md) | 2026-11-15 | `complete` | `implementation` |  | `quality-gate-complexity` | Bring 27 functions under the pyscn cyclomatic ceiling of 15 |
 | [`docs/plans/2026-11-14-ty-only-migration.md`](2026-11-14-ty-only-migration.md) | 2026-11-14 | `complete` | `implementation` |  | `ty-only-migration` | Ty-Only Migration Implementation Plan |
@@ -571,7 +573,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (171 entries)
+### `plan` (173 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -584,9 +586,9 @@ Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a s
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
 | `canonical` | 5 | 71 | 6 | 2 | 20 | **104** |
-| `implementation` | 4 | 6 | 6 | 6 | 26 | **48** |
+| `implementation` | 4 | 7 | 6 | 6 | 27 | **50** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 33 | **33** |
 | `superseded` | · | · | · | · | 11 | **11** |
 
-| **Total** | **9** | **77** | **12** | **8** | **91** | **197** |
+| **Total** | **9** | **78** | **12** | **8** | **92** | **199** |

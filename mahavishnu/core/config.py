@@ -630,6 +630,12 @@ class PoolConfig(BaseModel):
     # None (the default) means no specific-pool authorization is
     # declared: the router refuses to honour a pinned pool and falls back
     # to its own LEAST_LOADED choice. That is the fail-closed default.
+    #
+    # This is a PIN gate: it names the pools a caller may choose, and
+    # does not restrict where the server routes. A pool the server chose
+    # is not the caller's choice.
+    #
+    # Implements: REQ-POLICY-003
     caller_pool_allowlist: list[str] | None = Field(
         default=None,
         description=(

@@ -809,13 +809,20 @@ async def test_route_task_affinity_no_allowlist_uses_the_server_policy(
     or ``pools.caller_pool_allowlist`` — when the caller supplied none,
     which is what makes AFFINITY reachable at all. Under this
     deployment's policy the named pool is honoured.
+
+    The policy is patched rather than read from the deployment: the
+    point of the test is that the server-side policy decides, not
+    which pools this particular deployment happens to name.
     """
-    r = await pool_mgr_with_pools.route_task(
-        task={"prompt": "x"},
-        pool_selector=PoolSelector.AFFINITY,
-        pool_affinity="pool_b",
-        caller_pool_allowlist=None,
-    )
+    settings = MagicMock()
+    settings.pools.caller_pool_allowlist = ["pool_b"]
+    with patch("mahavishnu.core.config.get_settings", return_value=settings):
+        r = await pool_mgr_with_pools.route_task(
+            task={"prompt": "x"},
+            pool_selector=PoolSelector.AFFINITY,
+            pool_affinity="pool_b",
+            caller_pool_allowlist=None,
+        )
     assert r["pool_id"] == "pool_b"
 
 

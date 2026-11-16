@@ -310,6 +310,9 @@ class TestApplyQueueingPenalty:
 
             mgr = PoolManager.__new__(PoolManager)
             mgr._pools = {}
+            # The name→id map is read when the router resolves the
+            # operator's pool policy, so a bare manager needs it too.
+            mgr._pools_by_name = {}
             mgr._queueing_buffers = {}
             return mgr
 
@@ -505,6 +508,9 @@ class TestRouteTaskExecutionInvariants:
 
         mgr = PoolManager.__new__(PoolManager)
         mgr._pools = {"pool_a": MagicMock(_workers=[1])}
+        # The name→id map is read when the router resolves the
+        # operator's pool policy, so a bare manager needs it too.
+        mgr._pools_by_name = {}
         mgr._queueing_buffers = {}
         mgr._pool_worker_counts = {"pool_a": 1}
         mgr._pool_selector = PoolSelector.LEAST_LOADED
