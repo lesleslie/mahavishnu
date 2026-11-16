@@ -85,7 +85,12 @@ from .workers.capabilities import (
     WorkerCapabilityState,
     evaluate_worker_capabilities,
 )
-from .workers.registry import WORKER_REGISTRY, RuntimeKind, WorkerCategory
+from .workers.registry import (
+    WORKER_REGISTRY,
+    RuntimeKind,
+    WorkerCategory,
+    pool_capable_worker_types,
+)
 
 # Import worktree management CLI
 from .worktree_cli import worktree_app
@@ -2023,27 +2028,33 @@ app.add_typer(executions_app, name="executions")
 
 # `mahavishnu pool spawn --worker-type` allowlist.
 #
-# Source of truth: docs/decisions/2026-09-24-legacy-worker-deprecation.md.
-# `terminal-claude`, `terminal-codex`, `terminal-qwen`, and
-# `container-executor` were retired on 2026-09-24; the legacy CLI surface
-# kept referencing them and rejected operators who followed the help text.
-# Tests in tests/unit/cli/test_spawn_allowlist.py pin this list so the
-# drift cannot recur silently — see
-# docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md.
-# Non-isolated workloads are routed via `mahavishnu/pools/` instead
-# (`pool_route_execute`).
-SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = frozenset(
-    {"shepherd", "gateway-openclaw"}
-)
+# Source of truth: `mahavishnu.workers.registry.pool_capable_worker_types()`.
+# The set is derived from the worker registry, so a worker type that the
+# factory can construct is accepted here without a second hand-maintained
+# list to update — the drift that
+# docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md tracked.
+#
+# The 2026-09-24 decision (docs/decisions/2026-09-24-legacy-worker-deprecation.md)
+# retired the ISOLATED backends — `apple-container` and `e2b-sandbox`, whose
+# modules were deleted — and narrowed `_create_isolated_worker` to `shepherd`.
+# It did not retire the SHELL AI-CLI workers: `terminal-claude`,
+# `terminal-qwen` and `terminal-codex` route to `ShellWorker` and have run
+# live pool tasks ever since. The earlier CLI allowlist refused them, which
+# also contradicted the pool-routing refusal in `mahavishnu/pools/manager.py`,
+# which tells operators to run exactly `pool spawn --worker-type
+# terminal-claude`.
+SPAWN_WORKER_TYPE_ALLOWLIST: frozenset[str] = (
+    pool_capable_worker_types()
+)  # req: REQ-WORKERTYPE-001
 
 SPAWN_WORKER_TYPE_ERROR_HINT: str = (
-    "Supported worker types: shepherd, gateway-openclaw. "
-    "Worker types `terminal-claude`, `terminal-codex`, `terminal-qwen`, "
-    "and `container-executor` were retired on 2026-09-24 — see "
-    "docs/decisions/2026-09-24-legacy-worker-deprecation.md and "
-    "docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md. "
-    "For non-isolated workloads use the `mahavishnu/pools/` "
-    "orchestration surface (`pool_route_execute`) instead."
+    "Supported worker types: "
+    + ", ".join(sorted(SPAWN_WORKER_TYPE_ALLOWLIST))
+    + ". The set is derived from the worker registry: every SHELL-runtime "
+    "worker (terminal-claude, terminal-qwen, terminal-codex, ...) plus "
+    "shepherd and gateway-openclaw. The retired isolated backends "
+    "(apple-container, e2b-sandbox, container-executor) are not among them "
+    "— see docs/decisions/2026-09-24-legacy-worker-deprecation.md."
 )
 
 
@@ -2067,9 +2078,11 @@ def pool_spawn(
         "--worker-type",
         "-w",
         help=(
-            "Worker type: shepherd [default], gateway-openclaw. "
-            "See docs/decisions/2026-09-24-legacy-worker-deprecation.md "
-            "for the deprecation scope (isolated backends only)."
+            "Worker type: shepherd [default]. Also the SHELL-runtime AI "
+            "CLIs (terminal-claude, terminal-qwen, terminal-codex, ...) and "
+            "gateway-openclaw. The set is derived from the worker registry; "
+            "see docs/decisions/2026-09-24-legacy-worker-deprecation.md for "
+            "the retired isolated backends."
         ),
     ),
 ) -> None:

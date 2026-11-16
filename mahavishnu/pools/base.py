@@ -17,12 +17,17 @@ class PoolConfig:
         min_workers: Minimum number of workers (default: 1)
         max_workers: Maximum number of workers (default: 10)
         worker_type: Type of workers to spawn (default: "shepherd")
-            — the post-2026-09-24 default. See
-            ``docs/decisions/2026-09-24-legacy-worker-deprecation.md`` and
-            ``docs/followups/2026-10-09-spawn-cli-stale-worker-allowlist.md``.
-            ``terminal-claude`` / ``terminal-qwen`` / ``terminal-codex`` /
-            ``container-executor`` are retired; ``gateway-openclaw`` is the
-            other supported substrate (requires ``OPENCLAW_GATEWAY_URL``).
+            — the post-2026-09-24 default for the isolated substrate.
+            See ``docs/decisions/2026-09-24-legacy-worker-deprecation.md``.
+            The accepted set is
+            ``mahavishnu.workers.registry.pool_capable_worker_types()``:
+            every SHELL-runtime worker (``terminal-claude`` /
+            ``terminal-qwen`` / ``terminal-codex`` and the rest of the
+            AI-CLI terminals), plus ``shepherd``, plus
+            ``gateway-openclaw`` (requires ``OPENCLAW_GATEWAY_URL``).
+            The retired backends are ``apple-container``,
+            ``e2b-sandbox`` and ``container-executor`` — their modules
+            are deleted, so they are not in the set.
         auto_scale: Enable automatic scaling (default: False)
         memory_enabled: Enable memory aggregation (default: True)
         writable_root: Default filesystem path the ShepherdBackendWorker

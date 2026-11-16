@@ -1208,8 +1208,9 @@ def register_pool_tools(
                   session-buddy/runpod).
             max_workers: Maximum workers (mahavishnu only; ignored for
                   session-buddy/runpod).
-            worker_type: Worker backend — see the canonical list in
-                  ``mahavishnu.workers.registry.WORKER_REGISTRY``.
+            worker_type: Worker backend — the accepted set is
+                  ``mahavishnu.workers.registry.pool_capable_worker_types()``,
+                  the same one the CLI enforces.
 
         Returns:
             ``{"status": "spawned" | "exists" | "warning" | "failed", ...}``
@@ -1246,15 +1247,14 @@ def register_pool_tools(
                 ),
             }
 
-        # Validate worker_type against the canonical registry.
-        # (Mirrors _main_cli.py:1682-1690; the CLI's enum is the
-        # authoritative source — keep the set in sync if you add a worker.)
-        from mahavishnu.workers.registry import WORKER_REGISTRY
+        # Validate worker_type against the same derived set the CLI uses.
+        # The registry carries entries whose backend module was deleted
+        # (apple-container, e2b-sandbox, container-executor), so
+        # WORKER_REGISTRY itself is NOT the allowlist -- what the worker
+        # factory can construct is.
+        from mahavishnu.workers.registry import pool_capable_worker_types
 
-        valid_worker_types = set(WORKER_REGISTRY.keys()) | {
-            "gateway-openclaw",  # CLI-registered, may not be in WORKER_REGISTRY
-            "container-executor",
-        }
+        valid_worker_types = pool_capable_worker_types()  # req: REQ-WORKERTYPE-001
         if worker_type not in valid_worker_types:
             return {
                 "status": "failed",

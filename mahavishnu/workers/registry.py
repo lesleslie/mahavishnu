@@ -907,6 +907,40 @@ def resolve_worker_type(
     return worker_type
 
 
+def pool_capable_worker_types() -> frozenset[str]:
+    """Worker types that can back a Mahavishnu pool.
+
+    Derived from the registry so it cannot drift from what the worker
+    factory can actually construct — the CLI's spawn allowlist and the
+    MCP ``pool_spawn`` tool both read this instead of carrying their own
+    hand-maintained list.
+
+    The three groups:
+
+    - every ``RuntimeKind.SHELL`` entry routes to ``ShellWorker``
+      (``workers/shell_backend.py``), which is the prompt-carrying
+      substrate: ``terminal-claude``, ``terminal-qwen``, ``terminal-codex``
+      and the rest of the AI-CLI terminals.
+    - ``shepherd`` is the surviving isolated worker
+      (``workers/shepherd_backend.py``) per the 2026-09-24 decision.
+    - ``gateway-openclaw`` is the other supported substrate; it is
+      env-gated on ``OPENCLAW_GATEWAY_URL``.
+
+    Everything else in the registry is either a retired backend whose
+    module was deleted (``apple-container``, ``e2b-sandbox``,
+    ``container-executor``) or an application entry the worker factory
+    cannot construct.
+
+    """
+    # Implements: REQ-WORKERTYPE-002
+    shell_types = frozenset(
+        worker_type
+        for worker_type, config in WORKER_REGISTRY.items()
+        if config.runtime_kind is RuntimeKind.SHELL
+    )
+    return shell_types | {"shepherd", "gateway-openclaw"}
+
+
 def list_worker_types(
     category: WorkerCategory | None = None,
     *,
