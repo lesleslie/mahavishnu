@@ -56,6 +56,19 @@ fi
 if [ -f "scripts/audit_no_secrets_in_mcp.py" ]; then
     python3 scripts/audit_no_secrets_in_mcp.py "$(pwd)" || exit 1
 fi
+# Version stamp gate (2026-11-16). A release bumps `version` in
+# pyproject.toml; every doc surface that carries a version claim has to move
+# with it. When it does not, the repo's own version-consistency guard fails
+# on the freshly-bumped main -- so the release commit is red on the branch
+# the next release starts from, and the drift stays invisible until someone
+# reads the failing test. The release path does not re-stamp, so the stamp
+# has to be part of the commit that bumps the version.
+# Repos that keep version claims provide scripts/stamp_version.py; it
+# rewrites them from pyproject and stages the result. No-op in repos without
+# that script.
+if [ -f "scripts/stamp_version.py" ]; then
+    python3 scripts/stamp_version.py --stage "$(pwd)" || exit 1
+fi
 # TYPE_CHECKING → runtime reference gate (2026-08-31). Catches the latent
 # bug class where `from __future__ import annotations` + `if TYPE_CHECKING:`
 # imports a name that's then referenced at runtime, causing NameError.
