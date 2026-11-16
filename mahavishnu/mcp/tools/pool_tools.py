@@ -665,6 +665,23 @@ def _resolve_auto_spawn(auto_spawn: bool | None) -> bool:
         return False
 
 
+def _log_routed_model(task_category: TaskCategoryType | None) -> None:
+    """Log the model the dispatch was routed to, when routing is known.
+
+    The routing table is resolved per task category, so the log line is
+    how the audit trail records which model actually ran the work. Both
+    the resolver and the category are absent when the routing layer is
+    not configured, and then there is nothing to log.
+    """
+    if resolve_model_id is None or task_category is None:
+        return
+    logger.info(
+        "mahavishnu_pool_route_execute: dispatch routed to model %s (category=%s)",
+        resolve_model_id(task_category),
+        task_category.value,
+    )
+
+
 async def _lookup_idempotency(
     idempotency: IdempotencyOptions | None,
     prompt: str,
@@ -789,6 +806,22 @@ async def _acquire_concurrency_slot(
         retry_after_seconds=(_estimate_retry(spec) if _estimate_retry else None),
         domain=f"task_category={task_category.value}",
     )
+
+
+async def _release_concurrency_slot(
+    acquired: bool,
+    gate: Any,
+    task_category: TaskCategoryType | None,
+) -> None:
+    """Release the per-category concurrency slot, whatever the outcome.
+
+    Called from the dispatch tool's ``finally`` block, so it must cover
+    the success path and every failure path. Without it the per-process
+    counter would never decrement and the gate would saturate permanently
+    after one burst.
+    """
+    if acquired and gate is not None and task_category is not None:
+        await gate.release(task_category, None)
 
 
 async def _prepare_worktree(
@@ -995,6 +1028,40 @@ async def _cleanup_worktree(
             exc,
             extra={"error_id": "WORKTREE_CLEANUP_FAILED"},
         )
+
+
+async def _cleanup_dispatched_worktree(
+    wt_manager: Any,
+    worktree_info: Any,
+    worktree: WorktreeOptions | None,
+    repo_path: Path | None,
+) -> None:
+    """Remove the dispatch's worktree and, on discard, its branch.
+
+    Runs from the dispatch tool's ``finally`` block, so it covers the
+    failure path too. ``"discard"`` means the work is thrown away, and
+    the branch the worktree creation created goes with it -- without
+    this, every isolated dispatch leaked a branch into the repository.
+    """
+    if worktree_info is None:
+        return
+    await _cleanup_worktree(wt_manager, worktree_info, repo_path)
+    on_completion = worktree.on_completion if worktree is not None else "return_diff"
+    if on_completion == "discard":
+        await _discard_worktree_branch(worktree_info, repo_path)
+
+
+def _idempotency_wired(
+    existing_event: Any,
+    idem_store: Any,
+    breaker: Any,
+) -> bool:
+    """Whether the C-6 idempotency layer is available for this dispatch.
+
+    All three must be present: the lookup yields the event, the store it
+    came from, and the circuit breaker that fronts it.
+    """
+    return existing_event is not None and idem_store is not None and breaker is not None
 
 
 async def _mark_idempotency_completed(
@@ -1666,12 +1733,7 @@ def register_pool_tools(
             )
 
             try:
-                if resolve_model_id is not None and task_category is not None:
-                    logger.info(
-                        "mahavishnu_pool_route_execute: dispatch routed to model %s (category=%s)",
-                        resolve_model_id(task_category),
-                        task_category.value,
-                    )
+                _log_routed_model(task_category)
                 result = await _dispatch_with_progress(
                     ctx,
                     partial(
@@ -1698,32 +1760,14 @@ def register_pool_tools(
                         result,
                     )
             finally:
-                if worktree_info is not None:
-                    await _cleanup_worktree(
-                        wt_manager,
-                        worktree_info,
-                        worktree_repo_path,
-                    )
-                    # ``discard`` means the work is thrown away, and the
-                    # branch the worktree creation created goes with it.
-                    # Without this, every isolated dispatch leaked a
-                    # branch into the repository.
-                    on_completion = (
-                        worktree.on_completion
-                        if worktree is not None
-                        else "return_diff"
-                    )
-                    if on_completion == "discard":
-                        await _discard_worktree_branch(
-                            worktree_info,
-                            worktree_repo_path,
-                        )
+                await _cleanup_dispatched_worktree(
+                    wt_manager,
+                    worktree_info,
+                    worktree,
+                    worktree_repo_path,
+                )
 
-            if (
-                existing_event is not None
-                and idem_store is not None
-                and breaker is not None
-            ):
+            if _idempotency_wired(existing_event, idem_store, breaker):
                 await _mark_idempotency_completed(
                     idem_store, breaker, existing_event, result
                 )
@@ -1733,11 +1777,7 @@ def register_pool_tools(
             # If idempotency is wired, mark the record FAILED so a future
             # retry does not return stale PENDING. Best-effort — a DB
             # hiccup here must not mask the original dispatch error.
-            if (
-                existing_event is not None
-                and idem_store is not None
-                and breaker is not None
-            ):
+            if _idempotency_wired(existing_event, idem_store, breaker):
                 await _mark_idempotency_failed(idem_store, breaker, existing_event, exc)
 
             response = _map_dispatch_error(exc, worktree_info)
@@ -1752,10 +1792,7 @@ def register_pool_tools(
             return response
         finally:
             # Release the concurrency slot regardless of outcome (success,
-            # rate-limit denial, timeout, dispatch failure). Without this,
-            # the per-process counter would never decrement and the gate
-            # would saturate permanently after one burst.
-            if acquired and gate is not None and task_category is not None:
-                await gate.release(task_category, None)
+            # rate-limit denial, timeout, dispatch failure).
+            await _release_concurrency_slot(acquired, gate, task_category)
 
     logger.info("Registered 11 pool management tools")

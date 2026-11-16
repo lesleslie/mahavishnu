@@ -79,7 +79,7 @@ class TestForkBudget:
         calls: list[list[str]] = []
         real_run = subprocess.run
 
-        def _counting_run(args, *a, **kw):  # type: ignore[no-untyped-def]
+        def _counting_run(args, *a, **kw):
             calls.append(list(args))
             return real_run(args, *a, **kw)
 
@@ -99,7 +99,7 @@ class TestForkBudget:
         calls: list[list[str]] = []
         real_run = subprocess.run
 
-        def _counting_run(args, *a, **kw):  # type: ignore[no-untyped-def]
+        def _counting_run(args, *a, **kw):
             calls.append(list(args))
             return real_run(args, *a, **kw)
 

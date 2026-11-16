@@ -37,6 +37,8 @@ from mahavishnu.plan_index.paths import errors_log_path
 from mahavishnu.plan_index.record import PlanRecord
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+
     from mahavishnu.plan_index.rebuild import PlanIndexRebuilder
     from mahavishnu.plan_index.store import PlanIndexStore
 
@@ -420,6 +422,131 @@ def _is_store_directory(directory: Path) -> bool:
     return False
 
 
+def _iter_plan_documents(repo_root: Path) -> Iterator[Path]:
+    """Yield every candidate plan/spec document under ``repo_root``.
+
+    Only ``docs/plans/`` and ``docs/specs/`` are walked -- the actual
+    plan_index scope. System directories and excluded file names are
+    skipped.
+    """
+    for name in ("plans", "specs"):
+        plan_dir = repo_root / "docs" / name
+        if not plan_dir.is_dir():
+            continue
+        for md in sorted(plan_dir.rglob("*.md")):
+            if md.name in _EXCLUDED_FILE_NAMES:
+                continue
+            if any(
+                part in _EXCLUDED_DIR_NAMES for part in md.relative_to(plan_dir).parts
+            ):
+                continue
+            yield md
+
+
+def _resolve_dates(fm: dict[str, Any]) -> tuple[str, str]:
+    """Resolve ``(date, last_reviewed)``, cross-falling-back on each other.
+
+    Prefer ``last_reviewed`` if ``date`` is empty, and vice-versa.
+    """
+    date = _coerce_date(fm.get("date"))
+    last_reviewed = _coerce_date(fm.get("last_reviewed"))
+    if not date and last_reviewed:
+        date = last_reviewed
+    if not last_reviewed and date:
+        last_reviewed = date
+    return date, last_reviewed
+
+
+def _resolve_superseded_by(fm: dict[str, Any]) -> str | None:
+    """The supersession target, or ``None`` when the document has none.
+
+    The literal strings ``"null"`` and ``"~"`` are treated as "no
+    supersession" -- YAML's ``null`` reaches the frontmatter as a string
+    here, and a plan that says ``superseded_by: null`` is not superseded.
+    """
+    raw = _coerce_str(fm.get("superseded_by"))
+    if not raw or raw in {"null", "~"}:
+        return None
+    return raw
+
+
+class _DefaultRepoResolver:
+    """The repository's own remote URL, resolved on first use and cached.
+
+    A plan document need not declare its own ``repo``: the index indexes
+    THIS repository's plans, so the repository's own remote is the correct
+    fallback. Without it the empty URL is rejected by
+    ``normalize_repo_url`` and no record is ever indexed.
+
+    Resolution is lazy on purpose -- the remote is consulted only when a
+    candidate document actually needs the fallback, so a repository whose
+    documents all declare their own ``repo`` never pays for the extra
+    ``git remote`` fork.
+    """
+
+    def __init__(self, repo_root: Path) -> None:
+        self._repo_root = repo_root
+        self._resolved: str | None = None
+
+    def __call__(self) -> str:
+        if self._resolved is None:
+            self._resolved = _normalize_repo_url(_git_remote_url(self._repo_root))
+        return self._resolved
+
+
+def _build_record(
+    md: Path,
+    repo_root: Path,
+    blob_shas: dict[str, str],
+    accepted_statuses: frozenset[str],
+    default_repo: Callable[[], str],
+) -> PlanRecord | None:
+    """Build the ``PlanRecord`` for one candidate document.
+
+    Returns ``None`` when the document is skipped: unreadable, outside the
+    repository, or carrying frontmatter whose ``status``/``title`` are
+    missing or outside the accepted vocabulary. The frozen dataclass's
+    ``__post_init__`` would otherwise raise ``ValueError``.
+    """
+    try:
+        rel = md.relative_to(repo_root).as_posix()
+    except ValueError:
+        return None
+    try:
+        text = md.read_text(errors="replace")
+    except OSError:
+        return None
+    fm = _parse_frontmatter(text)
+    status = _coerce_str(fm.get("status"))
+    title = _coerce_str(fm.get("title"))
+    if not status or not title or status not in accepted_statuses:
+        return None
+
+    plan_id = _derive_plan_id(rel)
+    role = _coerce_str(fm.get("role")) or "implementation"
+    topic = _coerce_str(fm.get("topic"))
+    date, last_reviewed = _resolve_dates(fm)
+    blocks_on = _coerce_blocks_on(fm.get("blocks_on"))
+    repo = _normalize_repo_url(_coerce_str(fm.get("repo"))) or default_repo()
+
+    return PlanRecord(
+        plan_id=plan_id,  # ty: ignore[invalid-argument-type]
+        path=rel,
+        title=title,
+        status=status,  # ty: ignore[invalid-argument-type]
+        role=role,  # ty: ignore[invalid-argument-type]
+        topic=topic,
+        date=date,
+        last_reviewed=last_reviewed,
+        superseded_by=_resolve_superseded_by(fm),
+        blocks_on=blocks_on,  # ty: ignore[invalid-argument-type]
+        sha=blob_shas.get(rel, ""),
+        repo=repo,
+        lifecycle_state=None,
+        updated_at_ms=int(datetime.now(tz=UTC).timestamp() * 1000),
+    )
+
+
 def discover_records(repo_root: Path) -> list[PlanRecord]:
     """Walk ``docs/plans/`` and ``docs/specs/`` under ``repo_root``,
     parse frontmatter, return records.
@@ -444,7 +571,7 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
       - last_reviewed: falls back to date, then ""
       - superseded_by: None (the literal string "null" or "~" is treated as None)
       - blocks_on: [] (empty list)
-      - sha: `git rev-parse HEAD:<rel>` if available, else "" (signals "unknown")
+      - sha: the committed blob sha for `<rel>` if available, else "" (signals "unknown")
       - lifecycle_state: None (no frontmatter source; status is the surface)
       - updated_at_ms: int(datetime.now(tz=UTC).timestamp() * 1000)
 
@@ -452,92 +579,27 @@ def discover_records(repo_root: Path) -> list[PlanRecord]:
     (the frozen dataclass's __post_init__ would otherwise raise ValueError).
     """
     repo_root = Path(repo_root).resolve()
-    records: list[PlanRecord] = []
     if not repo_root.is_dir():
-        return records
+        return []
 
     accepted_statuses = frozenset({"draft", "active", "partial", "shipped", "complete"})
-
-    # Only walk docs/plans/ and docs/specs/ — the actual plan_index scope.
-    plan_dirs = [repo_root / "docs" / name for name in ("plans", "specs")]
 
     # ONE fork for every blob SHA in the tree, and ONE for the remote URL.
     # Both were per-record before; see _git_blob_shas for why that matters.
     blob_shas = _git_blob_shas(repo_root)
-    default_repo: str | None = None
+    default_repo = _DefaultRepoResolver(repo_root)
 
-    for plan_dir in plan_dirs:
-        if not plan_dir.is_dir():
-            continue
-        for md in sorted(plan_dir.rglob("*.md")):
-            if md.name in _EXCLUDED_FILE_NAMES or any(
-                part in _EXCLUDED_DIR_NAMES for part in md.relative_to(plan_dir).parts
-            ):
-                continue
-            try:
-                rel = md.relative_to(repo_root).as_posix()
-            except ValueError:
-                continue
-            try:
-                text = md.read_text(errors="replace")
-            except OSError:
-                continue
-            fm = _parse_frontmatter(text)
-            status = _coerce_str(fm.get("status"))
-            title = _coerce_str(fm.get("title"))
-            if not status or not title or status not in accepted_statuses:
-                continue
-            # A plan document need not declare its own repo: the index
-            # indexes THIS repository's plans, so the repository's own
-            # remote is the correct fallback. Without it the empty URL is
-            # rejected by normalize_repo_url and no record is ever indexed.
-            repo = _normalize_repo_url(_coerce_str(fm.get("repo")))
-            if not repo:
-                if default_repo is None:
-                    default_repo = _normalize_repo_url(_git_remote_url(repo_root))
-                repo = default_repo
-            plan_id = _derive_plan_id(rel)
-
-            role = _coerce_str(fm.get("role")) or "implementation"
-            topic = _coerce_str(fm.get("topic"))
-
-            date = _coerce_date(fm.get("date"))
-            last_reviewed = _coerce_date(fm.get("last_reviewed"))
-            # Cross-fallback: prefer last_reviewed if date is empty, and vice-versa.
-            if not date and last_reviewed:
-                date = last_reviewed
-            if not last_reviewed and date:
-                last_reviewed = date
-
-            superseded_by_raw = _coerce_str(fm.get("superseded_by"))
-            superseded_by: str | None = (
-                superseded_by_raw
-                if superseded_by_raw and superseded_by_raw not in {"null", "~"}
-                else None
-            )
-
-            blocks_on = _coerce_blocks_on(fm.get("blocks_on"))
-            sha = blob_shas.get(rel, "")
-            updated_at_ms = int(datetime.now(tz=UTC).timestamp() * 1000)
-
-            records.append(
-                PlanRecord(
-                    plan_id=plan_id,  # ty: ignore[invalid-argument-type]
-                    path=rel,
-                    title=title,
-                    status=status,  # ty: ignore[invalid-argument-type]
-                    role=role,  # ty: ignore[invalid-argument-type]
-                    topic=topic,
-                    date=date,
-                    last_reviewed=last_reviewed,
-                    superseded_by=superseded_by,
-                    blocks_on=blocks_on,  # ty: ignore[invalid-argument-type]
-                    sha=sha,
-                    repo=repo,
-                    lifecycle_state=None,
-                    updated_at_ms=updated_at_ms,
-                )
-            )
+    records: list[PlanRecord] = []
+    for md in _iter_plan_documents(repo_root):
+        record = _build_record(
+            md,
+            repo_root,
+            blob_shas,
+            accepted_statuses,
+            default_repo,
+        )
+        if record is not None:
+            records.append(record)
     return records
 
 
