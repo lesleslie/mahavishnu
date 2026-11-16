@@ -33,7 +33,7 @@ from mahavishnu.core.capabilities import (
     TraceId,
 )
 from mahavishnu.core.conductor import plan, resolve
-from mahavishnu.core.config import MahavishnuSettings
+from mahavishnu.core.config import MahavishnuSettings, get_settings
 
 from ._helpers import (
     _all_registrations_for_test,
@@ -79,8 +79,15 @@ def _make_adapter_mock():
 
 async def test_execute_capability_returns_valid_dag() -> None:
     """``execute_capability`` resolves a 2-capability spec into a 2-node DAG."""
-    settings = MahavishnuSettings.model_validate(
-        {
+    # The settings must come from the LOADER, not from ``model_validate`` on
+    # a literal dict: the spec's second capability, ``worker:ai-context``, is
+    # provided by the worker registry in ``settings/mahavishnu.yaml``, and
+    # ``model_validate`` leaves ``worker_registry.entries`` empty by
+    # construction (its ``default_factory`` builds an empty config). A
+    # literal-dict settings object therefore resolves only the engine
+    # candidate and this assertion can never hold.
+    settings = get_settings().model_copy(
+        update={
             "capability_enabled": True,
             "capability_scopes": ["mahavishnu_execute_capability"],
         }
