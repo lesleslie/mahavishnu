@@ -1725,6 +1725,15 @@ class PoolManager:
                 "supports_working_directory": bool(
                     getattr(pool, "supports_working_directory", False)
                 ),
+                # The worker substrate this pool runs. A caller cannot
+                # tell from the rest of this dict whether the pool
+                # accepts a PROMPT or only a COMMAND: a SHELL-runtime
+                # worker (e.g. ``terminal-claude``) reads a prompt,
+                # while an isolated one (``shepherd``) has no prompt
+                # channel at all and the pool turns the prompt into a
+                # shell command, which the exec guard then rejects
+                # with "Command '...' is not in the allowed list".
+                "worker_type": str(getattr(pool.config, "worker_type", "") or ""),
             }
 
         # Execute all status checks concurrently
