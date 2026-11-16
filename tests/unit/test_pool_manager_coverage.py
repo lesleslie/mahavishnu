@@ -798,18 +798,24 @@ async def test_route_task_affinity_without_affinity_raises(
 
 
 @pytest.mark.unit
-async def test_route_task_affinity_no_allowlist_falls_back(
+async def test_route_task_affinity_no_allowlist_uses_the_server_policy(
     pool_mgr_with_pools: PoolManager,
 ) -> None:
-    """No allowlist → refuse to honor affinity, fall back to LEAST_LOADED."""
+    """No caller-supplied allowlist → the server-side policy decides.
+
+    ADR-014 keeps the allowlist server-side: a wire caller names a pool
+    and never names the set of pools it may use. The router therefore
+    derives the allowlist from ``pools.caller_pool_allowlist`` when the
+    caller supplied none — which is what makes AFFINITY reachable at all.
+    Under the default policy the named pool is honoured.
+    """
     r = await pool_mgr_with_pools.route_task(
         task={"prompt": "x"},
         pool_selector=PoolSelector.AFFINITY,
         pool_affinity="pool_b",
         caller_pool_allowlist=None,
     )
-    # Falls back to least-loaded = pool_a
-    assert r["pool_id"] == "pool_a"
+    assert r["pool_id"] == "pool_b"
 
 
 @pytest.mark.unit
@@ -1206,7 +1212,7 @@ async def test_aggregate_results_all_pools(pool_mgr_with_pools: PoolManager) -> 
     """Default aggregates every pool."""
     out = await pool_mgr_with_pools.aggregate_results()
     assert set(out.keys()) == {"pool_a", "pool_b", "pool_c"}
-    for _pid, data in out.items():
+    for data in out.values():
         assert data["status"] == "running"
         assert "memory_count" in data
 

@@ -616,6 +616,26 @@ class PoolConfig(BaseModel):
         default="least_loaded",
         description="Pool selection strategy (round_robin, least_loaded, random, affinity)",
     )
+    # ADR-014 caller-side authorization for the AFFINITY selector.
+    # Maps a caller kind (claude_code, workflow, cli, ultracode,
+    # unknown — or "*" for the fallback) to the pools that kind may
+    # dispatch into. Each entry names pools by NAME (stable across
+    # restarts; pool ids are generated per spawn) or by pool id, and
+    # ["*"] means "every currently-registered pool".
+    #
+    # The router derives the allowlist from this map when a caller does
+    # not supply one, so a wire caller can neither widen nor narrow it:
+    # `caller_kind` stays attribution-only. Without an entry for a
+    # caller kind the "*" entry applies, and without any "*" entry the
+    # router allows every registered pool.
+    caller_pool_allowlist: dict[str, list[str]] = Field(
+        default_factory=lambda: {"*": ["*"]},
+        description=(
+            "Per-caller-kind pool authorization for the affinity selector. "
+            'Keys are caller kinds (or "*"), values are pool names/ids, '
+            'and ["*"] means every registered pool.'
+        ),
+    )
     min_workers: int = Field(
         default=1,
         ge=1,
