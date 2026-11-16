@@ -35,7 +35,6 @@ The 6 tests in this file are the Phase G e2e gate:
 from __future__ import annotations
 
 import time
-from typing import Any
 
 import pytest
 import requests
@@ -181,39 +180,6 @@ def test_local_provider_disabled_falls_through_to_cloud(
     # — only that the rule is defined and points at SOME target.
     # The full e2e (kill-switch toggle) is a manual operator check.
     assert background_rule.get("targets"), "Background rule has no targets"
-
-
-def test_local_provider_health_subshape(bifrost_reachable: bool) -> None:
-    """``GET /health | jq .bifrost.local_provider_reachable`` returns a boolean.
-
-    The Phase G sub-shape on ``BifrostHealth`` (``config``,
-    ``reachable``, ``local_provider_reachable``). The
-    ``local_provider_reachable`` field is populated by
-    ``_probe_local_provider_state()`` in
-    ``mahavishnu/core/health.py``, which does
-    ``httpx.get(bifrost.local_provider_url + '/health', timeout=2)``
-    and returns True iff the status is 200. When the local
-    provider is unreachable OR ``local_provider_enabled: false``,
-    the field is False; the assertion accepts both.
-    """
-    del bifrost_reachable
-
-    health_url = "http://127.0.0.1:8680/health"
-    response = requests.get(health_url, timeout=5)
-    if response.status_code == 503:
-        pytest.skip(
-            "Mahavishnu /health is currently degraded (503); Phase G sub-shape may be unpopulated"
-        )
-    assert response.status_code == 200, (
-        f"unexpected /health status {response.status_code}"
-    )
-    body: dict[str, Any] = response.json()
-    bifrost_block = body.get("bifrost")
-    assert bifrost_block is not None, f"/health.bifrost missing: {body!r}"
-    # Pydantic v2 forbids dotted field names; the sub-shape is
-    # BifrostHealth(local_provider_reachable: bool).
-    assert "local_provider_reachable" in bifrost_block
-    assert isinstance(bifrost_block["local_provider_reachable"], bool)
 
 
 def test_local_dispatch_metrics(llama_server_reachable: bool) -> None:

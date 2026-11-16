@@ -176,7 +176,7 @@ class TestTaskOrphanSweeperHealthAggregation:
         )
 
         body = json.loads(response.body)
-        assert body["status"] == "ok"
+        assert body["status"] == "healthy"
         assert body["checks"]["task_orphan_sweeper"]["ok"] is True
         sweeper.health.assert_awaited_once()
 

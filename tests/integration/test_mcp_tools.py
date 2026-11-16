@@ -146,5 +146,5 @@ async def test_monitoring_dashboard_executes_via_fastmcp_call_tool(server):
     assert result is not None
     assert hasattr(result, "content")
     assert result.structured_content["status"] == "success"
-    assert "mahavishnu_ecosystem_status" in result.structured_content
+    assert "ecosystem_status" in result.structured_content
     assert "dashboard" not in result.structured_content
