@@ -78,4 +78,6 @@ WORKTREE_ISOLATION_REFUSALS_TOTAL: Counter = Counter(
     #     settings_unavailable  -- the allowed roots could not be read
     #     no_capable_pool       -- no pool can start a session in a directory
     #     rerank_moved_the_task -- the re-ranking picked a pool that cannot
+    #     pool_cannot_honour_cwd -- a directly targeted pool cannot honour
+    #                               the directory the task named
 )

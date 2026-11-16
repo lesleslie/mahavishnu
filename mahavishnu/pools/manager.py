@@ -686,6 +686,27 @@ class PoolManager:
         if not pool:
             raise ValueError(f"Pool not found: {pool_id}")
 
+        # Fail closed on a directory this pool cannot honour.
+        # ``route_task`` already refuses this, but ``execute_on_pool``
+        # is a public entry in its own right: a caller that names a
+        # pool directly would otherwise have its directory silently
+        # ignored, and the worker would start in the shared checkout
+        # while the caller believed it was isolated. The pools that
+        # cannot honour a directory are not misconfigured -- their
+        # workers are already running somewhere else, and there is
+        # nowhere for them to start.
+        if task.get("cwd") and not self._pool_supports_working_directory(pool_id):
+            WORKTREE_ISOLATION_REFUSALS_TOTAL.labels(
+                reason="pool_cannot_honour_cwd"
+            ).inc()
+            raise RuntimeError(
+                f"Pool {pool_id!r} cannot honour task['cwd'], so the task was "
+                f"not run: its worker would have started in a directory the "
+                f"task did not name. Choose a pool that reports "
+                f"supports_working_directory, or drop the directory from the "
+                f"task."
+            )
+
         logger.info(f"Executing task on pool {pool_id}")
 
         # C7: measure real service time so the M/M/c fit is meaningful.

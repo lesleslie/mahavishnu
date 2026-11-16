@@ -481,6 +481,81 @@ class TestEveryRefusalIsCounted:
         assert self._count("no_capable_pool") == before + 1
 
 
+class TestADirectlyTargetedDirectoryTask:
+    """Naming a pool directly must not bypass the directory guarantee.
+
+    ``route_task`` refuses to move a directory-bearing task onto a pool
+    that cannot honour the directory. ``execute_on_pool`` is a public
+    entry in its own right, though, and it had no such check: a caller
+    that named a pool directly had its directory silently ignored, and
+    the worker started in the shared checkout while the caller believed
+    it was isolated.
+
+    The pools that cannot honour a directory are not misconfigured —
+    their workers are already running somewhere else, and there is
+    nowhere for them to start. So the task is refused rather than run
+    in the wrong place.
+    """
+
+    @pytest.mark.asyncio
+    async def test_it_refuses_a_directory_a_pool_cannot_honour(
+        self, manager: PoolManager
+    ) -> None:
+        manager._pools["incapable"] = _pool("incapable", workers=0)
+
+        with pytest.raises(RuntimeError, match="cannot honour task"):
+            await manager.execute_on_pool(
+                "incapable", {"prompt": "review", "cwd": "/tmp/worktree-1"}
+            )
+
+    @pytest.mark.asyncio
+    async def test_it_runs_the_task_on_a_pool_that_can_honour_it(
+        self, manager: PoolManager
+    ) -> None:
+        manager._pools["capable"] = _pool(
+            "capable", workers=0, supports_working_directory=True
+        )
+
+        result = await manager.execute_on_pool(
+            "capable", {"prompt": "review", "cwd": "/tmp/worktree-1"}
+        )
+
+        assert result["status"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_a_task_without_a_directory_is_unaffected(
+        self, manager: PoolManager
+    ) -> None:
+        """The refusal is about the directory, not about the pool."""
+        manager._pools["incapable"] = _pool("incapable", workers=0)
+
+        result = await manager.execute_on_pool("incapable", {"prompt": "review"})
+
+        assert result["status"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_the_refusal_is_counted(self, manager: PoolManager) -> None:
+        """A refusal that only raises is still a silence on-call cannot hear."""
+        from mahavishnu.core._producer_metrics import (
+            WORKTREE_ISOLATION_REFUSALS_TOTAL,
+        )
+
+        manager._pools["incapable"] = _pool("incapable", workers=0)
+        before = WORKTREE_ISOLATION_REFUSALS_TOTAL.labels(
+            reason="pool_cannot_honour_cwd"
+        )._value.get()
+
+        with pytest.raises(RuntimeError, match="cannot honour task"):
+            await manager.execute_on_pool(
+                "incapable", {"prompt": "review", "cwd": "/tmp/worktree-1"}
+            )
+
+        after = WORKTREE_ISOLATION_REFUSALS_TOTAL.labels(
+            reason="pool_cannot_honour_cwd"
+        )._value.get()
+        assert after == before + 1
+
+
 class TestTheRefusalNamesItsRemedy:
     """The remedy has to work.
 

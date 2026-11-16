@@ -447,7 +447,9 @@ class TestTheReviewPoolIsProvisioned:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The pool is created once, not once per merge."""
-        client = _PoolClient([{"name": "merge-review", "supports_working_directory": True}])
+        client = _PoolClient(
+            [{"name": "merge-review", "supports_working_directory": True}]
+        )
         monkeypatch.setattr(
             "mcp_common.clients.common_mcp_client.CommonMCPClient",
             lambda **kwargs: client,
@@ -496,7 +498,9 @@ class TestTheReviewPoolIsProvisioned:
             async def __aexit__(self, *exc_info: object) -> None:
                 return None
 
-            async def call_tool(self, name: str, arguments: dict[str, Any]) -> _CallResult:
+            async def call_tool(
+                self, name: str, arguments: dict[str, Any]
+            ) -> _CallResult:
                 raise RuntimeError("the server is down")
 
         monkeypatch.setattr(
@@ -572,7 +576,12 @@ class TestTheProvisioningOutcomeIsChecked:
                 if name == "mahavishnu_pool_list":
                     return _CallResult(
                         json.dumps(
-                            [{"name": "merge-review", "supports_working_directory": False}]
+                            [
+                                {
+                                    "name": "merge-review",
+                                    "supports_working_directory": False,
+                                }
+                            ]
                         )
                     )
                 return _CallResult(json.dumps({"status": "exists"}))
@@ -614,6 +623,7 @@ class TestTheRefusalLabelsAreTheOnesTheCodeEmits:
             REPO_NOT_A_GIT_REPO,
             REPO_SETTINGS_UNAVAILABLE,
             "no_capable_pool",
+            "pool_cannot_honour_cwd",
         }
         source = Path(_producer_metrics.__file__).read_text()
 
@@ -638,6 +648,7 @@ class TestTheRefusalLabelsAreTheOnesTheCodeEmits:
             REPO_NOT_A_GIT_REPO,
             REPO_SETTINGS_UNAVAILABLE,
             "no_capable_pool",
+            "pool_cannot_honour_cwd",
         }
         runbook = _Path("docs/runbooks/WORKTREE_ISOLATION.md").read_text()
 

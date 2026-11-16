@@ -162,6 +162,11 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 1. `reason="rerank_moved_the_task"` — the re-ranking picked a pool that
    cannot honour a directory. That is a routing bug, not an operator
    action; the counter is the only signal that it happened.
+1. `reason="pool_cannot_honour_cwd"` — a dispatch named a pool directly
+   and that pool cannot honour the directory the task named. The task
+   was refused rather than run in the wrong directory. Pick a pool
+   that reports `supports_working_directory: true`, or drop the
+   directory from the task.
 
 **Recovery:**
 

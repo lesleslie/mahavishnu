@@ -64,16 +64,21 @@ for worktree isolation. The other pool types do not read the key:
 | Pool type | Reads | Behaviour with `task["cwd"]` |
 |---|---|---|
 | `MahavishnuPool` | `task["cwd"]` | honoured; a pre-spawned pool raises `ValueError` |
-| `SessionBuddyPool` | `task["working_dir"]` | **silently ignored** — different key |
-| `RunPodPool` | — | **silently ignored** |
-| `PiPool` | — | **silently ignored** |
+| `SessionBuddyPool` | `task["working_dir"]` (a different thing) | **refused** — the pool cannot start a worker in a named directory |
+| `RunPodPool` | — | **refused** |
+| `PiPool` | — | **refused** |
 
-So the fail-loud guarantee is scoped to `MahavishnuPool`, not to the pool
-layer as a whole. A dispatch routed to a delegated pool still loses the
-directory; the gap is that those pools have no working-directory concept
-to lose it in. Closing it means either teaching them the key or making
-`PoolManager.route_task` reject a `cwd` it cannot deliver — the latter is
-the fail-loud option and is not implemented.
+So the fail-loud guarantee covers the pool layer as a whole: a task that
+names a directory is either run in that directory or refused. Only
+`MahavishnuPool` can run it in that directory, because the other three
+have no working-directory concept to run it in — and they cannot be given
+one on this side of the boundary. `task["working_dir"]` is *not* the key
+they are missing: in `SessionBuddyPool` it is session-buddy's
+`subagent_marker` bookkeeping about which directory a subagent is
+associated with, not a directory the worker starts in, and session-buddy's
+`execute_on_pool` takes no directory argument at all. Closing the remaining
+gap means teaching those pools the key — a cross-repo change — rather than
+aliasing a key that means something else.
 
 ## Status
 
@@ -96,6 +101,16 @@ failed-`cd` skip, and the untouched default).
   (`~/.local/state/mahavishnu/worktrees/<repo>/`). Left alone here — it is a
   separate decision from the cwd contract, and changing it moves every
   worktree the fleet creates.
-- The fail-loud guarantee covers `MahavishnuPool` only; `SessionBuddyPool`
-  (which uses `task["working_dir"]`), `RunPodPool` and `PiPool` silently
-  ignore `task["cwd"]`. See the table above.
+- The fail-loud guarantee now covers every pool, but only
+  `MahavishnuPool` can actually *honour* a directory. `SessionBuddyPool`,
+  `RunPodPool` and `PiPool` refuse a task that names one rather than
+  running it in the wrong place. The refusal is the whole of what can be
+  done on this side of the boundary: `task["working_dir"]` is a different
+  thing — session-buddy's `subagent_marker` bookkeeping about which
+  directory a subagent is associated with, not a directory the worker
+  starts in — and session-buddy's `execute_on_pool` takes no directory
+  argument at all, so there is nothing for the pool to pass on. Honouring
+  `task["cwd"]` on those pools is a cross-repo change (session-buddy's
+  executor needs a directory parameter; a RunPod pod needs the directory
+  mounted; a Pi subprocess needs its cwd set), and until it lands,
+  refusing is the honest answer. See the table above.
