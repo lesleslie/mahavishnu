@@ -50,7 +50,15 @@ dependencies = [
     # ``mahavishnu.workers.cloud_worker`` imports ``FallbackChain`` and
     # ``LLMSettings`` from that package, so a lower floor fails at
     # import time.
-    "oneiric>=0.36.0",
+    # 0.39.0 is the floor that carries the lazy adapter re-exports
+    # (PEP 562). Before it, every adapter package's ``__init__`` imported
+    # all of its sibling adapters and their client libraries at module
+    # scope, so importing ONE concrete adapter ran every parent package's
+    # ``__init__`` on the way down. That is what this repo's two
+    # ``PostToolUse`` hooks were paying: 3.05 s and 3.49 s each, 6.5 s of
+    # import time on the tool-call critical path per MCP tool call. A lower
+    # floor reinstates that cost on every hook invocation.
+    "oneiric>=0.39.0",
     # Shared infrastructure (mcp-common)
     # 0.18.0+ required for `apply_tool_profile()` (ToolProfile dispatch helper).
     # 0.27.0+ required for the session-scoped Principal propagation fix
@@ -219,7 +227,9 @@ dev = [
     "refurb>=2.3.1",
     "complexipy>=8.0.1",
     "zensical>=0.0.69",
-    "crackerjack>=0.89.2",
+    # 0.95.0 is the floor that carries the archive lifecycle gate -- see
+    # the `ecosystem` group for the full rationale.
+    "crackerjack>=0.95.0",
     {include-group = "ai"},
     {include-group = "cache"},
     {include-group = "content-ingest"},
@@ -259,7 +269,22 @@ cache = [
 # Bodai ecosystem integrations
 ecosystem = [
     "akosha>=0.23.1",
-    "crackerjack>=0.89.2",
+    # 0.95.0 is the floor that carries the archive lifecycle gate
+    # (``crackerjack/core/lifecycle.py`` and
+    # ``DocumentationCategorizer.lifecycle_permits_archival``). Before it,
+    # ``documentation_cleanup`` chose what to archive by FILENAME REGEX with
+    # no frontmatter gate, so a publish swept ``status: complete`` plans out
+    # of ``docs/plans/`` into the gitignored ``docs/plans/.archive/`` --
+    # untracked and gone from the repo. That is how this repo's two OTel
+    # substrate plans were lost on 2026-10-21, 2026-10-27, 2026-10-28,
+    # 2026-11-08 and 2026-11-13.
+    #
+    # This repo's interim ``documentation.auto_cleanup_on_publish: false``
+    # guard is retired now that the gate ships, which makes this floor
+    # LOAD-BEARING: a lower floor re-resolves to a crackerjack with no gate,
+    # and the sweep takes the plans again. Measured against 0.95.0, the
+    # categorizer still finds both plans -- the gate is what holds them.
+    "crackerjack>=0.95.0",
     # 0.38.0 is the first release carrying ``tasks_link_workflow`` — the
     # only channel that writes ``Task.workflow_id`` — and the shared
     # ``HandoffResult`` envelope whose ``status`` default mahavishnu's

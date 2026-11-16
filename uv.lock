@@ -1118,7 +1118,7 @@ wheels = [
 
 [[package]]
 name = "crackerjack"
-version = "0.94.0"
+version = "0.95.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1183,9 +1183,9 @@ dependencies = [
     { name = "watchdog" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/4c/28fab8dbe597ed268475e54616c3410a369a01af9fb447398d47c2313a7d/crackerjack-0.94.0.tar.gz", hash = "sha256:9e52abf65752250bb89f9073dd69e29cf89ac63ce15f4a32219e349bf1b8ae08", size = 5398125, upload-time = "2026-11-15T09:02:32.167Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/6d/bb8fb254303679c9269bd436da7ea6e01a40fa243ad99c5b4c2f23d021a6/crackerjack-0.95.0.tar.gz", hash = "sha256:b2b66f2d7617b23523c4e1eea3c8e087f6c92b1dc41eae235de4f51ba0e6aff4", size = 4390497, upload-time = "2026-11-16T10:21:18.799Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/93/f6bdd25ab4bbe691ba0b0ce3da7a559ac6f62b1abca19bad9971697330ec/crackerjack-0.94.0-py3-none-any.whl", hash = "sha256:8efcc304823c6768f2705e20ff9bfdf2c2627691689e1c5230f84e0300b68a8d", size = 1277089, upload-time = "2026-11-15T09:02:28.874Z" },
+    { url = "https://files.pythonhosted.org/packages/38/b9/26b0aa32775e6cdcde9b9539c801c30f9df1cb565ed6dabbc5b6c07cba4b/crackerjack-0.95.0-py3-none-any.whl", hash = "sha256:0237ff4e05de0f51e0f5fb2aa3eb800a62490590802a9a8664e851a8010d15b1", size = 1285929, upload-time = "2026-11-16T10:21:16.048Z" },
 ]
 
 [[package]]
@@ -3379,7 +3379,7 @@ requires-dist = [
     { name = "llama-index-vector-stores-opensearch", specifier = ">=0.6.3,<0.7.0" },
     { name = "mcp-common", specifier = ">=0.36.0" },
     { name = "msgspec", specifier = ">=0.21.1,<0.22" },
-    { name = "oneiric", specifier = ">=0.36.0" },
+    { name = "oneiric", specifier = ">=0.39.0" },
     { name = "opentelemetry-api", specifier = ">=1.45.1" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = ">=1.45.1" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.45.1" },
@@ -3423,7 +3423,7 @@ dev = [
     { name = "bandit", specifier = ">=1.9.4" },
     { name = "complexipy", specifier = ">=8.0.1" },
     { name = "coredis", specifier = ">=6.9.0" },
-    { name = "crackerjack", specifier = ">=0.89.2" },
+    { name = "crackerjack", specifier = ">=0.95.0" },
     { name = "creosote", specifier = ">=5.2.0" },
     { name = "detect-secrets", specifier = ">=1.5.0" },
     { name = "ebooklib", specifier = ">=0.20" },
@@ -3451,7 +3451,7 @@ dev = [
 ]
 ecosystem = [
     { name = "akosha", specifier = ">=0.23.1" },
-    { name = "crackerjack", specifier = ">=0.89.2" },
+    { name = "crackerjack", specifier = ">=0.95.0" },
     { name = "session-buddy", specifier = ">=0.38.1" },
 ]
 gpu = []
@@ -4083,7 +4083,7 @@ wheels = [
 
 [[package]]
 name = "oneiric"
-version = "0.38.0"
+version = "0.39.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioboto3" },
@@ -4107,9 +4107,9 @@ dependencies = [
     { name = "typer" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/63/e67ad49b9542c1d3cae296b20202f7a41a592e242e90b6034085b78ab511/oneiric-0.38.0.tar.gz", hash = "sha256:d16c150b0f907dab033d37311cd82be3b6bf2a4e4ca8339279865bd330c702b3", size = 1905723, upload-time = "2026-11-15T07:09:42.12Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/7c/61f8b412270717fe3df366fccd284a67f0073823a73a56831a45e8e92330/oneiric-0.39.0.tar.gz", hash = "sha256:a988b1fbddca60081553c42a4e60222adc05410343c5a753e6500dc43b30e1c5", size = 1918338, upload-time = "2026-11-16T10:15:38.39Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b5/0d/0beb608dda066e29cf67f0e0eb28cf6dfa4d945daa4aa286a69287255863/oneiric-0.38.0-py3-none-any.whl", hash = "sha256:36f72ef5c58f01851ccc009d7b31fa008fd967bd86b9ea2755c7f6ce52ebbcd7", size = 538601, upload-time = "2026-11-15T07:09:38.717Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/f0/41056d6643dbe9727e0728265cca85e236a00f95b5e486c473ec502a92bb/oneiric-0.39.0-py3-none-any.whl", hash = "sha256:badf851b693b566857ff500a565800b727934549ca4d8d87f8c1723418fe709c", size = 552082, upload-time = "2026-11-16T10:15:35.605Z" },
 ]
 
 [[package]]
