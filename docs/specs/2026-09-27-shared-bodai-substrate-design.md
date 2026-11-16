@@ -589,7 +589,7 @@ sequenceDiagram
     PG-->>Warm: 10 rows
     Warm-->>Akosha: results
 
-    Note over Akosha: Cross-namespace search is explicit and audited;<br/>Akosha typically searches akosha.* only
+    Note over Akosha: Cross-namespace search is explicit and audited,<br/>Akosha typically searches akosha.* only
 ```
 
 ### 7.2 Cold-tier write with prefix + ACL
