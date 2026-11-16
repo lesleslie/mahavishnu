@@ -11,7 +11,7 @@ requirements:
 - id: REQ-AFFINITY-001
   title: "pool_affinity honours a server-side, operator-configured allowlist"
 - id: REQ-AFFINITY-002
-  title: "The affinity allowlist is derived from settings, never from wire input"
+  title: "The affinity allowlist is never keyed on a wire-supplied value"
 - id: REQ-WORKERTYPE-001
   title: "The CLI and the MCP spawn tool accept the same pool-capable worker types"
 - id: REQ-WORKERTYPE-002
@@ -92,8 +92,10 @@ LEAST_LOADED; and `mahavishnu pool spawn --worker-type terminal-claude` exits 0.
 
 - **REQ-AFFINITY-001** — `pool_affinity` names the pool the dispatch lands on,
   when that pool is in the caller's allowlist.
-- **REQ-AFFINITY-002** — the allowlist comes from settings. A wire caller
-  cannot widen or narrow it; `caller_kind` stays attribution-only.
+- **REQ-AFFINITY-002** — the allowlist comes from the operator's configuration
+  and is never keyed on a wire-supplied value. `caller_kind` is quota
+  attribution, so a policy keyed on it would let a caller choose its own
+  permissions.
 - **REQ-WORKERTYPE-001** — the CLI and the MCP spawn tool accept and reject the
   same worker types.
 - **REQ-WORKERTYPE-002** — the accepted set is computed from the worker
@@ -123,9 +125,15 @@ inverse — that `terminal-claude` is rejected.
 ### Phase 2 — Wire the affinity allowlist
 
 Add `pools.caller_pool_allowlist` to `PoolConfig` (`mahavishnu/core/config.py`):
-a mapping of caller kind → pool names/ids, with `"*"` for "all registered
-pools". `PoolManager` resolves it per call — names to ids via `_pools_by_name`
-— and `route_task` uses it when the caller did not supply one.
+the pools a caller may pin, as names/ids, with `["*"]` for "all registered
+pools". The env var `MAHAVISHNU_PEER_AFFINITY_ALLOWLIST` — the name ADR-014
+gives, and which was documented in two places but implemented in none —
+overrides it. `PoolManager` resolves it — names to ids via `_pools_by_name` —
+and `route_task` uses it when the caller did not supply one.
+
+The policy is **not** keyed on `caller_kind`. ADR-014 is explicit that
+`caller_kind` is quota attribution, so a policy keyed on it would let a
+caller select its own authorization bucket by sending a different string.
 
 **Integration Contract**
 
@@ -134,8 +142,7 @@ pools". `PoolManager` resolves it per call — names to ids via `_pools_by_name`
   record.
 - Demonstrable by: a dispatch naming a registered pool returns that pool's id.
 - Rollback signal: a dispatch that reached a pool by name now does not.
-- Observability added: the routing-decision record carries the effective
-  allowlist.
+- Observability added: the effective policy is logged once per process.
 - Requirements: REQ-AFFINITY-001, REQ-AFFINITY-002.
 
 ### Phase 3 — Correct the documentation

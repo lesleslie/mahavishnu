@@ -175,21 +175,32 @@ retired and have been running live pool tasks throughout.
 selector is authorization-gated (ADR-014): the router honours a pinned
 pool only when the caller's allowlist contains it. The allowlist is
 server-side — a wire caller names a pool, never the set of pools it may
-use — and comes from `pools.caller_pool_allowlist` in the settings:
+use — and comes from the operator's configuration:
 
 ```yaml
 pools:
-  caller_pool_allowlist:
-    "*": ["*"]            # every caller kind may use every registered pool
-    workflow: ["merge-review"]   # except a workflow, which is pinned
+  caller_pool_allowlist: ["*"]      # every currently-registered pool
 ```
 
-Keys are caller kinds (`claude_code`, `workflow`, `cli`, `ultracode`,
-`unknown`) or `"*"` for the fallback; values are pool **names** (stable
-across restarts — a pool id is generated per spawn) or pool ids, and
-`["*"]` means every currently-registered pool. An entry for the exact
-caller kind wins over the `"*"`. If the settings cannot be read the
-router fails closed and refuses a pinned pool rather than guessing.
+or, per process, from the env var ADR-014 names:
+
+```bash
+export MAHAVISHNU_PEER_AFFINITY_ALLOWLIST="merge-review,claude-pool"
+```
+
+Values are pool **names** (stable across restarts — a pool id is
+generated per spawn) or pool ids, and `*` means every currently-registered
+pool. The env var overrides the settings value.
+
+The policy is deliberately **not** keyed on `caller_kind`. That parameter
+is quota attribution (which ClientKind bucket a dispatch counts against),
+so a policy keyed on it would let a caller choose its own permissions by
+choosing a string. It is one operator-level policy for the deployment.
+
+With no policy declared — the default, and what a settings read failure
+yields — the router refuses a pinned pool and makes the choice itself
+(`LEAST_LOADED`). That is the fail-closed default. The effective policy is
+logged once per process so an operator can see which one is live.
 
 **Architecture**:
 
