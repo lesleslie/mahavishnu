@@ -128,11 +128,13 @@ class TestRegistryIntegrity:
 class TestMigrationOutcome:
     """Post-migration invariants on the canonical manifest."""
 
-    def test_entry_count_is_thirty_six(self) -> None:
+    def test_entry_count_is_thirty_seven(self) -> None:
+        # Bumped 36 → 37 when dhara was added to the canonical manifest (see
+        # settings/ecosystem.yaml). Renamed the test method in lockstep.
         # Bumped 35 → 36 when flowscape was added to the canonical manifest
         # as a private GitLab repo with a publish block (see
         # settings/ecosystem.yaml). Renamed the test method in lockstep.
-        assert len(_repos(ECOSYSTEM_PATH)) == 36, (
+        assert len(_repos(ECOSYSTEM_PATH)) == 37, (
             "update pinned count to match current canonical manifest"
         )
 
