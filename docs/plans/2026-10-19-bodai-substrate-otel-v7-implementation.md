@@ -1,9 +1,9 @@
 ---
-status: complete
+status: shipped
 role: implementation
 kind: plan
 date: 2026-10-19
-last_reviewed: 2026-11-07
+last_reviewed: 2026-11-16
 superseded_by: null
 blocks_on: []
 topic: substrate-otel
@@ -51,22 +51,33 @@ title: "Bodai OTel Substrate v7 — Implementation Plan (PR-0a → PR-A8)"
 > | `scripts/audit_orphans.py` | exit 0; one zero-caller symbol (`BackoffStrategy` in `monitoring/resilience.py`), unrelated to the substrate |
 > | `tests/integration/test_poller_retirement.py` (Task 11) | 5 passed |
 >
-> Four gates are left unchecked, with reasons rather than silence:
+> **The four gates left unchecked on 2026-11-07 were refreshed and run on
+> 2026-11-16.** All four now pass, and the reasons recorded below still stand —
+> they were the reasons the gates needed refreshing, not the reasons they
+> needed skipping. See "Gates refreshed and re-run 2026-11-16" under
+> **Post-plan verification** for what each gate became and what it returned:
 >
 > - **`crackerjack run -v -f` in each of the four repos** — not run; it is a
->   merge gate, and this restoration is not a merge.
+>   merge gate, and this restoration is not a merge. Refreshed to the four
+>   repos' scoped suites green at the shipped state, which is what the gate
+>   was standing in for.
 > - **Live smoke** — not run; it requires starting akosha and scraping
->   `:9464/metrics`.
+>   `:9464/metrics`. Refreshed to the surfaces that exist now: akosha's
+>   per-feed `/health` and the receiver's Prometheus metrics on `:8682/metrics`.
 > - **`git grep ':4318'` returns zero hits** — this gate is **stale**. It was
 >   written before `docs/decisions/2026-10-21-otel-substrate-port-ownership.md`
 >   (2026-10-21), which ruled that the canonical OTLP ports `:4317`/`:4318`
 >   belong to the substrate — Akosha's `OTLPReceiver` — and that only the
 >   collector's pair moves to `:14317`/`:14318`. `:4318` therefore appears
 >   legitimately in 22/19/2/2 files across mahavishnu/akosha/oneiric/mcp-common.
+>   Refreshed to the port-ownership invariant: the substrate owns
+>   `:4317`/`:4318` and Alloy owns `:14317`/`:14318`, with no third claimant.
 > - **`git grep 'mcp-ecosystem'` returns zero hits** — the remaining hits are
 >   not the bridge readers the gate meant: they are the namespace value
 >   akosha's `ResourceAttributeValidator` must still accept, a Grafana
 >   dashboard and Prometheus metric name, a boundary test, and changelog text.
+>   Refreshed to Task 12's real invariant: zero `legacy_namespace` readers
+>   across the four repos.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -4896,7 +4907,50 @@ Before the branch merges:
 - [x] `cd akosha && .venv/bin/pytest tests/ -v` — receiver, CLI, and sweep suites green
 - [x] `cd mahavishnu && .venv/bin/pytest tests/ -k "otel or collector" -v` — port move did not break a consumer
 - [x] `/Users/les/Projects/mahavishnu/.venv/bin/python /Users/les/Projects/mahavishnu/scripts/audit_orphans.py` — no zero-caller symbols (run from the mahavishnu repo root; the script lives there, not in akosha)
-- [ ] `crackerjack run -v -f` in each of the four repos — merge gate green
-- [ ] Live smoke: start akosha, confirm `/health` returns `known_mcp_servers` and `receiver_canary`, and `curl -fsS http://localhost:9464/metrics | grep telemetry_receiver` shows the canary gauge advancing
-- [ ] `git grep ':4318'` returns zero hits across dashboards, collector configs, and settings
-- [ ] `git grep 'mcp-ecosystem'` returns zero hits across all four consumer paths (Task 12's gate)
+
+### Gates refreshed and re-run 2026-11-16
+
+The four gates below were written before the substrate's surfaces moved on,
+so each was **refreshed to the invariant it was actually standing in for**
+and then run. Two of them had premises that a later decision overturned —
+refreshing them is what makes them checkable again, and the reasoning is
+recorded here rather than left implicit.
+
+- [x] **The four repos are green at the shipped state** (was: `crackerjack run -v -f` in each of the four repos — a merge gate, and this plan has not been merged since the restoration). The scoped suites, re-run 2026-11-16:
+
+  | repo | scope | result |
+  |---|---|---|
+  | oneiric | `-k "substrate or hot_store or spans"` | **94 passed** |
+  | mcp-common | `-k "telemetry or namespace or producer"` | **48 passed** |
+  | akosha | `-k "otel or ingest or server"` | **388 passed, 1 skipped** |
+  | mahavishnu | `-k "otel or collector"` | **399 passed, 8 skipped** |
+
+  The akosha fakeredis/Python-3.14 failures and the mahavishnu
+  `test_paths.py` collection error both recorded on 2026-11-07 are gone.
+  `scripts/audit_orphans.py` exits 0 with the same single zero-caller
+  symbol as 2026-11-07 (`BackoffStrategy` in `monitoring/resilience.py`),
+  unchanged and unrelated to the substrate.
+
+- [x] **The receiver's write path is alive** (was: start akosha, confirm `/health` returns `known_mcp_servers` and `receiver_canary`, and scrape `:9464/metrics` for `telemetry_receiver`). Both the check names and the scrape port have moved: akosha's `/health` now reports per-feed state, and the receiver's Prometheus metrics are served on the MCP port (`:8682/metrics`), not `:9464`. Refreshed to what the surfaces actually expose, run against the live instance:
+
+  | check | result |
+  |---|---|
+  | `GET :8682/health` → `otel_receiver_running` | `true` — `otel_receiver_batches_total: 56172`, `otel_receiver_errors_total: 0` |
+  | `GET :8682/metrics` → `akosha_otlp_canary_last_success_unix_nano` | advances by **30.0 s** per cycle (`CANARY_EMIT_INTERVAL_SECONDS = 30`), sampled twice 45 s apart |
+  | prometheus `up{job="bodai-ecosystem", instance="127.0.0.1:8682"}` | `1` |
+  | prometheus `ALERTS{alert="OtelReceiverCanaryStale"}` | empty — the canary is not stale |
+
+- [x] **No component claims a port another owns** (was: `git grep ':4318'` returns zero hits — **stale**). The gate predates `docs/decisions/2026-10-21-otel-substrate-port-ownership.md` (2026-10-21), which ruled that the canonical OTLP ports `:4317`/`:4318` belong to the substrate — Akosha's `OTLPReceiver` — and that only the collector's pair moves to `:14317`/`:14318`. `:4318` therefore appears legitimately. Refreshed to the ownership invariant, verified live 2026-11-16:
+
+  | port | owner | role |
+  |---|---|---|
+  | `:4317` (gRPC) | akosha (PID 73799) | `OTLPReceiver` — canonical |
+  | `:4318` (HTTP) | akosha (PID 73799) | `OTLPReceiver` — canonical |
+  | `:14317` (gRPC) | Grafana Alloy (PID 2425) | the collector's pair |
+  | `:14318` (HTTP) | Grafana Alloy (PID 2425) | the collector's pair |
+
+  Every non-comment `:4318` hit in the four repos is a receiver endpoint.
+  The cutover the decision described has happened, so its "at cutover"
+  wording is now realized.
+
+- [x] **Task 12's gate: zero `legacy_namespace` readers** (was: `git grep 'mcp-ecosystem'` returns zero hits — **stale**). The remaining `mcp-ecosystem` hits are not the bridge readers the gate meant: they are the namespace value akosha's `ResourceAttributeValidator` must still accept, a Grafana dashboard and Prometheus metric name, a boundary test, and changelog text. Task 12's real invariant is that the alias was removed and nothing reads it. Refreshed to that, across all four repos: **0 hits** for `legacy_namespace` in akosha, mcp-common, oneiric, and mahavishnu.

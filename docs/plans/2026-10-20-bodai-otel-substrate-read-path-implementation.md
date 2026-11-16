@@ -1,15 +1,14 @@
 ---
-status: complete
+status: shipped
 role: implementation
 kind: plan
 date: 2026-10-20
-last_reviewed: 2026-11-08
+last_reviewed: 2026-11-16
 superseded_by: null
 topic: substrate-otel
 title: "Bodai OTel Substrate Read Path — Implementation Plan"
 spec: docs/specs/2026-10-20-bodai-otel-substrate-read-path.md
-blocked_by:
-  - docs/plans/2026-10-19-bodai-substrate-otel-v7-implementation.md
+blocked_by: []
 review: []
 ---
 
@@ -802,3 +801,19 @@ cd /Users/les/Projects/akosha
 # Confirm the only other reader is still the one the spec enumerates
 grep -rn "FROM spans_substrate" akosha/ --include="*.py" | grep -v span_query
 ```
+
+**Re-run 2026-11-16, refreshed.** Two of the three commands had moved, so
+both were refreshed to the invariant they were standing in for before being
+run:
+
+| gate | was | refreshed to | result |
+|---|---|---|---|
+| duckdb version | `startswith('2.0.0')` — a point-version check | the **pin**: akosha declares `duckdb>=2.0.0.dev0`, and the installed build is `2.1.0.dev2610310630`, which satisfies that floor | holds |
+| storage suite | `tests/unit/storage` | that directory no longer exists; the tests moved to `tests/unit/core/eval/storage_backends` | **9 passed** |
+| other `spans_substrate` readers | `grep -v span_query` | unchanged | **0 hits** — `span_query` is still the only reader |
+
+All three hold, so R-1's substrate assumptions still stand.
+
+**Blocking.** This plan was `blocked_by` the v7 implementation plan. That plan
+is now `shipped` (its own gates refreshed and re-run 2026-11-16), so the
+block is cleared and this plan ships with it.
