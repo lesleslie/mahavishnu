@@ -690,12 +690,16 @@ async def _call_tool_over_http(
     caller asked for.
 
     A review dispatch is idle for minutes: the reviewer reads the diff,
-    reads the files it touches, and thinks before it answers. An idle
-    stream is exactly what a read timeout cuts. The call comes back at
-    300 s with no reply, the review is lost, and it reads as a
-    malformed verdict rather than as a reviewer that ran out of time --
-    so the merge blocks on a review that never happened, and the retry
-    does the same.
+    reads the files it touches, and thinks before it answers. The read
+    timeout is per read, so a stream that goes quiet for longer than
+    the timeout is cut.
+
+    Whether that is what ends a review is a separate question, and it
+    is not settled: a dispatch whose worker slept 420 s came back at
+    602.6 s with its payload intact, so the default did not cut that
+    one. What is not in doubt is that the budget the caller asked for
+    never reached the transport, and a budget that was never handed
+    over is not a budget.
 
     So the review dispatch opens its own session, with the read timeout
     set to the dispatch's budget. The SDK is used directly for this

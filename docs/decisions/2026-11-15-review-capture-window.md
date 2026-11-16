@@ -122,11 +122,57 @@ has to keep fitting a capture smaller than this repo's.
   written last, so the last event is the one that answers this
   dispatch.
 
+## What still blocks a verdict (2026-11-16)
+
+The capture, the extraction, the verdict parser and the prompt are fixed
+and measured, and the fork crash that was killing the MCP server's own
+children is fixed too (see
+`2026-11-16-no-grpc-in-forking-processes.md`). A review still does not
+produce a readable verdict, for a reason outside this file's scope.
+
+**The reviewer's CLI session ends mid-turn and never emits a result
+event.** The captured stream carries
+`"terminal_reason":"aborted_streaming"`, `"is_error":true` and
+`"subtype":"error_during_execution"` after 30 turns, and no
+`"type":"result"` line anywhere. The capture then holds a session with
+no reply in it, so the review reads as a malformed verdict — which is a
+fail-loud block, not a review that had no opinion. The CLI's own
+diagnostic is terse: `[ede_diagnostic] result_type=user
+last_content_type=n/a stop_reason=tool_use`, from an API call that had
+run for 161 s. A short review-shaped dispatch — a prompt that asks the
+model to read one file and answer — completes in 250 s and produces a
+clean result event, so the abort is not the pool, the capture or the
+transport: it is the model session's own stream, ending mid-turn.
+
+Two candidate causes were checked rather than assumed, and both are
+ruled out:
+
+- **The fork crash.** With the OTLP exporters no longer loading
+  grpcio, the crash reports stopped dead (27 before a review run, 27
+  after) and the server logged no fork warnings at all. The reviews
+  still failed the same way.
+- **The harness's permission check.** The pane's "system" events are
+  `thinking_tokens` — 496 of them in one pane — and not hook
+  notifications, so the reviewer was not starved by hook latency. The
+  permission denials it did hit (a `cd` before a version-control
+  command, a file redirect) cost it a turn each, not its reply.
+
+So the open question is upstream of this repo: an Anthropic-compatible
+stream through the Bifrost gateway ends mid-turn, and the reviewer
+never gets to answer. Until that is settled, a merge whose review
+cannot be read is blocked by the environment — and the prompt's budget
+and the capture's window are the only things this side still controls.
+
 ## Status
 
-Accepted, 2026-11-15. The capture reads the scrollback and keeps the
-newest bytes; the prompt states the ceiling and the practical advice
-without claiming a mechanism; and the three consumers of the capture
+Accepted, 2026-11-15. Updated 2026-11-16: the capture reads the
+scrollback and keeps the newest bytes; the reply is taken from the last
+`"result"` event; the verdict parser reads the **last** verdict block
+rather than the first, because the prompt permits analysis before the
+block and an analysis that quotes a line of code carries a literal
+`<verdict>...</verdict>` in it; the prompt states the ceiling and the
+practical advice without claiming a mechanism; the review dispatch
+carries its own budget to the transport; and the three consumers of the capture
 are consistent with the change — the one-shot review path (a fresh
 session per task, so its scrollback holds exactly one run), the
 interactive path (where `_output_since`'s `pane.startswith(before)`
