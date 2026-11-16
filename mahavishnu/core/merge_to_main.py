@@ -194,13 +194,30 @@ def parse_verdict(agent_text: str) -> dict[str, str]:
     enters the pipeline, so sanitizing here covers every consumer of a
     verdict (the retry message, the operator-facing summary, and the
     persisted review state).
+
+    The **last** verdict block is the answer, not the first. The prompt
+    asks the reviewer to put its verdict block last, with any analysis
+    before it -- and an analysis that quotes a line of code can carry a
+    literal ``<verdict>...</verdict>`` in it. A review of this branch
+    quoted the integration test's own reply-builder line, and the parser
+    took the quote as the verdict: the reviewer had said
+    ``decision: pass``, and the merge read a note that was a fragment of
+    Python. Reading the first block also contradicts the prompt, and
+    contradicts the capture, which keeps the newest bytes -- so a reply
+    that was cut at the head keeps its tail, where the verdict block is.
+
+    Among the blocks, the last one is the answer. A block that names no
+    known decision is not skipped in favour of an earlier one: that
+    would report an earlier quote as the verdict and hide the reviewer's
+    own answer, which is a fail-loud case the retry path handles.
     """
-    match = VERDICT_RE.search(agent_text)
-    if match is None:
+    matches = list(VERDICT_RE.finditer(agent_text))
+    if not matches:
         return {
             "decision": "block",
             "note": "malformed: <verdict> block not found in agent response",
         }
+    match = matches[-1]
     decision_raw = match.group(1).strip().lower()
     note = sanitize_note((match.group(2) or "").strip())
     if decision_raw not in VALID_DECISIONS:

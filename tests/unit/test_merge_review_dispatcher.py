@@ -24,6 +24,7 @@ import pytest
 
 from mahavishnu.core.merge_review_dispatcher import (
     REVIEW_DISPATCH_TIMEOUT,
+    REVIEW_REPLY_BUDGET_CHARS,
     _extract_agent_text,
     _extract_reply_text,
     _parse_pool_result,
@@ -32,7 +33,7 @@ from mahavishnu.core.merge_review_dispatcher import (
     dispatch_review_async,
     ensure_review_pool_async,
 )
-from mahavishnu.core.merge_to_main import parse_verdict
+from mahavishnu.core.merge_to_main import MAX_NOTE_LENGTH, parse_verdict
 
 #: The tail of Claude Code's stream-json result line, as the pool
 #: captures it: the head is a cut window, and the ``"result"`` field
@@ -86,6 +87,77 @@ class TestTheAgentTextIsExtracted:
         # the worker said rather than returning nothing.
         fragment = '"result":"","type":"result"}'
         assert _extract_agent_text(fragment) == fragment
+
+    def test_an_earlier_turns_result_is_not_the_answer(self) -> None:
+        """The last result event is the one that answers this dispatch.
+
+        The capture reads the pane's scrollback rather than one
+        screenful, so a session that ran more than one turn carries
+        more than one result event. The reply is written last, so the
+        last event is the answer -- taking the first would report an
+        earlier turn's verdict as this dispatch's.
+        """
+        pane = (
+            '{"type":"result","result":"<verdict>decision: block note: '
+            'the first turn</verdict>"}'
+            '{"type":"result","result":"<verdict>decision: pass note: '
+            'the second turn</verdict>"}'
+        )
+
+        extracted = _extract_agent_text(pane)
+
+        assert "the second turn" in extracted
+        assert "the first turn" not in extracted
+
+    def test_a_result_key_inside_a_tool_result_is_not_the_answer(self) -> None:
+        """Only the stream's own result event is the reply.
+
+        A tool result can *carry* a ``result`` key -- a reviewer that
+        reads a file quoting a verdict block puts one in the pane --
+        and a plain search for the last ``"result"`` key picks that
+        one up, because it comes later in the text. Parsing the events
+        keeps it out: the quoted key is nested inside a tool result,
+        not a field of a result event.
+
+        The shape here is a session whose second turn was cut short:
+        the first turn's result event is the last answer the stream
+        produced, and the capture ends inside the second turn.
+        """
+        pane = "\n".join(
+            [
+                json.dumps(
+                    {
+                        "type": "result",
+                        "result": (
+                            "<verdict>decision: pass note: the real answer</verdict>"
+                        ),
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "user",
+                        "message": {
+                            "content": [
+                                {
+                                    "type": "tool_result",
+                                    "content": {
+                                        "result": (
+                                            "<verdict>decision: block note: "
+                                            "quoted from a file</verdict>"
+                                        )
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                ),
+            ]
+        )
+
+        extracted = _extract_agent_text(pane)
+
+        assert "the real answer" in extracted
+        assert "quoted from a file" not in extracted
 
 
 class TestTheVerdictBecomesParseable:
@@ -238,30 +310,139 @@ class TestTheReviewBudget:
     def test_the_prompt_states_the_budget_the_reviewer_really_has(self) -> None:
         """The reviewer is told the budget that is real.
 
-        The server-side budget above is not what the caller waits for:
-        the MCP client's read timeout cuts a response stream that has
-        gone quiet, so the call ends after minutes rather than an
-        hour, and the reviewer is torn down mid-review. A reviewer
-        that is cut off has no verdict at all, so the prompt has to
-        state the budget that binds -- otherwise it spends the time
-        reading every changed file and the review is lost rather than
-        counted.
+        The prompt used to say "about three minutes" and to claim the
+        transport cut the reviewer off. Neither was true. The
+        dispatch's budget is ``REVIEW_DISPATCH_TIMEOUT`` -- an hour --
+        and the transport's read timeout is a *per-event* timeout that
+        the server's heartbeats keep from firing; reviews in this repo
+        have run to 855 s and 1168 s and finished.
 
-        Pinning the constant instead would not catch this: the
-        constant can be an hour while the transport allows three
-        minutes.
+        A prompt that states a budget three times too short makes a
+        reviewer rush, and a reviewer that rushes writes a long reply
+        to compensate -- which is what pushes it past the capture
+        bound. So the number the prompt states has to be the number
+        the dispatch enforces.
         """
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
 
-        assert "about three minutes" in prompt
+        assert f"{int(REVIEW_DISPATCH_TIMEOUT // 60)} minutes" in prompt
         assert "read only the files you need" in prompt
+
+    def test_the_prompt_does_not_claim_a_cut_off_that_does_not_happen(self) -> None:
+        """The prompt must not assert a cut-off that never fires.
+
+        Telling a reviewer it will be torn down after three minutes
+        makes it treat a full read of the diff as a luxury, and the
+        verdict it then produces is the one the merge is judged on.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+
+        assert "about three minutes" not in prompt
+        assert "cut off after that" not in prompt
+
+    def test_the_prompt_does_not_assert_an_unconfirmed_mechanism(self) -> None:
+        """The prompt states a ceiling; it does not claim what enforces it.
+
+        The client's httpx read timeout is 300 s on a quiet stream,
+        and the server's dispatch heartbeat is a no-op for a client
+        that sends no progress token -- which this one does not. So
+        "the transport is not what cuts you off" was a specific claim
+        about a mechanism that was never confirmed. What was measured
+        is that the call survives: a call held open for 420 s came
+        back with its payload intact.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+
+        assert "the transport is not what cuts you off" not in prompt
+        assert "do not plan on spending it" in prompt
+
+    def test_the_constant_does_not_assert_the_mechanism_either(self) -> None:
+        """The prompt and the constant it reads must not disagree.
+
+        A reviewer caught the prompt claiming an hour while the
+        constant's own comment said the transport cut a reviewer off
+        and that "the budget the reviewer actually has is minutes, not
+        an hour". Nothing reads that comment but a human, so the stale
+        claim is pinned here.
+        """
+        import inspect
+
+        from mahavishnu.core import merge_review_dispatcher
+
+        source = inspect.getsource(merge_review_dispatcher)
+
+        assert "minutes, not an hour" not in source
 
     def test_the_budget_is_stated_even_without_a_diff_summary(self) -> None:
         """The budget is a property of the dispatch, not the summary."""
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
 
         assert "could not be summarized automatically" in prompt
-        assert "about three minutes" in prompt
+        assert f"{int(REVIEW_DISPATCH_TIMEOUT // 60)} minutes" in prompt
+
+
+class TestTheReplyBudget:
+    """The prompt's reply budget has to match what the capture can hold.
+
+    The reply is read back out of the worker's terminal pane. The
+    prompt used to state a budget of "about 1,500 characters" and
+    explain it as "the pool captures the last screenful of your
+    terminal" -- which described the capture accurately at the time,
+    but also told the reviewer to write a reply that would exactly
+    fill a screenful. The capture now reads the scrollback, so the
+    budget is larger; and the note length the prompt quotes was 600
+    while the sanitizer caps a note at 500.
+    """
+
+    def test_the_note_length_the_prompt_gives_is_the_cap_that_is_enforced(self) -> None:
+        """One source of truth for the note length.
+
+        A reviewer that trusted the prompt's 600 characters could
+        write a note that the sanitizer then truncated.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+
+        assert f"under {MAX_NOTE_LENGTH} characters" in prompt
+
+    def test_the_prompt_does_not_describe_the_capture_by_its_old_shape(self) -> None:
+        """The prompt must not explain the budget by the capture's shape.
+
+        It used to say the pool "captures the last screenful of your
+        terminal". The capture no longer reads one screenful, and a
+        prompt that describes it that way tells a reviewer its reply
+        is cut at a screenful's worth -- which is the belief that
+        produced the long replies. What the reviewer needs to know is
+        that the read is bounded, and by how much.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+
+        assert "captures the last screenful" not in prompt
+        assert "the read is bounded" in prompt
+
+    def test_the_prompt_still_asks_for_the_verdict_block_last(self) -> None:
+        """The block stays last: the read-back is bounded at the end.
+
+        The capture keeps the newest bytes, so a reply that runs past
+        the bound loses its beginning. The verdict block is the one
+        part of the reply that must never be the part that is lost.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+
+        assert "verdict block LAST" in prompt
+
+    def test_the_reply_budget_fits_what_the_smallest_capture_holds(self) -> None:
+        """The advice has to fit a capture smaller than this repo's.
+
+        The capture reads the pane's scrollback, so the reply could be
+        far longer than the prompt's budget. The budget is the advice
+        that keeps a review inside its budget, and it has to survive a
+        capture that is smaller than the one this repo runs: the
+        visible pane is 24 rows of 80 columns, and a reply past about
+        that used to arrive with its opening cut off -- which reads as
+        a malformed verdict and blocks the merge on a review that ran
+        perfectly well.
+        """
+        assert REVIEW_REPLY_BUDGET_CHARS <= 24 * 80
 
 
 class TestTheReviewPrompt:
@@ -295,22 +476,104 @@ class TestTheReviewPrompt:
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
         assert "do not modify" in prompt.lower()
 
+    def test_the_prompt_says_how_to_run_the_version_control_commands(
+        self,
+    ) -> None:
+        """A refused command leaves the review with nothing to judge.
+
+        The reviewers run under the harness's permission check, which
+        refuses a command that changes directory before a
+        version-control command, and refuses a command it cannot check
+        before running it -- a ``cd ... && git ...`` chain, a ``;``
+        chain, or a shell variable. A reviewer's ``git diff`` was
+        refused that way, and the reviewer had no diff to judge, so it
+        replied without a verdict: an unreadable verdict, which is a
+        block. The prompt has to say how to run the commands instead.
+        """
+        prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
+        lowered = prompt.lower()
+        assert "no `cd` in front" in lowered
+        assert "one command at a time" in lowered
+        assert "no verdict at all" in lowered
+
     def test_the_prompt_still_asks_for_the_verdict_block(self) -> None:
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
         assert "<verdict>" in prompt
         assert "decision: pass|needs_adjustment|block" in prompt
 
-    def test_the_prompt_bounds_the_reply_to_the_capture_window(self) -> None:
-        """The pool captures the last screenful of the reply.
+    def test_a_quoted_verdict_block_does_not_hide_the_real_one(self) -> None:
+        """The last verdict block is the answer, not the first.
 
-        The capture is the pane's visible screen -- 24 rows -- so a
-        reply with prose in front of the verdict block arrives with the
-        block's opening tag cut off, and the verdict cannot be parsed.
-        The reply has to be the block, and it has to be short.
+        The prompt lets the reviewer put its analysis before the verdict
+        block, and an analysis that quotes a line of code carries a
+        literal ``<verdict>...</verdict>`` in it. A review of this
+        branch quoted the integration test's own reply-builder line, and
+        the parser took the quote as the verdict: the reviewer had said
+        ``decision: pass``, and the merge read a note that was a
+        fragment of Python.
+        """
+        reply = (
+            "The reply builder in the test reads\n"
+            '    return "<verdict>decision: pass note: " + '
+            'body[:REPLY_LENGTH] + "</verdict>"\n'
+            "which is fine.\n"
+            "<verdict>decision: needs_adjustment "
+            "note: the capture still cuts the reply</verdict>"
+        )
+
+        verdict = parse_verdict(reply)
+
+        assert verdict["decision"] == "needs_adjustment"
+        assert verdict["note"] == "the capture still cuts the reply"
+
+    def test_a_verdict_block_with_no_known_decision_does_not_win(self) -> None:
+        """Prose that opens a block without a decision is skipped.
+
+        A reviewer that writes ``<verdict>`` in its analysis and does
+        not name a decision in it would otherwise swallow the real
+        block that follows, and the review would read as malformed.
+        The block needs a decision right after the tag to match at all.
+        """
+        reply = (
+            "The prompt shows a <verdict> block like this\n"
+            "<verdict>decision: needs_adjustment note: the real one</verdict>"
+        )
+
+        verdict = parse_verdict(reply)
+
+        assert verdict["decision"] == "needs_adjustment"
+        assert verdict["note"] == "the real one"
+
+    def test_a_typo_in_the_last_block_is_not_papered_over(self) -> None:
+        """A decision the pipeline does not know is a malformed verdict.
+
+        Reading an earlier block instead would report a quote as the
+        reviewer's answer and hide the answer it did give -- and the
+        review would pass on the strength of a line of code.
+        """
+        reply = (
+            "<verdict>decision: pass note: an earlier quote</verdict>\n"
+            "<verdict>decision: maybe</verdict>"
+        )
+
+        verdict = parse_verdict(reply)
+
+        assert verdict["decision"] == "block"
+        assert "unknown decision" in verdict["note"]
+
+    def test_the_prompt_bounds_the_reply_to_the_capture_window(self) -> None:
+        """The reply has to fit inside the capture's bound.
+
+        The capture reads the worker's terminal scrollback and keeps
+        the newest bytes inside a fixed bound. A reply that runs past
+        the bound arrives with its opening cut off, and the verdict
+        cannot be parsed. So the reply has to be the block, and short
+        enough to fit.
         """
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
         assert "nothing outside it" in prompt.lower()
-        assert "600 characters" in prompt
+        assert f"under {MAX_NOTE_LENGTH} characters" in prompt
+        assert f"under about {REVIEW_REPLY_BUDGET_CHARS:,} characters" in prompt
 
     def test_the_prompt_still_points_at_the_worktree(self) -> None:
         """Whichever branch the diff takes, the reviewer is sent to the tree."""
@@ -335,14 +598,14 @@ class TestTheReviewPrompt:
     def test_the_prompt_requires_the_verdict_block_last(self) -> None:
         """The capture keeps the tail, so the block has to be at the end.
 
-        The pool captures the last screenful of the worker's terminal
-        and drops everything before it. A verdict block written before
-        the cut is simply gone, so the block must be the last thing
-        the reviewer writes.
+        The capture reads the worker's terminal scrollback and keeps
+        the newest bytes within its bound. A verdict block written
+        before that cut is simply gone, so the block must be the last
+        thing the reviewer writes.
         """
         prompt = build_review_prompt("feat/x", "main", Path("/tmp"))
-        assert "LAST thing you write" in prompt
-        assert "1,500 characters" in prompt
+        assert "verdict block LAST" in prompt
+        assert "before it, never after it" in prompt
 
 
 class TestTheRepositoryTokenRoundTrips:

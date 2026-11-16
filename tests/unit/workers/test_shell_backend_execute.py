@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 
 from mahavishnu.workers import shell_backend
-from mahavishnu.workers.registry import PROMPT_ENV_VAR, PROMPT_FILE_ENV_VAR
+from mahavishnu.workers.registry import PROMPT_FILE_ENV_VAR
 from mahavishnu.workers.shell_backend import STDERR_PATH_ENV_VAR, ShellWorker
 
 
@@ -315,6 +315,9 @@ class _OneShotManager:
         self.pane = ""
         self.sent: list[str] = []
         self.captures = 0
+        #: The ``lines`` bound of every capture, in call order. ``None``
+        #: means "the whole scrollback".
+        self.capture_calls: list[int | None] = []
         self.emits_marker = emits_marker
         self.delay = delay
         self.env_overrides: dict[str, str] = {}
@@ -328,6 +331,7 @@ class _OneShotManager:
 
     async def capture_output(self, session_id: str, lines: int | None = None) -> str:
         self.captures += 1
+        self.capture_calls.append(lines)
         if self.captures <= self.delay:
             return self.pane
         self.pane += "the real answer is 42\n"
@@ -387,6 +391,35 @@ async def test_one_shot_waits_for_the_completion_marker() -> None:
         "the marker is the shell's signal, not part of the answer"
     )
     assert manager.sent == []
+
+
+async def test_the_completion_poll_reads_the_scrollback_once() -> None:
+    """The poll reads the pane; the scrollback is read once, at the end.
+
+    Reading the pane's whole scrollback on every poll re-reads the
+    entire session once a second for the length of the run: a
+    twenty-minute review polls about 1,200 times, per worker, and each
+    of those reads hundreds of kilobytes of history and strips ANSI
+    out of all of it.
+
+    The marker is the last thing the shell prints, so it is in the
+    visible pane -- the poll only has to see that. The scrollback is
+    read once, when the marker turns up and there is nothing left to
+    wait for.
+    """
+    manager = _OneShotManager()
+    worker = ShellWorker(config=_one_shot_config(), terminal_manager=manager)
+    await worker.start(prompt="do the thing")
+
+    result = await worker.execute({"prompt": "do the thing"})
+
+    assert result.status.value == "completed"
+    assert manager.capture_calls.count(None) == 1, (
+        "the scrollback must be read once, when the marker appears"
+    )
+    assert all(
+        lines == shell_backend._POLL_PANE_ROWS for lines in manager.capture_calls[:-1]
+    ), "every poll before the last must be bounded to the visible pane"
 
 
 async def test_one_shot_times_out_without_the_marker() -> None:

@@ -8,6 +8,24 @@ if TYPE_CHECKING:
     from mahavishnu.workers.contract.manager import DurableWorkerManager
 
 
+#: How much of the pane's scrollback a capture reads.
+#:
+#: tmux keeps a bounded history (2,000 lines by default) and returns
+#: everything it holds when asked for more, so this means "the whole
+#: session" in practice while still bounding the work when the limit
+#: is raised.
+#:
+#: Reading only the visible pane was enough to lose a reviewer's reply:
+#: the pane is 24 rows, and a reply of about 1,800 characters no longer
+#: fits, so it arrived with its opening cut off -- which reads as a
+#: malformed verdict, and a malformed verdict is a block.
+CAPTURE_SCROLLBACK_LINES: int = 2_000
+
+#: The bound on a captured pane. The newest bytes are the ones kept, so
+#: the answer -- written last -- survives the bound.
+CAPTURE_MAX_BYTES: int = 65_536
+
+
 class TmuxTerminalAdapter(TerminalAdapter):
     """Bridge terminal operations to the durable worker manager."""
 
@@ -94,13 +112,40 @@ class TmuxTerminalAdapter(TerminalAdapter):
         session_id: str,
         lines: int | None = None,
     ) -> str:
-        """Capture the current durable worker pane output."""
+        """Capture the current durable worker pane output.
+
+        Reads the pane's scrollback rather than just its visible
+        screenful: the visible pane is 24 rows, and a reply longer
+        than that arrives with its opening cut off.
+
+        ``lines`` bounds the read to the last N rows, matching the
+        terminal adapter contract (``None`` means all of it) and the
+        mock adapter's ``output_buffer[-lines:]``.
+
+        The bound is applied here rather than left to tmux: ``-S -N``
+        starts N rows above the *top* of the visible pane, so it
+        returns N rows of scrollback **plus** the pane's own 24 rows
+        (measured: ``-S -10`` on a 24-row pane returned 33 rows). The
+        extra rows are dropped here so that ``lines`` means the same
+        thing here as it does in the mock adapter.
+        """
         result = self._manager.capture_output(
             session_id,
-            since_offset=0,
-            max_bytes=65_536,
+            since_offset=CAPTURE_SCROLLBACK_LINES if lines is None else lines,
+            max_bytes=CAPTURE_MAX_BYTES,
         )
-        return result.text
+        if lines is None:
+            return result.text
+        if lines <= 0:
+            # ``rows[-0:]`` is the whole list, not the empty one, so a
+            # zero bound has to be handled before the slice. The
+            # terminal adapter contract is that ``lines=0`` captures
+            # nothing and ``None`` captures everything.
+            return ""
+        rows = result.text.splitlines()
+        if len(rows) <= lines:
+            return result.text
+        return "\n".join(rows[-lines:])
 
     async def list_sessions(self) -> list[dict[str, Any]]:
         """List durable worker records as terminal session metadata."""

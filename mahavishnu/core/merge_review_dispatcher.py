@@ -61,13 +61,26 @@ DEFAULT_MCP_URL: str = "http://localhost:8680/mcp"
 #: tool calls at about twenty seconds each.
 #:
 #: This is the **server-side** budget: how long the pool will let the
-#: worker run. It is not how long the caller waits. The MCP client's
-#: read timeout bounds the call itself -- a response stream that has
-#: gone quiet is cut -- so the budget the reviewer actually has is
-#: minutes, not an hour, and the review is lost rather than reported
-#: as a timeout when the transport wins the race. The prompt states
-#: the budget that is real (see ``build_review_prompt``), and this
-#: constant stays the ceiling the server enforces under it.
+#: worker run. It is the ceiling the worker is given, not a claim about
+#: how long the call that carries it can last.
+#:
+#: An earlier version of this comment asserted that the MCP client's
+#: read timeout cut the reviewer off -- that the budget the reviewer
+#: really had was a few minutes rather than an hour -- and the prompt
+#: repeated it. That was never measured, and it is contradicted by what
+#: was measured: a call held open through this very client for seven
+#: minutes (420 s) came back with its payload intact, and reviews in
+#: this repo have run to 855 s and 1168 s and delivered a verdict. The
+#: client's httpx read timeout is 300 s on a quiet stream and the
+#: server's dispatch heartbeat is a no-op for a client that sends no
+#: progress token (this one does not), so the two facts do not fit
+#: together neatly -- which is a reason to state what was measured
+#: rather than a mechanism nobody has confirmed.
+#:
+#: So the prompt states this ceiling as a ceiling and tells the
+#: reviewer not to plan on spending it: the practical advice (read only
+#: the files the verdict needs) is what actually keeps a review inside
+#: its budget, and it was worth telling the reviewer regardless.
 REVIEW_DISPATCH_TIMEOUT: float = 3600.0
 
 #: Bound on the diff context embedded in the review prompt. A repo-wide
@@ -75,6 +88,19 @@ REVIEW_DISPATCH_TIMEOUT: float = 3600.0
 #: past the worker's context window and cost more than it buys.
 MAX_DIFFSTAT_LINES: int = 60
 MAX_DIFF_FILES: int = 120
+
+#: The reply budget the prompt gives a reviewer, in characters.
+#:
+#: The capture reads the pane's scrollback, so the reply could be far
+#: longer than this. The number is deliberately smaller than what the
+#: capture can hold, for two reasons. It is the advice that actually
+#: keeps a review inside its budget -- a budget the reviewer can
+#: overrun is not a budget -- and it has to survive a capture that is
+#: smaller than the one this repo runs: the visible pane is 24 rows of
+#: 80 columns, and a reply past about that used to arrive with its
+#: opening cut off, which reads as a malformed verdict and blocks the
+#: merge on a review that ran perfectly well.
+REVIEW_REPLY_BUDGET_CHARS: int = 1_500
 
 
 def resolve_mcp_url() -> str:
@@ -181,12 +207,13 @@ def build_review_prompt(
             "the worktree path above."
         )
     parts.append(
-        "You have about three minutes of wall clock. The dispatch that runs "
-        "you is cut off after that -- not by a timeout you can see, but by "
-        "the transport the reply travels over -- and a reviewer that is cut "
-        "off has no verdict at all, so its review counts for nothing. Work "
-        "from the summary above and read only the files you need to judge, "
-        "not every changed file."
+        f"You have a wall-clock budget and the dispatch's ceiling is "
+        f"{int(REVIEW_DISPATCH_TIMEOUT // 60)} minutes, but do not plan on "
+        "spending it, and make sure your reply arrives whole: a review whose "
+        "reply is cut off has no verdict in it, so it counts for nothing. "
+        "Work from the summary above and read only the files you need to "
+        "judge, not every changed file -- a review that reads everything is "
+        "a review that runs out of budget before it reaches a verdict."
     )
     parts.append(
         "You are reviewing, not implementing: do not modify any file in "
@@ -201,20 +228,33 @@ def build_review_prompt(
         "review -- a different directory holding the same commit, so the "
         "code you are looking at is the code under review. Read files by "
         "the absolute path under the worktree path above; a relative path "
-        "reads whatever your shell happens to be in."
+        "reads whatever your shell happens to be in.\n\n"
+        "Run the version-control commands straight, with no `cd` in front "
+        "of them -- `git diff ...`, `git show ...`, one command at a time. "
+        "The harness refuses a command that changes directory before a "
+        "version-control command, and it refuses a command it cannot "
+        "check before running it: a `cd ... && git ...` chain, a `;` "
+        "chain, or a shell variable all trip it. A refused command leaves "
+        "the review with no diff to judge, which is no verdict at all."
     )
+    # The note length is the parser's cap, read from its one home so
+    # the number the reviewer is given cannot drift from the number
+    # that is enforced. The import is deferred because
+    # ``merge_to_main`` imports this module.
+    from mahavishnu.core.merge_to_main import MAX_NOTE_LENGTH
+
     parts.append(
         "Reply with the verdict block and nothing outside it: "
         "<verdict>decision: pass|needs_adjustment|block note: ...</verdict>, "
-        "with the note under 600 characters and the findings that justify "
-        "it inside the note.\n\n"
-        "Your whole reply has a budget of about 1,500 characters: the pool "
-        "captures the last screenful of your terminal and drops everything "
-        "before it. So the block must be the LAST thing you write -- put "
-        "any analysis before it, never after it -- and the reply as a "
-        "whole must fit. A reply that runs past the screen arrives with "
-        "its beginning cut off, and a verdict that arrives truncated "
-        "cannot be read, so the review would be lost rather than counted."
+        f"with the note under {MAX_NOTE_LENGTH} characters and the findings "
+        "that justify it inside the note.\n\n"
+        "Your reply is read back from your terminal's output, and the read "
+        f"is bounded: what falls outside the bound is the part that "
+        f"arrives missing. So keep the whole reply under about "
+        f"{REVIEW_REPLY_BUDGET_CHARS:,} characters -- the note is capped at "
+        f"{MAX_NOTE_LENGTH}, and the rest is room for the finding that "
+        f"justifies it -- and put the verdict block LAST: any analysis "
+        f"before it, never after it."
     )
     return "\n\n".join(parts)
 
@@ -409,6 +449,37 @@ def ensure_review_pool(
 _SDK_RESULT_RE = re.compile(r'"result"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
 
+def _last_result_event_text(worker_output: str) -> str | None:
+    """The ``result`` field of the last ``"type": "result"`` event.
+
+    The captured pane is the worker's stream-json, newline-delimited:
+    one event per line. So the answer is the ``result`` field of the
+    last event whose ``type`` is ``"result"`` -- the last, because the
+    capture reads the pane's scrollback and a session that ran more
+    than one turn carries an event per turn.
+
+    Parsing the lines is what keeps a ``"result"`` key that appears
+    inside a tool result's *content* from being mistaken for the
+    event's own field. Returns ``None`` when no line parses as such
+    an event, which is the case for a capture that was cut short.
+    """
+    found: str | None = None
+    for line in worker_output.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("{"):
+            continue
+        try:
+            event = json.loads(stripped)
+        except ValueError:
+            continue
+        if not isinstance(event, dict) or event.get("type") != "result":
+            continue
+        value = event.get("result")
+        if isinstance(value, str) and value.strip():
+            found = value
+    return found
+
+
 def _extract_agent_text(worker_output: str) -> str:
     """The agent's reply text from a worker's captured output.
 
@@ -418,10 +489,20 @@ def _extract_agent_text(worker_output: str) -> str:
     backslash-n. Every review then parsed as malformed -- and a
     malformed verdict is a fail-loud ``block``, so a reviewer that
     returned ``decision: pass`` gated the merge as a block.
+
+    The reply is read from the stream's result event (see
+    :func:`_last_result_event_text`). The regex below is the fallback
+    for a capture that was cut short -- a truncated final line does not
+    parse as JSON, and a capture that ends mid-event still has the
+    field to read.
     """
-    match = _SDK_RESULT_RE.search(worker_output)
-    if match is None:
+    event_text = _last_result_event_text(worker_output)
+    if event_text is not None:
+        return event_text
+    matches = list(_SDK_RESULT_RE.finditer(worker_output))
+    if not matches:
         return worker_output
+    match = matches[-1]
     try:
         decoded = json.loads(f'"{match.group(1)}"')
     except TypeError, ValueError:

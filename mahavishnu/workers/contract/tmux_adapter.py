@@ -368,7 +368,13 @@ def capture_pane(
     truncated = False
     encoded = text.encode("utf-8")
     if len(encoded) > max_bytes:
-        text = encoded[:max_bytes].decode("utf-8", errors="ignore")
+        # Keep the NEWEST bytes. A capture reads what a live pane is
+        # doing now, and the answer is written last: keeping the
+        # oldest bytes instead drops the answer -- and with it the only
+        # copy of the verdict. A review whose scrollback runs past the
+        # bound (600 tool calls measured 118 KB) used to lose exactly
+        # the line the verdict was in.
+        text = encoded[-max_bytes:].decode("utf-8", errors="ignore")
         truncated = True
         encoded = text.encode("utf-8")
     return CapturedOutput(

@@ -59,6 +59,14 @@ _ECHO_ANCHOR = "MAHAVISHNU-END-OF-INSTRUCTION"
 #: capture per poll.
 _POLL_INTERVAL_SECONDS = 1.0
 
+#: How many rows a completion poll reads. The poll only has to notice
+#: that the run's completion marker has appeared, and the marker is the
+#: last thing the shell prints -- so it is in the visible pane. Reading
+#: the pane's whole scrollback on every poll would re-read the entire
+#: session history once a second for the length of the run: a
+#: twenty-minute review polls about 1,200 times, per worker.
+_POLL_PANE_ROWS = 64
+
 #: Fallback when neither the task nor the worker config carries a timeout.
 _DEFAULT_TIMEOUT_SECONDS = 300
 
@@ -504,16 +512,26 @@ class ShellWorker(BaseWorker):
         pane = before
         while time.monotonic() < deadline:
             await asyncio.sleep(_POLL_INTERVAL_SECONDS)
-            pane = await self._terminal_manager.capture_output(self._session_id)
-            if _sentinel_replied(pane, marker):
-                return WorkerResult(
-                    worker_id=self._session_id,
-                    status=WorkerStatus.COMPLETED,
-                    output=_output_since(before, pane, marker),
-                    exit_code=0,
-                    duration_seconds=timeout_s - (deadline - time.monotonic()),
-                    metadata={"session_id": self._session_id, "sentinel": marker},
-                )
+            # The cheap poll only has to see the marker. The precise
+            # check needs the anchor that tells the model's marker from
+            # the terminal's echo of ours, and the answer between them,
+            # so the history is read once -- when the marker turns up --
+            # rather than on every poll.
+            pane = await self._terminal_manager.capture_output(
+                self._session_id, lines=_POLL_PANE_ROWS
+            )
+            if marker in pane:
+                full = await self._terminal_manager.capture_output(self._session_id)
+                if _sentinel_replied(full, marker):
+                    return WorkerResult(
+                        worker_id=self._session_id,
+                        status=WorkerStatus.COMPLETED,
+                        output=_output_since(before, full, marker),
+                        exit_code=0,
+                        duration_seconds=timeout_s - (deadline - time.monotonic()),
+                        metadata={"session_id": self._session_id, "sentinel": marker},
+                    )
+                pane = full
             if self._status is WorkerStatus.CANCELLED:
                 break
 
@@ -609,11 +627,19 @@ class ShellWorker(BaseWorker):
                 status=WorkerStatus.FAILED,
                 error=f"ShellWorker {self.worker_type!r} has no terminal session",
             )
-        pane = await manager.capture_output(session_id)
+        pane = await manager.capture_output(session_id, lines=_POLL_PANE_ROWS)
         while time.monotonic() < deadline:
             await asyncio.sleep(_POLL_INTERVAL_SECONDS)
-            pane = await manager.capture_output(session_id)
+            pane = await manager.capture_output(session_id, lines=_POLL_PANE_ROWS)
             if any(marker in pane for marker in markers):
+                # The marker is the last thing the shell prints, so the
+                # poll that sees it is enough to know the run is over.
+                # The answer may be longer than the pane, though, so
+                # read the history once, now that there is nothing left
+                # to wait for -- polling it every second would re-read
+                # the whole session once a second for the length of
+                # the run.
+                pane = await manager.capture_output(session_id)
                 stderr_tail = self._drain_stderr()
                 # The shell read the prompt file at startup, long before
                 # the CLI ran, so it is safe to remove it now.

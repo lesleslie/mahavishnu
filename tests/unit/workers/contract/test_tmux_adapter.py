@@ -281,3 +281,37 @@ def test_send_keys_does_not_press_enter_by_default(mock_run: MagicMock) -> None:
 
     assert len(mock_run.call_args_list) == 1
     assert mock_run.call_args_list[0].args[-1] == "partial"
+
+
+@patch("mahavishnu.workers.contract.tmux_adapter.subprocess.run")
+def test_capture_pane_keeps_the_newest_bytes_when_truncating(
+    mock_subprocess_run: MagicMock,
+    socket_path: str,
+) -> None:
+    """A bounded capture must keep the END of the pane, not its start.
+
+    What a worker produces is written last: the reply, then the
+    completion marker. Keeping the oldest bytes instead drops the
+    reply -- and with it the only copy of the verdict, so the review
+    arrives as a malformed verdict and the merge blocks on a review
+    that actually ran.
+
+    The bound is 64 KB and a review's scrollback crosses it early --
+    600 tool calls measured 118 KB -- so this is not a theoretical
+    case.
+    """
+    from mahavishnu.workers.contract.tmux_adapter import capture_pane
+
+    body = "HEAD-MARKER" + ("x" * 5_000) + "TAIL-MARKER"
+    mock_subprocess_run.return_value = MagicMock(
+        returncode=0,
+        stdout=body,
+        stderr="",
+    )
+
+    result = capture_pane(socket_path, "%1", since_offset=0, max_bytes=100)
+
+    assert result.truncated is True
+    assert "TAIL-MARKER" in result.text
+    assert "HEAD-MARKER" not in result.text
+    assert len(result.text.encode("utf-8")) <= 100

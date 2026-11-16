@@ -151,12 +151,15 @@ into its own worktree — and that isolation is verified, not assumed.**
   Reporting that as "the review ran without an isolated checkout"
   replaces the real reason with a misleading one.
 - **The reviewer's reply has a budget, and the prompt says so.** The
-  pool captures the last screenful of the worker's terminal and drops
-  everything before it — about 1,500 characters. A reply longer than
-  that arrives with its beginning cut off, and a verdict block whose
-  opening tag was cut cannot be read, so the review is lost rather
-  than counted. The prompt tells the reviewer the budget and that the
-  verdict block must be the last thing it writes.
+  pool captures the worker's terminal scrollback and keeps the newest
+  bytes within a fixed bound. A reply that runs past the bound arrives
+  with its beginning cut off, and a verdict block whose opening tag was
+  cut cannot be read, so the review is lost rather than counted. The
+  prompt tells the reviewer the budget and that the verdict block must
+  be the last thing it writes. (The capture used to read only the
+  visible screenful — about 1,500 characters — which put that bound far
+  lower than it needed to be; see
+  `2026-11-15-review-capture-window.md`.)
 - The capability constraint travels with the **re-ranking** steps. The
   queueing re-rank picks the pool with the lowest predicted wait across
   the candidate set, and the GPU override prefers a runpod pool — either
