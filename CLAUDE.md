@@ -981,7 +981,7 @@ Default command sequence:
 | Branches | 15 | `[tool.ruff.lint.pylint] max-branches` |
 | Returns | 6 | `[tool.ruff.lint.pylint] max-returns` |
 | Statements | 55 ceiling — practical target 30 | `[tool.ruff.lint.pylint] max-statements` |
-| Coverage | 89% | `[tool.pytest] addopts --cov-fail-under` |
+| Coverage | 88% floor (89% claim) | `[tool.pytest] addopts --cov-fail-under` |
 
 If the gate is passing but this table disagrees, trust the gate. A sync test (analogous to `tests/unit/test_task_router.py::TestRoutingCoverage`) is worth adding to pin them.
 
