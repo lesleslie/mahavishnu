@@ -120,10 +120,21 @@ DEFAULT_MERMAID_PREFIXES: tuple[str, ...] = (
 )
 
 # Allow-list for the jsdom install. Like mermaid, jsdom is dynamically
-# imported and executed as code. We trust only the locally-vendored
-# `node_modules/jsdom/` installed in the mahavishnu repo by `npm install`
-# (which pins the version in package.json). The path is `<repo>/node_modules/`.
-DEFAULT_JSDOM_LOCATIONS: tuple[str, ...] = ("node_modules/jsdom/lib/api.js",)
+# imported and executed as code, so only these locations are trusted.
+#
+# The global npm prefix is searched first because mermaid-cli is a global
+# install too: a global jsdom matches that shape, and unlike the repo-local
+# copy it resolves from every checkout AND every git worktree. That matters
+# because `node_modules/` is gitignored, so a fresh worktree -- which is
+# where the quality gate runs -- never carries the repo-local install and
+# the guard would silently skip instead of checking the diagrams.
+#
+# The repo-local `node_modules/jsdom/` is still searched by
+# `_locate_jsdom`; it is the version pinned by package-lock.json.
+DEFAULT_JSDOM_LOCATIONS: tuple[str, ...] = (
+    "/usr/local/lib/node_modules/jsdom/lib/api.js",
+    "/opt/homebrew/lib/node_modules/jsdom/lib/api.js",
+)
 
 
 def _locate_mermaid_core() -> Path | None:
@@ -180,15 +191,19 @@ def _locate_mermaid_core() -> Path | None:
 
 
 def _locate_jsdom() -> Path | None:
-    """Return the absolute path to the locally-installed jsdom package.
+    """Return the absolute path to the installed jsdom package.
 
-    Looks for the `node_modules/jsdom/` directory under the mahavishnu
-    repo root (where the wave-11 dev dep is installed). The result is
-    the package's main entry point, `jsdom/lib/api.js`, which exposes
-    the `JSDOM` class.
+    Resolution order (first match wins):
 
-    Override via ``MAHAVISHNU_JSDOM`` env var for CI where the
-    mahavishnu repo lives at a different path.
+    1. ``MAHAVISHNU_JSDOM`` env var (operator pin) -- must be a file.
+    2. The global npm prefix (``DEFAULT_JSDOM_LOCATIONS``). mermaid-cli is
+       a global install, so a global jsdom matches that shape, and it
+       resolves from any checkout or git worktree.
+    3. The repo-local ``node_modules/jsdom/``, pinned by
+       ``package-lock.json``, found by walking up from this file.
+
+    The result is the package's main entry point, `jsdom/lib/api.js`,
+    which exposes the `JSDOM` class.
     """
     env_override = os.environ.get("MAHAVISHNU_JSDOM")
     if env_override:
@@ -198,6 +213,11 @@ def _locate_jsdom() -> Path | None:
         raise RuntimeError(
             f"MAHAVISHNU_JSDOM={env_override} does not exist or is not a file"
         )
+
+    for location in DEFAULT_JSDOM_LOCATIONS:
+        candidate = Path(location)
+        if candidate.is_file():
+            return candidate
 
     # Walk up from this file to find the mahavishnu repo root.
     repo_root = Path(__file__).resolve()
@@ -244,9 +264,10 @@ def validate_mermaid_blocks(
     jsdom = _locate_jsdom()
     if not jsdom:
         raise MermaidToolchainUnavailableError(
-            "could not find jsdom at node_modules/jsdom/lib/api.js; "
-            "run `npm install` in the mahavishnu repo to install the "
-            "wave-11 dev dep, or set MAHAVISHNU_JSDOM to its absolute path"
+            "could not find jsdom at node_modules/jsdom/lib/api.js or "
+            "under the global npm prefix; run `npm install -g jsdom` for a "
+            "machine-wide install, or `npm install` in the mahavishnu repo for "
+            "the lockfile-pinned one, or set MAHAVISHNU_JSDOM to its absolute path"
         )
 
     payload = _build_payload(blocks)

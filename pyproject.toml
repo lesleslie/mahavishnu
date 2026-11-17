@@ -900,13 +900,21 @@ ignore = ["tests"]
 #
 # This lives in the repo rather than in an environment variable on purpose:
 # the environment must not be able to loosen a gate that the repo requires.
-# Set it to "required" in the same commit that installs the toolchain in CI.
+#
+# "required" is the honest setting because the toolchain is a machine-level
+# prerequisite, not a CI-only one. Crackerjack is the gate and it runs on
+# the developer's own machine, inside a fresh git worktree, so the
+# toolchain has to be installed there for the guard to mean anything. The
+# guard says so loudly rather than skipping:
+#
+#     npm install -g jsdom@26     # jsdom, machine-wide (works in a worktree)
+#     brew install mermaid-cli    # mermaid-cli and node
 #
 # The MAHAVISHNU_REQUIRE_MERMAID environment variable can only tighten the
 # policy to "required"; it can never loosen it. An unrecognised value is a
 # configuration error, not a silent opt-out.
 [tool.mermaid_guard]
-policy = "optional"
+policy = "required"
 
 [tool.zensical]
 site_name = "Mahavishnu Documentation"

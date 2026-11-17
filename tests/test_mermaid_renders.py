@@ -6,12 +6,15 @@ the ratchet pattern established by `tests/unit/test_mcp_tool_inventory.py`
 but for diagram syntax instead of tool counts.
 
 The guard needs a Node toolchain: `mermaid-cli` (e.g. `brew install
-mermaid-cli`), the `jsdom` dev dep (`npm install`), and `node` itself. When
-that toolchain is absent the guard SKIPS rather than fails, because a missing
-toolchain means the diagrams were never checked, which is a different thing
-from a diagram being broken.
+mermaid-cli`), `jsdom` (`npm install -g jsdom` for a machine-wide install,
+or `npm install` in the repo for the lockfile-pinned one), and `node` itself.
+A machine-wide jsdom is what makes the guard work inside a git worktree:
+`node_modules/` is gitignored, so a fresh worktree never carries the
+repo-local copy.
 
-Whether skipping is allowed is a property of the REPO, not of the
+A missing toolchain means the diagrams were never checked, which is a
+different thing from a diagram being broken, so it is reported as such.
+Whether that condition is tolerated is a property of the REPO, not of the
 environment: see `[tool.mermaid_guard] policy` in pyproject.toml. The
 MAHAVISHNU_REQUIRE_MERMAID environment variable can only tighten the policy
 to "required"; it can never loosen it, so no environment can disable a guard
@@ -205,6 +208,22 @@ class TestToolchainUnavailable:
         with pytest.raises(pytest.fail.Exception):
             _run_mermaid_guard(REPO_ROOT, REQUIRED)
 
+    def test_jsdom_resolves_from_the_global_npm_prefix(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """jsdom is found under the global npm prefix, not only in the repo.
+
+        `node_modules/` is gitignored, so a fresh git worktree -- which is
+        where the quality gate runs -- has no repo-local jsdom. Without
+        this path the guard silently skips there instead of checking.
+        """
+        fake = tmp_path / "node_modules" / "jsdom" / "lib" / "api.js"
+        fake.parent.mkdir(parents=True)
+        fake.write_text("// jsdom\n", encoding="utf-8")
+        monkeypatch.delenv("MAHAVISHNU_JSDOM", raising=False)
+        monkeypatch.setattr(renderer, "DEFAULT_JSDOM_LOCATIONS", (str(fake),))
+        assert renderer._locate_jsdom() == fake
+
     def test_guard_still_fails_on_a_broken_diagram(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -228,6 +247,15 @@ class TestGuardPolicy:
 
     def test_repo_declares_a_valid_policy(self) -> None:
         assert _repo_policy() in (REQUIRED, OPTIONAL)
+
+    def test_repo_requires_the_guard(self) -> None:
+        """The guard is required, so it cannot quietly stop guarding.
+
+        Relaxing the policy to "optional" has to change this test as well,
+        which turns the downgrade into a visible diff instead of a silent
+        one.
+        """
+        assert _repo_policy() == REQUIRED
 
     def test_environment_can_tighten_the_policy(
         self, monkeypatch: pytest.MonkeyPatch
