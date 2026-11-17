@@ -6,11 +6,10 @@ the ratchet pattern established by `tests/unit/test_mcp_tool_inventory.py`
 but for diagram syntax instead of tool counts.
 
 The guard needs a Node toolchain: `mermaid-cli` (e.g. `brew install
-mermaid-cli`), `jsdom` (`npm install -g jsdom` for a machine-wide install,
-or `npm install` in the repo for the lockfile-pinned one), and `node` itself.
-A machine-wide jsdom is what makes the guard work inside a git worktree:
-`node_modules/` is gitignored, so a fresh worktree never carries the
-repo-local copy.
+mermaid-cli`), `jsdom`, and `node` itself. jsdom is installed with
+`npm ci --ignore-scripts`, which reproduces exactly the tree the reviewed
+`package-lock.json` pins; the guard refuses any other copy, because jsdom
+is imported and executed as code.
 
 A missing toolchain means the diagrams were never checked, which is a
 different thing from a diagram being broken, so it is reported as such.
@@ -208,21 +207,62 @@ class TestToolchainUnavailable:
         with pytest.raises(pytest.fail.Exception):
             _run_mermaid_guard(REPO_ROOT, REQUIRED)
 
-    def test_jsdom_resolves_from_the_global_npm_prefix(
+    def test_global_install_is_not_accepted(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        """jsdom is found under the global npm prefix, not only in the repo.
+        """A globally installed jsdom is not accepted by the guard.
 
-        `node_modules/` is gitignored, so a fresh git worktree -- which is
-        where the quality gate runs -- has no repo-local jsdom. Without
-        this path the guard silently skips there instead of checking.
+        The guard executes jsdom as code, so it accepts only the tree npm
+        installed from the reviewed package-lock.json. A global install
+        carries no npm install record and cannot be verified, so the guard
+        must not reach for one even when it is present on the machine.
         """
-        fake = tmp_path / "node_modules" / "jsdom" / "lib" / "api.js"
-        fake.parent.mkdir(parents=True)
-        fake.write_text("// jsdom\n", encoding="utf-8")
+        checkout = tmp_path / "checkout"
+        checkout.mkdir()
+        (checkout / "package-lock.json").write_text("{}", encoding="utf-8")
         monkeypatch.delenv("MAHAVISHNU_JSDOM", raising=False)
-        monkeypatch.setattr(renderer, "DEFAULT_JSDOM_LOCATIONS", (str(fake),))
-        assert renderer._locate_jsdom() == fake
+        monkeypatch.setattr(renderer, "_checkout_root", lambda start: checkout)
+        # The lookup is confined to the checkout: with no install there it
+        # finds nothing, whatever else is installed on the machine.
+        assert renderer._locate_jsdom() is None
+        # No global search path exists to regress to.
+        assert not hasattr(renderer, "DEFAULT_JSDOM_LOCATIONS")
+
+    def test_install_that_does_not_match_the_lockfile_is_refused(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A jsdom npm did not install from the reviewed lockfile is refused."""
+        real = renderer._jsdom_lock_entry
+
+        def _fake(lockfile: Path) -> tuple[str, str] | None:
+            if lockfile.name == ".package-lock.json":
+                return ("0.0.0", "sha512-not-the-reviewed-tree")
+            return real(lockfile)
+
+        checkout = renderer._checkout_root(Path(renderer.__file__).resolve())
+        assert checkout is not None
+        monkeypatch.setattr(renderer, "_jsdom_lock_entry", _fake)
+        with pytest.raises(
+            MermaidToolchainUnavailableError, match="not the one the lockfile pins"
+        ):
+            renderer._require_lockfile_pinned(checkout)
+
+    def test_symlinked_jsdom_is_refused(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """A symlinked package directory is refused, not followed."""
+        checkout = tmp_path / "checkout"
+        package_dir = checkout / "node_modules" / "jsdom"
+        elsewhere = tmp_path / "elsewhere"
+        (elsewhere / "lib").mkdir(parents=True)
+        (elsewhere / "lib" / "api.js").write_text("// jsdom\n", encoding="utf-8")
+        package_dir.parent.mkdir(parents=True)
+        package_dir.symlink_to(elsewhere, target_is_directory=True)
+
+        monkeypatch.delenv("MAHAVISHNU_JSDOM", raising=False)
+        monkeypatch.setattr(renderer, "_checkout_root", lambda start: checkout)
+        with pytest.raises(MermaidToolchainUnavailableError, match="is a symlink"):
+            renderer._locate_jsdom()
 
     def test_guard_still_fails_on_a_broken_diagram(
         self, monkeypatch: pytest.MonkeyPatch

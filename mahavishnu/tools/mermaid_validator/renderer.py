@@ -119,22 +119,19 @@ DEFAULT_MERMAID_PREFIXES: tuple[str, ...] = (
     "/opt/homebrew/lib/node_modules/",
 )
 
-# Allow-list for the jsdom install. Like mermaid, jsdom is dynamically
-# imported and executed as code, so only these locations are trusted.
+# The jsdom install this guard is allowed to execute. Like mermaid, jsdom
+# is dynamically imported and run as code, so it has to be the package the
+# reviewed lockfile pins -- not a global install, and not a copy somebody
+# dropped into node_modules by hand.
 #
-# The global npm prefix is searched first because mermaid-cli is a global
-# install too: a global jsdom matches that shape, and unlike the repo-local
-# copy it resolves from every checkout AND every git worktree. That matters
-# because `node_modules/` is gitignored, so a fresh worktree -- which is
-# where the quality gate runs -- never carries the repo-local install and
-# the guard would silently skip instead of checking the diagrams.
-#
-# The repo-local `node_modules/jsdom/` is still searched by
-# `_locate_jsdom`; it is the version pinned by package-lock.json.
-DEFAULT_JSDOM_LOCATIONS: tuple[str, ...] = (
-    "/usr/local/lib/node_modules/jsdom/lib/api.js",
-    "/opt/homebrew/lib/node_modules/jsdom/lib/api.js",
-)
+# npm records the integrity hash of every package it installed in
+# `node_modules/.package-lock.json`. Comparing that hash with the one in
+# the checkout's `package-lock.json` proves the installed tree came from
+# the tarball the lockfile pins, because npm verified that hash at install
+# time. A global install leaves no such record, so it cannot be verified
+# and is not accepted.
+JSDOM_PACKAGE_DIR = "node_modules/jsdom"
+JSDOM_ENTRYPOINT = "lib/api.js"
 
 
 def _locate_mermaid_core() -> Path | None:
@@ -190,43 +187,132 @@ def _locate_mermaid_core() -> Path | None:
     return None
 
 
+def _checkout_root(start: Path) -> Path | None:
+    """The nearest ancestor directory holding a ``package-lock.json``.
+
+    The lockfile is the marker. It is the reviewed, git-tracked file that
+    pins the Node packages, so an install sitting beside it can be checked
+    against it.
+
+    Args:
+        start: A path inside the checkout to search upwards from.
+
+    Returns:
+        The checkout root, or ``None`` when no lockfile is found.
+    """
+    for candidate in (start, *start.parents):
+        if (candidate / "package-lock.json").is_file():
+            return candidate
+    return None
+
+
+def _jsdom_lock_entry(lockfile: Path) -> tuple[str, str] | None:
+    """The (version, integrity) a lockfile pins for jsdom, if it pins one.
+
+    Args:
+        lockfile: Path to a ``package-lock.json``.
+
+    Returns:
+        The pinned version and integrity, or ``None`` when the lockfile
+        does not pin jsdom or cannot be read.
+    """
+    try:
+        with lockfile.open("rb") as handle:
+            data = json.loads(handle.read())
+    except OSError, ValueError:
+        return None
+    entry = data.get("packages", {}).get("node_modules/jsdom", {})
+    version = entry.get("version")
+    integrity = entry.get("integrity")
+    if not version or not integrity:
+        return None
+    return str(version), str(integrity)
+
+
+def _require_lockfile_pinned(checkout: Path) -> None:
+    """Refuse an installed jsdom that the reviewed lockfile does not pin.
+
+    jsdom is imported and executed as code by the Node runner, so the only
+    acceptable copy is the one npm installed from the tarball the lockfile
+    pins.
+
+    Args:
+        checkout: The checkout whose ``node_modules`` holds the install.
+
+    Raises:
+        MermaidToolchainUnavailableError: The installed tree does not
+            match the lockfile, so it must not be executed.
+    """
+    expected = _jsdom_lock_entry(checkout / "package-lock.json")
+    if expected is None:
+        raise MermaidToolchainUnavailableError(
+            f"{checkout}/package-lock.json does not pin jsdom, so an "
+            "installed jsdom cannot be verified against it"
+        )
+    version, _integrity = expected
+    installed = _jsdom_lock_entry(checkout / "node_modules" / ".package-lock.json")
+    if installed is None:
+        raise MermaidToolchainUnavailableError(
+            f"{checkout}/node_modules carries no npm install record, so the "
+            "installed jsdom cannot be verified; run `npm ci --ignore-scripts`"
+        )
+    if installed != expected:
+        raise MermaidToolchainUnavailableError(
+            f"the installed jsdom ({installed[0]}) is not the one the lockfile "
+            f"pins ({version}); run `npm ci --ignore-scripts` in {checkout} to "
+            "install the reviewed tree"
+        )
+
+
 def _locate_jsdom() -> Path | None:
-    """Return the absolute path to the installed jsdom package.
+    """Return the absolute path to the lockfile-pinned jsdom package.
 
-    Resolution order (first match wins):
+    Resolution order:
 
-    1. ``MAHAVISHNU_JSDOM`` env var (operator pin) -- must be a file.
-    2. The global npm prefix (``DEFAULT_JSDOM_LOCATIONS``). mermaid-cli is
-       a global install, so a global jsdom matches that shape, and it
-       resolves from any checkout or git worktree.
-    3. The repo-local ``node_modules/jsdom/``, pinned by
-       ``package-lock.json``, found by walking up from this file.
+    1. ``MAHAVISHNU_JSDOM`` -- an explicit operator pin. It is verified against
+       the lockfile beside the install it names, so it can point at another
+       checkout but never at an unverified package.
+    2. ``<checkout>/node_modules/jsdom/`` -- the tree npm installed from
+       the reviewed ``package-lock.json``.
 
-    The result is the package's main entry point, `jsdom/lib/api.js`,
-    which exposes the `JSDOM` class.
+    Returns:
+        The path to ``jsdom/lib/api.js``, which exposes the ``JSDOM``
+        class, or ``None`` when no lockfile-pinned install is present.
+
+    Raises:
+        MermaidToolchainUnavailableError: An install was found but does
+            not match the lockfile, so it must not be executed.
     """
     env_override = os.environ.get("MAHAVISHNU_JSDOM")
     if env_override:
         path = Path(env_override).resolve()
-        if path.is_file():
-            return path
-        raise RuntimeError(
-            f"MAHAVISHNU_JSDOM={env_override} does not exist or is not a file"
+        if not path.is_file():
+            raise RuntimeError(
+                f"MAHAVISHNU_JSDOM={env_override} does not exist or is not a file"
+            )
+        checkout = _checkout_root(path)
+        if checkout is None:
+            raise MermaidToolchainUnavailableError(
+                f"MAHAVISHNU_JSDOM={env_override} is not inside a checkout with a "
+                "package-lock.json, so the jsdom it names cannot be verified"
+            )
+        _require_lockfile_pinned(checkout)
+        return path
+
+    checkout = _checkout_root(Path(__file__).resolve())
+    if checkout is None:
+        return None
+    package_dir = checkout / JSDOM_PACKAGE_DIR
+    entry = package_dir / JSDOM_ENTRYPOINT
+    if not entry.is_file():
+        return None
+    if package_dir.is_symlink():
+        raise MermaidToolchainUnavailableError(
+            f"{package_dir} is a symlink; the guard only executes a "
+            "lockfile-pinned, non-symlinked install"
         )
-
-    for location in DEFAULT_JSDOM_LOCATIONS:
-        candidate = Path(location)
-        if candidate.is_file():
-            return candidate
-
-    # Walk up from this file to find the mahavishnu repo root.
-    repo_root = Path(__file__).resolve()
-    while repo_root != repo_root.parent:
-        candidate = repo_root / "node_modules" / "jsdom" / "lib" / "api.js"
-        if candidate.is_file():
-            return candidate
-        repo_root = repo_root.parent
-    return None
+    _require_lockfile_pinned(checkout)
+    return entry
 
 
 def _is_trusted_mermaid_path(path: Path) -> bool:
@@ -264,10 +350,11 @@ def validate_mermaid_blocks(
     jsdom = _locate_jsdom()
     if not jsdom:
         raise MermaidToolchainUnavailableError(
-            "could not find jsdom at node_modules/jsdom/lib/api.js or "
-            "under the global npm prefix; run `npm install -g jsdom` for a "
-            "machine-wide install, or `npm install` in the mahavishnu repo for "
-            "the lockfile-pinned one, or set MAHAVISHNU_JSDOM to its absolute path"
+            "could not find the lockfile-pinned jsdom at "
+            "node_modules/jsdom/lib/api.js; run `npm ci --ignore-scripts` in "
+            "the mahavishnu repo to install the tree the reviewed package-lock.json "
+            "pins, or set MAHAVISHNU_JSDOM to the path of an install that does "
+            "match it"
         )
 
     payload = _build_payload(blocks)
