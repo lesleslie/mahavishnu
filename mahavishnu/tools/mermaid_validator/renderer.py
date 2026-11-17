@@ -13,6 +13,18 @@ from rich.console import Console
 
 console = Console()
 
+
+class MermaidToolchainUnavailableError(RuntimeError):
+    """The mermaid toolchain is not installed, so no diagram can be checked.
+
+    Raised when mermaid-cli, jsdom, or node itself cannot be found. This is
+    an environment condition, not a validation failure: the caller could not
+    check the diagrams at all. It is deliberately distinct from the plain
+    RuntimeError raised when the validator runs and fails, which is a real
+    problem with the diagrams or the validator itself.
+    """
+
+
 # Match a fenced ```mermaid block. Captures the body.
 MERMAID_FENCE_RE = re.compile(
     r"^```mermaid\b[^\n]*\n(.*?)^```\s*$",
@@ -223,7 +235,7 @@ def validate_mermaid_blocks(
 
     mermaid_core = _locate_mermaid_core()
     if not mermaid_core:
-        raise RuntimeError(
+        raise MermaidToolchainUnavailableError(
             "could not find mermaid/dist/mermaid.core.mjs; install "
             "@mermaid-js/mermaid-cli (e.g. `brew install mermaid-cli`) "
             "or set a path that exposes mmdc on PATH"
@@ -231,7 +243,7 @@ def validate_mermaid_blocks(
 
     jsdom = _locate_jsdom()
     if not jsdom:
-        raise RuntimeError(
+        raise MermaidToolchainUnavailableError(
             "could not find jsdom at node_modules/jsdom/lib/api.js; "
             "run `npm install` in the mahavishnu repo to install the "
             "wave-11 dev dep, or set MAHAVISHNU_JSDOM to its absolute path"
@@ -280,7 +292,7 @@ def _run_mermaid_subprocess(
             check=False,
         )
     except FileNotFoundError as e:
-        raise RuntimeError(
+        raise MermaidToolchainUnavailableError(
             "node is not on PATH; install Node.js to run the mermaid CI guard"
         ) from e
     except subprocess.TimeoutExpired as e:
