@@ -1,14 +1,13 @@
+---
 title: Database Migration Workflow
 owner: Delivery Operations
-last_reviewed: 2025-10-01
-related_tools:
-
-- commands/tools/deployment/release-management.md
-- commands/tools/monitoring/observability-lifecycle.md
-- commands/tools/workflow/privacy-impact-assessment.md
-  risk: critical
-  status: active
-  id: 01K6HMQV8YWXN3PZ4JR6ST2K9E
+last_reviewed: '2026-11-17'
+risk: critical
+status: active
+id: 01a1e928ac387772ba6c5d9294d22b69
+category: deployment
+description: Use this workflow to plan, execute, and validate database changes with rollback in mind.
+---
 
 ______________________________________________________________________
 

@@ -1,14 +1,13 @@
+---
 title: API Versioning & Deprecation Workflow
 owner: Delivery Operations
-last_reviewed: 2025-10-01
-related_tools:
-
-- commands/tools/deployment/release-management.md
-- commands/tools/monitoring/observability-lifecycle.md
-- commands/tools/workflow/support-readiness.md
-  risk: high
-  status: active
-  id: 01K6HMR2VXQWZ7N8KP4JT5YH6R
+last_reviewed: '2026-11-17'
+risk: high
+status: active
+id: 01a1e928ac2f7371b0cf05d3e0b2d219
+category: deployment
+description: Use this workflow to introduce API changes safely and retire old versions without breaking consumers.
+---
 
 ______________________________________________________________________
 

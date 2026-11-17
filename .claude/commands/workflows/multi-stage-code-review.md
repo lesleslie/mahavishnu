@@ -1,9 +1,13 @@
+---
 title: Multi-Stage Code Review
-owner: workflow
-last_reviewed: 2025-01-15
-category: workflow/
-status: active
+owner: Developer Enablement Guild
+last_reviewed: '2026-11-17'
 risk: low
+status: active
+id: 01a1e928ac6a70c8800a16d56c734757
+category: workflow
+description: Use this workflow for deep review of security, performance, tests, and documentation.
+---
 
 ______________________________________________________________________
 

@@ -1,13 +1,13 @@
+---
 title: Agent Improvement Workflow
 owner: Developer Enablement Guild
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/development/code-quality/dependency-lifecycle.md
-- commands/tools/development/testing/quality-validation.md
-  risk: medium
-  status: active
-  id: 01K6EF8EM6WQWW9KGRHXS02CMP
+last_reviewed: '2026-11-17'
+risk: medium
+status: active
+id: 01a1e928ac5171ae9a582b03f5343b23
+category: maintenance
+description: Improves a named agent's scope, tone, playbook, or metadata, then validates the updated prompts and telemetry hooks before publishing.
+---
 
 ______________________________________________________________________
 

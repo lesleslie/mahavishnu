@@ -1,14 +1,13 @@
+---
 title: Stability Response Lifecycle
 owner: Platform Reliability Guild
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/monitoring/observability-lifecycle.md
-- commands/tools/maintenance/maintenance-cadence.md
-- commands/tools/development/testing/quality-validation.md
-  risk: high
-  status: active
-  id: 01K6EF5K54WWNSV9ZSCT17CF06
+last_reviewed: '2026-11-17'
+risk: high
+status: active
+id: 01a1e928ac6272dab2a2f250aebb044e
+category: maintenance
+description: Use this workflow to respond to an incident description or degradation summary through triage, containment, the smallest safe fix, and hardening.
+---
 
 ______________________________________________________________________
 

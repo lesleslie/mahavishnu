@@ -1,14 +1,13 @@
+---
 title: Security Hardening Workflow
-owner: Security & Compliance Office
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/maintenance/maintenance-cadence.md
-- commands/tools/monitoring/observability-lifecycle.md
-- commands/tools/workflow/privacy-impact-assessment.md
-  risk: high
-  status: active
-  id: 01K6EF8EKEX284G0ND30WGYBW5
+owner: Compliance Office
+last_reviewed: '2026-11-17'
+risk: high
+status: active
+id: 01a1e928ac5e71e7bc749b674a3132f2
+category: maintenance
+description: Use this workflow to reduce attack surface and close security gaps without disrupting delivery, from threat modeling to verified remediation.
+---
 
 ______________________________________________________________________
 

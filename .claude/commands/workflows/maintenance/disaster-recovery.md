@@ -1,14 +1,13 @@
+---
 title: Disaster Recovery & Business Continuity Workflow
 owner: Platform Reliability Guild
-last_reviewed: 2025-10-01
-related_tools:
-
-- commands/tools/monitoring/observability-lifecycle.md
-- commands/tools/maintenance/maintenance-cadence.md
-- commands/tools/workflow/support-readiness.md
-  risk: critical
-  status: active
-  id: 01K6HMQY2NXRZ8WV5T4JK6QH3P
+last_reviewed: '2026-11-17'
+risk: critical
+status: active
+id: 01a1e928ac4d71608fdb9a8df2ca6700
+category: maintenance
+description: Use this workflow for catastrophic failures needing executive coordination, from classification and failover to validation.
+---
 
 ______________________________________________________________________
 

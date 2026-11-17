@@ -1,13 +1,13 @@
+---
 title: Adoption & Analytics Workflow
 owner: Operations Enablement Guild
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/workflow/support-readiness.md
-- commands/tools/monitoring/observability-lifecycle.md
-  risk: medium
-  status: active
-  id: 01K6EF5K5NSZ099RKP9K44E6DF
+last_reviewed: '2026-11-17'
+risk: medium
+status: active
+id: 01a1e928ac677271a51dfb66fea44e33
+category: monitoring
+description: Use this workflow to review feature adoption, usage, and customer sentiment after launch.
+---
 
 ______________________________________________________________________
 

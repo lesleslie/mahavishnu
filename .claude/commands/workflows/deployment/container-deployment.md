@@ -1,14 +1,13 @@
+---
 title: Container Deployment Workflow
 owner: Delivery Operations
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/development/code-quality/dependency-lifecycle.md
-- commands/tools/deployment/release-management.md
-- commands/tools/monitoring/observability-lifecycle.md
-  risk: high
-  status: active
-  id: 01K6EF8EGDYJX8PH521SW7TV6R
+last_reviewed: '2026-11-17'
+risk: high
+status: active
+id: 01a1e928ac347427a38bf15340a59e41
+category: deployment
+description: Use this workflow to plan, secure, and roll out containerized services.
+---
 
 ______________________________________________________________________
 

@@ -1,13 +1,13 @@
+---
 title: Product Discovery Sprint
-owner: Product Leadership
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/workflow/privacy-impact-assessment.md
-- commands/tools/workflow/support-readiness.md
-  risk: medium
-  status: active
-  id: 01K6EF5K4BN0K2WRJC4MC0Q969
+owner: Delivery Operations
+last_reviewed: '2026-11-17'
+risk: medium
+status: active
+id: 01a1e928ac4970fdbe9db6133ab11f47
+category: workflow
+description: Use this workflow to frame a discovery problem, validate hypotheses with research, and produce a brief with a prioritized backlog.
+---
 
 ______________________________________________________________________
 

@@ -1,14 +1,13 @@
+---
 title: Automation Orchestration Playbook
 owner: Developer Enablement Guild
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/automation/platform-automation.md
-- commands/tools/development/code-quality/dependency-lifecycle.md
-- commands/tools/development/testing/quality-validation.md
-  risk: medium
-  status: active
-  id: 01K6EF5K27MTEW5SYMD2WGD74T
+last_reviewed: '2026-11-17'
+risk: medium
+status: active
+id: 01a1e928ac2b740883027483b5f8cdce
+category: automation
+description: Use this workflow to scope, build, and hand off automation that spans pipelines, quality gates, or telemetry.
+---
 
 ______________________________________________________________________
 

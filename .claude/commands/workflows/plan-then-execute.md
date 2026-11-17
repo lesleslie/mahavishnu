@@ -1,9 +1,13 @@
+---
 title: Plan-Then-Execute Feature Development
-owner: orchestration
-last_reviewed: 2025-01-15
-category: feature/
+owner: Developer Enablement Guild
+last_reviewed: '2026-11-17'
+risk: low
 status: active
-risk_level: low
+id: 01a1e928ac6f75dc9342562167bcfd45
+category: workflow
+description: Use this workflow for complex work that needs a deliberate planning gate before implementation.
+---
 
 ______________________________________________________________________
 

@@ -104,6 +104,22 @@ class ToolFrontmatterValidator:
         "maintenance",
     ]
 
+    #: Maps a containing directory name to a category from VALID_CATEGORIES.
+    #: The category vocabulary is a flat set, so a nested path resolves to
+    #: its nearest listed ancestor rather than a compound "workflows/deployment"
+    #: that no category would accept. Directories with no entry fall back to
+    #: "workflow".
+    CATEGORY_BY_DIRECTORY = {
+        "automation": "automation",
+        "development": "development",
+        "deployment": "deployment",
+        "maintenance": "maintenance",
+        "monitoring": "monitoring",
+        "feature": "workflow",
+        "workflow": "workflow",
+        "workflows": "workflow",
+    }
+
     UUID7_PATTERN = re.compile(r"^[0-9a-f]{32}$")
     DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -727,17 +743,19 @@ class ToolFrontmatterValidator:
             if "category" in frontmatter:
                 continue
 
-            # Infer category from directory structure
-            # Example: /tools/development/api/api-scaffold.md -> development/api
+            # Infer category from the containing directory. The vocabulary is
+            # a flat set, so a nested path resolves to its nearest listed
+            # ancestor rather than a compound "workflows/deployment" that no
+            # category would accept.
             rel_path = md_file.relative_to(self.tools_dir)
             parts = rel_path.parts[:-1]  # Remove filename
 
-            if len(parts) == 0:
-                category = "uncategorized"
-            elif len(parts) == 1:
-                category = parts[0]
-            else:
-                category = "/".join(parts)
+            category = "workflow"
+            for part in reversed(parts):
+                mapped = self.CATEGORY_BY_DIRECTORY.get(part)
+                if mapped:
+                    category = mapped
+                    break
 
             # Add category
             frontmatter["category"] = category
@@ -764,12 +782,19 @@ def main():
         sys.exit(1)
 
     command = sys.argv[1]
-    # Path fix: the tool-command convention lives under `.claude/commands/tools/`
-    # in this repo, not at the project root. Without the `.claude` segment the
-    # rglob() in validate_all_tools() returns 0 files and the validator reports
+    # Path fix: the command files live under `.claude/commands/`, not at the
+    # project root. Without the `.claude` segment the rglob() in
+    # validate_all_tools() returns 0 files and the validator reports
     # "Total Tools: 0 — No tools found". Pinning the correct path here makes
-    # `validate-all` actually scan the 49 tool files at .claude/commands/tools/**/*.md
-    tools_dir = Path(__file__).parent.parent / ".claude" / "commands" / "tools"
+    # `validate-all` scan every command file under .claude/commands/**.
+    #
+    # This used to point at `.claude/commands/tools/`, a directory the repo no
+    # longer has: the tool commands were flattened into `.claude/commands/` and
+    # the workflow tree moved to `.claude/commands/workflows/`. Pointing at a
+    # directory that does not exist is why 19 command files sat with
+    # unparsable frontmatter for months - the validator was reporting zero
+    # tools and exiting 0, so nothing flagged them.
+    tools_dir = Path(__file__).parent.parent / ".claude" / "commands"
 
     validator = ToolFrontmatterValidator(tools_dir)
 

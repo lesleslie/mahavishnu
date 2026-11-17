@@ -1,15 +1,15 @@
+---
 title: Feature Delivery Lifecycle
-owner: Product Leadership
-last_reviewed: 2025-02-06
+owner: Delivery Operations
+last_reviewed: '2026-11-17'
+risk: medium
+status: active
+id: 01a1e928ac4572c8876d5501da2034ef
+category: workflow
+description: Use this workflow for end-to-end delivery of a feature from discovery to adoption monitoring.
 related_tools:
-
-- commands/tools/development/code-quality/dependency-lifecycle.md
-- commands/tools/development/testing/quality-validation.md
-- commands/tools/workflow/support-readiness.md
 - docs/plans/TEMPLATE.md
-  risk: medium
-  status: active
-  id: 01K6EF5K3VBN8NXFCZMV04VZSM
+---
 
 ______________________________________________________________________
 

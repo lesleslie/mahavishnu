@@ -1,9 +1,13 @@
+---
 title: Workflow Catalog & Decision Tree
-owner: Platform Engineering
-last_reviewed: 2025-10-01
+owner: Platform Engineering Guild
+last_reviewed: '2026-11-17'
 risk: low
 status: active
-id: 01K6EGMX8YTJN4P9ZVW0ERBQ2H
+id: 01a1e928ac267382a40e9201de2cdba5
+category: workflow
+description: Use this catalog to pick the smallest workflow that matches the task, then route to that workflow.
+---
 
 ______________________________________________________________________
 

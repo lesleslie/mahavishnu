@@ -1,15 +1,13 @@
+---
 title: ML Pipeline Release Workflow
-owner: ML Systems Guild
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/development/code-quality/dependency-lifecycle.md
-- commands/tools/development/testing/quality-validation.md
-- commands/tools/workflow/privacy-impact-assessment.md
-- commands/tools/monitoring/observability-lifecycle.md
-  risk: high
-  status: active
-  id: 01K6EF8EHTYXG10569SZTK2EZ1
+owner: Platform Engineering Guild
+last_reviewed: '2026-11-17'
+risk: high
+status: active
+id: 01a1e928ac3d7536b68c07d413058858
+category: deployment
+description: Use this workflow to promote an ML pipeline from experiment to production safely.
+---
 
 ______________________________________________________________________
 

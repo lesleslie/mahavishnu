@@ -1,12 +1,13 @@
+---
 title: Incident Response Workflow
 owner: Platform Reliability Guild
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/monitoring/observability-lifecycle.md
-  risk: critical
-  status: active
-  id: 01K6EF8EJN8EVC240V87X7KH92
+last_reviewed: '2026-11-17'
+risk: critical
+status: active
+id: 01a1e928ac5574babff78eb035f245b4
+category: maintenance
+description: Use this workflow when a service degradation or outage is declared, covering triage, containment, recovery, and postmortem actions.
+---
 
 ______________________________________________________________________
 

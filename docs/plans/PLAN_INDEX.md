@@ -55,7 +55,7 @@ and reproduced here for index readability.
 ## Review Entry Points
 
 This file is regenerated mechanically from the per-file YAML frontmatter
-across the 13 auto-discovered stores. The registry tables below
+across the 17 auto-discovered stores. The registry tables below
 are sorted by `date` DESC within each store and group entries by store.
 The lifecycle × role distribution at the bottom is a quick consistency
 check — it should match the counts of the registry rows modulo files in
@@ -147,8 +147,47 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
-| [`.claude/commands/bodai-status.md`](../../.claude/commands/bodai-status.md) | — | `unknown` | `unknown` |  | `—` | Render payload as 'k=v, k=v' (truncate at 80 chars) |
-| [`.claude/commands/jot.md`](../../.claude/commands/jot.md) | — | `unknown` | `unknown` |  | `—` | jot |
+| [`.claude/commands/bodai-status.md`](../../.claude/commands/bodai-status.md) | — | `active` | `unknown` |  | `—` | Render payload as 'k=v, k=v' (truncate at 80 chars) |
+| [`.claude/commands/jot.md`](../../.claude/commands/jot.md) | — | `active` | `unknown` |  | `—` | jot |
+| [`.claude/commands/merge-to-main.md`](../../.claude/commands/merge-to-main.md) | — | `active` | `unknown` |  | `—` | merge to main |
+
+### Workflows (`.claude/commands/workflows/`)
+
+| Path | Date | Status | Role | Kind | Topic | Title |
+|---|---|---|---|---|---|---|
+| [`.claude/commands/workflows/WORKFLOW-CATALOG.md`](../../.claude/commands/workflows/WORKFLOW-CATALOG.md) | — | `active` | `unknown` |  | `—` | WORKFLOW CATALOG |
+| [`.claude/commands/workflows/automation/automation-orchestration.md`](../../.claude/commands/workflows/automation/automation-orchestration.md) | — | `active` | `unknown` |  | `—` | automation orchestration |
+| [`.claude/commands/workflows/monitoring/adoption-analytics.md`](../../.claude/commands/workflows/monitoring/adoption-analytics.md) | — | `active` | `unknown` |  | `—` | adoption analytics |
+| [`.claude/commands/workflows/multi-stage-code-review.md`](../../.claude/commands/workflows/multi-stage-code-review.md) | — | `active` | `unknown` |  | `—` | multi stage code review |
+| [`.claude/commands/workflows/plan-then-execute.md`](../../.claude/commands/workflows/plan-then-execute.md) | — | `active` | `unknown` |  | `—` | plan then execute |
+
+### Deployment (`.claude/commands/workflows/deployment/`)
+
+| Path | Date | Status | Role | Kind | Topic | Title |
+|---|---|---|---|---|---|---|
+| [`.claude/commands/workflows/deployment/api-versioning.md`](../../.claude/commands/workflows/deployment/api-versioning.md) | — | `active` | `unknown` |  | `—` | api versioning |
+| [`.claude/commands/workflows/deployment/container-deployment.md`](../../.claude/commands/workflows/deployment/container-deployment.md) | — | `active` | `unknown` |  | `—` | container deployment |
+| [`.claude/commands/workflows/deployment/database-migration.md`](../../.claude/commands/workflows/deployment/database-migration.md) | — | `active` | `unknown` |  | `—` | database migration |
+| [`.claude/commands/workflows/deployment/ml-pipeline.md`](../../.claude/commands/workflows/deployment/ml-pipeline.md) | — | `active` | `unknown` |  | `—` | ml pipeline |
+| [`.claude/commands/workflows/deployment/release-governance.md`](../../.claude/commands/workflows/deployment/release-governance.md) | — | `active` | `unknown` |  | `—` | release governance |
+
+### Feature (`.claude/commands/workflows/feature/`)
+
+| Path | Date | Status | Role | Kind | Topic | Title |
+|---|---|---|---|---|---|---|
+| [`.claude/commands/workflows/feature/feature-delivery-lifecycle.md`](../../.claude/commands/workflows/feature/feature-delivery-lifecycle.md) | — | `active` | `unknown` |  | `—` | feature delivery lifecycle |
+| [`.claude/commands/workflows/feature/product-discovery-sprint.md`](../../.claude/commands/workflows/feature/product-discovery-sprint.md) | — | `active` | `unknown` |  | `—` | product discovery sprint |
+
+### Maintenance (`.claude/commands/workflows/maintenance/`)
+
+| Path | Date | Status | Role | Kind | Topic | Title |
+|---|---|---|---|---|---|---|
+| [`.claude/commands/workflows/maintenance/disaster-recovery.md`](../../.claude/commands/workflows/maintenance/disaster-recovery.md) | — | `active` | `unknown` |  | `—` | disaster recovery |
+| [`.claude/commands/workflows/maintenance/improve-agent.md`](../../.claude/commands/workflows/maintenance/improve-agent.md) | — | `active` | `unknown` |  | `—` | improve agent |
+| [`.claude/commands/workflows/maintenance/incident-response.md`](../../.claude/commands/workflows/maintenance/incident-response.md) | — | `active` | `unknown` |  | `—` | incident response |
+| [`.claude/commands/workflows/maintenance/legacy-modernize.md`](../../.claude/commands/workflows/maintenance/legacy-modernize.md) | — | `active` | `unknown` |  | `—` | legacy modernize |
+| [`.claude/commands/workflows/maintenance/security-hardening.md`](../../.claude/commands/workflows/maintenance/security-hardening.md) | — | `active` | `unknown` |  | `—` | security hardening |
+| [`.claude/commands/workflows/maintenance/stability-lifecycle.md`](../../.claude/commands/workflows/maintenance/stability-lifecycle.md) | — | `active` | `unknown` |  | `—` | stability lifecycle |
 
 ### Architecture Decision Records (`docs/adr/`)
 
@@ -570,7 +609,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (170 entries)
+### `plan` (189 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -578,7 +617,7 @@ Full per-store detail (with status, role, topic, date) is in the **Canonical and
 
 ## Lifecycle × Role Distribution
 
-Counts of entries per (lifecycle, role) cell across all 13 stores. Useful as a sanity check that the registry above is internally consistent.
+Counts of entries per (lifecycle, role) cell across all 17 stores. Useful as a sanity check that the registry above is internally consistent.
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|

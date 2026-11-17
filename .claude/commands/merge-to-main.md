@@ -1,25 +1,23 @@
+---
 title: Merge To Main
 owner: Operations Enablement Guild
-last_reviewed: 2026-10-13
+last_reviewed: '2026-11-17'
 risk: high
 status: active
-id: 01K6EEXD5RD0SRFRY8NA5PZX17
+id: 01a1e928ac2175bda75e007cd43de69f
 category: workflow
-description: >-
-Orchestrate the per-worktree merge cycle for the trunk-based
-agent-review workflow (ensemble review → crackerjack gate →
-squash-merge → auto-push → cleanup).
+description: Orchestrate the per-worktree merge cycle for the trunk-based agent-review workflow (ensemble review → crackerjack gate → squash-merge → auto-push → cleanup).
 supported_platforms:
-
 - macOS
 - Linux
-  required_scripts: []
-  allowed-tools:
+required_scripts: []
+allowed-tools:
 - Bash
 - Read
-  required_tools:
+required_tools:
 - mahavishnu:merge-to-main
 - crackerjack:run
+---
 
 ______________________________________________________________________
 

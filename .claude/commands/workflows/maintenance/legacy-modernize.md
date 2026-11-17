@@ -1,14 +1,13 @@
+---
 title: Legacy Modernization Workflow
 owner: Developer Enablement Guild
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/development/code-quality/dependency-lifecycle.md
-- commands/tools/maintenance/maintenance-cadence.md
-- commands/tools/development/testing/quality-validation.md
-  risk: high
-  status: active
-  id: 01K6EF8EMW9PF2X3HV20GYWVHG
+last_reviewed: '2026-11-17'
+risk: high
+status: active
+id: 01a1e928ac59754db8790957e13a68ad
+category: maintenance
+description: Use this workflow to modernize legacy systems with staged, low-risk changes, covering discovery, incremental delivery, and decommission planning.
+---
 
 ______________________________________________________________________
 

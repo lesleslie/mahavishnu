@@ -1,14 +1,13 @@
+---
 title: Release Governance Workflow
 owner: Delivery Operations
-last_reviewed: 2025-02-06
-related_tools:
-
-- commands/tools/deployment/release-management.md
-- commands/tools/development/testing/quality-validation.md
-- commands/tools/monitoring/observability-lifecycle.md
-  risk: high
-  status: active
-  id: 01K6EF5K31G84FC47F8TFBZ1EN
+last_reviewed: '2026-11-17'
+risk: high
+status: active
+id: 01a1e928ac41713e9dd9e852aa880e21
+category: deployment
+description: Use this workflow to move a release from readiness review to launch and stabilization.
+---
 
 ______________________________________________________________________
 
