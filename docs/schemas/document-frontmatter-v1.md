@@ -115,7 +115,7 @@ The 12-row minimum is satisfied by the rows above. Cases where body semantics di
 
 ## Topic Vocabulary
 
-Topics are slug strings applied to the `topic` field. The controlled list lives in the oneiric.schemas packaged `topic-vocabulary-v1.md` (loaded via `importlib.resources`). The initial seed list contains ten well-established topics: `mcp-design`, `storage-consolidation`, `adapter-architecture`, `terminal`, `routing-composition`, `learning-pipeline`, `observability`, `auth`, `convergence-control-plane`, `worktree-management`.
+Topics are slug strings applied to the `topic` field. The controlled list lives in the packaged `oneiric.schemas/topic-vocabulary-v1.md`, and the validator merges that seed list with the repo-local `docs/schemas/topic-vocabulary-v1.md` additions file when present. The initial seed list contains ten well-established topics: `mcp-design`, `storage-consolidation`, `adapter-architecture`, `terminal`, `routing-composition`, `learning-pipeline`, `observability`, `auth`, `convergence-control-plane`, `worktree-management`.
 
 The validator runs in **hybrid mode**: known topics pass without warning; unknown topics pass with a `--strict` warning so the maintainer can decide whether to expand the vocabulary or normalize the value. Editing the vocabulary file is a normal doc change requiring no plan amendment.
 

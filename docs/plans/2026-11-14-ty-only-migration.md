@@ -532,4 +532,3 @@ commits at all** — `main` is unborn — and the files belong to another
 session's untracked work. Editing them would have meant touching another
 session's WIP. The fix, when their owner applies it, is to drop the
 directive: ty reports nothing at either line, so no suppression is needed.
-

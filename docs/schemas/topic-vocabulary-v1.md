@@ -13,7 +13,7 @@ last_reviewed: 2026-11-02
 
 ## Goal
 
-This document provides a curated seed list of roughly ten topic slugs used in
+This document provides a curated seed list of topic slugs used in
 the `topic:` field of YAML frontmatter across Bodai documentation. The
 vocabulary is intentionally small and opinionated: it exists to keep the most
 common documentation areas consistently labeled so they can be grouped,
@@ -21,7 +21,9 @@ filtered, and cross-referenced. Free-form values are **allowed** — a document
 may use a `topic:` slug that is not in this seed list — but the frontmatter
 validator will emit a **warning** for any slug it does not recognize, nudging
 authors either to reuse an existing slug or to add a new one here via the
-contribution workflow below.
+contribution workflow below. The validator loads the packaged oneiric seed
+list and unions it with this repo-local file, so this file acts as the
+supplemental additions layer for Mahavishnu-specific topics.
 
 ## Seed List
 
@@ -54,6 +56,83 @@ contribution workflow below.
 | `lifecycle-hooks` | Oneiric activation, health-check, hot-swap, rollback, and cleanup hook contracts. |
 | `decision-index` | `.claude/decisions/` README index file (canonical decision inventory). |
 | `deployability-discipline` | Bodai deployability rule: standalone-by-default, harness-agnostic interface, serverless-deployable runtime. See `oneiric/docs/adr/0001-deployability-discipline.md` (proposed 2026-09-26). |
+
+| `acp-v15-followups` | Mahavishnu topic: acp-v15-followups. |
+| `adapter-composition` | Mahavishnu topic: adapter-composition. |
+| `agno-failover-gateway` | Mahavishnu topic: agno-failover-gateway. |
+| `agno-llm-routing` | Mahavishnu topic: agno-llm-routing. |
+| `agno-memory-field-validator-silent-skip` | Mahavishnu topic: agno-memory-field-validator-silent-skip. |
+| `ai-dep-group-transitive-bloat` | Mahavishnu topic: ai-dep-group-transitive-bloat. |
+| `archived-requirements-registry` | Mahavishnu topic: archived-requirements-registry. |
+| `backup-cli-broad-typer-exit` | Mahavishnu topic: backup-cli-broad-typer-exit. |
+| `beartype-pytest-cov-py314` | Mahavishnu topic: beartype-pytest-cov-py314. |
+| `bifrost-anthropic-baseurl-cutover` | Mahavishnu topic: bifrost-anthropic-baseurl-cutover. |
+| `bifrost-cache-eviction-and-threshold` | Mahavishnu topic: bifrost-cache-eviction-and-threshold. |
+| `bifrost-cache-wiring` | Mahavishnu topic: bifrost-cache-wiring. |
+| `bifrost-cli-consolidation` | Mahavishnu topic: bifrost-cli-consolidation. |
+| `bifrost-complexity-accounting` | Mahavishnu topic: bifrost-complexity-accounting. |
+| `bifrost-gateway-wiring` | Mahavishnu topic: bifrost-gateway-wiring. |
+| `bifrost-mcp-skills-aggregation` | Mahavishnu topic: bifrost-mcp-skills-aggregation. |
+| `bifrost-minimax-routing` | Mahavishnu topic: bifrost-minimax-routing. |
+| `bifrost-oneiric-gateway-adapter` | Mahavishnu topic: bifrost-oneiric-gateway-adapter. |
+| `bifrost-readiness-budget` | Mahavishnu topic: bifrost-readiness-budget. |
+| `bodai-ecosystem-candidates` | Mahavishnu topic: bodai-ecosystem-candidates. |
+| `bodai-task-system-v1-1` | Mahavishnu topic: bodai-task-system-v1-1. |
+| `bodai-tui-shell-surface` | Mahavishnu topic: bodai-tui-shell-surface. |
+| `changepoint-two-stage-polish` | Mahavishnu topic: changepoint-two-stage-polish. |
+| `cli-deprecation-drift` | Mahavishnu topic: cli-deprecation-drift. |
+| `clone-refactor-wireup` | Mahavishnu topic: clone-refactor-wireup. |
+| `config-consolidation` | Mahavishnu topic: config-consolidation. |
+| `config-that-nobody-reads` | Mahavishnu topic: config-that-nobody-reads. |
+| `content-quality` | Mahavishnu topic: content-quality. |
+| `control-plane-consolidation` | Mahavishnu topic: control-plane-consolidation. |
+| `crow-mcp-client` | Mahavishnu topic: crow-mcp-client. |
+| `decision-adapter-category` | Mahavishnu topic: decision-adapter-category. |
+| `delete-all-legacy-named-code` | Mahavishnu topic: delete-all-legacy-named-code. |
+| `demo-surface` | Mahavishnu topic: demo-surface. |
+| `event-sourced-otel` | Mahavishnu topic: event-sourced-otel. |
+| `followups-index` | Mahavishnu topic: followups-index. |
+| `jot-read` | Mahavishnu topic: jot-read. |
+| `legacy-mcp-server-decommissioning` | Mahavishnu topic: legacy-mcp-server-decommissioning. |
+| `lint-coverage-gap` | Mahavishnu topic: lint-coverage-gap. |
+| `mahavishnu-niche` | Mahavishnu topic: mahavishnu-niche. |
+| `mahavishnu-pool-error-code-attribute` | Mahavishnu topic: mahavishnu-pool-error-code-attribute. |
+| `mcp-dispatch-liveness` | Mahavishnu topic: mcp-dispatch-liveness. |
+| `mcp-enrichment-posture` | Mahavishnu topic: mcp-enrichment-posture. |
+| `mcp-profile-groups` | Mahavishnu topic: mcp-profile-groups. |
+| `mcp-stub-activation` | Mahavishnu topic: mcp-stub-activation. |
+| `mcp-substrate-implementation` | Mahavishnu topic: mcp-substrate-implementation. |
+| `mcp-substrate-rewire` | Mahavishnu topic: mcp-substrate-rewire. |
+| `mcp-tool-disambiguation` | Mahavishnu topic: mcp-tool-disambiguation. |
+| `mcpretentious-removed` | Mahavishnu topic: mcpretentious-removed. |
+| `mcpserver-settings-convention` | Mahavishnu topic: mcpserver-settings-convention. |
+| `merge-semantic-duration-instrumentation` | Mahavishnu topic: merge-semantic-duration-instrumentation. |
+| `metrics-schema` | Mahavishnu topic: metrics-schema. |
+| `model-evaluation` | Mahavishnu topic: model-evaluation. |
+| `opensearch-diverged-flags` | Mahavishnu topic: opensearch-diverged-flags. |
+| `otel-producer-reporting` | Mahavishnu topic: otel-producer-reporting. |
+| `permissions` | Mahavishnu topic: permissions. |
+| `quality-gate-complexity` | Mahavishnu topic: quality-gate-complexity. |
+| `registry-paths` | Mahavishnu topic: registry-paths. |
+| `ruff-cleanup-post-regrowth` | Mahavishnu topic: ruff-cleanup-post-regrowth. |
+| `scapy-mcp-integration-review` | Mahavishnu topic: scapy-mcp-integration-review. |
+| `shared-frontmatter-validator` | Mahavishnu topic: shared-frontmatter-validator. |
+| `shared-oneiric-substrate` | Mahavishnu topic: shared-oneiric-substrate. |
+| `storage-abstraction-review` | Mahavishnu topic: storage-abstraction-review. |
+| `streaming-tar-evolution` | Mahavishnu topic: streaming-tar-evolution. |
+| `substrate-calltime-rewire` | Mahavishnu topic: substrate-calltime-rewire. |
+| `substrate-otel` | Mahavishnu topic: substrate-otel. |
+| `task-workflow-backlink` | Mahavishnu topic: task-workflow-backlink. |
+| `tier2-hyperbolic-embeddings` | Mahavishnu topic: tier2-hyperbolic-embeddings. |
+| `tier2-multi-metric-drift` | Mahavishnu topic: tier2-multi-metric-drift. |
+| `tier2-optimal-transport` | Mahavishnu topic: tier2-optimal-transport. |
+| `tier2-phase-d-cross-repo` | Mahavishnu topic: tier2-phase-d-cross-repo. |
+| `ty-only-migration` | Mahavishnu topic: ty-only-migration. |
+| `type-checking` | Mahavishnu topic: type-checking. |
+| `websocket-broadcaster-default` | Mahavishnu topic: websocket-broadcaster-default. |
+| `worker-dispatch-trustworthiness` | Mahavishnu topic: worker-dispatch-trustworthiness. |
+| `worker-status-isoformat-crash` | Mahavishnu topic: worker-status-isoformat-crash. |
+| `yaml-backed-model-routing` | Mahavishnu topic: yaml-backed-model-routing. |
 
 ## Contribution Workflow
 

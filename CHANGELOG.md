@@ -5,6 +5,153 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.40.0] - 2026-11-16
+
+### Added
+
+- hooks: Re-stamp version claims from the commit that bumps the version
+- mcp: Add the fleet-wide tool-surface guard
+- mcp: Report dispatch liveness so long pool calls survive the idle timeout
+- mcp: Restore the readiness fold through the shared hook
+- plans: Add ADR 020 and the ecosystem acceptance packet
+- pools: Report the worker substrate in the pool listing
+- pools: Wire the affinity allowlist to the settings
+- skills: Track the auto-coordinate skill and guard its contract
+
+### Changed
+
+- Chore/delete-applescript-conformance-test -> main
+- Chore/revert-archive-cleanup-guard -> main
+- De-vendor the health surface onto mcp-common
+- Docs/record-archive-gate-landing -> main
+- Feat/control-plane-consolidation -> main
+- Feat/mcp-tool-disambiguation -> main
+- Feat/parallel-ensemble-review -> main
+- Feature/phase4-oneiric-llm-swap -> main
+- Feature/pyscn-complexity-ceiling-15 -> main
+- Fix/no-grpc-fork-crash -> main
+- Fix/record-the-stream-abort -> main
+- Fix/refuse-unhonourable-cwd -> main
+- Fix/review-capture-window -> main
+- Fix/review-transport-timeout -> main
+- Fix/stale-worktree-env-expectations -> main
+- Fix/test-module-basename-collision -> main
+- Fix/ty-rule-renames -> main
+- Fix/worktree-isolation-test-mock -> main
+- Format the lines main's requirement-ID rename left long
+- mahavishnu: Apply the gate's formatter fixes to two files
+- mahavishnu: Delete the desktop-automation backend package
+- mcp: Delete the dead desktop-automation tool module
+- mcp: Delete the unreachable coord_* tool module
+- mcp: Point the Grep substitution table at the renamed crackerjack tool
+- mcp: Prefix mahavishnu tool names with the component name
+- mcp: Update the remaining tool references to the component prefix
+- mcp: Update tool references to the component prefix
+
+### Fixed
+
+- bifrost: Accept fallback evidence in qwen gate
+- bifrost: Align fallback docs and template
+- bifrost: Map the current Sonnet alias onto MiniMax-M3
+- bifrost: Restore the model ids when direct leaves the gateway
+- bifrost: Take Claude Code off the response cache and stop pinning the lookup
+- bifrost: Update routing fallbacks and template docs
+- Clear the pyscn complexity and ty-ignore-syntax hook failures
+- coordination: Never reuse a retired issue ID
+- docs: Declare REQ-BIFROST-045 in frontmatter, not the plan body
+- docs: Restore the two OTel substrate plans the publish cleanup swept
+- Four production defects the stale tests were covering
+- hooks: One hook location per repo, and retire the pre-commit framework
+- hooks: Publish the PostToolUse event once, not twice
+- hooks: Run the version stamper in isolated mode
+- integration: Stop the jot hooks writing logs to stdout
+- lint: Rename stale ty ignore rules to their current names
+- mahavishnu: Convert blanket type-ignores to specific ty rules
+- Make six order-dependent tests order-independent
+- Make the requirement audit machine-independent
+- mcp: Align tool references with the component-prefix names
+- mcp: Re-record the fleet surface snapshot after the sweep
+- mcp: Rebuild the version registry from main's regenerated one
+- mcp: Regenerate the tool version registry against the live surface
+- mcp: Register the terminal_* tools and the three missing groups
+- mcp: Repair the reference forms the rename sweep could not see
+- mcp: Update the test assertions to the prefixed tool names
+- merge-review: Bound the review's work and report its verdicts
+- merge-review: Fit the reviewer's reply to the capture window
+- merge-review: Name the runners the reviewer must not start
+- merge-review: Read the review's status from the pool envelope
+- merge-review: Read the reviewer's verdict out of the worker's output
+- merge-review: Retry an unreadable review, and pin the reviewer's paths
+- merge-review: Sanitize the reviewer's note before it reaches the log
+- pools: Derive the pool-capable worker types from the registry
+- pools: Key the affinity allowlist on the operator's policy, not caller_kind
+- pools: Make the affinity policy a pin gate, then narrow it
+- prefect: Route client settings before factory creation
+- routing: Name the local llama-server model the way it is served
+- tests: Align the stale mocks and expectations with the current contracts
+- tests: Mock kv_get in the envelope read-coverage test
+- tests: Mock the KV helper the envelope transport actually reads through
+- tests: Point the pool fixture at a persistent worker type
+- workers: Route codex and refresh qwen defaults
+
+### Documentation
+
+- Add the Atlas on-screen testing guide to CLAUDE.md and AGENTS.md
+- agents: Record the prompt-vs-command dispatch split
+- bifrost: Close the prompt-cache TTL question and pin the decision
+- bifrost: Narrow the provider-cache fault to the request's leading region
+- bifrost: Say which lever picks the model, and which one does not
+- bifrost: Split the provider-cache misses and land the harness fix
+- Correct four mislabelled specs, restore two deleted impl plans
+- Correct the worker-type retirement record and document affinity
+- decisions: Decouple the ty-ignore policy from crackerjack's code list
+- decisions: Record the MCP dispatch liveness rule
+- decisions: Record the ty-only policy
+- decisions: Require a description on every registered MCP tool
+- Describe the operator-keyed affinity policy
+- Drop the two shipped OTel plans' index rows after archival
+- mcp: Correct the tool-count claim and pin it to the registered surface
+- mcp: Plan the dispatch heartbeat and prove it end to end
+- mcp: Point the tool map at the guard that keeps it honest
+- plans: Add the MCP tool disambiguation plan
+- plans: Correct 14 stale plan lifecycles after verifying against code and git
+- plans: Correct the query_local_traces server count
+- plans: Record the ty-only migration and its outcome
+- plans: Record the wired trace tool and widen the shared set
+- plans: Regenerate the plan index from committed state
+- plans: Regenerate the plan index from committed state
+- plans: Regenerate the plan index from committed state
+- plans: Replace MCP aggregation with profile groups + shared LLM egress
+- Refresh and run the OTel substrate plans' gates, then ship them
+- runbooks: Add llama-server autostart runbook
+- specs: Fix the mermaid parse error in the shared-substrate design
+- Stop presenting the unregistered coord_* tools as callable
+
+### Testing
+
+- Align three assertions with the current contracts, and name the async loop scope
+- conductor: Resolve the worker registry from the loader
+- pools: Pin the affinity allowlist resolution rules
+
+### Build
+
+- deps: Add a 7-day dependency cooldown with CVE and tooling carve-outs
+
+### Internal
+
+- bifrost: Pin transport to v2.5.0
+- bifrost: Upgrade transport to v2.5.1
+- deps: Raise the mcp-common floor to 0.35.0
+- deps: Raise the mcp-common floor to 0.36.0
+- deps: Raise the oneiric and crackerjack floors to the gated releases
+- deps: Refresh the lockfile
+- deps: Sync the lock to the latest allowed versions
+- gitignore: Ignore testmon and crackerjack runtime artifacts
+- mahavishnu: Drop mypy configuration in favour of ty
+- mahavishnu: Re-tighten the ty ratchet test budget to 3925
+- mahavishnu: Remove bracketed mypy ignore directives
+- Set the coverage floor to the measured value
+
 ## [0.39.0] - 2026-11-07
 
 ### Added
