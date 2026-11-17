@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mahavishnu: Apply the gate's formatter fixes to two files
 - mahavishnu: Delete the desktop-automation backend package
 - mcp: Delete the dead desktop-automation tool module
-- mcp: Delete the unreachable coord_* tool module
+- mcp: Delete the unreachable coord\_\* tool module
 - mcp: Point the Grep substitution table at the renamed crackerjack tool
 - mcp: Prefix mahavishnu tool names with the component name
 - mcp: Update the remaining tool references to the component prefix
@@ -73,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mcp: Re-record the fleet surface snapshot after the sweep
 - mcp: Rebuild the version registry from main's regenerated one
 - mcp: Regenerate the tool version registry against the live surface
-- mcp: Register the terminal_* tools and the three missing groups
+- mcp: Register the terminal\_\* tools and the three missing groups
 - mcp: Repair the reference forms the rename sweep could not see
 - mcp: Update the test assertions to the prefixed tool names
 - merge-review: Bound the review's work and report its verdicts
@@ -125,7 +125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refresh and run the OTel substrate plans' gates, then ship them
 - runbooks: Add llama-server autostart runbook
 - specs: Fix the mermaid parse error in the shared-substrate design
-- Stop presenting the unregistered coord_* tools as callable
+- Stop presenting the unregistered coord\_\* tools as callable
 
 ### Testing
 
