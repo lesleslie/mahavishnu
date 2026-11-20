@@ -54,7 +54,7 @@ Five outcomes, each independently checkable:
 | Fleet width | **1024** — a **fixed fleet width, independent of the model** | Operator decision, 2026-11-20. The rule is that a **model must be admissible at the fleet width** (natively, or by Matryoshka truncation), *not* that the width follows the model. 1024 is the only width that satisfies every hard constraint at once. (a) It indexes as plain `vector` with HNSW in pgvector, whose ceiling is **2000 dimensions** — 3072 and 2048 both exceed it and would need a `halfvec` type plus a cast-expression index. (b) It is admitted by **every** candidate model in the field; 1536 is a legacy width that only OpenAI and the retired `embed-v4` still offer, and the whole Voyage family excludes it. (c) The quality difference among 1024 / 1536 / 3072 is far below what our corpus can measure. A fixed width keeps the storage contract stable, so a model change costs one re-embed rather than a re-embed *plus* a schema migration — and the migration is the expensive half, because DuckDB cannot widen a fixed-size ARRAY and `CREATE TABLE IF NOT EXISTS` never alters. See §1.1. |
 | Llama.cpp `dimensions` | **not sent** | llama.cpp does not implement the `dimensions` parameter (issue #25210 open). Truncation must be client-side, and the fleet's client is OpenAI-compatible. |
 | Local fallback legs | **llama-server, model2vec and the mock leave the semantic chain** | Hardware-limited today, and the mock is a startup failure, not a fallback. A different model is a different vector space, not a failover. The *capability* of an OpenAI-compatible leg stays in the contract, so a local server remains a configuration change rather than a project (§3.2). |
-| The `dimensions` parameter itself | **sent whenever the target width is not the model's native width** | `text-embedding-3-large` is natively 3072, so reaching 1024 *requires* `dimensions: 1024` on every request. The rule is not "never send" (that would make 3-large unreachable) and not "always send" (on a native-width model it is a no-op that invites a reader to think truncation is in play). The client decides from a **declared capability on the leg**, never from the model's name — see §3.2. |
+| The `dimensions` parameter itself | **sent whenever the target width is not the model's native width** | `text-embedding-3-large` is natively 3072, so reaching 1024 *requires* `dimensions: 1024` on every request. The rule is not "never send" (that would make 3-large unreachable) and not "always send" (on a native-width model it is a no-op that invites a reader to think truncation is in play). The client decides from a **declared capability on the leg**, never from the model's name — and the capability must include **how the width is requested**, because the field name is per-vendor (`dimensions` for OpenAI, `output_dimension` for Voyage and Cohere, `output_dimensionality` for Gemini) — see §3.2. |
 | The model itself | **`text-embedding-3-large`**, a contract field with a re-embed path, not a constant | Operator decision, 2026-11-20. Chosen over `text-embedding-3-small` on retrieval quality (MTEB retrieval nDCG@10 **55.4** against **51.7**) at a price difference that is immaterial at fleet volume (10M tokens/month is $1.30 against $0.20). Provisional: §1.1 names `cohere embed-v4` at 1024 as the candidate the recall benchmark must score against it. |
 | Index space vs ranker | **the index space is frozen; the ranker is separately configurable** | The corpus is re-embedded only when the *index* model changes. Ranking quality lives in a separate leg with its own model and space id, so the ranker can be upgraded — or replaced by a cross-encoder — without touching a single stored vector. See §1.2. |
 | Records | **may be lost** | Operator decision, 2026-11-19. No legacy support, no backwards-compat shims. Rebuilds are cheap; the data is not worth a shim. |
@@ -131,14 +131,23 @@ candidate widths fail.
    `embeddinggemma`. **1024 is admitted by every one of them** — it is
    Voyage's *default*, and it is a supported MRL breakpoint for
    `text-embedding-3-large`, `embed-v4`, `embed-5`, `gemini-embedding`,
-   `Qwen3-Embedding` and `voyage-4-nano`.
+   `Qwen3-Embedding` and `voyage-4-nano`. Counted across a 25-model
+   survey of the field, **1024 is admissible for 21 of them and 1536 for
+   12**; Cohere's own engineering guidance for its newest model points
+   the same way — *"For most deployments, we recommend 1,024-dimensional
+   int8 vectors as the ideal performance-efficiency point."*
 3. **The quality difference is below what our corpus can measure.**
    `text-embedding-3-large` scores 64.0 at 1024 against 64.6 at 3072 on
    OpenAI's own MTEB evaluation, and the fleet holds **163 embedded
    documents** (156 conversations, 7 trace rows). A retrieval benchmark
    on 163 documents can resolve a large gap, not a 0.6-point one — so
    quality cannot decide this, and the decision must be made on
-   structure instead.
+   structure instead. Nor can the published numbers settle it: the MTEB
+   leaderboard averages each model over a *different* subset of tasks
+   (`text-embedding-3-large` has 8 of the 10 English-v2 retrieval tasks,
+   `gemini-embedding-001` has 4, and the Voyage 4 and Cohere v4/v5
+   families have **zero** — they are scored on RTEB), so a cross-model
+   average is not like-for-like.
 
 **Why the width is fixed rather than native.** A fixed width means the
 storage contract, the DDL, the indexes and the migration path are
@@ -560,6 +569,34 @@ about embeddings.
       exactly when the target width differs from the declared native
       width, and a leg that cannot truncate is either refused or
       truncated client-side.
+- [ ] **The width parameter is per-vendor, so the leg must declare how
+      it sets the width — not merely what the width is.**
+      OpenAI's field is `dimensions`. Voyage's is `output_dimension`;
+      Cohere's is `output_dimension` too, and Cohere's
+      `/compatibility/v1/embeddings` endpoint lists `dimensions` under
+      **"Unsupported parameters"** — a call through it drops the field
+      and returns the default width. Gemini's native field is
+      `output_dimensionality`; Vertex AI has no documented
+      OpenAI-compatible embeddings endpoint at all; Ark's *text*
+      endpoint has no width parameter (only its multimodal one does);
+      and Nomic's endpoint is not OpenAI-shaped at all.
+      **The dangerous case is silent**: Bifrost forwards `dimensions`
+      verbatim to a *generic* OpenAI-type custom provider, so a Voyage
+      model behind Bifrost returns its 1024-dim default with no error
+      and no warning — and the vector lands in a 1024-wide store
+      looking entirely correct. Bifrost renames the field per upstream
+      only for its *built-in* providers.
+      So the leg's declared capability needs a third field alongside
+      `native_width` and `supports_server_truncation`: **how the width
+      is requested** (`width_parameter`, and whether the endpoint can
+      set it at all). A leg whose endpoint cannot set the width is
+      eligible only when its declared `native_width` equals the fleet
+      width — otherwise it must be refused, not silently accepted.
+      Perplexity's `pplx-embed-v1-*` is a trap of its own: its
+      `encoding_format` enum is `base64_int8` / `base64_binary` only,
+      with no float, so it needs a decode plus an L2 normalisation — the
+      provider states that casting the int8 values to float "does not
+      restore a full-precision embedding".
 - [ ] **Make the OpenAI-compatible leg generic over
       `(base_url, model, dimensions, auth)`.** The chain has separate code
       paths per provider today — `openai_gateway`, `openai_direct`,
@@ -1375,6 +1412,21 @@ status code.**
       1024 (§1.1), so the model decision rests on our corpus rather than
       on a leaderboard. This is the 2026-11-20 memory-retrieval-quality
       plan's Phase 1; the standardisation plan does not ship without it.
+- [ ] **The benchmark also measures the *width* on our own corpus, at
+      three widths of one model.** Take `text-embedding-3-large` at
+      3072, 1536 and 1024 and measure nDCG@10 on our own labelled
+      queries at each. Every vendor curve says the answer will be
+      "1024 is fine" — OpenAI's own table puts 1024 within 0.5 points
+      of 3072, and the measured loss across models is 0.3 to 1.05
+      points, which is inside a leaderboard run's noise — but only our
+      corpus can confirm it. This is the one measurement that could
+      reopen the width, so it is the one measurement to run.
+- [ ] **The candidate set includes the models that post-date the
+      decision**: `cohere embed-v5.0-pro` / `-fast` (released 30 Sep
+      2026, native 2048, admissible at 1024, Pro and Fast share one
+      embedding space), and `perplexity pplx-embed-v1-4b` (native 2560,
+      MRL to 128, int8/binary output only — its `encoding_format` enum
+      has no float, so it needs a decode and an L2 normalisation).
 - [ ] **`use("vector", provider="pgvector")` and
       `use("embedding", provider="openai")` both resolve and instantiate.**
       They currently raise `LifecycleError: Swap failed`. If they do not
