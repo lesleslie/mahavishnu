@@ -1414,3 +1414,16 @@ Restart Claude Code after toggling for the change to take effect.
   Run `chmod +x ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` for the affected version, then re-run `mahavishnu bifrost start`.
 - if the launchd job still fails to start after the chmod (with `Unknown system error -88` from `spawnSync`), macOS Gatekeeper is rejecting the unsigned native binary.
   Run `codesign --force --sign - ~/Library/Caches/bifrost/<version>/bin/bifrost-http-0` to ad-hoc sign it, then re-run `mahavishnu bifrost start`. See `docs/BIFROST_REACTIVATION_RUNBOOK.md` for details.
+- **why it recurs: the launcher only repairs the binary on the download path.**
+  The npm launcher's `chmodSync(dest, 0o755)` sits inside `downloadBinary`, and
+  the download is skipped when the file already exists in the cache — the
+  launcher goes straight from `existsSync(binaryPath)` to `execFileSync`. So a
+  cached binary that landed non-executable (or Gatekeeper-blocked) fails
+  *identically on every boot*, and nothing self-heals: each launchd retry
+  re-execs the same unusable file. The transport upgrade to v2.6.0 on
+  2026-11-20 hit this and cost the whole ready budget — `mahavishnu bifrost
+  restart` waited out its full 660 s and then printed "leaving client URL(s)
+  untouched", while the gateway was in fact serving by the time it gave up.
+  **The repair is one `chmod +x` on the cached path**, and it is an operator
+  step today only because nothing in `mahavishnu/bifrost/gateway.py` touches
+  the exec bit.

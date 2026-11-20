@@ -1366,7 +1366,7 @@ status code.**
   truncation actually happened rather than trusting the request. A
   3072-wide response against a 1024-wide store is the silent
   corruption this gate exists to catch.
-- [ ] **`text-embedding-3-large` is on the OpenAI provider key's model
+- [x] **`text-embedding-3-large` is on the OpenAI provider key's model
   allowlist.** Verified live: the gateway answers HTTP 403 — *"Model
   'text-embedding-3-large' is not allowed for virtual key
   'bodai-pi-pool'"*. The virtual key itself allows everything
@@ -1374,29 +1374,41 @@ status code.**
   provider key `openai-primary`'s `models_json`, which lists
   `text-embedding-3-small` and not `-large`. A model outside that
   allowlist fails locally, before the request ever reaches OpenAI.
-  **The allowlist entry was added on 2026-11-20** —
-  `config_keys.id = 3` (`openai-primary`) now reads
-  `["gpt-5.4","gpt-5.4-mini","gpt-5.6-luna","gpt-5.3-codex","text-embedding-3-small","text-embedding-3-large"]`,
-  confirmed by reading it back. **What remains is the round trip**:
-  restart the gateway (`launchctl kickstart -k ai.bifrost.gateway`) if
-  the running process has the old list cached, then prove that
-  `text-embedding-3-large` at `dimensions: 1024` returns a 1024-wide
-  vector and at `dimensions: 3072` returns a 3072-wide one. Both the
-  restart and the credentialed probe were blocked by the auto-mode
-  classifier, so they are operator steps, not agent steps.
-- [ ] **The gateway forwards `dimensions` — verified; keep it that way.**
-  Live probe against the local Bifrost (v2.5.1), using
-  `text-embedding-3-small`, whose native width is 1536 and which
-  supports Matryoshka truncation: requesting 1536 / 1024 / 768 / 256
-  each returned exactly that width, and omitting the field returned
-  the native 1536. **Any width a model can serve natively or by
-  truncation is therefore reachable through the gateway, and the fleet
-  width is not constrained by the gateway.** Re-run this probe in the
-  gate: a gateway that dropped the field would answer at the native
-  width, and a mis-sized vector would reach the store. **Re-run it with
-  `text-embedding-3-large`**, not `-small`: the point of the probe is
-  that the *fleet's* model honours the field, and `-large` is the one
-  the fleet uses.
+  **Done on 2026-11-20**: `config_keys.id = 3` (`openai-primary`) now
+  reads `["gpt-5.4","gpt-5.4-mini","gpt-5.6-luna","gpt-5.3-codex","text-embedding-3-small","text-embedding-3-large"]`,
+  confirmed by reading it back, and the round trip below proves the
+  model is now reachable.
+- [x] **The gateway forwards `dimensions` — verified; keep it that way.**
+  Live probe against the local Bifrost, using `text-embedding-3-small`,
+  whose native width is 1536 and which supports Matryoshka truncation:
+  requesting 1536 / 1024 / 768 / 256 each returned exactly that width,
+  and omitting the field returned the native 1536. **Any width a model
+  can serve natively or by truncation is therefore reachable through the
+  gateway, and the fleet width is not constrained by the gateway.**
+  Re-run in the gate: a gateway that dropped the field would answer at
+  the native width, and a mis-sized vector would reach the store.
+  **Re-run it with `text-embedding-3-large`**, not `-small`: the point
+  of the probe is that the *fleet's* model honours the field.
+  **Done on 2026-11-20**, against the v2.6.0 transport, with the
+  fleet's own model at the fleet's width:
+
+  | model | requested | returned width |
+  |---|---|---|
+  | `text-embedding-3-small` | 1024 | 1024 |
+  | `text-embedding-3-large` | **1024** | **1024** |
+  | `text-embedding-3-large` | 3072 | 3072 |
+  | `text-embedding-3-large` | omitted | 3072 (native) |
+
+  The third row is the control: it proves the field is forwarded
+  rather than clamped, and the fourth proves the model's own native
+  width is still 3072 — so the 1024 in the second row is a real
+  truncation, not a different model.
+- [ ] **Re-run the probe after any transport upgrade.** The transport
+  pin moves the gateway's binary, and the `compat` component is where
+  a provider's width handling lives. This one passed on v2.6.0
+  (`compat` v0.5.7 altered only Baseten decision models), but a
+  future upgrade could change it silently — the probe is cheap and
+  the failure mode is a mis-sized vector reaching the store.
 - [ ] The index space and the **ranker's** space id are reported
   separately, and the search response carries
   `rerank: {model, applied, reordered}` (§1.2).
