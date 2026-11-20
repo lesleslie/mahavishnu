@@ -26,10 +26,10 @@ Use this workflow to scope, build, and hand off automation that spans pipelines,
 ## Workflow
 
 1. Identify the automation goal and current friction.
-1. Design the minimal workflow and guardrails.
-1. Integrate quality, telemetry, and any required approvals.
-1. Create runbooks and enablement material.
-1. Schedule a review to keep the automation current.
+2. Design the minimal workflow and guardrails.
+3. Integrate quality, telemetry, and any required approvals.
+4. Create runbooks and enablement material.
+5. Schedule a review to keep the automation current.
 
 ## Output
 

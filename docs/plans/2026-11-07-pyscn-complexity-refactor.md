@@ -4,20 +4,20 @@ role: implementation
 kind: plan
 date: 2026-11-07
 last_reviewed: 2026-11-07
-superseded_by: null
+superseded_by:
 topic: quality-gate-complexity
 title: "Reduce pyscn complexity in four MCP/CLI hotspots and clear the redundant-cast ty warning"
 requirements:
-- id: REQ-CX-001
-  title: pool_route_execute complexity at or below 25
-- id: REQ-CX-002
-  title: team_from_goal complexity at or below 25
-- id: REQ-CX-003
-  title: prune_merged_worktrees._run complexity at or below 25
-- id: REQ-CX-004
-  title: cross_repo_search complexity at or below 25
-- id: REQ-CX-005
-  title: No redundant bool cast in repository_surface
+  - id: REQ-CX-001
+    title: pool_route_execute complexity at or below 25
+  - id: REQ-CX-002
+    title: team_from_goal complexity at or below 25
+  - id: REQ-CX-003
+    title: prune_merged_worktrees._run complexity at or below 25
+  - id: REQ-CX-004
+    title: cross_repo_search complexity at or below 25
+  - id: REQ-CX-005
+    title: No redundant bool cast in repository_surface
 ---
 
 # Reduce pyscn complexity in four MCP/CLI hotspots
@@ -34,10 +34,10 @@ to `Total: 11 | Passed: 11 | Failed: 0`.
 ## 2. Goals
 
 1. Bring all four flagged functions to a pyscn complexity of **≤ 25**.
-1. Clear the single `ty` `redundant-cast` warning.
-1. Preserve observable behaviour exactly: same return payloads, same log
+2. Clear the single `ty` `redundant-cast` warning.
+3. Preserve observable behaviour exactly: same return payloads, same log
    lines, same exception semantics, same ordering of side effects.
-1. Keep the MCP tool schemas byte-identical (FastMCP derives them from the
+4. Keep the MCP tool schemas byte-identical (FastMCP derives them from the
    decorated function's signature, so signatures must not change).
 
 ## 3. Non-Goals
@@ -45,13 +45,13 @@ to `Total: 11 | Passed: 11 | Failed: 0`.
 1. **Not** raising the pyscn threshold. The threshold lives in a *different
    repo* (`crackerjack/models/tool_config.py:19`) and is a cross-repo policy
    decision — changing it here would be an unrequested, ecosystem-wide edit.
-1. **Not** adding `# noqa: C901` suppressions. Ruff's `C901` is not in this
+2. **Not** adding `# noqa: C901` suppressions. Ruff's `C901` is not in this
    repo's active rule set (`I, N, UP, B, C4, SIM, TCH` + `P` subset), and pyscn
    does not honour `noqa` anyway — the only mechanism that actually moves the
    gate is lowering the measured complexity.
-1. **Not** refactoring `register_goal_team_tools.parse_goal` (measured 19,
+3. **Not** refactoring `register_goal_team_tools.parse_goal` (measured 19,
    below threshold).
-1. **Not** touching any behaviour the 173-test baseline does not cover.
+4. **Not** touching any behaviour the 173-test baseline does not cover.
 
 ## 4. Current Findings
 
@@ -109,6 +109,7 @@ requirements:
 **Goal:** clear `mahavishnu/core/repository_surface.py:191:20: warning[redundant-cast]`.
 
 **Tasks:**
+
 - `check_user_repo_permission` casts the result of `asyncio.run(...)` to
   `bool`. `rbac_manager.check_permission` already returns `bool`, so the
   cast is a no-op that `ty` flags. Drop both casts (the one at :189 inside
@@ -119,6 +120,7 @@ requirements:
 no diagnostics for the file.
 
 #### Integration Contract
+
 - **Triggered from**: `check_user_repo_permission(app, user_id, repo_path)`,
   called from the repository-surface resolution path in the same module.
 - **Returns to / updates**: unchanged — a `bool` permission verdict. Only
@@ -156,15 +158,14 @@ and reduce the MCP tool body to a linear orchestration:
 `pool_tools` tests still pass unchanged.
 
 #### Integration Contract
+
 - **Triggered from**: the `pool_route_execute` MCP tool
   (`mcp__mahavishnu__mahavishnu_pool_route_execute`), registered by
   `register_pool_tools` in `mahavishnu/mcp/tools/pool_tools.py`.
 - **Returns to / updates**: the same `dict[str, Any]` dispatch envelope the
-  tool returns today — `{"status": "duplicate"|"rate_limited"|"timeout"|
-  "invalid_selector"|"worktree_conflict"|"failed"}` plus the dispatch
+  tool returns today — `{"status": "duplicate"|"rate_limited"|"timeout"| "invalid_selector"|"worktree_conflict"|"failed"}` plus the dispatch
   result. No new state store is introduced.
-- **Demonstrable by**: `pytest tests/unit/test_mcp_pool_tools.py
-  tests/unit/mcp/test_pool_dispatch_timeout.py` passes, and
+- **Demonstrable by**: `pytest tests/unit/test_mcp_pool_tools.py tests/unit/mcp/test_pool_dispatch_timeout.py` passes, and
   `mcp__mahavishnu__mahavishnu_pool_route_execute` returns an unchanged envelope for a
   duplicate idempotency key and for a saturated concurrency gate.
 - **Rollback signal**: any pool-dispatch test failing, or the
@@ -191,6 +192,7 @@ the result assembly.
 `goal_team_tools` tests still pass unchanged.
 
 #### Integration Contract
+
 - **Triggered from**: the `team_from_goal` MCP tool
   (`mcp__mahavishnu__mahavishnu_team_from_goal`), registered by
   `register_goal_team_tools`.
@@ -199,8 +201,7 @@ the result assembly.
   `{"success": False, "error": {"code", "message", "details"}}`. The
   Prometheus counters and the WebSocket `broadcast_team_*` events are
   emitted unchanged.
-- **Demonstrable by**: `pytest tests/unit/test_mcp_goal_team_tools.py
-  tests/unit/test_goal_team_tools.py` passes — in particular the
+- **Demonstrable by**: `pytest tests/unit/test_mcp_goal_team_tools.py tests/unit/test_goal_team_tools.py` passes — in particular the
   too-short-goal, too-long-goal, missing-task, and invalid-mode cases,
   each of which asserts a specific error code and message.
 - **Rollback signal**: a goal-team test failing on error code, message, or
@@ -222,11 +223,11 @@ renderer, and the results renderer out of the nested `_run` coroutine.
 still pass unchanged.
 
 #### Integration Contract
+
 - **Triggered from**: `mahavishnu worktree prune-merged` (Typer command in
   `mahavishnu/worktree_cli.py`).
 - **Returns to / updates**: the same stdout/stderr text and the same JSON
-  payloads (`{"candidates": [...], "would_remove": N}` for `--dry-run
-  --json`, and `{"removed_count", "failed_count", "results"}` for `--json`).
+  payloads (`{"candidates": [...], "would_remove": N}` for `--dry-run --json`, and `{"removed_count", "failed_count", "results"}` for `--json`).
   Worktrees are removed by the same `WorktreePruner.remove(...)` call.
 - **Demonstrable by**: `pytest tests/unit/test_worktree_prune_merged.py`
   passes, and `mahavishnu worktree prune-merged --dry-run --json` emits
@@ -249,6 +250,7 @@ two helpers, plus the result-unwrapping and de-duplication steps.
 search tests still pass unchanged.
 
 #### Integration Contract
+
 - **Triggered from**: the `cross_repo_search` MCP tool
   (`mcp__mahavishnu__mahavishnu_cross_repo_search`), registered by
   `register_search_tools`.
@@ -256,15 +258,13 @@ search tests still pass unchanged.
   `query_hash`, `sources`, `combined`, `total_combined`, `repos_seen`,
   `spans_3_components`, `mode`, and the optional `channel`. The
   `cross-repo:{query_hash}` WebSocket room broadcast is unchanged.
-- **Demonstrable by**: `pytest tests/unit/test_mcp_search_tools.py
-  tests/unit/test_cross_repo_search.py tests/unit/test_cross_repo_mcp_tool.py`
+- **Demonstrable by**: `pytest tests/unit/test_mcp_search_tools.py tests/unit/test_cross_repo_search.py tests/unit/test_cross_repo_mcp_tool.py`
   passes — in particular the degraded-mode case where one source is
   unreachable.
 - **Rollback signal**: a search test failing on the `mode` value
   (`fanout` vs `degraded`), the `sources` entries, or the de-duplication
   order — revert the phase.
-- **Observability added**: none new. The `cross_repo_search: <source>
-  fan-out failed` warnings and the `websocket broadcast failed` warning are
+- **Observability added**: none new. The `cross_repo_search: <source> fan-out failed` warnings and the `websocket broadcast failed` warning are
   preserved.
 
 ## 6. Required Code Changes
@@ -344,6 +344,7 @@ five changed files (REQ-CX-005 cleared the `redundant-cast` warning);
   runs; it does not touch any of the five changed modules.
 
 ## References
+
 - `crackerjack/models/tool_config.py:19` — `PYSCN_MAX_COMPLEXITY = 25` and
   the comment recording the 15 → 25 move and the pyscn 1.30 metric change.
 - `crackerjack/parsers/json_parsers.py:573` — the pyscn parser that filters

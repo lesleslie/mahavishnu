@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-09
 last_reviewed: 2026-10-09
-superseded_by: null
+superseded_by:
 topic: slash-commands-multi-call-only
 ---
 

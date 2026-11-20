@@ -4,10 +4,9 @@ role: historical
 topic: error-handling
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by: null
+superseded_by:
 blocks_on: []
 title: "Initiative 7: Chaos Tests v1"
-
 ---
 
 # Initiative 7: Chaos Tests v1

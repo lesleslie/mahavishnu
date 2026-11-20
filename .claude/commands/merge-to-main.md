@@ -8,15 +8,15 @@ id: 01a1e928ac2175bda75e007cd43de69f
 category: workflow
 description: Orchestrate the per-worktree merge cycle for the trunk-based agent-review workflow (ensemble review → crackerjack gate → squash-merge → auto-push → cleanup).
 supported_platforms:
-- macOS
-- Linux
+  - macOS
+  - Linux
 required_scripts: []
 allowed-tools:
-- Bash
-- Read
+  - Bash
+  - Read
 required_tools:
-- mahavishnu:merge-to-main
-- crackerjack:run
+  - mahavishnu:merge-to-main
+  - crackerjack:run
 ---
 
 ______________________________________________________________________
@@ -90,21 +90,21 @@ The shared Python module orchestrates the 6-stage per-worktree cycle:
    random generalist) via `mcp__mahavishnu__mahavishnu_pool_route_execute`, parses
    each `<verdict>decision: …</verdict>` block, and aggregates via the
    spec §4.4 rule order (any block → block; ≥2 pass → proceed; else iterate).
-1. **Stage 3 — Crackerjack gate**. Invokes `crackerjack run -v` (NEVER
+2. **Stage 3 — Crackerjack gate**. Invokes `crackerjack run -v` (NEVER
    `-p`; the publish stage must never fire on the merge path — see
    REQ-013). Any non-zero exit blocks the merge with exit code 2.
-1. **Stage 4 — Squash-merge**. The worktree's branch is never pushed;
+3. **Stage 4 — Squash-merge**. The worktree's branch is never pushed;
    only the squashed result lands on `main`.
-1. **Stage 4.5 — Pre-push consolidation gate** (skippable via
+4. **Stage 4.5 — Pre-push consolidation gate** (skippable via
    `--no-consolidation-gate`). Per
    `docs/decisions/2026-10-13-prepushconsolidationgate.md`: checks
    co-located worktrees for unmerged WIP and pending commits for
    squash-merge eligibility. Held back = sticky-failure marker on
    `.review-state.json`, stage 6 skipped, pipeline returns `EXIT_OK`.
-1. **Stage 5 — Auto-push** (skippable via `--no-push`). `git push origin main`,
+5. **Stage 5 — Auto-push** (skippable via `--no-push`). `git push origin main`,
    only on `main`, only after a successful squash-merge in stages 2–4
    and a clear gate in stage 4.5.
-1. **Stage 6 — Cleanup** (skippable via `--no-cleanup`, AND skipped
+6. **Stage 6 — Cleanup** (skippable via `--no-cleanup`, AND skipped
    automatically when stage 4.5 held back). Routes through the existing
    `prune-merged` classifier to remove the ephemeral worktree.
 

@@ -19,7 +19,6 @@ partially_superseded_by:
   - docs/plans/2026-10-15-oneiric-substrate-rollout.md  # active umbrella; consolidates Phases A, E1, E2
   - docs/plans/2026-10-16-drop-ollama-favor-llama-server.md  # active; supersedes Phase D ollama adapter
 title: "Shared Oneiric Substrate - Design v5"
-
 ---
 
 # Shared Oneiric Substrate - Design v5
@@ -43,6 +42,7 @@ After this design ships:
 - **Release-train deployment gates**: cross-repo phases gate on oneiric PyPI release + per-component re-pin.
 
 **Proof it worked**:
+
 - `grep -rn "class QueryCacheManager\|class ColdStore" session_buddy/ akosha/` returns zero hits outside migration shims.
 - `grep -rn "from oneiric.adapters.vector.hot_store" mahavishnu/ session_buddy/ akosha/` returns hits in all three components.
 - `grep -rn "class SubstrateSettings" .` returns zero hits.
@@ -59,7 +59,7 @@ After this design ships:
 
 ## 3. Non-Goals
 
-- **New `substrate.*` namespace** — oneiric.adapters.* is the substrate. Adding a parallel package duplicates existing capability.
+- **New `substrate.*` namespace** — oneiric.adapters.\* is the substrate. Adding a parallel package duplicates existing capability.
 - **Parallel `SubstrateSettings` class** — extend `OneiricSettings` via pydantic-settings nested prefix; do not introduce a second settings surface in `oneiric/core/config.py`.
 - **DuckDB VSS in production warm backend** — `warm__backend="duckdb_vss"` was in v1/v2; removed. DuckDB VSS exists in `oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore` for offline development; production is pgvector-only.
 - **Cross-component embeddings search via Mahavishnu** — Akosha and SB each read their own namespace; cross-namespace search via Mahavishnu is a separate design.
@@ -287,6 +287,7 @@ class SubstrateSettings(BaseModel):
 ```
 
 Resolution order (highest wins):
+
 1. `{PROJECT}__<field>` (e.g., `MAHAVISHNU__POOL__WORKERS_PER_INSTANCE`)
 2. `ONEIRIC__SUBSTRATE__<field>` (cross-component default)
 3. Code default in `SubstrateSettings`
@@ -300,6 +301,7 @@ Resolution order (highest wins):
 **Rationale**: pgvector `<=>` operator is cosine **distance** = 1 - cosine similarity. Cosine similarity assumes unit-norm vectors; un-normalized vectors fed to `<=>` produce nonsense rankings. Forcing substrate-side normalization guarantees metric correctness even if a backend is swapped to one whose outputs are not pre-normalized.
 
 **Metric operator pair** (per audit finding H5):
+
 - `<=>` cosine distance → use with normalized vectors
 - `<->` L2 distance → use with un-normalized vectors
 - `<#>` inner product → use with unit-norm vectors as a fast cosine alternative
@@ -333,6 +335,7 @@ def get_feed_state() -> FeedState: ...
 ```
 
 Adapters with `get_feed_state`:
+
 - `oneiric.adapters.cache.memory.MemoryCacheAdapter`
 - `oneiric.adapters.vector.pgvector.PgvectorAdapter`
 - `oneiric.adapters.vector.hot_store.HotStore` (returns aggregated state of underlying adapter)
@@ -361,6 +364,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 ### 6.1 Phase A — Cache consolidation (SB + Akosha)
 
 **Integration Contract**:
+
 - **Triggered from**: `mcp__session-buddy__session_buddy_quick_search` first call after SB restart; `mcp__akosha__akosha_search_code_patterns` first call after Akosha restart.
 - **Returns to**: cache writes go to `MemoryCacheAdapter` instance; L2 DuckDB table no longer created.
 - **Demonstrable by**: `grep -rn "class QueryCacheManager\|self._l1_cache: OrderedDict" session_buddy/ akosha/` returns zero hits; `pytest session_buddy/tests/cache/ akosha/tests/cache/` all green; `python -c "from oneiric.adapters.cache.memory import MemoryCacheAdapter; c = MemoryCacheAdapter(); c.set('k', 'v'); print(c.get('k'))"` returns `v`.
@@ -368,6 +372,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 - **Observability added**: OTel span `cache.adapter.memory.get/set/delete_prefix` with `cache.size` and `cache.hit_ratio` attributes.
 
 **Files (modify)**:
+
 - `session_buddy/cache/query_cache.py` — DELETE `class QueryCacheManager`. Per §12 replace-not-extend, deletion lands in the same commit that adopts `MemoryCacheAdapter`. **No** deprecation shim-for-one-release (this v5 corrects v4 §6.1 wording; v5 honors §12 over the obsolete "shim-then-delete" framing).
 - `session_buddy/cache/query_cache.py:139-155` — DELETE runtime `CREATE TABLE IF NOT EXISTS query_cache_l2` block.
 - `session_buddy/adapters/reflection_adapter_oneiric.py:759-778` — DELETE runtime `CREATE TABLE IF NOT EXISTS query_cache_l2` block (the duplicate at the second location).
@@ -375,10 +380,12 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 - `akosha/config.py` — `CacheConfig` delegates to `MemoryCacheAdapter` instead of unbounded dict.
 
 **Files (create)**:
+
 - `session_buddy/cache/__init__.py` — re-export `MemoryCacheAdapter` so external callers can `from session_buddy.cache import MemoryCacheAdapter`.
 - `akosha/cache/__init__.py` — same for Akosha.
 
 **Tests (create/modify)**:
+
 - `session_buddy/tests/cache/test_memory_adapter.py` — LRU eviction, TTL, delete_prefix behaviors match `MemoryCacheAdapter`.
 - `akosha/tests/cache/test_memory_adapter.py` — same.
 - `tests/integration/test_query_cache_l2_orphaned.py` — assert no path reads/writes `query_cache_l2` after Phase A.
@@ -388,6 +395,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 ### 6.2 Phase B — SB warm tier = pgvector
 
 **Integration Contract**:
+
 - **Triggered from**: `mcp__session-buddy__session_buddy_quick_search` first call after SB restart; SB warm write from `mcp__session-buddy__session_buddy_store_reflection`.
 - **Returns to**: SB reflections persist in `sb.reflections` table (pgvector); 461 MB `reflection.duckdb` becomes cold-tier archive.
 - **Demonstrable by**: `grep -rn "duckdb.*reflection\|reflection.duckdb" session_buddy/storage/ session_buddy/adapters/reflection_adapter_oneiric.py` returns zero hits; `SELECT count(*) FROM sb.reflections` matches pre-migration count; `python -c "import session_buddy.adapters.reflection_adapter_oneiric as r; print(r.SCHEMA_VERSION)"` prints `"pgvector_v1"`.
@@ -395,23 +403,28 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 - **Observability added**: OTel span `warm.pgvector.upsert/search` with `namespace`, `entities_count`, `latency_ms` attributes.
 
 **Files (create)**:
+
 - `scripts/migrate_sb_reflection_duckdb_to_pgvector.py` — one-shot migration script. Reads `~/.claude/data/reflection.duckdb` (461 MB), exports via Parquet intermediate, ingests into pgvector `sb.reflections` table. Verifies count + embedding equality with `numpy.allclose(old, new, atol=1e-5)` per audit finding M2.
 - `session_buddy/storage/pgvector.py` — `SBWarmStore` class wrapping `PgvectorAdapter` with `warm__schema_namespace="sb"`.
 
 **Files (modify)**:
+
 - `session_buddy/adapters/reflection_adapter_oneiric.py` — switch from DuckDB VSS to `SBWarmStore`. Remove DuckDB HNSW knobs (`hnsw_m`, `hnsw_ef_construction`, `hnsw_ef_search`).
 
 **Files (delete after migration verified + 90-day cold-tier archive window)**:
+
 - `session_buddy/storage/migrations/V1__V6__*.sql` (DuckDB) — none of V1-V6 are about `query_cache_l2`; they're `initial_schema`, `add_semantic_search`, `add_workflow_correlation`, `phase4_extensions`, `ulid_migration`, `ulid_contract`. Delete only after migration script verifies zero data loss.
 - `akosha/storage/migrations/` — does NOT exist as a directory; no work needed.
 
 **Tests (create)**:
+
 - `session_buddy/tests/integration/test_sb_warm_pgvector.py` — SB writes to pgvector; SB reads back; result matches pre-migration DuckDB round-trip within float tolerance.
 - `tests/integration/test_sb_migrated_from_duckdb.py` — migration script produces counts and embeddings within tolerance.
 - `tests/performance/test_sb_pgvector_p99.py` — p99 read latency ≤ 10ms from local Postgres.
 - `akosha/tests/integration/test_akosha_searches_sb_namespace.py` — Akosha reads `sb.reflections` via cross-namespace search (when explicit `prefix=` granted per ACL).
 
 **Rollback** (delete-only per audit finding 3 / pre-1.0 replace-not-extend):
+
 1. Revert `session_buddy/adapters/reflection_adapter_oneiric.py` and `session_buddy/storage/pgvector.py` to pre-Phase-B commits.
 2. Delete `scripts/migrate_sb_reflection_duckdb_to_pgvector.py`.
 3. The 461 MB `reflection.duckdb` file is already kept as cold-tier archive per §10 risks; that is the recovery path, not "switch back to DuckDB". Reverting to a live DuckDB backend violates pre-1.0 replace-not-extend.
@@ -420,6 +433,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 ### 6.3 Phase C — Cold consolidation (Akosha + SB)
 
 **Integration Contract**:
+
 - **Triggered from**: SB cold-tier write via `mcp__session-buddy__backup`; Akosha cold-tier write via `akosha.create_backup`.
 - **Returns to**: cold writes land in shared R2 bucket at per-component prefix (`akosha/`, `sb/`).
 - **Demonstrable by**: `grep -rn "class ColdStore\|class CloudSync" akosha/ session_buddy/` returns zero hits; `aws s3 ls s3://oneiric-substrate-shared/sb/ --profile sb-token` lists SB's archive files; SB token denied for `akosha/` prefix per ACL test.
@@ -427,16 +441,19 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 - **Observability added**: OTel span `cold.adapter.{gcs,s3}.put/get` with `prefix`, `object_key`, `bytes`, `compression`.
 
 **Files (modify)**:
+
 - `akosha/storage/cold_store.py` — `ColdStore` class delegates to `oneiric.adapters.storage.{gcs,s3,azure}` directly. Drop bespoke wrapper layer.
 - `session_buddy/storage/cloud_sync.py` — DELETE file (S3-only legacy surface).
 - `session_buddy/adapters/storage_oneiric.py` — `GCSStorageOneiric` (already at line 338) remains; becomes the only cold adapter for SB.
 
 **Files (create)**:
+
 - `oneiric/adapters/storage/acl.py` — `PrefixACL` class. Maps `component_name → allowed_prefixes[]`. R2/S3/GCS policy binding happens at deployment time; `PrefixACL` enforces at runtime in dev/test environments where shared credentials are used.
 - `akosha/tests/cold/test_prefix_acl.py` — Akosha token denied for `sb/*`; SB token denied for `akosha/*`; admin token can read all.
 - `session_buddy/tests/cold/test_prefix_acl.py` — same.
 
 **Tests (create)**:
+
 - `tests/e2e/test_cold_tier_round_trip.py` — SB writes to `sb/`; Akosha reads `sb/` (when admin); data identical.
 - `tests/e2e/test_cold_acl_enforced.py` — per-component prefix enforcement.
 
@@ -445,6 +462,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 ### 6.4 Phase D — Embedding consolidation
 
 **Integration Contract**:
+
 - **Triggered from**: `mcp__akosha__*` embedding calls; `mcp__session-buddy__*` embedding calls.
 - **Returns to**: components import `oneiric.adapters.embedding` adapters directly; per-component override of model name forbidden.
 - **Demonstrable by**: `grep -rn "_LLAMA_SERVER_BASE\|_try_llama_server" session_buddy/reflection/ akosha/processing/` returns zero hits; `pytest oneiric/tests/adapters/embedding/` green; alignment test passes — same text embedded via `llama_server` and `fastembed` produces same vector (within `numpy.allclose(atol=1e-5)` tolerance) when both backends use the same model.
@@ -452,17 +470,20 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 - **Observability added**: OTel span `embedding.{backend}.embed` with `backend`, `model`, `dim`, `normalize`, `latency_ms`, `cache.hit_ratio`.
 
 **Files (create)**:
+
 - `oneiric/adapters/embedding/fastembed.py` — `FastembedEmbeddingAdapter(EmbeddingBase)`. ONNX in-process.
 - `oneiric/adapters/embedding/llama_server.py` — `LlamaServerEmbeddingAdapter(EmbeddingBase)`. HTTP to llama.cpp server. **Single `httpx.AsyncClient` per service instance** (audit finding L4), not per-call. Timeout `embedding__timeout_seconds`.
 - `oneiric/adapters/embedding/ollama.py` — `OllamaEmbeddingAdapter(EmbeddingBase)`. HTTP to Ollama `/api/embed`.
 
 **Files (modify)**:
+
 - `oneiric/adapters/embedding/embedding_interface.py` — `EmbeddingBase.embed()` enforces L2-normalize when `embedding__normalize=True` (audit finding H5). Unit test asserts idempotence.
 - `akosha/processing/embeddings.py` — shim delegates to new `EmbeddingBase` (not to `oneiric.adapters.observability.embeddings`). Or, fold shim entirely and migrate callers.
 - `session_buddy/reflection/embeddings.py` — DELETE file. Replace callers with `oneiric.adapters.embedding.EmbeddingBase` import.
 - `session_buddy/reflection/embeddings.py:138-141` — DELETE module-level `_embedding_cache` dict (audit finding L3); rely on `MemoryCacheAdapter`.
 
 **Tests (create)**:
+
 - `oneiric/tests/adapters/embedding/test_fastembed.py`
 - `oneiric/tests/adapters/embedding/test_llama_server.py` (mock HTTP).
 - `oneiric/tests/adapters/embedding/test_ollama.py` (mock HTTP).
@@ -474,6 +495,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 ### 6.5 Phase E1 — Settings substrate + feed-state methods
 
 **Integration Contract**:
+
 - **Triggered from**: any component's settings loader call (`oneiric_settings = load_settings(...)`).
 - **Returns to**: `OneiricSettings.substrate.*` populated; cross-component defaults from `ONEIRIC__SUBSTRATE__*` env vars resolved.
 - **Demonstrable by**: `ONEIRIC__SUBSTRATE__CACHE__MAX_ENTRIES=5 python -c "from oneiric.core.config import load_settings; s = load_settings(); print(s.substrate.cache__max_entries)"` prints `5`; `python -c "from oneiric.adapters.vector.pgvector import PgvectorAdapter; a = PgvectorAdapter(); print(a.get_feed_state())"` returns valid `FeedState`.
@@ -481,6 +503,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 - **Observability added**: OTel span `settings.load` with `project_name`, `overrides_applied` count.
 
 **Files (modify)**:
+
 - `oneiric/core/config.py` — add `SubstrateSettings` nested class. Extend `OneiricSettings.substrate` field. Add `ONEIRIC__SUBSTRATE__` prefix scan in `_env_overrides`.
 - `oneiric/adapters/cache/memory.py` — `MemoryCacheAdapter.get_feed_state()` returns `{entities_count: len(self._store), last_updated_timestamp: self._last_op_ts, errors_total: 0, cycles_total: self._ops_count}`.
 - `oneiric/adapters/vector/pgvector.py` — `PgvectorAdapter.get_feed_state()`.
@@ -488,10 +511,12 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 - `oneiric/adapters/embedding/embedding_interface.py` — `EmbeddingBase.get_feed_state()`.
 
 **Files (create)**:
+
 - `oneiric/adapters/storage/acl.py` — `PrefixACL` class (audit finding H4).
 - `oneiric/docs/substrate.md` — usage guide for component authors.
 
 **Tests (create)**:
+
 - `oneiric/tests/test_substrate_settings.py` — `ONEIRIC__SUBSTRATE__CACHE__MAX_ENTRIES=5` resolves correctly; per-component override wins.
 - `oneiric/tests/test_get_feed_state.py` — each adapter returns valid `FeedState` with all four keys.
 - `oneiric/tests/test_acl_enforced.py` — `PrefixACL` denies cross-prefix reads.
@@ -501,6 +526,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 ### 6.6 Phase E2 — Per-component adoption of settings substrate
 
 **Integration Contract**:
+
 - **Triggered from**: Akosha, SB, Mahavishnu restart with new settings.
 - **Returns to**: components read from `OneiricSettings.substrate.*` instead of their own config keys. Auth short-circuit preserved.
 - **Demonstrable by**: `grep -rn "auth.enabled" akosha/config.py session_buddy/settings.py mahavishnu/core/config.py` returns references to `OneiricSettings.substrate.auth__enabled`; `auth.enabled=false` still short-circuits middleware + decorator gates per `feedback-bodai-localhost-no-auth.md`. **Note (this v5 fixes v4 typo):** SB's settings module path is `session_buddy/settings.py`, not `session_buddy/config.py` (which does not exist).
@@ -508,6 +534,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 - **Observability added**: OTel span `settings.substrate.access` with `component`, `field`.
 
 **Files (modify)**:
+
 - `akosha/config.py` — replace per-component cache + warm settings with `OneiricSettings.substrate` references. Preserve `auth.enabled` short-circuit by reading from `OneiricSettings.substrate.auth__enabled`.
 - `session_buddy/settings.py` — same pattern for SB.
 - `mahavishnu/core/config.py` — same for Mahavishnu.
@@ -515,6 +542,7 @@ Each phase has an Integration Contract block per `wire-up-contract.md`.
 **Atomic per-file rule** (audit finding M3): each file's "delete local config + adopt OneiricSettings.substrate" lands in the SAME commit, gated by per-file flag. Partial migration during E2 rollout window is forbidden — a component's `core/config.py` cannot read from `OneiricSettings.substrate.pool__workers_per_instance` while still defining its own `MAHAVISHNU_RETRY__MAX_ATTEMPTS` (resolution order becomes ambiguous).
 
 **Tests (create)**:
+
 - `akosha/tests/test_substrate_settings_via_oneiric.py` — Akosha picks up `ONEIRIC__SUBSTRATE__CACHE__MAX_ENTRIES`.
 - `session_buddy/tests/test_substrate_settings_via_oneiric.py` — same.
 - `mahavishnu/tests/test_substrate_settings_via_oneiric.py` — Mahavishnu picks up `ONEIRIC__SUBSTRATE__POOL__WORKERS_PER_INSTANCE`.
@@ -697,6 +725,7 @@ Each phase has unit + integration tests AND a regression test that proves legacy
 ## 9. Validation
 
 **Pre-merge** (per phase):
+
 - `pytest oneiric/tests/ akosha/tests/ session_buddy/tests/ mahavishnu/tests/` all green.
 - `grep -rn "class QueryCacheManager\|class ColdStore\|class CloudSync" akosha/ session_buddy/` returns hits only in migration shims (target: zero).
 - `grep -rn "class SubstrateSettings" .` returns exactly one hit (in `oneiric/core/config.py` as nested field; NOT a top-level class).
@@ -704,6 +733,7 @@ Each phase has unit + integration tests AND a regression test that proves legacy
 - `grep -rn "fastembed\." akosha/ session_buddy/` returns hits only in `oneiric/adapters/embedding/`.
 
 **Post-merge** (all phases shipped):
+
 - Akosha + SB + Mahavishnu each install only `oneiric` as substrate dependency; no direct embedding/cold/warm imports outside oneiric adapters.
 - Cross-component embedding alignment test: Akosha + SB produce same vector for same text under same backend.
 - Cold-tier ACL test: SB token denied for `akosha/`; admin token can read all.
@@ -846,5 +876,5 @@ If any step fails, stop. Don't proceed to the next phase until the current phase
 | 2026-09-27 | v1 | platform-team | Initial design: 5 substrate moves (tier simplification + 4 config consolidations) consolidated into 5 phases. |
 | 2026-09-27 | v2 | platform-team | Split Phase E into E1 (operations substrate, oneiric-only, additive) + E2 (per-component adoption). Total: 6 phases. Self-review fixes: replaced "TBD" with verification step; annotated `duckdb_vss` as offline-mode-only; clarified `vishnu` schema namespace. |
 | 2026-09-27 | v3 | platform-team | **Rewrite from scratch after 3-agent spec audit (code-explorer + code-reviewer + architecture-council) found 31 issues.** Corrected: removed proposed `oneiric.substrate.*` namespace (existing `oneiric.adapters.*` is the substrate); removed parallel `SubstrateSettings` class (extend `OneiricSettings` via pydantic-settings nested prefix); dropped `duckdb_vss` from warm backend literal; corrected file paths (e.g., `akosha/storage/cold_store.py` not `akosha/cold_store.py`; `akosha/processing/embeddings.py` not `akosha/embeddings.py`; `session_buddy/reflection/embeddings.py` not `session_buddy/embeddings.py`); corrected V1-V6 migration contents (none are `query_cache_l2`; the table is created at runtime in 2 places); corrected DEAD field names (`enable_global_toolkits`, `llama_server_default_model`, `llama_server_model` — not `enable_http_transport`); acknowledged Mahavishnu OTel already on `HotStore` via ADR 017 (Phase work is for Akosha + SB only); added Integration Contract blocks per phase per `wire-up-contract.md`; added deployment-order release-train gates per phase; added `get_feed_state()` instrumentation per `mcp-backend-wiring-discipline.md §3`; added `PrefixACL` for cold-tier cross-namespace reads; defined embedding normalization layer (`L2-normalize when normalize=True`); forced single default embedding model across components; defined atomic per-file adoption rule for Phase E2. |
-| 2026-09-27 | v5 | platform-team | **Fix pass after 2-agent final-review.** Hard citation drifts fixed (`class QueryCacheManager` actual line 59 not 90 in phase-a cited files; `_embedding_cache` dict actual line 116 not 138-141 in phase-d). Structural gaps closed: Phase B adds Task 6 (V1-V6 SQL migration deletion after archive window) + Task 7 (`tests/performance/test_sb_pgvector_p99.py`); Phase B Task 5 adds `akosha/tests/integration/test_akosha_searches_sb_namespace.py` (positive cross-namespace path); Phase D Task 6 renamed to "Cross-backend alignment" and adds llama-server vs fastembed alignment test required by §6.4 Demonstrable by; Phase E1 adds Task 7 (`get_feed_state()` on storage adapters per §5.6); Phase E1 `SubstrateSettings` nested in `oneiric/core/config.py` per §9 validation (was sibling module). High-priority hygiene: cross-component dep diagrams added per wire-up-contract §2 across all 6 plans; cache_max_entries → cache__max_entries (double underscore) per spec §5.3; `auth__loopback_trusted` exercised by parametrized test in phase-e2 Task 4; `normalize=True` pulled from `SubstrateSettings.embedding__normalize` in phase-d Task 4; /health 503 trigger logic asserted via mocked stale feed in phase-e2 Task 5; task-level IC blocks + Observability added per missing-task gaps. Soft drift fixes (citation name corrections): `class CloudSync` → `class CloudSyncMethod` (line 66 of `cloud_sync.py`); `delete_table_names` → `reset_database` (line 2705); `httpx.AsyncClient` → `httpx2.AsyncClient` (`import httpx2 as httpx`); `akosha/dev/docker-compose.yml` → either CREATEd task or alternative local stack (operator decision); `mahavishnu/mcp/server.py` → `mahavishnu/mcp/server_core.py`. **Spec internal contradictions fixed**: §6.1 "thin shim for one release then delete" reverted — pre-1.0 replace-not-extend per §12 (no shim-for-one-release); §4.6 + §6.7 mis-cite "Phase A's tests assert this" → corrected to Phase B; §6.6 typo `session_buddy/config.py` → `session_buddy/settings.py`; §5.3 env_prefix ambiguity resolved (parent `env_prefix` + delimiter is the resolution source, not the nested `SubstrateSettings.env_prefix`). |
+| 2026-09-27 | v5 | platform-team | **Fix pass after 2-agent final-review.** Hard citation drifts fixed (`class QueryCacheManager` actual line 59 not 90 in phase-a cited files; `_embedding_cache` dict actual line 116 not 138-141 in phase-d). Structural gaps closed: Phase B adds Task 6 (V1-V6 SQL migration deletion after archive window) + Task 7 (`tests/performance/test_sb_pgvector_p99.py`); Phase B Task 5 adds `akosha/tests/integration/test_akosha_searches_sb_namespace.py` (positive cross-namespace path); Phase D Task 6 renamed to "Cross-backend alignment" and adds llama-server vs fastembed alignment test required by §6.4 Demonstrable by; Phase E1 adds Task 7 (`get_feed_state()` on storage adapters per §5.6); Phase E1 `SubstrateSettings` nested in `oneiric/core/config.py` per §9 validation (was sibling module). High-priority hygiene: cross-component dep diagrams added per wire-up-contract §2 across all 6 plans; cache_max_entries → cache\_\_max_entries (double underscore) per spec §5.3; `auth__loopback_trusted` exercised by parametrized test in phase-e2 Task 4; `normalize=True` pulled from `SubstrateSettings.embedding__normalize` in phase-d Task 4; /health 503 trigger logic asserted via mocked stale feed in phase-e2 Task 5; task-level IC blocks + Observability added per missing-task gaps. Soft drift fixes (citation name corrections): `class CloudSync` → `class CloudSyncMethod` (line 66 of `cloud_sync.py`); `delete_table_names` → `reset_database` (line 2705); `httpx.AsyncClient` → `httpx2.AsyncClient` (`import httpx2 as httpx`); `akosha/dev/docker-compose.yml` → either CREATEd task or alternative local stack (operator decision); `mahavishnu/mcp/server.py` → `mahavishnu/mcp/server_core.py`. **Spec internal contradictions fixed**: §6.1 "thin shim for one release then delete" reverted — pre-1.0 replace-not-extend per §12 (no shim-for-one-release); §4.6 + §6.7 mis-cite "Phase A's tests assert this" → corrected to Phase B; §6.6 typo `session_buddy/config.py` → `session_buddy/settings.py`; §5.3 env_prefix ambiguity resolved (parent `env_prefix` + delimiter is the resolution source, not the nested `SubstrateSettings.env_prefix`). |
 | 2026-09-27 | v4 | platform-team | **Rename pass per `feedback-no-bodai-prefix-in-config-names.md`.** Env var prefix `BODAI__*` → `ONEIRIC__SUBSTRATE__*`; settings class `BodaiSettings` → `SubstrateSettings`; field access `OneiricSettings.bodai.X` → `OneiricSettings.substrate.X`; test file names `test_bodai_settings*` → `test_substrate_settings*`; R2 bucket `bodai-shared` → `oneiric-substrate-shared`; Postgres DB `bodai` → `oneiric_substrate`; OTel span `settings.bodai.access` → `settings.substrate.access`; OTel namespace `telemetry__service_namespace` default `"bodai"` → `"oneiric-substrate"`; spec topic slug `shared-bodai-substrate` → `shared-oneiric-substrate`. Rationale: oneiric is the foundation that publishes substrate defaults — components outside the Bodai ecosystem may adopt oneiric without opting into Bodai, so prefixing defaults with `BODAI__*` misleads operators about scope. Reserve `BODAI__*` for settings that genuinely require Bodai-orchestration membership (Mahavishnu pool state, Akosha↔Mahavishnu coordination, ecosystem-wide observability tags). Memory file references in §14 (e.g., `feedback-bodai-*`) and the spec file path itself retain `bodai` because those are pre-existing identifiers, not new config names. |

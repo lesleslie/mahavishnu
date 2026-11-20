@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-11-15
 last_reviewed: 2026-11-15
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: merge-review
 title: "A capture of a live pane keeps the newest bytes"
@@ -137,8 +137,7 @@ event.** The captured stream carries
 `"type":"result"` line anywhere. The capture then holds a session with
 no reply in it, so the review reads as a malformed verdict — which is a
 fail-loud block, not a review that had no opinion. The CLI's own
-diagnostic is terse: `[ede_diagnostic] result_type=user
-last_content_type=n/a stop_reason=tool_use`, from an API call that had
+diagnostic is terse: `[ede_diagnostic] result_type=user last_content_type=n/a stop_reason=tool_use`, from an API call that had
 run for 161 s. A short review-shaped dispatch — a prompt that asks the
 model to read one file and answer — completes in 250 s and produces a
 clean result event, so the abort is not the pool, the capture or the

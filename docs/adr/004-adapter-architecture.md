@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by: null
+superseded_by:
 blocks_on: []
 decision_date: 2026-01-29
 topic: adapter-architecture
@@ -25,11 +25,11 @@ Mahavishnu needs to support multiple orchestration engines (Airflow, CrewAI, Lan
 ### Requirements
 
 1. **Unified Interface:** Common API across all engines
-1. **Engine-Specific Features:** Access to unique capabilities of each engine
-1. **Type Safety:** Pydantic models for configuration and results
-1. **Observability:** Metrics and tracing for all operations
-1. **Error Handling:** Consistent error handling across adapters
-1. **Extensibility:** Easy to add new engines
+2. **Engine-Specific Features:** Access to unique capabilities of each engine
+3. **Type Safety:** Pydantic models for configuration and results
+4. **Observability:** Metrics and tracing for all operations
+5. **Error Handling:** Consistent error handling across adapters
+6. **Extensibility:** Easy to add new engines
 
 ### Options Considered
 

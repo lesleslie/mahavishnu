@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-10-15
-superseded_by: null
+superseded_by:
 blocks_on: []
 decision_date: 2026-06-18
 topic: error-handling
@@ -25,10 +25,10 @@ Mahavishnu operates across multiple repositories and external services (LLM prov
 ### Failure Modes to Address
 
 1. **Transient Failures:** Network timeouts, rate limits, temporary API errors
-1. **Permanent Failures:** Invalid repositories, authentication failures, missing dependencies
-1. **Partial Failures:** 3/10 repos fail, 7 succeed
-1. **Cascading Failures:** One adapter failure affects others
-1. **Catastrophic Failures:** System crash, data corruption
+2. **Permanent Failures:** Invalid repositories, authentication failures, missing dependencies
+3. **Partial Failures:** 3/10 repos fail, 7 succeed
+4. **Cascading Failures:** One adapter failure affects others
+5. **Catastrophic Failures:** System crash, data corruption
 
 ### Options Considered
 

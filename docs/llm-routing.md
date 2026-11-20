@@ -11,8 +11,6 @@ and the per-route enable flags.
 This page documents the wiring so anyone changing an LLM call
 site can do it without rediscovering the contract.
 
-[oneiric-router]: https://github.com/lesleslie/oneiric/blob/main/oneiric/adapters/llm/bifrost.py
-
 ## The one-liner
 
 ```python
@@ -168,6 +166,7 @@ back into a call site.
 
 The plan is structurally complete after Phase 8. A hypothetical
 Phase 9 would be:
+
 - Removing the legacy `MAHAVISHNU_BIFROST__*` env-var prefix
   (post-1.0 deprecation window; per `feedback-no-backwards-compat-pre-1.0.md`,
   the deprecation window is not opened pre-1.0)
@@ -178,3 +177,5 @@ Phase 9 would be:
   session-buddy with direct `get_router().resolve()` calls (cosmetic)
 
 None of these block the plan's exit criteria.
+
+[oneiric-router]: https://github.com/lesleslie/oneiric/blob/main/oneiric/adapters/llm/bifrost.py

@@ -4,7 +4,7 @@
 **Created:** 2026-09-10
 **Last updated:** 2026-11-07
 **Triggered by:** `mahavishnu.observability.drift_detected` OTel span
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 6]
+**Spec:** \[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 6\]
 
 ## What this runbook is for
 
@@ -91,7 +91,7 @@ while the tick loop is running; if the loop never started it is
    `mahavishnu.observability.metric_samples` (durable key-value table) for
    the last 60 minutes of the affected metric. A real drift is
    sustained; a transient is a single spike that recovered.
-1. **What is the severity?** (R3-H4 / round-4 L6: thresholds are
+2. **What is the severity?** (R3-H4 / round-4 L6: thresholds are
    symbolic — `2 × changepoint.threshold` and `4 × changepoint.threshold`.
    Severity classifier is `_classify_drift_severity(score, threshold)`
    in `mahavishnu/core/observability.py`. The OTel span attribute is
@@ -102,13 +102,13 @@ while the tick loop is running; if the loop never started it is
      shift territory. Investigate within an hour.
    - `critical` (score ≥ 4 × threshold): a 1-σ or larger shift.
      Page the on-call; the metric is materially off-baseline.
-1. **Is the threshold current?** Check
+3. **Is the threshold current?** Check
    `changepoint.target_metric` and the recent
    `effective_selector` field on the routing-decision record.
    If operators recently changed the routing strategy, the
    in-control mean of the metric shifted — that's a real
    drift, not a bug.
-1. **Is this the first time?** If the same metric has fired
+4. **Is this the first time?** If the same metric has fired
    twice in the last 24 hours, escalate to the on-call even if
    the current severity is `minor`.
 
@@ -261,7 +261,7 @@ shared multi-tenant backend, hash or override this via
 ## Cross-repo gap-period guidance
 
 Until Phase D (the cross-repo Akosha wiring per
-[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §7])
+\[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §7\])
 lands, the Mahavishnu drift signal and Akosha's
 `akosha_detect_anomalies` are independent control planes for the
 same conceptual metric. When `mahavishnu.observability.drift_detected`
@@ -273,10 +273,10 @@ Order of checks:
 1. **Mahavishnu** for sub-5-minute signal (Mahavishnu fires
    fast on the in-process metric; Akosha's Z-score is windowed
    over a longer span).
-1. **Akosha** for 5-30 minute ecosystem-wide correlation
+2. **Akosha** for 5-30 minute ecosystem-wide correlation
    (Akosha reads the same metric from a wider lens —
    multi-pool, multi-component).
-1. **Upstream investigation** when both fire within 30
+3. **Upstream investigation** when both fire within 30
    minutes: look at the upstream dependency (worker runtime,
    pool topology, config change).
 
@@ -312,6 +312,6 @@ drift entirely. Operators can either:
 
 ## Related
 
-- Tier 1 plan §6 Phase 6: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`] §6
+- Tier 1 plan §6 Phase 6: \[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`\] §6
 - Feature tracking: [`docs/feature-tracking/2026-09-10-observability-changepoint.md`](../feature-tracking/) (added in Phase 8)
 - Eligibility script: [`scripts/feature_eligibility.py`](../../scripts/feature_eligibility.py) (Phase 9 — fires when the multi-metric trigger accumulates ≥ 3 distinct operator requests in 30 days)

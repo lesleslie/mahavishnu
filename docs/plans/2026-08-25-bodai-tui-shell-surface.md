@@ -7,10 +7,9 @@ owner: les
 topic: bodai-tui-shell-surface
 scope: bodai-tui-shell
 purpose: verify and polish the bodai shell + dashboard TUIs and the mahavishnu monitor --tui; standardize the AdminShell subclass pattern across Core 7
-superseded_by: null
+superseded_by:
 blocks_on: [docs/plans/.archive/2026-06-19-track3-toad-tui.md]
 title: "Bodai TUI & Admin Shell Surface"
-
 ---
 
 # Bodai TUI & Admin Shell Surface
@@ -21,9 +20,9 @@ title: "Bodai TUI & Admin Shell Surface"
 TUI, and the `mahavishnu monitor --tui` command all work end-to-end.
 
 > **Resolution Note (2026-10-15):** Open question on `monitor` flag wiring resolved — chose **subcommand** `mahavishnu monitor tui` (Typer subcommand). Implemented at `mahavishnu/cli/monitoring_cli.py::tui_dashboard` as an alias to the existing `monitor watch` command. Frontmatter updated to `status: shipped`. The plan's `B-1.3` deliverable (test name `test_monitor_tui_invokes_monitor_app`) is the canonical test target.
-The `AdminShell` base class (in `oneiric`) is the foundation that all
-five per-repo admin shells build on; this plan ensures the bodai-level
-TUIs reuse the same pattern instead of duplicating it.
+> The `AdminShell` base class (in `oneiric`) is the foundation that all
+> five per-repo admin shells build on; this plan ensures the bodai-level
+> TUIs reuse the same pattern instead of duplicating it.
 
 **Origin**: Phase 6 of the 2026-08-25 ultracode CLI audit, split out
 into its own plan for focused review. Phase 6 was originally bundled
@@ -39,12 +38,13 @@ of Plan A converts each Core 7 to `BodaiCLIBase`, which makes the
 monitoring_cli integration straightforward.
 
 **Read order** (pick one):
+
 - **5 min skim**: §1 Outcome + §3 Non-Goals + §5 phases
 - **20 min review**: above + §6 Required Code Changes
 - **60 min deep read**: everything; cross-check §4 findings against
   the actual repo state via `grep`
 
----
+______________________________________________________________________
 
 ## 1. Outcome
 

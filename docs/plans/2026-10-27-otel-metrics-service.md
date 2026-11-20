@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-10-27
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: substrate-otel
 title: "OTLP MetricsService in the Bodai Substrate — Implementation Plan"
@@ -85,16 +85,21 @@ curl -s http://localhost:8682/metrics | grep mahavishnu_observability
 1. **NG1** — Not completing the Alloy half of the pipeline. The
    `otelcol.exporter.prometheus.cli_tools` dead end is *retired*, not fixed:
    with the substrate serving metrics, Alloy's metric path has no consumer.
+
 2. **NG2** — Not enabling Prometheus's remote-write receiver
    (`--web.enable-remote-write-receiver`). That is the Alloy route's cost and
    this plan does not pay it.
+
 3. **NG3** — Not turning akosha into a general-purpose OTel Collector. One
    receiver, two services, the same validation and DLQ discipline the trace
    path already has.
+
 4. **NG4** — Not changing the trace path, the `spans_substrate` schema, or
    the retention sweep.
+
 5. **NG5** — Not adding a second telemetry store. `metrics_substrate` is a
    table in the same DuckDB substrate, not a new database.
+
 6. **NG6** — Not splitting oneiric's `OTLPObservabilityAdapter` endpoint. It
    sends traces and metrics to **one** endpoint
    (`oneiric/adapters/monitoring/otlp.py:140-153`), so a receiver that
@@ -107,8 +112,7 @@ curl -s http://localhost:8682/metrics | grep mahavishnu_observability
    and is passed **explicitly** to the exporter, which overrides the
    exporter's own scheme detection and forces a TLS channel. akosha's `:4317`
    is plaintext, so the handshake fails and **zero points arrive**.
-   Measured: `OTLPMetricExporter(endpoint="http://127.0.0.1:4317",
-   insecure=False)` → `_insecure = False` (TLS); with `insecure` unset →
+   Measured: `OTLPMetricExporter(endpoint="http://127.0.0.1:4317", insecure=False)` → `_insecure = False` (TLS); with `insecure` unset →
    `_insecure = True` (plaintext). The fix is oneiric's default becoming
    `bool | None = None` — the scheme decides, an explicit value still
    overrides — which matches what mahavishnu's exporter already does. The
@@ -187,67 +191,67 @@ temporary one in a producer.
 
 Citations are file:line against the working tree on 2026-10-27.
 
-1. **The receiver implements one service.** `akosha/observability/otlp_receiver.py:224`
-   registers `add_TraceServiceServicer_to_server` and nothing else. There is
-   no `MetricsServiceServicer` anywhere in akosha, so gRPC correctly answers
-   `UNIMPLEMENTED` for the metric method. This is not a misconfiguration —
-   the method was never implemented.
+01. **The receiver implements one service.** `akosha/observability/otlp_receiver.py:224`
+    registers `add_TraceServiceServicer_to_server` and nothing else. There is
+    no `MetricsServiceServicer` anywhere in akosha, so gRPC correctly answers
+    `UNIMPLEMENTED` for the metric method. This is not a misconfiguration —
+    the method was never implemented.
 
-2. **Producers sent metrics to the trace receiver anyway.** mahavishnu used
-   one setting (`observability.otlp_endpoint`) for both signals
-   (`mahavishnu/core/observability.py:201` traces, `:222` metrics), so the
-   metric export inherited a receiver that cannot accept it. The symptom was
-   one `UNIMPLEMENTED` error per minute, forever, and **no metric series ever
-   reached any backend**.
+02. **Producers sent metrics to the trace receiver anyway.** mahavishnu used
+    one setting (`observability.otlp_endpoint`) for both signals
+    (`mahavishnu/core/observability.py:201` traces, `:222` metrics), so the
+    metric export inherited a receiver that cannot accept it. The symptom was
+    one `UNIMPLEMENTED` error per minute, forever, and **no metric series ever
+    reached any backend**.
 
-3. **The substrate deliberately split the two paths** (PR-A3, 2026-10-23):
-   traces → akosha `:4317` → DuckDB `spans_substrate`; metrics → Alloy
-   `:14317` → `otelcol.exporter.prometheus`. The rationale is in
-   `/usr/local/etc/grafana-alloy/config.alloy` (Alloy had been squatting on
-   `:4317` and terminating traces in `otelcol.exporter.debug`).
+03. **The substrate deliberately split the two paths** (PR-A3, 2026-10-23):
+    traces → akosha `:4317` → DuckDB `spans_substrate`; metrics → Alloy
+    `:14317` → `otelcol.exporter.prometheus`. The rationale is in
+    `/usr/local/etc/grafana-alloy/config.alloy` (Alloy had been squatting on
+    `:4317` and terminating traces in `otelcol.exporter.debug`).
 
-4. **The Alloy metric path is a dead end, not a detour.** Measured on this
-   host: Alloy's OTLP receiver accepts the points (counter 1652 → 1891 for a
-   synthetic probe pushed straight to `:14317`) and exposes **nothing** — the
-   `otelcol.exporter.prometheus.cli_tools` block has `forward_to = []` and, in
-   Alloy v1.21, **no `endpoint` argument at all** (it is a converter, not a
-   server). Compiling candidate configs with `alloy validate` shows the only
-   valid sink is `prometheus.remote_write`, which requires Prometheus's
-   `--web.enable-remote-write-receiver` (not currently set). The Alloy route
-   therefore costs **two** shared-infra changes; this plan costs **zero**.
+04. **The Alloy metric path is a dead end, not a detour.** Measured on this
+    host: Alloy's OTLP receiver accepts the points (counter 1652 → 1891 for a
+    synthetic probe pushed straight to `:14317`) and exposes **nothing** — the
+    `otelcol.exporter.prometheus.cli_tools` block has `forward_to = []` and, in
+    Alloy v1.21, **no `endpoint` argument at all** (it is a converter, not a
+    server). Compiling candidate configs with `alloy validate` shows the only
+    valid sink is `prometheus.remote_write`, which requires Prometheus's
+    `--web.enable-remote-write-receiver` (not currently set). The Alloy route
+    therefore costs **two** shared-infra changes; this plan costs **zero**.
 
-5. **akosha already has the exposure surface.**
-   `akosha/mcp/server.py:1759` serves `/metrics` on the main HTTP port from a
-   shared `CollectorRegistry` (`akosha/observability/prometheus_metrics.py:96`),
-   and Prometheus already scrapes `127.0.0.1:8682/metrics`
-   (`monitoring/file_sd/verified_metrics_targets.yml`, live target confirmed
-   `health=up`). Grafana's Prometheus datasource points at
-   `http://localhost:9090` and health-checks OK.
+05. **akosha already has the exposure surface.**
+    `akosha/mcp/server.py:1759` serves `/metrics` on the main HTTP port from a
+    shared `CollectorRegistry` (`akosha/observability/prometheus_metrics.py:96`),
+    and Prometheus already scrapes `127.0.0.1:8682/metrics`
+    (`monitoring/file_sd/verified_metrics_targets.yml`, live target confirmed
+    `health=up`). Grafana's Prometheus datasource points at
+    `http://localhost:9090` and health-checks OK.
 
-6. **The substrate's storage primitives live in oneiric.**
-   `akosha/storage/hot_store.py:76` defines `class HotStore(DuckdbHotStore)`,
-   and `insert_spans_substrate` / `table_exists` / `spans_substrate_table`
-   are inherited from `oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore`.
-   A metrics substrate follows the same shape — **this is a three-repo change
-   surface: oneiric, akosha, mahavishnu.**
+06. **The substrate's storage primitives live in oneiric.**
+    `akosha/storage/hot_store.py:76` defines `class HotStore(DuckdbHotStore)`,
+    and `insert_spans_substrate` / `table_exists` / `spans_substrate_table`
+    are inherited from `oneiric.adapters.vector.duckdb_hot_store.DuckdbHotStore`.
+    A metrics substrate follows the same shape — **this is a three-repo change
+    surface: oneiric, akosha, mahavishnu.**
 
-7. **The protos are already available.** In akosha's venv,
-   `opentelemetry.proto.collector.metrics.v1.metrics_service_pb2` and
-   `..._grpc` import cleanly and the servicer exposes `Export`; the data
-   model is `opentelemetry.proto.metrics.v1.metrics_pb2` (note: the data
-   model is **not** under `collector.metrics.v1` — `metrics_pb2` is not
-   importable from there).
+07. **The protos are already available.** In akosha's venv,
+    `opentelemetry.proto.collector.metrics.v1.metrics_service_pb2` and
+    `..._grpc` import cleanly and the servicer exposes `Export`; the data
+    model is `opentelemetry.proto.metrics.v1.metrics_pb2` (note: the data
+    model is **not** under `collector.metrics.v1` — `metrics_pb2` is not
+    importable from there).
 
-8. **mahavishnu's own `:8680/metrics` does not carry the OTel instruments.**
-   It exposes a separate, hand-rolled set (`mahavishnu_workflows_total`,
-   `mahavishnu_workflow_queue_depth`, …). The OTel instruments
-   (`mahavishnu.workflows.executed` → `mahavishnu_workflows_executed_total`)
-   are distinct series and are absent from every backend today.
+08. **mahavishnu's own `:8680/metrics` does not carry the OTel instruments.**
+    It exposes a separate, hand-rolled set (`mahavishnu_workflows_total`,
+    `mahavishnu_workflow_queue_depth`, …). The OTel instruments
+    (`mahavishnu.workflows.executed` → `mahavishnu_workflows_executed_total`)
+    are distinct series and are absent from every backend today.
 
-9. **The interim split is already shipped** as `mahavishnu` commit `0b0886ea`
-   (`observability.otlp_metrics_endpoint`, default `None` → falls back to the
-   trace endpoint). It stops the error and routes metrics to Alloy's
-   receiver, where they are accepted and discarded. G4 retires it.
+09. **The interim split is already shipped** as `mahavishnu` commit `0b0886ea`
+    (`observability.otlp_metrics_endpoint`, default `None` → falls back to the
+    trace endpoint). It stops the error and routes metrics to Alloy's
+    receiver, where they are accepted and discarded. G4 retires it.
 
 10. **There are TWO metric exporters in the mahavishnu process, not one.**
     Instrumenting `OTLPMetricExporter.__init__` while constructing
@@ -315,9 +319,9 @@ the test) in the phase that delivers it.
 **Goal:** the durable store for received metrics, beside `spans_substrate`.
 
 **Tasks:**
+
 - Add a `metrics_substrate` table to
-  `oneiric/adapters/vector/duckdb_hot_store.py`: idempotent `CREATE TABLE
-  IF NOT EXISTS` + indexes, mirroring the `spans_substrate` DDL.
+  `oneiric/adapters/vector/duckdb_hot_store.py`: idempotent `CREATE TABLE IF NOT EXISTS` + indexes, mirroring the `spans_substrate` DDL.
   Columns: `ts`, `service_name`, `service_namespace`, `scope_name`,
   `metric_name`, `unit`, `description`, `data_type` (`sum`/`gauge`/
   `histogram`/`exponential_histogram`/`summary`), `value_sum`,
@@ -343,17 +347,19 @@ text, recorded here so Phase 2 builds against reality:
    statistics do not determine the boundaries — a stored histogram would
    not be reconstructible. The column is nullable and unused by every
    type but `histogram`/`exponential_histogram`.
+
 2. **Counter names carry the `oneiric_` prefix.** The plan named them
    `metrics_substrate_rows_inserted_total`; oneiric's other 25
    instruments are all prefixed, and these share a registry with the
    substrate's metrics in Phase 2, where an unprefixed name could
    collide.
+
 3. **The test file is `tests/adapters/test_duckdb_hot_store_metrics.py`**,
    not `test_metrics_substrate.py` — it sits beside its sibling
    `test_duckdb_hot_store_spans.py`, and this repo names substrate tests
    after the module under test.
-4. **Identity is `(service_name, service_namespace, scope_name,
-   metric_name, ts, attributes)` with canonicalized attribute JSON**, and
+
+4. **Identity is `(service_name, service_namespace, scope_name, metric_name, ts, attributes)` with canonicalized attribute JSON**, and
    the insert counts come from the statement's `RETURNING` rows rather
    than from a pre-insert existence probe. Both are forced by DuckDB
    behaviour verified on the pinned 2.1.0-dev build: a JSON column inside
@@ -434,6 +440,7 @@ points. Fixed on the oneiric side by making the endpoint scheme decide
 even with a published Phase 1.
 
 **Decisions taken in Phase 2 that the plan did not specify:**
+
 - **`ts` is epoch nanoseconds**, from the data point's `time_unix_nano`.
   Phase 1 stores `ts` as a raw `BIGINT` and constrains nothing, but
   `spans_substrate` keeps nanosecond timestamps (`start_time_unix_nano`)
@@ -445,15 +452,12 @@ even with a published Phase 1.
   mahavishnu's and oneiric's instruments from colliding.
 - **The substrate's `resource` column is not part of the point's
   identity** — the UNIQUE constraint covers
-  `(service_name, service_namespace, scope_name, metric_name, ts,
-  attributes)`. Two producers that share a service identity but differ in
+  `(service_name, service_namespace, scope_name, metric_name, ts, attributes)`. Two producers that share a service identity but differ in
   their resource attributes are the same point.
 
 **Delivered 2026-11-07 — akosha `ab76a77` on local `main`** (base
-`f7353ca`, not pushed). Nine files, +4,253/-17: `akosha/observability/
-otlp_receiver.py` (+989), the new `akosha/observability/otlp_prometheus_bridge.py`
-(1,013), the new `akosha/storage/metrics_query.py` (49), `akosha/observability/
-otlp_metrics.py` (+155), `akosha/mcp/server.py` (+83), the new
+`f7353ca`, not pushed). Nine files, +4,253/-17: `akosha/observability/ otlp_receiver.py` (+989), the new `akosha/observability/otlp_prometheus_bridge.py`
+(1,013), the new `akosha/storage/metrics_query.py` (49), `akosha/observability/ otlp_metrics.py` (+155), `akosha/mcp/server.py` (+83), the new
 `tests/unit/observability/test_otlp_metrics_receiver.py` (1,298, 36 tests),
 the new `tests/unit/test_metrics_health_feed.py` (247, 4 tests), the new
 `tests/integration/test_otlp_metrics_receiver_e2e.py` (323, 3 tests over a
@@ -468,10 +472,11 @@ removed. The metric path is deliberately *parallel* to the span path rather
 than a branch of it: sharing the code would couple the two paths' futures,
 so a change to the span batch would silently change the metric batch.
 
-**Ensemble review (spec §4.4: domain specialist + code-quality specialist
-+ random generalist) — three lenses, all `needs_adjustment`, sixteen
-defects found and fixed.** The ones that mattered most were the ones that
-produced a *plausible wrong number* rather than an obvious failure:
+\*\*Ensemble review (spec §4.4: domain specialist + code-quality specialist
+
+- random generalist) — three lenses, all `needs_adjustment`, sixteen
+  defects found and fixed.\*\* The ones that mattered most were the ones that
+  produced a *plausible wrong number* rather than an obvious failure:
 
 | Defect | Symptom |
 |---|---|
@@ -497,87 +502,98 @@ feed cannot decay out of the halflife back to healthy.
 Seventeen deviations from the plan text, recorded so Phase 3 and the
 operator build against reality:
 
-1. **`service.namespace` is NOT required for a metric point.** oneiric's
-   `OTLPObservabilityAdapter` builds its resource with `service.name`,
-   `deployment.environment` and optionally `service.version` — **and no
-   namespace at all**. Requiring one would quarantine every metric oneiric
-   sends, breaking REQ-M07's second producer while reporting "accepted,
-   zero points stored". The namespace is stored as `""` — "not declared", a
-   different fact from "unknown" — to satisfy the substrate's NOT NULL.
-   **For the same reason the span path's namespace allowlist is NOT applied
-   to metrics:** it would reject oneiric's empty namespace outright.
-2. **`ts` is epoch nanoseconds**, from the point's `time_unix_nano`
-   (falling back to `start_time_unix_nano`). A point with no timestamp is
-   rejected (`ts`/`not_positive`) rather than stored at `ts=0`, where it
-   would collide with every other `ts=0` point.
-3. **`attributes` and `resource` are passed as dicts**, never pre-serialized
-   — the substrate canonicalizes them itself, and DuckDB compares a JSON
-   column in a UNIQUE constraint as text.
-4. **The bridge lives in a new module**, `otlp_prometheus_bridge.py`, rather
-   than in `prometheus_metrics.py` as §6's checklist says.
-   `prometheus_metrics.py` is akosha's own application metrics and has no
-   OTLP/protobuf knowledge; `otlp_metrics.py` is the receiver's *static*
-   counter module. The dynamic-instrument machinery (temporality, bucket
-   writes, cardinality) got its own module.
-5. **The service-name prefix is skipped when the metric name already starts
-   with the service name.** A naive `<service>_<metric>` would render
-   mahavishnu's instruments as `mahavishnu_mahavishnu_observability_…`, and
-   this plan's own acceptance check (`grep mahavishnu_observability`) would
-   find nothing.
-6. **Exposure drops are counted separately** — `akosha_otlp_metrics_exposure_dropped_total{reason}` —
-   and not in `rejected_data_points`. The risk table said "drop the excess
-   into the DLQ count", but the point *is* in the substrate, so counting it
-   as rejected would tell a producer its data was thrown away when it was
-   not. The cardinality cap is **100 distinct label-value combinations per
-   metric family** (the plan asked for a cap but named no number).
-7. **No bind-time assertion that `metrics_substrate` exists — but the
-   readiness is still checked, and the check does not raise.** The trace
-   receiver asserts `spans_substrate_table` and raises
-   `LifecycleError("spans_substrate_missing")`; the metrics receiver does
-   **not** raise, because failing the receiver's boot would take the
-   *trace* path down with it — and a metrics dependency gap must never be
-   able to stop trace ingestion. Instead the receiver probes readiness at
-   bind time, logs at ERROR, and exposes
-   `akosha_otlp_metrics_substrate_ready` (1/0) on `:8682/metrics`; an
-   unusable substrate is distinguishable from a normal write failure on
-   `akosha_otlp_metrics_insert_failed_total{reason}`, and it is reported
-   to the producer through `partial_success.error_message`.
+01. **`service.namespace` is NOT required for a metric point.** oneiric's
+    `OTLPObservabilityAdapter` builds its resource with `service.name`,
+    `deployment.environment` and optionally `service.version` — **and no
+    namespace at all**. Requiring one would quarantine every metric oneiric
+    sends, breaking REQ-M07's second producer while reporting "accepted,
+    zero points stored". The namespace is stored as `""` — "not declared", a
+    different fact from "unknown" — to satisfy the substrate's NOT NULL.
+    **For the same reason the span path's namespace allowlist is NOT applied
+    to metrics:** it would reject oneiric's empty namespace outright.
 
-   **Correction 2026-11-06.** The original justification here — "the table
-   is created by oneiric's `DuckdbHotStore.initialize()`, which akosha's
-   `HotStore.initialize()` calls, so it is always there" — was **false
-   against the locked dependency**. akosha's `uv.lock` pins *published*
-   `oneiric==0.34.0`, whose `initialize()` has no metrics DDL and whose
-   wheel contains neither `insert_metrics_substrate` nor
-   `metrics_substrate_table`. In that configuration the table is never
-   created, the insert raises, and — because the insert was wrapped in a
-   blanket `except Exception` that only counted a failure — the export
-   still answered `rejected_data_points=0, error_message=""`. The producer
-   was told "accepted" for data that was thrown away, and because the
-   Prometheus exposure path does not touch the substrate, the plan's own
-   acceptance check (`curl :8682/metrics | grep mahavishnu_observability`)
-   still **passed** while REQ-M03 was entirely unmet. Measured: 12 of the
-   23 new tests fail in that shape.
-8. **`value_sum_of_squares` is always NULL.** OTLP does not carry it and it
-   cannot be derived from bucket boundaries without guessing where inside
-   each bucket the observations fell. NULL says "not known"; a fabricated
-   number would poison every variance computed over the column.
-9. **Scope version and scope attributes have no column** in Phase 1's
-   schema, so they ride in the substrate's `resource` JSON under
-   `otel.scope` (`resource` is explicitly not part of the point's identity).
-   Summary **quantiles are dropped entirely** — `prometheus_client`'s
-   `Summary` has no quantile support, and `buckets_json` is reserved for
-   the two histogram types.
+02. **`ts` is epoch nanoseconds**, from the point's `time_unix_nano`
+    (falling back to `start_time_unix_nano`). A point with no timestamp is
+    rejected (`ts`/`not_positive`) rather than stored at `ts=0`, where it
+    would collide with every other `ts=0` point.
+
+03. **`attributes` and `resource` are passed as dicts**, never pre-serialized
+    — the substrate canonicalizes them itself, and DuckDB compares a JSON
+    column in a UNIQUE constraint as text.
+
+04. **The bridge lives in a new module**, `otlp_prometheus_bridge.py`, rather
+    than in `prometheus_metrics.py` as §6's checklist says.
+    `prometheus_metrics.py` is akosha's own application metrics and has no
+    OTLP/protobuf knowledge; `otlp_metrics.py` is the receiver's *static*
+    counter module. The dynamic-instrument machinery (temporality, bucket
+    writes, cardinality) got its own module.
+
+05. **The service-name prefix is skipped when the metric name already starts
+    with the service name.** A naive `<service>_<metric>` would render
+    mahavishnu's instruments as `mahavishnu_mahavishnu_observability_…`, and
+    this plan's own acceptance check (`grep mahavishnu_observability`) would
+    find nothing.
+
+06. **Exposure drops are counted separately** — `akosha_otlp_metrics_exposure_dropped_total{reason}` —
+    and not in `rejected_data_points`. The risk table said "drop the excess
+    into the DLQ count", but the point *is* in the substrate, so counting it
+    as rejected would tell a producer its data was thrown away when it was
+    not. The cardinality cap is **100 distinct label-value combinations per
+    metric family** (the plan asked for a cap but named no number).
+
+07. **No bind-time assertion that `metrics_substrate` exists — but the
+    readiness is still checked, and the check does not raise.** The trace
+    receiver asserts `spans_substrate_table` and raises
+    `LifecycleError("spans_substrate_missing")`; the metrics receiver does
+    **not** raise, because failing the receiver's boot would take the
+    *trace* path down with it — and a metrics dependency gap must never be
+    able to stop trace ingestion. Instead the receiver probes readiness at
+    bind time, logs at ERROR, and exposes
+    `akosha_otlp_metrics_substrate_ready` (1/0) on `:8682/metrics`; an
+    unusable substrate is distinguishable from a normal write failure on
+    `akosha_otlp_metrics_insert_failed_total{reason}`, and it is reported
+    to the producer through `partial_success.error_message`.
+
+    **Correction 2026-11-06.** The original justification here — "the table
+    is created by oneiric's `DuckdbHotStore.initialize()`, which akosha's
+    `HotStore.initialize()` calls, so it is always there" — was **false
+    against the locked dependency**. akosha's `uv.lock` pins *published*
+    `oneiric==0.34.0`, whose `initialize()` has no metrics DDL and whose
+    wheel contains neither `insert_metrics_substrate` nor
+    `metrics_substrate_table`. In that configuration the table is never
+    created, the insert raises, and — because the insert was wrapped in a
+    blanket `except Exception` that only counted a failure — the export
+    still answered `rejected_data_points=0, error_message=""`. The producer
+    was told "accepted" for data that was thrown away, and because the
+    Prometheus exposure path does not touch the substrate, the plan's own
+    acceptance check (`curl :8682/metrics | grep mahavishnu_observability`)
+    still **passed** while REQ-M03 was entirely unmet. Measured: 12 of the
+    23 new tests fail in that shape.
+
+08. **`value_sum_of_squares` is always NULL.** OTLP does not carry it and it
+    cannot be derived from bucket boundaries without guessing where inside
+    each bucket the observations fell. NULL says "not known"; a fabricated
+    number would poison every variance computed over the column.
+
+09. **Scope version and scope attributes have no column** in Phase 1's
+    schema, so they ride in the substrate's `resource` JSON under
+    `otel.scope` (`resource` is explicitly not part of the point's identity).
+    Summary **quantiles are dropped entirely** — `prometheus_client`'s
+    `Summary` has no quantile support, and `buckets_json` is reserved for
+    the two histogram types.
+
 10. **Histogram buckets are written through `prometheus_client`'s bucket
     values (private API)** — there is no public API for importing
     pre-aggregated bucket counts, and `observe()` would corrupt the sum.
     Cumulative values are converted to deltas per series, with a backwards
     jump treated as a producer restart (the counter-reset convention).
+
 11. **Exponential histograms with negative buckets are stored but not
     exposed** — a Prometheus histogram's bounds would have to start below
     zero, and `prometheus_client` then omits the `_count` and `_sum`
     samples. Positive-only exponential histograms are exposed with bounds
     derived from `scale`/`offset`.
+
 12. **The counters are `akosha_otlp_metrics_*`**, following the receiver's
     existing `akosha_otlp_spans_*` convention, rather than the plan's
     shorthand `otlp_metrics_*`. `akosha_otlp_metrics_insert_failed_total`
@@ -586,22 +602,26 @@ operator build against reality:
     New: `akosha_otlp_metrics_batches_total`,
     `akosha_otlp_metrics_substrate_ready` (1/0),
     `akosha_otlp_metrics_rows_deleted_total`.
+
 13. **`/health` gained a `metrics_feed`**, which the plan did not ask for.
     The plan's exit criterion could be satisfied by a live Prometheus
     series alone, which says nothing about whether anything is being
     *stored*. The feed reports the durable row count, so the two are
     distinguishable. See above.
+
 14. **`metrics_substrate` is swept on the `spans_substrate` retention
     setting**, filtered on `inserted_at` — Phase 1 gave the table that
     column and no epoch-nanos one, and the schema lives in oneiric, which
     the receiver cannot change. `inserted_at` is stamped by the
     *database's* clock, so a skewed producer clock still cannot delete
     fresh rows — the same reasoning as the DLQ sweep's `rejected_at`.
+
 15. **The substrate count lives in a new `akosha/storage/metrics_query.py`**,
     not in `hot_store.py` as §6's checklist says, because
     `akosha/storage/hot_store.py` has a hard 500-LOC CI cap and is "the
     code-graph overlay", not a query surface. It borrows the store's lock
     the way `SpanQuery` does — no second connection.
+
 16. **Phase 3's documentation task has no targets.** It asked to "update the
     `docs/feature-tracking/` and `docs/runbooks/` notes that reference the
     Alloy metric path". Neither directory contains such a note — a grep of
@@ -610,6 +630,7 @@ operator build against reality:
     records of what was true at the time and were deliberately left alone.
     The real documentation work is Phase 4's (the stage-1 gate query and the
     feature-tracking state), and it is still open.
+
 17. **Removing the config field is order-independent, and the env var
     behaves differently from the YAML key.** mahavishnu's settings loader
     calls `_filter_subconfig_keys` *before* `MahavishnuSettings(**merged)`,
@@ -639,10 +660,10 @@ operator who sets `protocol: "http/protobuf"` would get 404s. This is the
 remaining half of REQ-M07 for that configuration.
 
 **Tasks:**
+
 - Add `_MetricsServiceServicer` next to `_TraceServiceServicer`
   (`akosha/observability/otlp_receiver.py:692`), returning
-  `ExportMetricsServiceResponse(partial_success=ExportMetricsPartialSuccess(
-  rejected_data_points=N))` — the same "counts ride on partial_success"
+  `ExportMetricsServiceResponse(partial_success=ExportMetricsPartialSuccess( rejected_data_points=N))` — the same "counts ride on partial_success"
   convention the trace servicer uses.
 - Register it beside the trace servicer at
   `akosha/observability/otlp_receiver.py:224`
@@ -711,6 +732,7 @@ exposure path alone; a durable row is evidence about the substrate.
 Alloy detour removed.
 
 **Tasks:**
+
 - Remove `observability.otlp_metrics_endpoint` from
   `mahavishnu/core/config.py` and the corresponding branch in
   `mahavishnu/core/observability.py` — **replace, don't extend**.
@@ -762,8 +784,7 @@ akosha; the `UNIMPLEMENTED` error is absent; the series are visible on
      by upgrading akosha, not back. `UNAVAILABLE` and `DEADLINE_EXCEEDED`
      produce the same line shape and mean different things; "any status
      code" was too loose to be a trigger.
-  2. `opentelemetry.sdk.metrics._internal.export` logging `Metric
-     collection timed out`. **This is the clause that actually fires.**
+  2. `opentelemetry.sdk.metrics._internal.export` logging `Metric collection timed out`. **This is the clause that actually fires.**
      `MetricReader.collect()` raises `MetricsTimeoutError` *before* it
      calls the exporter, so the export is never attempted and the "Failed
      to export metrics" line never appears — the original signal was
@@ -773,8 +794,7 @@ akosha; the `UNIMPLEMENTED` error is absent; the series are visible on
     the field and point it at `http://127.0.0.1:14317`", on the grounds
     that "Alloy's receiver accepts metrics even though it does not expose
     them". **That is false for the gRPC path**, and the fleet's own log
-    says so: 50 lines of `Failed to export metrics to 127.0.0.1:14317,
-    error code: StatusCode.DEADLINE_EXCEEDED`. The export does not get
+    says so: 50 lines of `Failed to export metrics to 127.0.0.1:14317, error code: StatusCode.DEADLINE_EXCEEDED`. The export does not get
     accepted — it hangs until the deadline. The documented rollback would
     have swapped `UNIMPLEMENTED` for `DEADLINE_EXCEEDED` and left the
     operator with no working path at all.
@@ -787,8 +807,7 @@ akosha; the `UNIMPLEMENTED` error is absent; the series are visible on
 (base `6637d4c6`, not pushed). Six files — the five below plus this plan
 file: `mahavishnu/core/config.py` (the
 interim `otlp_metrics_endpoint` field removed; the `metrics_enabled` and
-`otel_metrics_enabled` descriptions rewritten), `mahavishnu/core/
-observability.py` (the metric exporter targets `observability.otlp_endpoint`),
+`otel_metrics_enabled` descriptions rewritten), `mahavishnu/core/ observability.py` (the metric exporter targets `observability.otlp_endpoint`),
 `tests/unit/test_config.py` and `tests/unit/test_observability_signal_gating.py`
 (comments that described the split as current fact), and the new
 `tests/unit/test_observability_metrics_endpoint.py` (5 tests).
@@ -825,15 +844,16 @@ That is an accepted consequence of consolidation, but it is the reason the
 rollback signal above names two clauses: a single symptom no longer
 identifies which half broke.
 
-**Ensemble review (spec §4.4: domain specialist + code-quality specialist
-+ random generalist) — three lenses, all `needs_adjustment`, fifteen
-defects found and fixed.** The *production* change was judged correct by
-all three: the field is gone, the exporter targets `otlp_endpoint`, no
-leftover reference survives anywhere in the tree, and the load-bearing
-external fact (akosha's receiver serving MetricsService on :4317) was
-independently confirmed against akosha's source by two of the lenses.
-What the review found was that the change's own **evidence layer** did not
-support it:
+\*\*Ensemble review (spec §4.4: domain specialist + code-quality specialist
+
+- random generalist) — three lenses, all `needs_adjustment`, fifteen
+  defects found and fixed.\*\* The *production* change was judged correct by
+  all three: the field is gone, the exporter targets `otlp_endpoint`, no
+  leftover reference survives anywhere in the tree, and the load-bearing
+  external fact (akosha's receiver serving MetricsService on :4317) was
+  independently confirmed against akosha's source by two of the lenses.
+  What the review found was that the change's own **evidence layer** did not
+  support it:
 
 | Defect | Symptom |
 |---|---|
@@ -864,8 +884,7 @@ mahavishnu's own exporter, built from the Phase 3 code against the real
 operator config, reported `otlp_endpoint=http://localhost:4317` and
 flushed a counter that appeared as
 `mahavishnu_phase3_probe_total{probe="phase3"} 1.0` on `:8682/metrics`,
-alongside `target_info{service_name="mahavishnu",
-service_namespace="bodai"}`.
+alongside `target_info{service_name="mahavishnu", service_namespace="bodai"}`.
 
 **The durable side was checked separately, because the exposure path and
 the substrate path are independent.** `/health`'s `metrics_feed` reported
@@ -909,6 +928,7 @@ pool-dispatched work on this machine.
 documented hope into a query.
 
 **Tasks:**
+
 - End-to-end check: trigger a drift, confirm the counter moves on
   `:8682/metrics` and in Prometheus (`:9090/api/v1/query`).
 - Write the gate query in the drift runbook
@@ -1034,71 +1054,75 @@ with the live server.
 ## 6. Required Code Changes
 
 **oneiric** (`/Users/les/Projects/oneiric`)
+
 - [x] `oneiric/adapters/vector/duckdb_hot_store.py` — `metrics_substrate`
-      DDL, `insert_metrics_substrate`, `metrics_substrate_table`
+  DDL, `insert_metrics_substrate`, `metrics_substrate_table`
 - [x] oneiric lifespan hook — idempotent `metrics_substrate` creation
 - [x] oneiric tests — `tests/adapters/test_duckdb_hot_store_metrics.py`
-      (named for the module under test, beside its span sibling)
+  (named for the module under test, beside its span sibling)
 - [x] **one change** to `oneiric/adapters/monitoring/otlp.py` (added
-      2026-11-06 by the Phase 2 review) — the adapter's single endpoint
-      works against a receiver that implements both services, but its
-      `insecure` default forced TLS against a plaintext receiver, so
-      **zero points arrived**. `insecure: bool | None = Field(default=None)`
-      lets the endpoint scheme decide (`http://` → plaintext,
-      `https://` → TLS) and an explicit value still overrides. The
-      *endpoint* stays single; only the transport default changes. (NG6,
-      REQ-M07)
+  2026-11-06 by the Phase 2 review) — the adapter's single endpoint
+  works against a receiver that implements both services, but its
+  `insecure` default forced TLS against a plaintext receiver, so
+  **zero points arrived**. `insecure: bool | None = Field(default=None)`
+  lets the endpoint scheme decide (`http://` → plaintext,
+  `https://` → TLS) and an explicit value still overrides. The
+  *endpoint* stays single; only the transport default changes. (NG6,
+  REQ-M07)
 
 **akosha** (`/Users/les/Projects/akosha`)
+
 - [x] `akosha/observability/otlp_receiver.py` — `_MetricsServiceServicer`,
-      `add_MetricsServiceServicer_to_server`, `_handle_metrics_batch` —
-      landed in `ab76a77`
+  `add_MetricsServiceServicer_to_server`, `_handle_metrics_batch` —
+  landed in `ab76a77`
 - [x] `akosha/observability/otlp_prometheus_bridge.py` — OTLP →
-      `prometheus_client` bridge — and `akosha/observability/otlp_metrics.py`
-      — receiver counters — landed in `ab76a77`. The plan named
-      `prometheus_metrics.py` for both; that module already existed as the
-      shared-registry owner (`get_metrics_registry()`), so the bridge got
-      its own module.
+  `prometheus_client` bridge — and `akosha/observability/otlp_metrics.py`
+  — receiver counters — landed in `ab76a77`. The plan named
+  `prometheus_metrics.py` for both; that module already existed as the
+  shared-registry owner (`get_metrics_registry()`), so the bridge got
+  its own module.
 - [x] akosha tests — `test_otlp_metrics_receiver.py`,
-      `test_metrics_health_feed.py`, `test_otlp_metrics_receiver_e2e.py` —
-      landed in `ab76a77`
+  `test_metrics_health_feed.py`, `test_otlp_metrics_receiver_e2e.py` —
+  landed in `ab76a77`
 
 **mahavishnu** (`/Users/les/Projects/mahavishnu`)
+
 - [x] `mahavishnu/core/config.py` — remove `otlp_metrics_endpoint` (REQ-M04)
 - [x] `mahavishnu/core/observability.py` — metric exporter reverts to
-      `otlp_endpoint` (REQ-M04); keep the liveness instruments (REQ-M05)
+  `otlp_endpoint` (REQ-M04); keep the liveness instruments (REQ-M05)
 - [x] `tests/unit/test_observability_metrics_endpoint.py` — pins the
-      removal (field gone, env var fatal, YAML key dropped) and the
-      endpoint (metrics and traces share one), including the check that
-      the manager did **not** fall back to mocks
+  removal (field gone, env var fatal, YAML key dropped) and the
+  endpoint (metrics and traces share one), including the check that
+  the manager did **not** fall back to mocks
 - [x] `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` — the stage-1 gate
-      query (REQ-M05) — **Phase 4**
+  query (REQ-M05) — **Phase 4**
 - [x] `docs/feature-tracking/2026-09-10-observability-changepoint.md` —
-      gate now queryable (REQ-M05) — **Phase 4**
+  gate now queryable (REQ-M05) — **Phase 4**
 - [x] `mahavishnu/core/app.py` — the tick loop's metric source publishes
-      the aggregate pool depth under the configured metric NAME. It
-      returned a pool-id-keyed snapshot, so the loop read a constant
-      `0.0` and the detector could never fire — **Phase 4** (REQ-M05)
+  the aggregate pool depth under the configured metric NAME. It
+  returned a pool-id-keyed snapshot, so the loop read a constant
+  `0.0` and the detector could never fire — **Phase 4** (REQ-M05)
 - [x] `mahavishnu/core/observability.py` — `changepoint_detector_active`
-      reports the value its HELP text promises (1 while ticking) instead
-      of counting ticks — **Phase 4** (REQ-M05)
+  reports the value its HELP text promises (1 while ticking) instead
+  of counting ticks — **Phase 4** (REQ-M05)
 - [x] `settings/mahavishnu.yaml` — `changepoint.target_mean_auto: true`,
-      so feeding the detector real data does not fire on baseline —
-      **Phase 4** (REQ-M005)
+  so feeding the detector real data does not fire on baseline —
+  **Phase 4** (REQ-M005)
 - [x] `tests/unit/observability/test_change_point_tick_loop.py` — pins
-      the metric-source namespace (and a renamed target metric) and the
-      active gauge's value — **Phase 4**
+  the metric-source namespace (and a renamed target metric) and the
+  active gauge's value — **Phase 4**
 
 **operator (outside the repos)**
+
 - [x] `~/.config/mahavishnu/local.yaml` — drop the
-      `otlp_metrics_endpoint` override once Phase 3 lands
+  `otlp_metrics_endpoint` override once Phase 3 lands
 - [x] `/usr/local/etc/grafana-alloy/config.alloy` — *no change*; the metric
-      path is retired, not completed (NG1)
+  path is retired, not completed (NG1)
 - [ ] `~/.zshenv` — the stale OTLP note ("akosha's receiver implements
-      TraceService only, so metric exports to :4317 fail with
-      UNIMPLEMENTED once a minute"). Now false in both halves. The
-      permission classifier denied the edit as an unauthorized
-      persistent-profile change — **needs the operator's decision**
+  TraceService only, so metric exports to :4317 fail with
+  UNIMPLEMENTED once a minute"). Now false in both halves. The
+  permission classifier denied the edit as an unauthorized
+  persistent-profile change — **needs the operator's decision**
 
 ## 7. Validation Matrix
 

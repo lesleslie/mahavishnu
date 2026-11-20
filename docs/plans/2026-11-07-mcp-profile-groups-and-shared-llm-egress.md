@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-11-07
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 blocks_on: []
 related:
   - docs/plans/2026-10-19-bifrost-mcp-skills-aggregation.md
@@ -111,25 +111,25 @@ gateway only; it must not reappear as an MCP aggregation hop.
 ## 3. Non-Goals
 
 - **Runtime MCP aggregation.** No single-endpoint proxy. Rejected with
-   evidence: every aggregator renames tools (`<client>-<tool>` in Bifrost,
-   `<prefix>_<tool>` in MCPM/FastMCP), which breaks the contract above; the
-   `__` server segment is Claude Code's *config-entry* namespace and no
-   protocol mechanism can inject it per-tool.
+  evidence: every aggregator renames tools (`<client>-<tool>` in Bifrost,
+  `<prefix>_<tool>` in MCPM/FastMCP), which breaks the contract above; the
+  `__` server segment is Claude Code's *config-entry* namespace and no
+  protocol mechanism can inject it per-tool.
 - **Bifrost as the MCP ingress gateway.** Its MCP gateway is retired from this
-   path. `config_mcp_clients` holds 0 rows and `mcp_tool_logs` holds 0 rows —
-   the capability was never configured or exercised here.
+  path. `config_mcp_clients` holds 0 rows and `mcp_tool_logs` holds 0 rows —
+  the capability was never configured or exercised here.
 - **Bifrost Skills Repository / cross-harness skill distribution.** The
-   superseded plan's Phase 3. Deferred to a future plan: the marketplace route
-   currently returns 503 (`skills_external_client_url` unset), the repository
-   has no authored skills, and the ecosystem already distributes skills through
-   repo-local `.claude/skills/` and plugin marketplaces. Revisit when a
-   concrete cross-machine distribution requirement appears.
+  superseded plan's Phase 3. Deferred to a future plan: the marketplace route
+  currently returns 503 (`skills_external_client_url` unset), the repository
+  has no authored skills, and the ecosystem already distributes skills through
+  repo-local `.claude/skills/` and plugin marketplaces. Revisit when a
+  concrete cross-machine distribution requirement appears.
 - **Caching MCP tool results.** Bifrost's semantic cache is an LLM-inference
-   plugin (`mcp_tool_execution` is a separate `RequestType` with its own plugin
-   interface), and `cache_tool_call_responses` defaults to `false` precisely
-   because "a replayed tool call runs in a later caller's agent loop with
-   arguments chosen for someone else's prompt." Caching results of mutating
-   tools (`write_file`, git commit, worker spawn) is unsafe. Out of scope.
+  plugin (`mcp_tool_execution` is a separate `RequestType` with its own plugin
+  interface), and `cache_tool_call_responses` defaults to `false` precisely
+  because "a replayed tool call runs in a later caller's agent loop with
+  arguments chosen for someone else's prompt." Caching results of mutating
+  tools (`write_file`, git commit, worker spawn) is unsafe. Out of scope.
 - **Public hosting, per-user virtual keys, enterprise SSO, agent
   distribution, custom sync CLIs, cross-machine skills sync.** Inherited
   unchanged from the superseded plan.
@@ -321,15 +321,15 @@ Declared in the plan frontmatter (`requirements:`). Tracked by
 **Tasks**:
 
 - [ ] Create `config/mcp/servers.yaml` — one entry per server: `name`, `url`,
-      `transport`, `enabled_by_default`, `health` (url + expectation), `env`
-      (per-server `*_TOOL_PROFILE`), `harnesses` (which harnesses may use it).
+  `transport`, `enabled_by_default`, `health` (url + expectation), `env`
+  (per-server `*_TOOL_PROFILE`), `harnesses` (which harnesses may use it).
 - [ ] Create `config/mcp/profiles.yaml` — named groups referencing server
-      names. Seed with `bodai-full` (the 5 Bodai servers) and `web-dev`
-      (chrome-devtools, playwright, a fetch server).
+  names. Seed with `bodai-full` (the 5 Bodai servers) and `web-dev`
+  (chrome-devtools, playwright, a fetch server).
 - [ ] Add `config/mcp/README.md` documenting the schema and the "registry is
-      authoritative" rule.
+  authoritative" rule.
 - [ ] Validate the registry at load: every profile member resolves to a
-      server entry; every URL parses; no duplicate names.
+  server entry; every URL parses; no duplicate names.
 
 **Exit criteria**:
 
@@ -359,12 +359,12 @@ without writing to any harness config.
 **Tasks**:
 
 - [ ] Add `mahavishnu/cli/mcp_cli.py` and register the `mcp` subcommand group
-      in `mahavishnu/cli.py`.
+  in `mahavishnu/cli.py`.
 - [ ] `mahavishnu mcp list` — servers with URL, transport, profile membership,
-      and whether the server is enabled in each detected harness.
+  and whether the server is enabled in each detected harness.
 - [ ] `mahavishnu mcp profile list|show <name>` — profiles and members.
 - [ ] `mahavishnu mcp status` — health-probe every registry entry, report
-      per-server reachability and the harness config each appears in.
+  per-server reachability and the harness config each appears in.
 - [ ] Detect installed clients via MCPM's client registry.
 
 **Exit criteria**:
@@ -395,18 +395,18 @@ transport — and nothing else changes.
 **Tasks**:
 
 - [ ] Resolve a profile to its member servers; for each member, obtain the
-      client-format entry via MCPM's manager `to_client_format` (remote
-      servers keep `url`).
+  client-format entry via MCPM's manager `to_client_format` (remote
+  servers keep `url`).
 - [ ] Write via MCPM's managers, with `config_path_override` pointing at the
-      target repo's `.mcp.json` (project scope) or the harness's own file
-      (user scope), per an explicit `--scope` flag.
+  target repo's `.mcp.json` (project scope) or the harness's own file
+  (user scope), per an explicit `--scope` flag.
 - [ ] Remove members of previously-active profiles that are not in the new
-      profile; never touch entries MCPM does not own.
+  profile; never touch entries MCPM does not own.
 - [ ] Support `--client claude-code|codex-cli|qwen-cli|gemini-cli|goose|opencode|…`
-      and `--dry-run` (print the diff, write nothing).
+  and `--dry-run` (print the diff, write nothing).
 - [ ] Add `mahavishnu mcp sync` — re-apply the active profile idempotently.
 - [ ] Unit-test the round trip: profile → written config → `to_client_format`
-      → profile membership, asserting `url` survives for remote servers.
+  → profile membership, asserting `url` survives for remote servers.
 
 **Exit criteria**:
 
@@ -441,17 +441,17 @@ registration table.
 **Tasks**:
 
 - [ ] Change `~/.claude/scripts/mcp-launchd/mcp-ctl.sh` server env blocks from
-      `<REPO>_TOOL_PROFILE=full` to `standard` for mahavishnu, akosha,
-      session-buddy and crackerjack.
+  `<REPO>_TOOL_PROFILE=full` to `standard` for mahavishnu, akosha,
+  session-buddy and crackerjack.
 - [ ] Regenerate the plists (`mcp-ctl generate`) and restart; verify live tool
-      counts drop (mahavishnu 161 → ~102).
+  counts drop (mahavishnu 161 → ~102).
 - [ ] Add the `oneiric` entry to both `MCP_SERVERS` arrays — it is currently
-      in neither, so the supervisor never checks it.
+  in neither, so the supervisor never checks it.
 - [ ] Make the registry the input to the generator: `mcp-ctl generate` and the
-      supervisor read `config/mcp/servers.yaml` rather than a hand-maintained
-      array. The two registries become views of one source.
+  supervisor read `config/mcp/servers.yaml` rather than a hand-maintained
+  array. The two registries become views of one source.
 - [ ] Record the `*_TOOL_PROFILE` value per server in `config/mcp/servers.yaml`
-      so Phase 1 and this phase cannot drift.
+  so Phase 1 and this phase cannot drift.
 
 **Exit criteria**:
 
@@ -486,25 +486,24 @@ across servers is served from cache.
 **Tasks**:
 
 - [ ] Extend the `mcp-ctl.sh` server env blocks with the same
-      `ONEIRIC_BIFROST_*` variables mahavishnu already has
-      (`ENABLED=true`, `BASE_URL=http://127.0.0.1:8471/v1`,
-      `CACHE_MODE=semantic`), so their `oneiric.adapters.llm.bifrost` path is
-      live.
+  `ONEIRIC_BIFROST_*` variables mahavishnu already has
+  (`ENABLED=true`, `BASE_URL=http://127.0.0.1:8471/v1`,
+  `CACHE_MODE=semantic`), so their `oneiric.adapters.llm.bifrost` path is
+  live.
 - [ ] Give the fleet a **shared** traffic class so the bucket resolves
-      identically across servers (`mahavishnu/bifrost/cache_headers.py:
-      resolve_cache_bucket(traffic_class, principal)`).
+  identically across servers (`mahavishnu/bifrost/cache_headers.py:     resolve_cache_bucket(traffic_class, principal)`).
 - [ ] Confirm the identity scope: Bifrost partitions entries by virtual key
-      and user unless `disable_identity_scoping` is set. Either align the
-      servers on one principal, or set `disable_identity_scoping: true` with
-      the isolation cost recorded in the decision log. **Default: align the
-      principal** — do not weaken scoping to buy a cache.
+  and user unless `disable_identity_scoping` is set. Either align the
+  servers on one principal, or set `disable_identity_scoping: true` with
+  the isolation cost recorded in the decision log. **Default: align the
+  principal** — do not weaken scoping to buy a cache.
 - [ ] Set an explicit `default_cache_key` (or send `x-bf-cache-key` per
-      request) — without one, the plugin does not engage at all.
+  request) — without one, the plugin does not engage at all.
 - [ ] Add `mahavishnu bifrost cache-report --hours 24` (or extend
-      `mahavishnu metrics bifrost`) showing hit rate per bucket, so the
-      sharing is observable rather than assumed.
+  `mahavishnu metrics bifrost`) showing hit rate per bucket, so the
+  sharing is observable rather than assumed.
 - [ ] Add a `oneiric` server env block (it is missing from `mcp-ctl.sh`
-      entirely) so it participates in the same egress.
+  entirely) so it participates in the same egress.
 
 **Exit criteria**:
 
@@ -543,16 +542,16 @@ rejected, so nobody re-litigates it from the plan index.
 **Tasks**:
 
 - [ ] Set the superseded plan's frontmatter to `status: superseded`,
-      `role: superseded`, `superseded_by: docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md`,
-      and add a short "Retired — and why" section citing this plan's §4.1–4.3.
+  `role: superseded`, `superseded_by: docs/plans/2026-11-07-mcp-profile-groups-and-shared-llm-egress.md`,
+  and add a short "Retired — and why" section citing this plan's §4.1–4.3.
 - [ ] Record the decision in `docs/decisions/` — the tool-namespace constraint
-      (`mcp__<server>__<tool>` is Claude Code's config-entry namespace; no
-      gateway can inject it per-tool) is a durable architectural constraint, not
-      a plan detail.
+  (`mcp__<server>__<tool>` is Claude Code's config-entry namespace; no
+  gateway can inject it per-tool) is a durable architectural constraint, not
+  a plan detail.
 - [ ] Confirm `config_mcp_clients` and `mcp_tool_logs` remain at 0 rows and
-      that no harness references `http://127.0.0.1:8471/mcp`.
+  that no harness references `http://127.0.0.1:8471/mcp`.
 - [ ] Re-run `python scripts/regenerate_plan_index.py` so the index reflects
-      the supersession.
+  the supersession.
 
 **Exit criteria**:
 
@@ -578,38 +577,38 @@ rejected, so nobody re-litigates it from the plan index.
 **New — mahavishnu**:
 
 - [ ] `mahavishnu/mcp/registry.py` — registry + profile loading and
-      validation.
+  validation.
 - [ ] `mahavishnu/cli/mcp_cli.py` — the `mahavishnu mcp` subcommand group.
 - [ ] `tests/unit/test_mcp_registry.py` — schema, validation, profile
-      resolution.
+  resolution.
 - [ ] `tests/unit/test_mcp_cli.py` — list/profile/use/sync/status.
 - [ ] `tests/integration/test_mcp_profile_activation.py` — round trip against
-      a scratch config file; asserts `url` survives and unrelated entries are
-      untouched.
+  a scratch config file; asserts `url` survives and unrelated entries are
+  untouched.
 
 **Modified — mahavishnu**:
 
 - [ ] `mahavishnu/cli.py` — register the `mcp` subcommand group.
 - [ ] `pyproject.toml` — add `mcpm` as a dependency (or an optional
-      `dependency-group` entry if the group stays out of the base install —
-      decide in Phase 1; the repo already has the `dependency-groups` pattern
-      for narrow integrations).
+  `dependency-group` entry if the group stays out of the base install —
+  decide in Phase 1; the repo already has the `dependency-groups` pattern
+  for narrow integrations).
 
 **Modified — operator environment (outside this repo)**:
 
 - [ ] `~/.claude/scripts/mcp-launchd/mcp-ctl.sh` — profile values, Bifrost
-      env blocks, `oneiric` entry, registry-derived arrays.
+  env blocks, `oneiric` entry, registry-derived arrays.
 - [ ] `~/.claude/scripts/mcp-launchd/mcp-supervisor.sh` — `oneiric` entry.
 - [ ] `config/bifrost/config.template.json` — semantic_cache
-      `default_cache_key` (seed only; live store is authoritative).
+  `default_cache_key` (seed only; live store is authoritative).
 
 **Documentation**:
 
 - [ ] `config/mcp/README.md` — registry schema.
 - [ ] `docs/decisions/2026-11-07-mcp-tool-namespace-constraint.md` — the
-      constraint and its consequences.
+  constraint and its consequences.
 - [ ] `CLAUDE.md` — the MCP server/tool-count figures are stale (161 live for
-      mahavishnu, 496 across the five Bodai servers); correct them.
+  mahavishnu, 496 across the five Bodai servers); correct them.
 
 ## 7. Validation Matrix
 

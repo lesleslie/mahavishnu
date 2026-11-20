@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-03
 last_reviewed: 2026-10-03
-superseded_by: null
+superseded_by:
 topic: trunk-based-agent-review
 ---
 
@@ -14,7 +14,8 @@ topic: trunk-based-agent-review
 
 Replaces GitHub-PR-shaped review for AI-driven solo dev. Ephemeral
 branches + AI ensemble review + `crackerjack run -v` gate + squash-merge
-+ auto-push `main` + governed cleanup. See spec §"The Workflow".
+
+- auto-push `main` + governed cleanup. See spec §"The Workflow".
 
 The 2026-10-03 spec `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
 ships a single-purpose, mechanically-gated branch-to-`main` workflow for
@@ -34,8 +35,7 @@ truth for the push exception and is cross-linked from this doc.
 The 7-stage workflow in spec §Workflow is the canonical dev flow for
 Bodai ecosystem repos when an AI worker is driving. Branches are
 ephemeral (deleted with their worktree); auto-push is governed by
-`2026-10-03-mainautopush.md`; cleanup routes through `mahavishnu worktree
-prune-merged`.
+`2026-10-03-mainautopush.md`; cleanup routes through `mahavishnu worktree prune-merged`.
 
 `MAHAVISHNU_AUTO_MERGE=1` is the default (per user choice; explicitly
 exported in `~/.zshenv`). To disable auto-merge at SessionEnd, set

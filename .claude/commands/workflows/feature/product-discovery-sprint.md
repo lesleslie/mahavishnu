@@ -28,8 +28,8 @@ ______________________________________________________________________
 ## Phases
 
 1. Frame the work with goals, success metrics, stakeholders, and research plan.
-1. Validate hypotheses with interviews, usability tests, and data analysis where needed.
-1. Synthesize findings into a recommendation and decision.
+2. Validate hypotheses with interviews, usability tests, and data analysis where needed.
+3. Synthesize findings into a recommendation and decision.
 
 ## Handoffs
 

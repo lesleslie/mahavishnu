@@ -3,7 +3,7 @@ status: adopted
 role: canonical
 date: 2026-09-10
 last_reviewed: 2026-09-10
-superseded_by: null
+superseded_by:
 topic: plan-index-metadata
 ---
 
@@ -70,8 +70,8 @@ Exits 0 when `PLAN_INDEX.md`, the filesystem, and — when
 Failures:
 
 1. a path in `PLAN_INDEX.md` with no file on disk;
-1. a frontmatter-bearing `.md` file missing from `PLAN_INDEX.md`;
-1. a durable key-value record missing from `PLAN_INDEX.md`.
+2. a frontmatter-bearing `.md` file missing from `PLAN_INDEX.md`;
+3. a durable key-value record missing from `PLAN_INDEX.md`.
 
 Indexed paths with no durable key-value record are reported as a warning, not a
 failure — records carry a 24h TTL and the rendered artifact is allowed

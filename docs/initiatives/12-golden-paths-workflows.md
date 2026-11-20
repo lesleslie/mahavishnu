@@ -7,7 +7,6 @@ last_reviewed: 2026-10-12
 superseded_by: docs/plans/.archive/2026-10-12-adapter-registry-consolidation-to-oneiric.md
 blocks_on: []
 title: "Initiative 12: Golden Paths for Top Workflows"
-
 ---
 
 # Initiative 12: Golden Paths for Top Workflows

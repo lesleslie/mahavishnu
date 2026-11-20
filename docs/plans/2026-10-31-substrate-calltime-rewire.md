@@ -4,20 +4,20 @@ role: canonical
 kind: plan
 date: 2026-10-31
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 topic: substrate-calltime-rewire
 title: "Bind the substrate call sites to the live store instead of a dead module lookup"
 requirements:
-- id: REQ-SUBSTR-001
-  title: No call site resolves a substrate function by dynamic module lookup
-- id: REQ-SUBSTR-002
-  title: The substrate and the KV tools share one store instance
-- id: REQ-SUBSTR-003
-  title: Substrate writes persist and reads return the stored payload
-- id: REQ-SUBSTR-004
-  title: Each call site's sync/async shape matches the substrate contract
-- id: REQ-SUBSTR-005
-  title: A reader outside the server process reads through the server
+  - id: REQ-SUBSTR-001
+    title: No call site resolves a substrate function by dynamic module lookup
+  - id: REQ-SUBSTR-002
+    title: The substrate and the KV tools share one store instance
+  - id: REQ-SUBSTR-003
+    title: Substrate writes persist and reads return the stored payload
+  - id: REQ-SUBSTR-004
+    title: Each call site's sync/async shape matches the substrate contract
+  - id: REQ-SUBSTR-005
+    title: A reader outside the server process reads through the server
 ---
 
 # Bind the substrate call sites to the live store instead of a dead module lookup
@@ -81,8 +81,8 @@ mcp -> /Users/les/Projects/mahavishnu/.venv/lib/python3.14/site-packages/mcp/__i
 ```
 
 The name `mcp` belonged to the retired service's **client package**. The
-shim's own docstring still describes it that way ("the optional ``mcp``
-module", "the ``mcp`` package is not importable"). Its premise — that
+shim's own docstring still describes it that way ("the optional `mcp`
+module", "the `mcp` package is not importable"). Its premise — that
 the substrate might not be installed, and that call sites should degrade
 gracefully — is obsolete: the substrate is mahavishnu's own server, in
 the same process.
@@ -206,7 +206,6 @@ the same microsecond from colliding.
 This also keeps the write shape identical to the retired API's
 *observable* behaviour: `list` returned every record, and it still does.
 
-
 ## 5. Requirements
 
 ```yaml
@@ -231,6 +230,7 @@ requirements:
 use.
 
 **Tasks:**
+
 1. Move the process-local store to `mahavishnu/core/kv_store.py`; have
    `mcp/tools/kv_tools.py` import it. (REQ-SUBSTR-002)
 2. Add `mahavishnu/core/substrate.py` — `put` (sync), `get` (awaitable),
@@ -251,8 +251,7 @@ returns the original payload.
   `webhook-ingress/…`. The approval namespace holds one key **per
   decision** (`approval-history/{id}/{timestamp}-{nonce}`) so the
   history stays append-only — see § 4.7.
-- **Demonstrable by:** `pytest tests/unit/test_substrate.py
-  tests/unit/mcp/tools/test_kv_tools.py` → green.
+- **Demonstrable by:** `pytest tests/unit/test_substrate.py tests/unit/mcp/tools/test_kv_tools.py` → green.
 - **Rollback signal:** the KV tools' round-trip test fails, or a
   sibling's `mahavishnu_kv_get` returns `None` for a key the server
   wrote.
@@ -264,6 +263,7 @@ returns the original payload.
 **Goal:** every call site reaches the substrate.
 
 **Tasks:**
+
 1. Replace all fifteen `mcp_calltime(...)` lookups with the facade.
    (REQ-SUBSTR-001)
 2. `webhooks/replay.py` becomes `async def` and awaits `get`; the
@@ -285,9 +285,7 @@ readable by `workflow_get_outcome_tool`.
   manager; the `/webhook` route; `workflow_get_outcome_tool`;
   `webhook_replay_tool`.
 - **Returns to / updates:** the store keys listed in Phase 1.
-- **Demonstrable by:** `pytest tests/unit/mcp/tools/test_ecosystem_state_tools.py
-  tests/unit/approval/ tests/unit/test_webhooks_replay.py
-  tests/unit/mcp/tools/test_workflow_tools.py` → green; a live
+- **Demonstrable by:** `pytest tests/unit/mcp/tools/test_ecosystem_state_tools.py tests/unit/approval/ tests/unit/test_webhooks_replay.py tests/unit/mcp/tools/test_workflow_tools.py` → green; a live
   `mahavishnu_upsert_service` → `mahavishnu_list_services` round-trip
   returns the record.
 - **Rollback signal:** `ecosystem_state_upsert_skipped` appears in the
@@ -303,11 +301,7 @@ readable by `workflow_get_outcome_tool`.
 2. Live: `mahavishnu_upsert_service` then `mahavishnu_list_services`
    returns the record.
 3. Live: a workflow outcome is readable via `workflow_get_outcome_tool`.
-4. `pytest tests/unit/test_substrate.py
-   tests/unit/mcp/tools/test_ecosystem_state_tools.py
-   tests/unit/approval/ tests/unit/test_webhooks_replay.py
-   tests/unit/mcp/tools/test_workflow_tools.py
-   tests/unit/mcp/tools/test_ecosystem_state_tools.py` → green.
+4. `pytest tests/unit/test_substrate.py tests/unit/mcp/tools/test_ecosystem_state_tools.py tests/unit/approval/ tests/unit/test_webhooks_replay.py tests/unit/mcp/tools/test_workflow_tools.py tests/unit/mcp/tools/test_ecosystem_state_tools.py` → green.
 5. `python scripts/audit_requirements.py` → 0 orphans, 0 phantoms.
 6. `crackerjack run -v -f` → gate passes.
 
@@ -505,6 +499,7 @@ and warnings are back — they now report a *failed write* rather than an
 *unbound substrate*, but they are the same control.
 
 ### 10.4 Residual gaps (not introduced here, not closed here)
+
 1. The MCP tools' identity is argument-derived for **non-internal**
    principals: `require_mcp_auth` reads the `user_id` argument, and
    `extract_auth_from_request` prefers that argument over the

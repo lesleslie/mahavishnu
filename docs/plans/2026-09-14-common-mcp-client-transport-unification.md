@@ -7,7 +7,7 @@ last_reviewed: 2026-10-17
 # `superseded_by` is document-level only (see the schema). This umbrella is
 # complete, not superseded — it was Phase 4 alone that was superseded, by
 # docs/plans/.archive/2026-10-09-mcp-health-check-enrichment.md.
-superseded_by: null
+superseded_by:
 topic: mcpserver-settings-convention
 revision: 2
 title: "CommonMCPClient Transport Unification Across Bodai (v2)"
@@ -26,24 +26,24 @@ title: "CommonMCPClient Transport Unification Across Bodai (v2)"
 # - Phase 4 /health aggregator unification superseded by
 #   docs/plans/.archive/2026-10-09-mcp-health-check-enrichment.md
 requirements:
-- id: REQ-TRANSPORT-001
-  title: CommonMCPClient extracted from akosha; streamable-HTTP JSON-RPC; session-ID lifecycle
-- id: REQ-TRANSPORT-002
-  title: HealthFeedState exposes last_error_at + errors_within_window rolling counter
-- id: REQ-TRANSPORT-003
-  title: aggregate_feed_states produces 4-value top-level status enum + reason_codes enum
-- id: REQ-TRANSPORT-004
-  title: All 84 production /tools/call sites replaced with CommonMCPClient
-- id: REQ-TRANSPORT-005
-  title: <COMPONENT>_MCP_URL defaults (4 prod + 17 test fixtures) end in /mcp
-- id: REQ-TRANSPORT-006
-  title: Each repo's /health aggregator delegates to aggregate_feed_states
-- id: REQ-TRANSPORT-007
-  title: Cumulative feed errors do not block /health=200 after halflife elapses
-- id: REQ-TRANSPORT-008
-  title: 'Empty-feed + ingester-running reports status: warming_up with reason_codes: [warming_up_empty_feed]'
-- id: REQ-TRANSPORT-009
-  title: 'Cross-repo smoke test: akosha → session-buddy via CommonMCPClient returns non-empty'
+  - id: REQ-TRANSPORT-001
+    title: CommonMCPClient extracted from akosha; streamable-HTTP JSON-RPC; session-ID lifecycle
+  - id: REQ-TRANSPORT-002
+    title: HealthFeedState exposes last_error_at + errors_within_window rolling counter
+  - id: REQ-TRANSPORT-003
+    title: aggregate_feed_states produces 4-value top-level status enum + reason_codes enum
+  - id: REQ-TRANSPORT-004
+    title: All 84 production /tools/call sites replaced with CommonMCPClient
+  - id: REQ-TRANSPORT-005
+    title: <COMPONENT>_MCP_URL defaults (4 prod + 17 test fixtures) end in /mcp
+  - id: REQ-TRANSPORT-006
+    title: Each repo's /health aggregator delegates to aggregate_feed_states
+  - id: REQ-TRANSPORT-007
+    title: Cumulative feed errors do not block /health=200 after halflife elapses
+  - id: REQ-TRANSPORT-008
+    title: 'Empty-feed + ingester-running reports status: warming_up with reason_codes: [warming_up_empty_feed]'
+  - id: REQ-TRANSPORT-009
+    title: 'Cross-repo smoke test: akosha → session-buddy via CommonMCPClient returns non-empty'
 ---
 
 > **Naming note (2026-10-30):** the retired standalone MCP server component is
@@ -73,6 +73,7 @@ requirements:
 
 > **v2 revision notes (2026-09-14)**: addresses structural findings from a 5-lens
 > multi-agent review. Major changes from v1:
+>
 > - Phase 1 is now "extract `BodaiComponentMCPClient` from akosha into mcp-common"
 >   rather than "write 120 LOC of new SDK" (saves ~90 LOC of duplicate code).
 > - Phase 3 task explicitly removes the legacy MCP server's `/mcp/tools/call` HTTP-style mount
@@ -100,6 +101,7 @@ preserve the existing `register_http_health_route` contract that 9
 sibling servers and the launchd wrapper depend on.
 
 **Two distinct success signals** (which v1 conflated):
+
 1. **Warming-up narrative**: empty-feed + ingester-running case
    already ships in akosha today (per `akosha/mcp/server.py:790-806`).
    Phase 4 makes the narrative explicit in JSON instead of being
@@ -116,13 +118,12 @@ sibling servers and the launchd wrapper depend on.
    extracted from `akosha/akosha/mcp/client.py:BodaiComponentMCPClient`
    (renamed and Bodai-flavored bits untangled). Add
    `mcp_common/health/feed.py` with the `HealthFeedState` dataclass
-   + `aggregate_feed_states()` helper that produces the
-   `status: healthy | warming_up | degraded | failed` enum and a
-   `reason_codes: list[ReasonCode]` array.
+   - `aggregate_feed_states()` helper that produces the
+     `status: healthy | warming_up | degraded | failed` enum and a
+     `reason_codes: list[ReasonCode]` array.
 2. Replace all 84 production `f"{base}/tools/call"` HTTP call sites
    across 5 repos with `await client.call(name=…, arguments=…)`.
-   Merge order: `mcp-common → legacy-mcp → session-buddy → akosha →
-   mahavishnu` (bottom-up DAG; no repo pulls a consumer before the
+   Merge order: `mcp-common → legacy-mcp → session-buddy → akosha → mahavishnu` (bottom-up DAG; no repo pulls a consumer before the
    server-2 dep is in place).
 3. Remove the `LegacyServiceRegistryClient` class in akosha AND the
    `@server.custom_route("/mcp/tools/call", ...)` handler in the legacy
@@ -219,8 +220,7 @@ Akosha client compatibility. Akosha's LegacyServiceRegistryClient
 calls `{base_url}/tools/call` where `base_url` ends in `/mcp`,
 producing `/mcp/tools/call`."*
 
-**The active caller is** `akosha/akosha/mcp/client.py:170
-LegacyServiceRegistryClient` (3 call sites at lines 202, 226, 240).
+**The active caller is** `akosha/akosha/mcp/client.py:170 LegacyServiceRegistryClient` (3 call sites at lines 202, 226, 240).
 There is exactly one caller; once Phase 3 deletes that caller, the
 mount becomes dead public surface. Phase 3 commits must delete
 both sides in the same change.
@@ -229,6 +229,7 @@ both sides in the same change.
 
 `akosha/akosha/mcp/client.py:31` defines `BodaiComponentMCPClient`
 (137 LOC). It already does:
+
 - Uses `mcp.client.streamable_http.streamable_http_client` (line 97-101).
 - Manages session lifecycle through `ClientSession.__aenter__/__aexit__` (lines 103-106,161-167).
 - Exposes `call_tool(name, arguments)` (line 110-128).
@@ -294,8 +295,7 @@ requirements:
 
 All 9 REQ IDs are referenced from at least one Phase's Integration
 Contract Demonstrable-by (§5). REQ-007 and REQ-008 have explicit
-Phase-4 ownership via the `# Implements: REQ-007` / `# Implements:
-REQ-008` markers in the cited call sites.
+Phase-4 ownership via the `# Implements: REQ-007` / `# Implements: REQ-008` markers in the cited call sites.
 
 ## 5. Implementation Phases
 
@@ -304,6 +304,7 @@ REQ-008` markers in the cited call sites.
 **Goal**: ship the SDK as a thin rename of an existing 137-LOC class.
 
 **Tasks**:
+
 1. Confirm `mcp-common/mcp_common/clients/` package does not yet exist
    (`interfaces/` is populated with `DualUseTool`; do not touch it).
 2. Move `akosha/akosha/mcp/client.py:BodaiComponentMCPClient` to
@@ -331,8 +332,7 @@ REQ-008` markers in the cited call sites.
    `StatusValue` and `ReasonCode` are `str, Enum`s with values
    defined in §5 Phase 4 task 5.
 5. Add `mcp-common/mcp_common/health/aggregator.py` with
-   `aggregate_feed_states(states: dict[str, HealthFeedState], halflife_seconds=300) ->
-   dict` returning:
+   `aggregate_feed_states(states: dict[str, HealthFeedState], halflife_seconds=300) -> dict` returning:
    ```json
    {"status": "healthy", "checks": {<feed>: {...}}, "reason_codes": [...]}
    ```
@@ -379,6 +379,7 @@ REQ-008` markers in the cited call sites.
 #### Phase 1 Integration Contract
 
 **Triggered from**:
+
 - Library import only at this stage; no production runtime caller
   yet. The first production caller is wired in **Phase 3** when
   `akosha/mcp/client.py` (replacing `BodaiComponentMCPClient` with
@@ -388,6 +389,7 @@ REQ-008` markers in the cited call sites.
   downstream Phase 3 task that requires the SDK to exist first.
 
 **Returns to / updates**:
+
 - `mcp-common/mcp_common/clients/common_mcp_client.py` (new
   home of the renamed class).
 - `mcp-common/mcp_common/health/feed.py` (new `HealthFeedState`
@@ -396,19 +398,23 @@ REQ-008` markers in the cited call sites.
   `aggregate_feed_states` function).
 
 **Demonstrable by** (single command):
+
 ```bash
 $ pytest mcp-common/tests/unit/clients/ mcp-common/tests/unit/health/ -v \
     --cov=mcp_common --cov-fail-under=80
 ```
+
 (Implements REQ-001, REQ-002, REQ-003.)
 
 **Rollback signal**:
+
 - The pytest above exits non-zero.
 - `mcp-common/scripts/smoke_common_mcp_client.py` (operable
   without consumer-repo dependency, see below) exits non-zero
   against any of `{localhost:8678/mcp, localhost:8682/mcp, localhost:8683/mcp, localhost:8676/mcp}`.
 
 **Observability added**:
+
 - OTel span `mcp_common.client.call` (collector: standard OTel
   pipeline via `mahavishnu/observability/sampler.py`) with
   attributes `mcp_server`, `tool`, `jsonrpc.id`, `duration_ms`,
@@ -428,6 +434,7 @@ $ pytest mcp-common/tests/unit/clients/ mcp-common/tests/unit/health/ -v \
 production code AND test fixtures updated.
 
 **Tasks**:
+
 1. Audit (5 repos): `grep -rn 'DEFAULT_URL.*"http://localhost:[0-9]*"\|setenv.*MCP_URL.*"http\|base_url="http://[a-z]*:[0-9]*"' {5 repos} --include='*.py' | grep -v __pycache__`.
 2. Update production sites (4 known): `akosha/processing/fitness_analyzer.py:34`,
    `akosha/mcp/server.py:52`, plus equivalent literals in `mahavishnu/...`,
@@ -441,6 +448,7 @@ production code AND test fixtures updated.
 #### Phase 2 Integration Contract
 
 **Triggered from**:
+
 - Boot-time env-var lookup in each repo's Oneiric config loader:
   `mahavishnu.core.config.load_settings()`,
   `akosha.mcp.server._load_mcp_url()` (line 271 of
@@ -450,6 +458,7 @@ production code AND test fixtures updated.
   entry points that read `*_MCP_URL` env vars.
 
 **Returns to / updates**:
+
 - Updated URL strings at the four production literal sites:
   - `akosha/akosha/processing/fitness_analyzer.py:34`
   - `akosha/akosha/mcp/server.py:52`
@@ -462,6 +471,7 @@ production code AND test fixtures updated.
 - Same-commit marker comments per §6 requirements.
 
 **Demonstrable by** (single command; covers both prod and fixtures):
+
 ```bash
 $ grep -rn \
     -e 'DEFAULT_URL.*"http://localhost:[0-9]*"' \
@@ -470,14 +480,17 @@ $ grep -rn \
     {5 repos}/**/*.py | grep -v '/mcp"' | wc -l
 0
 ```
+
 (Implements REQ-005.)
 
 **Rollback signal**:
+
 - The grep above returns >0.
 - Any Bodai server fails to bind during `launch_with_healthcheck.sh`
   probe cycle (the new default URL fails the `_load_mcp_url` call).
 
 **Observability added**:
+
 - Structured log line `mcp_common.client.url_normalized` at startup
   with keys `from`, `to`, `env_var` — confirms operator can audit
   effective URLs per process.
@@ -487,6 +500,7 @@ $ grep -rn \
 **Goal**: every cross-server POST in production uses `client.call(...)`.
 
 **Tasks**:
+
 1. Per-repo worktree fan-out. Each repo gets one worktree, one
    branch (`fix/common-mcp-client-migration`), one commit that
    does the file-by-file replacement. Per
@@ -522,6 +536,7 @@ $ grep -rn \
 #### Phase 3 Integration Contract
 
 **Triggered from**:
+
 - Bodai boot path: `mahavishnu mcp start`, `akosha mcp start`,
   `session-buddy mcp start`, the legacy MCP server's own start command
   (each lifespan
@@ -532,6 +547,7 @@ $ grep -rn \
   session-buddy's `server_optimized.py:_federate_to_legacy_mcp()`).
 
 **Returns to / updates**:
+
 - Cross-server tool-call JSON-RPC results are returned in-process
   to the calling module's local variables. Phase 3 itself does NOT
   persist. Downstream code at each call site then writes to its
@@ -545,25 +561,29 @@ $ grep -rn \
     in-memory dispatch table
   - `mahavishnu.otel_ingester.query_remote_spans()` →
     `otel_traces/<service.name>`
-  Rationale: Phase 3 changes the *transport* (HTTP `/tools/call` →
-  streamable-HTTP JSON-RPC), not the *destination*.
+    Rationale: Phase 3 changes the *transport* (HTTP `/tools/call` →
+    streamable-HTTP JSON-RPC), not the *destination*.
 
 **Demonstrable by** (single command):
+
 ```bash
 $ pytest tests/integration/mcp/test_common_mcp_client.py -v
 ```
+
 including `tests/integration/mcp/test_cross_repo_smoke.py`
 which spins up akosha + session-buddy in subprocesses and asserts
 `akosha → session-buddy liveness` returns non-empty over the new
 SDK. (Implements REQ-004, REQ-009.)
 
 **Rollback signal**:
+
 - The pytest above exits non-zero.
 - Bodai mcp server `/health` flips to 503 because the federation
   call raised an exception under new transport.
 - `mcp-common/scripts/smoke_common_mcp_client.py` exits non-zero.
 
 **Observability added**:
+
 - `mcp_common.client.{tool}.duration_ms` metric histogram by
   server and outcome (`ok`/`timeout`/`error`), labels include
   `mcp_server`, `tool`.
@@ -578,11 +598,14 @@ SDK. (Implements REQ-004, REQ-009.)
 wrapper relies on 200).
 
 **Tasks**:
+
 1. Add `<repo>/tests/integration/mcp/test_health_aggregator.py`
    per repo asserting: time-bounded decay works; warming_up
    predicate works; empty-but-running feeds report 200; HNSW
    failures cannot masquerade as warming_up; reason_codes populates.
+
 2. Replace each repo's `_default_health_probe` body with one call:
+
    ```python
    from mcp_common.health.aggregator import aggregate_feed_states
    return aggregate_feed_states({
@@ -591,14 +614,18 @@ wrapper relies on 200).
        ...
    }, halflife_seconds=int(os.getenv("HEALTH_FEED_HALFLIFE_SECONDS", "300")))
    ```
+
    HTTP code stays **200 always** (per existing 503-reserved-for-
    /readyz contract in `mcp-common/mcp_common/health.py:836-839`).
    Body adds the `status` enum and `reason_codes` array.
+
 3. Wire `last_error_at` tracking at each per-feed mutation site
    (`hot_store.insert(record)` failure path,
    `code_graph_ingester._ingest_graph()` failure path, etc.).
+
 4. Wire `HealthFeedState.ingester_running` flag at each producer
    task's lifecycle (start/stop).
+
 5. Define the enums in `mcp-common/mcp_common/health/feed.py`
    using `class StatusValue(str, Enum)` and `class ReasonCode(str, Enum)`
    patterns (per Phase 1 task 4):
@@ -625,25 +652,27 @@ wrapper relies on 200).
    in order `failed > degraded > warming_up > healthy` (see Phase 1
    test `aggregate_picks_worst_status`). Aggregate pulls a
    `reason_codes` enum from the worst feed's state.
+
 6. **Hardening against HNSW-on-DuckDB** (out-of-plan bug): the
-   `warming_up` predicate requires `cycles_total > 0 AND
-   last_error_at IS NOT None`. A feed where the very first cycle
+   `warming_up` predicate requires `cycles_total > 0 AND last_error_at IS NOT None`. A feed where the very first cycle
    raises is **not** warming_up — it's `degraded: feed_never_populated`.
    Mark with `# Implements: REQ-008`.
+
 7. Per-repo CLI flag `--health-disable-decay` for ops emergency:
-   emits `WARNING: HEALTH_FEED_HALFLIFE_SECONDS=0; time-bounded
-   semantics disabled` at startup; emits OTel event
+   emits `WARNING: HEALTH_FEED_HALFLIFE_SECONDS=0; time-bounded semantics disabled` at startup; emits OTel event
    `health.aggregate.decay_disabled`; documented in
    `docs/runbooks/HEALTH_REASON_CODES.md`.
 
 #### Phase 4 Integration Contract
 
 **Triggered from**:
+
 - Bodai launcher's wrapper script (`launch_with_healthcheck.sh`)
   polling `GET /health` every probe_interval_s.
 - Operators reading `/health` directly via `curl -fsS | jq`.
 
 **Returns to / updates**:
+
 - `/health` JSON response body. Schema at top level
   (`{status, checks, reason_codes, ...}`) and per-feed
   (`checks[k]` gets `reason_codes: list[ReasonCode]`).
@@ -651,20 +680,23 @@ wrapper relies on 200).
   the operator-facing signal.
 
 **Demonstrable by** (single command):
+
 ```bash
 $ pytest tests/integration/mcp/test_health_aggregator.py::test_akosha_health_returns_200_when_errors_outside_halflife -v
 ```
-(Body assertion: `.checks.local_traces.reason_codes ==
-["warming_up_empty_feed"]` and `.status == "warming_up"`. Implements
+
+(Body assertion: `.checks.local_traces.reason_codes == ["warming_up_empty_feed"]` and `.status == "warming_up"`. Implements
 REQ-006, REQ-007, REQ-008.)
 
 **Rollback signal**:
+
 - `/health` returns 5xx (server-side aggregator crashes).
 - PromQL alert:
   `mcp_common_health_halflife_seconds{repo="X"} == 0` for >5m
   — flags silent decode disable.
 
 **Observability added**:
+
 - `mcp_common.health.aggregate.duration_ms` histogram.
 - `mcp_common_health_halflife_seconds{repo}` gauge.
 - `health.feed.errors_within_window{repo, feed}` gauge.
@@ -860,6 +892,7 @@ Plan is "done enough" when:
    `LegacyServiceRegistryClient` callers (no deprecation window).
 
 Plan is **not** "done" when:
+
 - `/health` returns non-2xx (regression — 200-always contract
   violated).
 - `f"{base}/tools/call"` reappears in any production call site.
@@ -948,6 +981,7 @@ Action mapping lives in `docs/runbooks/HEALTH_REASON_CODES.md` —
 ### 11.3 Runbook (delivered with Phase 4)
 
 `docs/runbooks/HEALTH_REASON_CODES.md` per-reason sections with:
+
 - `/health` signal the operator sees
 - What it does NOT mean (so they don't restart)
 - Action to take

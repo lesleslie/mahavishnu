@@ -4,26 +4,26 @@ role: implementation
 kind: plan
 date: 2026-11-05
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: yaml-backed-model-routing
 title: "Make settings/models.yaml the live source of task-to-model routing"
 requirements:
-- id: REQ-YAML-001
-  title: Operator config is authoritative for task routing when present
-- id: REQ-YAML-002
-  title: No TaskCategory loses its route when the operator config omits it
-- id: REQ-YAML-003
-  title: Absent, unreadable, or malformed operator config degrades to the built-in table and says so
-- id: REQ-YAML-004
-  title: The operator can point the loader at a non-default file
-- id: REQ-YAML-005
-  title: A CI guard requires the operator config to cover every TaskCategory
-- id: REQ-YAML-006
-  title: The built-in table is the only fallback and no second copy of the config ships
-- id: REQ-YAML-007
-  title: No unread config key implies a live knob
-- id: REQ-YAML-008
-  title: Documentation states which source is authoritative
+  - id: REQ-YAML-001
+    title: Operator config is authoritative for task routing when present
+  - id: REQ-YAML-002
+    title: No TaskCategory loses its route when the operator config omits it
+  - id: REQ-YAML-003
+    title: Absent, unreadable, or malformed operator config degrades to the built-in table and says so
+  - id: REQ-YAML-004
+    title: The operator can point the loader at a non-default file
+  - id: REQ-YAML-005
+    title: A CI guard requires the operator config to cover every TaskCategory
+  - id: REQ-YAML-006
+    title: The built-in table is the only fallback and no second copy of the config ships
+  - id: REQ-YAML-007
+    title: No unread config key implies a live knob
+  - id: REQ-YAML-008
+    title: Documentation states which source is authoritative
 ---
 
 # Make `settings/models.yaml` the live source of task-to-model routing
@@ -142,6 +142,7 @@ effective routing table for each provider — operator config where present,
 built-in table as the per-category fallback.
 
 **Tasks:**
+
 - Add `_models_config_path()` — `MAHAVISHNU_MODELS_PATH` override, then
   repo-root-relative `settings/models.yaml`; `None` when neither resolves.
 - Add `_load_task_routing(provider)` — read one provider's `task_routing`,
@@ -158,6 +159,7 @@ built-in table as the per-category fallback.
 operator values win; missing operator values keep the built-in route.
 
 #### Integration Contract
+
 - **Triggered from**: `mahavishnu.workers.cloud_worker._build_fallback_chain`
   (`mahavishnu/workers/cloud_worker.py:118`) and
   `CloudWorkerConfig.get_model_for_category` (`:83`), via the llama-server
@@ -165,8 +167,7 @@ operator values win; missing operator values keep the built-in route.
 - **Returns to / updates**: the `task_routing` map handed to
   `mcp_common.llm.FallbackChain` — the chain that dispatches every LLM
   call. Updates `mahavishnu/core/model_routing.py` in-process state only.
-- **Demonstrable by**: `pytest tests/unit/test_model_routing_config.py -k
-  operator_config_wins` plus a manual edit of
+- **Demonstrable by**: `pytest tests/unit/test_model_routing_config.py -k operator_config_wins` plus a manual edit of
   `settings/models.yaml:CODE_GENERATION` observed in
   `mahavishnu pool route` output.
 - **Rollback signal**: the log line
@@ -182,6 +183,7 @@ operator values win; missing operator values keep the built-in route.
 **Goal:** the operator config covers every category, and CI enforces it.
 
 **Tasks:**
+
 - Add the four missing entries to `settings/models.yaml` (`EMBEDDING` for
   `minimax`; `CREATIVE`, `EMBEDDING`, `VISION` for `llama_server`).
 - Replace the drift-equality assertions in
@@ -193,17 +195,16 @@ operator values win; missing operator values keep the built-in route.
   malformed file → built-in + warning; `MAHAVISHNU_MODELS_PATH` override;
   `FALLBACK` meta-keys ignored.
 
-**Exit criteria:** `pytest tests/unit/test_task_router.py
-tests/unit/test_model_routing_config.py` green; the coverage guard fails
+**Exit criteria:** `pytest tests/unit/test_task_router.py tests/unit/test_model_routing_config.py` green; the coverage guard fails
 when a category is removed from the operator config.
 
 #### Integration Contract
+
 - **Triggered from**: `pytest` — the Crackerjack gate runs the suite, which
   includes `tests/unit/test_task_router.py::TestRoutingCoverage`.
 - **Returns to / updates**: `settings/models.yaml` (the four added
   entries) and the test suite's assertions.
-- **Demonstrable by**: `pytest tests/unit/test_task_router.py -k
-  TestRoutingCoverage -v` — passes; then delete one YAML entry and confirm
+- **Demonstrable by**: `pytest tests/unit/test_task_router.py -k TestRoutingCoverage -v` — passes; then delete one YAML entry and confirm
   the test fails naming that category.
 - **Rollback signal**: a `TestRoutingCoverage` failure naming an uncovered
   `TaskCategory`.
@@ -216,6 +217,7 @@ when a category is removed from the operator config.
 unread config key implies a live knob.
 
 **Tasks:**
+
 - Point the four `cloud_worker.py` call sites at the resolvers.
 - Remove `models_path: settings/models.yaml` from
   `settings/mahavishnu.yaml` (REQ-YAML-007), or wire it — removal wins
@@ -224,11 +226,11 @@ unread config key implies a live knob.
 - Update `resolve_model_id` (`mahavishnu/core/model_routing.py`) to compare
   against the effective table.
 
-**Exit criteria:** `pytest tests/unit/test_task_router.py
-tests/unit/test_model_resolution.py tests/unit/workers/ -q` green; a
+**Exit criteria:** `pytest tests/unit/test_task_router.py tests/unit/test_model_resolution.py tests/unit/workers/ -q` green; a
 one-line edit to `settings/models.yaml` changes the resolved model.
 
 #### Integration Contract
+
 - **Triggered from**: `mahavishnu pool route` and the `pool_route_execute`
   MCP tool, both of which build a worker config and dispatch.
 - **Returns to / updates**: the resolved model id in
@@ -247,6 +249,7 @@ one-line edit to `settings/models.yaml` changes the resolved model.
 sources are "pinned in sync".
 
 **Tasks:**
+
 - `CLAUDE.md` — the LLM Provider Configuration section: replace "the
   in-code `DEFAULT_MINIMAX_ROUTING` and the YAML in `settings/models.yaml`
   are pinned in sync by a CI guard test" with "the YAML is authoritative
@@ -261,6 +264,7 @@ sources are "pinned in sync".
 no live claim about the removed guard.
 
 #### Integration Contract
+
 - **Triggered from**: a reader following any routing doc.
 - **Returns to / updates**: the five documentation files above.
 - **Demonstrable by**: `rg -n "models.yaml" CLAUDE.md docs/CONFIGURATION.md`
@@ -277,7 +281,7 @@ no live claim about the removed guard.
 - [ ] `tests/unit/test_task_router.py` — replace the drift guard
 - [ ] `tests/unit/test_model_routing_config.py` — new coverage
 - [ ] `CLAUDE.md`, `docs/CONFIGURATION.md`, `docs/FILE_REFERENCE.md`,
-      `settings/README.md`, `docs/architecture/MEMORY_ARCHITECTURE.md`
+  `settings/README.md`, `docs/architecture/MEMORY_ARCHITECTURE.md`
 
 ## 7. Validation Matrix
 
@@ -315,8 +319,7 @@ rather than authoritative.
 
 ## 10. Completion — 2026-11-05
 
-Shipped in `9c2f11b1` (`feat(routing): make settings/models.yaml the live
-source of task routing`).
+Shipped in `9c2f11b1` (`feat(routing): make settings/models.yaml the live source of task routing`).
 
 | Phase | Outcome |
 |---|---|

@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-10-14
 last_reviewed: 2026-11-07
-superseded_by: null
+superseded_by:
 topic: decision-adapter-category
 title: "Decision Adapter Category — Implementation Plan"
 ---
@@ -104,10 +104,10 @@ title: "Decision Adapter Category — Implementation Plan"
 These are the five input classes the spec implies but no per-task test directly exercises. Each gets a test added to the owning task.
 
 1. **Jev API key missing from environment.** `JevAdapter.init()` must raise `RuntimeError` with a clear message, not `NoneType` AttributeError. Test in Task 1.13.
-1. **TEI server unreachable on init.** `BgeTeiRerankAdapter.init()` must complete (httpx `AsyncClient` is lazy on first request) and `health()` must return `False` rather than crash. Test in Task 1.18.
-1. **`AdapterBridge.use("decision", capabilities=["nonexistent_cap"])`** with no matching adapter. Must surface a structured `LifecycleError` ("no candidate found for category=decision"), not a silent `None` return. Test in Task 3.3.
-1. **Pydantic v2 schema break on `PointwiseRequest`.** Adding a new question type (e.g., `CategoricalQuestion`) must be additive — existing Jev adapter code must keep working without modification. Test in Task 1.1.
-1. **Decision 3.0 wire-format change.** If the vllm-sr API adds a new optional field, the adapter must not fail. Test in Task 1.20 — sends a hand-rolled wire-format dict with an extra field and asserts the adapter parses it without error.
+2. **TEI server unreachable on init.** `BgeTeiRerankAdapter.init()` must complete (httpx `AsyncClient` is lazy on first request) and `health()` must return `False` rather than crash. Test in Task 1.18.
+3. **`AdapterBridge.use("decision", capabilities=["nonexistent_cap"])`** with no matching adapter. Must surface a structured `LifecycleError` ("no candidate found for category=decision"), not a silent `None` return. Test in Task 3.3.
+4. **Pydantic v2 schema break on `PointwiseRequest`.** Adding a new question type (e.g., `CategoricalQuestion`) must be additive — existing Jev adapter code must keep working without modification. Test in Task 1.1.
+5. **Decision 3.0 wire-format change.** If the vllm-sr API adds a new optional field, the adapter must not fail. Test in Task 1.20 — sends a hand-rolled wire-format dict with an extra field and asserts the adapter parses it without error.
 
 ______________________________________________________________________
 
@@ -1182,10 +1182,10 @@ Cross-checked the types/methods used across tasks:
 The five input classes listed at the top of this plan are each tested:
 
 1. **Jev API key missing.** Test in Task 1.11 (`test_jev_adapter_init_raises_when_api_key_missing`).
-1. **TEI server unreachable on init.** Test in Task 1.21 (`test_bge_tei_adapter_init_constructs_client_without_auth` confirms client construction; `test_bge_tei_adapter_health_returns_false_when_uninitialized` confirms health returns False).
-1. **AdapterBridge with non-matching capabilities.** Implicitly covered by the profile-gating test (`test_decision_tools_NOT_registered_under_minimal_profile`); a direct test for the `bridge.use` error path is added to `tests/unit/decision/test_decision_router.py` to assert structured `LifecycleError` when no candidate is found.
-1. **Pydantic v2 schema break on `PointwiseRequest`.** Test in Task 1.1 (`test_pointwise_request_discriminator_accepts_mixed_questions`) verifies the discriminated union handles all three question types additively. Adding a fourth question type would require a code change to `types.py` but existing adapters would not need modification — verified by the union pattern.
-1. **Decision 3.0 wire-format change.** Test in Task 1.16 (`test_decision_3_decide_includes_multimodal_fields`) verifies the wire-format fields. The parser uses `.get(...)` with default `None` for `quantization` so additive fields are tolerated at the parser level.
+2. **TEI server unreachable on init.** Test in Task 1.21 (`test_bge_tei_adapter_init_constructs_client_without_auth` confirms client construction; `test_bge_tei_adapter_health_returns_false_when_uninitialized` confirms health returns False).
+3. **AdapterBridge with non-matching capabilities.** Implicitly covered by the profile-gating test (`test_decision_tools_NOT_registered_under_minimal_profile`); a direct test for the `bridge.use` error path is added to `tests/unit/decision/test_decision_router.py` to assert structured `LifecycleError` when no candidate is found.
+4. **Pydantic v2 schema break on `PointwiseRequest`.** Test in Task 1.1 (`test_pointwise_request_discriminator_accepts_mixed_questions`) verifies the discriminated union handles all three question types additively. Adding a fourth question type would require a code change to `types.py` but existing adapters would not need modification — verified by the union pattern.
+5. **Decision 3.0 wire-format change.** Test in Task 1.16 (`test_decision_3_decide_includes_multimodal_fields`) verifies the wire-format fields. The parser uses `.get(...)` with default `None` for `quantization` so additive fields are tolerated at the parser level.
 
 All five Review Focus items have corresponding tests.
 

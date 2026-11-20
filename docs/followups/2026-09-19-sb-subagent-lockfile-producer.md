@@ -4,7 +4,7 @@ role: canonical
 topic: persistence
 date: 2026-09-19
 last_reviewed: 2026-09-19
-superseded_by: null
+superseded_by:
 blocks_on: []
 title: 'Session-Buddy Subagent Lockfile Producer — Cross-Repo Followup'
 ---
@@ -79,11 +79,11 @@ This followup closes to `complete` when:
 1. `SubagentDetector.write()` is implemented in session-buddy and
    covered by tests (≥ 90% coverage on the new code, matching the
    project's `--cov-fail-under=89.01682905225863` gate).
-1. The lockfile is created/removed by at least one runtime path
+2. The lockfile is created/removed by at least one runtime path
    (Claude Code Task tool OR Mahavishnu PoolManager worker spawn).
-1. The "functionally dormant" caveat is removed from
+3. The "functionally dormant" caveat is removed from
    `subagent_detector.py:33-41`.
-1. The two blocking plans above update their `blocks_on:` and
+4. The two blocking plans above update their `blocks_on:` and
    promote from `partial` to `complete` via PLAN_INDEX regeneration.
 
 ## Tracking

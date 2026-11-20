@@ -25,10 +25,10 @@ Use this workflow for deep review of security, performance, tests, and documenta
 ## Workflow
 
 1. Run a security review first, applying the `security-finding-gate` skill so every finding carries its evidence and the phase reports true/false-positive counts.
-1. Check performance and resource concerns.
-1. Verify tests cover the changed behavior.
-1. Review public docs and API clarity.
-1. Aggregate findings into a single prioritized report.
+2. Check performance and resource concerns.
+3. Verify tests cover the changed behavior.
+4. Review public docs and API clarity.
+5. Aggregate findings into a single prioritized report.
 
 ## Output
 

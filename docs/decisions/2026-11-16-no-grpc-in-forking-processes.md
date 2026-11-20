@@ -5,6 +5,7 @@ date: 2026-11-16
 last_reviewed: 2026-11-16
 topic: no-grpc-in-forking-processes
 ---
+
 # A process that forks must not have grpcio loaded
 
 ## Context
@@ -56,8 +57,7 @@ grpcio channel keeps re-arming the window. gRPC's own fork handler is
 skipped in exactly that case ("Other threads are currently calling into
 gRPC"), which is gRPC reporting that the fork was unsafe.
 
-The caller's symptom was `subprocess.CalledProcessError: ... died with
-<Signals.SIGILL: 4>` — the `git diff` that builds a merge-review prompt
+The caller's symptom was `subprocess.CalledProcessError: ... died with <Signals.SIGILL: 4>` — the `git diff` that builds a merge-review prompt
 died before it could produce output.
 
 ### Where grpcio came from
@@ -77,13 +77,16 @@ Concretely:
 1. The OTLP exporters are imported **lazily**, inside the exporter
    builders — never at module scope. Importing
    `mahavishnu.core.observability` must not put `grpc` in `sys.modules`.
+
 2. The **default OTLP transport is HTTP/protobuf**
    (`OTEL_EXPORTER_OTLP_PROTOCOL` defaults to `http/protobuf`, matching
    `mcp_common.server.producer_telemetry`). The gRPC exporter remains
    reachable for an operator who explicitly asks for it, and the request is
    recorded here as re-arming this hazard.
+
 3. **Traces and metrics have separate destinations**, because the
    substrate's OTLP/HTTP listener serves `/v1/traces` only:
+
    - traces → the substrate on `:4318` → `spans_substrate`
    - metrics → Alloy on `:14318` → prometheus `:12345` → Grafana
 
@@ -92,6 +95,7 @@ Concretely:
    was correct **for the gRPC transport**, where the substrate served
    MetricsService and TraceService on one port. Over HTTP the split is
    forced by the receivers, not by a choice.
+
 4. **Fork sites are worth removing anyway.** The plan-index rebuild forked
    once per plan document — 60 forks per cycle, twice at startup. It now
    makes two: one `git ls-tree` for every blob SHA and one

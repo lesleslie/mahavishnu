@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-10-15
-superseded_by: null
+superseded_by:
 blocks_on: []
 decision_date: 2026-01-29
 topic: mcp-design
@@ -56,13 +56,13 @@ Design Mahavishnu as MCP-first using FastMCP + mcp-common patterns.
 
 1. **Ecosystem Alignment:** Crackerjack, Session-Buddy, and other ecosystem tools use this pattern, ensuring consistency.
 
-1. **Proven Patterns:** mcp-common provides battle-tested solutions for authentication, rate limiting, lifecycle management, and health monitoring.
+2. **Proven Patterns:** mcp-common provides battle-tested solutions for authentication, rate limiting, lifecycle management, and health monitoring.
 
-1. **Developer Experience:** Declarative tool registration with `@mcp_app.tool()` decorator is intuitive and maintainable.
+3. **Developer Experience:** Declarative tool registration with `@mcp_app.tool()` decorator is intuitive and maintainable.
 
-1. **Performance:** FastMCP with async/await provides excellent performance for concurrent operations.
+4. **Performance:** FastMCP with async/await provides excellent performance for concurrent operations.
 
-1. **Operational Excellence:** MCPServerCLIFactory provides standardized lifecycle management (start/stop/restart/status/health) out of the box.
+5. **Operational Excellence:** MCPServerCLIFactory provides standardized lifecycle management (start/stop/restart/status/health) out of the box.
 
 ### Architecture
 

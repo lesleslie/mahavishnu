@@ -44,20 +44,20 @@ Implementation rules:
    `MCPClient.list_prefix` cost grows linearly with the namespace; a
    shared prefix means each reader pays for every other reader's writes.
 
-1. **No trailing path component in the prefix itself.** Producers must
+2. **No trailing path component in the prefix itself.** Producers must
    append their own subpath (e.g. `verification/{proposal_id}/{verdict_id}`,
    `routing-decisions/{ts_ms}-{caller_kind}-{pool_id}`). The prefix
    constant in `mahavishnu/metrics_cli.py` (`VERIFICATION_KEY_PREFIX`,
    `ROUTING_DECISIONS_KEY_PREFIX`) is the contract both producer and
    reader respect.
 
-1. **Use the existing `list_prefix` MCP tool**, not a custom scanner.
+3. **Use the existing `list_prefix` MCP tool**, not a custom scanner.
    The producer side already has `MCPStateBackend.put` /
    `MCPStateBackend.list_prefix`; readers (CLI, dashboards) must use
    the same surface so that circuit-breaker, retry, and config-gating
    semantics stay consistent.
 
-1. **TTL semantics differ per prefix.** `verification/` records are
+4. **TTL semantics differ per prefix.** `verification/` records are
    short-lived (operator-facing audit trail, 30-day TTL is sensible).
    `routing-decisions/` are longer-lived (analytics base table, 90-day
    TTL default). Document any change to these defaults next to the

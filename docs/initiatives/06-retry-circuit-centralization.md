@@ -4,10 +4,9 @@ role: historical
 topic: error-handling
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by: null
+superseded_by:
 blocks_on: []
 title: "Initiative 6: Retry/Circuit-Breaker Centralization"
-
 ---
 
 # Initiative 6: Retry/Circuit-Breaker Centralization

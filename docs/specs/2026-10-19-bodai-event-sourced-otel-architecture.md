@@ -4,7 +4,7 @@ role: canonical
 kind: spec
 date: 2026-10-19
 last_reviewed: 2026-11-07
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: event-sourced-otel
 ---
@@ -18,7 +18,7 @@ topic: event-sourced-otel
 **Operator-config scope:** Bifrost gateway (port 8471) — no code change; UI values listed in Appendix C
 **Out of scope:** `bifrost-mcp` (not done; doesn't do what earlier conversation assumed)
 
----
+______________________________________________________________________
 
 ## 1. Context
 
@@ -28,7 +28,7 @@ The fix is not "more instrumentation." It is **(a) a substrate-default producer*
 
 This spec defines the design for the stage-1 delivery.
 
----
+______________________________________________________________________
 
 ## 2. Goals
 
@@ -50,7 +50,7 @@ This spec defines the design for the stage-1 delivery.
 - Build a SaaS-only intelligence alternative. Akosha HotStore is the canonical event log for projections.
 - Re-design the Crackerjack OTel story as a primary deliverable. Crackerjack gains producer capability from the substrate default and is smoke-tested.
 
----
+______________________________________________________________________
 
 ## 4. Architecture Overview
 
@@ -130,7 +130,7 @@ OTLP exporter endpoint: `http://localhost:4318/v1/traces` (Akkosha HTTP receiver
 
 These Bifrost UI values are an operator action; no Bodai-repo code change.
 
----
+______________________________________________________________________
 
 ## 5. Component Contract
 
@@ -295,7 +295,7 @@ WHERE selector = :selector
 - If two FSMs ever need the same slice (e.g. future drift + model_effectiveness on the same `(selector, task_class)`), the slice becomes a **shared projection** (one reader, multiple FSMs consuming the materialized FSMInput). The partition rule preserves the projection-input layer, not the FSM stage.
 - Rule enforced at registration by `FSMRegistry.register(...)` (§7.7).
 
----
+______________________________________________________________________
 
 ## 6. Data Flow
 
@@ -361,7 +361,7 @@ events:
 
 Pinned to a specific release tag of [open-telemetry/semantic-conventions-genai](https://github.com/open-telemetry/semantic-conventions-genai) (Development stability as of mid-2026).
 
----
+______________________________________________________________________
 
 ## 7. Error Handling and Operational Posture
 
@@ -381,6 +381,7 @@ Pinned to a specific release tag of [open-telemetry/semantic-conventions-genai](
 **Concrete detector location:** `akosha/observability/heartbeat_watcher.py` (new), running inside Akosha's existing health-feed scheduler. Emits a per-`service.name` series of `{ts, last_heartbeat_at}` and a single P0 alert when a known `service.name` (`akosha` health-feed registry) goes silent. The known-server list is the same one that currently powers `HealthFeedState("mcp_tool_call")`.
 
 **Runbook:**
+
 1. Identify the silent server (alert includes `service.name`).
 2. Verify `mcp-common` version on that server includes the heartbeat injection.
 3. Confirm `otel.enabled` is not flipped to `false` in settings.
@@ -459,7 +460,7 @@ Panels to ship alongside the runtime (concrete JSON / Grafana provisioning is a 
 - **HotStore ingestion rate** — rows/s; embedding-compute p95; spans-dropped counter.
 - **Substrate vs. component detection** — heartbeat presence/absence grid.
 
----
+______________________________________________________________________
 
 ## 8. Testing Strategy
 
@@ -525,7 +526,7 @@ Table-driven `tests/integration/test_boundaries.py` — one test per failure mod
 - Stage-2 FSMs (model_effectiveness, drift, cost) — designed in stage 1 contracts; **tested in stage 2**.
 - Tempo / SaaS mirror — stage 2.
 
----
+______________________________________________________________________
 
 ## 9. Stage-2 Preview (Non-Binding)
 
@@ -537,7 +538,7 @@ The following are stage-2 candidates, not in this spec's scope. Each is a small 
 - **Tempo mirror** — Akosha OTLP receiver forwards a copy to `otelcol.exporter.otlp` pointing at `localhost:4317` (Allyo's `tempo` listener). Akosha remains canonical.
 - **SaaS variant** — opt-in, per-environment, behind `telemetry.source.type=gateway`.
 
----
+______________________________________________________________________
 
 ## 10. Decisions Log
 
@@ -555,7 +556,7 @@ The following are stage-2 candidates, not in this spec's scope. Each is a small 
 | Five repos in stage 1 (mcp-common, oneiric, akosha, mahavishnu, session-buddy) | All five receive changes | Three repos, ship others later | session-buddy is the substrate-leverage proof; crackerjack gains for free, smoke-tested |
 | Topology A from brainstorm (intelligence at storage layer) + event-sourced projections | Akosha HotStore = append-only event log; FSMs = projections | Topology B (separate intelligence service); Topology C (inline in Mahavishnu) | Storage-layer intelligence matches Akosha's "Seer" role; FSMs in Akosha are the analyst substrate; loop closes inside Akosha's log boundary |
 
----
+______________________________________________________________________
 
 ## 11. Open Questions / Stage-2 Hooks
 
@@ -564,7 +565,7 @@ The following are stage-2 candidates, not in this spec's scope. Each is a small 
 - **Resource attribute auditing** — spec mandates contract; doesn't pin the assertion mechanism. Stage-1 PR adds a `telemetry.contract_validator` middleware that emits WARN for unknown attributes; stage-2 promotes to P1-alert.
 - **GenAI semconv pin** — pinned to a specific commit of `open-telemetry/semantic-conventions-genai`. TBD at stage-1 implementation; the spec only requires the pin.
 
----
+______________________________________________________________________
 
 ## 12. References
 
@@ -582,7 +583,7 @@ The following are stage-2 candidates, not in this spec's scope. Each is a small 
 - Existing Mahavishnu OTel wiring: `mahavishnu/core/observability.py`
 - Project CLAUDE.md (gating, conventions): `/Users/les/Projects/mahavishnu/CLAUDE.md`
 
----
+______________________________________________________________________
 
 ## Appendix A — HotStore schema (current vs. stage-1)
 

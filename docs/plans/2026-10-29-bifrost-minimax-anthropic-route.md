@@ -4,18 +4,18 @@ role: implementation
 kind: plan
 date: 2026-10-29
 last_reviewed: 2026-11-07
-superseded_by: null
+superseded_by:
 topic: bifrost-minimax-routing
 title: "Route Claude Code through Bifrost to MiniMax with genuine Anthropic responses"
 requirements:
-- id: REQ-BIFROST-038
-  title: Claude Code requests resolve to the Anthropic-native MiniMax provider
-- id: REQ-BIFROST-039
-  title: Reasoning returns as Anthropic thinking blocks, never inline
-- id: REQ-BIFROST-040
-  title: Worker OpenAI-compatible path is unaffected by the Claude Code route
-- id: REQ-BIFROST-041
-  title: Routing rule is applied to the authoritative config store
+  - id: REQ-BIFROST-038
+    title: Claude Code requests resolve to the Anthropic-native MiniMax provider
+  - id: REQ-BIFROST-039
+    title: Reasoning returns as Anthropic thinking blocks, never inline
+  - id: REQ-BIFROST-040
+    title: Worker OpenAI-compatible path is unaffected by the Claude Code route
+  - id: REQ-BIFROST-041
+    title: Routing rule is applied to the authoritative config store
 ---
 
 # Route Claude Code through Bifrost to MiniMax with genuine Anthropic responses
@@ -152,8 +152,7 @@ virtual keys and the dashboard admin account. **Editing
 **The management API is not usable for this on this deployment.**
 `POST /api/governance/routing-rules` requires `ManagementBearerAuth` or
 `BasicAuth`, and dashboard auth is active
-(`GET /api/session/is-auth-enabled` → `{"auth_type":"password",
-"is_auth_enabled":true,"setup_required":false}`). The OSS setup-token
+(`GET /api/session/is-auth-enabled` → `{"auth_type":"password", "is_auth_enabled":true,"setup_required":false}`). The OSS setup-token
 header stops working once dashboard auth is enabled, so the token in
 `~/.config/secrets.env` is rejected with 401. That path needs the admin
 password, which lives in the config store.
@@ -370,6 +369,7 @@ requirements:
 **Goal:** give Claude Code traffic a routing signal the gateway can match.
 
 **Tasks:**
+
 1. Add `CC_ROUTE_HEADER = "x-bf-route"` and a value constant
    (`anthropic_native`) to `mahavishnu/bifrost/models.py`.
 2. Extend `toggles.py` so the **Claude Code** harness writes
@@ -418,6 +418,7 @@ in the backup is left intact, so `cc-url direct` still restores it.
 **Goal:** make the gateway actually honour the route.
 
 **Tasks:**
+
 1. Write the rule into `~/.config/bifrost/config.json` — the store syncs
    rules from there (§4.3). The management API needs admin credentials that
    are not available to an automated run.
@@ -450,6 +451,7 @@ in the backup is left intact, so `cc-url direct` still restores it.
 **Goal:** prove the symptom is gone end-to-end.
 
 **Tasks:**
+
 1. Send a Claude Code-shaped request through the gateway: a `claude-cli`
    User-Agent (Bifrost's `IsClaudeCodeRequest` matches `claude-cli` /
    `claude-code` / `claude-vscode` as substrings), the `x-bf-vk` virtual key,
@@ -491,27 +493,27 @@ in the backup is left intact, so `cc-url direct` still restores it.
 ## 6. Required Code Changes
 
 - [x] `config/bifrost/config.template.json` — rename the provider to
-      `minimax-anthropic`; correct `allowed_requests` and
-      `request_path_overrides` to real request types; add the
-      `anthropic_native` rule
+  `minimax-anthropic`; correct `allowed_requests` and
+  `request_path_overrides` to real request types; add the
+  `anthropic_native` rule
 - [x] `config/bifrost/config.template.json` (review pass) — allow
-      `count_tokens` with its MiniMax path override; list
-      `MiniMax-M3[1m]` in the provider's key; pin the **provider only** in the
-      rule's target so Claude Code's model choice survives; point the
-      fallback at a provider that can serve the `responses` request type
+  `count_tokens` with its MiniMax path override; list
+  `MiniMax-M3[1m]` in the provider's key; pin the **provider only** in the
+  rule's target so Claude Code's model choice survives; point the
+  fallback at a provider that can serve the `responses` request type
 - [x] `mahavishnu/bifrost/models.py` — `ROUTE_HEADER`, route value, the
-      `HarnessDescriptor.route_header` field
+  `HarnessDescriptor.route_header` field
 - [x] `mahavishnu/bifrost/toggles.py` — write and remove the route header for
-      the `cc` harness
+  the `cc` harness
 - [x] `tests/unit/test_bifrost_config_template.py` — guard the three silent
-      provider traps
+  provider traps
 - [x] `tests/unit/test_bifrost_toggles.py` — pin the header behaviour, the
-      rule's provider-only target, the route header's independence from the
-      credential, and the backup's restore point
+  rule's provider-only target, the route header's independence from the
+  credential, and the backup's restore point
 - [x] `mahavishnu/bifrost/gateway.py` — choose the cached launcher by package
-      version, not by npm's cache-hash directory name
+  version, not by npm's cache-hash directory name
 - [x] `mahavishnu/bifrost/lifecycle.py` — the readiness budget must outlive
-      the gateway's own bind timeout
+  the gateway's own bind timeout
 - [x] `config/bifrost/README.md` — document the route and the three traps
 
 ## 7. Validation Matrix
@@ -726,8 +728,7 @@ both tools.
 The template changes in §11.1 are live-config changes like everything else
 in §10. `config.json` has been re-seeded from the template, so the file on
 disk carries the corrected plugin config. The **store** does not yet: it
-still holds `exclude_system_prompt: true` and `default_cache_key:
-"default"`, because the store re-imports from `config.json` when the
+still holds `exclude_system_prompt: true` and `default_cache_key: "default"`, because the store re-imports from `config.json` when the
 gateway starts, not when the file changes.
 
 One restart closes that:

@@ -1421,8 +1421,7 @@ Restart Claude Code after toggling for the change to take effect.
   cached binary that landed non-executable (or Gatekeeper-blocked) fails
   *identically on every boot*, and nothing self-heals: each launchd retry
   re-execs the same unusable file. The transport upgrade to v2.6.0 on
-  2026-11-20 hit this and cost the whole ready budget — `mahavishnu bifrost
-  restart` waited out its full 660 s and then printed "leaving client URL(s)
+  2026-11-20 hit this and cost the whole ready budget — `mahavishnu bifrost restart` waited out its full 660 s and then printed "leaving client URL(s)
   untouched", while the gateway was in fact serving by the time it gave up.
   **The repair is one `chmod +x` on the cached path**, and it is an operator
   step today only because nothing in `mahavishnu/bifrost/gateway.py` touches

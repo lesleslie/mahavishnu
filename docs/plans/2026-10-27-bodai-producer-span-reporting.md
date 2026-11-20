@@ -4,22 +4,22 @@ role: canonical
 kind: plan
 date: 2026-10-27
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 topic: otel-producer-reporting
 title: "Producer Span Reporting — make the heartbeat roster mean something"
 requirements:
-- id: REQ-SPAN-001
-  title: Shared producer tracing helper in mcp-common
-- id: REQ-SPAN-002
-  title: Periodic liveness span emitted by every rostered service
-- id: REQ-SPAN-003
-  title: Launchd plists set the substrate OTLP endpoint
-- id: REQ-SPAN-004
-  title: akosha's tracer provider carries its span processor
-- id: REQ-SPAN-005
-  title: akosha's service name matches the roster
-- id: REQ-SPAN-006
-  title: Boot timeout exceeds the measured time-to-healthy
+  - id: REQ-SPAN-001
+    title: Shared producer tracing helper in mcp-common
+  - id: REQ-SPAN-002
+    title: Periodic liveness span emitted by every rostered service
+  - id: REQ-SPAN-003
+    title: Launchd plists set the substrate OTLP endpoint
+  - id: REQ-SPAN-004
+    title: akosha's tracer provider carries its span processor
+  - id: REQ-SPAN-005
+    title: akosha's service name matches the roster
+  - id: REQ-SPAN-006
+    title: Boot timeout exceeds the measured time-to-healthy
 ---
 
 # Producer Span Reporting — make the heartbeat roster mean something
@@ -37,8 +37,7 @@ akosha's substrate within the heartbeat watcher's 60s window, and
 `akosha_otlp_heartbeat_p0_a_total{service=...}` stops incrementing for
 rostered services that are alive.
 
-**Success signal:** `curl -fsS http://127.0.0.1:8682/metrics | grep
-akosha_otlp_heartbeat_p0_a_total` stops rising, and
+**Success signal:** `curl -fsS http://127.0.0.1:8682/metrics | grep akosha_otlp_heartbeat_p0_a_total` stops rising, and
 `search_spans` returns rows whose `service_name` is each roster entry.
 
 **Status: achieved 2026-10-28.** All five roster entries report
@@ -199,9 +198,9 @@ requirements:
 **Goal:** one implementation of exporter setup + liveness emission.
 
 **Tasks:**
+
 1. New module `mcp_common/server/producer_telemetry.py`:
-   - `configure_producer_tracing(service_name, *, service_namespace="bodai",
-     environment="production")` — installs a `TracerProvider` whose
+   - `configure_producer_tracing(service_name, *, service_namespace="bodai", environment="production")` — installs a `TracerProvider` whose
      `Resource` carries `service.name` / `service.namespace` /
      `deployment.environment`, plus a `BatchSpanProcessor` over an OTLP
      HTTP exporter. Idempotent: does **not** override a provider another
@@ -242,6 +241,7 @@ requirements:
 exporter is not orphaned.
 
 **Tasks:**
+
 1. Fix the double-`TracerProvider` construction in
    `akosha/observability/tracing.py` — build once, add the processors,
    then apply the sampler.
@@ -270,6 +270,7 @@ exporter is not orphaned.
 **Goal:** the services get the endpoint, and akosha survives its boot.
 
 **Tasks:**
+
 1. Add `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318` and
    `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf` to the five service
    plists.

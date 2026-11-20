@@ -1356,16 +1356,20 @@ status code.**
 
 - [ ] `/health` on every server: `_aggregate.status == "ok"`,
   `data_feeds_ok == true`.
+
 - [ ] Every feed's `source` names a producer that is **running**, and the
   feed's `entities_count > 0`.
+
 - [ ] Every component reports the same embedding model, width and space
   id; `embeddings.mode == "real"` on Akosha. The model is
   `text-embedding-3-large` and the width is **1024**.
+
 - [ ] **The request body carries `dimensions: 1024`, and the response is
   1024-wide.** 3-large is natively 3072, so this asserts the
   truncation actually happened rather than trusting the request. A
   3072-wide response against a 1024-wide store is the silent
   corruption this gate exists to catch.
+
 - [x] **`text-embedding-3-large` is on the OpenAI provider key's model
   allowlist.** Verified live: the gateway answers HTTP 403 — *"Model
   'text-embedding-3-large' is not allowed for virtual key
@@ -1378,6 +1382,7 @@ status code.**
   reads `["gpt-5.4","gpt-5.4-mini","gpt-5.6-luna","gpt-5.3-codex","text-embedding-3-small","text-embedding-3-large"]`,
   confirmed by reading it back, and the round trip below proves the
   model is now reachable.
+
 - [x] **The gateway forwards `dimensions` — verified; keep it that way.**
   Live probe against the local Bifrost, using `text-embedding-3-small`,
   whose native width is 1536 and which supports Matryoshka truncation:
@@ -1403,29 +1408,36 @@ status code.**
   rather than clamped, and the fourth proves the model's own native
   width is still 3072 — so the 1024 in the second row is a real
   truncation, not a different model.
+
 - [ ] **Re-run the probe after any transport upgrade.** The transport
   pin moves the gateway's binary, and the `compat` component is where
   a provider's width handling lives. This one passed on v2.6.0
   (`compat` v0.5.7 altered only Baseten decision models), but a
   future upgrade could change it silently — the probe is cheap and
   the failure mode is a mis-sized vector reaching the store.
+
 - [ ] The index space and the **ranker's** space id are reported
   separately, and the search response carries
   `rerank: {model, applied, reordered}` (§1.2).
+
 - [ ] Every stored vector row carries its `embedding_model` and
   `embedding_dim` (or `space_version`), and a row written before the
   last model change is *queryable* by it.
+
 - [ ] A live Bifrost `/v1/embeddings` round trip returns 1024-wide
   unit-norm vectors, and the direct-OpenAI failover returns vectors in
   the **same** space.
+
 - [ ] A wrong-width vector is rejected; so is a right-width vector from
   the wrong model.
+
 - [ ] **The recall benchmark scores the candidates, not just the
   incumbent.** The committed baseline is recorded for
   `text-embedding-3-large` at 1024 *and* for `cohere embed-v4` at
   1024 (§1.1), so the model decision rests on our corpus rather than
   on a leaderboard. This is the 2026-11-20 memory-retrieval-quality
   plan's Phase 1; the standardisation plan does not ship without it.
+
 - [ ] **The benchmark also measures the *width* on our own corpus, at
   three widths of one model.** Take `text-embedding-3-large` at
   3072, 1536 and 1024 and measure nDCG@10 on our own labelled
@@ -1435,37 +1447,51 @@ status code.**
   points, which is inside a leaderboard run's noise — but only our
   corpus can confirm it. This is the one measurement that could
   reopen the width, so it is the one measurement to run.
+
 - [ ] **The candidate set includes the models that post-date the
   decision**: `cohere embed-v5.0-pro` / `-fast` (released 30 Sep
   2026, native 2048, admissible at 1024, Pro and Fast share one
   embedding space), and `perplexity pplx-embed-v1-4b` (native 2560,
   MRL to 128, int8/binary output only — its `encoding_format` enum
   has no float, so it needs a decode and an L2 normalisation).
+
 - [ ] **`use("vector", provider="pgvector")` and
   `use("embedding", provider="openai")` both resolve and instantiate.**
   They currently raise `LifecycleError: Swap failed`. If they do not
   work, no component can reach the fleet's adapters.
+
 - [ ] **`ingester_running` is truthful on every feed.** A feed that has
   cycled thousands of times and holds nothing must read `FAILED` with
   `ingester_not_running`, not `WARMING_UP` with
   `warming_up_empty_feed`.
+
 - [ ] `conversations` has rows, written by a named producer.
+
 - [ ] `akosha_search_all_systems` returns real rows and the response does
   **not** carry `mode: "fallback"`.
+
 - [ ] `akosha_get_system_metrics` returns a non-zero `total_metrics`.
+
 - [ ] `knowledge_graph_feed` reports entities **and** edges.
+
 - [ ] `akosha_warm` has an HNSW index; `EXPLAIN` shows an index scan.
+
 - [ ] `mcp_tool_call_feed.entities_count > 0` **and** the row count of the
   table aging reads is greater than zero. Both, not either.
+
 - [ ] The mock is unreachable in any semantic tier — a startup failure.
+
 - [ ] **Session-Buddy refuses to start** when no real provider is
   reachable, and the failure names the required width. Its `/health`
   reports the serving leg and the width, and
   `get_embedding_system_info()` is reachable from a tool.
+
 - [ ] **Both** Session-Buddy width constants read 1024. A check that
   reads only `memory/embedding_dim.py` is not a check.
+
 - [ ] No embedding-less rows: the count of rows with a NULL embedding is
   zero, and no write path logs a warning and stores a degraded row.
+
 - [ ] `conversations_v2` rows carry a non-NULL `source_type`, written by a
   named producer — and `session_buddy_search_by_source` returns rows
   under at least one real category rather than only `[all sources]`.

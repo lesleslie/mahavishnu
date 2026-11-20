@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-17
 last_reviewed: 2026-10-17
-superseded_by: null
+superseded_by:
 blocks_on: []
 related:
   - "docs/adr/013-mahavishnu-adapter-tool-boundary.md"

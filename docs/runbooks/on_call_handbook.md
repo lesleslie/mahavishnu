@@ -5,11 +5,11 @@ This handbook provides guidance for on-call engineers supporting the Mahavishnu 
 ## Table of Contents
 
 1. [On-Call Overview](#on-call-overview)
-1. [Rotation Schedule](#rotation-schedule)
-1. [Escalation Paths](#escalation-paths)
-1. [Common Alerts and Responses](#common-alerts-and-responses)
-1. [Handoff Procedures](#handoff-procedures)
-1. [On-Call Best Practices](#on-call-best-practices)
+2. [Rotation Schedule](#rotation-schedule)
+3. [Escalation Paths](#escalation-paths)
+4. [Common Alerts and Responses](#common-alerts-and-responses)
+5. [Handoff Procedures](#handoff-procedures)
+6. [On-Call Best Practices](#on-call-best-practices)
 
 ______________________________________________________________________
 
@@ -20,9 +20,9 @@ ______________________________________________________________________
 As an on-call engineer for Mahavishnu, you are responsible for:
 
 1. **Monitoring**: Responding to alerts within SLA
-1. **Incident Response**: Triaging and resolving incidents
-1. **Communication**: Keeping stakeholders informed
-1. **Documentation**: Recording actions and learnings
+2. **Incident Response**: Triaging and resolving incidents
+3. **Communication**: Keeping stakeholders informed
+4. **Documentation**: Recording actions and learnings
 
 ### Expected Response Times
 
@@ -60,9 +60,9 @@ Week of        Primary        Shadow
 ### Schedule Rules
 
 1. **Primary**: First responder to all alerts
-1. **Shadow**: Backup for primary, learning role
-1. **Rotation**: Weekly, starting Monday 00:00 UTC
-1. **Handoff**: Sunday 23:00 UTC (1 hour before transition)
+2. **Shadow**: Backup for primary, learning role
+3. **Rotation**: Weekly, starting Monday 00:00 UTC
+4. **Handoff**: Sunday 23:00 UTC (1 hour before transition)
 
 ### Time Zone Considerations
 
@@ -87,9 +87,9 @@ T0: Primary On-Call (5 min response)
 ### When to Escalate
 
 1. **Immediate**: If you cannot access systems
-1. **15 minutes**: If you cannot diagnose the issue
-1. **30 minutes**: If issue is not resolved
-1. **1 hour**: If business impact is significant
+2. **15 minutes**: If you cannot diagnose the issue
+3. **30 minutes**: If issue is not resolved
+4. **1 hour**: If business impact is significant
 
 ### Escalation Contacts
 
@@ -234,7 +234,7 @@ Before your shift ends, complete these tasks:
    - Create tickets for unresolved issues
    - Update incident tickets with current status
 
-1. **Prepare Handoff Notes**:
+2. **Prepare Handoff Notes**:
 
    ```
    ## On-Call Handoff: YYYY-MM-DD
@@ -257,7 +257,7 @@ Before your shift ends, complete these tasks:
    - Upcoming maintenance: Any scheduled changes
    ```
 
-1. **Sync with Incoming On-Call**:
+3. **Sync with Incoming On-Call**:
 
    - Schedule 15-minute sync call
    - Walk through open items
@@ -268,10 +268,10 @@ Before your shift ends, complete these tasks:
 When starting your shift:
 
 1. **Review Handoff Notes**: Read through previous on-call's notes
-1. **Check System Health**: Verify all systems are operational
-1. **Review Open Incidents**: Understand current issues
-1. **Verify Access**: Ensure you have access to all systems
-1. **Update Status**: Mark yourself as on-call in team channels
+2. **Check System Health**: Verify all systems are operational
+3. **Review Open Incidents**: Understand current issues
+4. **Verify Access**: Ensure you have access to all systems
+5. **Update Status**: Mark yourself as on-call in team channels
 
 ______________________________________________________________________
 
@@ -280,26 +280,26 @@ ______________________________________________________________________
 ### Do's
 
 1. **Acknowledge alerts quickly** - Even if you need time to investigate
-1. **Communicate early and often** - Keep stakeholders informed
-1. **Document everything** - Future you will thank present you
-1. **Ask for help** - Escalate if unsure
-1. **Take breaks** - Avoid burnout during extended incidents
+2. **Communicate early and often** - Keep stakeholders informed
+3. **Document everything** - Future you will thank present you
+4. **Ask for help** - Escalate if unsure
+5. **Take breaks** - Avoid burnout during extended incidents
 
 ### Don'ts
 
 1. **Don't ignore alerts** - They don't go away
-1. **Don't make changes without rollback plan** - Always have an escape route
-1. **Don't work alone on P0s** - Get help immediately
-1. **Don't skip handoff** - Incoming on-call needs context
-1. **Don't blame** - Focus on resolution, not fault
+2. **Don't make changes without rollback plan** - Always have an escape route
+3. **Don't work alone on P0s** - Get help immediately
+4. **Don't skip handoff** - Incoming on-call needs context
+5. **Don't blame** - Focus on resolution, not fault
 
 ### Managing On-Call Burden
 
 1. **Limit shift length**: Maximum 1 week primary
-1. **Comp time**: Take time off after difficult shifts
-1. **Automate**: Convert manual responses to runbooks/scripts
-1. **Improve alerting**: Tune noisy alerts during business hours
-1. **Post-mortems**: Address systemic issues to reduce alerts
+2. **Comp time**: Take time off after difficult shifts
+3. **Automate**: Convert manual responses to runbooks/scripts
+4. **Improve alerting**: Tune noisy alerts during business hours
+5. **Post-mortems**: Address systemic issues to reduce alerts
 
 ______________________________________________________________________
 

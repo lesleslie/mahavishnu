@@ -188,7 +188,7 @@ ______________________________________________________________________
 ### Action Items
 
 1. **Fix JSONL line 10** — Either remove the corrupted sample or fix the escape sequences
-1. **Add `encoding="utf-8"`** to `rank-tools.py:35` file open
-1. **Create deprecation-migration.md** (I10-2) — blocked by rate limits, needs retry
-1. **Consider making `main()` return int** in eval-content-quality.py for consistency
-1. **Note in cache policy** that line numbers are snapshot-specific and may drift
+2. **Add `encoding="utf-8"`** to `rank-tools.py:35` file open
+3. **Create deprecation-migration.md** (I10-2) — blocked by rate limits, needs retry
+4. **Consider making `main()` return int** in eval-content-quality.py for consistency
+5. **Note in cache policy** that line numbers are snapshot-specific and may drift

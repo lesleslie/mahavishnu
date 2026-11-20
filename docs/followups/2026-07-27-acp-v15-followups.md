@@ -5,6 +5,7 @@ date: 2026-07-27
 last_reviewed: 2026-09-19
 topic: acp-v15-followups
 ---
+
 # 2026-07-27-acp-v15-followups — followup
 
 ## Status
@@ -64,7 +65,7 @@ needed; this item is closed.
 
 **Origin:** License/Compliance review, 2026-07-27.
 
----
+______________________________________________________________________
 
 ### v1.5.1 — ACP session persistence
 
@@ -161,12 +162,12 @@ needed; this item is closed.
    together as v1.5.0. Each item gets its own v1.5 plan file
    that inherits the v1.0 plan's structure (Integration Contracts,
    Validation Matrix, Decision Rule).
-1. **Reactive ship:** v1.5.2 (MCP-over-ACP), v1.5.3 (Remote
+2. **Reactive ship:** v1.5.2 (MCP-over-ACP), v1.5.3 (Remote
    ACP), and v1.5.8 (A2UI payload carrier) ship when their
    respective triggers fire — upstream-spec stabilization for
    v1.5.2 / v1.5.3, client demand for v1.5.8. Each gets its own
    plan file with a `blocks_on:` link to the trigger signal.
-1. **Adoption-gated ship:** v1.5.7 is the gate for the TUI
+3. **Adoption-gated ship:** v1.5.7 is the gate for the TUI
    tracker's `adopted` state. It ships as a test plan, not a
    feature plan, and resolves the TUI's adoption criterion.
 

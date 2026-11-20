@@ -39,9 +39,9 @@ sequence without context-switching cost.
 For each item:
 
 1. Open the item's PR.
-1. Reference this file from the PR description.
-1. Update the "Status" row in the per-item table when the PR lands.
-1. When all items are resolved, do **not** delete this file —
+2. Reference this file from the PR description.
+3. Update the "Status" row in the per-item table when the PR lands.
+4. When all items are resolved, do **not** delete this file —
    archive the resolved version to `.archive/` and start a new
    roadmap for the next round of findings.
 
@@ -66,14 +66,14 @@ For each item:
      finds lines containing `mcp\_\_X\_\_Y` (backslash-underscore
      pattern), replaces them with `mcp__X__Y`, and reports what
      changed.
-  1. Run the script with a dry-run flag first to count the
+  2. Run the script with a dry-run flag first to count the
      affected files and the change footprint.
-  1. Run it for real. Commit as a single PR.
-  1. Verify the `agent_metadata_audit.py` parser still parses all
+  3. Run it for real. Commit as a single PR.
+  4. Verify the `agent_metadata_audit.py` parser still parses all
      101 agents (it should — the parser doesn't care about literal
      vs. escaped underscores, since it operates on `re.search`
      patterns that match either).
-  1. Verify the smoke test for `test_matrix.py` still passes (it
+  5. Verify the smoke test for `test_matrix.py` still passes (it
      doesn't touch agent files, but a sanity check is cheap).
 - **Estimated diff size**: 13 files × ~5 occurrences per file = ~67
   line changes, all in agent frontmatter lines (line 3 of each
@@ -121,12 +121,12 @@ still passes.
 - **Suggested approach**:
   1. Run `python -m ruff check scripts/test_matrix.py --fix` to
      handle the 2 auto-fixable items (I001, UP035).
-  1. For N817: rename `ET` to a non-acronym name like `_XML_TREE`
+  2. For N817: rename `ET` to a non-acronym name like `_XML_TREE`
      or restructure the import. The latter is cleaner:
      `from defusedxml import ElementTree as XmlTree` is acceptable.
-  1. For F841: delete the dead `mark = "covered" if cell.covered else "missing"` line in `render_markdown` (the value is never
+  3. For F841: delete the dead `mark = "covered" if cell.covered else "missing"` line in `render_markdown` (the value is never
      used; the row-marking logic is below it).
-  1. Commit as a single PR titled `chore(lint): resolve pre-existing ruff warnings in scripts/test_matrix.py`.
+  4. Commit as a single PR titled `chore(lint): resolve pre-existing ruff warnings in scripts/test_matrix.py`.
 - **Estimated diff size**: 4-5 lines.
 
 ### TD-3 — Pre-existing `tool_frontmatter_validator.py` ZeroDivisionError
@@ -147,9 +147,9 @@ still passes.
 - **Suggested approach**:
   1. In `_print_summary`, add a guard: if `total == 0`, print
      `"No tools found"` and return early.
-  1. In `report_results`, also short-circuit if there are no
+  2. In `report_results`, also short-circuit if there are no
      results.
-  1. Commit as `fix(validator): handle empty tool set without dividing by zero`.
+  3. Commit as `fix(validator): handle empty tool set without dividing by zero`.
 - **Estimated diff size**: 4-6 lines.
 
 **Status: RESOLVED.** Added an early-return guard at the top of
@@ -178,9 +178,9 @@ No need to short-circuit `report_results` — it already calls
      `Path(__file__).resolve().parent.parent / ".claude" / "agents"`.
      This makes the script work from any clone of the repo without
      configuration.
-  1. Optionally, accept a CLI arg to override the dir for ad-hoc
+  2. Optionally, accept a CLI arg to override the dir for ad-hoc
      audits of the global dir.
-  1. Commit as `fix(audit): derive agents_dir from script location`.
+  3. Commit as `fix(audit): derive agents_dir from script location`.
 - **Estimated diff size**: 2-4 lines + an `argparse` block if option
   2 is taken.
 
@@ -212,18 +212,18 @@ felt like scope creep; can be added later if needed.
      `mahavishnu/pools/`, `mahavishnu/mcp/`, `mahavishnu/core/`. These
      are the orchestrator's spine; tests here have outsized value
      and the code is already designed for testability.
-  1. **Write a `tests/unit/test_<module>.py` per high-leverage
+  2. **Write a `tests/unit/test_<module>.py` per high-leverage
      module** using the `tmp_path` + dependency-injection pattern
      the Group 1 smoke test established. Avoid mocking the
      filesystem; prefer real fixtures.
-  1. **Skip the wrapper/adapter code** (`mahavishnu/cli/`,
+  3. **Skip the wrapper/adapter code** (`mahavishnu/cli/`,
      `mahavishnu/ingesters/`) until later — these are mostly thin
      glue over `mahavishnu/core/` and the `core/` tests will
      exercise them transitively.
-  1. **Use the `scripts/test_matrix.py` tool itself** to find
+  4. **Use the `scripts/test_matrix.py` tool itself** to find
      gaps: `python scripts/test_matrix.py --project . --stack python --types unit,integration --out test-matrix.json` reports
      which components have no tests at all. Use `summary.components_ with_no_tests` to prioritize.
-  1. **Target the 20 components the matrix identifies** as a
+  5. **Target the 20 components the matrix identifies** as a
      rolling goal. Reaching 80% project-wide probably takes
      ~10-15 PR-sized chunks.
 - **Estimated diff size**: 10-50 PRs of 200-500 lines each.
@@ -246,8 +246,8 @@ The 5 items in this roadmap broke into 3 size classes:
 The original suggested sequence was:
 
 1. Land TD-2 + TD-3 + TD-4 as one "codebase hygiene" PR.
-1. Land TD-1 as a separate PR.
-1. Start the TD-5 multi-PR effort, using `scripts/test_matrix.py` to
+2. Land TD-1 as a separate PR.
+3. Start the TD-5 multi-PR effort, using `scripts/test_matrix.py` to
    identify the next component to cover.
 
 This sequence:

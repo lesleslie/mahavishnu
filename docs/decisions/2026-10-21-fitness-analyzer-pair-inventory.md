@@ -5,6 +5,7 @@ date: 2026-10-21
 last_reviewed: 2026-10-21
 topic: fitness-analyzer-pair-inventory
 ---
+
 # Fitness analyzer pair inventory: declared ∪ observed
 
 Resolves **§5.7 / Q1** of `docs/specs/2026-10-20-bodai-otel-substrate-read-path.md`,

@@ -4,7 +4,7 @@ role: historical
 kind: decision
 date: 2026-09-06
 last_reviewed: 2026-09-06
-superseded_by: null
+superseded_by:
 blocks_on: []
 decision_date: 2026-09-06
 topic: scapy-mcp-integration-review
@@ -32,7 +32,7 @@ This document captures the findings of the **6-agent multi-agent review** of `00
 
 **Aggregate: 3 of 6 reviewers rated the ADR "not ratifiable as-is".** The structural findings from L4/L5/L6 outweigh the technical edits from L1/L2/L3.
 
----
+______________________________________________________________________
 
 ## BLOCKER totals by reviewer
 
@@ -46,7 +46,7 @@ This document captures the findings of the **6-agent multi-agent review** of `00
 | L6 (cross-ADR) | 3 | 8 | Includes `blocks_on` typo + saga-coordinator misreference |
 | **Total** | **25** | **43** | |
 
----
+______________________________________________________________________
 
 ## Cross-reviewer BLOCKERs (the structural ones — must close before ratification)
 
@@ -86,7 +86,7 @@ Frontmatter line 7: `blocks_on: ["0007-saga-coordinator-pattern"]` — the file 
 
 **Resolution:** Fix metadata bug (see §Review Verdict below).
 
----
+______________________________________________________________________
 
 ## Per-reviewer BLOCKERs by category
 
@@ -124,7 +124,7 @@ Frontmatter line 7: `blocks_on: ["0007-saga-coordinator-pattern"]` — the file 
 - **L4 B4**: Posture distinction collapses when both happen on same machine under same user account
 - **L4 B5**: `docs/legal/GDPR_POSTURE.md` does not exist
 
----
+______________________________________________________________________
 
 ## IMPORTANT findings worth surfacing (selected)
 
@@ -145,7 +145,7 @@ Frontmatter line 7: `blocks_on: ["0007-saga-coordinator-pattern"]` — the file 
 - **L6**: Authority chain muddled (spec wrote `EnrichmentRegistry` before ADR; clarify "ADR owns posture, spec owns architecture, plan owns sequencing")
 - **L6**: Registry for one provider is YAGNI; defer until second provider ships
 
----
+______________________________________________________________________
 
 ## Review verdict
 
@@ -165,26 +165,26 @@ The Round 1 BLOCKERs (L1, L2, L3) are addressable through targeted ADR edits + c
 
 **ADR 0016 status flips from `proposed` to `complete` with explicit "structural revision deferred" annotation.** This is a deliberate exception to the standard ratification gate — the decision the ADR captures (client-mode enrichment posture, default-off, mcp-enrichment PEP 735 dep group, no-payload guarantee preservation) is sound; the implementation detail refinements (observability metrics, timeout batching, Oneiric primitives, spec fixes) are tracked for v2.
 
----
+______________________________________________________________________
 
 ## Recommended path forward (revision v2 scope)
 
 The v2 revision of ADR 0016 should address in order:
 
-1. **CB-6** — fix metadata typo (immediate, this revision)
-2. **CB-1** — file feature-tracking built-not-wired notice (immediate, this revision)
-3. **L1 B1 + L5 B-Op3 + L5 B-Op5** — add 4 mandatory feed observability metrics; document degraded-state aggregation into `/health`
-4. **L5 B-Op1, B-Op2 + L5 B-Op4** — add Operational SLOs section (latency p99, availability, error rate); define rollback thresholds (data-driven, not operator judgment); specify `flowscape doctor --enrichment` envelope
-5. **L5 B-Op6 + L2 I-3.3 + L2 I-3.5** — add runtime wire-format guard; specify `EnrichmentMetadata` Pydantic model with `extra="forbid"`
-6. **CB-2** — fix the 100ms timeout math (batch OR document drop policy)
-7. **L3 B1 + B2 + B3 + L6 B3** — realign `EnrichmentRegistry` to CaptureSource ABC pattern; route timeout through Oneiric `TimeoutSettings`
-8. **CB-4** — spec edits to replace phantom APIs (separate spec revision)
-9. **CB-5** — proto edits to define `GraphEdge` and `HeuristicEvent` (separate proto revision)
+01. **CB-6** — fix metadata typo (immediate, this revision)
+02. **CB-1** — file feature-tracking built-not-wired notice (immediate, this revision)
+03. **L1 B1 + L5 B-Op3 + L5 B-Op5** — add 4 mandatory feed observability metrics; document degraded-state aggregation into `/health`
+04. **L5 B-Op1, B-Op2 + L5 B-Op4** — add Operational SLOs section (latency p99, availability, error rate); define rollback thresholds (data-driven, not operator judgment); specify `flowscape doctor --enrichment` envelope
+05. **L5 B-Op6 + L2 I-3.3 + L2 I-3.5** — add runtime wire-format guard; specify `EnrichmentMetadata` Pydantic model with `extra="forbid"`
+06. **CB-2** — fix the 100ms timeout math (batch OR document drop policy)
+07. **L3 B1 + B2 + B3 + L6 B3** — realign `EnrichmentRegistry` to CaptureSource ABC pattern; route timeout through Oneiric `TimeoutSettings`
+08. **CB-4** — spec edits to replace phantom APIs (separate spec revision)
+09. **CB-5** — proto edits to define `GraphEdge` and `HeuristicEvent` (separate proto revision)
 10. **CB-3 + L4 B5** — `docs/legal/GDPR_POSTURE.md` + GDPR reframe (separate legal-document work; pre-1.0 internal scope limits urgency)
 
 Items 1-2 are immediate. Items 3-7 are ADR body edits. Items 8-9 are spec/proto companion work. Item 10 is a separate legal-document track.
 
----
+______________________________________________________________________
 
 ## Files
 
@@ -194,6 +194,6 @@ Items 1-2 are immediate. Items 3-7 are ADR body edits. Items 8-9 are spec/proto 
 - Policy referenced: `/Users/les/Projects/mahavishnu/docs/decisions/mcp-backend-wiring-discipline.md`
 - Policy referenced: `/Users/les/Projects/mahavishnu/docs/decisions/wire-up-contract.md`
 
----
+______________________________________________________________________
 
 **END OF ADR 0016 MULTI-AGENT REVIEW**

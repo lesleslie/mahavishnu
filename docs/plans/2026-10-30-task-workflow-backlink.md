@@ -4,48 +4,44 @@ role: implementation
 kind: plan
 date: 2026-10-30
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 topic: task-workflow-backlink
 title: "Task → Workflow Back-Link — typed channel, durable dispatch, and wiring"
 related:
   - "docs/adr/020-bodai-ecosystem-memory-architecture.md"
 requirements:
-- id: REQ-TASKLINK-001
-  implementation_repo: session-buddy
-  title: session-buddy exposes tasks_link_workflow as the sole writer of Task.workflow_id
-  description: A dedicated typed MCP tool writes the field; the generic UpdateTaskRequest.metadata bag
-    cannot reach it.
-- id: REQ-TASKLINK-002
-  implementation_repo: session-buddy
-  title: The link is owner-scoped and link-once
-  description: tasks_link_workflow requires Permission.WRITE, passes the visibility filter, and refuses
-    a second link to a different workflow_id.
-- id: REQ-TASKLINK-003
-  implementation_repo: session-buddy
-  title: The link records provenance
-  description: workflow_linked_at and workflow_linked_by are server-written first-class Task fields.
-- id: REQ-TASKLINK-004
-  implementation_repo: session-buddy
-  title: workflow_id is validated against the fleet's canonical pattern
-  description: ^[A-Za-z0-9._-]{1,128}$ — the same pattern mahavishnu's _workflow_id_guard enforces.
-- id: REQ-TASKLINK-005
-  implementation_repo: session-buddy
-  title: Caller metadata can never reach a server-set field
-  description: Regression pin on the metadata bag's inability to forge workflow_id.
-- id: REQ-TASKLINK-006
-  title: The handoff back-link step uses the typed channel
-  description: mahavishnu's step 3 calls tasks_link_workflow instead of tasks_update(metadata={...}).
-- id: REQ-TASKLINK-007
-  title: The dispatch step produces a real workflow_id
-  description: Step 2 dispatches through the durable-workflow path, which is the only path that returns
-    a workflow_id.
-- id: REQ-TASKLINK-008
-  title: The handoff tool and the sweeper bind a real session-buddy client
-  description: Both seams are bound at registration/lifespan time instead of raising NotImplementedError
-    or returning None.
-- id: REQ-TASKLINK-009
-  title: The orphan sweeper converges
-  description: It skips an already-linked orphan and links an unlinked one exactly once.
+  - id: REQ-TASKLINK-001
+    implementation_repo: session-buddy
+    title: session-buddy exposes tasks_link_workflow as the sole writer of Task.workflow_id
+    description: A dedicated typed MCP tool writes the field; the generic UpdateTaskRequest.metadata bag cannot reach it.
+  - id: REQ-TASKLINK-002
+    implementation_repo: session-buddy
+    title: The link is owner-scoped and link-once
+    description: tasks_link_workflow requires Permission.WRITE, passes the visibility filter, and refuses a second link to a different workflow_id.
+  - id: REQ-TASKLINK-003
+    implementation_repo: session-buddy
+    title: The link records provenance
+    description: workflow_linked_at and workflow_linked_by are server-written first-class Task fields.
+  - id: REQ-TASKLINK-004
+    implementation_repo: session-buddy
+    title: workflow_id is validated against the fleet's canonical pattern
+    description: ^[A-Za-z0-9._-]{1,128}$ — the same pattern mahavishnu's _workflow_id_guard enforces.
+  - id: REQ-TASKLINK-005
+    implementation_repo: session-buddy
+    title: Caller metadata can never reach a server-set field
+    description: Regression pin on the metadata bag's inability to forge workflow_id.
+  - id: REQ-TASKLINK-006
+    title: The handoff back-link step uses the typed channel
+    description: mahavishnu's step 3 calls tasks_link_workflow instead of tasks_update(metadata={...}).
+  - id: REQ-TASKLINK-007
+    title: The dispatch step produces a real workflow_id
+    description: Step 2 dispatches through the durable-workflow path, which is the only path that returns a workflow_id.
+  - id: REQ-TASKLINK-008
+    title: The handoff tool and the sweeper bind a real session-buddy client
+    description: Both seams are bound at registration/lifespan time instead of raising NotImplementedError or returning None.
+  - id: REQ-TASKLINK-009
+    title: The orphan sweeper converges
+    description: It skips an already-linked orphan and links an unlinked one exactly once.
 ---
 
 # Task → Workflow Back-Link — typed channel, durable dispatch, and wiring
@@ -79,7 +75,7 @@ cross-component event uses the existing `EventEnvelope` transport plus the
 ADR 020 memory-projection profile; it must be replayable and visibly
 idempotent.
 
----
+______________________________________________________________________
 
 ## 1. Outcome
 
@@ -136,7 +132,7 @@ Session-buddy implements REQ-001 … REQ-005; mahavishnu implements REQ-006 … 
 *depends on* REQ-001 … REQ-004 (its step 3 and the sweeper are consumers of that
 contract, so the dependency is referenced in mahavishnu's code too).
 
----
+______________________________________________________________________
 
 ## 5. Implementation Phases
 
@@ -145,6 +141,7 @@ contract, so the dependency is referenced in mahavishnu's code too).
 **Goal:** `Task.workflow_id` gains exactly one writer.
 
 **Tasks:**
+
 - `tasks_models.py`: add `workflow_linked_at: datetime | None` and
   `workflow_linked_by: str | None` to `Task`; add `WORKFLOW_ID_PATTERN` matching
   `^[A-Za-z0-9._-]{1,128}$`; update `HandoffResult` (drop `pool_name`, add `status: str`
@@ -162,6 +159,7 @@ contract, so the dependency is referenced in mahavishnu's code too).
 `test_workflow_id_cannot_be_spoofed_through_caller_metadata` still green.
 
 #### Integration Contract — `tasks_link_workflow`
+
 - **Triggered from:** MCP client call `tasks_link_workflow(task_id=..., workflow_id=...)`
   on session-buddy (port 8678); in production, mahavishnu's `tasks_handoff_to_workflow`
   step 3 and the orphan sweeper.
@@ -178,7 +176,7 @@ contract, so the dependency is referenced in mahavishnu's code too).
 - **Observability added:** `task.updated` event with a `workflow_id` diff entry, and the
   sidecar's `history` entry (`field="workflow_id"`, `before`, `after`, `actor`, `at`).
 
----
+______________________________________________________________________
 
 ### Phase 2: mahavishnu — the dispatch edge and its client
 
@@ -186,6 +184,7 @@ contract, so the dependency is referenced in mahavishnu's code too).
 `workflow_id`.
 
 **Tasks:**
+
 - `tasks_handoff.py`: update `HandoffResult` to the durable-workflow shape; replace the
   `pool_route_execute_fn` seam with `workflow_dispatch_fn`; step 2 calls the durable
   dispatch and surfaces its `workflow_id`; step 3 calls `tasks_link_workflow`; the
@@ -204,6 +203,7 @@ contract, so the dependency is referenced in mahavishnu's code too).
 envelope; a new unit suite covers the client adapter.
 
 #### Integration Contract — handoff step 2 + step 3
+
 - **Triggered from:** MCP client call
   `mcp__mahavishnu__tasks_handoff_to_workflow(task_id=...)` on mahavishnu (port 8680).
 - **Returns to / updates:** mahavishnu's durable workflow state
@@ -211,8 +211,7 @@ envelope; a new unit suite covers the client adapter.
   via `tasks_link_workflow`; plus `task.handoff_started` / `task.handoff_completed`
   events on `bodai:events`.
 - **Demonstrable by:** `tests/unit/test_tasks_handoff.py` — a stub dispatch returning
-  `{"workflow_id": "wf_abc12345_code_review", "status": "completed",
-  "repos_processed": 1}` yields a `HandoffResult` with that id, and the stub client
+  `{"workflow_id": "wf_abc12345_code_review", "status": "completed", "repos_processed": 1}` yields a `HandoffResult` with that id, and the stub client
   records exactly one `tasks_link_workflow` call with that id.
 - **Rollback signal:** `WorkflowNotReturnedError` (MHV-102) rate climbing, or
   `task.handoff_orphan` events with `reason="step_3_update_failed"` appearing on the
@@ -220,13 +219,14 @@ envelope; a new unit suite covers the client adapter.
 - **Observability added:** `task.handoff_started` / `task.handoff_completed` /
   `task.handoff_orphan` events (already specified, now actually emitted end-to-end).
 
----
+______________________________________________________________________
 
 ### Phase 3: mahavishnu — the sweeper converges
 
 **Goal:** the sweeper stops dropping orphans and starts re-linking them exactly once.
 
 **Tasks:**
+
 - `lifecycle.py::get_session_buddy_client()`: return the real client instead of `None`.
 - `task_orphan_sweeper.py`: re-link through `tasks_link_workflow`; drop the
   `re_linked_at` / `re_link_reason` breadcrumbs from the task record (they were never
@@ -238,6 +238,7 @@ envelope; a new unit suite covers the client adapter.
 orphan is linked once and is skipped on the next cycle.
 
 #### Integration Contract — orphan sweeper re-link
+
 - **Triggered from:** the `task.handoff_orphan` event on the `bodai:events` Redis stream
   (consumer group `bodai-task-orphan-sweeper`), spawned by
   `mahavishnu/mcp/lifecycle.py::build_post_start_lifespan`.
@@ -253,7 +254,7 @@ orphan is linked once and is skipped on the next cycle.
   `last_updated_timestamp` / `errors_total` counters (already surfaced in
   `/health`), now reflecting real recovery work rather than a skip-everything loop.
 
----
+______________________________________________________________________
 
 ### Phase 4: contract amendments and live verification
 
@@ -274,6 +275,7 @@ Gate B (Mahavishnu projection ledger) are complete. The acceptance packet must
 identify the profile version and ledger entry, not only source/owner labels.
 
 **Tasks:**
+
 - Amend `docs/specs/2026-10-02-bodai-task-system-v1.1.md` — replace the back-link
   wording with the typed channel; drop the `metadata__workflow_id` reference.
 - Amend session-buddy's skill catalog `bodai-session-buddy-task-system.md` — document
@@ -286,6 +288,7 @@ identify the profile version and ledger entry, not only source/owner labels.
 session-buddy restart; the sweeper converges.
 
 #### Integration Contract — live verification
+
 - **Triggered from:** an operator-facing MCP session: `tasks_create` on session-buddy,
   then `mcp__mahavishnu__tasks_handoff_to_workflow`, then `tasks_get`.
 - **Returns to / updates:** the live task's sidecar row and its `workflow_id` field.
@@ -296,27 +299,27 @@ session-buddy restart; the sweeper converges.
   `workflow_id: null` after a successful handoff.
 - **Observability added:** none new — this phase verifies the signal added in Phases 1–3.
 
----
+______________________________________________________________________
 
 ## 6. Required Code Changes
 
 ### session-buddy
 
 - [ ] `session_buddy/mcp/tools/tasks_models.py` — provenance fields, `WORKFLOW_ID_PATTERN`,
-      `HandoffResult` shape.
+  `HandoffResult` shape.
 - [ ] `session_buddy/mcp/tools/tasks_tools.py` — `tasks_link_workflow`, `_build_task`
-      provenance, `_persist_task_update` provenance, tool registration.
+  provenance, `_persist_task_update` provenance, tool registration.
 - [ ] `session_buddy/mcp/skills_catalog/bodai-session-buddy-task-system.md` — document the
-      channel.
+  channel.
 - [ ] `tests/unit/test_tasks_link_workflow.py` (new) — link, idempotent re-link,
-      conflicting re-link, visibility, pattern validation, provenance.
+  conflicting re-link, visibility, pattern validation, provenance.
 - [ ] `tests/unit/test_tasks_persistence.py` — extend for the provenance round-trip.
 
 ### mahavishnu
 
 - [ ] `mahavishnu/mcp/tools/tasks_handoff.py` — envelope, dispatch seam, step 3.
 - [ ] `mahavishnu/mcp/tools/tasks_session_buddy_client.py` (new) — `BodaiComponentClient`
-      adapter.
+  adapter.
 - [ ] `mahavishnu/mcp/server_core.py` — bind both seams.
 - [ ] `mahavishnu/mcp/lifecycle.py` — real sweeper client.
 - [ ] `mahavishnu/mcp/sweepers/task_orphan_sweeper.py` — link through the typed channel.
@@ -367,7 +370,7 @@ work, then (2) the shape-parity gate, then the provenance fields — but **never
 Phase 1 or Phase 2's core, because a link that no dispatch can produce is the status
 quo this plan exists to end.
 
----
+______________________________________________________________________
 
 ## References
 
@@ -379,7 +382,7 @@ quo this plan exists to end.
 - `session-buddy/session_buddy/mcp/skills_catalog/bodai-session-buddy-task-system.md` —
   the session-buddy-side contract doc.
 
----
+______________________________________________________________________
 
 ## 8. Implementation status (2026-10-30)
 

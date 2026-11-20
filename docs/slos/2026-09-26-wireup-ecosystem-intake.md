@@ -36,8 +36,8 @@ The endpoint sanitizes via `DataSanitizeAction` and forwards via `safe_publish`.
 ## Critical alerts (round-4 ops gap-fix)
 
 1. **`ecosystem_intake_total{result="error"} rate > 0.05/s for 5m`** → Slack + page on-call (per spec)
-1. **`eventbridge_publish_total{result="error"} rate > 0.1/s for 5m`** → Slack + page on-call (publish failures)
-1. **`ecosystem_intake_total{result="accepted"}` rate = 0 for 5m when sources are sending** → page (publisher broken or config drift)
+2. **`eventbridge_publish_total{result="error"} rate > 0.1/s for 5m`** → Slack + page on-call (publish failures)
+3. **`ecosystem_intake_total{result="accepted"}` rate = 0 for 5m when sources are sending** → page (publisher broken or config drift)
 
 ## Error Budget
 

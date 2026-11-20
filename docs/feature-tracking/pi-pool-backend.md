@@ -105,7 +105,7 @@ is captured in the plan's Phase 5 integration test as opt-in.
 ## Operator setup (2026-10-19 update)
 
 The pool's per-task subprocess inherits the operator's LLM
-credentials via the PiPool ``env_allowlist`` (see
+credentials via the PiPool `env_allowlist` (see
 `mahavishnu/pools/pi_pool.py`). The default allowlist includes
 the four standard LLM credential env vars; the operator opts in
 by setting them in their shell. The `mahavishnu demo pool-pi`

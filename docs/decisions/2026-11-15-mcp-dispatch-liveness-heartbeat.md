@@ -3,7 +3,7 @@ status: active
 role: canonical
 date: 2026-11-15
 last_reviewed: 2026-11-15
-superseded_by: null
+superseded_by:
 topic: dispatch-liveness
 title: "A long MCP dispatch stays alive by reporting progress, not by raising the timeout"
 ---

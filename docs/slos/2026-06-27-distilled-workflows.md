@@ -59,9 +59,9 @@ pipeline and the publish surface.
 - **Window**: rolling 30 days
 - **Actions when exhausted**:
   1. Pause new distill promotions until budget recovers.
-  1. File an incident for SLO 1 and SLO 2 breaches; SLO 3 deviation
+  2. File an incident for SLO 1 and SLO 2 breaches; SLO 3 deviation
      triggers investigation but not an incident.
-  1. Re-baseline SLOs only after a documented post-mortem.
+  3. Re-baseline SLOs only after a documented post-mortem.
 
 ## Change log
 

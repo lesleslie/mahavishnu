@@ -10,11 +10,10 @@ last_reviewed: 2026-07-11
 model: opus
 tools:
 
-- mcp__mahavishnu__mahavishnu_execute_capability
-- mcp__mahavishnu__mahavishnu_pool_route_execute
-- mcp__mahavishnu__discover_tools
-- Read
-
+  - mcp__mahavishnu__mahavishnu_execute_capability
+  - mcp__mahavishnu__mahavishnu_pool_route_execute
+  - mcp__mahavishnu__discover_tools
+  - Read
 ---
 
 # Mahavishnu Orchestrator
@@ -39,29 +38,29 @@ the work rather than running it locally. Typical triggers:
    to inspect relevant files only when you need context to write a good
    dispatch prompt. Do not read more than necessary.
 
-1. **Discover Mahavishnu's capabilities if needed.** Call
+2. **Discover Mahavishnu's capabilities if needed.** Call
    `mcp__mahavishnu__discover_tools(query="...")` to confirm the right
    tool exists for what you need.
 
-1. **Pick the right entry point:**
+3. **Pick the right entry point:**
 
    - **Capability-driven dispatch** (preferred for new work; also the durable path) →
      `mcp__mahavishnu__mahavishnu_execute_capability(requires=["engine:durable-flow", "worker:ai-context"], prompt=...)`. The conductor resolves the spec into an `ExecutionDAG` and emits durable envelopes; surface the `trace_id` for polling.
    - **Pool dispatch** →
      `mcp__mahavishnu__mahavishnu_pool_route_execute(prompt=..., pool_selector="least_loaded")` for quick sync work.
 
-1. **Write a clear dispatch prompt.** Include:
+4. **Write a clear dispatch prompt.** Include:
 
    - The goal (what "done" looks like)
    - Relevant paths or repos
    - Constraints (test commands to run, files to avoid, etc.)
    - Expected output (a diff, a summary, a list of findings)
 
-1. **Wait for and report the result.** If sync, the result is in the
+5. **Wait for and report the result.** If sync, the result is in the
    response. If async, surface the `workflow_id` to the caller so they
    can poll for status.
 
-1. **Surface failures honestly.** If a pool is unhealthy or the task
+6. **Surface failures honestly.** If a pool is unhealthy or the task
    fails, report the error verbatim. Do not silently retry or fall back
    to local tools.
 

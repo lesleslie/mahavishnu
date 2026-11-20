@@ -76,7 +76,7 @@ Agno is currently in evaluation phase. It is recommended to evaluate Agno v2.0 b
 ## Next Steps
 
 1. Evaluate Agno v2.0 capabilities
-1. Implement agent lifecycle management
-1. Add multi-LLM routing
-1. Implement tool integration
-1. Add memory and context management
+2. Implement agent lifecycle management
+3. Add multi-LLM routing
+4. Implement tool integration
+5. Add memory and context management

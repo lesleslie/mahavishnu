@@ -4,10 +4,9 @@ role: canonical
 topic: convergence-control-plane
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by: null
+superseded_by:
 blocks_on: []
 title: "Initiative Plans Index"
-
 ---
 
 # Initiative Plans Index

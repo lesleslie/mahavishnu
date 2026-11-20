@@ -5,7 +5,7 @@ kind: decision
 date: 2026-09-06
 last_reviewed: 2026-09-07
 reviewed_by: "i10-parallel-reviewer (architecture-council lens) 2026-09-07"
-superseded_by: null
+superseded_by:
 blocks_on: []
 decision_date: 2026-09-06
 topic: mcp-enrichment-posture
@@ -213,6 +213,7 @@ This ADR captures the **pre-1.0 internal-use integration** of scapy-mcp enrichme
 ### Alternative C: Embed scapy directly (skip MCP)
 
 **Rejected.** Embedding scapy directly would:
+
 - Bypass the `mcp-common` baseline tools contract for the v1 dependency surface.
 - Bypass scapy-mcp's safety controls (master kill-switch, L3 CIDR allowlist, L2 allow flag, broadcast opt-in).
 - Couple Flowscape's build deps to scapy-as-library instead of scapy-mcp-as-service.
@@ -361,11 +362,13 @@ class TopNChurnDetail(BaseModel):
 ```
 
 **Wire-format invariant** (preserved through Phase 0b proto translation):
+
 - `payload_sha256_prefix` is the ONLY payload-derived field. All other fields are header/counter metadata. The CI lint per spec line 88 (`check_proto_payload_ban.py`) rejects field names matching `(payload|body|raw|bytes_data)` excluding `payload_sha256_prefix`.
 - `enrichment: GraphEdgeEnrichment | None` is added in v1; proto Phase 0b MUST include this field with `optional` cardinality.
 - All `extra="forbid"` Pydantic guards become proto field-numbering discipline: never reuse a deleted field number; mark `[deprecated = true]` before removal per spec §"Schema evolution" (line 365-371).
 
 **Round-trip test** (closes L2 I-3.5 partial + L5 U-Op3): a property test that constructs a `GraphEdge` proto via the publisher, deserializes it, applies an arbitrary `enrich_batch()` result, re-serializes, and asserts:
+
 1. `payload_sha256_prefix` length == 32 (existing invariant)
 2. `enrichment` field carries exactly the values from the merge result (no `**spread`)
 3. Field count is `len(GraphEdge.DESCRIPTOR.fields)` ± 0 (no field drift)
@@ -412,6 +415,6 @@ class TopNChurnDetail(BaseModel):
   - **Open Question #1 (Multi-host scapy-mcp)**: updated to reflect that the auth gate is now open — remote-host deployment is technically possible (bearer + trusted-issuers), but the v1.x-public-release gate (Article 35 DPIA + consent-gate extension, item 4) remains the policy-level barrier for shipping to non-internal users.
   - **Three items remain open, deferred to v5+**: (1) runtime wire-format guard implementation (L5 B-Op6), (2) `docs/decisions/` policy amendment for consumer-side aggregation (L1 B4), (3) v1.x-public-release prerequisites (formal Article 35 DPIA, consent-gate extension, ADR 0016 re-review).
 
----
+______________________________________________________________________
 
 **END OF ADR 0016**

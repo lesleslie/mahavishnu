@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-03
 last_reviewed: 2026-10-03
-superseded_by: null
+superseded_by:
 topic: mainautopush
 ---
 

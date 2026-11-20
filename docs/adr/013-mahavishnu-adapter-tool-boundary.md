@@ -122,8 +122,8 @@ The most aggressive cleanup. Delete `adapter_list` and `adapter_metadata` from `
 Rationale:
 
 1. The two tools genuinely answer different questions today. Mahavishnu's surface is shaped around orchestration concerns (`capabilities`, `healthy_only`, `has_instance`, in-memory speed). The adapter-registry surface is shaped around registry concerns (`domain/key/provider/version`, `category`, version history). Forcing a merge means either losing fields or paying a network hop on the orchestration hot path.
-1. The cost of Option B is one paragraph of docs and two tool docstrings.
-1. Option C remains available if/when the maintainers decide the Mahavishnu surface has no remaining external consumers — at which point we can run a deprecation cycle through `DEPRECATED_TOOLS` in `tool_versions.py` (which already supports this pattern for `health_check_service`, `get_liveness`, etc.).
+2. The cost of Option B is one paragraph of docs and two tool docstrings.
+3. Option C remains available if/when the maintainers decide the Mahavishnu surface has no remaining external consumers — at which point we can run a deprecation cycle through `DEPRECATED_TOOLS` in `tool_versions.py` (which already supports this pattern for `health_check_service`, `get_liveness`, etc.).
 
 **This is a proposal.** The maintainers should ratify, modify, or reject it before any code changes land.
 
@@ -153,9 +153,9 @@ If Option C is later adopted (remove):
 ## Open Questions
 
 1. **External consumers.** Are there any non-agent callers of `mcp__mahavishnu__adapter_metadata` or `mcp__mahavishnu__adapter_list` that we have not yet found? The search above covered `mahavishnu/`, `tests/`, `docs/`, and `.claude/agents/`. External MCP clients (other Bodai components, ad-hoc scripts, downstream tooling) are not visible from this repo.
-1. **Deprecation timeline for Option A or C.** If the maintainers want to converge on a single tool eventually, what's the deprecation window? The existing `DEPRECATED_TOOLS` mechanism in `tool_versions.py` is the natural lever, but no policy is documented for how long a tool stays in that dict before being removed.
-1. **Field reconciliation.** Even under Option B, should the adapter registry's `list_adapters` response grow a `healthy` field, or Mahavishnu's grow a `version` field, to make them easier to compose? Or do we deliberately keep them disjoint to discourage substitution?
-1. **`get_adapter_health` parallel.** The adapter registry also has its own `oneiric_get_adapter_health` (`oneiric/oneiric/mcp/server.py:1004`), which overlaps with Mahavishnu's `adapter_health` tool. The same boundary question applies; whatever this ADR decides should probably apply there too. Out of scope for this ADR but worth flagging.
+2. **Deprecation timeline for Option A or C.** If the maintainers want to converge on a single tool eventually, what's the deprecation window? The existing `DEPRECATED_TOOLS` mechanism in `tool_versions.py` is the natural lever, but no policy is documented for how long a tool stays in that dict before being removed.
+3. **Field reconciliation.** Even under Option B, should the adapter registry's `list_adapters` response grow a `healthy` field, or Mahavishnu's grow a `version` field, to make them easier to compose? Or do we deliberately keep them disjoint to discourage substitution?
+4. **`get_adapter_health` parallel.** The adapter registry also has its own `oneiric_get_adapter_health` (`oneiric/oneiric/mcp/server.py:1004`), which overlaps with Mahavishnu's `adapter_health` tool. The same boundary question applies; whatever this ADR decides should probably apply there too. Out of scope for this ADR but worth flagging.
 
 ## Decision Review
 
@@ -177,6 +177,7 @@ in-process `HybridAdapterRegistry` + the durable
 `adapters.registry` / `adapters.storage` / `adapters.queue` layers.
 
 **Specifically:**
+
 - The cross-component import direction (`Mahavishnu → Oneiric` for
   state) is preserved. Option C (remove Mahavishnu's surface) is
   not chosen by this amendment.
@@ -189,9 +190,10 @@ in-process `HybridAdapterRegistry` + the durable
 **No code changes are required by this amendment.** The amendment
 extends the decision's *context* without changing the *decision*.
 The two surfaces (Mahavishnu's `adapter_list` / `adapter_metadata`
-+ the registry's `oneiric_list_adapters` / `oneiric_get_adapter`)
-continue to coexist under Option B. The Oneiric layer is additive
-infrastructure, not a replacement.
+
+- the registry's `oneiric_list_adapters` / `oneiric_get_adapter`)
+  continue to coexist under Option B. The Oneiric layer is additive
+  infrastructure, not a replacement.
 
 See ADR 017 (proposed, `docs/adr/017-oneiric-shared-persistence-substrate.md`)
 for the cross-substrate persistence architecture this amendment

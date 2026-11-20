@@ -39,9 +39,9 @@ kit before they reinvent.
    project on the developer's filesystem (path varies by setup; if not
    findable, surface "couldn't find the oneiric catalog; please paste
    the kit name from §When this fires above" and continue).
-1. Surface to the user: "This looks like `<kit>` (`<metadata.key>`);
+2. Surface to the user: "This looks like `<kit>` (`<metadata.key>`);
    canonical pattern is in the oneiric catalog. Use it?"
-1. If yes, write the wrapper. If no (latency, fit), document why in a
+3. If yes, write the wrapper. If no (latency, fit), document why in a
    code comment linking back to the catalog entry.
 
 Note: kit invocations go through `oneiric.actions.ActionBridge` (in

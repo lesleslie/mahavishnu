@@ -91,7 +91,7 @@ Three further findings shaped the decision:
    > The live store was checked on 2026-11-08: `config_plugins.config`
    > carries no `default_cache_key`.
 
-1. **The client does not pin the lookup path.** `cache_mode: semantic`
+2. **The client does not pin the lookup path.** `cache_mode: semantic`
    sends no `x-bf-cache-type`, leaving the gateway's default order —
    direct first, semantic as the fallback. `cache_mode: direct` still pins
    the exact path for an operator who wants zero embedding cost. The
@@ -99,7 +99,7 @@ Three further findings shaped the decision:
    was not widened; a fourth mode would be a cross-repo change to a pinned
    dependency for no operational gain.
 
-1. **The plugin's own settings stay.** `exclude_system_prompt: false` is
+3. **The plugin's own settings stay.** `exclude_system_prompt: false` is
    upstream's default and the safe one: the system prompt carries the
    persona, the working directory, the date and the project instructions,
    and dropping it lets two sessions collide. `threshold: 0.95` stays
@@ -110,7 +110,7 @@ Three further findings shaped the decision:
    `cache_tool_call_responses: false` is now pinned explicitly in the
    template rather than left to the default, so an upgrade cannot widen it.
 
-1. **A per-session cache key is the shape of a future reversal.** If the
+4. **A per-session cache key is the shape of a future reversal.** If the
    response cache is ever wanted back on the Claude Code path, the bucket
    has to be per session — and the gateway, not the client, is the right
    place to derive it: Bifrost's plugin hooks can rewrite a request header

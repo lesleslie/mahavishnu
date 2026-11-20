@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-11-05
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: convergence-control-plane
 title: "Port — External Agent-Skill Patterns into Repo-Native Gates"
@@ -39,7 +39,7 @@ requirements:
 collections into this repo's own gates — as code and policy we control —
 rather than installing packs we did not write.
 
----
+______________________________________________________________________
 
 ## 1. Outcome
 
@@ -159,6 +159,7 @@ requirement IDs it fulfils.
 and reports the ones that no longer exist.
 
 **Tasks:**
+
 1. `scripts/audit_doc_drift.py` — extract backticked references from
    markdown (excluding fenced code blocks), classify them as path,
    path+symbol, or dotted-module, and resolve each against the tree.
@@ -173,6 +174,7 @@ and reports the ones that no longer exist.
 **Exit criteria:** script passes its unit tests; live tree exits 0.
 
 #### Integration Contract — `scripts/audit_doc_drift.py`
+
 - **Triggered from**: `tests/integration/test_ci_gates.py::TestCIGates::test_audit_doc_drift_gate` (subprocess, live tree), and manually via `python scripts/audit_doc_drift.py --json`.
 - **Returns to / updates**: writes `reports/doc_drift.md` when `--out` is passed; otherwise stdout only. No persistent state.
 - **Demonstrable by**: `python scripts/audit_doc_drift.py --json` exits 0 on the live tree and exits 1 with `missing_path` entries on the seeded fixture in `tests/unit/test_audit_doc_drift.py`.
@@ -185,6 +187,7 @@ and reports the ones that no longer exist.
 review an evidence-bearing act.
 
 **Tasks:**
+
 1. `.claude/skills/security-finding-gate/SKILL.md` — claim articulation,
    verification-path selection, mandatory evidence set, TP/FP count output.
 2. Reference the skill from `.claude/agents/api-security-specialist.md`.
@@ -195,6 +198,7 @@ review an evidence-bearing act.
 references resolve, and the test passes.
 
 #### Integration Contract — `.claude/skills/security-finding-gate/SKILL.md`
+
 - **Triggered from**: `.claude/agents/api-security-specialist.md` (§ How I work) and the review workflow's security phase; independently loadable by any agent whose task matches the skill description.
 - **Returns to / updates**: the reviewer's written finding list — no persistent state.
 - **Demonstrable by**: `pytest tests/unit/test_security_finding_gate.py` asserts the skill file, its frontmatter, and both inbound references exist.
@@ -215,6 +219,7 @@ spec exists.
 sections.
 
 #### Integration Contract
+
 - **Triggered from:** the code-review skill/agent invoked on a diff.
 - **Returns to / updates:** the reviewer's report.
 - **Demonstrable by:** a test asserting the review surface names both axes.
@@ -234,6 +239,7 @@ templates; add the fabricated-metric rule and a pre-emit critique gate to
 the rule.
 
 #### Integration Contract
+
 - **Triggered from:** `docs/plans/TEMPLATE.md` and `docs/specs/` template use; `frontend-design` skill load.
 - **Returns to / updates:** the templates and the skill body.
 - **Demonstrable by:** a test asserting both strings are present.
@@ -255,6 +261,7 @@ code-review surface, `docs/decisions/`, `security-auditor` /
 one-line test.
 
 #### Integration Contract
+
 - **Triggered from:** the respective agent/skill loads.
 - **Returns to / updates:** those agent and skill bodies.
 - **Demonstrable by:** one test per pattern asserting its presence.

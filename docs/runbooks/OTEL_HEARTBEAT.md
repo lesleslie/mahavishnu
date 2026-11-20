@@ -19,7 +19,7 @@ open.
 present on a Bodai host). The Prometheus UI is on `:9090`; akosha's MCP port is
 `:8682`.
 
----
+______________________________________________________________________
 
 ## One-minute triage
 
@@ -48,7 +48,7 @@ P0-A alert is *lying to you* — see
 > window tells you about *now*. Always use `increase(...)`, never the raw
 > counter. See [Gotchas](#gotchas).
 
----
+______________________________________________________________________
 
 ## The three alerts
 
@@ -88,7 +88,7 @@ As of 2026-10-28: `mahavishnu`, `akosha`, `session-buddy`, `oneiric`,
 `crackerjack`. A service that is not on this list is never checked, so it can
 be completely silent forever without any alert.
 
----
+______________________________________________________________________
 
 ## The two halves
 
@@ -122,7 +122,7 @@ curl -fsS http://localhost:8682/metrics | grep -E '^akosha_otlp_canary_'
 `akosha_otlp_canary_writes_rejected_total` naming a non-zero `reason` points
 straight at the failure.
 
----
+______________________________________________________________________
 
 ## Scenario 1: `OtelHeartbeatProducerSilent`
 
@@ -131,7 +131,9 @@ A rostered service sent no span for two consecutive minutes.
 ### Symptoms
 
 - The alert names a producer in `exported_service` (e.g. `session-buddy`).
+
 - `akosha_otlp_heartbeat_p0_a_total{exported_service="<name>"}` is climbing.
+
 - The watcher's log confirms it:
 
   ```bash
@@ -305,7 +307,7 @@ Verification 3 is the one that matters most: the counter for that service
 should be **flat** — present, but not increasing. A counter that is absent
 entirely means the service has not been absent even once.
 
----
+______________________________________________________________________
 
 ## Scenario 2: `OtelHeartbeatQueryFailedPersistent`
 
@@ -359,8 +361,7 @@ second one and stop it.
 
 ### Recovery
 
-1. If a second akosha holds the lock, stop it (`launchctl bootout
-   gui/$(id -u)/com.mcp.akosha` for the wrong one, then re-bootstrap the
+1. If a second akosha holds the lock, stop it (`launchctl bootout gui/$(id -u)/com.mcp.akosha` for the wrong one, then re-bootstrap the
    right one).
 2. If the file is corrupt, akosha's substrate-lift path rebuilds it — see
    the spec §8 (retention and rollover) and akosha's
@@ -379,7 +380,7 @@ suppressed, so **producers that went silent during the outage will surface
 now**. Expect a P0-A alert immediately after a P0-B clears — that is correct
 behaviour, not a second fault. Check each producer against Scenario 1.
 
----
+______________________________________________________________________
 
 ## Scenario 3: `OtelHeartbeatRosterEmpty`
 
@@ -435,7 +436,7 @@ The second check is the real one. A quiet empty-roster counter with no
 absence counters at all means the roster is *still* empty and the watcher
 still has nothing to check.
 
----
+______________________________________________________________________
 
 ## Gotchas
 
@@ -482,7 +483,7 @@ to a plist, write an em dash (`—`), not `--`.
 variable appends `/v1/traces` to a bare `host:port`; the traces-specific
 variable is used verbatim. Only the generic one works with a bare port.
 
----
+______________________________________________________________________
 
 ## Where things live
 

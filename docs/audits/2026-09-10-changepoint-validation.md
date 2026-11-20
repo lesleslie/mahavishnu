@@ -1,7 +1,7 @@
 # Phase 7 — Change-Point Validation Report
 
 **Date:** 2026-09-10 (updated 2026-09-10 with round-2 empirical measurements)
-**Spec:** [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 7]
+**Spec:** \[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md` §6 Phase 7\]
 **Integration tests:** `tests/integration/observability/test_changepoint_detection.py`, `test_changepoint_benchmark.py`
 **Status:** Pass (two-stage architecture) — `pytest tests/integration/observability/ tests/unit/observability/ -v --no-cov` → 115 tests collected across 8 .py files (4 detection integration + 6 benchmark integration + 4 two_stage benchmark integration + 2 two_stage dispatch integration + 39 CUSUM unit + 47 sampler unit + 9 two_stage unit + 4 worker_metrics unit). Two-stage gates (§1 warning latency ≤ 30 samples, §7 confirmed alert FP ≤ 2 per 10,080) both pass at the production defaults `warn_threshold=8.0`, `confirm_threshold=14.0`, `confirm_window_samples=100`.
 
@@ -185,20 +185,20 @@ pass (commit `0e4d2dce`). Key changes:
 
 1. **CR-1 (CRITICAL, math+arch+audit):** `route_task` was
    calling `execute_on_pool` twice. Now called exactly once.
-1. **CR-2 (CRITICAL, math+arch+audit):** `_record_arrival` was
+2. **CR-2 (CRITICAL, math+arch+audit):** `_record_arrival` was
    called twice per routing. Now called once.
-1. **S-1 (HIGH, observability):** Detector resets after fire so
+3. **S-1 (HIGH, observability):** Detector resets after fire so
    subsequent samples don't continuously re-fire.
-1. **S-4 (CRITICAL, arch):** `_apply_queueing_penalty` honors
+4. **S-4 (CRITICAL, arch):** `_apply_queueing_penalty` honors
    `caller_pool_allowlist`.
-1. **S-5 (CRITICAL, arch):** Queueing re-rank runs before
+5. **S-5 (CRITICAL, arch):** Queueing re-rank runs before
    `_apply_gpu_category_override` per spec.
-1. **S-6 (CRITICAL, math):** PageHinkleyDetector is now genuinely
+6. **S-6 (CRITICAL, math):** PageHinkleyDetector is now genuinely
    two-sided (high + low cumulative deviations).
-1. **CAL-1 (CRITICAL, math+arch+obs+audit):** Detector defaults
+7. **CAL-1 (CRITICAL, math+arch+obs+audit):** Detector defaults
    re-tuned from (slack=0.25, h=8.0) → (slack=0.25, h=14.0) so the
    §7 gate passes.
-1. **CAL-2 (CRITICAL, arch):** Phase 6 pipeline wired into
+8. **CAL-2 (CRITICAL, arch):** Phase 6 pipeline wired into
    app startup via `ObservabilityManager.start_change_point_tick_loop`.
 
 ## Round-5 fixes summary (two-stage architecture)
@@ -213,17 +213,17 @@ Key changes:
    `CUSUMDetector(confirm_threshold=14.0)` via a 3-state machine
    (`idle` → `warning_pending` → `confirmed` → `idle`). Lives at
    `mahavishnu/observability/changepoint/two_stage.py`.
-1. **`ObservabilityManager._evaluate_change_point` dispatch**:
+2. **`ObservabilityManager._evaluate_change_point` dispatch**:
    branches on `isinstance(detector, TwoStageDetector)`; emits
    `mahavishnu.observability.drift_warning` on warn fires and
    `mahavishnu.observability.drift_detected` on confirm fires.
-1. **`drift_warning_total` Prometheus counter**: separate from
+3. **`drift_warning_total` Prometheus counter**: separate from
    `drift_detected_total` so dashboards can show both rates
    (warn rate ~30 / 10,080; confirmed rate ~0.02 / 10,080).
-1. **Config defaults**: `ChangepointConfig.detector` accepts
+4. **Config defaults**: `ChangepointConfig.detector` accepts
    `"cusum" | "page_hinkley" | "two_stage"`; the two_stage-only
    fields `warn_threshold`, `confirm_threshold`,
    `confirm_window_samples` default to 8.0 / 14.0 / 100.
-1. **Spec §1/§7 wording updated** (v3.2): §1 latency is measured
+5. **Spec §1/§7 wording updated** (v3.2): §1 latency is measured
    on warnings; §7 FP is measured on confirmed alerts; both
    gates pass empirically.

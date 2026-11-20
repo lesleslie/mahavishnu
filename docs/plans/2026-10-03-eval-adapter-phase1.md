@@ -4,45 +4,43 @@ role: implementation
 kind: plan
 date: 2026-10-03
 last_reviewed: 2026-11-06
-superseded_by: null
+superseded_by:
 topic: model-evaluation
 title: "Model Evaluation — Phase 1 Implementation Plan"
 requirements:
-- id: REQ-EVAL-001
-  title: Oneiric adapter discovery for eval extension points
-  file: mahavishnu/core/eval/_registry.py:1-80
-- id: REQ-EVAL-002
-  title: EvalEngine primitive (Dataset, Scorer, Storage, ModelBackend ABCs/Protocols)
-  file: mahavishnu/core/eval/engine.py:1-50, dataset.py:1-40, scorer.py:1-50, storage.py:1-50
-- id: REQ-EVAL-003
-  title: EvalEngine orchestration (composes extension points, returns EvalRunResult)
-  file: mahavishnu/core/eval/engine.py:50-250
-- id: REQ-EVAL-004
-  title: EvalPool as BasePool subclass with single virtual worker (discoverable; MCP tool bypasses in
-    Phase 1)
-  file: mahavishnu/pools/eval_pool.py:1-200
-- id: REQ-EVAL-005
-  title: MCP tool surface (eval_register_dataset, eval_run_suite, eval_get_run) via a profile-gated tools
-    module
-  file: mahavishnu/mcp/bootstrap.py:_register_eval_tools
-- id: REQ-EVAL-006
-  title: Settings via nested EvalSettings field on MahavishnuSettings; env var MAHAVISHNU_EVAL__*
-  file: mahavishnu/core/eval/settings.py:1-80, mahavishnu/core/config.py:eval-field
-- id: REQ-EVAL-007
-  title: Dogfood golden set of 20-30 Mahavishnu-specific cases
-  file: docs/eval/dogfood-v0.jsonl
-- id: REQ-EVAL-008
-  title: Phase 1 wire-up (e2e tests, health feed, audit_orphans, plan promotion)
-  file: mahavishnu/mcp/eval_feed.py + tests/integration/test_eval_*.py
-- id: REQ-EVAL-009
-  title: MarkdownReportWriter for human-readable run reports
-  file: mahavishnu/core/eval/report.py:1-100
-- id: REQ-EVAL-010
-  title: CLI entry point `mahavishnu eval run-suite` for programmatic use without MCP
-  file: mahavishnu/_main_cli.py + mahavishnu/cli/eval_cli.py
-- id: REQ-EVAL-011
-  title: OTel child-span attribute cardinality bound (eval.* is a fixed schema, not a free-form keyspace)
-  file: mahavishnu/core/eval/engine.py:run_suite + tests/integration/test_eval_cardinality.py
+  - id: REQ-EVAL-001
+    title: Oneiric adapter discovery for eval extension points
+    file: mahavishnu/core/eval/_registry.py:1-80
+  - id: REQ-EVAL-002
+    title: EvalEngine primitive (Dataset, Scorer, Storage, ModelBackend ABCs/Protocols)
+    file: mahavishnu/core/eval/engine.py:1-50, dataset.py:1-40, scorer.py:1-50, storage.py:1-50
+  - id: REQ-EVAL-003
+    title: EvalEngine orchestration (composes extension points, returns EvalRunResult)
+    file: mahavishnu/core/eval/engine.py:50-250
+  - id: REQ-EVAL-004
+    title: EvalPool as BasePool subclass with single virtual worker (discoverable; MCP tool bypasses in Phase 1)
+    file: mahavishnu/pools/eval_pool.py:1-200
+  - id: REQ-EVAL-005
+    title: MCP tool surface (eval_register_dataset, eval_run_suite, eval_get_run) via a profile-gated tools module
+    file: mahavishnu/mcp/bootstrap.py:_register_eval_tools
+  - id: REQ-EVAL-006
+    title: Settings via nested EvalSettings field on MahavishnuSettings; env var MAHAVISHNU_EVAL__*
+    file: mahavishnu/core/eval/settings.py:1-80, mahavishnu/core/config.py:eval-field
+  - id: REQ-EVAL-007
+    title: Dogfood golden set of 20-30 Mahavishnu-specific cases
+    file: docs/eval/dogfood-v0.jsonl
+  - id: REQ-EVAL-008
+    title: Phase 1 wire-up (e2e tests, health feed, audit_orphans, plan promotion)
+    file: mahavishnu/mcp/eval_feed.py + tests/integration/test_eval_*.py
+  - id: REQ-EVAL-009
+    title: MarkdownReportWriter for human-readable run reports
+    file: mahavishnu/core/eval/report.py:1-100
+  - id: REQ-EVAL-010
+    title: CLI entry point `mahavishnu eval run-suite` for programmatic use without MCP
+    file: mahavishnu/_main_cli.py + mahavishnu/cli/eval_cli.py
+  - id: REQ-EVAL-011
+    title: OTel child-span attribute cardinality bound (eval.* is a fixed schema, not a free-form keyspace)
+    file: mahavishnu/core/eval/engine.py:run_suite + tests/integration/test_eval_cardinality.py
 ---
 
 # Model Evaluation — Phase 1 Implementation Plan
@@ -153,7 +151,7 @@ requirements:
 - `Mahavishnu → LangSmith (MCP, read-only in Phase 1)` — for dataset ingestion when `LANGSMITH_API_KEY` is set.
 - `Mahavishnu → MiniMax (OpenAI-compatible API, via existing `mahavishnu/workers/cloud_worker.py`)` — for the dogfood run in Task 8.
 - `Mahavishnu → Akosha (OTel traces, one-way: Mahavishnu emits, Akosha ingests via `mahavishnu/ingesters/otel_ingester.py`)` — for cross-system observability of eval runs. **Substrate path update (2026-10-19):** the legacy `mahavishnu/ingesters/otel_ingester.py` is the pre-v7 path. After PR-A0b (oneiric substrate ships) and PR-A1 (akosha OTLPReceiver ships), the eval plan's spans flow through the v7 OTel substrate: producers write to `oneiric.adapters.vector.duckdb_hot_store.spans_substrate` (DDL in `oneiric/adapters/vector/duckdb_hot_store.py:130-185`, spec `docs/specs/2026-10-19-bodai-substrate-otel-v7.md` §5.1) and `akosha/observability/otlp_receiver.py` does the per-row validation + DLQ + ON CONFLICT dedup. Eval becomes a vanilla `*-mcp` producer with no producer-side code changes; the env-var precedent `MAHAVISHNU__OTEL_INGESTER__*` is retired and replaced by `ONEIRIC__SUBSTRATE__*` (per the `feedback-no-bodai-prefix-in-config-names` rule). Cardinal rule: retention filters on the server-populated `received_at_unix_nano`, not on producer `start_time_unix_nano`.
-- `Mahavishnu → oneiric (entry-point discovery via `oneiric.plugins.iter_entry_points`, scoped to the `mahavishnu.eval.*` groups)` — for pluggable extension points.
+- `Mahavishnu → oneiric (entry-point discovery via `oneiric.plugins.iter_entry_points`, scoped to the `mahavishnu.eval.\*` groups)` — for pluggable extension points.
 
 ## 5. Implementation Phases
 
@@ -162,11 +160,13 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 ### Task 0: Housekeeping (pre-Task-1)
 
 **Files:**
+
 - Modify: `pyproject.toml` (add 4 new entry-point groups)
 - Create: `docs/eval/` directory (see the v4 note on the fleet-wide `data/` gitignore)
 - ~~Modify: `mahavishnu/core/adapter_discovery.py`~~ — **removed in v4.** The file was deleted upstream (`db06fc87`, 2026-10-12) and its `allowlist_patterns` gate became dead config. Task 0.2 is closed with no code change.
 
 **Steps:**
+
 - [x] **0.1** Add to `pyproject.toml` the four new entry-point groups (PEP 621 syntax, multi-entry, no entries yet):
   ```toml
   [project.entry-points."mahavishnu.eval.scorers"]
@@ -187,22 +187,25 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - [x] **0.5** Commit: `git add pyproject.toml && git commit -m "chore(eval): scaffold oneiric entry-point groups for eval extension points (Task 0)"`. (`mahavishnu/core/adapter_discovery.py` is no longer part of this task — see 0.2.)
 
 #### Integration Contract (Task 0)
+
 - **Triggered from**: `uv pip install -e .` (registers the entry-point groups for installed distributions); `mahavishnu mcp start`; crackerjack gate. The **built-in table** in `mahavishnu/core/eval/_registry.py` needs no install — it is the install-independent runtime source (Task 1).
 - **Returns to / updates**: `pyproject.toml` (4 new entry-point groups); `docs/eval/` directory created. No allowlist edit — see 0.2. No per-file-ignore block — see 0.3.
 - **Demonstrable by**: `python -c "from importlib.metadata import entry_points; eps = entry_points(group='mahavishnu.eval.scorers'); print(list(eps))"` returns `[]` (empty list, no errors).
 - **Rollback signal**: `crackerjack run` fails on `TC001`/`TC003` for a file in `mahavishnu/core/eval/` → the module is not a `BaseModel` subclass covered by `runtime-evaluated-base-classes`; use a local `# noqa: TC001` with a reason (see 0.3) rather than adding a path to `per-file-ignores`.
 - **Observability added**: none (housekeeping task).
 
----
+______________________________________________________________________
 
 ### Task 1: Oneiric entry-point scaffolding (REQ-EVAL-001)
 
 **Files:**
+
 - Create: `mahavishnu/core/eval/__init__.py` (re-export hub)
 - Create: `mahavishnu/core/eval/_registry.py` (built-in extension-point table + oneiric entry-point merge)
 - Test: `tests/unit/core/eval/test_registry.py`
 
 **Steps:**
+
 - [x] **1.1** Write a failing test that calls `mahavishnu.core.eval._registry.discover_scorers()` and asserts it returns at least one scorer (after Task 4 registers `mahavishnu.exact_match`).
 - [x] **1.2** Run, confirm FAIL (`ImportError: cannot import name 'discover_scorers'`).
 - [x] **1.3** Implement `mahavishnu/core/eval/_registry.py` with `discover_scorers()`, `discover_dataset_loaders()`, `discover_storage()`, `discover_model_backends()`. Each returns `dict[str, Callable]` keyed by extension-point name. Cache results in a module-level dict with a 5-minute TTL.
@@ -215,23 +218,26 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - [x] **1.8** Commit: `git add mahavishnu/core/eval/ tests/unit/core/eval/test_registry.py && git commit -m "feat(eval): oneiric entry-point discovery for eval extension points"`.
 
 #### Integration Contract (Task 1)
+
 - **Triggered from**: `mahavishnu mcp start` (during `_register_eval_tools` lifecycle, when `evaluation.enabled=true`).
 - **Returns to / updates**: module-level cache dict in `_registry.py`, keyed by group -> `{name: callable}`.
 - **Demonstrable by**: `pytest tests/unit/core/eval/test_registry.py -v` passes.
 - **Rollback signal**: any import error in `mahavishnu/core/eval/_registry.py` at server startup (logs `mahavishnu.eval.registry.error`).
 - **Observability added**: structured log line `eval.registry.discovered domain=scorer count=N` at first discovery per cache window.
 
----
+______________________________________________________________________
 
 ### Task 2: Settings via nested MahavishnuSettings field (REQ-EVAL-006)
 
 **Files:**
+
 - Create: `mahavishnu/core/eval/settings.py` (`EvalSettings` Pydantic v2 `BaseModel` + `get_eval_settings()` module-level lazy getter)
 - Modify: `mahavishnu/core/config.py` (add `eval: EvalSettings = Field(default_factory=EvalSettings)` field to `MahavishnuSettings`)
 - Modify: `settings/mahavishnu.yaml` (add `eval:` block under top-level settings)
 - Test: `tests/unit/core/eval/test_settings.py`
 
 **Steps:**
+
 - [x] **2.1** Write failing tests: (a) `EvalSettings()` constructs with `enabled=False`; (b) `get_eval_settings()` returns a `MahavishnuSettings` whose `.eval.enabled` reflects the YAML/env override; (c) overriding `MAHAVISHNU_EVAL__COST_BUDGET_PER_RUN=42.0` reads the override (note: double underscore for nested delimiter); (d) `EvalSettings.model_config` uses `extra="forbid"` (NOT v1 `class Config:`).
 - [x] **2.2** Run, confirm FAIL.
 - [x] **2.3** Implement `EvalSettings(BaseModel)` in `mahavishnu/core/eval/settings.py`:
@@ -285,17 +291,19 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - [x] **2.7** Commit: `git add mahavishnu/core/eval/settings.py mahavishnu/core/config.py settings/mahavishnu.yaml tests/unit/core/eval/test_settings.py && git commit -m "feat(eval): nested EvalSettings on MahavishnuSettings with MAHAVISHNU_EVAL__ env_prefix"`.
 
 #### Integration Contract (Task 2)
+
 - **Triggered from**: `get_settings()` instantiation anywhere; `get_eval_settings()` is the public entry point for eval code.
 - **Returns to / updates**: `MahavishnuSettings.eval` (in-process Pydantic model); persisted to `settings/mahavishnu.yaml`.
 - **Demonstrable by**: `pytest tests/unit/core/eval/test_settings.py -v`; `MAHAVISHNU_EVAL__COST_BUDGET_PER_RUN=42.0 python -c "from mahavishnu.core.eval.settings import get_eval_settings; print(get_eval_settings().cost_budget_per_run)"` prints `42.0`.
 - **Rollback signal**: any Pydantic validation error at startup (logs `mahavishnu.eval.settings.invalid`).
 - **Observability added**: structured log line at MCP server startup: `eval.settings.loaded enabled=true pool=eval budget=5.0`.
 
----
+______________________________________________________________________
 
 ### Task 3: Dataset ABC + JSONL loader (REQ-EVAL-002 partial)
 
 **Files:**
+
 - Create: `mahavishnu/core/eval/dataset.py` (`Dataset` ABC, `DatasetCase` model, `DatasetLoader` ABC)
 - Modify: `mahavishnu/core/errors.py` (`EvalDatasetLoadError` + the other three eval error classes)
 - Create: `mahavishnu/core/eval/loaders/__init__.py`
@@ -304,6 +312,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - Test: `tests/unit/core/eval/loaders/test_jsonl.py`
 
 **Steps:**
+
 - [x] **3.1** Write failing tests: (a) load a 3-case JSONL fixture, assert each `DatasetCase` has `id`, `input`, `expected`, `metadata` populated; (b) `discover_dataset_loaders()` returns the JSONL loader; (c) malformed JSONL raises `EvalDatasetLoadError` with line number, not raw `json.JSONDecodeError`.
 - [x] **3.2** Run, confirm FAIL.
 - [x] **3.3** Implement `DatasetCase` (Pydantic v2: `id: str`, `input: str`, `expected: str`, `metadata: dict[str, Any]`) and `Dataset` ABC with `name: str`, `cases: list[DatasetCase]`, `content_hash: str`, `version: str`, `model_validator(mode="after")` enforcing `len(cases) >= 1`. **Two corrections to the plan as written:** (i) `Dataset` is a `BaseModel` **and** an `ABC` — the fields need Pydantic and the type needs to be non-instantiable; (ii) the error classes live in `mahavishnu/core/errors.py`, the repo's central exception catalog, and are named `EvalDatasetLoadError`, `EvalScoringError`, `EvalStorageError`, `EvalEngineError` (the plan's `DatasetLoadError` / `ScoringError` gain the `Eval` prefix so they are unambiguous in a catalog shared by the whole substrate). New codes `MHV-012`..`MHV-015` in the system-error range, with recovery guidance.
@@ -313,17 +322,19 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - [x] **3.7** Commit: `git add mahavishnu/core/eval/dataset.py mahavishnu/core/eval/loaders/ mahavishnu/core/eval/_registry.py mahavishnu/core/eval/_compat.py pyproject.toml tests/unit/core/eval/loaders/test_jsonl.py && git commit -m "feat(eval): Dataset ABC + JSONL loader (oneiric entry-point)"`.
 
 #### Integration Contract (Task 3)
+
 - **Triggered from**: `eval_register_dataset` MCP tool (Task 7) and any direct `JsonlDatasetLoader.load()` call.
 - **Returns to / updates**: in-memory `Dataset` object; no persistent effect (storage lands in Task 5).
 - **Demonstrable by**: `pytest tests/unit/core/eval/loaders/test_jsonl.py -v`.
 - **Rollback signal**: any `DatasetLoadError` propagated up — caller handles by surfacing to the user with line number.
 - **Observability added**: structured log line `eval.dataset.loaded name=... cases=N hash=...sha256-prefix`.
 
----
+______________________________________________________________________
 
 ### Task 4: Scorer ABC + ExactMatch scorer (REQ-EVAL-002 partial)
 
 **Files:**
+
 - Create: `mahavishnu/core/eval/scorer.py` (`Scorer` ABC, `Score` model; `EvalScoringError` lives in `mahavishnu/core/errors.py` — see Task 3.3)
 - Create: `mahavishnu/core/eval/scorers/__init__.py`
 - Create: `mahavishnu/core/eval/scorers/exact_match.py` (`ExactMatchScorer`)
@@ -331,6 +342,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - Test: `tests/unit/core/eval/scorers/test_exact_match.py`
 
 **Steps:**
+
 - [x] **4.1** Write failing tests: (a) `ExactMatchScorer().score(actual="hello", expected="hello", case_meta={})` returns `Score(value=1.0)`; (b) `score(actual="hi", expected="hello", ...)` returns `Score(value=0.0)`; (c) `case_sensitive=False` flips behavior; (d) `discover_scorers()` returns it.
 - [x] **4.2** Run, confirm FAIL.
 - [x] **4.3** Implement `Score` (Pydantic v2: `value: float ∈ [0,1]`, `kind: str`, `reasoning: str | None`). The unit interval is enforced by the model (`Field(ge=0.0, le=1.0)`), so an out-of-range score is a validation error rather than a silently clamped number.
@@ -341,17 +353,19 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - [x] **4.8** Commit.
 
 #### Integration Contract (Task 4)
+
 - **Triggered from**: `EvalEngine.run_suite()` (Task 6) per case, after model output is collected.
 - **Returns to / updates**: in-memory `Score` object; persisted in Task 5.
 - **Demonstrable by**: `pytest tests/unit/core/eval/scorers/test_exact_match.py -v`.
 - **Rollback signal**: any `ScoringError` propagated; logged with `eval.scorer.error` and the case marked as `scored=False` in the run record.
 - **Observability added**: per-scoring structured log line `eval.scorer.run name=exact_match duration_ms=N`.
 
----
+______________________________________________________________________
 
 ### Task 5: Storage ABC + SQLite backend (REQ-EVAL-002 partial)
 
 **Files:**
+
 - Create: `mahavishnu/core/eval/storage.py` (`EvalStorage` ABC with `start_run`, `add_case_result`, **`finish_run`**, `get_run`, `list_runs`; `RunRecord`, `CaseRecord`, `ScoreRecord`, `EvalSummary`, `RunDetails`)
 - Create: `mahavishnu/core/eval/storage_backends/__init__.py`
 - Create: `mahavishnu/core/eval/storage_backends/sqlite.py` (`SqliteEvalStorage`, WAL mode + parent dir creation)
@@ -359,6 +373,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - Test: `tests/unit/core/eval/storage_backends/test_sqlite.py`
 
 **Steps:**
+
 - [x] **5.1** Write failing tests (using `tmp_path` fixture): (a) `start_run` / `add_case_result` / `finish_run` / `get_run` / `list_runs` round-trip; (b) `db_path` with a non-existent parent directory succeeds (parent is created); (c) 10 concurrent `asyncio.to_thread` writes don't lock (WAL mode); (d) a corrupt DB file raises `EvalStorageError` (not raw `sqlite3.DatabaseError`); (e) `finish_run` transitions a run from `"running"` to `"completed"`; (f) `get_run` returns `len(case_results) > 0` for a run with 3 cases.
 - [x] **5.2** Run, confirm FAIL.
 - [x] **5.3** Define pinned record shapes:
@@ -409,17 +424,19 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - [x] **5.8** Commit.
 
 #### Integration Contract (Task 5)
+
 - **Triggered from**: `EvalEngine.run_suite()` (Task 6); `eval_get_run` MCP tool (Task 7).
 - **Returns to / updates**: SQLite file at `db_path` from `EvalSettings` (default `~/.local/state/mahavishnu/eval/runs.sqlite`).
 - **Demonstrable by**: `pytest tests/unit/core/eval/storage_backends/test_sqlite.py -v`; `sqlite3 ~/.local/state/mahavishnu/eval/runs.sqlite "SELECT count(*) FROM runs;"` after a real run.
 - **Rollback signal**: SQLite `OperationalError` (disk full, permissions, locked); surfaced as `EvalStorageError` with full path + cause.
 - **Observability added**: per-write structured log line `eval.storage.write table=runs id=... duration_ms=N`.
 
----
+______________________________________________________________________
 
 ### Task 6: EvalEngine orchestration (REQ-EVAL-003, model_backend part of REQ-EVAL-002)
 
 **Files:**
+
 - Create: `mahavishnu/core/eval/engine.py` (`EvalEngine`, `EvalSuite`, `ModelConfig`, `CostBudget`, `EvalRunResult`, `EvalEngineError`, `ModelBackend` Protocol, `ModelResponse`, `TokenUsage`)
 - Create: `mahavishnu/core/eval/model_backends/__init__.py`
 - Create: `mahavishnu/core/eval/model_backends/mock.py` (`MockModelBackend`)
@@ -428,6 +445,7 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - Test: `tests/unit/core/eval/test_engine.py`
 
 **Steps:**
+
 - [x] **6.1** Write failing tests with `MockModelBackend` and a `SqliteEvalStorage` on a `tmp_path` (a file-backed store rather than the plan's in-memory one, so the persisted rows can be read back and asserted): (a) 2-case suite produces 2 `CaseRecord`s + 2 `ScoreRecord`s AND `finish_run` transitions status to `"completed"`; (b1) last case ends exactly at 100% of budget → `status="completed"`; (b2) last case would exceed → `status="budget_exceeded"`; (b3) case 1 alone exceeds entire budget → no other cases run, `status="budget_exceeded"`; (c) one case erroring doesn't kill the run, status is `"completed"`; (d) `EvalRunResult.run_id`, `status`, `finished_at`, `summary` are all populated and returned. **Budget arithmetic (v4):** the engine tracks the *actual* cost of each completed case and stops before starting another once the spend has reached the cap; the run is `budget_exceeded` when the spend ends up **strictly greater** than the cap. So a run that lands exactly on 100% of its budget completes, and a first case that blows the budget means no other case runs. When the backend reports no usage, the case is costed at `ModelConfig.max_tokens` — an upper bound, which is the safe direction for a budget guard.
 - [x] **6.2** Run, confirm FAIL.
 - [x] **6.3** Implement types: `ModelResponse(output: str, usage: TokenUsage | None, latency_ms: float | None)`, `TokenUsage(prompt_tokens: int, completion_tokens: int, total_tokens: int)`, `ModelBackend` Protocol: `async def complete(prompt: str, model_config: ModelConfig) -> ModelResponse`. `EvalRunResult(run_id: str, status: Literal["completed", "budget_exceeded", "failed"], finished_at: datetime, summary: EvalSummary)`. `CostBudget(max_usd: float, max_concurrency: int)`. `EvalEngineError(Exception)` with `retryable: bool` field. **Two corrections to the plan as written:** (i) `EvalSuite` cannot have a field named `model_config` — that is Pydantic v2's reserved name for a model's configuration, and a field with that name breaks the model. The field is **`model`**; the `ModelBackend.complete` method keeps its `model_config` *parameter* name, which is not affected. (ii) `EvalEngineError` derives from `MahavishnuError` (the repo's central exception catalog, see Task 3.3) rather than from bare `Exception`, and keeps the `retryable: bool` field. `ModelConfig` also carries the pricing (`input_cost_per_1k_tokens`, `output_cost_per_1k_tokens`) that the budget arithmetic needs.
@@ -445,17 +463,19 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - [x] **6.8** Commit.
 
 #### Integration Contract (Task 6)
+
 - **Triggered from**: `_do_run_suite` helper in `bootstrap.py::_register_eval_tools` (Task 7).
 - **Returns to / updates**: SQLite `runs` (with `status` transitioned via `finish_run`), `case_results`, `scores` tables; OTel child span `eval.run_suite` with prefixed attributes.
 - **Demonstrable by**: `pytest tests/unit/core/eval/test_engine.py -v`; for a real run, `mcp__mahavishnu__eval_run_suite(suite="dogfood-v0", model="mahavishnu.mock")` followed by `mcp__mahavishnu__eval_get_run(run_id=...)`.
 - **Rollback signal**: any unhandled exception in `run_suite` — current run is marked `status="failed"` via `finish_run`; no data is silently lost.
 - **Observability added**: OTel child span `eval.run_suite`, carrying the closed `eval.*` keyspace -- `eval.outcome` is `completed`, `budget_exceeded`, or `failed`, and a failed run's span says so rather than carrying no attributes at all. *(Corrected 2026-11-06: this contract claimed structured logs at `started`, `case_complete`, `budget_exceeded`, `completed`, and `failed`. Those log lines were never emitted; the span carries the outcome, and the error paths log a classified failure. The contract now describes what exists.)*
 
----
+______________________________________________________________________
 
 ### Task 7: EvalPool, MCP tools, health feed, e2e (REQ-EVAL-004, REQ-EVAL-005, REQ-EVAL-008)
 
 **Files:**
+
 - Create: `mahavishnu/pools/eval_pool.py` (`EvalPool(BasePool)` — factory signature matches `manager.py:355-359`)
 - Modify: `mahavishnu/pools/_registry.py` (add `eval_pool` to `_ensure_pool_registry_loaded()` for side-effect registration)
 - Create: `mahavishnu/mcp/eval_feed.py` (`EvalFeedState` mirroring `signer_feed.py:160-244`)
@@ -470,11 +490,17 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
 - Test: `tests/integration/test_eval_cardinality.py` (REQ-EVAL-011 — assert `eval.run_suite` child span emits ONLY the fixed attribute keyspace; the v7 `spans_substrate` cardinality alarm will trigger if any non-allowed key is emitted)
 
 **Steps:**
+
 - [x] **7.1** Write the in-process e2e test with 4 gate assertions: (e1) all three tools return non-empty results in the happy path; (e2) `eval_run_suite` returns `{"status": "error", "error": "evaluation disabled"}` when `get_eval_settings().enabled=False`; (e3) raw FastMCP `tools/list` returns empty for eval tools when `MAHAVISHNU_TOOL_PROFILE="minimal"` (verify the meta-tool's actual filter logic before relying on this gate — if `discover_tools` doesn't filter by profile, this gate may need adjustment); (e4) `eval_run_suite` completes without an EvalPool being spawned (the tool calls `engine.run_suite` directly).
+
 - [x] **7.2** Run, confirm FAIL.
+
 - [x] **7.3** Write the subprocess smoke test: spawn `mahavishnu mcp start` in a subprocess, wait 60s for warmup, call each registered tool through the MCP protocol (e.g. via `mcp.client.session`), assert non-empty results.
+
 - [x] **7.4** Run, confirm FAIL.
+
 - [x] **7.5** Implement `EvalPool(BasePool)` in `mahavishnu/pools/eval_pool.py`. The module-level factory `_build_eval_pool` matches the actual `manager.py::spawn_pool` call signature:
+
   ```python
   from .base import BasePool, PoolConfig
   from mahavishnu.core.eval.engine import EvalEngine, EvalSettings
@@ -563,12 +589,19 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
           # BasePool abstract (base.py:221).
           self._status = PoolStatus.STOPPED
   ```
+
   Register via `register_pool_type("eval", _build_eval_pool)` at the bottom of `eval_pool.py`.
+
 - [x] **7.6** Add `eval_pool,  # noqa: F401  — registry side-effect` to `_ensure_pool_registry_loaded()` in `mahavishnu/pools/_registry.py:89-96` so the `register_pool_type("eval", EvalPool)` call at the bottom of `eval_pool.py` fires when the registry is loaded directly.
+
 - [x] **7.7** Implement `EvalFeedState` in `mahavishnu/mcp/eval_feed.py` mirroring `signer_feed.py:160-244`. Module-level singleton with `asyncio.Lock`. **`entities_count` = total `CaseRecord`s across all runs** (incremented by `record_cycle(case_count=N)` — signature takes a per-run case count). `as_dict()` returns the 4-signal contract.
+
 - [x] **7.8** Add `init_eval_feed_state()` to `mahavishnu/mcp/eval_feed.py` and call it from `mahavishnu/mcp/lifecycle.py::start_server()` immediately after `init_signer_feed_state()` (line 81).
+
 - [x] **7.9** Add an `eval` check block to `collect_component_checks()` in `mahavishnu/mcp/bootstrap.py:278-350`, mirroring the `skills_signer` branch (lines 302-313). `register_health_endpoint()` (353) serves the merged body over HTTP, so the HTTP route and the `get_health` tool report the same component checks. Use the `warm: bool` pattern from `SignerFeedState` so a fresh server with `enabled=true` but no runs yet does not 503.
+
 - [x] **7.10** Implement `register_eval_tools(server)` in `mahavishnu/mcp/tools/eval_tools.py` (**not** inline in `bootstrap.py` — see the v4 note in §4 Current Findings; the FastMCP inline constraint applies only to the 27 core tools in `FastMCPServer._register_tools()`). Gate at registration: `if not get_eval_settings().enabled: return`. Define the three `@server.tool()`-decorated functions in that module. Each tool body delegates to a private `_do_*` helper to stay under `max-branches=15`:
+
   ```python
   @server.tool()
   async def eval_run_suite(suite: str, model: str, params: dict | None = None) -> dict:
@@ -630,15 +663,21 @@ The plan ships as one phase (Phase 1 of the broader eval feature). It is decompo
   async def _do_register_dataset(path: str) -> dict: ...
   async def _do_get_run(run_id: str) -> dict: ...
   ```
+
   Mirror patterns for `eval_register_dataset` and `eval_get_run`. The crackerjack complexity budget is then spread across 3 inline tool bodies + 3 helper functions.
+
 - [x] **7.11** Wire the group into the profile machinery: import `register_eval_tools` in `mahavishnu/mcp/tools/profiles.py` (the import block at lines 34-63), add `"_register_eval_tools"` to `STANDARD_REGISTRATIONS` (100-122), and add the `REGISTRATION_MAP` lambda trampoline (200+) `"_register_eval_tools": lambda s: _register_eval_tools(s._mhv_server)`. Also add a `_register_eval_tools_block(server)` to `mahavishnu/mcp/bootstrap.py` and the `("_register_eval_tools", _register_eval_tools_block)` tuple to `_OPTIONAL_TOOL_BLOCKS` (909-925) so the legacy `register_profile_tools` path also installs it.
+
 - [x] **7.12** Write `tests/integration/test_eval_cardinality.py` (REQ-EVAL-011). The test runs a small eval suite against `MockModelBackend`, captures the emitted `eval.run_suite` child span attributes via an in-memory `InMemorySpanExporter` (or by patching the active tracer provider for the test only), and asserts:
+
   1. The set of `eval.*` attribute keys on the captured span is **exactly equal** to the closed keyspace `{eval.suite_name, eval.model, eval.case_count, eval.cost_usd, eval.duration_ms, eval.outcome, eval.total_input_tokens, eval.total_output_tokens}` — no extra keys, no missing keys.
   2. No `eval.case_id`, `eval.prompt_hash`, `eval.case.*`, or any other per-case key is present.
   3. The test re-asserts by introspecting the OTel attribute dict directly (not by parsing logs), so a future regression that adds a new `eval.*` key fails the gate immediately.
 
   Reference: this is the v7 substrate's §11.1.6 cardinality alarm's "pre-flight" — the alarm catches the regression in production; this test catches it in CI before the alarm ever fires.
+
 - [x] **7.13** Run e2e test, confirm PASS (4 assertions); run subprocess smoke test, confirm PASS; run cardinality test, confirm PASS.
+
 - [x] **7.14** Commit.
 
 ### Task 7 corrections (2026-11-06)
@@ -738,6 +777,7 @@ deliberately **not** made -- it changes repo-wide orphan and phantom
 counts, which is an operator decision.
 
 #### Integration Contract (Task 7)
+
 - **Triggered from**: any agent with access to `mcp__mahavishnu__*` tools.
 - **Returns to / updates**: SQLite runs DB; new markdown report at `~/.local/state/mahavishnu/eval/reports/{run_id}.md` (via `MarkdownReportWriter` from Task 8); `eval_feed` singleton state.
 - **Demonstrable by**: `pytest tests/integration/test_eval_tools_e2e.py -v` (12 tests, covering the 4 gates plus the registration-gate half, the error paths, and the two caller-clamp guards); `pytest tests/integration/test_eval_cardinality.py -v` (4 tests); `pytest tests/integration/test_eval_smoke_subprocess.py -v` (real server; a 120 s warm-up ceiling, ~40-60 s in practice); `pytest tests/unit/pools/test_eval_pool.py -v` (16 tests); `mcp__mahavishnu__get_health` shows `checks.eval.feed_entities_count > 0` after a real run.
@@ -745,11 +785,12 @@ counts, which is an operator decision.
 - **Rollback signal**: any tool returning an empty list or raising; the feed's `errors_total` increments; the OTel `eval.run_suite` span carries `eval.outcome="failed"` on a failed run.
 - **Observability added**: per-tool OTel spans; health feed counters; `eval.feed.last_updated_timestamp` updates on every `record_cycle()` / `record_error()`.
 
----
+______________________________________________________________________
 
 ### Task 8: Reports, CLI, dogfood, plan promotion (REQ-EVAL-007, REQ-EVAL-008, REQ-EVAL-009, REQ-EVAL-010)
 
 **Files:**
+
 - Create: `mahavishnu/core/eval/report.py` (`MarkdownReportWriter`)
 - Create: `mahavishnu/cli/eval_cli.py` (typer commands)
 - Modify: `mahavishnu/_main_cli.py` (add `add_eval_commands(app)` call + import)
@@ -762,6 +803,7 @@ counts, which is an operator decision.
 - Modify: `docs/plans/2026-10-03-eval-adapter-phase1.md` (promote `status: draft` → `status: active`)
 
 **Steps:**
+
 - [x] **8.1** Implement `MarkdownReportWriter` in `mahavishnu/core/eval/report.py`. Single-function module: `write_run_markdown(run_record: RunRecord, cases: list[CaseRecord], scores: list[ScoreRecord], path: Path) -> None`. Template is a Jinja2 string in the same file. Report sections: header (suite, model, status, started/finished, duration), summary (count, mean/min/max score, cost), per-case detail (case_id, actual, error if any, scores), and a footer carrying the run id, the case-result count, and the score count. *(Correction, 2026-11-06: the plan asked the footer to carry the cumulative `entities_count`. The implemented footer carries the run's own counts instead — the cumulative feed count is a process-wide number, and putting it in a per-run report would make the report depend on what else the server had done since it started. The feed's own cumulative is visible in `/health`.)*
 - [x] **8.2** Implement CLI in `mahavishnu/cli/eval_cli.py` using **typer** (NOT click):
   ```python
@@ -798,7 +840,7 @@ counts, which is an operator decision.
   - ... 15-25 more, drawn from real Mahavishnu scenarios (repo routing, pool management, adapter selection, configuration, error recovery).
 - [x] **8.4** Write `docs/eval/dogfood-v0.jsonl` with 20-30 cases. Each line: `{"id": "...", "input": "...", "expected": "...", "metadata": {"added_by": "<team-member>", "failure_mode": "<one-line description>", "last_reviewed": "<ISO date>"}}`.
 - [x] **8.5** Write `docs/eval/dogfood-v0.README.md` and `docs/eval/DOGFOOD.md`.
-- [x] **8.6** Write the smoke test: `@pytest.mark.integration, @pytest.mark.slow, @pytest.mark.requires_network, @pytest.mark.requires_auth, @pytest.mark.timeout(120)`. Runs the dogfood set end-to-end; asserts run completes in <120s, report at `~/.local/state/mahavishnu/eval/reports/{run_id}.md` is non-empty (len(case_results) > 0 AND len(scores) > 0), and `eval.feed.cycles_total` incremented.
+- [x] **8.6** Write the smoke test: `@pytest.mark.integration, @pytest.mark.slow, @pytest.mark.requires_network, @pytest.mark.requires_auth, @pytest.mark.timeout(120)`. Runs the dogfood set end-to-end; asserts run completes in \<120s, report at `~/.local/state/mahavishnu/eval/reports/{run_id}.md` is non-empty (len(case_results) > 0 AND len(scores) > 0), and `eval.feed.cycles_total` incremented.
 - [x] **8.7** Write the freshness test: reads `docs/eval/dogfood-v0.jsonl`, asserts at least 80% of cases have `metadata.last_reviewed` within the last 90 days. Fails otherwise.
 - [x] **8.8** Promote this plan: update frontmatter `status: draft` → `status: active`, and add a row to `docs/plans/PLAN_INDEX.md`.
 - [x] **8.9** Commit all the above.
@@ -814,7 +856,7 @@ What was run, and what the result was:
 | `ty check` on every file this work touches | clean except 3 findings in `tests/conftest.py` that `main` reports identically (pre-existing; not introduced here) |
 | The eval test suite (127 tests) | pass |
 | The pre-commit gate on every commit | pass — 0 TYPE_CHECKING runtime references, 0 secret findings, conformant frontmatter |
-| `python scripts/audit_requirements.py` | **0 orphans** for REQ-EVAL-*; the 28 pre-existing phantoms (archived plans) are unchanged |
+| `python scripts/audit_requirements.py` | **0 orphans** for REQ-EVAL-\*; the 28 pre-existing phantoms (archived plans) are unchanged |
 | `python scripts/audit_orphans.py` | six eval orphans, all explained: the five string-wired extension-point classes (`JsonlDatasetLoader`, `MockModelBackend`, `ExactMatchScorer`, `ContainsScorer`, `SqliteEvalStorage`), which the audit cannot see through the registry's string table, and `reset_eval_feed_state`, which only the tests call |
 | `pytest tests/integration/` | 77 failed, 631 passed, 25 skipped, 12 errors — the same failure set the merge base produces, plus three environment-dependent tests that flake (see below) |
 | `mahavishnu eval run-suite --suite docs/eval/dogfood-v0.jsonl` | 29 cases, all scored, report written -- **mean 0.000**, which is the mock's echo artefact and not a verdict on the set (see the ensemble-review section) |
@@ -938,6 +980,7 @@ below is scoped accordingly.
    construct a disabled pool, and `start()` / `execute_task()` re-check
    the flag so a mid-flight disable is honoured -- the same contract
    the tool bodies already had.
+
 5. **The failing layer's text in a client-reachable field (MEDIUM,
    CWE-209).** The run-failure path put `str(exc)` -- whatever the
    failing layer put in its message, including a connection string or
@@ -969,76 +1012,76 @@ merge was **not** attempted until the findings were fixed.
 
 **What the review found (and what it changed).**
 
-1. **HIGH -- the `/health` 503 hole was not closed.** The security fix
-   above moved `warm = True` out of `record_error()`, but
-   `record_cycle()` still set it unconditionally, and `is_ok()` judges
-   a warm feed by `entities_count > 0`. A client that asked for a zero
-   budget got a run that executed no case, which warmed the feed with
-   an empty entity count and drove `/health` to **503** -- which the
-   launchd healthcheck wrapper (`scripts/launch_with_healthcheck.sh`)
-   turns into a process kill. Two of the three reviewers reproduced
-   it end to end. Fixed at both layers: the feed warms only on a cycle
-   that persisted cases, and a run that executed no case while the
-   dataset had cases is now `budget_exceeded`, not `completed`.
-2. **MEDIUM -- `"failed"` was an unreachable status.** The plan's Task
-   6 contract promised that an unhandled exception marks the run
-   `status="failed"`, but nothing ever wrote it: a storage failure left
-   the run row `status="running"` with a NULL `finished_at` forever,
-   with the already-persisted case results orphaned under it. Fixed:
-   the case loop is wrapped, the run is marked `failed` via
-   `finish_run`, and the engine raises `EvalEngineError`.
-3. **MEDIUM -- the shipped default scorer did not match the shipped
-   golden set.** The default was `mahavishnu.exact_match`, and the
-   set's expectations are phrases, so a phrase answer scores 0.0 --
-   including the plan's own verification command. Fixed: the default
-   is `mahavishnu.contains`, and `EvalPool` now honours
-   `default_scorers` instead of hard-coding the exact-match scorer.
-   *(Corrected 2026-11-06: this item originally said the set "scored
-   0.000, forever" and implied the fix moved that number. It does
-   not, and cannot, in Phase 1: the only shipped backend is the mock,
-   which echoes the question, and the fix for item 7 below moved the
-   expectations *out* of their questions -- so the mock now scores
-   0.000 deterministically. What the fix delivered is a scorer that
-   can grade phrase answers, which is what a real backend needs in
-   Phase 2. The 0.000 in Phase 1 is the echo artefact, and the
-   verification table now says so.)*
-4. **MEDIUM -- an unknown model backend read as a server fault.** A
-   bare `registry[name]` raised `KeyError`, which the tool guard
-   flattens to `{"error": "internal error"}`. The likeliest client
-   mistake is naming a model (`MiniMax-M3`) where a backend
-   (`mahavishnu.mock`) belongs. Fixed: the tool raises
-   `EvalEngineError` naming the alternatives, like the CLI already
-   did.
-5. **MEDIUM -- two MCP guard tests proved nothing.** One asserted the
-   private clamp helper (it would still pass if the tool stopped
-   calling it); the other asserted a cost against the free mock
-   backend (0.00 with or without the clamp). Fixed: both now assert
-   the observable effect -- the budget the engine is handed, and the
-   token ceiling in the persisted model config.
-6. **MEDIUM -- a settings test failed on a correctly configured
-   machine.** It compared the *merged* settings (YAML + the
-   gitignored `local.yaml` + `~/.config/mahavishnu/*` + the
-   environment) with the model's defaults, so an operator who
-   configured eval the way the feature is designed to be configured
-   got a red test. Fixed: the comparison is between the committed
-   YAML file and the model's defaults.
-7. **MEDIUM -- the golden set would pass several wrong answers.**
-   Five of the 29 expectations were substrings of their own
-   questions, so the mock echo (and a wrong answer that quoted the
-   question back) scored them 1.0; one expectation (`uuid7`) was so
-   strict that a correct answer ("UUID v7") scored 0.0. Fixed: the
-   seven affected cases were re-worded, and a new test asserts that no
-   expectation is contained in its own question.
-8. **LOW -- the real-server smoke test could skip silently.** It
-   skipped when the server did not come up within the warm-up, so a
-   registration regression was invisible in CI. Fixed: it now fails,
-   with the server's output attached.
-9. **LOW -- two shipped settings were dead.** `regression_threshold`
-   and `default_pool` were read by no production code, and
-   `DOGFOOD.md` pointed the operator at the threshold as if it drove
-   behaviour. Fixed: both are removed (regression detection is Phase 2
-   work), and the operating procedure says to compare the means by
-   eye.
+01. **HIGH -- the `/health` 503 hole was not closed.** The security fix
+    above moved `warm = True` out of `record_error()`, but
+    `record_cycle()` still set it unconditionally, and `is_ok()` judges
+    a warm feed by `entities_count > 0`. A client that asked for a zero
+    budget got a run that executed no case, which warmed the feed with
+    an empty entity count and drove `/health` to **503** -- which the
+    launchd healthcheck wrapper (`scripts/launch_with_healthcheck.sh`)
+    turns into a process kill. Two of the three reviewers reproduced
+    it end to end. Fixed at both layers: the feed warms only on a cycle
+    that persisted cases, and a run that executed no case while the
+    dataset had cases is now `budget_exceeded`, not `completed`.
+02. **MEDIUM -- `"failed"` was an unreachable status.** The plan's Task
+    6 contract promised that an unhandled exception marks the run
+    `status="failed"`, but nothing ever wrote it: a storage failure left
+    the run row `status="running"` with a NULL `finished_at` forever,
+    with the already-persisted case results orphaned under it. Fixed:
+    the case loop is wrapped, the run is marked `failed` via
+    `finish_run`, and the engine raises `EvalEngineError`.
+03. **MEDIUM -- the shipped default scorer did not match the shipped
+    golden set.** The default was `mahavishnu.exact_match`, and the
+    set's expectations are phrases, so a phrase answer scores 0.0 --
+    including the plan's own verification command. Fixed: the default
+    is `mahavishnu.contains`, and `EvalPool` now honours
+    `default_scorers` instead of hard-coding the exact-match scorer.
+    *(Corrected 2026-11-06: this item originally said the set "scored
+    0.000, forever" and implied the fix moved that number. It does
+    not, and cannot, in Phase 1: the only shipped backend is the mock,
+    which echoes the question, and the fix for item 7 below moved the
+    expectations *out* of their questions -- so the mock now scores
+    0.000 deterministically. What the fix delivered is a scorer that
+    can grade phrase answers, which is what a real backend needs in
+    Phase 2. The 0.000 in Phase 1 is the echo artefact, and the
+    verification table now says so.)*
+04. **MEDIUM -- an unknown model backend read as a server fault.** A
+    bare `registry[name]` raised `KeyError`, which the tool guard
+    flattens to `{"error": "internal error"}`. The likeliest client
+    mistake is naming a model (`MiniMax-M3`) where a backend
+    (`mahavishnu.mock`) belongs. Fixed: the tool raises
+    `EvalEngineError` naming the alternatives, like the CLI already
+    did.
+05. **MEDIUM -- two MCP guard tests proved nothing.** One asserted the
+    private clamp helper (it would still pass if the tool stopped
+    calling it); the other asserted a cost against the free mock
+    backend (0.00 with or without the clamp). Fixed: both now assert
+    the observable effect -- the budget the engine is handed, and the
+    token ceiling in the persisted model config.
+06. **MEDIUM -- a settings test failed on a correctly configured
+    machine.** It compared the *merged* settings (YAML + the
+    gitignored `local.yaml` + `~/.config/mahavishnu/*` + the
+    environment) with the model's defaults, so an operator who
+    configured eval the way the feature is designed to be configured
+    got a red test. Fixed: the comparison is between the committed
+    YAML file and the model's defaults.
+07. **MEDIUM -- the golden set would pass several wrong answers.**
+    Five of the 29 expectations were substrings of their own
+    questions, so the mock echo (and a wrong answer that quoted the
+    question back) scored them 1.0; one expectation (`uuid7`) was so
+    strict that a correct answer ("UUID v7") scored 0.0. Fixed: the
+    seven affected cases were re-worded, and a new test asserts that no
+    expectation is contained in its own question.
+08. **LOW -- the real-server smoke test could skip silently.** It
+    skipped when the server did not come up within the warm-up, so a
+    registration regression was invisible in CI. Fixed: it now fails,
+    with the server's output attached.
+09. **LOW -- two shipped settings were dead.** `regression_threshold`
+    and `default_pool` were read by no production code, and
+    `DOGFOOD.md` pointed the operator at the threshold as if it drove
+    behaviour. Fixed: both are removed (regression detection is Phase 2
+    work), and the operating procedure says to compare the means by
+    eye.
 10. **LOW -- plan claims that the code contradicted.** Corrected in
     this plan: the smoke test's markers and warm-up, the orphan-audit
     row (five orphans, not three), the test counts, the report
@@ -1169,17 +1212,19 @@ Task 7 orphan-audit note). The CLI's `eval list-runs` command is its
 caller now.
 
 #### Integration Contract (Task 8)
+
 - **Triggered from**: `pytest tests/integration/test_dogfood_smoke.py` (CI, slow); `pytest tests/integration/test_dogfood_freshness.py` (CI, every PR); `mahavishnu eval run-suite --suite <path> --model <name>` CLI invocation.
 - **Returns to / updates**: SQLite runs DB; new markdown report; `docs/plans/PLAN_INDEX.md` updated; this plan's frontmatter promoted.
 - **Demonstrable by**: `pytest tests/integration/test_dogfood_smoke.py -v` (the whole set runs, scores, persists, and reports); `pytest tests/integration/test_dogfood_freshness.py -v` (at least 80% of the cases reviewed within 90 days); `mahavishnu eval run-suite --suite docs/eval/dogfood-v0.jsonl --scorers mahavishnu.contains`; `cat ~/.local/state/mahavishnu/eval/reports/{run_id}.md` after a run.
 - **Rollback signal**: smoke test failing in CI → the framework is broken, not the data; investigate before changing the golden set.
 - **Observability added**: same as Task 7; smoke test logs `eval.dogfood.run` with `cases=N, model=..., cost_usd=..., duration_ms=...`.
 
----
+______________________________________________________________________
 
 ## 6. Required Code Changes
 
 **Create:**
+
 - `mahavishnu/core/eval/__init__.py` (re-export hub)
 - `mahavishnu/core/eval/_registry.py`
 - `mahavishnu/core/eval/_compat.py` (per-action shim; Phase 1 only needs the hash shim)
@@ -1218,6 +1263,7 @@ caller now.
 - `tests/integration/test_dogfood_freshness.py`
 
 **Modify:**
+
 - `pyproject.toml` (4 new entry-point groups — Task 0; `mahavishnu/mcp/tools/eval_tools.py` TC001 carve-out — Task 7)
 - `settings/mahavishnu.yaml` (add `eval:` block — Task 2)
 - `mahavishnu/core/config.py` (add `eval: EvalSettings` field to `MahavishnuSettings` — Task 2)
@@ -1238,7 +1284,7 @@ caller now.
 | `pytest tests/unit/core/eval/ tests/unit/pools/test_eval_pool.py -v` | All unit tests pass | pytest output |
 | `pytest tests/integration/test_eval_tools_e2e.py -v` | All 4 gate assertions pass | pytest output |
 | `pytest tests/integration/test_eval_smoke_subprocess.py -v` | Subprocess boots, tools reachable, non-empty results | pytest output |
-| `pytest tests/integration/test_dogfood_smoke.py -v` (slow) | Real-model run completes in <120s, markdown report non-empty | pytest output |
+| `pytest tests/integration/test_dogfood_smoke.py -v` (slow) | Real-model run completes in \<120s, markdown report non-empty | pytest output |
 | `pytest tests/integration/test_dogfood_freshness.py -v` | At least 80% of dogfood cases reviewed within 90 days | pytest output |
 | `crackerjack run` | All hard limits pass; coverage ≥ 89.0168% | crackerjack output |
 | `python scripts/audit_orphans.py` | No newly-added symbols with zero callers | script output |
@@ -1264,6 +1310,7 @@ caller now.
 ## 9. Decision Rule
 
 This plan is "done" when:
+
 - All nine tasks have green tests + atomic commits.
 - `crackerjack run` passes at the project's hard limits.
 - `pytest tests/integration/test_eval_tools_e2e.py` (4 gate assertions) and `pytest tests/integration/test_eval_smoke_subprocess.py` and `pytest tests/integration/test_dogfood_freshness.py` all pass.
@@ -1281,38 +1328,59 @@ This plan is "done" when:
 If any of these fail, do not declare Phase 1 done. The wire-up contract is the bar.
 
 ## References
+
 - **No ULID-shaped keys.** Anything matching `^[0-9A-HJKMNP-TV-Z]{26}$`
   (Crockford Base32 ULID) is rejected post-merge by the validation
   matrix in `docs/plans/2026-10-11-uuid7-only-migration.md`
   (§7 Validation Matrix).
+
 - **No legacy column shadow.** Unlike the old `crackerjack V5/V6`
   ULID-hedge pattern, do **not** add a `*_ulid` shadow column with
   dual-write. The `feedback-format-migration-lazy-dual-write.md`
   pattern is forbidden in pre-1.0 (`feedback-no-backwards-compat-pre-1.0`).
+
 - **Reference: §10 of the UUID7 plan** lists this plan in its
   cross-plan patch table.
 
 - `docs/plans/TEMPLATE.md` — the plan format this file follows.
-- `docs/plans/2026-05-10-minimax27-provider-migration.md` — example of a completed Mahavishnu plan.
-- `docs/decisions/wire-up-contract.md` — the integration contract discipline.
-- `docs/decisions/mcp-backend-wiring-discipline.md` — MCP-specific companion rule (subprocess + warmup, 4-signal feed contract).
-- `oneiric/plugins.py:67` — `iter_entry_points(group)`, the oneiric entry-point API this plan follows (the deleted `mahavishnu/core/adapter_discovery.py` is its former local predecessor).
-- `mahavishnu/pools/base.py:100, 172` — `BasePool` (not `PoolBase`); `scale(target_worker_count) -> None` abstract signature.
-- `mahavishnu/pools/manager.py:411-420` — pool factory invocation shape (`factory(config=config, terminal_manager=..., session_buddy_client=...)`).
-- `mahavishnu/mcp/server_core.py:349-358` — FastMCP inline-tooling constraint (scope: the 27 core tools in `_register_tools()` only).
-- `mahavishnu/mcp/signer_feed.py:160-244` — canonical feed-state pattern (mirror for `eval_feed.py`). Verified against `main` at `f3df534f`.
-- `mahavishnu/mcp/sweepers/task_orphan_sweeper.py:264` — canonical "start a child OTel span" precedent. Verify on first read.
-- `mahavishnu/mcp/bootstrap.py:278` (`collect_component_checks`) and `:353` (`register_health_endpoint`) — where the `eval` check block lives. Verify on first read.
-- `mahavishnu/mcp/tools/profiles.py:93-115, 193+` — `STANDARD_REGISTRATIONS` and `REGISTRATION_MAP`. Verify on first read.
-- `mahavishnu/workers/cloud_worker.py` — the existing MiniMax worker that the eval engine will compose.
-- `mahavishnu/core/config.py` — `MahavishnuSettings` env_prefix and env_nested_delimiter precedent; `otel_ingester` field; `get_settings()` lazy getter pattern. Line numbers drift frequently; treat as durable pointers — verify on first read.
-- `mahavishnu/_main_cli.py:17-45, 1358-1606` — CLI entry point and `add_*_commands` registration block. Verify the add_typer range on first read.
-- `mahavishnu/cli/plan_cli.py:18-23, 47-51` — canonical `typer` command pattern. Verify on first read.
-- `oneiric/docs/action-kits.md` — catalog of common primitives (verify availability before hand-rolling; `oneiric.actions.compression.HashAction` for sha256).
-- `ADR 017: Oneiric as the shared persistence substrate for Bodai` — substrate conventions.
-- `pyproject.toml:460-465` — existing `per-file-ignores` carve-outs for Pydantic-heavy files (the model for Task 0's additions).
-- Memory items cross-referenced: `pydantic-future-annotations-forward-ref.md`, `feedback-no-bodai-prefix-in-config-names.md`, `feedback-memories-must-be-dual-stored.md`, `wire-protocol-source-of-truth.md`, `multi-agent-review-catches-blind-spots.md`.
 
+- `docs/plans/2026-05-10-minimax27-provider-migration.md` — example of a completed Mahavishnu plan.
+
+- `docs/decisions/wire-up-contract.md` — the integration contract discipline.
+
+- `docs/decisions/mcp-backend-wiring-discipline.md` — MCP-specific companion rule (subprocess + warmup, 4-signal feed contract).
+
+- `oneiric/plugins.py:67` — `iter_entry_points(group)`, the oneiric entry-point API this plan follows (the deleted `mahavishnu/core/adapter_discovery.py` is its former local predecessor).
+
+- `mahavishnu/pools/base.py:100, 172` — `BasePool` (not `PoolBase`); `scale(target_worker_count) -> None` abstract signature.
+
+- `mahavishnu/pools/manager.py:411-420` — pool factory invocation shape (`factory(config=config, terminal_manager=..., session_buddy_client=...)`).
+
+- `mahavishnu/mcp/server_core.py:349-358` — FastMCP inline-tooling constraint (scope: the 27 core tools in `_register_tools()` only).
+
+- `mahavishnu/mcp/signer_feed.py:160-244` — canonical feed-state pattern (mirror for `eval_feed.py`). Verified against `main` at `f3df534f`.
+
+- `mahavishnu/mcp/sweepers/task_orphan_sweeper.py:264` — canonical "start a child OTel span" precedent. Verify on first read.
+
+- `mahavishnu/mcp/bootstrap.py:278` (`collect_component_checks`) and `:353` (`register_health_endpoint`) — where the `eval` check block lives. Verify on first read.
+
+- `mahavishnu/mcp/tools/profiles.py:93-115, 193+` — `STANDARD_REGISTRATIONS` and `REGISTRATION_MAP`. Verify on first read.
+
+- `mahavishnu/workers/cloud_worker.py` — the existing MiniMax worker that the eval engine will compose.
+
+- `mahavishnu/core/config.py` — `MahavishnuSettings` env_prefix and env_nested_delimiter precedent; `otel_ingester` field; `get_settings()` lazy getter pattern. Line numbers drift frequently; treat as durable pointers — verify on first read.
+
+- `mahavishnu/_main_cli.py:17-45, 1358-1606` — CLI entry point and `add_*_commands` registration block. Verify the add_typer range on first read.
+
+- `mahavishnu/cli/plan_cli.py:18-23, 47-51` — canonical `typer` command pattern. Verify on first read.
+
+- `oneiric/docs/action-kits.md` — catalog of common primitives (verify availability before hand-rolling; `oneiric.actions.compression.HashAction` for sha256).
+
+- `ADR 017: Oneiric as the shared persistence substrate for Bodai` — substrate conventions.
+
+- `pyproject.toml:460-465` — existing `per-file-ignores` carve-outs for Pydantic-heavy files (the model for Task 0's additions).
+
+- Memory items cross-referenced: `pydantic-future-annotations-forward-ref.md`, `feedback-no-bodai-prefix-in-config-names.md`, `feedback-memories-must-be-dual-stored.md`, `wire-protocol-source-of-truth.md`, `multi-agent-review-catches-blind-spots.md`.
 
 ## Coordination notes (post-2026-10-11 UUID7 migration)
 

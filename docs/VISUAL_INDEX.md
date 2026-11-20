@@ -11,7 +11,7 @@ ______________________________________________________________________
 | Guide | Description | Diagrams | Link |
 |-------|-------------|----------|------|
 | **Visual Guide** | Master reference for all architecture and system diagrams | 50+ | [VISUAL_GUIDE.md](VISUAL_GUIDE.md) |
-| **Workflow Diagrams** | Step-by-step operational procedures | 15+ | ~~WORKFLOW_DIAGRAMS.md~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main)) |
+| **Workflow Diagrams** | Step-by-step operational procedures | 15+ | ~~WORKFLOW_DIAGRAMS.md~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main)) |
 | **Architecture** | High-level system architecture | 1 | ARCHITECTURE.md |
 
 ______________________________________________________________________
@@ -114,50 +114,50 @@ ______________________________________________________________________
 
 ### For New Users
 
-**Start Here**: 👉 ~~Quick Start Workflow~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+**Start Here**: 👉 ~~Quick Start Workflow~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
 
 **Then**:
 
 1. [Overall Architecture](VISUAL_GUIDE.md#1-overall-architecture) - Understand the big picture
-1. ~~Pool Spawn and Execute~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main)) - Learn to use pools
-1. ~~Repository Sweep~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main)) - Execute workflows across repos
+2. ~~Pool Spawn and Execute~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main)) - Learn to use pools
+3. ~~Repository Sweep~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main)) - Execute workflows across repos
 
 ### For Developers
 
 **Architecture Deep Dive**:
 
 1. [Pool Management System](VISUAL_GUIDE.md#2-pool-management-system)
-1. [Memory Aggregation Flow](VISUAL_GUIDE.md#3-memory-aggregation-flow)
-1. [Adapter Lifecycle](VISUAL_GUIDE.md#9-adapter-lifecycle)
-1. [Authentication Architecture](VISUAL_GUIDE.md#4-authentication-architecture)
+2. [Memory Aggregation Flow](VISUAL_GUIDE.md#3-memory-aggregation-flow)
+3. [Adapter Lifecycle](VISUAL_GUIDE.md#9-adapter-lifecycle)
+4. [Authentication Architecture](VISUAL_GUIDE.md#4-authentication-architecture)
 
 **Understanding Performance**:
 
 1. [Performance Optimizations](VISUAL_GUIDE.md#6-performance-optimizations)
-1. ~~Memory Search~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
-1. ~~Quality Control Pipeline~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+2. ~~Memory Search~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+3. ~~Quality Control Pipeline~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
 
 ### For Operations Teams
 
 **Daily Operations**:
 
-1. ~~Pool Spawn and Execute~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
-1. ~~Error Recovery~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
-1. [Dead Letter Queue](VISUAL_GUIDE.md#10-dead-letter-queue)
+1. ~~Pool Spawn and Execute~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+2. ~~Error Recovery~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+3. [Dead Letter Queue](VISUAL_GUIDE.md#10-dead-letter-queue)
 
 **Monitoring**:
 
 1. [Quality Metrics Timeline](VISUAL_GUIDE.md#11-quality-metrics-timeline)
-1. ~~Circuit Breaker Pattern~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
-1. [Testing Architecture](VISUAL_GUIDE.md#8-testing-architecture)
+2. ~~Circuit Breaker Pattern~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+3. [Testing Architecture](VISUAL_GUIDE.md#8-testing-architecture)
 
 ### For Security Teams
 
 **Security Overview**:
 
 1. [Security Architecture](VISUAL_GUIDE.md#7-security-architecture)
-1. [Authentication Flow](VISUAL_GUIDE.md#4-authentication-architecture)
-1. [Vulnerability Remediation](VISUAL_GUIDE.md#7-security-architecture)
+2. [Authentication Flow](VISUAL_GUIDE.md#4-authentication-architecture)
+3. [Vulnerability Remediation](VISUAL_GUIDE.md#7-security-architecture)
 
 ______________________________________________________________________
 
@@ -226,23 +226,23 @@ ______________________________________________________________________
 
    - → Go to [Overall Architecture](VISUAL_GUIDE.md#1-overall-architecture)
 
-1. **I need to perform a specific task**
+2. **I need to perform a specific task**
 
-   - → Go to ~~Workflow Diagrams~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+   - → Go to ~~Workflow Diagrams~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
 
-1. **I'm troubleshooting an issue**
+3. **I'm troubleshooting an issue**
 
-   - → Go to ~~Error Recovery~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+   - → Go to ~~Error Recovery~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
 
-1. **I want to understand performance**
+4. **I want to understand performance**
 
    - → Go to [Performance Optimizations](VISUAL_GUIDE.md#6-performance-optimizations)
 
-1. **I'm reviewing security**
+5. **I'm reviewing security**
 
    - → Go to [Security Architecture](VISUAL_GUIDE.md#7-security-architecture)
 
-1. **I'm setting up monitoring**
+6. **I'm setting up monitoring**
 
    - → Go to [Quality Metrics](VISUAL_GUIDE.md#11-quality-metrics-timeline)
 
@@ -284,7 +284,7 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
-**Quick Start**: 👉 [Visual Guide](VISUAL_GUIDE.md) | ~~Workflow Diagrams~~ *(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
+**Quick Start**: 👉 [Visual Guide](VISUAL_GUIDE.md) | ~~Workflow Diagrams~~ \*(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))
 
 **Document Version**: 1.0
 **Last Updated**: 2026-02-03

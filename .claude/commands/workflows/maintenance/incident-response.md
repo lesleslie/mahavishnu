@@ -25,10 +25,10 @@ Use this workflow when a service degradation or outage is declared.
 ## Workflow
 
 1. Assign an incident commander and confirm severity.
-1. Triage the issue, contain blast radius, and gather evidence.
-1. Implement and validate the fix or rollback.
-1. Communicate status during and after recovery.
-1. Capture action items and prevention measures.
+2. Triage the issue, contain blast radius, and gather evidence.
+3. Implement and validate the fix or rollback.
+4. Communicate status during and after recovery.
+5. Capture action items and prevention measures.
 
 ## Output
 

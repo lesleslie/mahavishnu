@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-11-05
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: terminal-codex-worker
 ---
 
@@ -78,7 +78,7 @@ which are still absent from `registry.py:243-246`**:
 1. `codex exec` **reads additional input from stdin**. In a tmux pane
    stdin is the terminal, so the CLI *blocks* waiting for input that
    never arrives. The command must close stdin.
-1. Outside a trusted directory it refuses with *"Not inside a trusted
+2. Outside a trusted directory it refuses with *"Not inside a trusted
    directory and --skip-git-repo-check was not specified"* and exits
    non-zero. It needs `--skip-git-repo-check`.
 
@@ -172,14 +172,14 @@ the second is the highest-value item on the list.**
 1. **Fix the two invocation defects** in `registry.py` — close stdin and
    add `--skip-git-repo-check`. Two tokens of command string. Without
    this, a codex dispatch blocks or refuses, and nothing else matters.
-1. **Make the worker layer actually parse the structured output it
+2. **Make the worker layer actually parse the structured output it
    already collects**, and stop `stream_format` being a dead field.
    This is **fleet-wide, not codex-specific**: it is worth more than
    adding a worker, because it unblocks codex, unblocks the
    worker-tool-output measurement work, and fixes claude and qwen at the
    same time.
-1. **Pin the model and provider** in mahavishnu's configuration.
-1. **Then add the gateway route** (oneiric's `RouteKind` plus the
+3. **Pin the model and provider** in mahavishnu's configuration.
+4. **Then add the gateway route** (oneiric's `RouteKind` plus the
    manager branch), and only then the demo.
 
 **5. Two questions this record explicitly does not settle.**

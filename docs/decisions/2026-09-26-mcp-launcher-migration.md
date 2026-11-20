@@ -86,12 +86,12 @@ not exist.** The actual surface is:
 
 The Phase 4a implementer must **build a fresh `build_server` closure** that
 constructs `FastMCPServer(MahavishnuApp())` and returns an object with the
-launcher's duck-typed `run_async(transport="http", host=, port=,
-uvicorn_config=)` method (see §4 trap #1).
+launcher's duck-typed `run_async(transport="http", host=, port=, uvicorn_config=)` method (see §4 trap #1).
 
 ## 2. Target state (after migration, ~30 LOC total)
 
 ### New wrapper: `mahavishnu/scripts/launch_mcp.py` (~20 LOC including the
+
 `run_async` adapter — slightly fatter than the cookbook's 10 LOC because of
 the bridge):
 
@@ -189,8 +189,7 @@ if __name__ == "__main__":
 ### What STAYS unchanged
 
 - The plist's `ProgramArguments` shape: update **one path** (the script
-  filename) but keep the `launch_with_healthcheck.sh http://127.0.0.1:8680/health
-  --timeout 180 -- <wrapper>` structure. The healthcheck wrapper is still
+  filename) but keep the `launch_with_healthcheck.sh http://127.0.0.1:8680/health --timeout 180 -- <wrapper>` structure. The healthcheck wrapper is still
   needed because MahavishnuApp + FastMCPServer init takes >60s during cold
   boot (per `mahavishnu.mcp.bootstrap:268-291`).
 - The FastMCP factory: `FastMCPServer(MahavishnuApp())` is what we build
@@ -206,8 +205,7 @@ if __name__ == "__main__":
 ### What gets PATCHED (new requirement discovered during investigation)
 
 - `mahavishnu/mcp/bootstrap.py:264` (`register_health_endpoint`) — the
-  existing body emits `{"status": "ok|degraded", "service": "mahavishnu",
-  "version": <version>, "checks": {...}}` but **does NOT include the
+  existing body emits `{"status": "ok|degraded", "service": "mahavishnu", "version": <version>, "checks": {...}}` but **does NOT include the
   `launcher` field**. The launcher is generic — it doesn't write to `/health`
   (REQ-005 is a consumer-side contract per `launcher-cookbook.md:34-39`).
   Patch:
@@ -232,16 +230,13 @@ if __name__ == "__main__":
 1. Confirm `mahavishnu/mcp/server_core.py:50` exposes `FastMCPServer` with
    sync `__init__(self, app=None, config=None)`. **Verified 2026-09-26** —
    yes (line 53).
-2. Confirm the launcher duck-types on `run_async(transport="http", host=,
-   port=, uvicorn_config=)`. **Verified** in
+2. Confirm the launcher duck-types on `run_async(transport="http", host=, port=, uvicorn_config=)`. **Verified** in
    `mcp-common/mcp_common/server/launcher.py:186-191`.
 3. Confirm `FastMCPServer` does NOT expose `run_async(...)` directly —
    instead exposes `start(host, port)` (line 1283) which calls
-   `lifecycle.start_server` which calls `run_http_async(host, port,
-   uvicorn_config={"timeout_graceful_shutdown": 30})`. **Verified 2026-09-26**.
+   `lifecycle.start_server` which calls `run_http_async(host, port, uvicorn_config={"timeout_graceful_shutdown": 30})`. **Verified 2026-09-26**.
 4. **The bridge needed**: a small `_RunAsyncAdapter` class in the wrapper
-   that wraps `FastMCPServer` and exposes `run_async(transport=, host=,
-   port=, uvicorn_config=)`. The adapter calls the inner FastMCP's
+   that wraps `FastMCPServer` and exposes `run_async(transport=, host=, port=, uvicorn_config=)`. The adapter calls the inner FastMCP's
    `run_http_async(...)` directly with the launcher's `uvicorn_config` so
    REQ-007 (timeout_graceful_shutdown=30) actually wins. See §4 trap #1 for
    why the lifecycle helper's hardcoded uvicorn_config is a footgun.
@@ -298,6 +293,7 @@ curl -fsS http://127.0.0.1:8680/health | jq '.checks, .launcher'
 ```
 
 Assert:
+
 - HTTP 200
 - `"launcher": "mcp_common.server.launcher@<version>"` field present
 - `checks.skills_signer.ok == true` (or `status == "warming_up"` during cold boot)
@@ -313,8 +309,7 @@ does not exist yet; cross-link from your PR description). Row schema:
 |---|---|---|---|---|
 | vishnu | `mahavishnu mcp start --host 127.0.0.1 --port 8680` | `[launch_with_healthcheck.sh, http://127.0.0.1:8680/health, --timeout, 180, --, .../scripts/launch_mcp.py]` | `curl -fsS http://127.0.0.1:8680/health \| jq .launcher` | green |
 
-The CLI row is preserved because `_main_cli.py` is untouched — the `mahavishnu
-mcp start` Typer command still works as a foreground dev runner.
+The CLI row is preserved because `_main_cli.py` is untouched — the `mahavishnu mcp start` Typer command still works as a foreground dev runner.
 
 ## 4. Risks and unknowns
 
@@ -345,14 +340,14 @@ the assertion fails. The patch is in scope for Phase 4a (it's a single line
 that closes the wire-up contract for this component).
 
 ### Trap #3: the cookbook's Example 2 imports `build_mahavishnu_mcp_app` which
+
 does not exist
 
 `launcher-cookbook.md:294` has:
 `from mahavishnu.mcp.server import build_mahavishnu_mcp_app`. There is no
 `build_mahavishnu_mcp_app` in this codebase. The actual surface is
 `FastMCPServer` in `mahavishnu.mcp.server_core`. The implementer must NOT
-trust the cookbook verbatim — use the import path above (`from
-mahavishnu.mcp.server_core import FastMCPServer`) and adapt the closure body
+trust the cookbook verbatim — use the import path above (`from mahavishnu.mcp.server_core import FastMCPServer`) and adapt the closure body
 to the `_RunAsyncAdapter` shape in §2.
 
 ### Trap #4: maha_app init blocks >60s on cold boot

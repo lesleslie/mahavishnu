@@ -4,10 +4,9 @@ role: historical
 topic: observability
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by: null
+superseded_by:
 blocks_on: []
 title: "Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`"
-
 ---
 
 # Initiative 1: Health/Readiness/Metrics Contract + `mahavishnu health`

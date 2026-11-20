@@ -20,9 +20,9 @@
 ### Option 1: View Dashboard (No Data)
 
 1. Open Grafana: http://localhost:3030
-1. Login with admin/admin
-1. Navigate to: http://localhost:3030/d/e24a0cf5-28cf-4bc7-82bc-46e876c7e4d9
-1. Dashboard will load but panels may show no data until datasource is configured
+2. Login with admin/admin
+3. Navigate to: http://localhost:3030/d/e24a0cf5-28cf-4bc7-82bc-46e876c7e4d9
+4. Dashboard will load but panels may show no data until datasource is configured
 
 ### Option 2: Deploy Bridge Server (Recommended)
 
@@ -33,13 +33,13 @@
    python scripts/duckdb_grafana_server.py --port 8080
    ```
 
-1. **Verify bridge server is running:**
+2. **Verify bridge server is running:**
 
    ```bash
    curl http://localhost:8080/health
    ```
 
-1. **Add JSON datasource in Grafana:**
+3. **Add JSON datasource in Grafana:**
 
    - Go to: http://localhost:3030/datasources
    - Click "Add data source"
@@ -48,7 +48,7 @@
    - Name: `DuckDB Learning`
    - Save & Test
 
-1. **Update dashboard panels:**
+4. **Update dashboard panels:**
 
    - Edit dashboard
    - Change datasource to JSON

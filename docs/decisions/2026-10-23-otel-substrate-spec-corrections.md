@@ -4,9 +4,10 @@ role: canonical
 kind: decision
 date: 2026-10-23
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: observability
 ---
+
 # Spec corrections found while building the OTLP receiver
 
 **Date:** 2026-10-23
@@ -21,7 +22,7 @@ blocking startup defect that predates this work.
 This follows `2026-10-21-otel-substrate-port-ownership.md`, which
 established that the substrate owns `:4317`/`:4318`.
 
----
+______________________________________________________________________
 
 ## 1. `mcp_common.errors` does not exist
 
@@ -119,7 +120,7 @@ design, which is the entire reason the substrate exists. Alloy is
 metrics-only now. Backup at
 `/usr/local/etc/grafana-alloy/config.alloy.bak-pre-akosha-cutover`.
 
----
+______________________________________________________________________
 
 ## Producer repointing is a no-op
 

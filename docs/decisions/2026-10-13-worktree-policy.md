@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-13
 last_reviewed: 2026-10-13
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: worktree-management
 ---
@@ -21,7 +21,7 @@ together govern Mahavishnu worktree lifecycle:
 Each section preserves the original content verbatim. Cross-references
 between the three are unchanged.
 
----
+______________________________________________________________________
 
 ## 1. Worktree Cleanup Policy (formerly `worktree-cleanup-policy.md`)
 
@@ -29,7 +29,7 @@ between the three are unchanged.
 
 ## Context
 
-The 2026-09-07 sweep of 31 active Bodai repos found 117 extra worktrees (108 non-main in 20 of 31 repos; zero `[gone]` branches). 86 were removed, 3 were preserved (2 <9d `agent-*` candidates + 1 `agent-a894dd931068d8836` locked by live Claude PID 74005). The cleanup made tier-rubric + salvage + lock + live-PID decisions in-line; this doc codifies them.
+The 2026-09-07 sweep of 31 active Bodai repos found 117 extra worktrees (108 non-main in 20 of 31 repos; zero `[gone]` branches). 86 were removed, 3 were preserved (2 \<9d `agent-*` candidates + 1 `agent-a894dd931068d8836` locked by live Claude PID 74005). The cleanup made tier-rubric + salvage + lock + live-PID decisions in-line; this doc codifies them.
 
 Five existing decisions touch worktree policy: `session-worktree-defaults.md` (Rule 2: never auto-remove), `worktree-autoremove-policy.md` (Rule 2 amendment + Rule 4: --force-reason for dirty merged), `worktree-autoremove-v4-followup.md` (draft, NOT a permission grant), `2026-08-28-cross-repo-fanout-cwd-isolation.md` (cross-repo fanout cleanup), `mahavishnu-tool-preference-policy.md` (unrelated). None address today's findings.
 
@@ -37,7 +37,7 @@ Five existing decisions touch worktree policy: `session-worktree-defaults.md` (R
 
 This doc is **additive**. The five existing decisions stay intact. Cross-references are bidirectional: see § Cross-references for the back-links added in the same commit.
 
----
+______________________________________________________________________
 
 ## Decision rule
 
@@ -123,7 +123,7 @@ What NOT to do:
 
 > **Note on the back-link target list**: `mahavishnu-tool-preference-policy.md` (tool-steering channels) is intentionally not cross-referenced — it relates to tool-docstring marketing copy, not to worktree lifecycle. (Per plan amendment F43.)
 
----
+______________________________________________________________________
 
 ## 2. Worktree Auto-Remove Policy (formerly `worktree-autoremove-policy.md`)
 
@@ -136,6 +136,7 @@ The original Rule 2 ("Never auto-removes worktrees") is hereby amended to add th
 > "...EXCEPT via the `mahavishnu worktree prune-merged` CLI, which is permitted to remove *merged* worktrees when explicitly invoked by the user. SessionEnd hooks and cron automation are NOT permitted under this amendment; they require a separate decision."
 
 The scope of this amendment:
+
 - Permits: explicit user invocation of `mahavishnu worktree prune-merged`
 - Permits: manual removal of merged worktrees via the existing `mahavishnu worktree remove` command
 - Excludes: any SessionEnd automation
@@ -193,7 +194,7 @@ cron, or other unattended invocation. The amended rule is recorded in
   `.claude/decisions/worktree-autoremove-v4-followup.md`
 - **See also**: [worktree-cleanup-policy.md] — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)
 
----
+______________________________________________________________________
 
 ## 3. Worktree Auto-Remove v4 Follow-up (formerly `worktree-autoremove-v4-followup.md`)
 
@@ -291,10 +292,11 @@ the prune commands should be augmented (not replaced) with:
 **Draft.** This doc does NOT modify the prohibition in
 `worktree-autoremove-policy.md`. To activate any automation,
 a **new** decision must be written that:
+
 - supersedes this doc with a final-ratified status
 - adds explicit acceptance criteria (gating, scope, rate limits)
 - ships the prerequisite `RemoteWorktreeProvider` production-ready
 
----
+______________________________________________________________________
 
 **See also**: [worktree-cleanup-policy.md] — tier rubric, salvage procedure, lock + live-PID semantics (2026-09-07)

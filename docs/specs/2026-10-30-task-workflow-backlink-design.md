@@ -4,10 +4,11 @@ role: implementation
 kind: spec
 date: 2026-10-30
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: task-workflow-backlink
 title: Task → Workflow Back-Link Contract (design)
 ---
+
 # Task → Workflow Back-Link Contract (design)
 
 **Date:** 2026-10-30
@@ -17,7 +18,7 @@ title: Task → Workflow Back-Link Contract (design)
 `docs/specs/.archive/2026-09-29-task-system-design.md` (line 164) and the
 `docs/specs/2026-10-02-bodai-task-system-v1.1.md` back-link wording.
 
----
+______________________________________________________________________
 
 ## 1. The problem
 
@@ -61,7 +62,7 @@ The contract below fixes the field channel, the authorization, the dispatch targ
 the wiring — because fixing only the field channel would leave a contract that is
 correct and unreachable.
 
----
+______________________________________________________________________
 
 ## 2. The contract
 
@@ -229,7 +230,7 @@ passes the two bindings it was designed to accept.
 C9 is what makes this matrix real rather than theoretical: today the sweeper that is
 supposed to consume the step-3 orphan has no client.
 
----
+______________________________________________________________________
 
 ## 3. Non-goals
 
@@ -266,7 +267,7 @@ supposed to consume the step-3 orphan has no client.
   operator**, never by an agent (`feedback-mcp-common-version-bump-is-user`).
 - Push is user-controlled. Nothing in this work is pushed without explicit approval.
 
----
+______________________________________________________________________
 
 ## 6. What "done" looks like
 
@@ -280,7 +281,7 @@ supposed to consume the step-3 orphan has no client.
    the task survives a session-buddy restart with the link intact.
 6. The sweeper skips an already-linked orphan and re-links an unlinked one exactly once.
 
----
+______________________________________________________________________
 
 ## 7. Revisions (2026-10-30, after independent review)
 

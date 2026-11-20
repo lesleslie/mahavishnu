@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-10-29
-superseded_by: null
+superseded_by:
 blocks_on: []
 decision_date: 2026-04-26
 topic: routing-composition
@@ -34,9 +34,9 @@ Mahavishnu uses two independent routers that compose at task dispatch time:
 ## How They Compose
 
 1. The caller (UnifiedOrchestrator, CLI, or pool) classifies a task as a `TaskType` (e.g., `AI_TASK`, `WORKFLOW`, `RAG_QUERY`).
-1. The Task Router resolves the adapter preference order for that `TaskType`.
-1. The selected adapter's worker classifies the task prompt as a `TaskCategory` (e.g., `CODE_GENERATION`, `REASONING`).
-1. The Model Router maps the `TaskCategory` to a model ID for the worker's provider.
+2. The Task Router resolves the adapter preference order for that `TaskType`.
+3. The selected adapter's worker classifies the task prompt as a `TaskCategory` (e.g., `CODE_GENERATION`, `REASONING`).
+4. The Model Router maps the `TaskCategory` to a model ID for the worker's provider.
 
 Neither router imports the other. The composition is implicit: the Task Router selects the engine, and the engine's worker selects the model.
 

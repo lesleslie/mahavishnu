@@ -4,9 +4,10 @@ role: canonical
 kind: decision
 date: 2026-10-11
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: adapter-architecture
 ---
+
 # 2026-10-11 — Prefect adapter fixes + `mahavishnu demo|launchd` CLI framework
 
 ## Decision rule
@@ -20,12 +21,12 @@ Three recurring patterns from this PR that future work should respect:
    on every 3.x touch — pin with a test that asserts the import path
    (memory: `prefect-3-8-sdk-shape.md`).
 
-1. **Bug C fixes stay scoped to `_api_key_env` — never `__init__` or
+2. **Bug C fixes stay scoped to `_api_key_env` — never `__init__` or
    `shutdown`.** Reason: `os.environ` is process-global; mutation in
    `__init__` leaks across pytest-xdist workers. Keep the swap in the
    existing scoped contextmanager.
 
-1. **Revert-resistant CLI wire-up requires three anti-revert markers,
+3. **Revert-resistant CLI wire-up requires three anti-revert markers,
    all must move together:** (a) the new CLI module's docstring
    references the wire-up, (b) `_main_cli.py` carries a
    `=== <NAME> SUB-COMMANDS ===` comment block, (c) a meta-test

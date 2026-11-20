@@ -38,13 +38,13 @@ Before adding an agent to the curated catalog, apply this test in order:
    `find ~/.claude/plugins/cache/mycelium -name "*.md" -path "*/agents/*" | xargs -I{} basename {} .md | sed 's/^[0-9]*-[a-z]*-//'`
    If yes → **do not add**; the mycelium version will be available automatically.
 
-1. **Is it Bodai-stack relevant?**
+2. **Is it Bodai-stack relevant?**
    Bodai primary stack: Python 3.13, FastMCP, Oneiric, Starlette, FastBlocks, HTMX, HTMY,
    Jinja2, PostgreSQL, Redis, Rust/PyO3, pytest/Hypothesis, Rich/Textual.
    Bodai components: Mahavishnu, Akosha, Session-Buddy, Crackerjack, Oneiric, mcp-common.
    If the agent serves none of these directly → **archive or skip**.
 
-1. **Does it serve non-Bodai repos that Bodai maintains?**
+3. **Does it serve non-Bodai repos that Bodai maintains?**
    Accepted exceptions: `pwa-specialist`, `pycharm-plugin-creator`, `vitest-specialist`,
    `web-components-specialist`, `css-architect`, `accessibility-auditor`.
    If a new agent fits this category, document it here.

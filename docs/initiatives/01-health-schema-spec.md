@@ -4,10 +4,9 @@ role: historical
 topic: observability
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by: null
+superseded_by:
 blocks_on: []
 title: "Health Schema Spec v1"
-
 ---
 
 # Health Schema Spec v1

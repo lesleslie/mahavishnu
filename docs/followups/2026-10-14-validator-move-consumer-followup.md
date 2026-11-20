@@ -4,7 +4,7 @@ role: implementation
 kind: followup
 date: 2026-10-14
 last_reviewed: 2026-10-18
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: shared-frontmatter-validator
 resolved_at: 2026-10-18
@@ -32,8 +32,7 @@ resolved_at: 2026-10-18
 >
 > Step 5 (help-text update) collapsed to a no-op across all 4 consumers:
 > the deletion team had already updated the help text in
-> `scripts/regenerate_plan_index.py` to point at `crackerjack docs
-> validate` when the mcp-common script was deleted. Only oneiric had
+> `scripts/regenerate_plan_index.py` to point at `crackerjack docs validate` when the mcp-common script was deleted. Only oneiric had
 > a residual stale comment header (line 49, "mirrors
 > `validate_document_frontmatter.py`" → "mirrors crackerjack's
 > shared frontmatter validator"), fixed in the same commit.
@@ -69,9 +68,11 @@ consumers, and verify the CLI works end-to-end on each.
 3. **Run `uv sync` to update the lock file.**
 
 4. **Smoke-test the CLI** in the consumer's working tree:
+
    ```bash
    .venv/bin/python -m crackerjack docs validate --repo-root . --vocab-path docs/schemas/topic-vocabulary-v1.md 2>&1 | tail -20
    ```
+
    The mahavishnu tree's PLAN_INDEX is post-fix (it has the
    topic vocabulary symlink at `docs/archive/topic-vocabulary-v1.md`
    pointing at `docs/schemas/topic-vocabulary-v1.md`).

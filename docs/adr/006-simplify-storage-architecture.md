@@ -27,9 +27,9 @@ topic: storage-consolidation
 The Task Orchestration Master Plan v2.0 proposed a 4-system storage architecture:
 
 1. **PostgreSQL** - Primary task data, events, projections
-1. **Akosha** - Semantic search, pattern detection, knowledge graph
-1. **Session-Buddy** - Task context, conversation history, session tracking
-1. **Redis** - Caching layer for frequent queries
+2. **Akosha** - Semantic search, pattern detection, knowledge graph
+3. **Session-Buddy** - Task context, conversation history, session tracking
+4. **Redis** - Caching layer for frequent queries
 
 ### Problems with 4-System Architecture
 
@@ -170,12 +170,12 @@ ______________________________________________________________________
 ### Positive Impacts
 
 1. **Reduced Complexity**: 60% reduction in operational complexity
-1. **Eliminated Failure Modes**: 4 systems → 2 systems = 50% fewer potential failure points
-1. **Simpler Transactions**: Saga coordinator only needs 2 steps instead of 4
-1. **Easier Testing**: Integration tests mock 2 systems instead of 4
-1. **Faster Development**: Phase 1 timeline reduced by 2 weeks
-1. **Better Performance**: PostgreSQL pgvector is faster than cross-system calls
-1. **Consistent Data**: Single source of truth eliminates synchronization issues
+2. **Eliminated Failure Modes**: 4 systems → 2 systems = 50% fewer potential failure points
+3. **Simpler Transactions**: Saga coordinator only needs 2 steps instead of 4
+4. **Easier Testing**: Integration tests mock 2 systems instead of 4
+5. **Faster Development**: Phase 1 timeline reduced by 2 weeks
+6. **Better Performance**: PostgreSQL pgvector is faster than cross-system calls
+7. **Consistent Data**: Single source of truth eliminates synchronization issues
 
 ### Negative Impacts
 
@@ -183,12 +183,12 @@ ______________________________________________________________________
 
    - **Mitigation**: Monitor Session-Buddy health and alert on high error rates
 
-1. **No Caching Layer**: All queries hit PostgreSQL
+2. **No Caching Layer**: All queries hit PostgreSQL
 
    - **Mitigation**: PostgreSQL connection pooling + query optimization
    - **Future**: Add Redis in Phase 7 if performance monitoring shows bottleneck
 
-1. **Single Database Scaling**: Must scale PostgreSQL instead of scaling systems independently
+3. **Single Database Scaling**: Must scale PostgreSQL instead of scaling systems independently
 
    - **Mitigation**: PostgreSQL scales horizontally with read replicas
    - **Mitigation**: Connection pooling reduces connection overhead
@@ -201,14 +201,14 @@ ______________________________________________________________________
    - **Mitigation**: Fire-and-forget pattern means task succeeds anyway
    - **Mitigation**: Monitor Session-Buddy uptime and alert on downtime
 
-1. **PostgreSQL Becomes Bottleneck**: Single database for all operations
+2. **PostgreSQL Becomes Bottleneck**: Single database for all operations
 
    - **Severity**: Low
    - **Mitigation**: PostgreSQL scales to 10K+ concurrent connections
    - **Mitigation**: Read replicas for read-heavy operations
    - **Mitigation**: Add Redis cache in Phase 7 if monitoring proves necessity
 
-1. **No Semantic Search Separation**: pgvector shares resources with OLTP queries
+3. **No Semantic Search Separation**: pgvector shares resources with OLTP queries
 
    - **Severity**: Low
    - **Mitigation**: HNSW indexing is O(log n), very fast

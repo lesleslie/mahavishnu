@@ -76,16 +76,16 @@ evidence. Record as many of these as apply to the case:
 
 - [ ] The coherent claim and its alleged trigger (Step 1, written out)
 - [ ] End-to-end data flow from attacker-controlled input to the sensitive
-      operation — or proof that no such flow exists
+  operation — or proof that no such flow exists
 - [ ] Caller-imposed validation or constraints that break the flow
 - [ ] Threat-model and privilege assumptions the flow depends on
 - [ ] Architectural protections and sandboxing boundaries in the path
 - [ ] Proof of attacker control, where the claim depends on it
 - [ ] Adversarial review that tests the dismissal rationale itself — ask what
-      would have to be true for the finding to be real, then check whether it
-      is
+  would have to be true for the finding to be real, then check whether it
+  is
 - [ ] Bug-class-specific reasoning (for example, why a deserialization path
-      is not reachable, or why the authz check is not bypassable)
+  is not reachable, or why the authz check is not bypassable)
 
 Severity impressions, code-pattern matching, and "this looks fine" are not
 evidence and never justify a dismissal.

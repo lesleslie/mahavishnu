@@ -26,10 +26,10 @@ Use this workflow to plan, execute, and validate database changes with rollback 
 ## Workflow
 
 1. Validate backups, staging parity, and migration tooling.
-1. Choose the smallest safe migration strategy.
-1. Run the migration in stages with validation after each step.
-1. Confirm data integrity and performance before broad rollout.
-1. Keep rollback steps ready and rehearsed.
+2. Choose the smallest safe migration strategy.
+3. Run the migration in stages with validation after each step.
+4. Confirm data integrity and performance before broad rollout.
+5. Keep rollback steps ready and rehearsed.
 
 ## Output
 

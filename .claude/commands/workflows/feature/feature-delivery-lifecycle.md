@@ -8,7 +8,7 @@ id: 01a1e928ac4572c8876d5501da2034ef
 category: workflow
 description: Use this workflow for end-to-end delivery of a feature from discovery to adoption monitoring.
 related_tools:
-- docs/plans/TEMPLATE.md
+  - docs/plans/TEMPLATE.md
 ---
 
 ______________________________________________________________________
@@ -27,11 +27,11 @@ Use this workflow for end-to-end delivery of a feature from discovery to adoptio
 ## Workflow
 
 1. Define the product outcome and success metrics.
-1. Design the solution and break it into implementable work.
-1. Wiring — wire the components and verify integration end-to-end.
-1. Validate with the right tests and checks.
-1. Launch with enablement and rollback readiness.
-1. Monitor adoption and capture follow-up actions.
+2. Design the solution and break it into implementable work.
+3. Wiring — wire the components and verify integration end-to-end.
+4. Validate with the right tests and checks.
+5. Launch with enablement and rollback readiness.
+6. Monitor adoption and capture follow-up actions.
 
 ### Wiring Checklist
 

@@ -70,13 +70,13 @@ docker exec otel-collector cat /etc/otel-collector-config.yaml | grep -A 3 "jaeg
    docker-compose restart jaeger
    ```
 
-1. **Check Jaeger OTLP receiver:**
+2. **Check Jaeger OTLP receiver:**
 
    ```bash
    curl -X POST http://localhost:4318/v1/traces -d '{}'
    ```
 
-1. **Verify exporter configuration:**
+3. **Verify exporter configuration:**
 
    ```yaml
    exporters:
@@ -86,7 +86,7 @@ docker exec otel-collector cat /etc/otel-collector-config.yaml | grep -A 3 "jaeg
          insecure: true
    ```
 
-1. **Check network connectivity:**
+4. **Check network connectivity:**
 
    ```bash
    docker exec otel-collector nc -zv jaeger 14250
@@ -132,7 +132,7 @@ docker exec otel-collector wget -O- http://localhost:4317
    OTLPSpanExporter(endpoint="https://localhost:4317")  # Should be http://
    ```
 
-1. **Verify port mapping:**
+2. **Verify port mapping:**
 
    ```yaml
    services:
@@ -141,7 +141,7 @@ docker exec otel-collector wget -O- http://localhost:4317
          - "4317:4317"  # Must be mapped
    ```
 
-1. **Check firewall:**
+3. **Check firewall:**
 
    ```bash
    # macOS
@@ -151,7 +151,7 @@ docker exec otel-collector wget -O- http://localhost:4317
    sudo iptables -L -n | grep 4317
    ```
 
-1. **For Docker networking:**
+4. **For Docker networking:**
 
    ```python
    # Use service name when both are in Docker
@@ -197,7 +197,7 @@ docker logs prometheus 2>&1 | grep -i "remote"
        endpoint: 'http://prometheus:9090/api/v1/write'  # Must be /api/v1/write
    ```
 
-1. **Check Prometheus is configured to accept remote write:**
+2. **Check Prometheus is configured to accept remote write:**
 
    ```yaml
    prometheus:
@@ -205,7 +205,7 @@ docker logs prometheus 2>&1 | grep -i "remote"
        - '--enable-feature=remote-write-receiver'
    ```
 
-1. **Manually test metric ingestion:**
+3. **Manually test metric ingestion:**
 
    ```bash
    cat <<EOF | curl -X POST http://localhost:9090/api/v1/write --data-binary @-
@@ -214,7 +214,7 @@ docker logs prometheus 2>&1 | grep -i "remote"
    EOF
    ```
 
-1. **Check for metric name conflicts:**
+4. **Check for metric name conflicts:**
 
    ```bash
    # List all metrics
@@ -255,7 +255,7 @@ docker logs elasticsearch 2>&1 | tail -50
    curl -X PUT http://localhost:9200/mahavishnu-logs-$(date +%Y.%m.%d)
    ```
 
-1. **Check exporter configuration:**
+2. **Check exporter configuration:**
 
    ```yaml
    exporters:
@@ -265,7 +265,7 @@ docker logs elasticsearch 2>&1 | tail -50
        index: 'mahavishnu-logs'  # Without date pattern
    ```
 
-1. **Verify Elasticsearch has no security blocking:**
+3. **Verify Elasticsearch has no security blocking:**
 
    ```yaml
    elasticsearch:
@@ -273,7 +273,7 @@ docker logs elasticsearch 2>&1 | tail -50
        - xpack.security.enabled=false  # Must be disabled for dev
    ```
 
-1. **Test index creation:**
+4. **Test index creation:**
 
    ```bash
    curl -X PUT http://localhost:9200/test-index
@@ -317,7 +317,7 @@ docker exec otel-collector cat /etc/otel-collector-config.yaml | grep -A 10 "fil
          - /var/log/mahavishnu/sessions:/var/log/mahavishnu/sessions:ro
    ```
 
-1. **Check file format:**
+2. **Check file format:**
 
    ```bash
    # Must be JSON for JSON parser
@@ -325,14 +325,14 @@ docker exec otel-collector cat /etc/otel-collector-config.yaml | grep -A 10 "fil
    # Expected: {"timestamp": "...", "message": "..."}
    ```
 
-1. **Fix file permissions:**
+3. **Fix file permissions:**
 
    ```bash
    sudo chmod 644 /var/log/mahavishnu/sessions/*.log
    sudo chown $(whoami) /var/log/mahavishnu/sessions/*.log
    ```
 
-1. **Use correct operators in config:**
+4. **Use correct operators in config:**
 
    ```yaml
    operators:
@@ -377,7 +377,7 @@ curl http://localhost:8888/metrics | grep memory_limiter
        send_batch_size: 5000  # Decrease from 10000
    ```
 
-1. **Tighten memory limiter:**
+2. **Tighten memory limiter:**
 
    ```yaml
    memory_limiter:
@@ -386,7 +386,7 @@ curl http://localhost:8888/metrics | grep memory_limiter
      spike_limit_percentage: 20  # Decrease from 25
    ```
 
-1. **Increase container memory:**
+3. **Increase container memory:**
 
    ```yaml
    services:
@@ -397,7 +397,7 @@ curl http://localhost:8888/metrics | grep memory_limiter
              memory: 1G  # Increase from default
    ```
 
-1. **Enable sending queue:**
+4. **Enable sending queue:**
 
    ```yaml
    exporters:
@@ -443,7 +443,7 @@ docker logs otel-collector 2>&1 | grep -i "resource"
    OTLPSpanExporter(endpoint="http://localhost:4321")
    ```
 
-1. **Set resource attributes:**
+2. **Set resource attributes:**
 
    ```python
    resource = Resource.create(
@@ -455,7 +455,7 @@ docker logs otel-collector 2>&1 | grep -i "resource"
    )
    ```
 
-1. **Use attributes processor:**
+3. **Use attributes processor:**
 
    ```yaml
    processors:
@@ -499,14 +499,14 @@ watch -n 1 'curl -s http://localhost:8888/metrics | grep operations_total'
        timeout: 1s  # Decrease from 5s for faster export
    ```
 
-1. **Decrease batch size:**
+2. **Decrease batch size:**
 
    ```yaml
    batch:
      send_batch_size: 1000  # Export more frequently
    ```
 
-1. **Use debug logging to verify:**
+3. **Use debug logging to verify:**
 
    ```yaml
    exporters:
@@ -705,7 +705,7 @@ If you're still stuck:
    docker-compose logs -f --tail=100 otel-collector
    ```
 
-1. **Enable debug logging:**
+2. **Enable debug logging:**
 
    ```yaml
    exporters:
@@ -713,7 +713,7 @@ If you're still stuck:
        loglevel: debug
    ```
 
-1. **Verify configuration:**
+3. **Verify configuration:**
 
    ```bash
    docker run --rm -v $(pwd)/config:/config \
@@ -722,12 +722,12 @@ If you're still stuck:
      --validate
    ```
 
-1. **Check GitHub issues:**
+4. **Check GitHub issues:**
 
    - [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector/issues)
    - [OpenTelemetry Python](https://github.com/open-telemetry/opentelemetry-python/issues)
 
-1. **Community resources:**
+5. **Community resources:**
 
    - [OpenTelemetry Slack](https://cloud-native.slack.com/archives/CJFCJHG4Q)
    - [CNCF Discourse](https://discuss.cncf.io/)

@@ -7,7 +7,7 @@ owner: les
 topic: bodai-tui-contract
 scope: bodai-tui-shell
 purpose: capture the AdminShell reuse pattern, the bodai-TUI-as-aggregator pattern, and the per-component vs cross-component TUI split for the bodai/mahavishnu surfaces
-superseded_by: null
+superseded_by:
 ---
 
 # Bodai TUI Contract
@@ -18,10 +18,10 @@ The 2026-08-25 ultracode CLI audit split out Phase 6 (TUI verification +
 polish) into its own plan: `docs/plans/2026-08-25-bodai-tui-shell-surface.md`.
 The plan verifies three surfaces:
 
-* `bodai shell` — IPython REPL pre-loaded with the Bodai ecosystem
+- `bodai shell` — IPython REPL pre-loaded with the Bodai ecosystem
   config + health probes + per-component variables.
-* `bodai dashboard` — Textual TUI aggregating cross-component health.
-* `mahavishnu monitor watch` — Textual TUI showing mahavishnu's
+- `bodai dashboard` — Textual TUI aggregating cross-component health.
+- `mahavishnu monitor watch` — Textual TUI showing mahavishnu's
   internal pools and workers.
 
 After Phase B-1 verification, three patterns emerged that need pinning
@@ -35,10 +35,10 @@ Every Core 7 component that exposes an IPython admin shell MUST
 subclass `oneiric.shell.core.AdminShell` rather than rolling its own.
 The base class provides:
 
-* `IPython.terminal.embed.InteractiveShellEmbed` construction.
-* `_build_namespace()`, `_register_magics()`, `_get_banner()` hooks
+- `IPython.terminal.embed.InteractiveShellEmbed` construction.
+- `_build_namespace()`, `_register_magics()`, `_get_banner()` hooks
   subclasses override to pre-load their component's domain objects.
-* The cross-shell UX standardization (uniform `--mode`, `--json`,
+- The cross-shell UX standardization (uniform `--mode`, `--json`,
   `--confirm` flags) is Plan B future; do not preempt it.
 
 `bodai shell` is the umbrella: it does NOT subclass AdminShell itself
@@ -79,11 +79,11 @@ internal pool view inside a higher-level orchestrator.
 
 ## Consequences
 
-* Plan B (cross-shell UX standardization) can land later without
+- Plan B (cross-shell UX standardization) can land later without
   rewriting the three surfaces — they're already split correctly.
-* A new component joins `bodai dashboard` automatically via the
+- A new component joins `bodai dashboard` automatically via the
   ecosystem config; no dashboard code changes.
-* `mahavishnu monitor watch` lives in `mahavishnu/cli/monitoring_cli.py`
+- `mahavishnu monitor watch` lives in `mahavishnu/cli/monitoring_cli.py`
   as `@app.command(name="watch")` (not `tui`); the command name
   reflects its role in the `monitor` namespace, not its UI paradigm.
 
@@ -93,11 +93,11 @@ Active. Last reviewed 2026-10-12 during the Phase B-1 polish pass.
 
 ## Cross-references
 
-* Plan: `docs/plans/2026-08-25-bodai-tui-shell-surface.md`
-* AdminShell base: `oneiric/oneiric/shell/core.py`
-* `bodai shell` impl: `bodai/admin/shell.py`
-* `bodai dashboard` impl: `bodai/tui/dashboard.py`
-* `mahavishnu monitor watch` impl: `mahavishnu/cli/monitoring_cli.py`
-* `mahavishnu` MonitorApp impl: `mahavishnu/tui/monitor_app.py`
-* Canonical status vocabulary: `mahavishnu/core/ecosystem_status.py`
-* Bodai health aggregator: `bodai/core/health.py::check_all()`
+- Plan: `docs/plans/2026-08-25-bodai-tui-shell-surface.md`
+- AdminShell base: `oneiric/oneiric/shell/core.py`
+- `bodai shell` impl: `bodai/admin/shell.py`
+- `bodai dashboard` impl: `bodai/tui/dashboard.py`
+- `mahavishnu monitor watch` impl: `mahavishnu/cli/monitoring_cli.py`
+- `mahavishnu` MonitorApp impl: `mahavishnu/tui/monitor_app.py`
+- Canonical status vocabulary: `mahavishnu/core/ecosystem_status.py`
+- Bodai health aggregator: `bodai/core/health.py::check_all()`

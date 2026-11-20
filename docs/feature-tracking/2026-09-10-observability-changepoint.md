@@ -73,20 +73,20 @@ gate was not merely undocumented, it was unreachable:
 ## Wiring checklist
 
 - [x] Entry point registered: `ObservabilityManager._evaluate_change_point`,
-      `_evaluate_3sigma` (`mahavishnu/core/observability.py`)
+  `_evaluate_3sigma` (`mahavishnu/core/observability.py`)
 - [x] Trigger path identified: `MetricSampler` (60s cadence) →
-      CUSUMDetector / 3-sigma sliding window
+  CUSUMDetector / 3-sigma sliding window
 - [x] Returns / state updates land in expected destination:
-      OTel span `mahavishnu.observability.drift_detected`, log
-      `drift_detected`, log `three_sigma_anomaly`
+  OTel span `mahavishnu.observability.drift_detected`, log
+  `drift_detected`, log `three_sigma_anomaly`
 - [x] End-to-end smoke check documented:
-      `pytest tests/integration/observability/`
+  `pytest tests/integration/observability/`
 - [x] Observability hook in place: OTel span + structured logs
 - [x] Rollback signal defined: env-var
-      `MAHAVISHNU_CHANGEPOINT__ENABLED=false`; `changepoint.enabled: false` in YAML
+  `MAHAVISHNU_CHANGEPOINT__ENABLED=false`; `changepoint.enabled: false` in YAML
 - [x] Gate queryable: `changepoint_evaluations_total` reaches the
-      substrate (`:8682/metrics`) and Prometheus, so the §7 stage-1
-      gate reads a real value instead of a missing series (2026-11-07)
+  substrate (`:8682/metrics`) and Prometheus, so the §7 stage-1
+  gate reads a real value instead of a missing series (2026-11-07)
 
 ## Built (yes/no)
 
@@ -147,29 +147,29 @@ built). Regression coverage:
 
 ## Trigger path
 
-* Driver: `ObservabilityManager.start_change_point_tick_loop` — an
+- Driver: `ObservabilityManager.start_change_point_tick_loop` — an
   `asyncio.Task` running at `changepoint.sampler_cadence_seconds`
   (default 60s). Started and stopped by the MCP server lifespan.
-* Entry point: `ObservabilityManager._evaluate_change_point(metric_name, value)` and
+- Entry point: `ObservabilityManager._evaluate_change_point(metric_name, value)` and
   `ObservabilityManager._evaluate_3sigma(metric_name, value)`
-* Sample source: `MetricSampler` (ring buffer, default 7200 samples
+- Sample source: `MetricSampler` (ring buffer, default 7200 samples
   at 60s cadence; 2-hour window) — fed *by* the entry point above.
-* Detector factory: lazy on first call, cached on
+- Detector factory: lazy on first call, cached on
   `self._changepoint_detector`. Uses
   `changepoint.{slack, threshold, detector}` from config.
-* Severity classifier: `minor` (< 2×threshold), `moderate`
+- Severity classifier: `minor` (< 2×threshold), `moderate`
   (2×-4×), `critical` (≥ 4×).
 
 ## Integration point
 
-* OTel span `mahavishnu.observability.drift_detected` (when
+- OTel span `mahavishnu.observability.drift_detected` (when
   detector fires)
-* Structured WARNING log line on the same shape
-* `three_sigma_anomaly` log line (when reference detector fires
+- Structured WARNING log line on the same shape
+- `three_sigma_anomaly` log line (when reference detector fires
   in parallel; default config)
-* New durable key-value table `mahavishnu.observability.metric_samples` (when
+- New durable key-value table `mahavishnu.observability.metric_samples` (when
   Phase D follow-on lands; for now the sampler is in-process only)
-* Runbook: `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` (operators
+- Runbook: `docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md` (operators
   cross-reference this when `drift_detected` fires)
 
 ## End-to-end check
@@ -230,17 +230,17 @@ outage, not a quiet period. The full reading table is in the runbook
 
 ### Per-stage gating (all must hold to advance)
 
-* `mahavishnu.observability.drift_detected_total` event rate
+- `mahavishnu.observability.drift_detected_total` event rate
   does NOT exceed 2 per 10,080 samples (1 week at 60s cadence)
   on production quiet traffic — the §7 spec v3.1 gate.
-* `three_sigma_miss_rate` is documented (we expect the 3-σ
+- `three_sigma_miss_rate` is documented (we expect the 3-σ
   reference to miss most slow-drift shifts; if it suddenly
   starts firing, that signals a real problem the change-point
   detector isn't catching).
-* No spurious drift detections that correlate with planned
+- No spurious drift detections that correlate with planned
   deployments (the runbook's "known deployment" silence rule
   applies for the first 24h after any deployment).
-* Routing latency does NOT regress by more than 1ms p99
+- Routing latency does NOT regress by more than 1ms p99
   (the detector is O(1) per sample; the budget catches
   integration regressions).
 
@@ -354,12 +354,12 @@ plan, NOT a rollback of this feature.
 
 ## Related
 
-* Plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`] §6 Phase 8
-* Library: `mahavishnu/observability/changepoint/`
-* Sampler: `mahavishnu/observability/sampler.py`
-* Runbook: [`docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`](../runbooks/MAHAVISHNU_DRIFT_DETECTION.md)
-* Validation: [`docs/audits/2026-09-10-changepoint-validation.md`](../audits/2026-09-10-changepoint-validation.md)
-* Library docs: [`docs/observability/CHANGEPOINT_VALIDATION.md`](../observability/CHANGEPOINT_VALIDATION.md)
+- Plan: \[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`\] §6 Phase 8
+- Library: `mahavishnu/observability/changepoint/`
+- Sampler: `mahavishnu/observability/sampler.py`
+- Runbook: [`docs/runbooks/MAHAVISHNU_DRIFT_DETECTION.md`](../runbooks/MAHAVISHNU_DRIFT_DETECTION.md)
+- Validation: [`docs/audits/2026-09-10-changepoint-validation.md`](../audits/2026-09-10-changepoint-validation.md)
+- Library docs: [`docs/observability/CHANGEPOINT_VALIDATION.md`](../observability/CHANGEPOINT_VALIDATION.md)
 
 ## Session-Buddy
 

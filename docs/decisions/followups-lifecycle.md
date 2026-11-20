@@ -31,14 +31,14 @@ consistent.
 1. `docs/followups/README.md` is the index and the single source of truth
    for each note's verified state. Update it whenever a note is added,
    resolved, or archived.
-1. A `**Status:** Resolved` line should cite the fix location and a named
+2. A `**Status:** Resolved` line should cite the fix location and a named
    regression test. Treat an uncited "Resolved" as unverified.
-1. When a note is genuinely resolved, `git mv` it into
+3. When a note is genuinely resolved, `git mv` it into
    `docs/followups/.archive/` — never delete it. The record must survive a
    clean checkout, so `.gitignore` re-includes that path
    (`!docs/followups/.archive/` and `!docs/followups/.archive/**`) despite
    the repo-wide `.archive/` ignore.
-1. Move the note's row from the Active table to the Archived table in the
+4. Move the note's row from the Active table to the Archived table in the
    README at the same time.
 
 ## Status <!-- legacy status: Active — see YAML frontmatter -->

@@ -5,7 +5,7 @@ date: 2026-09-06
 last_reviewed: 2026-09-14
 owner: mahavishnu
 role: canonical
-plan: null
+plan:
 triggered_by: scripts/audit_orphans.py default run on 2026-09-06; 2026-09-14 audit re-run after settle-semantic-merge Phase 1 rename closed the residual sync merge symbol
 related: docs/decisions/wire-up-contract.md
 progress: "5/5 resolved (merge_three_way_sync renamed to _merge_three_way_sync_internal at mahavishnu/settle/merge.py:792 with deprecation shim at line 855 — public name removed from __all__ per deprecation contract; persist_initial + load_record_sync wired via mahavishnu/cli/settle_cli.py; check_prerequisites deleted with mahavishnu/terminal/backends.py module; CloudWorker imported into mahavishnu/workers/__init__.py and listed in __all__ at lines 26, 64-65)"
@@ -89,6 +89,7 @@ the check has no upstream consumer. Per wire-up contract: scaffolding for
 a removed module must be removed.
 
 Deleted:
+
 - `mahavishnu/terminal/backends.py` (the module — contained `PtyBackend`,
   `BUILTIN_BACKENDS`, `check_prerequisites`)
 - `tests/unit/terminal/test_backends.py`

@@ -4,7 +4,7 @@ role: canonical
 kind: plan
 date: 2026-10-15
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 topic: lint-coverage-gap
 title: "BLE001 Triage and Per-Site Refactor — close the coverage gap behind the durable defense"
 ---
@@ -48,8 +48,7 @@ Each of the 753 `# noqa: BLE001, RUF100` markers is replaced with one of:
   `except` is dead code (see the `publisher.py` discovery below), the
   entire block is removed.
 
-The gate is the demonstrable signal: after this plan, the only `# noqa:
-BLE001` left in `mahavishnu/` is on lines whose justification is a
+The gate is the demonstrable signal: after this plan, the only `# noqa: BLE001` left in `mahavishnu/` is on lines whose justification is a
 named contract. The post-refactor ruff count of `# noqa: BLE001` lines
 in `mahavishnu/` is target ≤ 60 (current 753; the residual 60-or-fewer
 is the legitimate top-level-handler subset). Test code follows the
@@ -62,8 +61,7 @@ project's existing `tests/**/*.py` per-file-ignore convention.
    suppression with named contract) or **needs-refactor** (replace
    with a specific catch or re-raise).
 2. **Per-site refactor**: convert every "needs-refactor" site to a
-   specific catch (or remove the dead block). Net reduction in `# noqa:
-   BLE001` count ≥ 80 % (target: 753 → ≤ 150; stretch: ≤ 60).
+   specific catch (or remove the dead block). Net reduction in `# noqa: BLE001` count ≥ 80 % (target: 753 → ≤ 150; stretch: ≤ 60).
 3. **Pattern tooling**: ship a `crackerjack` hook (or pyproject rule)
    that fails new BLE001 sites on `main` without a `TICKET-` prefix in
    the justification, so the count cannot regress.
@@ -105,8 +103,7 @@ Commits on `origin/main` (verified 2026-10-15 ~18:00 UTC):
 - `df418f54` docs(plans): resolve Cluster 3 conflict
 - 3 more cluster-resolution commits pushed in the same batch
 
-Empirical proof (2026-10-15 session): `ruff check --select RUF100
---fix --unsafe-fixes` (the crackerjack fast_hooks command that stripped
+Empirical proof (2026-10-15 session): `ruff check --select RUF100 --fix --unsafe-fixes` (the crackerjack fast_hooks command that stripped
 753 noqas in the prior run) now strips **0** lines.
 
 ### 4.2 The underlying pattern is unchanged
@@ -130,10 +127,8 @@ pre-defense run:
 
 ### 4.3 A second failure mode: dead-code deletion
 
-During the defense application, deleting an "unused" `logger =
-get_logger` line in `mahavishnu/core/events/publisher.py` and
-`mahavishnu/core/events/confidence_ceiling.py` introduced `F821
-Undefined name 'logger'` regressions. The lesson: "comment says it's
+During the defense application, deleting an "unused" `logger = get_logger` line in `mahavishnu/core/events/publisher.py` and
+`mahavishnu/core/events/confidence_ceiling.py` introduced `F821 Undefined name 'logger'` regressions. The lesson: "comment says it's
 unused" is not the same as "the symbol is unused" — the
 `_capture_singleton` annotation about "code never reads it" referred
 to a different line. Future triage must verify with `grep -n` or
@@ -229,11 +224,9 @@ Categorization rules:
   `no-bodai-prefix-in-config-names` rule).
 - **Demonstrable by**: `wc -l docs/ble001-triage.md` ≥ 753; the file
   has columns matching the table above; no row is left as "TODO".
-- **Rollback signal**: if `grep '# noqa: BLE001' mahavishnu/ -r |
-  wc -l` exceeds 753 between Phase 1 and Phase 2, abort Phase 2 and
+- **Rollback signal**: if `grep '# noqa: BLE001' mahavishnu/ -r | wc -l` exceeds 753 between Phase 1 and Phase 2, abort Phase 2 and
   re-derive the triage from `git log -p -- mahavishnu/`.
-- **Observability added**: `python scripts/audit_orphans.py --kind
-  noqa-BLE001` (extend the script) emits the 753-site list each
+- **Observability added**: `python scripts/audit_orphans.py --kind noqa-BLE001` (extend the script) emits the 753-site list each
   nightly; a CI failure fires if the count is > the previous
   day's count (regression detector).
 - **Fulfils**: `REQ-LINT-001`, `REQ-LINT-002`.
@@ -273,13 +266,11 @@ Each PR:
 2. **Returns to** the local `main` branch via squash-merge
    (per `bodai-pre-1.0-merge-policy.md`).
 3. **Demonstrable by**:
-   - `git diff main~1 main -- mahavishnu/ | grep '^-.*noqa: BLE001'
-     | wc -l` is negative (line count decreases) OR the added
+   - `git diff main~1 main -- mahavishnu/ | grep '^-.*noqa: BLE001' | wc -l` is negative (line count decreases) OR the added
      contract names match the triage.
    - `pytest -m "not slow"` passes locally.
 4. **Rollback signal**: a single PR that breaks the gate gets
-   reverted via `git revert`; the contract name and `# noqa: BLE001,
-   RUF100` pattern are unchanged.
+   reverted via `git revert`; the contract name and `# noqa: BLE001, RUF100` pattern are unchanged.
 5. **Observability added**: per-PR, the `crackerjack` gate must
    exit 0. The post-merge `git log -p` diff for the cluster is
    reviewed for "Add Exception import" lines (new exception
@@ -289,8 +280,7 @@ Each PR:
 
 - **Triggered from**: Phase 1 triage deliverable.
 - **Returns to**: the local `main` branch (one PR per cluster).
-- **Demonstrable by**: `grep -rn '# noqa: BLE001' --include='*.py'
-  mahavishnu/ | wc -l` ≤ 60 at the end of Phase 2.
+- **Demonstrable by**: `grep -rn '# noqa: BLE001' --include='*.py' mahavishnu/ | wc -l` ≤ 60 at the end of Phase 2.
 - **Rollback signal**: if any post-merge PR causes the gate to
   fail, revert that PR (squash-revert). Do not re-merge without
   first re-running the affected file's unit tests.
@@ -324,9 +314,7 @@ Implementation in `crackerjack/hooks/check_ble001_justification.py`:
 - If found, check the comment includes `TICKET-` (regex
   `TICKET-[A-Z]+-\d+`).
 - If missing, exit non-zero with the file:line and a message:
-  `BLE001 site at FILE:LINE lacks TICKET-NNN rationale — see
-  docs/plans/2026-10-15-ble001-triage-and-refactor.md §2 for the
-  contract pattern.`
+  `BLE001 site at FILE:LINE lacks TICKET-NNN rationale — see docs/plans/2026-10-15-ble001-triage-and-refactor.md §2 for the contract pattern.`
 
 **Integration Contract**:
 

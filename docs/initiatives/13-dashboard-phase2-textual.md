@@ -4,10 +4,9 @@ role: historical
 topic: observability
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by: null
+superseded_by:
 blocks_on: []
 title: "Initiative 13: Dashboard Phase 2 (Textual, Conditional)"
-
 ---
 
 # Initiative 13: Dashboard Phase 2 (Textual, Conditional)

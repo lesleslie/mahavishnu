@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-11-10
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 blocks_on: []
 related:
   - "docs/adr/005-memory-architecture.md"

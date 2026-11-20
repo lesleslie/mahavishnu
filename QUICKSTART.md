@@ -9,11 +9,11 @@ ______________________________________________________________________
 ## ✅ Already Done (Committee Review)
 
 1. ✅ **mcp-common dependency added** to `pyproject.toml`
-1. ✅ **Messaging types created** at `mcp-common/messaging/types.py`
-1. ✅ **MCP tool contracts** at `mcp-common/mcp/contracts/code_graph_tools.yaml`
-1. ✅ **Committee review complete** (5/5 reviewers)
-1. ✅ **Implementation plan** at `IMPLEMENTATION_PLAN.md`
-1. ✅ **Progress tracker** at `PROGRESS.md`
+2. ✅ **Messaging types created** at `mcp-common/messaging/types.py`
+3. ✅ **MCP tool contracts** at `mcp-common/mcp/contracts/code_graph_tools.yaml`
+4. ✅ **Committee review complete** (5/5 reviewers)
+5. ✅ **Implementation plan** at `IMPLEMENTATION_PLAN.md`
+6. ✅ **Progress tracker** at `PROGRESS.md`
 
 ______________________________________________________________________
 
@@ -165,18 +165,18 @@ ______________________________________________________________________
 ## 💡 Tips
 
 1. **Start with OpenSearch prototype first** (validates technical approach early)
-1. **Keep tests simple** - unit tests over integration tests initially
-1. **Update PROGRESS.md daily** - track what you've done
-1. **Ask for help** - reference committee reviews if stuck
+2. **Keep tests simple** - unit tests over integration tests initially
+3. **Update PROGRESS.md daily** - track what you've done
+4. **Ask for help** - reference committee reviews if stuck
 
 ______________________________________________________________________
 
 ## ⚠️ Common Pitfalls
 
 1. **Don't skip OpenSearch security** - Phase 0.5 requires TLS/auth
-1. **Don't defer testing** - write tests alongside code (TDD)
-1. **Don't ignore DevOps docs** - they're required for production
-1. **Don't forget cross-project auth** - HMAC signatures needed
+2. **Don't defer testing** - write tests alongside code (TDD)
+3. **Don't ignore DevOps docs** - they're required for production
+4. **Don't forget cross-project auth** - HMAC signatures needed
 
 ______________________________________________________________________
 

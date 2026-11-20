@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-11-05
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: simdjson-abi-bump-breaks-node
 ---
 
@@ -19,8 +19,7 @@ library by ABI number, so the dylib was renamed
 compiled against 5.0.5 and hard-links the *versioned* path
 `/usr/local/opt/simdjson/lib/libsimdjson.34.dylib`.
 
-Twenty formulae declare a dependency on `simdjson` (`brew uses --installed
-simdjson`). Only two Mach-O files actually link the dylib — `node`'s
+Twenty formulae declare a dependency on `simdjson` (`brew uses --installed simdjson`). Only two Mach-O files actually link the dylib — `node`'s
 `bin/node` and `lib/libnode.147.dylib` — but the other eighteen are node
 scripts that inherit node's runtime, so node is the entire blast radius.
 `/usr/local/opt/simdjson` (Homebrew's opt symlink) was additionally missing,

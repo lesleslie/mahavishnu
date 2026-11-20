@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-11-14
 last_reviewed: 2026-11-14
-superseded_by: null
+superseded_by:
 topic: ty-only-migration
 title: "Migrate the fleet from mypy-syntax suppressions to ty"
 ---
@@ -68,17 +68,21 @@ exercise:
    that observes ty's output must override `src.include` per tree or it will
    conclude "nothing to do" for every test file.
 
----
+______________________________________________________________________
 
 ### Task 1: Build the reusable migration tool
 
 **Files:**
+
 - Create: `crackerjack/crackerjack/tools/ty_suppression_migrate.py`
 - Test: `crackerjack/tests/unit/tools/test_ty_suppression_migrate.py`
 
 **Interfaces:**
+
 - Consumes: nothing.
+
 - Produces:
+
   - `find_directives(text: str) -> list[Directive]` — every mypy-syntax directive in
     real COMMENT tokens, each with `line`, `col`, `kind` (`"bare"` | `"bracketed"`),
     and `codes`.
@@ -126,9 +130,12 @@ Expected: FAIL — `convert_blanket` not defined.
 
 `convert_blanket` replaces the matched directive text in place, preserving the
 surrounding line. `main` wires the three modes:
+
 - `delete-bracketed` — remove every bracketed mypy directive.
+
 - `delete-dead` — remove bare directives that ty reports as
   `unused-type-ignore-comment`.
+
 - `convert-blanket` — for each bare directive, strip it, run ty over the affected
   tree with `src.include` overridden, read back the diagnostics that appear on that
   line, and write `# ty: ignore[<rules>]`.
@@ -150,15 +157,17 @@ git commit --only crackerjack/tools/ty_suppression_migrate.py \
   -m "feat(tools): add a strip-and-observe tool for migrating ty suppressions"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Fix the vacuous default scan path in `ty_ignore_syntax`
 
 **Files:**
+
 - Modify: `crackerjack/crackerjack/tools/ty_ignore_syntax.py:190-195`
 - Test: `crackerjack/tests/unit/tools/test_ty_ignore_syntax.py`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: the tool's default `paths` argument becomes `[Path(".")]` instead of
   `[Path("crackerjack")]`.
@@ -196,13 +205,14 @@ git commit --only crackerjack/tools/ty_ignore_syntax.py \
   -m "fix(tools): scan the repo root, not a crackerjack-only path"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Delete the bracketed mypy directives fleet-wide
 
 **Files:** every `*.py` under the 16 repos carrying bracketed directives.
 
 **Interfaces:**
+
 - Consumes: `ty_suppression_migrate --mode delete-bracketed` from Task 1.
 - Produces: 2,711 dead directives removed.
 
@@ -246,14 +256,16 @@ git commit --only <the modified paths> \
 
 One repo per commit. Never batch multiple repos into one commit.
 
----
+______________________________________________________________________
 
 ### Task 4: Delete the dead blanket directives
 
 **Files:** the 34 sites ty reports as `unused-type-ignore-comment`.
 
 **Interfaces:**
+
 - Consumes: `ty_suppression_migrate --mode delete-dead` from Task 1.
+
 - Produces: 34 directives removed; ty's `unused-type-ignore-comment` count drops to 0.
 
 - [x] **Step 1: Confirm the dead set**
@@ -273,30 +285,38 @@ git commit --only <the modified paths> \
   -m "chore(<repo>): remove dead blanket type-ignore directives"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Convert the live blanket directives to specific ty rules
 
 **Files:** the ~105 live sites across 9 repos.
 
 **Interfaces:**
+
 - Consumes: `ty_suppression_migrate --mode convert-blanket` from Task 1.
 - Produces: `# ty: ignore[<rule>]` in place of each live `# type: ignore`.
 
 **Rules for the conversion:**
+
 - A directive naming a rule ty does not recognise is a bug — stop and fix the code.
+
 - A line with two different diagnostics gets `# ty: ignore[rule1, rule2]`.
+
 - A line whose diagnostic ty attributes to a different line gets the directive on
   the line ty reports.
+
 - A blanket that suppresses a *warning* (not an error) still converts, but the
   resulting directive must not draw `unused-ignore-comment`.
 
 - [x] **Step 1: Convert one repo and verify**
 
 Run the tool in `convert-blanket` mode against the repo. Then verify:
+
 - ty's package and tests counts return to the Task 3 baseline **exactly**. Any
   difference means a directive was mis-placed or a rule list is incomplete.
+
 - No `unused-ignore-comment` warnings appear anywhere in the repo.
+
 - Every converted directive names a rule ty knows (`ty explain rule <name>` exits 0).
 
 - [x] **Step 2: Commit that repo**
@@ -311,19 +331,22 @@ git commit --only <the modified paths> \
 Repos: crackerjack, dhara, mcp-common, oneiric, mahavishnu, fastblocks,
 session-buddy.
 
----
+______________________________________________________________________
 
 ### Task 6: Fix the defects the conversion exposes
 
 **Files:** the code sites behind the newly-specific diagnostics.
 
 **Interfaces:**
+
 - Consumes: the converted directives from Task 5.
 - Produces: real fixes, with the corresponding directive removed.
 
 **Already identified:**
+
 - `crackerjack/crackerjack/services/memory_aware_scanner.py:137,140` — `random` is
   used but never imported. **Fix: add `import random`.** Remove the directive.
+
 - `crackerjack/crackerjack/mahavishnu/mcp/tools/git_analytics.py:2406,2447` —
   `SecureSubprocessExecutor` is imported only inside a different function, so
   `_scan_large_files` raises `NameError`. **Fix: import it at module scope** (or
@@ -356,7 +379,7 @@ doc's rules, each is either a proven boundary (keep a specific directive) or a r
 defect (fix the code). Record the decision in the commit message. Do not silently
 convert-and-move-on for the ones that are genuine defects.
 
----
+______________________________________________________________________
 
 ### Task 7: Drop mypy configuration
 
@@ -364,7 +387,9 @@ convert-and-move-on for the ones that are genuine defects.
 dependencies (4 repos: akosha, opera-cloud-mcp, raindropio-mcp, mdinject).
 
 **Interfaces:**
+
 - Consumes: Tasks 3-6 complete — no mypy-syntax directive remains anywhere.
+
 - Produces: no mypy configuration in the fleet.
 
 - [x] **Step 1: Delete `mypy.ini` and the `[tool.mypy]` sections**
@@ -394,14 +419,16 @@ git commit --only <the modified paths> \
   -m "chore(<repo>): drop mypy configuration in favour of ty"
 ```
 
----
+______________________________________________________________________
 
 ### Task 8: Enable the `ty-ignore-syntax` hook
 
 **Files:** each repo's crackerjack configuration.
 
 **Interfaces:**
+
 - Consumes: Task 2 (the default path now scans the repo root).
+
 - Produces: the policy is machine-enforced.
 
 - [x] **Step 1: Enable the hook in one repo**
@@ -427,16 +454,19 @@ git commit --only <the config path> \
   -m "chore(<repo>): enable the ty-ignore-syntax hook"
 ```
 
----
+______________________________________________________________________
 
 ### Task 9: Update the decision doc
 
 **Files:**
+
 - Modify: `mahavishnu/docs/decisions/ty-ignore-codes.md`
 - Modify: `mahavishnu/docs/decisions/README.md`
 
 **Interfaces:**
+
 - Consumes: all prior tasks.
+
 - Produces: the policy doc states that ty is the only checker.
 
 - [x] **Step 1: Rewrite the doc's "What enforces this" section**
@@ -460,7 +490,7 @@ git commit --only docs/decisions/ty-ignore-codes.md docs/decisions/README.md \
   -m "docs(decisions): record the ty-only policy"
 ```
 
----
+______________________________________________________________________
 
 ## Execution Notes
 

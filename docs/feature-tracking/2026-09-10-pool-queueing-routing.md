@@ -26,20 +26,20 @@ on 2026-09-10. Phase 4 staged rollout playbook is in the
 
 - [x] Entry point registered (McpConfig + PoolConfig fields)
 - [x] Trigger path identified: `PoolManager.route_task` composes the
-      QueueingScorer between the fitness override and the GPU
-      category override
+  QueueingScorer between the fitness override and the GPU
+  category override
 - [x] Returns / state updates land in expected destination:
-      `_mcp_state.persist_routing_decision` extended with
-      `predicted_wait_s` and `effective_selector`
+  `_mcp_state.persist_routing_decision` extended with
+  `predicted_wait_s` and `effective_selector`
 - [x] End-to-end smoke check documented: `pytest tests/integration/pools/test_queueing_routing.py`
 - [x] Observability hook in place: OTel span
-      `mahavishnu.pool.routing_decision`, Prometheus counter
-      `mahavishnu_routing_decisions_total` (extended labels), new
-      histogram `mahavishnu.pool.queueing_prediction_error`,
-      debug log `mahavishnu.pool.queueing_warmup_pending`
+  `mahavishnu.pool.routing_decision`, Prometheus counter
+  `mahavishnu_routing_decisions_total` (extended labels), new
+  histogram `mahavishnu.pool.queueing_prediction_error`,
+  debug log `mahavishnu.pool.queueing_warmup_pending`
 - [x] Rollback signal defined: env-var
-      `MAHAVISHNU_POOLS__QUEUEING_ENABLED=false` reverts to
-      pre-Phase-2 behavior
+  `MAHAVISHNU_POOLS__QUEUEING_ENABLED=false` reverts to
+  pre-Phase-2 behavior
 
 ## Built (yes/no)
 
@@ -54,24 +54,24 @@ populated on every `route_task` call).
 
 ## Trigger path
 
-* Entry point: `PoolManager.route_task` (`mahavishnu/pools/manager.py:558`)
-* Composition order: `_apply_fitness_aware_routing` →
+- Entry point: `PoolManager.route_task` (`mahavishnu/pools/manager.py:558`)
+- Composition order: `_apply_fitness_aware_routing` →
   **`QueueingScorer.score`** → `_apply_gpu_category_override` →
   `_persist_routing_decision` (with `predicted_wait_s` +
   `effective_selector`)
-* Warmup: when `arrival_rate == 0` or
+- Warmup: when `arrival_rate == 0` or
   `len(buffer.arrivals) < min_observations`, the scorer logs
   one `mahavishnu.pool.queueing_warmup_pending` debug line per
   call and returns the inner selector's score unchanged.
 
 ## Integration point
 
-* Durable key-value `routing_decision` record (extended with
+- Durable key-value `routing_decision` record (extended with
   `predicted_wait_s`, `observed_wait_s`, `effective_selector`)
-* Prometheus counter `mahavishnu_routing_decisions_total`
+- Prometheus counter `mahavishnu_routing_decisions_total`
   (extended with `predicted_wait_bucket`, `effective_selector`)
-* Prometheus histogram `mahavishnu.pool.queueing_prediction_error`
-* OTel span `mahavishnu.pool.routing_decision`
+- Prometheus histogram `mahavishnu.pool.queueing_prediction_error`
+- OTel span `mahavishnu.pool.routing_decision`
 
 ## End-to-end check
 
@@ -107,14 +107,14 @@ MAHAVISHNU_POOLS__QUEUEING_ENABLED=false mahavishnu mcp start
 
 ### Per-stage gating (all must hold to advance)
 
-* Median predicted-vs-observed wait-time error stays < 25% (the
+- Median predicted-vs-observed wait-time error stays < 25% (the
   spec's §1 success criterion for Poisson workloads).
-* p95 prediction error stays < 50% (the spec's §1 success
+- p95 prediction error stays < 50% (the spec's §1 success
   criterion for bursty/hyperexponential workloads).
-* Routing latency does NOT regress by more than 1ms p99
+- Routing latency does NOT regress by more than 1ms p99
   (the QueueingScorer is O(1) per pool candidate; the budget
   catches any future regression in the buffer refit).
-* No errors from `mahavishnu.pool.queueing_warmup_pending` or
+- No errors from `mahavishnu.pool.queueing_warmup_pending` or
   `mahavishnu.pool.routing_decision` span.
 
 ### Per-environment opt-out template
@@ -156,11 +156,11 @@ hyperbolic embeddings, multi-metric drift) are tracked under
 
 ## Related
 
-* Plan: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`] §6 Phase 4
-* Library: `mahavishnu/pools/queueing/`
-* Integration: `mahavishnu/pools/queueing/scorer.py`
-* Validation: [`docs/audits/2026-09-10-queueing-validation.md`](../audits/2026-09-10-queueing-validation.md)
-* Library docs: [`docs/pools/QUEUEING_ROUTING.md`](../pools/QUEUEING_ROUTING.md)
+- Plan: \[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`\] §6 Phase 4
+- Library: `mahavishnu/pools/queueing/`
+- Integration: `mahavishnu/pools/queueing/scorer.py`
+- Validation: [`docs/audits/2026-09-10-queueing-validation.md`](../audits/2026-09-10-queueing-validation.md)
+- Library docs: [`docs/pools/QUEUEING_ROUTING.md`](../pools/QUEUEING_ROUTING.md)
 
 ## Session-Buddy
 

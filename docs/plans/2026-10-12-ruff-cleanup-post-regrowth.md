@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-10-12
 last_reviewed: 2026-10-13
-superseded_by: null
+superseded_by:
 blocks_on: []
 # `replaces:` is a project-local convention: the predecessor plan
 # (`docs/plans/2026-07-29-ruff-cleanup-waves.md`) is the referent this
@@ -14,7 +14,6 @@ blocks_on: []
 replaces: docs/plans/2026-07-29-ruff-cleanup-waves.md
 topic: ruff-cleanup-post-regrowth
 title: "Ruff Cleanup Post-Regrowth (2026-10-12)"
-
 ---
 
 # Ruff Cleanup Post-Regrowth (2026-10-12)
@@ -25,8 +24,7 @@ title: "Ruff Cleanup Post-Regrowth (2026-10-12)"
 > archived to `.archive/` and this plan is the active referent.
 
 > **Status update 2026-10-17:** Phase 0 (rule enablement) was effectively
-> a no-op — the 9 in-scope rule codes (`BLE001, RUF012, S110, DTZ001,
-> PLW1510, ASYNC221, ASYNC230, PYI036, DTZ005`) were already present
+> a no-op — the 9 in-scope rule codes (`BLE001, RUF012, S110, DTZ001, PLW1510, ASYNC221, ASYNC230, PYI036, DTZ005`) were already present
 > in `[tool.ruff.lint] extend-select` at `pyproject.toml:281-299` by
 > the time work forked. The live 2026-10-17 re-measurement across the
 > 6 packages shows **427 findings total** (BLE001 178→170, ASYNC221
@@ -89,18 +87,18 @@ mechanical enough that it gets its own plan
 
 Re-measured from the `ruff-phase-0-1` worktree (Phase 0 baseline) via `cd /Users/les/Projects && /Users/les/Projects/mahavishnu/.venv/bin/ruff check mahavishnu/ oneiric/ session-buddy/ akosha/ crackerjack/ mcp-common/ --select "BLE001,RUF012,S110,DTZ001,PLW1510,ASYNC221,ASYNC230,PYI036,DTZ005" --statistics`. The 9 rule codes were already present in `extend-select` before this plan's execution (confirmed via `pyproject.toml:281-299`) — Phase 0's config-only step was a no-op; the table below is the live baseline for Phase 1+ to converge from. The 2026-10-13 snapshot is preserved above for regression-baseline; this is the source of truth for execution.
 
-| Rule     | Count | Status           | Hot-spots (initial)                                       |
+| Rule | Count | Status | Hot-spots (initial) |
 |----------|------:|------------------|-----------------------------------------------------------|
-| BLE001   |   170 | New             | `mahavishnu/ingesters/*`, `mahavishnu/cli/*`, scattered  |
-| RUF012   |    36 | New             | scattered — `Class.field: list = []` declarations          |
-| S110     |    39 | New             | scattered — `try: ... except: pass` patterns               |
-| DTZ001   |    26 | New             | ingestion paths, capability probes                         |
-| PLW1510  |    54 | New             | `mahavishnu/workers/capabilities/_probes.py`               |
-| ASYNC221 |    80 | New             | same hot-spots as PLW1510                                 |
-| ASYNC230 |     7 | New             | scattered                                                  |
-| PYI036   |     9 | New             | `oneiric/**/types.py` stubs                                |
-| DTZ005   |     6 | New             | `session-buddy/storage/migrations.py`                      |
-| **Total**| **427** |                |                                                            |
+| BLE001 | 170 | New | `mahavishnu/ingesters/*`, `mahavishnu/cli/*`, scattered |
+| RUF012 | 36 | New | scattered — `Class.field: list = []` declarations |
+| S110 | 39 | New | scattered — `try: ... except: pass` patterns |
+| DTZ001 | 26 | New | ingestion paths, capability probes |
+| PLW1510 | 54 | New | `mahavishnu/workers/capabilities/_probes.py` |
+| ASYNC221 | 80 | New | same hot-spots as PLW1510 |
+| ASYNC230 | 7 | New | scattered |
+| PYI036 | 9 | New | `oneiric/**/types.py` stubs |
+| DTZ005 | 6 | New | `session-buddy/storage/migrations.py` |
+| **Total**| **427** | | |
 
 > The RUF100 backlog (**305**) sits **outside** this table — see the
 > companion plan. The 912 figure from the original 2026-10-12 snapshot
@@ -172,6 +170,7 @@ returns 0 findings because the rule isn't enabled).
 - [ ] This is a **config-only** commit (one-line pyproject change + the baseline-update commit). No code is touched.
 
 #### Integration Contract ← REQUIRED
+
 - **Triggered from**: developer / agent running `ruff check --select <rule>` and seeing 0 findings (the phantom-baseline signal).
 - **Returns to / updates**: `pyproject.toml [tool.ruff.lint] extend-select` gains 9 rule codes; the 8 cleanup phases now have a non-zero baseline to converge from.
 - **Demonstrable by**: `ruff check --select "BLE001"` returns non-zero findings; the "Current Findings" table is updated to match.
@@ -184,7 +183,7 @@ Each phase is one rule, one commit, one PR. Every deliverable's
 Integration Contract is included below for completeness (some are
 trivial enough that the contract collapses to "ruff is green").
 
----
+______________________________________________________________________
 
 ### Phase 1 — BLE001 (11): narrow bare `except Exception`
 
@@ -194,6 +193,7 @@ justification per project convention
 (`feedback-boundary-handlers-ble001-justification`, if present).
 
 **Tasks:**
+
 - For each finding, choose:
   - **(a)** Narrow to a specific type (`subprocess.CalledProcessError`,
     `httpx.HTTPError`, `KeyError`, etc.) when the call site knows what
@@ -205,12 +205,14 @@ justification per project convention
 - Run `ruff check --select BLE001` until 0 findings.
 
 **Exit criteria:**
+
 - `ruff check mahavishnu/ oneiric/ session-buddy/ akosha/ crackerjack/ mcp-common/ --select BLE001`
   returns exit code 0 with no findings.
 - Every `# noqa: BLE001 <reason>` includes a concrete invocation site
   identifier (function name or one-line rationale).
 
 #### Integration Contract
+
 - **Triggered from**: developer running `ruff check --select BLE001`
   during the Phase 1 PR pre-commit hook.
 - **Returns to / updates**: no state change; the BLE001 row in the
@@ -220,7 +222,7 @@ justification per project convention
   no schema changes, no observability surface touched.
 - **Observability added**: none — this is a static-analysis cleanup.
 
----
+______________________________________________________________________
 
 ### Phase 2 — RUF012 (17): mutable class attributes
 
@@ -229,6 +231,7 @@ justification per project convention
 or annotate with `ClassVar[...]` if the value is genuinely class-level.
 
 **Tasks:**
+
 - For each of the 17 findings, inspect whether the class is a
   `@dataclass`, a regular class, or a Pydantic model.
   - **dataclass** → use `field(default_factory=list)` (and import
@@ -240,11 +243,13 @@ or annotate with `ClassVar[...]` if the value is genuinely class-level.
   line of each touched file (project convention).
 
 **Exit criteria:**
+
 - `ruff check ... --select RUF012` returns 0.
 - `pytest -m "not slow"` still green (default_factory changes can
   silently break reference identity).
 
 #### Integration Contract
+
 - **Triggered from**: developer running `ruff check --select RUF012`.
 - **Returns to / updates**: `mahavishnu/**/models.py`,
   `session-buddy/**/models.py`, etc. (file paths to be enumerated in
@@ -253,18 +258,20 @@ or annotate with `ClassVar[...]` if the value is genuinely class-level.
 - **Rollback signal**: `git revert <phase-2-commit>`.
 - **Observability added**: none.
 
----
+______________________________________________________________________
 
 ### Phase 3 — S110 (18): silent exception swallow
 
 **Goal:** convert 18 `try: ... except: pass` (or `except Exception: pass`)
 patterns to either:
+
 - **(a)** a logger line (`logger.debug("…", exc_info=True)`) so the
   exception is recorded but not propagated, OR
 - **(b)** an inline `# noqa: S110 <justification>` if the swallow is
   deliberate (e.g. best-effort cleanup of an optional feature).
 
 **Tasks:**
+
 - For each finding, decide (a) vs (b).
 - When (a): use `oneiric.core.logging.get_logger(__name__)` per project
   convention (`from oneiric.core.logging import get_logger`).
@@ -273,11 +280,13 @@ patterns to either:
   checks the return code explicitly").
 
 **Exit criteria:**
+
 - `ruff check ... --select S110` returns 0.
 - No new logger calls land without matching test coverage when the
   swallowed error becomes a recoverable failure path.
 
 #### Integration Contract
+
 - **Triggered from**: developer running `ruff check --select S110`.
 - **Returns to / updates**: scattered files in `mahavishnu/automation/`,
   `mahavishnu/workers/`, `oneiric/`.
@@ -287,7 +296,7 @@ patterns to either:
   OTel-correlated via Oneiric's logging handler; visible in
   `~/.mahavishnu/logs/mcp.log` for swallowed exceptions.
 
----
+______________________________________________________________________
 
 ### Phase 4 — DTZ001 (15): naive `datetime` in production
 
@@ -296,6 +305,7 @@ in production code with `datetime(..., tzinfo=UTC)` (using
 `from datetime import UTC`).
 
 **Tasks:**
+
 - For each of 15 findings, prepend `tzinfo=UTC`.
 - `datetime.utcnow()` → `datetime.now(UTC)`.
 - Verify no callers downstream expect a *naive* datetime — if any do,
@@ -304,11 +314,13 @@ in production code with `datetime(..., tzinfo=UTC)` (using
 - All times stored to the MCP substrate (DuckDB / PG) must carry timezone.
 
 **Exit criteria:**
+
 - `ruff check ... --select DTZ001` returns 0.
 - Round-trip property test: `datetime.now(UTC).isoformat()` parses
   back without losing the tz in the affected ingesters.
 
 #### Integration Contract
+
 - **Triggered from**: developer running `ruff check --select DTZ001`.
 - **Returns to / updates**: `mahavishnu/ingesters/content_ingester.py`,
   `mahavishnu/ingesters/otel_ingester.py`,
@@ -321,7 +333,7 @@ in production code with `datetime(..., tzinfo=UTC)` (using
   `tz=UTC` suffixes in the structured log lines
   (`mahavishnu.log`, `~/.mahavishnu/logs/ingester.log`).
 
----
+______________________________________________________________________
 
 ### Phase 5 — PLW1510 (42): `subprocess.run(..., check=False)` pattern
 
@@ -333,24 +345,25 @@ either pass `check=True` explicitly, or use `subprocess.check_call(...)`
 > **Investigation note**: the inventory shows **42 instances** but some
 > are inside `subprocess.run(...)` whose return value is then
 > inspected via `.returncode` (e.g. probe code that tolerates non-zero
-> exit on purpose). For those, the fix is an inline `# noqa: PLW1510
-> <we intentionally read returncode>` per the boundary-handler
+> exit on purpose). For those, the fix is an inline `# noqa: PLW1510 <we intentionally read returncode>` per the boundary-handler
 > convention from Phase 1.
 
 **Tasks:**
+
 - For each finding, classify:
   - **(a) check needed** → switch to `subprocess.check_call(...)` or
     add `check=True` and `try/except subprocess.CalledProcessError`.
-  - **(b) check deliberately absent** → add `# noqa: PLW1510
-    <returncode-is-inspected-below>` immediately above the call.
+  - **(b) check deliberately absent** → add `# noqa: PLW1510 <returncode-is-inspected-below>` immediately above the call.
 - Standardise the message format used in `logger.exception(...)`.
 
 **Exit criteria:**
+
 - `ruff check ... --select PLW1510` returns 0.
 - `tests/integration/test_subprocess_callers.py` (added this phase)
   exhaustively covers each rewrite to assert the new exception path.
 
 #### Integration Contract
+
 - **Triggered from**: developer running `ruff check --select PLW1510`.
 - **Returns to / updates**: `mahavishnu/workers/capabilities/_probes.py`
   (dominant source), `mahavishnu/automation/*.py`,
@@ -361,7 +374,7 @@ either pass `check=True` explicitly, or use `subprocess.check_call(...)`
   with explicit command + returncode in the log; previously these
   silently dropped into `.returncode` checks and never surfaced.
 
----
+______________________________________________________________________
 
 ### Phase 6 — ASYNC221 (69): sync calls inside async functions
 
@@ -374,6 +387,7 @@ their async equivalents — `asyncio.sleep`, `aiofiles`, etc.).
 > calls; the largest single contributor.
 
 **Tasks:**
+
 - For each finding, choose the lowest-friction wrapping:
   - `subprocess.run(...)` → `await asyncio.to_thread(subprocess.run, ...)`
     (or move the call to a worker pool entirely — per
@@ -387,18 +401,20 @@ their async equivalents — `asyncio.sleep`, `aiofiles`, etc.).
   per-PR diffs ≤ ~400 lines.
 
 **Exit criteria:**
+
 - `ruff check ... --select ASYNC221` returns 0.
 - `pytest -m "not slow"` green (event-loop leak regression tests in
   `tests/unit/test_async_event_loop.py` — these are sensitive to
   leftover blocking calls).
 
 #### Integration Contract
+
 - **Triggered from**: developer running `ruff check --select ASYNC221`.
 - **Returns to / updates**: `mahavishnu/workers/capabilities/_probes.py`
   (dominant), `mahavishnu/automation/`, scattered CLI entry-points.
 - **Demonstrable by**: ruff exit 0 + `pytest -q tests/unit/test_async_event_loop.py`
-  + `pytest -q -m "not slow"` (must stay green — the project has the
-  `asyncio_mode = "auto"` pytest config per `CLAUDE.md`).
+  - `pytest -q -m "not slow"` (must stay green — the project has the
+    `asyncio_mode = "auto"` pytest config per `CLAUDE.md`).
 - **Rollback signal**: `git revert <phase-6-commit>` per file-block;
   given the size of this phase, the commit may be split into 2-3
   smaller commits with independent revert safety.
@@ -406,7 +422,7 @@ their async equivalents — `asyncio.sleep`, `aiofiles`, etc.).
   `asyncio.to_thread` OTel spans rather than blurring the event loop
   in the parent span — visible in `mahavishnu.otel.traces` dashboard.
 
----
+______________________________________________________________________
 
 ### Phase 7 — ASYNC230 (6) + PYI036 (2): trivial fixes
 
@@ -415,15 +431,18 @@ their async equivalents — `asyncio.sleep`, `aiofiles`, etc.).
 not applied). PYI036 = extra-equals in stub assertions.
 
 **Tasks:**
+
 - ASYNC230: remove redundant `await` on a regular function that
   happens to live next to async helpers.
 - PYI036: use `assert X == Y, "message"`-style in `.pyi` files instead
   of bare `==`.
 
 **Exit criteria:**
+
 - `ruff check ... --select ASYNC230,PYI036` returns 0.
 
 #### Integration Contract
+
 - **Triggered from**: developer running `ruff check --select ASYNC230,PYI036`.
 - **Returns to / updates**: scattered files in `oneiric/`,
   `mahavishnu/workers/`, `session-buddy/`.
@@ -431,7 +450,7 @@ not applied). PYI036 = extra-equals in stub assertions.
 - **Rollback signal**: `git revert <phase-7-commit>`.
 - **Observability added**: none.
 
----
+______________________________________________________________________
 
 ### Phase 8 — DTZ005 (1): `datetime.now(tz=...)` correction
 
@@ -439,16 +458,18 @@ not applied). PYI036 = extra-equals in stub assertions.
 where `datetime.now()` should be `datetime.now(UTC)`. Trivial fix.
 
 **Exit criteria:**
+
 - `ruff check ... --select DTZ005` returns 0.
 
 #### Integration Contract
+
 - **Triggered from**: developer running `ruff check --select DTZ005`.
 - **Returns to / updates**: `session-buddy/storage/migrations.py`.
 - **Demonstrable by**: ruff exit 0 + `pytest -q session-buddy/tests/test_migrations_dt.py`.
 - **Rollback signal**: `git revert <phase-8-commit>`.
 - **Observability added**: one tz flag in a logging line — negligible.
 
----
+______________________________________________________________________
 
 ## Cross-cutting Acceptance
 

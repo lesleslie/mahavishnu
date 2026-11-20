@@ -4,37 +4,37 @@ role: implementation
 kind: plan
 date: 2026-11-07
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 topic: mcp-tool-disambiguation
 title: "MCP Tool Disambiguation — unique, self-describing tool names across the Bodai core fleet"
 requirements:
-- id: REQ-MCPTD-001
-  title: Every Bodai core MCP tool carries a non-empty, rubric-compliant description
-  description: The four duplicated tools whose descriptions are empty (crackerjack search_code, pycharm_health, query_local_traces; session-buddy search_code) are given descriptions satisfying the 6-criterion rubric in docs/decisions/tool-description-rubric.md.
-  implementation_repo: crackerjack
-- id: REQ-MCPTD-002
-  title: Same-named tools document their parameter contract, including the auth parameters
-  description: The channel-session tools accept different auth parameters on each server — user_id is the principal mahavishnu's RBAC gate authorizes against (caller-supplied; require_mcp_auth prefers the middleware's session context when it has one), token is the signed credential session-buddy pops and validates. Both are consumed by the tool decorators rather than the tool bodies, so each tool's docstring states which parameter is the auth parameter and which are query filters.
-  implementation_repo: session-buddy
-- id: REQ-MCPTD-003
-  title: query_local_traces exposes one parameter contract across the fleet
-  description: akosha, crackerjack and mahavishnu expose query_local_traces with the same parameter names, requiredness and defaults.
-  implementation_repo: akosha
-- id: REQ-MCPTD-004
-  title: mcp-common exposes each health and baseline tool name exactly once
-  description: mcp_common/baseline_tools.py and mcp_common/health/__init__.py overlap on get_liveness, get_readiness and health_check_all; the overlap is collapsed so no server can double-register a name.
-  implementation_repo: mcp-common
-- id: REQ-MCPTD-005
-  title: Mahavishnu sources its health tools from mcp-common instead of a vendored fork
-  description: mahavishnu/mcp/tools/health_tools.py is a 1256-line divergence from mcp_common/health/__init__.py; the fork is retired and the shared implementation is mounted, with the deprecation shim parameterized rather than dropped.
-  implementation_repo: mahavishnu
-- id: REQ-MCPTD-006
-  title: Tools whose names collide across components carry a component-scoped name
-  description: detect_anomalies, find_path and search_code are renamed to component-scoped names following the fleet's existing <component>_<tool> convention.
-  implementation_repo: akosha
-- id: REQ-MCPTD-007
-  title: A fleet-wide guard rejects duplicate names, empty descriptions and stale validator entries
-  description: A script probes every live Bodai core server and fails when a bare tool name appears on two servers, a description is empty, or KNOWN_TOOLS names a tool no server serves.
+  - id: REQ-MCPTD-001
+    title: Every Bodai core MCP tool carries a non-empty, rubric-compliant description
+    description: The four duplicated tools whose descriptions are empty (crackerjack search_code, pycharm_health, query_local_traces; session-buddy search_code) are given descriptions satisfying the 6-criterion rubric in docs/decisions/tool-description-rubric.md.
+    implementation_repo: crackerjack
+  - id: REQ-MCPTD-002
+    title: Same-named tools document their parameter contract, including the auth parameters
+    description: The channel-session tools accept different auth parameters on each server — user_id is the principal mahavishnu's RBAC gate authorizes against (caller-supplied; require_mcp_auth prefers the middleware's session context when it has one), token is the signed credential session-buddy pops and validates. Both are consumed by the tool decorators rather than the tool bodies, so each tool's docstring states which parameter is the auth parameter and which are query filters.
+    implementation_repo: session-buddy
+  - id: REQ-MCPTD-003
+    title: query_local_traces exposes one parameter contract across the fleet
+    description: akosha, crackerjack and mahavishnu expose query_local_traces with the same parameter names, requiredness and defaults.
+    implementation_repo: akosha
+  - id: REQ-MCPTD-004
+    title: mcp-common exposes each health and baseline tool name exactly once
+    description: mcp_common/baseline_tools.py and mcp_common/health/__init__.py overlap on get_liveness, get_readiness and health_check_all; the overlap is collapsed so no server can double-register a name.
+    implementation_repo: mcp-common
+  - id: REQ-MCPTD-005
+    title: Mahavishnu sources its health tools from mcp-common instead of a vendored fork
+    description: mahavishnu/mcp/tools/health_tools.py is a 1256-line divergence from mcp_common/health/__init__.py; the fork is retired and the shared implementation is mounted, with the deprecation shim parameterized rather than dropped.
+    implementation_repo: mahavishnu
+  - id: REQ-MCPTD-006
+    title: Tools whose names collide across components carry a component-scoped name
+    description: detect_anomalies, find_path and search_code are renamed to component-scoped names following the fleet's existing <component>_<tool> convention.
+    implementation_repo: akosha
+  - id: REQ-MCPTD-007
+    title: A fleet-wide guard rejects duplicate names, empty descriptions and stale validator entries
+    description: A script probes every live Bodai core server and fails when a bare tool name appears on two servers, a description is empty, or KNOWN_TOOLS names a tool no server serves.
 ---
 
 # MCP Tool Disambiguation — unique, self-describing tool names across the Bodai core fleet
@@ -61,13 +61,13 @@ profile exposes a tool surface different from the one the packet names.
 1. Make each duplicated tool name unique across the fleet, without breaking
    the `mcp__<server>__<tool>` config-entry namespace that Claude Code
    depends on.
-1. Give every duplicated tool a description a language model can route on,
+2. Give every duplicated tool a description a language model can route on,
    satisfying the canonical 6-criterion rubric.
-1. Make same-named tools accept the same parameters, so a caller that learned
+3. Make same-named tools accept the same parameters, so a caller that learned
    one server's shape is not broken by the other.
-1. Collapse the *implementation* duplication behind the duplicated names —
+4. Collapse the *implementation* duplication behind the duplicated names —
    one library, one registration, no vendored fork.
-1. Install a guard so the next duplicate fails the build instead of waiting
+5. Install a guard so the next duplicate fails the build instead of waiting
    to be noticed.
 
 ## 3. Non-Goals
@@ -77,14 +77,14 @@ profile exposes a tool surface different from the one the packet names.
    prefix would yield `mcp__akosha__akosha_search_code_patterns`, touch
    103 `KNOWN_TOOLS` entries + 268 executable/config references + 525 doc
    mentions + 23 model-visible agent-frontmatter hints, and buy nothing.
-1. **Not** renaming the 7 shared health/baseline names. They are one library
+2. **Not** renaming the 7 shared health/baseline names. They are one library
    correctly fanned out — see §4.2.
-1. **Not** renaming `get_health`. Same-name-per-service self-health is a
+3. **Not** renaming `get_health`. Same-name-per-service self-health is a
    deliberate pattern; each server answers for itself.
-1. **Not** introducing an MCP aggregator, proxy or gateway. Any single-endpoint
+4. **Not** introducing an MCP aggregator, proxy or gateway. Any single-endpoint
    gateway renames every tool (see the `mcp-tool-namespace-is-config-entry`
    memory) and adds a hop without reducing the tool count.
-1. **Not** adding backwards-compatible aliases for renamed tools — see
+5. **Not** adding backwards-compatible aliases for renamed tools — see
    §2 Policy below.
 
 ## 2. Policy: No backwards compatibility / legacy support
@@ -237,8 +237,7 @@ That odd name exists for a closure-shadowing reason, not a collision reason —
 leak into a public tool schema is avoidable by renaming the outer parameter.
 
 Mahavishnu's fork additionally carries a **deprecation shim** that
-mcp-common's does not: `_warn_deprecated_tool("health_check_service",
-"health_check_all")`, resolved through `mahavishnu/mcp/tool_versions.py`,
+mcp-common's does not: `_warn_deprecated_tool("health_check_service", "health_check_all")`, resolved through `mahavishnu/mcp/tool_versions.py`,
 per the deprecation plan in the fork's own module docstring (`health_check_service`,
 `get_liveness` and `get_readiness` are slated for replacement by
 `ecosystem_status`). **A de-vendor must carry this forward, not drop it.**
@@ -335,17 +334,17 @@ P4 is the guard that keeps all four from regressing.
    (`search_code`), `:345` (`pycharm_health`) and
    `crackerjack/mcp/tools/otel_tools.py:65` (`query_local_traces`) against the
    6-criterion rubric in `docs/decisions/tool-description-rubric.md`.
-1. Rewrite the description of
+2. Rewrite the description of
    `session_buddy/mcp/tools/memory/search_tools.py:1630` (`search_code`).
-1. Each description must state the **negative case** — for crackerjack's
+3. Each description must state the **negative case** — for crackerjack's
    `search_code`, explicitly say semantic search lives on session-buddy; for
    session-buddy's, say regex search lives on crackerjack.
-1. Confirm the *registered* session-buddy copy is
+4. Confirm the *registered* session-buddy copy is
    `mcp/tools/memory/search_tools.py` and that
    `session_buddy/tools/search_tools.py:46` is not registered. If the second
    copy is reachable, delete it — it is a shadow, and per the dual-track
    memory its unit test proves nothing about the served surface.
-1. Apply the same rubric to the four thin mahavishnu descriptions
+5. Apply the same rubric to the four thin mahavishnu descriptions
    (`get_liveness`, `get_readiness`, `health_check_service`, `health_check_all`)
    while that file is open for Phase 2.
 
@@ -382,7 +381,8 @@ exposes it.
    by the decorators, so the tool bodies never see them. Update each
    tool's docstring to say so, so a caller does not read `user_id` as a
    query filter.
-1. **Unify `query_local_traces`.** Four implementations of the name carry
+
+2. **Unify `query_local_traces`.** Four implementations of the name carry
    four different contracts; three of them are in a live surface (see the
    correction in §4.10). The fleet-wide contract is akosha's richer set,
    with `task_class` promoted to required:
@@ -408,7 +408,8 @@ exposes it.
    `crackerjack/mcp/tools/otel_tools.py:65`,
    `mahavishnu/mcp/tools/otel_tools.py:257` and
    `session_buddy/mcp/tools/memory/otel_trace_tools.py:78` together.
-1. **`dry_run` is a shape switch, not a scope switch.** It returns the raw
+
+3. **`dry_run` is a shape switch, not a scope switch.** It returns the raw
    stored metadata instead of the full record and clamps `limit` — it does
    **not** disable the `system_id` / `task_class` filters. Akosha's
    pre-existing `dry_run` *did* disable them, and aligning the fleet
@@ -416,7 +417,8 @@ exposes it.
    flag that switches off scoping is a real weakness on a tool that carries
    no authentication of its own. Rows outside a filter are reachable by
    omitting `system_id`, which is the documented all-systems query.
-1. Confirm no caller is left on the old shape. The Akosha fitness analyzer
+
+4. Confirm no caller is left on the old shape. The Akosha fitness analyzer
    does **not** poll this tool — it reads the local `spans_substrate` table
    (`akosha/processing/fitness_analyzer.py:160`), and its
    `akosha/mcp/client.py` helper has no importers. The two helpers that do
@@ -466,20 +468,20 @@ mahavishnu stops carrying a fork.
    three of four servers already mount `health/` for `health_check_service`,
    `wait_for_dependency` and `wait_for_all_dependencies`, so that path would
    have to grow.
-1. **Un-shadow the `service_name` parameter.** Rename the outer parameter of
+2. **Un-shadow the `service_name` parameter.** Rename the outer parameter of
    `mcp_common/health/__init__.py:552`'s `register_health_tools` from
    `service_name` to `server_name`, so the tool's own parameter becomes
    `service_name` and the public schema stops leaking `service_name_arg`.
    Update the three callers: `akosha/mcp/tools/__init__.py`,
    `crackerjack/mcp/tools/health_tools_wrapper.py:60`, and session-buddy's
    health registration.
-1. **Parameterize the deprecation shim.** Add an optional
+3. **Parameterize the deprecation shim.** Add an optional
    `deprecated_tools: Mapping[str, str] | None = None` argument to
    `register_health_tools`, mapping tool name → replacement name. Mahavishnu
    passes its `health_check_service` → `health_check_all` map. The warning is
    emitted only for names present in the map, so the other three servers stay
    warning-free.
-1. **De-vendor mahavishnu.** Replace `mahavishnu/mcp/tools/health_tools.py`
+4. **De-vendor mahavishnu.** Replace `mahavishnu/mcp/tools/health_tools.py`
    with a thin module that mounts `mcp_common.health.register_health_tools`
    with mahavishnu's dependency map and deprecation map, and keeps the three
    Mahavishnu-specific tools (`mcp_list_tools`, `mcp_test_connection`,
@@ -489,11 +491,11 @@ mahavishnu stops carrying a fork.
    (`REGISTRATION_MAP`, `MAHAVISHNU_MANDATORY_GROUPS`, `PROFILE_REGISTRATIONS`,
    `_OPTIONAL_TOOL_BLOCKS`) — per the four-table drift memory, missing the
    fourth changes nothing on the live server.
-1. **Stop session-buddy double-registering.** With baseline dropping the
+5. **Stop session-buddy double-registering.** With baseline dropping the
    health trio, session-buddy's `register_baseline_tools` mount no longer
    overlaps `register_health_tools_sb`. Verify the served `get_liveness`
    description still comes from `health/__init__.py`.
-1. **Reconcile `discover_tools`.** Mahavishnu's own `discover_tools`
+6. **Reconcile `discover_tools`.** Mahavishnu's own `discover_tools`
    (`mahavishnu/mcp/server_core.py:1496`, params `capability` + `query`)
    differs from mcp-common's baseline `discover_tools` (param `query`). Keep
    mahavishnu's — it is the richer contract and is referenced by agent
@@ -510,8 +512,7 @@ mahavishnu stops carrying a fork.
   8676 / 8678 / 8680 / 8682. Specifically, `health_check_service`'s published
   input schema changes from `service_name_arg` to `service_name` on akosha,
   crackerjack and session-buddy.
-- **Demonstrable by**: `mahavishnu mcp start --background && mahavishnu mcp call
-  discover_tools '{}' | jq '.loaded_tools | length'` shows the expected count
+- **Demonstrable by**: `mahavishnu mcp start --background && mahavishnu mcp call discover_tools '{}' | jq '.loaded_tools | length'` shows the expected count
   change (mahavishnu loses no tool — the fork and the shared implementation
   register the same 6 names); the fleet guard reports **one** implementation
   per health tool name and zero cross-module overlap.
@@ -546,7 +547,7 @@ mahavishnu already ships `mahavishnu_get_agent`, `mahavishnu_kv_get`,
 **Tasks:**
 
 1. Rename in each repo's registration site and its function definition.
-1. Update every caller in the same change:
+2. Update every caller in the same change:
    - `KNOWN_TOOLS` in `mahavishnu/core/skill_mcp_validator.py`
      (`mcp__akosha__detect_anomalies`, `mcp__akosha__find_path` and
      `mcp__crackerjack__search_code` are present; the three session-buddy
@@ -556,9 +557,9 @@ mahavishnu already ships `mahavishnu_get_agent`, `mahavishnu_kv_get`,
      appears in 2 files; `find_path` and `search_code` appear in none, but
      re-grep after the rename rather than trusting this count.
    - All `docs/` references and the skill catalog.
-1. Grep the whole ecosystem for the bare names, not just the namespaced
+3. Grep the whole ecosystem for the bare names, not just the namespaced
    form — a bare `search_code` in a doc or an agent body is now ambiguous.
-1. Add the renamed session-buddy tools to `KNOWN_TOOLS` (they are absent
+4. Add the renamed session-buddy tools to `KNOWN_TOOLS` (they are absent
    today — see §4.11).
 
 **Why the component prefix and not a semantic rename:** a semantic rename
@@ -617,17 +618,17 @@ resolves when Phase 5 lands.
    `settings/ecosystem.yaml`), and asserts:
    1. **no duplicate bare name** across servers, except the documented
       shared-library set (§4.3), which is asserted as an explicit allowlist;
-   1. **no empty description** on any tool;
-   1. **every `KNOWN_TOOLS` entry is served** by some live server, with
+   2. **no empty description** on any tool;
+   3. **every `KNOWN_TOOLS` entry is served** by some live server, with
       profile-gated tools reported separately from genuinely stale ones
       (§4.11 caveat);
-   1. **every same-named tool shares one parameter signature**, with an
+   4. **every same-named tool shares one parameter signature**, with an
       allowlist for the intentional per-service `get_health` / `pycharm_health`
       differences.
-1. Add a test that runs the guard's pure analysis (no network) over a
+2. Add a test that runs the guard's pure analysis (no network) over a
    checked-in fixture of the five `tools/list` responses, so CI catches a
    duplicate even when the servers are down.
-1. Wire the guard into Crackerjack's quality hooks
+3. Wire the guard into Crackerjack's quality hooks
    (`crackerjack run -v -f`) as a fast check, and into the pre-push
    consolidation gate as a blocking stage.
 
@@ -659,16 +660,20 @@ aggregator can flatten two tools onto one name.
    crackerjack, oneiric, mcp-common, plus any other Bodai-maintained MCP
    server. Confirm the list against `settings/repos.yaml` rather than
    assuming.
-1. For each server, prefix every tool that is not already prefixed:
+
+2. For each server, prefix every tool that is not already prefixed:
    akosha's 37 bare tools are the largest tranche; mahavishnu, session-buddy
    and crackerjack are mostly done already.
-1. Apply the rename as a **function-name** change plus the `@tool(name=...)`
+
+3. Apply the rename as a **function-name** change plus the `@tool(name=...)`
    override where the function name cannot move (the `name=` override is
    non-breaking for callers that import the function, and is the form the
    `akosha-tool-naming-gap` decision recommends for the short term).
-1. Update `KNOWN_TOOLS`, agent frontmatter, skills, docs and tests in the
+
+4. Update `KNOWN_TOOLS`, agent frontmatter, skills, docs and tests in the
    same change — no aliases, per §2 Policy.
-1. Leave the shared names **unprefixed** — the twelve in
+
+5. Leave the shared names **unprefixed** — the twelve in
    `docs/decisions/2026-11-08-mcp-tool-component-prefix-convention.md`:
    the seven mcp-common baseline names (`get_liveness`, `get_readiness`,
    `health_check_all`, `health_check_service`, `wait_for_dependency`,
@@ -774,9 +779,9 @@ This plan is done when **all** of the following hold:
 
 1. The fleet guard reports zero duplicate bare names, zero empty descriptions
    and zero stale `KNOWN_TOOLS` entries.
-1. `mcp_common` exposes each health/baseline name exactly once, and
+2. `mcp_common` exposes each health/baseline name exactly once, and
    mahavishnu's health tools come from it.
-1. Every same-named tool shares one parameter contract, except the
+3. Every same-named tool shares one parameter contract, except the
    documented per-service exceptions.
 
 **If scope pressure forces a cut**, cut in this order:
@@ -818,6 +823,7 @@ prefix-matches on.
    See `docs/decisions/2026-10-29-learning-pipeline-tools-authz-block.md`,
    which records the same class of gap for `require_mcp_auth` and
    deliberately defers the fleet-wide fix.
+
 2. **Session-Buddy's all-systems path needs the semantic index.** — RESOLVED
    (2026-11-08).
    The tool was never in a live surface, so the index-dependent all-systems
@@ -826,6 +832,7 @@ prefix-matches on.
    It reads the store directly through a new adapter method
    (`query_conversations_by_classification`), so the all-systems query is a
    plain filtered read with no dependency on the embedding chain.
+
 3. **Session-Buddy's `query_local_traces` is never registered.** — RESOLVED
    (2026-11-08, `33060bd1`).
    The tool is mounted through `REGISTRATION_MAP` (so the profile dispatch
@@ -844,9 +851,11 @@ prefix-matches on.
    working directory the writing session ran in. A `task_class` from the OTel
    taxonomy matches nothing there, which is an accurate answer rather than a
    bug.
+
 4. **The fleet-wide schema-parity guard (REQ-MCPTD-007) is still Phase 4.**
    Nothing currently stops the `query_local_traces` signatures drifting
    apart again — the guard that would is a Phase-4 deliverable.
+
 5. **The channel-session auth contract divergence.** `track_channel_session`
    and `get_channel_sessions` take different auth parameters on mahavishnu
    (`user_id`, a principal name) than on session-buddy (`token`, a signed
@@ -854,11 +863,14 @@ prefix-matches on.
    is why Phase 1 documents the parameters instead of unifying them. Worth
    a separate decision on whether the two servers should converge on one
    credential model. See §4.10.
+
 6. **Akosha's full component-prefix sweep** — akosha's other 37 tools remain
    bare. Tracked by the `akosha-tool-naming-gap` memory; a separate plan.
+
 7. **The stale `KNOWN_TOOLS` / frontmatter references** in §4.11 — the guard
    (§6 Phase 4) *reports* them; the cleanup is a separate change once
    profile-gating is confirmed.
+
 8. **The `mcp__<server>__` namespace itself** — protected by the
    `mcp-tool-namespace-is-config-entry` memory. Any future aggregator must
    preserve it or the 103 `KNOWN_TOOLS` entries, 268 executable/config

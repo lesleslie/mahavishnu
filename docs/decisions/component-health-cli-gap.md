@@ -19,7 +19,7 @@ health of component X right now":
    `ecosystem_status` aggregator; produces a single schema-validated
    envelope with `services`, `adapters`, `capabilities`, `workflows`,
    `alerts`, and (optionally) `recommendations` sections.
-1. **Per-component CLI tools** — `mahavishnu mcp status`,
+2. **Per-component CLI tools** — `mahavishnu mcp status`,
    `mahavishnu mcp health`, `mahavishnu metrics bodai`, and a handful of
    `scripts/probe_*.py` scripts. These each hit one specific service or
    one specific data source and render a smaller, component-shaped view.
@@ -44,14 +44,14 @@ exist for human operators. Both surfaces need to keep working.
    `ecosystem_status` disagree, the CLI must log a warning that names
    the disagreement so the operator knows which surface to trust.
 
-1. **Per-component CLIs are compatibility wrappers.** They are kept
+2. **Per-component CLIs are compatibility wrappers.** They are kept
    because operators have muscle memory and because they expose
    surfaces `ecosystem_status` deliberately omits (queue depth,
    subscriber state files, drop counts). Do not delete them. Do not
    "promote" them to canonical — they will always be the secondary
    surface.
 
-1. **New health features ship in `ecosystem_status` first.** When a
+3. **New health features ship in `ecosystem_status` first.** When a
    component adds a new health dimension (e.g. ultracode's
    verification reject rate, routing-decision quota usage), the
    canonical `ecosystem_status` schema gets the field. A matching CLI
@@ -59,7 +59,7 @@ exist for human operators. Both surfaces need to keep working.
    2026-07-15 (`verification`, `dispatch`) are the precedent — but the
    CLI must read from the durable key-value store, not duplicate the aggregation logic.
 
-1. **Future work: optional `--json` mode for `ecosystem_status`.**
+4. **Future work: optional `--json` mode for `ecosystem_status`.**
    Today, `ecosystem_status` already returns JSON-shaped data via the
    MCP server's `output_schema`, but no CLI prints it. A future
    `mahavishnu ecosystem status --json` (in `mahavishnu/cli/`)

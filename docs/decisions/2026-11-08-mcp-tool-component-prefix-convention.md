@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-11-08
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 topic: mcp-tool-naming
 title: "MCP tool names carry a component prefix across the Bodai fleet"
 ---

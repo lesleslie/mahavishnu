@@ -89,6 +89,7 @@ From the Phase 3 placeholder, six follow-on items. None accepted into initial Ph
 7. **mahavishnu** (orchestrator; last; consumes everything) — bump + tool-config + integration smoke test of the Phase 3 streaming tar path under 3.15. **2-week soak + 7-day monitoring window** before declaring Phase 4 complete (mirrors Phase 3's monitoring contract).
 
 **Tool-config pin sweep.** Every PR must atomically update:
+
 - Ruff `target-version = "py315"`
 - Pyright `pythonVersion = "3.15"`
 - mypy `python_version = "3.15"`
@@ -104,6 +105,7 @@ Tool-config drift between repos was the single largest Phase 3 hygiene issue (on
 All six streaming-tar evolution candidates remain **proposed extensions**, not accepted scope. Each one requires Phase 3 monitoring telemetry (bundle size distribution, abort rate, dedup rate) to make a defensible decision. The BODAI_UPGRADE_WATCH weekly checklist does NOT track these — they are tracked via a separate telemetry dashboard (TBD: see Open Question 4).
 
 If Phase 3 7-day monitoring surfaces any of:
+
 - `streaming_op_duration_seconds` P99 > 5s for bundles under the 256 MiB stopgap → consider chunk-size auto-tuning.
 - `s3_multipart_abort_total` > 0.1% of fetches → consider streaming-tail validation.
 - Storage tier showing > 30% identical-content rate → consider content-addressed dedup.

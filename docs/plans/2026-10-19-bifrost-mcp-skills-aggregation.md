@@ -13,7 +13,7 @@ related:
   - config/bifrost/README.md
   - ~/Library/LaunchAgents/ai.bifrost.gateway.plist
   - ~/.config/secrets.env
-replaces: null
+replaces:
 topic: bifrost-mcp-skills-aggregation
 title: "Bifrost MCP aggregation + Skills distribution — local single-VK plan"
 ---

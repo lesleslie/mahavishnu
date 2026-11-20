@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-11-15
 last_reviewed: 2026-11-15
-superseded_by: null
+superseded_by:
 topic: quality-gate-complexity
 title: "Bring 27 functions under the pyscn cyclomatic ceiling of 15"
 requirements:
@@ -35,11 +35,11 @@ reports **zero** functions with `metrics.complexity > 15`.
 
 1. Bring all 27 flagged functions to a measured complexity of **≤ 15**
    (target **≤ 12** for margin against re-measurement drift).
-1. Preserve observable behaviour exactly: same return payloads, same log
+2. Preserve observable behaviour exactly: same return payloads, same log
    lines, same exception semantics, same ordering of side effects.
-1. Keep every MCP tool schema byte-identical — FastMCP derives the schema
+3. Keep every MCP tool schema byte-identical — FastMCP derives the schema
    from the decorated function's signature, so **signatures must not change**.
-1. Leave the other comprehensive hooks (`ruff`, `ty`, `complexipy`) passing
+4. Leave the other comprehensive hooks (`ruff`, `ty`, `complexipy`) passing
    as they are today.
 
 ## 3. Non-Goals
@@ -48,12 +48,12 @@ reports **zero** functions with `metrics.complexity > 15`.
    (`crackerjack/models/tool_config.py:25`) was deliberately restored to 15 by
    the ADR-025 amendment of 2026-11-14; changing it is a cross-repo policy
    edit outside this plan.
-1. **Not** adding `# noqa: C901` suppressions. `pyscn` does not honour
+2. **Not** adding `# noqa: C901` suppressions. `pyscn` does not honour
    `noqa`, and ruff's `C901` is not in this repo's active rule set
    (`I, N, UP, B, C4, SIM, TCH` + the `P` subset).
-1. **Not** restructuring the `WORKTREE` / `pool` subsystems beyond the
+3. **Not** restructuring the `WORKTREE` / `pool` subsystems beyond the
    named functions.
-1. **Not** refactoring functions that already measure at or below 15.
+4. **Not** refactoring functions that already measure at or below 15.
 
 ## 4. Current Findings
 
@@ -157,6 +157,7 @@ carries a format dispatch — each format becomes its own handler.
 **Exit criteria:** pyscn measures each of the seven functions at ≤ 15.
 
 #### Integration Contract
+
 - **Triggered from**: the MCP tools `mahavishnu_tasks_handoff_to_workflow`,
   `mahavishnu_parse_goal`, `mahavishnu_ingest_otel_traces`,
   `mahavishnu_treesitter_find_usages`, `mahavishnu_audit_health`, and
@@ -191,6 +192,7 @@ tier — the grouping and the formatting separate.
 **Exit criteria:** pyscn measures each of the nine functions at ≤ 15.
 
 #### Integration Contract
+
 - **Triggered from**: `RateLimiter.is_allowed`, `CapabilityRouter.route`,
   `worktree_scan._format_json`, `SkillSynthesizer._derive_trigger_conditions`,
   `worktree_prune_merged.find_merged_worktrees`,
@@ -222,8 +224,8 @@ their render/validate seam.
 **Exit criteria:** pyscn measures each of the five functions at ≤ 15.
 
 #### Integration Contract
-- **Triggered from**: the `mahavishnu health` command, `mahavishnu config
-  validate`, `mahavishnu team learning-stats`, the metrics verification
+
+- **Triggered from**: the `mahavishnu health` command, `mahavishnu config validate`, `mahavishnu team learning-stats`, the metrics verification
   renderer, and `mahavishnu worktree prune-stale-metadata`.
 - **Returns to / updates**: the same stdout/stderr text, the same JSON
   payload shapes, and the same process exit codes. Typer's command
@@ -252,6 +254,7 @@ along its state-construction stages.
 **Exit criteria:** pyscn measures each of the six functions at ≤ 15.
 
 #### Integration Contract
+
 - **Triggered from**: the bifrost toggle CLI action, the Agno adapter's
   legacy LLM config resolution, `jot/fold.py:build_states`,
   `jot/drain.py:surface_relevant`, `websocket/integration.py:start_websocket_server`,
@@ -417,6 +420,7 @@ resolution was extracted into `_worktree_cwd` and the function returned to
 zero functions over the ceiling in `pool_tools.py`.
 
 ## References
+
 - `crackerjack/models/tool_config.py:25` — `PYSCN_MAX_COMPLEXITY = 15`.
 - `crackerjack/parsers/json_parsers.py:573` — the parser that enforces it.
 - `crackerjack/docs/adr/ADR-025-complexity-scanning-defaults.md` — the

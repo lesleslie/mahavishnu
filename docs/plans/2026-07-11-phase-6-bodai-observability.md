@@ -3,10 +3,9 @@ status: complete
 role: implementation
 date: 2026-07-16
 last_reviewed: 2026-10-18
-superseded_by: null
+superseded_by:
 topic: observability
 title: "Phase 6 — Bodai-Wide Observability Surfacing"
-
 ---
 
 # Phase 6 — Bodai-Wide Observability Surfacing
@@ -35,9 +34,9 @@ ______________________________________________________________________
 When this plan ships:
 
 1. **Single Bodai activity subscriber** at `.claude/hooks/bodai-activity-subscriber.py` reads from Oneiric EventBridge (Redis Streams transport) and persists events to a queue that the existing `.claude/hooks/` PostToolUse pattern consumes.
-1. **Mahavishnu WebSocket subscriber removed.** The Phase 5 hook is deleted; only the Bodai hook fires.
-1. **`/bodai-status` slash command** surfaces the same shape as `/vishnu-status` but aggregated across Mahavishnu, Akosha, and Crackerjack activity.
-1. **Cross-component observability is canonical.** Akosha and Crackerjack each gain an EventBridge publisher that adapts their existing WebSocket broadcasts into the canonical envelope.
+2. **Mahavishnu WebSocket subscriber removed.** The Phase 5 hook is deleted; only the Bodai hook fires.
+3. **`/bodai-status` slash command** surfaces the same shape as `/vishnu-status` but aggregated across Mahavishnu, Akosha, and Crackerjack activity.
+4. **Cross-component observability is canonical.** Akosha and Crackerjack each gain an EventBridge publisher that adapts their existing WebSocket broadcasts into the canonical envelope.
 
 User-observable change: a Claude Code session sees `[akosha] aggregation_completed suite=quality` and `[crackerjack] test_run_completed passed=42 failed=0` style summaries alongside `[mahavishnu] workflow wid_abc completed`, all from one subscriber.
 
@@ -46,18 +45,18 @@ Concrete success signal: `mahavishnu metrics bodai --scope 7d` shows ≥1 cross-
 ## 2. Goals
 
 1. Replace the Mahavishnu WebSocket hook with a Bodai activity subscriber that reads from EventBridge.
-1. Land EventBridge publishers for Akosha and Crackerjack activity events (one adapter per component, adapting existing WebSocket broadcasts).
-1. Add `/bodai-status` slash command + `bodai-status` auto-trigger skill + companion to `/vishnu-status`.
-1. Add a `mahavishnu metrics bodai` CLI that surfaces event-bridge health, subscriber state, and per-component event rates.
-1. Document the canonical envelope in `docs/decisions/` (refine the existing `bodai-observability-pattern.md` with the actual schema once C2 lands).
+2. Land EventBridge publishers for Akosha and Crackerjack activity events (one adapter per component, adapting existing WebSocket broadcasts).
+3. Add `/bodai-status` slash command + `bodai-status` auto-trigger skill + companion to `/vishnu-status`.
+4. Add a `mahavishnu metrics bodai` CLI that surfaces event-bridge health, subscriber state, and per-component event rates.
+5. Document the canonical envelope in `docs/decisions/` (refine the existing `bodai-observability-pattern.md` with the actual schema once C2 lands).
 
 ## 3. Non-Goals
 
 1. **Not implementing the EventBridge envelope itself.** Convergence Plan C2 owns that. Phase 6 reads whatever C2 publishes; if C2's envelope changes, this plan is amended.
-1. **Not adding per-component WebSocket subscribers for Bodai observation.** Explicitly forbidden by `docs/decisions/bodai-observability-pattern.md`.
-1. **Not changing the MCP store's or Session-Buddy's observability surfaces.** Both are REST-only / event-driven per Convergence Plan §4 ownership rules. MCP-store/Session-Buddy visibility in `/bodai-status` is via query-side adapters, not subscriptions.
-1. **Not changing the Phase 5 transition hook's protocol.** The Mahavishnu-only hook is *removed*, not refactored — its deletion is a sign of Phase 6's success.
-1. **Not implementing Grafana dashboards for activity events.** Grafana already has dashboards for Mahavishnu routing (per `docs/ROUTING_GUIDE.md`); adding Grafana views for Akosha/Crackerjack activity is a follow-on.
+2. **Not adding per-component WebSocket subscribers for Bodai observation.** Explicitly forbidden by `docs/decisions/bodai-observability-pattern.md`.
+3. **Not changing the MCP store's or Session-Buddy's observability surfaces.** Both are REST-only / event-driven per Convergence Plan §4 ownership rules. MCP-store/Session-Buddy visibility in `/bodai-status` is via query-side adapters, not subscriptions.
+4. **Not changing the Phase 5 transition hook's protocol.** The Mahavishnu-only hook is *removed*, not refactored — its deletion is a sign of Phase 6's success.
+5. **Not implementing Grafana dashboards for activity events.** Grafana already has dashboards for Mahavishnu routing (per `docs/ROUTING_GUIDE.md`); adding Grafana views for Akosha/Crackerjack activity is a follow-on.
 
 ## 4. Current Findings
 
@@ -304,11 +303,11 @@ the time Phase 6 starts:
 1. **Define the canonical envelope in Phase 6.1** as a forward
    reference. The shape is documented as "to be reconciled with C2"
    and `BodaiEvent` is shipped with a working schema anyway.
-1. **Skip Phase 6.2 publisher work** until C2 lands. The single
+2. **Skip Phase 6.2 publisher work** until C2 lands. The single
    Mahavishnu-side publisher (6.2.3) is the only one that's safe to
    ship pre-C2, and it provides Mahavishnu-only coverage (no
    cross-component gains).
-1. **Phase 6.4 hook replacement is conditional**: only land if
+3. **Phase 6.4 hook replacement is conditional**: only land if
    Phase 6.2 is also landing. Otherwise, leave Phase 5 in place.
 
 The decision rule: **if C2 has not landed by the time Phase 6.1

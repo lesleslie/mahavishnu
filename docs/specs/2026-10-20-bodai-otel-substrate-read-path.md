@@ -4,7 +4,7 @@ role: canonical
 kind: spec
 date: 2026-10-20
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 blocks_on:
   - docs/specs/2026-10-19-bodai-substrate-otel-v7.md
 topic: substrate-otel
@@ -30,7 +30,7 @@ companion to the v7 substrate spec.
 > Both have been **restored** from git history at `8f149717^` and the
 > `depends_on:` has been repointed at the restored plan.
 
----
+______________________________________________________________________
 
 ## 1. Why this exists
 
@@ -142,9 +142,7 @@ transposition bugs happen.
 loses precision at this magnitude: `1.7e18` round-trips to a value that no
 longer equals `1700000000000000000`, so the boundary row silently drops out of
 the window. Verified: bound as `int` → the row matches; bound as `float` → 0
-rows. There is also no interval form — `received_at_unix_nano > now() -
-INTERVAL '1 hour'` raises `BinderException: Cannot compare values of type
-BIGINT and type TIMESTAMP WITH TIME ZONE`.
+rows. There is also no interval form — `received_at_unix_nano > now() - INTERVAL '1 hour'` raises `BinderException: Cannot compare values of type BIGINT and type TIMESTAMP WITH TIME ZONE`.
 
 **`COALESCE` is required, not defensive.** `SUM(CASE …)` over zero matching rows
 returns NULL, not 0. Without the wrapper, an empty window produces
@@ -249,8 +247,7 @@ keyset on (received_at_unix_nano, span_id)  -> all 6 returned, complete
 keyset on received_at_unix_nano alone       -> 3 of 6 returned, 3 silently lost
 ```
 
-The keyset predicate must therefore be the tuple `(received_at_unix_nano,
-span_id) < (?, ?)`, and the `DESC` on `span_id` must match the `ORDER BY` or the
+The keyset predicate must therefore be the tuple `(received_at_unix_nano, span_id) < (?, ?)`, and the `DESC` on `span_id` must match the `ORDER BY` or the
 cursor re-emits rows on a tie.
 
 Index support for the ordering is **not** claimed — see §4.2's index paragraph,
@@ -471,15 +468,15 @@ list, so the existing `Q4` / `Q10` cross-references stay valid.
 
 ### Open
 
-1. **§5.6 coverage narrowing.** Is repointing one producer in this spec sufficient, or does the rewiring need to wait for every producer in the roster? The narrow reading says one is enough to prove the path; the cautious reading says the analyzer loses real signal until all are migrated.
-2. **Does `search_spans` need a `trace_id`-shaped browse mode** (all spans of one trace), or is exact `trace_id` filtering enough? The former is a natural second tool and is deliberately out of scope here.
-3. **Is `spans_summary`'s budget (§5.3) achievable**, and does anyone want it measured before the plan is written? It is currently a guess with a number attached.
-4. **Should `selector`/`task_class` filters be required rather than optional?** Optional filters on an indexed composite can still full-scan when the `(selector, task_class)` prefix is absent.
-5. **The redaction guarantee (new — from review).** §4.4 no longer asserts attributes are masked, because the sanitizer's only call sites today are `akosha/tests/unit/test_action_kit_adoption.py` — nothing in production invokes it, and `class OTLPReceiver` does not exist yet. v7 Task 5 adds that call site, after which the guarantee becomes real for the akosha receiver. Question: does the read path document a producer-side requirement, or does it stay silent and leave the guarantee entirely to the ingest contract?
-6. **Authorization (new — from review).** `search_spans` returns any span from any producer, including unbounded `attributes` JSON, to any MCP client. No authn, no authz, no per-caller scoping. §5.4 declines to re-apply the namespace allowlist as a read filter, which removes the one filter that would have limited cross-namespace visibility. Is akosha's MCP surface assumed to sit behind an authenticated boundary, or does this need one?
-7. **DuckDB alignment (new — from §6.4).** akosha resolves 1.5.6 while oneiric resolves 2.0.0-dev, and the shared substrate code runs on whichever the importing process resolves. Should akosha's pin be aligned with oneiric's, or should every substrate-touching claim be verified twice? The first option is a lockfile change to another repo's dependency, so it is not this spec's call to make.
-8. **Resource limits (new — from review).** Every filter is optional; nothing bounds max time range, page size, rows returned, or query timeout. A caller who omits all filters gets the whole retention window. Related to Q4 but distinct: Q4 asks which filters to require, this asks for a ceiling.
-9. **Budget shape (new — from §5.3).** A flat <200ms p99 holds at 100k rows and fails at v7's 10M `spans_substrate_max_rows` cap. Should the budget be restated as row-count-scaled, and should `spans_summary` refuse or warn above some matched-row count rather than simply getting slower?
+01. **§5.6 coverage narrowing.** Is repointing one producer in this spec sufficient, or does the rewiring need to wait for every producer in the roster? The narrow reading says one is enough to prove the path; the cautious reading says the analyzer loses real signal until all are migrated.
+02. **Does `search_spans` need a `trace_id`-shaped browse mode** (all spans of one trace), or is exact `trace_id` filtering enough? The former is a natural second tool and is deliberately out of scope here.
+03. **Is `spans_summary`'s budget (§5.3) achievable**, and does anyone want it measured before the plan is written? It is currently a guess with a number attached.
+04. **Should `selector`/`task_class` filters be required rather than optional?** Optional filters on an indexed composite can still full-scan when the `(selector, task_class)` prefix is absent.
+05. **The redaction guarantee (new — from review).** §4.4 no longer asserts attributes are masked, because the sanitizer's only call sites today are `akosha/tests/unit/test_action_kit_adoption.py` — nothing in production invokes it, and `class OTLPReceiver` does not exist yet. v7 Task 5 adds that call site, after which the guarantee becomes real for the akosha receiver. Question: does the read path document a producer-side requirement, or does it stay silent and leave the guarantee entirely to the ingest contract?
+06. **Authorization (new — from review).** `search_spans` returns any span from any producer, including unbounded `attributes` JSON, to any MCP client. No authn, no authz, no per-caller scoping. §5.4 declines to re-apply the namespace allowlist as a read filter, which removes the one filter that would have limited cross-namespace visibility. Is akosha's MCP surface assumed to sit behind an authenticated boundary, or does this need one?
+07. **DuckDB alignment (new — from §6.4).** akosha resolves 1.5.6 while oneiric resolves 2.0.0-dev, and the shared substrate code runs on whichever the importing process resolves. Should akosha's pin be aligned with oneiric's, or should every substrate-touching claim be verified twice? The first option is a lockfile change to another repo's dependency, so it is not this spec's call to make.
+08. **Resource limits (new — from review).** Every filter is optional; nothing bounds max time range, page size, rows returned, or query timeout. A caller who omits all filters gets the whole retention window. Related to Q4 but distinct: Q4 asks which filters to require, this asks for a ceiling.
+09. **Budget shape (new — from §5.3).** A flat \<200ms p99 holds at 100k rows and fails at v7's 10M `spans_substrate_max_rows` cap. Should the budget be restated as row-count-scaled, and should `spans_summary` refuse or warn above some matched-row count rather than simply getting slower?
 10. **Table-existence (new — from review).** §5.5 says the read path "returns empty" before any producer migrates. But the DDL is created by the receiver's `_ensure_operational_tables`, so before the receiver has started at least once the table may not exist and the tools would error rather than return empty. Should R-1 depend on the receiver having run?
 
 ## 8. PR boundaries

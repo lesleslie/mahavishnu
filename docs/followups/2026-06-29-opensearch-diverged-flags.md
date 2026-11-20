@@ -4,7 +4,7 @@ role: historical
 topic: opensearch-diverged-flags
 date: 2026-07-16
 last_reviewed: 2026-07-16
-superseded_by: null
+superseded_by:
 blocks_on: []
 ---
 
@@ -23,8 +23,8 @@ Two independent `OPENSEARCH_AVAILABLE` boolean flags exist in the codebase, each
 Both follow the same pattern: try `from opensearchpy import AsyncOpenSearch`; on `ImportError`, set the flag to `False` and substitute a mock client. They can diverge in three concrete scenarios:
 
 1. **Partial install.** `opensearchpy` is installed but the async client import is patched at import time by another module. One path captures the real client, the other captures the mock.
-1. **Test stubbing.** A test (or a `conftest.py`) injects a stub module into `sys.modules["opensearchpy"]` before one module is imported but after the other. The two flags now disagree.
-1. **Future upstream change.** `opensearchpy` renames `AsyncOpenSearch` to `AsyncClient` (or splits the package). One wrapper follows the rename; the other keeps the legacy import and silently falls back to the mock. The DLQ begins swallowing tasks without ever writing them, and nobody notices because both modules still "imported cleanly".
+2. **Test stubbing.** A test (or a `conftest.py`) injects a stub module into `sys.modules["opensearchpy"]` before one module is imported but after the other. The two flags now disagree.
+3. **Future upstream change.** `opensearchpy` renames `AsyncOpenSearch` to `AsyncClient` (or splits the package). One wrapper follows the rename; the other keeps the legacy import and silently falls back to the mock. The DLQ begins swallowing tasks without ever writing them, and nobody notices because both modules still "imported cleanly".
 
 Diverged flags produce silent-fallback behavior, not exceptions. The DLQ would still *appear* to be operating while quietly dropping tasks into an in-memory buffer (see the related followup `2026-06-29-dlq-silent-fallback.md`).
 
@@ -53,21 +53,21 @@ That work is multi-file, touches import ordering, and is its own PR. Folding it 
    OPENSEARCH_AVAILABLE: bool = _AsyncOpenSearch is not None
    ```
 
-1. **Migrate both call sites** (`opensearch_integration.py:38-44` and `dead_letter_queue.py:57-63`) to:
+2. **Migrate both call sites** (`opensearch_integration.py:38-44` and `dead_letter_queue.py:57-63`) to:
 
    ```python
    from mahavishnu.core.opensearch_constants import OPENSEARCH_AVAILABLE
    ```
 
-1. **Add a single source of truth at process start.** Consider an `opensearchpy.probe()` helper in the shared module that returns a real client or a typed `OpenSearchUnavailable` sentinel, so callers cannot accidentally re-probe and re-divide.
+3. **Add a single source of truth at process start.** Consider an `opensearchpy.probe()` helper in the shared module that returns a real client or a typed `OpenSearchUnavailable` sentinel, so callers cannot accidentally re-probe and re-divide.
 
-1. **Add divergence regression tests** under `tests/unit/core/`:
+4. **Add divergence regression tests** under `tests/unit/core/`:
 
    - `test_opensearch_probe_idempotent` — patch `sys.modules["opensearchpy"]` to a stub, import both call sites, assert both flags agree.
    - `test_opensearch_probe_after_real_install` — same, but with a real-looking module; both flags agree.
    - `test_opensearch_probe_raises_consistent_import_error` — a renamed symbol raises `ImportError` on both paths.
 
-1. **Document the contract** in the new module's docstring: "Single source of truth for `opensearchpy` availability. Do not re-probe in calling modules."
+5. **Document the contract** in the new module's docstring: "Single source of truth for `opensearchpy` availability. Do not re-probe in calling modules."
 
 ## References
 

@@ -4,16 +4,16 @@ role: canonical
 kind: plan
 date: 2026-10-29
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 topic: bifrost-cache-wiring
 title: "Bifrost — Bodai Routing, Virtual-Key Auth, and cache_mode Wiring"
 requirements:
-- id: REQ-BIFROST-035
-  title: Bifrost-routed Bodai calls authenticate with the gateway virtual key
-- id: REQ-BIFROST-036
-  title: The llama-server provider key resolves so the local provider is servable
-- id: REQ-BIFROST-037
-  title: cache_mode translates into x-bf-cache-* request headers
+  - id: REQ-BIFROST-035
+    title: Bifrost-routed Bodai calls authenticate with the gateway virtual key
+  - id: REQ-BIFROST-036
+    title: The llama-server provider key resolves so the local provider is servable
+  - id: REQ-BIFROST-037
+    title: cache_mode translates into x-bf-cache-* request headers
 ---
 
 # Bifrost — Bodai Routing, Virtual-Key Auth, and `cache_mode` Wiring
@@ -35,8 +35,7 @@ advisory-only.
 
 Success signals:
 
-- `CloudWorker.execute()` completes through the gateway (today: `401 - virtual
-  key is required`, then a silent fall-through to `llama_server`).
+- `CloudWorker.execute()` completes through the gateway (today: `401 - virtual key is required`, then a silent fall-through to `llama_server`).
 - `llama-server/qwen3-8b-q4_k_m` is servable through Bifrost (today:
   `no_key_supports_model`).
 - A repeated Bodai call returns `X-Bifrost-Cache-Hit: true`.
@@ -58,20 +57,20 @@ of the code, not yet of a live route.
 ## 2. Goals
 
 1. Restore the `llama-server` provider by making its key resolvable.
-1. Authenticate Bifrost-routed Bodai calls with the gateway virtual key.
-1. Give `cache_mode` (`off` | `direct` | `semantic`) a real effect by
+2. Authenticate Bifrost-routed Bodai calls with the gateway virtual key.
+3. Give `cache_mode` (`off` | `direct` | `semantic`) a real effect by
    translating it into the `x-bf-cache-*` request headers Bifrost honours.
-1. Cover all of the above with tests that fail without the fix.
+4. Cover all of the above with tests that fail without the fix.
 
 ## 3. Non-Goals
 
 1. Re-pointing Claude Code at Bifrost. Claude Code stays on
    `https://api.minimax.io/anthropic`; Bodai components use the gateway.
-1. Replacing `default_cache_key` with per-client opt-in caching. Caching
+2. Replacing `default_cache_key` with per-client opt-in caching. Caching
    stays on by default.
-1. Implementing a "no read, no write" cache opt-out — Bifrost v1.5/v1.6 has
+3. Implementing a "no read, no write" cache opt-out — Bifrost v1.5/v1.6 has
    no header for it. `off` means "do not populate the cache".
-1. Changing Bifrost's own source or version.
+4. Changing Bifrost's own source or version.
 
 ## 4. Current Findings
 
@@ -90,8 +89,7 @@ Provider minimax exhausted 3 attempts
 Cloud task failed (all providers exhausted)
 ```
 
-A direct probe confirms the credential boundary — `Authorization: Bearer
-<MINIMAX_API_KEY>` → **401**; `Authorization: Bearer <BIFROST_VIRTUAL_KEY>`
+A direct probe confirms the credential boundary — `Authorization: Bearer <MINIMAX_API_KEY>` → **401**; `Authorization: Bearer <BIFROST_VIRTUAL_KEY>`
 → **200**; `Authorization: Bearer <MINIMAX_API_KEY>` **plus**
 `x-bf-vk: <BIFROST_VIRTUAL_KEY>` → **200**.
 
@@ -303,8 +301,7 @@ provider construction site, so whichever path is live carries them:
 
 §4.1 records a live probe: `Authorization: Bearer <MINIMAX_API_KEY>` →
 **401**; `Authorization: Bearer <BIFROST_VIRTUAL_KEY>` → **200**;
-`Authorization: Bearer <MINIMAX_API_KEY>` **plus** `x-bf-vk:
-<BIFROST_VIRTUAL_KEY>` → **200**.
+`Authorization: Bearer <MINIMAX_API_KEY>` **plus** `x-bf-vk: <BIFROST_VIRTUAL_KEY>` → **200**.
 
 Two sibling modules in this repository record the opposite, from an earlier
 probe:
@@ -359,7 +356,7 @@ requirements:
 2. Add `LLAMA_SERVER_API_KEY` to `NEEDED_KEYS` in
    `mahavishnu/bifrost/gateway.py` so the gateway injects it into the
    Bifrost subprocess environment. Without this, step 1 is inert.
-1. Restart the gateway and confirm the provider resolves.
+3. Restart the gateway and confirm the provider resolves.
 
 **Exit criteria:** a chat completion against `llama-server/qwen3-8b-q4_k_m`
 returns 200.
@@ -389,10 +386,10 @@ cache headers.
 
 1. `mcp_common/llm/config.py`: add `default_headers: dict[str, str] = {}` to
    `ProviderConfig` (additive; `extra="forbid"` still holds).
-1. `mcp_common/llm/provider.py`: merge `config.default_headers` into the
+2. `mcp_common/llm/provider.py`: merge `config.default_headers` into the
    `openai.AsyncOpenAI(...)` construction, and forward
    `task.get("extra_headers")` as the SDK's per-call `extra_headers`.
-1. Tests in `mcp-common/tests/test_llm.py`.
+3. Tests in `mcp-common/tests/test_llm.py`.
 
 **Exit criteria:** a provider configured with `default_headers` sends them;
 a task carrying `extra_headers` sends them per call.
@@ -404,8 +401,7 @@ a task carrying `extra_headers` sends them per call.
   OpenAI-compatible endpoint (here: the Bifrost gateway).
 - **Demonstrable by**: `pytest mcp-common/tests/test_llm.py -k header`
   passes; the recorded request carries the header.
-- **Rollback signal**: the Bifrost gateway logs `401 - virtual key is
-  required` for a Bodai-originated request.
+- **Rollback signal**: the Bifrost gateway logs `401 - virtual key is required` for a Bodai-originated request.
 - **Observability added**: none at the library level — the effect is
   observable at the gateway as `X-Bifrost-Cache-Hit`.
 
@@ -418,10 +414,10 @@ selects the cache path.
 
 1. New `mahavishnu/bifrost/cache_headers.py`: resolve `cache_mode` from the
    Oneiric router settings and build the header set.
-1. `mahavishnu/workers/cloud_worker.py`: when the MiniMax provider's
+2. `mahavishnu/workers/cloud_worker.py`: when the MiniMax provider's
    `base_url` resolves to the gateway, attach `x-bf-vk` plus the cache
    headers; when it resolves directly to MiniMax, attach nothing.
-1. Set `cache_mode: semantic` in the **environment** —
+3. Set `cache_mode: semantic` in the **environment** —
    `ONEIRIC_BIFROST_CACHE_MODE=semantic` in `~/.zshenv` and in the
    LaunchAgent plist. `BifrostLLMSettings` extends
    `pydantic_settings.BaseSettings` with `env_prefix="ONEIRIC_BIFROST_"`
@@ -452,9 +448,9 @@ selects the cache path.
 **Tasks:**
 
 1. Unit tests for the header builder.
-1. An integration test that drives a Bodai-originated call through the
+2. An integration test that drives a Bodai-originated call through the
    gateway and asserts the cache hit.
-1. Update `config/bifrost/README.md` with the `cache_mode` mapping and the
+3. Update `config/bifrost/README.md` with the `cache_mode` mapping and the
    virtual-key requirement.
 
 **Exit criteria:** the suite fails when the virtual key or the
@@ -487,12 +483,12 @@ Phase 3; what remains are the two reachability questions.
    facility for `x-bf-vk` and the `x-bf-cache-*` set. Until Pi supports
    that, the Pi path cannot carry a cache mode, and the plan should say so
    rather than imply it can.
-1. `mahavishnu/workers/capabilities/_probes.py` — the Bifrost health probe
+2. `mahavishnu/workers/capabilities/_probes.py` — the Bifrost health probe
    reads the virtual key from the environment only, so under launchd it
    reports "missing BIFROST_VIRTUAL_KEY" for a credential that
    `resolve_virtual_key()` finds in the credential store. Route it through
    `resolve_virtual_key()` so the two readers agree.
-1. `CloudWorker` — decide whether it is a live worker type or a library
+3. `CloudWorker` — decide whether it is a live worker type or a library
    surface. If it is to be live, register it in `workers/registry.py` and
    the pool's `worker_type` allowlist. If not, say so in its module
    docstring so the next reader does not plan against it.
@@ -508,46 +504,45 @@ either carries the header set or is documented as not doing so, and the
 - **Demonstrable by**: a pool spawn that resolves a gateway-routed
   provider, and the registry's unit tests.
 - **Rollback signal**: a gateway-routed provider built without `x-bf-vk`.
-- **Observability added**: none new; the existing `401 - virtual key is
-  required` at the gateway is the signal.
+- **Observability added**: none new; the existing `401 - virtual key is required` at the gateway is the signal.
 
 ## 6. Required Code Changes
 
 - [ ] `~/.config/secrets.env` — declare `LLAMA_SERVER_API_KEY` (operator
-      action; requires explicit authorization)
+  action; requires explicit authorization)
 - [ ] `~/.zshenv` — `ONEIRIC_BIFROST_CACHE_MODE=semantic` (operator action;
-      requires explicit authorization)
+  requires explicit authorization)
 - [x] `~/Library/LaunchAgents/com.mcp.mahavishnu.plist` — mirrors the
-      `ONEIRIC_BIFROST_*` variables so the long-running service routes
-      through the gateway (verified 2026-10-29: the plist sets
-      `ONEIRIC_BIFROST_CACHE_MODE=semantic`)
+  `ONEIRIC_BIFROST_*` variables so the long-running service routes
+  through the gateway (verified 2026-10-29: the plist sets
+  `ONEIRIC_BIFROST_CACHE_MODE=semantic`)
 - [x] `mahavishnu/bifrost/gateway.py` — add `LLAMA_SERVER_API_KEY` to
-      `NEEDED_KEYS`
+  `NEEDED_KEYS`
 - [x] `mcp-common/mcp_common/llm/config.py` — `ProviderConfig.default_headers`
 - [x] `mcp-common/mcp_common/llm/provider.py` — send `default_headers` and
-      per-call `extra_headers`
+  per-call `extra_headers`
 - [x] `mcp-common/tests/test_llm.py` — header tests
 - [x] `mahavishnu/bifrost/cache_headers.py` — new module
 - [x] `mahavishnu/workers/cloud_worker.py` — attach gateway headers
 - [x] `mahavishnu/engines/agno_adapter_impl.py` — attach gateway headers
-      to the OpenAI and Anthropic provider constructions (the live path)
+  to the OpenAI and Anthropic provider constructions (the live path)
 - [x] `mahavishnu/bifrost/gateway.py` — withhold the virtual key from a
-      target that is neither https nor loopback
+  target that is neither https nor loopback
 - [x] `mahavishnu/tests/unit/test_bifrost_cache_headers.py` — new
 - [x] `mahavishnu/tests/unit/test_bifrost_gateway_secrets.py` — derive the
-      required provider keys from the shipped template rather than
-      iterating `NEEDED_KEYS`
+  required provider keys from the shipped template rather than
+  iterating `NEEDED_KEYS`
 - [x] `mahavishnu/tests/unit/test_bifrost_cache_headers.py` — new
 - [x] `mahavishnu/tests/unit/workers/test_cloud_worker.py` — gateway-header
-      tests added to the existing class
+  tests added to the existing class
 - [x] `mahavishnu/tests/unit/test_bifrost_gateway_secrets.py` — fixture
-      updated for the new `NEEDED_KEYS` entry
+  updated for the new `NEEDED_KEYS` entry
 - [x] `mahavishnu/tests/integration/test_bifrost_bodai_path_e2e.py` — new
 - [x] `config/bifrost/README.md` — document `cache_mode` and the virtual key
 - [x] `~/.claude/scripts/mcp-launchd/mcp-ctl.sh` — `generate_plist()` preserves
-      an existing plist's launch spec and environment, declares the durable
-      variables itself, and `cmd_generate` skips servers that have neither a
-      checkout nor an existing plist (see §4.8)
+  an existing plist's launch spec and environment, declares the durable
+  variables itself, and `cmd_generate` skips servers that have neither a
+  checkout nor an existing plist (see §4.8)
 
 ### Cross-repo publish boundary
 

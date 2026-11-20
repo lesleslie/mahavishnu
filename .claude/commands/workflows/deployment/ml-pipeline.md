@@ -26,10 +26,10 @@ Use this workflow to promote an ML pipeline from experiment to production safely
 ## Workflow
 
 1. Validate the model objective, metrics, and data quality.
-1. Confirm training, serving, and tracking infrastructure.
-1. Check compliance flags and artifact/dependency readiness.
-1. Roll out with monitoring and retraining hooks.
-1. Keep rollback and model replacement plans explicit.
+2. Confirm training, serving, and tracking infrastructure.
+3. Check compliance flags and artifact/dependency readiness.
+4. Roll out with monitoring and retraining hooks.
+5. Keep rollback and model replacement plans explicit.
 
 ## Output
 

@@ -56,6 +56,7 @@ hooks are in place, and the rollback signals are defined.
 1. **Install-instruction drift — FIXED.** All three sites unified to
    `uv sync --group tui` / `uv add --group tui textual` (the PEP 735
    group form, which is what `pyproject.toml:153-156` declares):
+
    - `mahavishnu/_main_cli.py:1934` — now `uv sync --group tui`
    - `mahavishnu/tui/monitor_app.py:84-85` — now `uv add --group tui textual`
    - `mahavishnu/cli/monitoring_cli.py:231` — now `uv add --group tui textual`
@@ -70,6 +71,7 @@ hooks are in place, and the rollback signals are defined.
    Matches the actual 12-tab render surface.
 
 4. **Untested monitor + dead module — FIXED.**
+
    - `tests/unit/tui/test_tui_availability.py` extended with three
      new tests: `test_default_monitor_data_provider_returns_lists`,
      `test_monitor_app_constructor_accepts_data_provider`, and
@@ -140,5 +142,5 @@ now `active`); that gate is unblocked but not yet shipped.
 
 ## Session-Buddy
 
-- Reflection ID: <to be filled by `mcp__session-buddy__session_buddy_store_reflection`>
+- Reflection ID: \<to be filled by `mcp__session-buddy__session_buddy_store_reflection`>
 - Saved at: <ISO timestamp>

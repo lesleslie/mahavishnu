@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-08-28
 last_reviewed: 2026-08-28
-superseded_by: null
+superseded_by:
 topic: session-worktree-isolation
 ---
 
@@ -91,7 +91,7 @@ narrative. They should not duplicate.
 - Memory `sdd-workspace-cwd-hijack` — sister CWD-leak for the SDD
   `subagent-driven-development` skill (`sdd-workspace` /
   `task-brief` write artifacts to the calling shell's CWD). Same
-  root cause (CWD-inheritance); mitigation is `cd <repo> && bash
+  root cause (CWD-inheritance); mitigation is \`cd <repo> && bash
   <script>` before any SDD dispatch.
 - `docs/decisions/session-worktree-defaults.md` — opt-in
   per-session worktree isolation (`MAHAVISHNU_AUTO_WORKTREE=1`).

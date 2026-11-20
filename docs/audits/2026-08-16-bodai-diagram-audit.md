@@ -28,8 +28,8 @@ The dominant problem is content staleness, not syntax.
 `★ Render-defect note:` The 3 broken diagrams in crackerjack are all easily fixable:
 
 1. `docs/diagrams/skills-ecosystem-mermaid.md:13` — unescaped `"` in a node label
-1. `docs/architecture/MEMORY_ARCHITECTURE.md:399` — `Over` keyword collision + `;` in `Note over` text
-1. `docs/architecture/MEMORY_ARCHITECTURE.md:1247` — same `Over` keyword + `;` in `Note over` text
+2. `docs/architecture/MEMORY_ARCHITECTURE.md:399` — `Over` keyword collision + `;` in `Note over` text
+3. `docs/architecture/MEMORY_ARCHITECTURE.md:1247` — same `Over` keyword + `;` in `Note over` text
 
 ______________________________________________________________________
 
@@ -143,19 +143,19 @@ ______________________________________________________________________
 
 The audits surfaced 30+ recommended additions across all 6 repos. The highest-impact:
 
-1. **mahavishnu**: Pool topology diagram (CLAUDE.md names `MahavishnuPool`, `SessionBuddyPool`, `RunPodPool` but no canonical diagram exists)
-1. **mahavishnu**: Terminal adapter selection flowchart (replaces the stale `iTerm2+MCPretentious` diagram)
-1. **mahavishnu**: Worker-isolation topology (`AppleContainer` + `E2BSandbox` — replaced removed Docker/OrbStack)
-1. **mahavishnu**: MCP tool topology (174+ tools × 14 groups)
-1. **mahavishnu**: LLM routing sequence for `mahavishnu/core/model_routing.py` _(originally `mahavishnu/workers/task_router.py`; migrated 2026-09-25 per Plan v3 Phase 3b — atomic, no shim)_
-1. **akosha**: Embedding pipeline flow (mock-only embedding path is currently invisible in any diagram)
-1. **akosha**: Fitness signal flow (the 60s `loop` that writes to `routing_fitness/{tc}/{selector}`)
-1. **akosha**: End-to-end query → embedding → search → result flow
-1. **session-buddy**: `track_channel_session` state machine (the new MCP tool has zero diagrams)
-1. **session-buddy**: Worktree lifecycle (creating → listing → pruning → removing, with the wave-4 fixed bugs)
-1. **crackerjack**: Post-removal architecture diagram (the canonical answer to "what runs when you say `crackerjack run`")
-1. **crackerjack**: External ai-fix-loop diagram (the proposed replacement architecture in the spec)
-1. **crackerjack**: Ratchet CLI defects diagram (the 4 defects in `crackerjack-ratchet-cli-defects.md`)
+01. **mahavishnu**: Pool topology diagram (CLAUDE.md names `MahavishnuPool`, `SessionBuddyPool`, `RunPodPool` but no canonical diagram exists)
+02. **mahavishnu**: Terminal adapter selection flowchart (replaces the stale `iTerm2+MCPretentious` diagram)
+03. **mahavishnu**: Worker-isolation topology (`AppleContainer` + `E2BSandbox` — replaced removed Docker/OrbStack)
+04. **mahavishnu**: MCP tool topology (174+ tools × 14 groups)
+05. **mahavishnu**: LLM routing sequence for `mahavishnu/core/model_routing.py` _(originally `mahavishnu/workers/task_router.py`; migrated 2026-09-25 per Plan v3 Phase 3b — atomic, no shim)_
+06. **akosha**: Embedding pipeline flow (mock-only embedding path is currently invisible in any diagram)
+07. **akosha**: Fitness signal flow (the 60s `loop` that writes to `routing_fitness/{tc}/{selector}`)
+08. **akosha**: End-to-end query → embedding → search → result flow
+09. **session-buddy**: `track_channel_session` state machine (the new MCP tool has zero diagrams)
+10. **session-buddy**: Worktree lifecycle (creating → listing → pruning → removing, with the wave-4 fixed bugs)
+11. **crackerjack**: Post-removal architecture diagram (the canonical answer to "what runs when you say `crackerjack run`")
+12. **crackerjack**: External ai-fix-loop diagram (the proposed replacement architecture in the spec)
+13. **crackerjack**: Ratchet CLI defects diagram (the 4 defects in `crackerjack-ratchet-cli-defects.md`)
 
 ______________________________________________________________________
 
@@ -163,13 +163,13 @@ ______________________________________________________________________
 
 1. **Adopt a canonical-diagram-per-concept convention.** Each repo gets a `docs/diagrams/` directory where each diagram is defined ONCE. Cross-references go through `![…](<path>)` embeds. The wave-1..7 cascade for prose, applied to diagrams, would prevent the 5–6 duplicate mirrors per repo.
 
-1. **CI guard for mermaid render.** Crackerjack already proves this is feasible (`mmdc` v11.16.0 + system Chrome). Add a `pytest --mermaid-render` that runs all fenced mermaid blocks through `mmdc -i` and fails on syntax error. Existing `tests/unit/test_mcp_tool_inventory.py` for tool-counts is the template.
+2. **CI guard for mermaid render.** Crackerjack already proves this is feasible (`mmdc` v11.16.0 + system Chrome). Add a `pytest --mermaid-render` that runs all fenced mermaid blocks through `mmdc -i` and fails on syntax error. Existing `tests/unit/test_mcp_tool_inventory.py` for tool-counts is the template.
 
-1. **Documentation-update contract for module removals.** When a module is removed (matches the wave-6 commit pattern), the same PR must include an inventory of diagrams that reference it. Could be a `dep-check` script that greps `git grep -l <removed_module>` across all fenced mermaid + ASCII art fences.
+3. **Documentation-update contract for module removals.** When a module is removed (matches the wave-6 commit pattern), the same PR must include an inventory of diagrams that reference it. Could be a `dep-check` script that greps `git grep -l <removed_module>` across all fenced mermaid + ASCII art fences.
 
-1. **`[^]` footnote convention for diagrams referencing soon-to-be-removed subsystems.** Like `!!! note "Diagram predates 2026-08-10 cleanup — see ADR-NNN."` at the top of the diagram block. Lets the diagram stay useful while flagging that it's not canonical.
+4. **`[^]` footnote convention for diagrams referencing soon-to-be-removed subsystems.** Like `!!! note "Diagram predates 2026-08-10 cleanup — see ADR-NNN."` at the top of the diagram block. Lets the diagram stay useful while flagging that it's not canonical.
 
-1. **One ecosystem diagram, shared.** The Bodai topology (Mahavishnu ↔ Akosha ↔ legacy-mcp ↔ Session-Buddy ↔ Crackerjack ↔ Oneiric) should live in ONE place (recommend session-buddy `docs/reference/service-dependencies.md:563`) and be re-embedded from there cross-repo. Six repositories can't all draw the same picture and stay in sync.
+5. **One ecosystem diagram, shared.** The Bodai topology (Mahavishnu ↔ Akosha ↔ legacy-mcp ↔ Session-Buddy ↔ Crackerjack ↔ Oneiric) should live in ONE place (recommend session-buddy `docs/reference/service-dependencies.md:563`) and be re-embedded from there cross-repo. Six repositories can't all draw the same picture and stay in sync.
 
 ______________________________________________________________________
 

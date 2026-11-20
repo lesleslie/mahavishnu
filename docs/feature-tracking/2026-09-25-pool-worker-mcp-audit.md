@@ -29,13 +29,12 @@ shipped phases:
 All three were investigated on 2026-09-25 with no new code changes
 beyond the docstring ASCII diagram fix in
 `mahavishnu/pools/mahavishnu_pool.py` (commit `dddceca9`, replacing
-stale `AppleContainer/E2B microVM` references with `shepherd (OS
-syscall-jail)` per Phase 4.5b).
+stale `AppleContainer/E2B microVM` references with `shepherd (OS syscall-jail)` per Phase 4.5b).
 
 ## State — complete
 
 - [x] `dispatch_to_pool` status confirmed
-- [x] worker_* tools audit completed
+- [x] worker\_\* tools audit completed
 - [x] `mahavishnu_pool.py` docstring fixed (commit `dddceca9`)
 - [x] Decision recorded: keep `dispatch_to_pool`; defer §10 #5 rewrite
 
@@ -84,12 +83,12 @@ already shipped (commit `4090965b`) and is the recommended forward
 path. The `2026-07-11-dispatch-to-pool.md` tracker remains accurate
 ("wired" with verified-failure caveat documented in memory).
 
-### Finding 2 — worker_* MCP tools (all LIVE)
+### Finding 2 — worker\_\* MCP tools (all LIVE)
 
 **Status: KEEP all 18 tools.**
 
 The Plan v3 §10 #2 estimate of "9 registered" was undercounted. The
-actual count is **18 worker_* tools** across two files:
+actual count is **18 worker\_* tools*\* across two files:
 
 | Tool | File | Path | Status |
 |---|---|---|---|
@@ -170,7 +169,7 @@ the plan parking lot.
 | Item | Decision | Action |
 |---|---|---|
 | `dispatch_to_pool` | KEEP — env-failure is the durable substrate, not code | none |
-| worker_* tools (18) | KEEP all — all LIVE with tests | none |
+| worker\_\* tools (18) | KEEP all — all LIVE with tests | none |
 | `mahavishnu_pool.py` docstring | FIXED (commit `dddceca9`) | done |
 | `mahavishnu_pool.py` rewrite | RESOLVED 2026-09-25 as no-op (plan v4) | done |
 

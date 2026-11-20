@@ -21,10 +21,10 @@ indistinguishable from a single delivery). This is required because:
 1. **At-least-once delivery.** The WebSocket layer can re-deliver an
    event on transient network errors. Re-deliveries are indistinguishable
    from original deliveries.
-1. **Out-of-order delivery.** Events can arrive in any order. In
+2. **Out-of-order delivery.** Events can arrive in any order. In
    particular, a `phase=completed` event may arrive before a sibling
    `phase=started` event after a reconnect.
-1. **Reconnect / catch-up via `since_offset`.** Reconnecting clients
+3. **Reconnect / catch-up via `since_offset`.** Reconnecting clients
    resume from a captured offset. The same event may be re-delivered
    during the catch-up window.
 
@@ -93,8 +93,8 @@ them.
 A safe consumer pattern is:
 
 1. Maintain a per-`run_ref` state machine mirror locally.
-1. On each event, advance the mirror via the same transition rules.
-1. If a transition is illegal locally (e.g. `applied` after
+2. On each event, advance the mirror via the same transition rules.
+3. If a transition is illegal locally (e.g. `applied` after
    `proposed`), log and skip — the event is stale or out-of-order
    and must NOT be re-applied.
 

@@ -10,13 +10,13 @@ ______________________________________________________________________
 ## Table of Contents
 
 1. [Overview](#1-overview)
-1. [Monitoring & Observability](#2-monitoring--observability)
-1. [Common Operations](#3-common-operations)
-1. [Troubleshooting](#4-troubleshooting)
-1. [Incident Response](#5-incident-response)
-1. [Configuration Reference](#6-configuration-reference)
-1. [Health Checks](#7-health-checks)
-1. [Appendices](#8-appendices)
+2. [Monitoring & Observability](#2-monitoring--observability)
+3. [Common Operations](#3-common-operations)
+4. [Troubleshooting](#4-troubleshooting)
+5. [Incident Response](#5-incident-response)
+6. [Configuration Reference](#6-configuration-reference)
+7. [Health Checks](#7-health-checks)
+8. [Appendices](#8-appendices)
 
 ______________________________________________________________________
 
@@ -284,16 +284,16 @@ wscat -c ws://localhost:8690 -x '{"action":"subscribe","channel":"team_events"}'
 
 #### Dashboard Panels
 
-1. **Teams Created Over Time** - Time series of team creation rate
-1. **Team Creation by Mode** - Pie chart (coordinate, route, broadcast, collaborate)
-1. **Goal Parsing Confidence** - Histogram with p50, p90, p99
-1. **Skill Usage Distribution** - Bar chart of skill popularity
-1. **Error Rate by Code** - Time series of errors by MHV-XXX code
-1. **Active Teams Gauge** - Current active team count
-1. **Team Creation Latency** - Duration histogram
-1. **Parsing Method Distribution** - Pattern vs LLM fallback
-1. **Intent Distribution** - Goals by intent type
-1. **Domain Distribution** - Goals by domain
+01. **Teams Created Over Time** - Time series of team creation rate
+02. **Team Creation by Mode** - Pie chart (coordinate, route, broadcast, collaborate)
+03. **Goal Parsing Confidence** - Histogram with p50, p90, p99
+04. **Skill Usage Distribution** - Bar chart of skill popularity
+05. **Error Rate by Code** - Time series of errors by MHV-XXX code
+06. **Active Teams Gauge** - Current active team count
+07. **Team Creation Latency** - Duration histogram
+08. **Parsing Method Distribution** - Pattern vs LLM fallback
+09. **Intent Distribution** - Goals by intent type
+10. **Domain Distribution** - Goals by domain
 
 #### Key Visualizations to Set Up
 
@@ -507,9 +507,9 @@ ______________________________________________________________________
 **Root Causes:**
 
 1. Goal is too vague ("Make this better")
-1. No recognizable intent keywords
-1. Domain keywords not matched
-1. LLM fallback not available or disabled
+2. No recognizable intent keywords
+3. Domain keywords not matched
+4. LLM fallback not available or disabled
 
 **Resolution:**
 
@@ -552,8 +552,8 @@ mahavishnu team flags | grep llm_fallback
 **Root Causes:**
 
 1. Master switch `goal_teams.enabled` is false
-1. Specific feature flag is disabled
-1. Config not loaded correctly
+2. Specific feature flag is disabled
+3. Config not loaded correctly
 
 **Resolution:**
 
@@ -587,8 +587,8 @@ mahavishnu mcp restart
 **Root Causes:**
 
 1. MahavishnuApp not created before tool call
-1. `set_app_context()` not called during init
-1. Context variable cleared unexpectedly
+2. `set_app_context()` not called during init
+3. Context variable cleared unexpectedly
 
 **Resolution:**
 
@@ -629,10 +629,10 @@ tail -f logs/mahavishnu.log | grep -i "context\|adapter\|init"
 **How LLM Fallback Works:**
 
 1. Pattern matching attempts first (fast, free)
-1. If confidence < 0.7 and LLM fallback enabled
-1. Goal sent to configured LLM (llama_server/OpenAI/Anthropic)
-1. LLM extracts intent, domain, skills
-1. LLM result used if higher confidence
+2. If confidence < 0.7 and LLM fallback enabled
+3. Goal sent to configured LLM (llama_server/OpenAI/Anthropic)
+4. LLM extracts intent, domain, skills
+5. LLM result used if higher confidence
 
 **When to Investigate:**
 
@@ -733,7 +733,7 @@ ______________________________________________________________________
    grep "MHV-460" logs/mahavishnu.log | tail -20
    ```
 
-1. **Identify Root Cause**
+2. **Identify Root Cause**
 
    ```bash
    # Check feature flags
@@ -746,13 +746,13 @@ ______________________________________________________________________
    mahavishnu team parse "Review code for bugs"
    ```
 
-1. **Common Fixes**
+3. **Common Fixes**
 
    - If feature disabled: Enable `goal_teams.enabled`
    - If context not initialized: Restart MCP server
    - If Agno adapter down: Check Agno configuration
 
-1. **Verify Resolution**
+4. **Verify Resolution**
 
    ```bash
    # Test team creation
@@ -762,7 +762,7 @@ ______________________________________________________________________
    watch 'curl -s http://localhost:9092/metrics | grep errors_total'
    ```
 
-1. **Escalation Path**
+5. **Escalation Path**
 
    - If unresolved in 15 min: Escalate to Platform Team
    - If Agno-related: Include Agno adapter logs
@@ -785,7 +785,7 @@ ______________________________________________________________________
    # Group by error_code in Grafana
    ```
 
-1. **Check Dependencies**
+2. **Check Dependencies**
 
    ```bash
    # LLM provider (llama_server)
@@ -798,7 +798,7 @@ ______________________________________________________________________
    grep -i "database\|sqlite\|postgres" logs/mahavishnu.log
    ```
 
-1. **Check Resource Constraints**
+3. **Check Resource Constraints**
 
    ```bash
    # Memory usage
@@ -811,7 +811,7 @@ ______________________________________________________________________
    df -h data/
    ```
 
-1. **Mitigation**
+4. **Mitigation**
 
    - If LLM down: Switch to pattern-only parsing (disable LLM fallback)
    - If resource exhaustion: Scale horizontally or reduce limits
@@ -842,12 +842,12 @@ rate(mahavishnu_goal_teams_created_total[1m])
    - LLM calls add 1-5 seconds
    - Mitigation: Increase pattern matching coverage
 
-1. **Agno Adapter Initialization**
+2. **Agno Adapter Initialization**
 
    - First team creation slower due to lazy init
    - Mitigation: Warmup during startup
 
-1. **WebSocket Broadcast Overhead**
+3. **WebSocket Broadcast Overhead**
 
    - Many clients = slower broadcasts
    - Mitigation: Batch events or disable broadcasts

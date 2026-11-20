@@ -25,9 +25,9 @@ Use this workflow to review feature adoption, usage, and customer sentiment afte
 ## Workflow
 
 1. Gather telemetry, support, and product signals.
-1. Analyze cohorts, funnels, and outcomes.
-1. Decide what to change in product, support, or enablement.
-1. Update dashboards and follow-up tasks.
+2. Analyze cohorts, funnels, and outcomes.
+3. Decide what to change in product, support, or enablement.
+4. Update dashboards and follow-up tasks.
 
 ## Output
 

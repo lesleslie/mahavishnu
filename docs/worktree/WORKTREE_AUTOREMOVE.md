@@ -78,17 +78,17 @@ order:
 1. **Resolve `main`** — verify the branch exists via `git rev-parse --verify`.
    If absent and `master_fallback` is enabled, try `master`. If both fail,
    the worktree is classified `undetermined`.
-1. **Ancestry check** — `git merge-base --is-ancestor HEAD <branch>`. If HEAD
+2. **Ancestry check** — `git merge-base --is-ancestor HEAD <branch>`. If HEAD
    is an ancestor of main, classify `merged`. This handles linear fast-forward
    merges and real merge commits.
-1. **Merge-commit guard** — if ancestry fails, scan `main..HEAD` for merge
+3. **Merge-commit guard** — if ancestry fails, scan `main..HEAD` for merge
    commits (`git log --merges`). If any exist, classify `undetermined`. This
    guards against `git cherry`'s `revs.max_parents = 1` filter that would
    hide unmerged conflict-resolution merge commits.
-1. **Patch equivalence** — `git cherry <branch>`. With no `+` lines, classify
+4. **Patch equivalence** — `git cherry <branch>`. With no `+` lines, classify
    `merged`. With any `+` lines, classify `not_merged`. This handles
    squash-merges, rebases, and cherry-picks.
-1. **Error fallback** — any subprocess error or timeout returns `undetermined`.
+5. **Error fallback** — any subprocess error or timeout returns `undetermined`.
 
 The classifier **fails closed**. `not_merged` and `undetermined` candidates
 are never eligible.
@@ -313,8 +313,7 @@ recorded in the audit log and the coordinator's backup metadata.
 **Cause**: `MahavishnuApp.load()` couldn't initialize the repo manager.
 
 **Fix**: Check that `settings/ecosystem.yaml` exists and parses. Run
-`uv run python3 -c "from mahavishnu.core.app import MahavishnuApp;
-MahavishnuApp.load()"` for a stack trace.
+`uv run python3 -c "from mahavishnu.core.app import MahavishnuApp; MahavishnuApp.load()"` for a stack trace.
 
 ### "All candidates must have merge_status='merged'" (audit log)
 

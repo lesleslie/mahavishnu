@@ -26,10 +26,10 @@ Use this workflow for catastrophic failures that need executive coordination and
 ## Workflow
 
 1. Classify the disaster and notify the full response team.
-1. Assess business, legal, and technical impact.
-1. Pick the appropriate recovery strategy and execute it.
-1. Validate critical paths and customer communications.
-1. Stabilize, then document lessons learned.
+2. Assess business, legal, and technical impact.
+3. Pick the appropriate recovery strategy and execute it.
+4. Validate critical paths and customer communications.
+5. Stabilize, then document lessons learned.
 
 ## Output
 

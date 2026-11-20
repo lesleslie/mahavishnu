@@ -3,7 +3,7 @@ status: complete
 role: implementation
 date: 2026-09-05
 last_reviewed: 2026-10-18
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: terminal
 resolved_at: 2026-10-18
@@ -21,7 +21,7 @@ terminal subsystem defect. All three sections are now resolved
 
 Each section preserves the original content verbatim.
 
----
+______________________________________________________________________
 
 ## 1. `close_all` empty id roundtrip (formerly `2026-09-05-terminal-close-all-empty-id-roundtrip.md`)
 
@@ -53,7 +53,7 @@ forcing the manager to handle an invalid session ID on every call.
 4. Add `test_close_all_skips_all_empty_ids` for the all-missing-IDs edge case.
 5. Mark Resolved citing fix location + regression test names.
 
----
+______________________________________________________________________
 
 ## 2. `terminal_send` regex mismatch (formerly `2026-09-05-terminal-send-regex-mismatch.md`)
 
@@ -90,7 +90,7 @@ single Annotated constraint, not reconcile two validators.)
 4. Add positive `test_session_id_with_dots_accepted` parametrized test.
 5. Mark Resolved citing fix location + regression test name.
 
----
+______________________________________________________________________
 
 ## 3. `validate_command_safety` substring false positives (formerly `2026-09-05-terminal-validate-command-safety.md`)
 
@@ -122,7 +122,7 @@ All 84 tests in `tests/unit/mcp/tools/test_terminal_tools.py` pass;
 
 Re-introducing any of the dropped patterns requires a fresh policy call.
 
----
+______________________________________________________________________
 
 🔴 **Open — behavioral decision required** (historical; resolved above) —
 the current implementation is

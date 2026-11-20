@@ -3,7 +3,7 @@ status: complete
 role: historical
 date: 2026-09-05
 last_reviewed: 2026-10-13
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: permissions
 ---
@@ -21,7 +21,7 @@ Each section preserves the original content verbatim.
 > paths below are preserved as the record of where each fix landed at
 > the time; they no longer resolve.
 
----
+______________________________________________________________________
 
 ## 1. Accessibility prompt (formerly `2026-09-05-permissions-accessibility-prompt.md`)
 
@@ -57,7 +57,7 @@ in a loop would spam the user with the system permission dialog.
    - `test_request_accessibility_with_prompt_false_skips_dialog`
 6. Mark Resolved citing fix location + regression test names.
 
----
+______________________________________________________________________
 
 ## 2. Dead cache fields (formerly `2026-09-05-permissions-dead-cache-fields.md`)
 
@@ -92,7 +92,7 @@ Looks like caching that doesn't cache. Either dead code or refactor remnant.
    `assert checker._cached_accessibility is None` lines must go.
 5. Mark Resolved citing fix location + regression test name.
 
----
+______________________________________________________________________
 
 ## 3. Mutable dataclass (formerly `2026-09-05-permissions-mutable-dataclass.md`)
 

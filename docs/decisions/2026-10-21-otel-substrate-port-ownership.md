@@ -5,6 +5,7 @@ date: 2026-10-21
 last_reviewed: 2026-10-21
 topic: otel-port-ownership
 ---
+
 # OTel substrate owns the canonical OTLP ports
 
 ## Context
@@ -40,6 +41,7 @@ Two further findings shape the decision:
    and never persists or forwards them. No span sent to Alloy today reaches
    durable storage. Only *metrics* survive, via `otelcol.exporter.prometheus`
    on `:12345` (confirmed live and serving metrics) feeding Grafana.
+
 2. **Alloy is the designated ingress, not a competitor.** `~/.zshrc:183-196`
    exports **three** OTLP endpoints at it — `CODEX_OTEL_EXPORTER_OTLP_ENDPOINT`
    (:188), `QWEN_TELEMETRY_EXPORTER_OTLP_ENDPOINT` (:191), and the generic

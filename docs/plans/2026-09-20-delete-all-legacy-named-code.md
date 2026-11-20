@@ -4,7 +4,7 @@ status: complete
 role: implementation
 topic: delete-all-legacy-named-code
 last_reviewed: 2026-10-17
-superseded_by: null
+superseded_by:
 
 # Verified complete 2026-10-17 (crackerjack repo):
 # - `crackerjack/integration/legacy_mcp_client.py` deleted
@@ -28,6 +28,7 @@ The previous rename plan (`legacy_integration.py` → `adapter_learning.py`) cle
 4. Stale tests that reference symbols removed during the 2026-09-20 decommissioning of the standalone MCP server component
 
 **Verdict from evidence (per Explore agent's mapping)**:
+
 - **All three modules/classes have ZERO production consumers.** `LegacyMCPConfig` / `LegacyMCPClient` has no internal callers (the docstring's claimed consumers — `failure_metrics_repository.py`, `legacy_integration.py` — have already been gutted). `LegacyMCPSettings` is not referenced anywhere except its own definition; not wired into `CrackerjackSettings` root model. `LegacySOPPersister` is a stub where every method raises `NotImplementedError` (the retired server's `project_sops` collection will never land).
 - **All stale tests have ZERO surviving test cases.** `test_aio_thread_leak_regression.py`, `legacy_mcp_adapter_learner_test.py`, `legacy_mcp_client_test.py` are 100% obsolete (every test in them dies when the corresponding code is gone).
 - **Zero cross-repo blast radius.** Grep across `mahavishnu`, `session-buddy`, `akosha`, `mcp-common`, `oneiric` shows no source-code importers of any of these symbols. Markdown mentions in those repos are historical artifacts.
@@ -35,6 +36,7 @@ The previous rename plan (`legacy_integration.py` → `adapter_learning.py`) cle
 **Intended outcome**: crackerjack no longer contains a single legacy-named symbol. New readers land on the current state (SQLite-only adapter learner, in-memory SOP persister, settings without the legacy MCP client) without having to learn what the retired standalone MCP server was or why it's gone.
 
 **Out of scope (intentional non-changes)**:
+
 - `crackerjack/services/failure_metrics_repository.py` — flagged by the Explore agent as a related "silent no-op wrapper" left over from the same decommissioning, but the user did not ask for it and it has live consumers (`failure_recorder.py:14,93`, `improvement_generator.py:12,39`). Cleaning it up would require migrating those callers to Mahavishnu's `mcp__mahavishnu__upsert_service` / `mcp__mahavishnu__record_event` per `crackerjack/docs/followups/2026-09-14-delete-storage-mcp-client-after-decomposition.md` § "What to delete" #2a. That's a separate Mahavishnu-tools migration, not a legacy-cleanup task.
 - Cross-repo markdown artifacts referencing the legacy MCP client (`mahavishnu/reports/`, `mahavishnu/docs/superpowers/plans/`, etc.) — historical only; the docs-audit convention is to leave historical mentions in place.
 - `crackerjack/docs/followups/2026-09-14-delete-storage-mcp-client-after-decomposition.md` — keep the followup document itself but flip its `status: draft` → `status: complete` (or similar) once the deletion lands. This signals to future readers that the work is done.
@@ -79,11 +81,12 @@ The `LegacySOPPersister` is deleted in 1c, so its two tests must go too:
 
 - **Import block** (line 34): drop `LegacySOPPersister`
 - **Class `TestLegacySOPPersister`** (lines 256-280) — two tests, both stub-validation. `test_stub_raises_not_implemented` and `test_stub_is_sop_persister`. Delete the whole class.
-- **Module docstring** (line 13): drop the line "``LegacySOPPersister`` stub raises ``NotImplementedError`` (documented stub)"
+- **Module docstring** (line 13): drop the line "`LegacySOPPersister` stub raises `NotImplementedError` (documented stub)"
 
 ### Phase 5 — mark the decomp followup done
 
 Open `crackerjack/docs/followups/2026-09-14-delete-storage-mcp-client-after-decomposition.md` and update the front-matter:
+
 - `status: draft` → `status: complete`
 - `last_reviewed: 2026-09-14` → `last_reviewed: 2026-09-20`
 
@@ -107,20 +110,25 @@ This is a low-stakes metadata update so future readers see the work is done. The
 ## Verification
 
 1. **Zero legacy references survive in production code**:
+
    ```bash
    rg -l "LegacyMCPSettings|LegacyMCPConfig|LegacyMCPClient|LegacyAdapterLearner|LegacyMCPAdapterLearner|LegacySOPPersister" \
       --type py /Users/les/Projects/crackerjack/crackerjack/
    ```
+
    Expected: zero hits.
 
 2. **Zero legacy references in intact tests**:
+
    ```bash
    rg -l "LegacyMCPSettings|LegacyMCPConfig|LegacyMCPClient|LegacyAdapterLearner|LegacyMCPAdapterLearner|LegacySOPPersister|legacy_mcp_client|crackerjack\.integration\.legacy_integration" \
       --type py /Users/les/Projects/crackerjack/tests/
    ```
+
    Expected: zero hits (only historical CHANGELOG.md / docs/ matches remain).
 
 3. **Tests pass** (the same set that passed before this plan):
+
    ```bash
    cd /Users/les/Projects/crackerjack && .venv/bin/pytest \
      tests/integration/test_adapter_learning.py \
@@ -128,16 +136,20 @@ This is a low-stakes metadata update so future readers see the work is done. The
      tests/unit/test_sop_evolution.py \
      --no-cov -v
    ```
+
    Expected: all in-scope tests pass. No legacy-related failures or skips (since the dead tests are now deleted, not skipped).
 
 4. **Type check + refurb**:
+
    ```bash
    cd /Users/les/Projects/crackerjack && .venv/bin/ty check crackerjack/
    .venv/bin/refurb crackerjack/
    ```
+
    Expected: All checks passed! / exit 0.
 
 5. **End-to-end smoke test** (the renamed factory still works in mahavishnu):
+
    ```bash
    cd /Users/les/Projects/mahavishnu && /Users/les/Projects/crackerjack/.venv/bin/python -c "
    from pathlib import Path
@@ -154,14 +166,17 @@ This is a low-stakes metadata update so future readers see the work is done. The
    print(f'{type(learner).__name__} enabled={learner.is_enabled()}')
    "
    ```
+
    Expected: `SQLiteAdapterLearner enabled=True`. (The renamed module from the prior plan still imports cleanly with the surrounding legacy code gone.)
 
 6. **Cross-repo blast radius check**:
+
    ```bash
    rg "from crackerjack.integration.legacy_mcp_client|from crackerjack.config.settings.*LegacyMCPSettings|LegacySOPPersister" \
       /Users/les/Projects/mahavishnu /Users/les/Projects/session-buddy \
       /Users/les/Projects/akosha /Users/les/Projects/mcp-common /Users/les/Projects/oneiric
    ```
+
    Expected: zero hits.
 
 ## Precedent

@@ -3,14 +3,14 @@ status: complete
 role: reference
 date: 2026-09-10
 last_reviewed: 2026-09-10
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: math-spec-review
 ---
 
 # Math Spec Multi-Agent Review — 2026-09-10
 
-> **Purpose**: Preserve the reasoning from the 9-agent multi-perspective review that drove the v1→v2 rewrite of [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`]. Future contributors asking "why does the spec say X?" should find their answer here.
+> **Purpose**: Preserve the reasoning from the 9-agent multi-perspective review that drove the v1→v2 rewrite of \[`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`\]. Future contributors asking "why does the spec say X?" should find their answer here.
 >
 > **Reading guide**: §1 Overview → §2 Synthesis → §3 v1→v2 mapping table → §4 Per-agent findings (search within with Ctrl-F for a specific fact). §5 Notes on what's preserved verbatim vs. summarized.
 >
@@ -48,7 +48,7 @@ The seven domain specialists each had a specific question about the spec; the tw
 | C6 | Oneiric env-var convention is double-underscore (`MAHAVISHNU_POOLS__QUEUEING_ENABLED`). v1 used single underscore — silent runtime failure. | 1, 4 | Env vars fixed throughout. |
 | C7 | Cross-repo Akosha integration should NOT be in Tier 1. Reasons vary (cost/risk; pytrendy exists; extend fitness-analyzer instead) but converge on the same recommendation. | 2, 1, 9 | Tier 1 stays single-repo; §7 stub documents the right follow-on mechanism. |
 | C8 | Akosha already has `akosha_analyze_changepoints` backed by `pytrendy` (segmented regression, batch retrospective). Z-score (pointwise) + pytrendy (batch) + CUSUM/PH (online sequential) are three orthogonal detectors, not substitutes. | 2 | §4.7 added; §7 cross-repo stub references pytrendy. |
-| C9 | Cross-repo feasibility is HIGH via extending `mahavishnu/pools/fitness_analyzer.py:279` task_classes list (add `"routing_change_point"`) + write `HotRecord` objects. <100 LOC. No new transport. | 9 | §7 cross-repo stub names this as the right mechanism. |
+| C9 | Cross-repo feasibility is HIGH via extending `mahavishnu/pools/fitness_analyzer.py:279` task_classes list (add `"routing_change_point"`) + write `HotRecord` objects. \<100 LOC. No new transport. | 9 | §7 cross-repo stub names this as the right mechanism. |
 | C10 | No continuous sample stream exists for change-point detector today. `get_observability_metrics` is request/response; WebSocket channels are event-driven; no `metrics:*` channel; no time-series buffer. | 9, 1 (implicit) | Phase 6 includes explicit `MetricSampler` deliverable (REQ-009). |
 | C11 | No per-pool arrival timestamps recorded anywhere today. `route_task` writes only the routing-decision timestamp. Without new instrumentation, M/M/c can't be fit on real traffic. | 9 | Phase 2 includes arrival-timestamp deliverable (REQ-008). |
 | C12 | Routing-decision persistence already has 4 emission surfaces (in-memory, persistence substrate, Prometheus counter, WebSocket event). v1's plan to add a new log line would create a 5th parallel path. | 1 | Phase 2 extends the existing persistence record + 1 OTel span, no parallel emission. |
@@ -64,7 +64,7 @@ The seven domain specialists each had a specific question about the spec; the tw
 | FOR | 8 (`observability-incident-lead`) | Operators need Akosha's cross-system correlation; Mahavishnu incidents usually upstream-caused. |
 | AGAINST | 1 (`mahavishnu-specialist`) | Cost (~3-5 days), risk (high blast radius across two repos), and cleaner as a follow-on. |
 | AGAINST | 2 (`akosha-specialist`) | Live Akosha access: pytrendy already in the slot. Adding CUSUM/PH is third algorithm, not gap-filler. "Replace 3-sigma" framing was wrong. Recommend Tier 1 stays single-repo + §11 stub naming pytrendy. |
-| AGAINST | 9 (`data-pipeline-engineer`) | Extend `fitness_analyzer.py` (not Akosha's math). <100 LOC when needed. Don't invent a new channel. |
+| AGAINST | 9 (`data-pipeline-engineer`) | Extend `fitness_analyzer.py` (not Akosha's math). \<100 LOC when needed. Don't invent a new channel. |
 
 **Resolution**: The AGAINST side had ground-truth access (live Akosha, codebase grep, fitness-analyzer precedent); the FOR side had sound abstract reasoning on incomplete premises. The AGAINST recommendation — defer cross-repo, add stub — won. Implemented as §7 stub + Phase 9 followups entries.
 
@@ -117,15 +117,16 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Domain**: Mahavishnu integration — code paths, config flags, file existence.
 
 **Key findings (15 specific)**:
-1. `PoolSelector` has 5 members, not 4 (added `PEER_AFFINITY`).
-2. No `PoolState` class — closest is `PoolMetrics`.
-3. `route_task` already persists to the persistence substrate + publishes to MessageBus; no log line today.
-4. Env-var naming: Oneiric uses double-underscore.
-5. **`mahavishnu/observability/metrics.py` is worktree/storage only** — wiring CUSUM there means it runs on worktree creates and cache hits, NOT workflow duration p99 or pool queue depth.
-6. "3-sigma baseline in Mahavishnu observability" doesn't exist.
-7. `PoolConfig.model_config = {"extra": "forbid"}` silently rejects unknown fields.
-8. `mahavishnu/scripts/feature_eligibility.py` path is wrong.
-9. 3 pre-existing hooks silent on integration order: `_enforce_caller_quota`, `_apply_fitness_aware_routing`, `_apply_gpu_category_override`.
+
+01. `PoolSelector` has 5 members, not 4 (added `PEER_AFFINITY`).
+02. No `PoolState` class — closest is `PoolMetrics`.
+03. `route_task` already persists to the persistence substrate + publishes to MessageBus; no log line today.
+04. Env-var naming: Oneiric uses double-underscore.
+05. **`mahavishnu/observability/metrics.py` is worktree/storage only** — wiring CUSUM there means it runs on worktree creates and cache hits, NOT workflow duration p99 or pool queue depth.
+06. "3-sigma baseline in Mahavishnu observability" doesn't exist.
+07. `PoolConfig.model_config = {"extra": "forbid"}` silently rejects unknown fields.
+08. `mahavishnu/scripts/feature_eligibility.py` path is wrong.
+09. 3 pre-existing hooks silent on integration order: `_enforce_caller_quota`, `_apply_fitness_aware_routing`, `_apply_gpu_category_override`.
 10. `_ALLOWED_LABEL_KEYS` in `metrics.py` is closed.
 11. `auto_spawn` path has zero observations.
 12. 4 routing-decision surfaces need extension.
@@ -142,6 +143,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Domain**: Akosha integration feasibility with live system access.
 
 **Key findings**:
+
 1. Akosha's actual algorithm landscape is **three detectors in three postures**: Z-score (live), pytrendy (source-only, gated), CUSUM/PH (proposed).
 2. "Replace 3-sigma" framing was wrong from the start — Z-score and CUSUM/PH answer different questions.
 3. Akosha's `akosha_analyze_changepoints` uses **pytrendy (segmented regression)**, not CUSUM. It's in the same conceptual slot as the proposed math.
@@ -159,6 +161,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Domain**: Cross-repo transport mechanism.
 
 **Key findings**: Four options ranked:
+
 1. **Shared library in `oneiric`** — RECOMMENDED. ~1-2 days. Aligns with `promote-oneiric-action-kits.md` precedent. Math is stateless pure compute; no service boundary needed.
 2. MCP service call — REJECTED. Inverts seer/orchestrator relationship (Akosha is intelligence SOURCE). 5-50ms latency is hot-path-expensive. Couples Akosha uptime to Mahavishnu.
 3. Cross-repo dependency (Akosha → Mahavishnu) — REJECTED. Architecturally backwards; circular dep risk; pulls in FastMCP, pool system, settings for ~500 LOC of math.
@@ -175,6 +178,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Domain**: Spec architecture, phase decomposition, template adherence.
 
 **Key findings**:
+
 1. Phases A3/B3 mislabeled as integration when they're docs-only — mark explicitly.
 2. §5.4.5 broken reference in Phase C.
 3. A4/B4 different in kind from A3/B3 (true promotion events).
@@ -187,6 +191,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Verbatim on REQ traceability**: *"Without this mapping table, the implementer has to guess, and `audit_requirements.py` will report orphans on first run."*
 
 **RECOMMENDED mapping table** (adopted in v2 §5.1):
+
 ```
 | REQ | File | Marker location |
 | REQ-001 | mahavishnu/pools/queueing/mmc.py | module docstring `# Implements: REQ-001` |
@@ -201,6 +206,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Domain**: Python implementation, math correctness, project conventions.
 
 **Key findings**:
+
 1. **`MMcQueue` named for M/M/c but uses Kingman (M/G/1)** — rename or expose `approximation="erlang_c"` knob.
 2. **`expected_queue_length` docstring ambiguous** — split into `L_q` and `L` methods.
 3. `utilization` raises untyped exception; use `QueueingModelError`.
@@ -221,6 +227,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Domain**: Bodai architectural fit.
 
 **Key findings**:
+
 1. **Oneiric layering, adapter pattern, MCP-first, Integration Contract discipline** — all respected in v1.
 2. **Missing `requirements:` YAML frontmatter block** — v1 put REQs in body §4.5; `audit_requirements.py` won't pick them up. Fix: move to frontmatter, leave body as documentation.
 3. **Phase labels diverge from convention** — TEMPLATE.md says "Phase 1, Phase 2, ..."; v1 used A1..A4.
@@ -241,6 +248,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Domain**: Test strategy.
 
 **Key findings**:
+
 1. Test plan "competent but thin" — example-based tests give ~0.1% coverage of input space for math libraries.
 2. **Strong yes on Hypothesis** for math invariants (utilization, Little's law, NaN/Inf rejection, ARL₀ curves).
 3. **14 missing test scenarios** documented: cold start, NaN/Inf, single-worker, ρ→1, reset semantics, concurrent updates, config-flag off, ROC, multi-pool, etc.
@@ -258,6 +266,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Domain**: Operator incident perspective (random agent).
 
 **Key findings**:
+
 1. Drift detection log fields miss operator context (need `current_value`, `baseline_mean`, `severity`, `dashboard_url`, `trace_id`).
 2. **Routing decision log line risks cardinality** — 10 pools × 100 tasks/sec × 6 fields = 6000 log lines/sec. Need sampling (1-in-N) + always-log-on-divergence.
 3. **Both CUSUM at Mahavishnu and at Akosha matter**, at different times during incident: 0-5 min Mahavishnu-local; 5-30 min ecosystem-wide; 30+ min upstream correlation.
@@ -275,13 +284,14 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 **Domain**: Data flow perspective (random agent).
 
 **Key findings**:
+
 1. **No per-pool arrival timestamp hook exists.** Without new instrumentation, M/M/c can't be fit on real traffic.
 2. **No continuous sample stream exists** for change-point detector. `get_observability_metrics` is request/response; WebSocket channels are event-driven; no time-series buffer.
 3. `agent_task_duration_seconds` histogram buckets `(1, 5, 10, 30, 60, 120, 300, 600, 1800)` — too coarse (5:1 spread in 1-5s bucket); labels `(agent_type, adapter="worker_manager")` lack `pool_id`.
 4. 4 routing-decision surfaces exist; none has predicted/observed fields.
 5. `pool_tasks_queued` defined-but-never-written (`monitoring/metrics.py:148-152`).
 6. OTel ingester is not a fit for either queueing or change-point feeds (text/semantic-first; FIFO cache thrashes; serial ingest loop).
-7. **Cross-repo feasibility HIGH; recommend extending `fitness_analyzer.py` pattern**, <100 LOC, no new transport.
+7. **Cross-repo feasibility HIGH; recommend extending `fitness_analyzer.py` pattern**, \<100 LOC, no new transport.
 8. Validation criteria realistic but the bar may be too low for confidence.
 
 **Verbatim on instrumentation gap**: *"The spec says 'fit from observed arrivals and service times' and Phase A2 declares a 'sliding window of recent task arrivals and completions.' But the pool layer records no per-pool arrival timestamp anywhere."*
@@ -297,6 +307,7 @@ Each agent's section below preserves: domain, key findings (summary), and a verb
 This document preserves each agent's domain, key findings, and the most decision-affecting verbatim quote. The full text of each agent's response is in the ephemeral JSONL transcripts at `/private/tmp/claude-501/-Users-les-Projects-mahavishnu/0fabba93-19ac-4966-8208-e34b70f3e868/tasks/*.output`.
 
 The preservation strategy here prioritizes **traceability of decisions** over verbatim completeness:
+
 - Convergent findings (§2.1) are summarized with attribution because the value is in the agreement, not the wording.
 - Divergent findings (§2.2) preserve the reasoning of each side because the resolution depends on the argument.
 - Per-agent key findings (§4) summarize each agent's contribution.
@@ -306,7 +317,7 @@ If a future contributor needs a specific fact that isn't in this doc, the JSONL 
 
 ## 6. References
 
-- [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`] — the v2 spec this review drove
+- \[`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`\] — the v2 spec this review drove
 - `docs/plans/TEMPLATE.md` — integration-contract template the spec follows
 - `docs/decisions/wire-up-contract.md` — policy the Integration Contract block requirement implements
 - `docs/decisions/bodai-observability-pattern.md` — second-control-plane prohibition cited by architecture-council

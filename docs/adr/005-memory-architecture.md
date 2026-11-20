@@ -29,10 +29,10 @@ topic: memory-architecture
 Mahavishnu is a global orchestrator package that manages workflows across multiple repositories. As the system evolved, we identified several memory-related needs:
 
 1. **Agent Memory**: High-volume agent conversations, tool usage, reasoning traces
-1. **RAG Knowledge Base**: Vector embeddings for semantic search across codebases
-1. **Workflow History**: Execution logs and orchestration patterns
-1. **Cross-Project Learning**: Share insights across related projects
-1. **Session Context**: Maintain context across development sessions
+2. **RAG Knowledge Base**: Vector embeddings for semantic search across codebases
+3. **Workflow History**: Execution logs and orchestration patterns
+4. **Cross-Project Learning**: Share insights across related projects
+5. **Session Context**: Maintain context across development sessions
    The existing implementation had basic session checkpoint integration but lacked:
 
 - Unified search across memory systems

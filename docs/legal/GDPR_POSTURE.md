@@ -3,9 +3,9 @@ status: draft
 role: canonical
 date: 2026-09-06
 last_reviewed: 2026-09-06
-superseded_by: null
+superseded_by:
 blocks_on: []
-decision_date: null
+decision_date:
 topic: gdpr-posture
 related:
   - "../adr/0016-scapy-mcp-integration.md"
@@ -24,6 +24,7 @@ This document applies to **Flowscape v1's scapy-mcp client-mode enrichment integ
 **Pre-1.0 internal-use scope (current):** Recent project memory `feedback-bodai-pre-1.0-merge-policy: all Bodai components merge directly to main pre-1.0; no PRs` means Flowscape v1 has **no public release**. Article 3(1) GDPR territorial scope ("in the context of the activities of an establishment") and Article 3(2) (offering goods/services to data subjects in the Union) **are not currently triggered** for pre-1.0 internal use within the Bodai development environment. This document therefore captures the posture for the moment the project crosses into v1.x-public-release territory.
 
 **v1.x trigger (when this becomes load-bearing):** Flowscape ships a v1.0 public release via PyPI + Homebrew + signed `.app` distribution (per the Flowscape plan §"Distribution & packaging"). At that moment:
+
 - A formal Article 35 DPIA MUST be completed before the release goes live (see §7 below).
 - This posture document MUST be re-reviewed against the then-current v1.0 scope and any updated scapy-mcp behaviors.
 - ADR 0016 MUST be flipped to v3 (or higher) with the controller/processor reframing + Article 35 commitment.
@@ -74,6 +75,7 @@ The L4 BLOCKER B4 finding (premise that "same machine = same controller") is rej
 The lawful basis for processing is determined by the deployment context:
 
 ### 5.1 Pre-1.0 internal use
+
 No Article 6 basis required (no Article 3 scope). Internal-use documentation suffices.
 
 ### 5.2 v1.x public release — Legitimate Interests (Article 6(1)(f))

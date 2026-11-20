@@ -503,18 +503,18 @@ ______________________________________________________________________
 ### Positive Impacts
 
 1. **Crash Recovery**: Process crashes don't lose transaction progress
-1. **Retry Logic**: Transient failures (network blips, DB locks) are retried automatically
-1. **Idempotency**: Safe to retry saga steps without duplicate operations
-1. **Observability**: Can query saga history for debugging
-1. **Circuit Breaker**: Failing steps don't cause infinite retry loops
-1. **Production Ready**: Handles real-world failure scenarios
+2. **Retry Logic**: Transient failures (network blips, DB locks) are retried automatically
+3. **Idempotency**: Safe to retry saga steps without duplicate operations
+4. **Observability**: Can query saga history for debugging
+5. **Circuit Breaker**: Failing steps don't cause infinite retry loops
+6. **Production Ready**: Handles real-world failure scenarios
 
 ### Negative Impacts
 
 1. **Complexity**: More complex than simple transaction
-1. **Timeline**: Adds 1 week to Phase 1 implementation
-1. **Database Overhead**: Additional saga log table and queries
-1. **Debugging**: Saga failures can be harder to debug than simple errors
+2. **Timeline**: Adds 1 week to Phase 1 implementation
+3. **Database Overhead**: Additional saga log table and queries
+4. **Debugging**: Saga failures can be harder to debug than simple errors
 
 ### Risks
 
@@ -524,13 +524,13 @@ ______________________________________________________________________
    - **Mitigation**: Partition saga_log by created_at
    - **Mitigation**: Archive old saga records
 
-1. **Compensation Failures**: What if compensation itself fails?
+2. **Compensation Failures**: What if compensation itself fails?
 
    - **Severity**: Medium
    - **Mitigation**: Retry compensation with exponential backoff
    - **Mitigation**: Alert on compensation failures (manual intervention)
 
-1. **Orphaned Sagas**: Sagas stuck in COMPENSATING state
+3. **Orphaned Sagas**: Sagas stuck in COMPENSATING state
 
    - **Severity**: Medium
    - **Mitigation**: Background job to detect and clean up orphaned sagas

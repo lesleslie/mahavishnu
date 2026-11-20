@@ -4,18 +4,18 @@ role: implementation
 kind: plan
 date: 2026-11-16
 last_reviewed: 2026-11-16
-superseded_by: null
+superseded_by:
 topic: pool-routing-affinity
 title: "Make pool affinity reachable and the worker-type allowlist agree with the registry"
 requirements:
-- id: REQ-AFFINITY-001
-  title: "pool_affinity honours a server-side, operator-configured allowlist"
-- id: REQ-AFFINITY-002
-  title: "The affinity allowlist is never keyed on a wire-supplied value"
-- id: REQ-WORKERTYPE-001
-  title: "The CLI and the MCP spawn tool accept the same pool-capable worker types"
-- id: REQ-WORKERTYPE-002
-  title: "The pool-capable worker-type set is derived from the worker registry"
+  - id: REQ-AFFINITY-001
+    title: "pool_affinity honours a server-side, operator-configured allowlist"
+  - id: REQ-AFFINITY-002
+    title: "The affinity allowlist is never keyed on a wire-supplied value"
+  - id: REQ-WORKERTYPE-001
+    title: "The CLI and the MCP spawn tool accept the same pool-capable worker types"
+  - id: REQ-WORKERTYPE-002
+    title: "The pool-capable worker-type set is derived from the worker registry"
 ---
 
 # Make pool affinity reachable and the worker-type allowlist agree with the registry
@@ -23,8 +23,7 @@ requirements:
 ## 1. Outcome
 
 `mahavishnu_pool_route_execute(pool_selector="affinity", pool_affinity="<pool_id>")`
-dispatches to the pool the caller named, and `mahavishnu pool spawn --worker-type
-terminal-claude` is accepted by the CLI the same way the MCP tool accepts it.
+dispatches to the pool the caller named, and `mahavishnu pool spawn --worker-type terminal-claude` is accepted by the CLI the same way the MCP tool accepts it.
 
 **Success signal:** a dispatch naming a registered pool lands on that pool (the
 response's `pool_id` equals the one named) instead of falling back to
@@ -33,20 +32,20 @@ LEAST_LOADED; and `mahavishnu pool spawn --worker-type terminal-claude` exits 0.
 ## 2. Goals
 
 1. Wire `caller_pool_allowlist` so the AFFINITY selector can honour a pool.
-1. Keep ADR-014's boundary: the allowlist is server-side, never wire-supplied.
-1. Make the allowlist operator-configurable per caller kind.
-1. Derive the pool-capable worker-type set from the worker registry so the CLI
+2. Keep ADR-014's boundary: the allowlist is server-side, never wire-supplied.
+3. Make the allowlist operator-configurable per caller kind.
+4. Derive the pool-capable worker-type set from the worker registry so the CLI
    and the MCP tool cannot drift apart again.
-1. Correct the "retired on 2026-09-24" claim about the `terminal-*` worker types,
+5. Correct the "retired on 2026-09-24" claim about the `terminal-*` worker types,
    which the pool path has been running live ever since.
 
 ## 3. Non-Goals
 
 1. Not changing the pool selection *order* — only making AFFINITY reachable.
-1. Not adding a new MCP tool, and not changing `pool_route_execute`'s schema.
-1. Not reintroducing the `apple-container` / `e2b-sandbox` / `container-executor`
+2. Not adding a new MCP tool, and not changing `pool_route_execute`'s schema.
+3. Not reintroducing the `apple-container` / `e2b-sandbox` / `container-executor`
    backends; their modules are deleted.
-1. Not changing `CallerKind`'s quota semantics — it stays attribution-only.
+4. Not changing `CallerKind`'s quota semantics — it stays attribution-only.
 
 ## 4. Current Findings
 
@@ -58,7 +57,7 @@ LEAST_LOADED; and `mahavishnu pool spawn --worker-type terminal-claude` exits 0.
    pass it, and no settings key binds it. Observed 2026-11-16: three
    dispatches naming a pool all landed on `mahavishnu_4844515216`.
 
-1. **The CLI refuses the worker types the pool path runs.** The CLI's
+2. **The CLI refuses the worker types the pool path runs.** The CLI's
    `SPAWN_WORKER_TYPE_ALLOWLIST` (`mahavishnu/_main_cli.py:2036`) is
    `{"shepherd", "gateway-openclaw"}`, and its comment claims `terminal-claude`
    and friends "were retired on 2026-09-24". The ADR it cites
@@ -71,18 +70,17 @@ LEAST_LOADED; and `mahavishnu pool spawn --worker-type terminal-claude` exits 0.
    `terminal-claude` pool (`merge-review`, `claude-pool`) ran a real Claude
    Code session and returned `result: "PONG"`.
 
-1. **The MCP tool is the looser of the two, and it is the one that is wrong.**
+3. **The MCP tool is the looser of the two, and it is the one that is wrong.**
    `mahavishnu_pool_spawn` validates against `WORKER_REGISTRY.keys()`, which
    still lists `apple-container` and `e2b-sandbox` — the backends whose modules
    were deleted. So the CLI refuses the working types and the MCP tool admits
    the dead ones.
 
-1. **The repo already documents the contradiction.** The "no pool available that
+4. **The repo already documents the contradiction.** The "no pool available that
    can honour task['cwd']" refusal in `mahavishnu/pools/manager.py:897` tells the
-   operator to run `mahavishnu pool spawn --type mahavishnu --name merge-review
-   --worker-type terminal-claude` — a command the CLI refuses.
+   operator to run `mahavishnu pool spawn --type mahavishnu --name merge-review --worker-type terminal-claude` — a command the CLI refuses.
 
-1. **The registry carries the fact the allowlist needs.** `WorkerConfig` has
+5. **The registry carries the fact the allowlist needs.** `WorkerConfig` has
    `runtime_kind`, and `MahavishnuPool.__init__`
    (`mahavishnu/pools/mahavishnu_pool.py:179`) already computes
    `_worker_runtime_kind` from it. The pool already knows whether its worker
@@ -163,7 +161,7 @@ incorrect "retired" claim. Correct them and record the registry-derived rule.
 ## 6. Verification
 
 1. `pytest tests/unit/cli/test_spawn_allowlist.py tests/unit/pools/ -q`
-1. `pytest tests/unit/mcp/test_pool_tools.py tests/unit/test_mcp_pool_tools.py -q`
-1. `pyscn analyze --config .pyscn.toml --select complexity --min-complexity 16`
-1. `ty check` on every touched file.
-1. A live dispatch naming a registered pool returns that pool's id.
+2. `pytest tests/unit/mcp/test_pool_tools.py tests/unit/test_mcp_pool_tools.py -q`
+3. `pyscn analyze --config .pyscn.toml --select complexity --min-complexity 16`
+4. `ty check` on every touched file.
+5. A live dispatch naming a registered pool returns that pool's id.

@@ -26,7 +26,7 @@ to wiring evidence.
 
 1. **Every plan uses `docs/plans/TEMPLATE.md`.** No plan is "done" if
    any phase deliverable lacks an Integration Contract block.
-1. **Every Integration Contract specifies**:
+2. **Every Integration Contract specifies**:
    - **Triggered from** — the exact entry point (CLI command path, MCP
      tool name, HTTP route, scheduler, or upstream caller).
    - **Returns to / updates** — the destination state, store, or
@@ -39,16 +39,16 @@ to wiring evidence.
      tells the operator to revert.
    - **Observability added** — the OTel span, metric, or log line that
      makes this wiring visible in production.
-1. **Run `python scripts/audit_orphans.py` before declaring a feature
+3. **Run `python scripts/audit_orphans.py` before declaring a feature
    complete.** Treat zero-caller symbols reported within the lookback
    window as either (a) wires that need connecting, or (b) code that
    should be removed. Both are acceptable; silent orphans are not.
-1. **Track `{built, wired, adopted}` state** for every feature in
+4. **Track `{built, wired, adopted}` state** for every feature in
    `docs/feature-tracking/<slug>.md` (template at
    `docs/feature-tracking/TEMPLATE.md`). Persist a one-line state
    summary to Session-Buddy via `mcp__session-buddy__session_buddy_store_reflection`
    with tags `["feature-tracking", "<slug>", "wire-up-state"]`.
-1. **Follow the `feature-delivery-lifecycle` workflow** which now
+5. **Follow the `feature-delivery-lifecycle` workflow** which now
    includes a Wiring phase between Design and Validate.
 
 ## Integration contract — additional requirements (added 2026-09-14)
@@ -92,7 +92,7 @@ reviewer fanout. Reviewers flagged these as structural, not cosmetic.
    amendment lands in the same commit as the REQ implementation.
 
 4. **Audit scripts are runnable end-to-end.** Every audit script
-   in `scripts/audit_*.py` must (a) run in <60s on the Mahavishnu
+   in `scripts/audit_*.py` must (a) run in \<60s on the Mahavishnu
    repo, (b) exit non-zero on violations, (c) emit structured
    output with `file:line + description`. Disabled or stub audit
    scripts are treated as missing audit posture.

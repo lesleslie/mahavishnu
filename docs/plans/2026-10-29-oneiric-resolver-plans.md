@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-10-29
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: resolver
 title: "Oneiric Resolver — Precedence Contract and Scope Deferrals (pointer to oneiric plans)"

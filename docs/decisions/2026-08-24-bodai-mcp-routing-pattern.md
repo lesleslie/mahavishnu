@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-08-24
 last_reviewed: 2026-08-24
-superseded_by: null
+superseded_by:
 topic: mcp-routing
 ---
 
@@ -24,6 +24,7 @@ Any environment variable whose name ends in `KEY`, `TOKEN`, `SECRET`,
 shell's environment — never from a literal value in any `.mcp.json`.
 
 Mechanisms (in order of preference):
+
 1. Shell rc file (`~/.zshrc`, `~/.bashrc`) for personal-stable secrets
 2. `direnv` `.envrc` for per-directory project secrets (e.g. `splashstand/.envrc`)
 3. 1Password CLI `op read op://...` for secrets that should never touch disk

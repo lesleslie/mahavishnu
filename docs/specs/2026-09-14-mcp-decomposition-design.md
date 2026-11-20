@@ -4,7 +4,7 @@ role: implementation
 topic: mcp-substrate-implementation
 date: 2026-09-14
 last_reviewed: 2026-10-17
-superseded_by: null
+superseded_by:
 resolved_at: 2026-10-17
 resolved_by:
   - "ADR 019 (Legacy MCP Server Decommissioning from Bodai Core Fleet) — strategic goal retired from Bodai scope"
@@ -26,7 +26,6 @@ related:
   - docs/specs/.archive/2026-04-27-bodai-auth-standardization-design.md
   - docs/specs/.archive/2026-05-24-mcp-serverless-design.md
 title: "MCP Decomposition — Design Specification"
-
 ---
 
 # MCP Decomposition — Design Specification
@@ -292,6 +291,7 @@ $ oneiric mcp config     # show resolved config
 ```
 
 The `mcp-common/mcp_common/health/` module (shipped in v0.26.4, commit 7acdcfb) provides the canonical health primitives: `HealthFeedState` (per-feed state dataclass), `StatusValue` (severity-ordered `StrEnum`: `healthy` < `warming_up` < `degraded` < `failed`), `ReasonCode` (per-feed diagnostic codes including the HNSW-hardening `FEED_NEVER_POPULATED`), `record_success`/`record_error` (mutators), `is_healthy` (per-feed verdict with time-bounded decay predicate), `aggregate_feed_states` (cross-feed worst-case rollup), and `update_health_metrics` (Prometheus metrics emission for Plan §11.4 PromQL alerts). Phase 1 task 6 extension to the legacy oneiric `HealthMonitor` is **obsolete** — the canonical home moved to mcp-common per ADR 017 substrate ownership. Consumers (session-buddy, akosha, oneiric) import from `mcp_common.health.aggregator` + `mcp_common.health.metrics` directly. Phase 4 task 7 (`--health-disable-decay` CLI flag on `MCPServerCLIFactory.start`) propagates the decay-disabled sentinel through `HEALTH_FEED_HALFLIFE_SECONDS=0` to `is_healthy(halflife_seconds=0)`. Phase 4 task 6 (HNSW hardening) distinguishes `cycles_total == 0` + `ingester_running=True` as `DEGRADED` with `FEED_NEVER_POPULATED` (broken-before-first-success producer) rather than `WARMING_UP`. The primitives the spec requires are now:
+
 - `record_success(state: HealthFeedState)` / `record_error(state: HealthFeedState)` — mutators; producer-side code calls one of these after each cycle. Direct attribute assignment (`state.entities_count = N`, `state.cycles_total += 1`, `state.last_updated_timestamp = time.time()`) replaces oneiric's `set_entities_count`/`record_invocation` indirection.
 - `is_healthy(state: HealthFeedState, halflife_seconds: float = 300) -> tuple[bool, StatusValue, list[ReasonCode]]` — per-feed predicate; `halflife_seconds <= 0` disables the time-bounded decay (Phase 4 task 7 `--health-disable-decay`).
 - `aggregate_feed_states(states: dict[str, HealthFeedState], halflife_seconds: float = 300) -> HealthSnapshot` — worst-case rollup; `HealthSnapshot.status` is the max severity across feeds.
@@ -347,6 +347,7 @@ The aggregator's `aggregate_feed_states` returns a `HealthSnapshot` whose top-le
 **Canonical `polling_interval`.** The §4.8 threshold contract's "5 × polling_interval" is anchored to a single canonical value: **`polling_interval = 60 seconds`** (configurable per-component, but the default and the contract reference are 60s). Each component's `OtelTracesConfig.component_endpoints` polling loop MUST default to 60s; per-component overrides are allowed but the threshold semantics (`HEALTHY`/`DEGRADED`/`UNHEALTHY` boundaries) assume 60s unless the override is also documented in the spec.
 
 **Cross-MCP correlation playbook.** Phase 1 changes 4 MCP servers simultaneously. Incident responders need:
+
 - A `docs/runbooks/bodai-mcp-incident.md` runbook listing the 4 `mcp` servers' `/health` URLs, the dependency graph, and trace-context propagation rules. Phase 8 task 17 creates this runbook.
 - An aggregate "ecosystem health" surface. Phase 8 task 18 adds `mahavishnu mcp ecosystem health` (Typer sub-command) that fans out to all 4 `/health` endpoints and returns an aggregate response.
 - OTel trace propagation across MCP server boundaries. Phase 1 task 7 includes trace-context propagation in `mcp_common.auth.middleware` (cross-server traceparent header forwarding).
@@ -354,12 +355,13 @@ The aggregator's `aggregate_feed_states` returns a `HealthSnapshot` whose top-le
 ### 4.9 Migration guide commitment
 
 Phase 8 task 20 creates a top-level `MIGRATION.md` in the legacy package (not a buried spec section) with:
+
 1. **Old-name → new-name mapping table** for all 21 tools (lift from §4.2 and §8 of this spec).
 2. **Hard-cutover date and commit boundary** (commit hash for the Phase 8 deletion).
 3. **Notification channels** (resolves R5 / H HIGH):
    - **Email**: `mailto:nas-mcp@arctrix.com` (already on the legacy package's `CHANGELOG.md:871`).
    - **GitHub Discussions**: pinned issue on the legacy repo's Discussions page (or similar — pin a discussion with the migration guide).
-   - **PyPI long-description**: the legacy package's `pyproject.toml` `readme = "README.md"`; ensure the README's first 200 chars lead with "BREAKING: 21 mcp__legacy__* tools removed in v1.0.0; see MIGRATION.md in the v1.0.0 tag".
+   - **PyPI long-description**: the legacy package's `pyproject.toml` `readme = "README.md"`; ensure the README's first 200 chars lead with "BREAKING: 21 mcp\_\_legacy\_\_\* tools removed in v1.0.0; see MIGRATION.md in the v1.0.0 tag".
    - **PyPI classifier**: add `Development Status :: 7 - Inactive` is wrong (the package is active); instead add `Topic :: Software Development :: Libraries :: Python Modules` and a project URL pointing at the migration guide.
 4. **Per-consumer migration instructions** — for each of the 21 tools, link the new tool's path, the import change, and a one-line code snippet showing old → new.
 
@@ -530,6 +532,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 **Goal:** `mcp__oneiric__*` tools exist; Mahavishnu and agents migrate to calling them. Hard cutover — no deprecation window, no `DEPRECATED_TOOLS` entries (user decision 2026-09-14).
 
 **Pre-flight gate (Phase 1 task #0):** Enumerate every `mcp__legacy__*` reference across the Bodai ecosystem. The 86 hits found by `grep -rn "mcp__legacy__" /Users/les/Projects/` span:
+
 - `.claude/agents/oneiric-specialist.md:17` (1 hit)
 - `.claude/worktrees/agent-*/docs/adr/013-...md` (5 hits in worktree copies — non-canonical, ignored)
 - `mahavishnu/docs/decisions/test-matrix-review-followups.md` (archival, fine)
@@ -545,21 +548,21 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 1.5. **Create `oneiric/settings/oneiric.yaml`** with `mcp: { http_port: 8681, http_host: 127.0.0.1 }` override. The default `OneiricMCPConfig.http_port` is 8000; without this override Phase 1 would bind the wrong port. Verify by `oneiric config show mcp` after the file lands.
 
-2. **Wire the Typer sub-app pattern** (oneiric MEDIUM #1 — MCPServerCLIFactory is dead code): in `oneiric/cli/__init__.py:271-278`, add `app.add_typer(mcp_app, name="mcp")` where `mcp_app` is a `typer.Typer` defined in `oneiric/mcp/server_core.py` registering `start|stop|status|health|restart|config` commands that invoke `OneiricMCPServer.run_http_async()`. The unused `MCPServerCLIFactory` (lines 31-162 of `oneiric/core/cli.py`) is left as historical artifact; cleanup deferred to a follow-up refactor.
+02. **Wire the Typer sub-app pattern** (oneiric MEDIUM #1 — MCPServerCLIFactory is dead code): in `oneiric/cli/__init__.py:271-278`, add `app.add_typer(mcp_app, name="mcp")` where `mcp_app` is a `typer.Typer` defined in `oneiric/mcp/server_core.py` registering `start|stop|status|health|restart|config` commands that invoke `OneiricMCPServer.run_http_async()`. The unused `MCPServerCLIFactory` (lines 31-162 of `oneiric/core/cli.py`) is left as historical artifact; cleanup deferred to a follow-up refactor.
 
-3. Port the 7 `adapter_registry` tool implementations from the legacy server's `mcp/adapter_tools.py` (1,301 LOC) into `oneiric/mcp/tools/adapter_registry.py`. Each tool body wraps work in `with observed_span("oneiric.mcp.tool.<name>", component="oneiric.mcp", attributes={"tool.name": ..., "tool.duration_ms": ...}):` per §4.8. **Without this wrapping, OTel spans do not exist at runtime** (observability HIGH #1).
+03. Port the 7 `adapter_registry` tool implementations from the legacy server's `mcp/adapter_tools.py` (1,301 LOC) into `oneiric/mcp/tools/adapter_registry.py`. Each tool body wraps work in `with observed_span("oneiric.mcp.tool.<name>", component="oneiric.mcp", attributes={"tool.name": ..., "tool.duration_ms": ...}):` per §4.8. **Without this wrapping, OTel spans do not exist at runtime** (observability HIGH #1).
 
-4. Wire auth via `mcp_common.auth.middleware` (NOT the legacy server's auth fork — that auth goes away with the server in Phase 8). Also extend `mcp_common.auth.audit.AuditLogger` with `tool_invocation` events (`tool.name`, `caller_id`, `arguments` redacted) per §4.8. Wire write tools (`store_adapter`, `validate_adapter`) to emit `WARN`-level events; read-only tools emit `INFO`.
+04. Wire auth via `mcp_common.auth.middleware` (NOT the legacy server's auth fork — that auth goes away with the server in Phase 8). Also extend `mcp_common.auth.audit.AuditLogger` with `tool_invocation` events (`tool.name`, `caller_id`, `arguments` redacted) per §4.8. Wire write tools (`store_adapter`, `validate_adapter`) to emit `WARN`-level events; read-only tools emit `INFO`.
 
-5. Wire tool profile gating via `mcp_common.tools.dispatch.apply_tool_profile` with explicit `ONEIRIC_TOOL_PROFILE` semantics per §4.6.
+05. Wire tool profile gating via `mcp_common.tools.dispatch.apply_tool_profile` with explicit `ONEIRIC_TOOL_PROFILE` semantics per §4.6.
 
-6. **Wire each tool to a `HealthFeedState`** (shipped in `mcp_common.health.feed` v0.26.4): each tool instantiates a `HealthFeedState` (or accepts one via DI) and calls `record_success(state)` / `record_error(state)` after each invocation. The aggregator's `is_healthy(state, halflife_seconds)` reads the mutator outputs and emits the per-feed `FeedSnapshot`. The `HealthFeedState` dataclass replaces oneiric's `ComponentHealth`; `record_success`/`record_error` replace `HealthMonitor.record_invocation`; direct attribute assignment (`state.entities_count = N`) replaces `HealthMonitor.set_entities_count(name, n)`. Lookup by feed name is `dict[str, HealthFeedState]` passed to `aggregate_feed_states` — replaces `HealthMonitor.get_feed(name)`. `/health` endpoint returns 503 if any feed's status is `degraded` or `failed` per the §4.8 threshold contract.
+06. **Wire each tool to a `HealthFeedState`** (shipped in `mcp_common.health.feed` v0.26.4): each tool instantiates a `HealthFeedState` (or accepts one via DI) and calls `record_success(state)` / `record_error(state)` after each invocation. The aggregator's `is_healthy(state, halflife_seconds)` reads the mutator outputs and emits the per-feed `FeedSnapshot`. The `HealthFeedState` dataclass replaces oneiric's `ComponentHealth`; `record_success`/`record_error` replace `HealthMonitor.record_invocation`; direct attribute assignment (`state.entities_count = N`) replaces `HealthMonitor.set_entities_count(name, n)`. Lookup by feed name is `dict[str, HealthFeedState]` passed to `aggregate_feed_states` — replaces `HealthMonitor.get_feed(name)`. `/health` endpoint returns 503 if any feed's status is `degraded` or `failed` per the §4.8 threshold contract.
 
-7. **Migrate historical `AsyncAdapterRegistry` data** on first Oneiric startup (per §4.10). One-shot read-and-write from the legacy server's on-disk file to Oneiric's adapter catalog store. Demonstrable by `oneiric mcp health.adapter_registry.entities_count > 0` on a pre-0.20.1 install.
+07. **Migrate historical `AsyncAdapterRegistry` data** on first Oneiric startup (per §4.10). One-shot read-and-write from the legacy server's on-disk file to Oneiric's adapter catalog store. Demonstrable by `oneiric mcp health.adapter_registry.entities_count > 0` on a pre-0.20.1 install.
 
-8. Add `tests/integration/test_<tool>_e2e.py` for each of the 7 tools (per wire-up contract). Each test asserts the tool emits an OTel span and updates the per-feed counters.
+08. Add `tests/integration/test_<tool>_e2e.py` for each of the 7 tools (per wire-up contract). Each test asserts the tool emits an OTel span and updates the per-feed counters.
 
-9. Add consumer-side e2e tests asserting (a) `/health` returns 200 with all feeds `healthy` on warm startup, (b) returns 503 when any feed reports `degraded`/`failed` per the §4.8 threshold contract, (c) each feed's `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` are exposed per `docs/decisions/mcp-backend-wiring-discipline.md`, (d) `update_health_metrics` emits the four `health_feed_status`/`health_feed_errors_within_window`/`mcp_common_health_halflife_seconds`/`mcp_common_health_aggregate_duration_ms` metrics on each `/health` call (this is what makes the Plan §11.4 PromQL alerts fire live). The contract surface is pinned by `mcp-common/tests/unit/health/test_aggregator.py` + `test_feed.py` + `test_metrics.py` (66 tests, mcp-common v0.26.4); reference consumer implementations are `session-buddy/session_buddy/server_optimized.py:316-407` (full wiring including `update_health_metrics` with try/ImportError fallback) and `akosha/akosha/mcp/server.py:764-949`.
+09. Add consumer-side e2e tests asserting (a) `/health` returns 200 with all feeds `healthy` on warm startup, (b) returns 503 when any feed reports `degraded`/`failed` per the §4.8 threshold contract, (c) each feed's `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total` are exposed per `docs/decisions/mcp-backend-wiring-discipline.md`, (d) `update_health_metrics` emits the four `health_feed_status`/`health_feed_errors_within_window`/`mcp_common_health_halflife_seconds`/`mcp_common_health_aggregate_duration_ms` metrics on each `/health` call (this is what makes the Plan §11.4 PromQL alerts fire live). The contract surface is pinned by `mcp-common/tests/unit/health/test_aggregator.py` + `test_feed.py` + `test_metrics.py` (66 tests, mcp-common v0.26.4); reference consumer implementations are `session-buddy/session_buddy/server_optimized.py:316-407` (full wiring including `update_health_metrics` with try/ImportError fallback) and `akosha/akosha/mcp/server.py:764-949`.
 
 10. Update `mahavishnu/tests/fixtures/full/tool_names.json` to remove the strings `"adapter_list"` and `"adapter_metadata"` (Mahavishnu's parallel fixture — currently has these as golden-fixture strings).
 
@@ -607,6 +610,7 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 **Goal:** Extract duplicated infrastructure wrappers from the four Bodai MCP servers (Mahavishnu, AkoSHA, Session-Buddy, Crackerjack) into `mcp-common` modules per §4.11. Each component mounts the consolidated wrappers under a local-namespace prefix; component-specific tools remain in their own component. **Hard cutover per component** (each wrapper consolidated in its own commit when its tests pass).
 
 **Pre-flight gate (Phase 1.5 task #0):** Enumerate every wrapper call site across all four components for each of the five wrapper categories in §4.11. Verified counts at Phase 1.5 start:
+
 - **PyCharm wrappers**: 5 tools × 4 components = 20 call sites (`akosha/mcp/tools/pycharm*.py`, `mahavishnu/mcp/tools/pycharm*.py`, `session-buddy/mcp/tools/pycharm*.py`, `crackerjack/mcp/tools/pycharm*.py`)
 - **`discover_tools`**: 4 implementations (`akosha/mcp/tools/__init__.py`, `mahavishnu/mcp/tools/ecosystem_tools.py`, `session-buddy/mcp/server.py`, `crackerjack/mcp/tools/discovery_tools.py`)
 - **`list_*_skills` / `list_*_agents` / `get_*_skill` / `get_*_agent`**: 16 implementations across `akosha/mcp/tools/skill_*.py` + `akosha/mcp/tools/agent_*.py`, etc.
@@ -626,11 +630,13 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 5. **`query_local_traces` → `mcp_common.traces.endpoint_resolver`**. The 3 implementations (Mahavishnu, AkoSHA, Crackerjack) collapse to a single `mcp_common.traces.query_local_traces(component_endpoints=...)` factory. Per-component DuckDB paths become env-var-driven (`MAHAVISHNU_TRACES_PATH`, `AKOSHA_TRACES_PATH`, `CRACKERJACK_TRACES_PATH`, `SESSION_BUDDY_TRACES_PATH`, `LEGACY_MCP_TRACES_PATH` if the legacy server still emits traces post-Phase-8). **This replaces the hard-coded paths in Phase 5 task 3** (see §5 Phase 5 update below). Demonstrable by: each component's `query_local_traces` reads from its env-var-resolved path; the AkoSHA-side `OtelTracesConfig.component_endpoints` map becomes a default that operators can override. **Rollback signal:** `entities_count == 0` after warmup, or endpoint-resolver raises on any path lookup.
 
 **Mahavishnu / AkoSHA / Session-Buddy / Crackerjack changes (in each wrapper-category commit):**
+
 - Delete the local wrapper file(s); replace with `from mcp_common.<module> import ...; mount(server)`.
 - Update test fixtures (`tests/fixtures/{minimal,standard,full}/tool_names.json`) to reflect the new registration source.
 - Update `docs/decisions/mcp-backend-wiring-discipline.md` to cite `mcp-common` as the canonical home.
 
 **Integration contract:**
+
 - **Triggered from:** each component's `mcp/server_core.py` startup calls the consolidated `mount(server)` helper before registering component-specific tools.
 - **Returns to / updates:** the consolidated `mcp-common` modules own the canonical wrapper implementations; components own only their domain tools.
 - **Demonstrable by:** each wrapper-category commit (5 commits total) passes `pytest` in all four affected components; picker shows `mcp__<component>__<wrapper>_<verb>` for every existing prompt reference.
@@ -709,15 +715,15 @@ Phase ordering matters because the migrations cascade and each phase leaves the 
 
 **Tasks:**
 
-1. Port the legacy server's `mcp/tools/agent_registry.py` (426 LOC) to `crackerjack/mcp/tools/agent_registry.py`. **Imports `agent_schema` from `mcp-common.canonical_schemas`** (not from a local copy).
-2. Port the legacy server's `mcp/agent_schema.py` (223 LOC) to `mcp-common/mcp_common/canonical_schemas/agent.py` (the canonical home referenced by Phase 1.5 task 3).
-3. Port the legacy server's `mcp/tools/skill_registry.py` (353 LOC) to `crackerjack/mcp/tools/skill_registry.py`. **Imports `skill_schema` from `mcp-common.canonical_schemas`**.
-4. Port the legacy server's `mcp/skill_schema.py` (173 LOC) to `mcp-common/mcp_common/canonical_schemas/skill.py`.
-5. **Port the legacy server's `mcp/signer_feed.py` (254 LOC) to `mcp-common/mcp_common/signing/skills_signer.py`** (cross-cutting crypto primitive, not a Crackerjack-domain concern). **Not exposed as an MCP tool**; consumed by the agent/skill catalogs as a library import. The ed25519 signing is the same primitive Phase 1.5 of the active ACP plan ships through `oneiric.actions.security.SecuritySignatureAction`; Phase 4 consolidates around `mcp-common`'s canonical home.
-6. Move the legacy package's `skills_signer/` package to `mcp-common/mcp_common/signing/skills_signer/` (rename optional; preserving the original namespace avoids breaking the import paths the active ACP plan Phase 1.5 already shipped). **Delete the legacy-side directory after move.**
-7. Wire auth (RBAC: WRITE permission required for registration; READ for listing).
-8. Update `crackerjack/mcp/profiles.py`: set `CRACKERJACK_MANDATORY_GROUPS = {REG_KEY_AGENT_REGISTRY, REG_KEY_SKILL_REGISTRY, REG_KEY_HEALTH}` per the picker-parity logic the legacy server documented in `mcp/profiles.py:215-228`. Without this, `CRACKERJACK_TOOL_PROFILE=minimal` would not expose `list_agents` / `list_skills`, breaking the picker surface inside Mahavishnu and other consumers.
-9. Add 4 e2e tests in `tests/integration/test_<tool>_e2e.py`.
+01. Port the legacy server's `mcp/tools/agent_registry.py` (426 LOC) to `crackerjack/mcp/tools/agent_registry.py`. **Imports `agent_schema` from `mcp-common.canonical_schemas`** (not from a local copy).
+02. Port the legacy server's `mcp/agent_schema.py` (223 LOC) to `mcp-common/mcp_common/canonical_schemas/agent.py` (the canonical home referenced by Phase 1.5 task 3).
+03. Port the legacy server's `mcp/tools/skill_registry.py` (353 LOC) to `crackerjack/mcp/tools/skill_registry.py`. **Imports `skill_schema` from `mcp-common.canonical_schemas`**.
+04. Port the legacy server's `mcp/skill_schema.py` (173 LOC) to `mcp-common/mcp_common/canonical_schemas/skill.py`.
+05. **Port the legacy server's `mcp/signer_feed.py` (254 LOC) to `mcp-common/mcp_common/signing/skills_signer.py`** (cross-cutting crypto primitive, not a Crackerjack-domain concern). **Not exposed as an MCP tool**; consumed by the agent/skill catalogs as a library import. The ed25519 signing is the same primitive Phase 1.5 of the active ACP plan ships through `oneiric.actions.security.SecuritySignatureAction`; Phase 4 consolidates around `mcp-common`'s canonical home.
+06. Move the legacy package's `skills_signer/` package to `mcp-common/mcp_common/signing/skills_signer/` (rename optional; preserving the original namespace avoids breaking the import paths the active ACP plan Phase 1.5 already shipped). **Delete the legacy-side directory after move.**
+07. Wire auth (RBAC: WRITE permission required for registration; READ for listing).
+08. Update `crackerjack/mcp/profiles.py`: set `CRACKERJACK_MANDATORY_GROUPS = {REG_KEY_AGENT_REGISTRY, REG_KEY_SKILL_REGISTRY, REG_KEY_HEALTH}` per the picker-parity logic the legacy server documented in `mcp/profiles.py:215-228`. Without this, `CRACKERJACK_TOOL_PROFILE=minimal` would not expose `list_agents` / `list_skills`, breaking the picker surface inside Mahavishnu and other consumers.
+09. Add 4 e2e tests in `tests/integration/test_<tool>_e2e.py`.
 10. Wire per-feed health aggregator: each tool registers a `HealthFeedState` (mcp-common parlance) exposing `entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`. The aggregator's `aggregate_feed_states` rolls them into the worst-case `HealthSnapshot` consumed by `/health` and emitted to Prometheus via `update_health_metrics`.
 
 **Phase 10 cross-reference:** Tasks 2 and 4 ship the canonical schema files to `mcp-common.canonical_schemas`; Phase 10 task 2 then **deletes the sed-replicated copies** in AkoSHA / Session-Buddy / Mahavishnu and forces those components to import from the canonical home. Phase 4 + Phase 10 together eliminate the DRY violation documented at `akosha/mcp/agent_schema.py` (the "canonical source" comment) and the 3 sed-replicated siblings.
@@ -902,21 +908,21 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 
 **Tasks:**
 
-1. Delete the legacy `mcp/` directory (every file: `__init__.py`, `__main__.py`, `adapter_lookup.py`, `adapter_tools.py`, `agent_schema.py`, `auth.py`, `ecosystem_state.py`, `fastmcp_auth.py`, `kv_timeseries.py`, `middleware.py`, `profiles.py`, `server.py`, `server_core.py`, `signer_feed.py`, `skill_schema.py`, `substrate_routes.py`, `tools/`). **Explicit documentation for files not in §4.2's destination table** (resolves Agent B's "odd" finding):
-   - **`adapter_lookup.py`** — internal lookup helper under `adapter_tools.py:adapter_lookup`; subsumed by Oneiric's `oneiric/mcp/tools/adapter_registry.py` port (Phase 1 task 3). Not exposed as an MCP tool; deletion-with-directory is correct.
-   - **`server.py`** — alternative CLI entry point or ASGI host variant; distinct from `server_core.py` (which becomes Oneiric's `oneiric/mcp/server_core.py`). Phase 1 explicitly does NOT use this factory path (see §4.6 for the verified pattern). Deletion-with-directory is correct.
-2. Delete the legacy package's `skills_signer/` (moved to Crackerjack in Phase 4).
-3. Verify `aiosqlite` usage: if only used by `mcp/`, drop from `pyproject.toml`. If used by engine code (likely, since `AsyncFileStorage` wraps `AsyncSqliteStorage`), keep it. Decision recorded in pyproject comments.
-4. Update the legacy package's `__init__.py` to drop MCP imports.
-5. Update the legacy package's `cli.py` to remove the `mcp` subcommands (`mcp start|stop|status|health|restart`).
-6. Slim the legacy package's `pyproject.toml` per §4.4 (10 deps dropped; `oneiric` preserved).
-7. **Surgical removal in the legacy package's `CLAUDE.md`** (data-retention MEDIUM #5 — the spec previously said "remove MCP server section" but the file has MCP references across 7+ sites, not one section): line 100 (`mcp stop` example), line 145 (directory tree `├── mcp/`), lines 470-485 (dedicated MCP server section), line 620 (Bodai MCP server /health rule), plus any other `mcp\|MCP` occurrences. Verify by `grep -n "mcp\|MCP" /Users/les/Projects/<legacy repo>/CLAUDE.md` returning 0 occurrences after the cutover (or only references to upstream MCP servers like Bodai's `mcp-common`). The directory tree snippet also drops `├── mcp/` and updates the "engine + CLI" surface count.
-8. Update the legacy package's `CHANGELOG.md` (data-retention HIGH #1 + MEDIUM #7):
-   - Fix the stale "MIT License" line at the bottom (line 875 — wrong; pyproject.toml says BSD-3-Clause).
-   - **Consolidate both `[Unreleased]` sections** (lines 172 and 676) into the canonical one above `0.19.0`. The second block covers `BodaiCLIBase` → `OneiricCLIBase` rename, `__missing__` support, PyPy compatibility — all of which shipped in 0.18.0 and 0.17.2.
-   - **Add a NEW `[Unreleased]` entry** that records the decomposition: "MCP server retired; 21 tools removed; the package becomes engine-only; v1.0.0 signal."
-   - **Add contextual annotation to the 0.20.0 entry** (which added `Phase 1.5 ed25519 skills_signer infrastructure`): "**Superseded by v1.0.0 (2026-09-14):** This entry's MCP surface was retired one day after release; ed25519 signer moved to Crackerjack (see `2026-09-14-mcp-decomposition-design.md` Phase 4)."
-9. **Grep the legacy package's docs for MCP references:** `grep -rn "mcp__legacy__\|mcp start\|mcp.*server" /Users/les/Projects/<legacy repo>/` — update `MODES_QUICK_REFERENCE.md`, `QUICKSTART.md`, `README.md`, and any other docs that reference the MCP server.
+01. Delete the legacy `mcp/` directory (every file: `__init__.py`, `__main__.py`, `adapter_lookup.py`, `adapter_tools.py`, `agent_schema.py`, `auth.py`, `ecosystem_state.py`, `fastmcp_auth.py`, `kv_timeseries.py`, `middleware.py`, `profiles.py`, `server.py`, `server_core.py`, `signer_feed.py`, `skill_schema.py`, `substrate_routes.py`, `tools/`). **Explicit documentation for files not in §4.2's destination table** (resolves Agent B's "odd" finding):
+    - **`adapter_lookup.py`** — internal lookup helper under `adapter_tools.py:adapter_lookup`; subsumed by Oneiric's `oneiric/mcp/tools/adapter_registry.py` port (Phase 1 task 3). Not exposed as an MCP tool; deletion-with-directory is correct.
+    - **`server.py`** — alternative CLI entry point or ASGI host variant; distinct from `server_core.py` (which becomes Oneiric's `oneiric/mcp/server_core.py`). Phase 1 explicitly does NOT use this factory path (see §4.6 for the verified pattern). Deletion-with-directory is correct.
+02. Delete the legacy package's `skills_signer/` (moved to Crackerjack in Phase 4).
+03. Verify `aiosqlite` usage: if only used by `mcp/`, drop from `pyproject.toml`. If used by engine code (likely, since `AsyncFileStorage` wraps `AsyncSqliteStorage`), keep it. Decision recorded in pyproject comments.
+04. Update the legacy package's `__init__.py` to drop MCP imports.
+05. Update the legacy package's `cli.py` to remove the `mcp` subcommands (`mcp start|stop|status|health|restart`).
+06. Slim the legacy package's `pyproject.toml` per §4.4 (10 deps dropped; `oneiric` preserved).
+07. **Surgical removal in the legacy package's `CLAUDE.md`** (data-retention MEDIUM #5 — the spec previously said "remove MCP server section" but the file has MCP references across 7+ sites, not one section): line 100 (`mcp stop` example), line 145 (directory tree `├── mcp/`), lines 470-485 (dedicated MCP server section), line 620 (Bodai MCP server /health rule), plus any other `mcp\|MCP` occurrences. Verify by `grep -n "mcp\|MCP" /Users/les/Projects/<legacy repo>/CLAUDE.md` returning 0 occurrences after the cutover (or only references to upstream MCP servers like Bodai's `mcp-common`). The directory tree snippet also drops `├── mcp/` and updates the "engine + CLI" surface count.
+08. Update the legacy package's `CHANGELOG.md` (data-retention HIGH #1 + MEDIUM #7):
+    - Fix the stale "MIT License" line at the bottom (line 875 — wrong; pyproject.toml says BSD-3-Clause).
+    - **Consolidate both `[Unreleased]` sections** (lines 172 and 676) into the canonical one above `0.19.0`. The second block covers `BodaiCLIBase` → `OneiricCLIBase` rename, `__missing__` support, PyPy compatibility — all of which shipped in 0.18.0 and 0.17.2.
+    - **Add a NEW `[Unreleased]` entry** that records the decomposition: "MCP server retired; 21 tools removed; the package becomes engine-only; v1.0.0 signal."
+    - **Add contextual annotation to the 0.20.0 entry** (which added `Phase 1.5 ed25519 skills_signer infrastructure`): "**Superseded by v1.0.0 (2026-09-14):** This entry's MCP surface was retired one day after release; ed25519 signer moved to Crackerjack (see `2026-09-14-mcp-decomposition-design.md` Phase 4)."
+09. **Grep the legacy package's docs for MCP references:** `grep -rn "mcp__legacy__\|mcp start\|mcp.*server" /Users/les/Projects/<legacy repo>/` — update `MODES_QUICK_REFERENCE.md`, `QUICKSTART.md`, `README.md`, and any other docs that reference the MCP server.
 10. Update the legacy package's `tests/unit/test_wiring.py` (golden fixture for `tests/fixtures/{minimal,standard,full}/tool_names.json`) — delete or empty out since the legacy package no longer has tool profiles.
 11. Update the legacy package's `tests/unit/test_profiles.py` for the slimmed profile list (or delete entirely).
 12. Delete the legacy package's `tests/integration/test_<mcp-tool>_e2e.py` files (no longer applicable).
@@ -1021,6 +1027,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 5. Add e2e tests in `mcp-common/tests/integration/test_canonical_schemas_e2e.py` — assert the canonical schemas are importable from all four components and produce identical `AdapterMetadata` / `SkillMetadata` shapes for the same input. Demonstrable by the e2e suite passing on the four components' test matrix.
 
 **Integration contract:**
+
 - **Triggered from:** AkoSHA / Mahavishnu's CI run + Phase 5 task 9's substrate decision.
 - **Returns to / updates:** AkoSHA and Mahavishnu's pgvector paths are either live (with real Postgres URLs) or deleted; Oneiric's OTel default is fixed; the four sed-replicated schema files are gone.
 - **Demonstrable by:** `grep -rn "pgvector" /Users/les/Projects/{mahavishnu,akosha}/` returns 0 matches (Option B) OR a real CI workflow runs the pgvector e2e suite (Option A); `grep -rn "agent_schema\|skill_schema" /Users/les/Projects/{mahavishnu,akosha,session-buddy,crackerjack}/` returns only `mcp_common` import paths.
@@ -1044,6 +1051,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 4. **If Option B or C is recommended:** write a follow-up spec (`docs/specs/2026-XX-XX-gateway-pattern-implementation.md`) describing the migration. The follow-up spec gets its own reviews and its own implementation plan.
 
 **Integration contract:**
+
 - **Triggered from:** ADR 018's option recommendation.
 - **Returns to / updates:** either "do nothing" (Option A) or a follow-up spec for Option B/C.
 - **Demonstrable by:** ADR 018 lands with a concrete option recommendation + metrics.
@@ -1134,6 +1142,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 **Risk:** Unknown number of consumers use `mcp__legacy__*` directly outside the Bodai ecosystem. Hard cutover (user decision 2026-09-14) means external consumers break immediately at the commit boundary.
 
 **Mitigation (specific channels, not hand-waved):**
+
 1. **Top-level `MIGRATION.md`** (not buried in spec) — created in Phase 8 task 20. Contains the old-name → new-name mapping table, hard-cutover date, and per-consumer migration instructions.
 2. **CHANGELOG header callout** — the legacy package's `CHANGELOG.md` v1.0.0 entry leads with "BREAKING: 21 `mcp__legacy__*` tools removed; see MIGRATION.md".
 3. **PyPI long-description** — the legacy package's README first 200 chars lead with the migration link (above-the-fold on PyPI).
@@ -1143,6 +1152,7 @@ Refactor target: `class HotStore(DuckdbHotStore):` — subclass that calls `supe
 ### R6 — Oneiric's registry-pusher adapter and hardcoded 8683 references to the retired server
 
 **Risk:** Oneiric has 4+ hardcoded references to the retired standalone MCP server on port 8683:
+
 - `oneiric/QUICKSTART.md` (lines 119, 150)
 - the registry-pusher adapter module (lines 55, 214, 253, 263) — defaults to `http://127.0.0.1:8683`
 - its coverage test module (lines 43, 99)
@@ -1163,6 +1173,7 @@ The registry-pusher adapter is the most consequential: its purpose is to push ad
 **Risk:** The legacy package's `CHANGELOG.md` has TWO `[Unreleased]` sections (lines 172 and 676) with overlapping content; its `CLAUDE.md` has MCP references across 7+ sites (lines 100, 145, 470-485, 620, plus others). Phase 8 task 7 originally said "remove MCP server section" but the file has MCP references spread across the document, not in a single section. Future contributors grepping for `skills_signer` or `mcp_server` will land on entries that no longer reflect the post-Phase-8 state.
 
 **Mitigation:**
+
 - Phase 8 task 7 surgical-removal grep across the legacy package's `CLAUDE.md` (verify `grep -n "mcp\|MCP"` returns 0 after cutover).
 - Phase 8 task 8 CHANGELOG consolidation: merge both `[Unreleased]` blocks; add new v1.0.0 entry recording the decomposition; add contextual annotation to the 0.20.0 entry explaining that the MCP surface shipped and retired within 24 hours.
 - Phase 9 task 5 pins a GitHub Discussions thread for long-term migration support.
@@ -1176,6 +1187,7 @@ The registry-pusher adapter is the most consequential: its purpose is to push ad
 ### R10 — Dormant pgvector code paths (AkoSHA + Mahavishnu)
 
 **Risk:** Both AkoSHA and Mahavishnu ship full pgvector code paths that are wired in code but disabled in committed config:
+
 - AkoSHA: `hot_store.pg_url: ""` (`akosha/settings/akosha.yaml:95`); `akosha/tests/integration/test_pgvector_hot_store_e2e.py` gated on `AKOSHA_TEST_PGVECTOR_URL` (header docstring notes Oneiric upstream bug `WITH (lists := 100)` rejected by Postgres 18 blocking the suite).
 - Mahavishnu: `otel_storage.enabled=false` (`mahavishnu/settings/mahavishnu.yaml:59`); `persistence.postgres_url=""` (`mahavishnu/settings/mahavishnu.yaml:144`).
 

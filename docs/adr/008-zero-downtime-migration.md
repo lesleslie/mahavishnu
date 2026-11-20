@@ -411,10 +411,10 @@ async def execute_cutover() -> CutoverResult:
 **Automated Rollback Conditions**:
 
 1. **Data Validation Failure**: Row count mismatch or hash mismatch
-1. **Performance Regression**: PostgreSQL latency p95 > 2x SQLite latency
-1. **High Error Rate**: > 5% dual-write error rate or > 1% dual-read fallback rate
-1. **Critical Errors**: Database connection failures, timeout spikes
-1. **Manual Trigger**: Ops team can trigger rollback via command
+2. **Performance Regression**: PostgreSQL latency p95 > 2x SQLite latency
+3. **High Error Rate**: > 5% dual-write error rate or > 1% dual-read fallback rate
+4. **Critical Errors**: Database connection failures, timeout spikes
+5. **Manual Trigger**: Ops team can trigger rollback via command
 
 **Rollback Process**:
 
@@ -511,17 +511,17 @@ ______________________________________________________________________
 ### Positive Impacts
 
 1. **Zero Downtime**: Users experience no interruption during migration
-1. **Safe Rollback**: Can rollback to previous phase if issues found
-1. **Data Validation**: Verify data integrity at each phase
-1. **Performance Testing**: Test PostgreSQL under real load before cutover
-1. **Gradual Transition**: 4 weeks to identify and fix issues
+2. **Safe Rollback**: Can rollback to previous phase if issues found
+3. **Data Validation**: Verify data integrity at each phase
+4. **Performance Testing**: Test PostgreSQL under real load before cutover
+5. **Gradual Transition**: 4 weeks to identify and fix issues
 
 ### Negative Impacts
 
 1. **Complexity**: More complex than big bang cutover
-1. **Timeline**: 4 weeks migration timeline (vs 1 day for big bang)
-1. **Dual-Write Overhead**: Doubles database I/O during Phase 1-2
-1. **Code Complexity**: Need to maintain multiple database adapters
+2. **Timeline**: 4 weeks migration timeline (vs 1 day for big bang)
+3. **Dual-Write Overhead**: Doubles database I/O during Phase 1-2
+4. **Code Complexity**: Need to maintain multiple database adapters
 
 ### Risks
 
@@ -531,19 +531,19 @@ ______________________________________________________________________
    - **Mitigation**: Log errors but don't fail operation (best-effort)
    - **Mitigation**: Alert on high error rate (> 5%)
 
-1. **Data Inconsistency**: What if databases diverge during Phase 1-2?
+2. **Data Inconsistency**: What if databases diverge during Phase 1-2?
 
    - **Severity**: High
    - **Mitigation**: Hash comparison validation checks
    - **Mitigation**: Automated rollback on data mismatch
 
-1. **Performance Degradation**: What if dual-write doubles latency?
+3. **Performance Degradation**: What if dual-write doubles latency?
 
    - **Severity**: Medium
    - **Mitigation**: Connection pooling optimization
    - **Mitigation**: Async writes (fire-and-forget for non-critical data)
 
-1. **Rollback Failures**: What if rollback itself fails?
+4. **Rollback Failures**: What if rollback itself fails?
 
    - **Severity**: Critical
    - **Mitigation**: Test rollback procedures in staging

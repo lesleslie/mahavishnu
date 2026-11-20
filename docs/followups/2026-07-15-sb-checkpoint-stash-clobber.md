@@ -4,9 +4,10 @@ role: implementation
 topic: persistence
 date: 2026-07-15
 last_reviewed: 2026-09-19
-superseded_by: null
+superseded_by:
 blocks_on: []
 ---
+
 # Session-Buddy Checkpoint Stash-Clobber Pattern (Second Observation)
 
 ## **Created**: 2026-07-15 **Status**: Recurring defect — second observation; companion to parent memory **Parent memory**: `session-buddy-checkpoint-hooks-fire-during-subagent-sessions` (`~/.claude/projects/-Users-les-Projects-mahavishnu/memory/session-buddy-checkpoint-hooks-fire-during-subagent-sessions.md`) **Recorded in pickup prompt**: `docs/followups/2026-07-15-pickup-bodai-hooks-and-sb-debug.md` (Step 3e verification + acceptance criterion #6) **Originating session**: 2026-07-15 comprehensive-hooks-cleanup wave (checkpoint at `docs/followups/2026-07-15-comprehensive-hooks-cleanup-checkpoint.md`)
@@ -53,19 +54,19 @@ commits appearing between plan and implementer commits).
 ## Recovery (when observed)
 
 1. Stop dispatching further subagents until the working tree is clean.
-1. `git stash list` — confirm the offending stash entry exists; do NOT
+2. `git stash list` — confirm the offending stash entry exists; do NOT
    drop it yet.
-1. Inspect the stash contents: `git stash show -p stash@{N}` — verify
+3. Inspect the stash contents: `git stash show -p stash@{N}` — verify
    it matches pre-subagent state (not the agent's intended output).
-1. Restore the agent's intended output via one of:
+4. Restore the agent's intended output via one of:
    - Re-dispatch the agent for the affected files only (preferred when
      the clobber is widespread).
    - Reconstruct from the agent's intermediate output captured in the
      task transcript (use sparingly; transcripts aren't always complete).
-1. Surgical `git reset --soft BASE` + targeted `git add <files>` to
+5. Surgical `git reset --soft BASE` + targeted `git add <files>` to
    reconstruct the intended commit (identical to parent memory recovery).
-1. **Then** drop the stash: `git stash drop stash@{N}`.
-1. Disable or fix the offending checkpoint hook before dispatching
+6. **Then** drop the stash: `git stash drop stash@{N}`.
+7. Disable or fix the offending checkpoint hook before dispatching
    another subagent.
 
 ## Recommended fix (proposed)

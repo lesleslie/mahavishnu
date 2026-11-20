@@ -166,9 +166,9 @@ There are **no embedded secrets** in the crow server itself. If `crow_mcp_comman
 ### False-positive triage (`_PRIVATE_NETS` blocks a legitimate URL)
 
 1. Confirm the block: tool raises `PermissionError` matching `SSRF`. The resolved address is in the message.
-1. If the target genuinely resolves to a public IP that is misclassified (rare — `_PRIVATE_NETS` is conservative), check the hostname's DNS records with `dig +short <host>`.
-1. **Do not** widen `_PRIVATE_NETS` to suppress a single host. The right path is to expose the host via a public proxy or update the URL.
-1. If the consumer is internal-only and you accept the SSRF risk, set `workspace_root` and `crow:` configuration per-env in `settings/local.yaml` rather than relaxing network policy.
+2. If the target genuinely resolves to a public IP that is misclassified (rare — `_PRIVATE_NETS` is conservative), check the hostname's DNS records with `dig +short <host>`.
+3. **Do not** widen `_PRIVATE_NETS` to suppress a single host. The right path is to expose the host via a public proxy or update the URL.
+4. If the consumer is internal-only and you accept the SSRF risk, set `workspace_root` and `crow:` configuration per-env in `settings/local.yaml` rather than relaxing network policy.
 
 ## 9. Failure Modes & Mitigations
 

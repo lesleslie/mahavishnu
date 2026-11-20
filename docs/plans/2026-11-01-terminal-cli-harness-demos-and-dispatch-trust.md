@@ -8,33 +8,26 @@ superseded_by: docs/plans/2026-11-01-control-plane-consolidation.md
 topic: worker-dispatch-trustworthiness
 title: "Terminal CLI harness demos and a trustworthy one-shot dispatch protocol"
 requirements:
-- id: REQ-TERMCLI-001
-  title: A demo terminal-claude command dispatches a prompt through a one-shot terminal-claude pool and
-    asserts the CLI's answer
-- id: REQ-TERMCLI-002
-  title: A demo terminal-qwen command dispatches a prompt through a one-shot terminal-qwen pool and asserts
-    the CLI's answer
-- id: REQ-TERMCLI-003
-  title: A demo terminal-codex command dispatches a prompt through a one-shot terminal-codex pool and
-    asserts the CLI's answer
-- id: REQ-TERMCLI-004
-  title: The three demos skip rather than fail when the CLI is absent, unauthenticated, or usage-limited
-- id: REQ-TERMCLI-005
-  title: The pool owns a dispatch state machine whose settled states are terminal and cannot be reversed
-    by a later poll
-- id: REQ-TERMCLI-006
-  title: A one-shot dispatch reports a non-zero CLI exit as FAILED, distinct from a successful settle
-- id: REQ-TERMCLI-007
-  title: A one-shot dispatch waits for an explicit readiness signal before it is reported as running
-- id: REQ-TERMCLI-008
-  title: The prompt the CLI read is verified against a digest the worker wrote, and a mismatch fails the
-    dispatch
-- id: REQ-TERMCLI-009
-  title: A demo composes an engine adapter with a terminal worker in one workflow and shows both legs
-    settling
-- id: REQ-TERMCLI-010
-  title: The workflow-pool-worker-terminal docstring describes the stages its implementation actually
-    contains
+  - id: REQ-TERMCLI-001
+    title: A demo terminal-claude command dispatches a prompt through a one-shot terminal-claude pool and asserts the CLI's answer
+  - id: REQ-TERMCLI-002
+    title: A demo terminal-qwen command dispatches a prompt through a one-shot terminal-qwen pool and asserts the CLI's answer
+  - id: REQ-TERMCLI-003
+    title: A demo terminal-codex command dispatches a prompt through a one-shot terminal-codex pool and asserts the CLI's answer
+  - id: REQ-TERMCLI-004
+    title: The three demos skip rather than fail when the CLI is absent, unauthenticated, or usage-limited
+  - id: REQ-TERMCLI-005
+    title: The pool owns a dispatch state machine whose settled states are terminal and cannot be reversed by a later poll
+  - id: REQ-TERMCLI-006
+    title: A one-shot dispatch reports a non-zero CLI exit as FAILED, distinct from a successful settle
+  - id: REQ-TERMCLI-007
+    title: A one-shot dispatch waits for an explicit readiness signal before it is reported as running
+  - id: REQ-TERMCLI-008
+    title: The prompt the CLI read is verified against a digest the worker wrote, and a mismatch fails the dispatch
+  - id: REQ-TERMCLI-009
+    title: A demo composes an engine adapter with a terminal worker in one workflow and shows both legs settling
+  - id: REQ-TERMCLI-010
+    title: The workflow-pool-worker-terminal docstring describes the stages its implementation actually contains
 ---
 
 > **SUPERSEDED (2026-11-01)** by
@@ -167,11 +160,14 @@ So the qwen and codex paths received the universal fixes. What remains
 
 - **claude** — `claude -p --verbose --output-format stream-json`. Needs
   `-p` (non-interactive) *and* `--verbose`.
+
 - **qwen** — `qwen -o stream-json --approval-mode yolo "<prompt>"`.
   Verified live on this host: emits a `{"type":"result","subtype":"success"}`
   envelope and exits 0. **No further change needed.**
+
 - **codex** — `codex exec --json --sandbox workspace-write "<prompt>"`.
   Two defects in the current registry command, both found by smoke test:
+
   1. `codex exec` **reads additional input from stdin**. In a tmux pane
      stdin is the terminal, so the CLI *blocks* waiting for input that
      never comes. The command must close stdin (`< /dev/null`).
@@ -297,8 +293,7 @@ and a structured control protocol. The relevant protocol fields are
   `mahavishnu/terminal/adapters/` (tmux / crow / mock) is our
   `teammateMode` registry.
 
-Claude Code's own teammate backends are `auto | tmux | iterm2 |
-in-process` — it *does* use tmux as a pane backend for agent swarms,
+Claude Code's own teammate backends are `auto | tmux | iterm2 | in-process` — it *does* use tmux as a pane backend for agent swarms,
 with an in-process fallback. Ours already matches.
 
 ## 4.5 Requirements
@@ -356,8 +351,8 @@ drives a real dispatch and asserts the CLI's answer.
    - add `--skip-git-repo-check`,
    - close stdin (`< /dev/null`) so `codex exec` does not block
      waiting for terminal input.
-   Add a registry test that every one-shot command closes stdin, or
-   documents why it does not need to.
+     Add a registry test that every one-shot command closes stdin, or
+     documents why it does not need to.
 2. **Add a shared demo helper** in `mahavishnu/cli/demo_cli.py`:
    `_run_terminal_harness_demo(worker_type, *, prompt, timeout)`, which
    spawns a one-shot `MahavishnuPool` for that worker type, dispatches
@@ -464,8 +459,7 @@ never reverts; the state is visible in the MCP responses.
 - **Demonstrable by:** `pytest tests/unit/pools/test_dispatch_states.py`
   — a CLI that exits 0 with `is_error: true` yields FAILED; a settled
   dispatch stays settled across a later poll.
-- **Rollback signal:** `pool_route_execute` returning `status:
-  running` for a dispatch that has already returned is a regression;
+- **Rollback signal:** `pool_route_execute` returning `status: running` for a dispatch that has already returned is a regression;
   the metric `mahavishnu.pool.dispatches_settled` stops incrementing.
 - **Observability added:** metric `mahavishnu.pool.dispatches_settled`
   (labelled by `state` and `worker_type`) and log line
@@ -488,9 +482,9 @@ the prompt.
    - exports it,
    - emits `__MAHAVISHNU_READY__` with the prompt's byte count,
    - then `exec`s the registry command.
-   The prompt still never becomes shell text — the launcher reads it
-   into a variable and expands it quoted — so the injection property is
-   preserved.
+     The prompt still never becomes shell text — the launcher reads it
+     into a variable and expands it quoted — so the injection property is
+     preserved.
 2. **The worker waits for `__MAHAVISHNU_READY__`** before the dispatch
    is reported as running (REQ-007). Today the one-shot path has no
    readiness step at all: the worker starts polling for the completion
@@ -564,45 +558,51 @@ visibly marked unverified.
 ## 6. Required Code Changes
 
 **`mahavishnu/workers/`**
+
 - [ ] `registry.py` — codex invocation: `--skip-git-repo-check`, stdin
-      closed.
+  closed.
 - [ ] `shell_backend.py` — generated launcher (Phase 3), readiness
-      wait (REQ-007), integrity verification (REQ-008), outcome parsing
-      (Phase 2 step 5).
+  wait (REQ-007), integrity verification (REQ-008), outcome parsing
+  (Phase 2 step 5).
 - [ ] `shell_backend.py` — `# req: REQ-007`, `# req: REQ-008`.
 
 **`mahavishnu/pools/`**
+
 - [ ] `base.py` — `DispatchState` enum.
 - [ ] `mahavishnu_pool.py` — pool-owned transitions, terminal settled
-      state, marker/outcome agreement.
+  state, marker/outcome agreement.
 - [ ] `mahavishnu_pool.py` — `# req: REQ-005`, `# req: REQ-006`.
 
 **`mahavishnu/cli/`**
+
 - [ ] `demo_cli.py` — `_run_terminal_harness_demo` helper, the three
-      demo commands, the skip logic.
+  demo commands, the skip logic.
 - [ ] `demo_cli.py` — the engine + worker composition demo
-      (`workflow-engine-and-worker`) and the corrected
-      `workflow-pool-worker-terminal` docstring.
+  (`workflow-engine-and-worker`) and the corrected
+  `workflow-pool-worker-terminal` docstring.
 - [ ] `demo_cli.py` — `# req: REQ-001`, `# req: REQ-002`,
-      `# req: REQ-003`, `# req: REQ-004`, `# req: REQ-009`,
-      `# req: REQ-010`.
+  `# req: REQ-003`, `# req: REQ-004`, `# req: REQ-009`,
+  `# req: REQ-010`.
 
 **`settings/`**
+
 - [ ] `mahavishnu.yaml` — mirror the codex invocation change (the
-      registry-mirror test enforces this).
+  registry-mirror test enforces this).
 
 **`tests/`**
+
 - [ ] `tests/unit/cli/test_demo_terminal_harnesses.py` — the demos are
-      registered, skip cleanly, and assert the CLI's answer.
+  registered, skip cleanly, and assert the CLI's answer.
 - [ ] `tests/unit/pools/test_dispatch_states.py` — the state machine.
 - [ ] `tests/unit/workers/test_shell_launcher.py` — the launcher and
-      the readiness handshake.
+  the readiness handshake.
 - [ ] `tests/unit/workers/test_shell_prompt_integrity.py` — the digest
-      check.
+  check.
 
 **`docs/`**
+
 - [ ] `docs/plans/PLAN_INDEX.md` — regenerated (not hand-edited) after
-      this plan is promoted out of `draft`.
+  this plan is promoted out of `draft`.
 
 ## 7. Validation Matrix
 

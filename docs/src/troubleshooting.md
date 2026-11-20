@@ -15,8 +15,8 @@ AuthenticationError: Could not validate credentials
 #### Solution
 
 1. Verify `MAHAVISHNU_AUTH_SECRET` is set with a value of at least 32 characters
-1. Ensure authentication is properly configured in settings
-1. Check that JWT tokens are not expired
+2. Ensure authentication is properly configured in settings
+3. Check that JWT tokens are not expired
 
 ```bash
 # Verify the secret is set
@@ -37,8 +37,8 @@ ConfigurationError: Failed to load configuration
 #### Solution
 
 1. Verify configuration files are valid YAML
-1. Check that required environment variables are set
-1. Ensure file paths exist and are accessible
+2. Check that required environment variables are set
+3. Ensure file paths exist and are accessible
 
 ```bash
 # Validate YAML syntax
@@ -56,8 +56,8 @@ ConfigurationError: Failed to initialize langgraph adapter
 #### Solution
 
 1. Check if required dependencies are installed
-1. Verify adapter-specific configuration
-1. Ensure LLM API keys are valid
+2. Verify adapter-specific configuration
+3. Ensure LLM API keys are valid
 
 ```bash
 # Install adapter-specific dependencies
@@ -75,8 +75,8 @@ ValidationError: Invalid path contains directory traversal
 #### Solution
 
 1. Check repository paths in ecosystem.yaml for `..` sequences
-1. Ensure paths are absolute or properly relative
-1. Verify paths exist and are accessible
+2. Ensure paths are absolute or properly relative
+3. Verify paths exist and are accessible
 
 ### MCP Server Connection Issues
 
@@ -89,8 +89,8 @@ ConnectionError: Unable to connect to MCP server
 #### Solution
 
 1. Verify the server is running
-1. Check the configured port is available
-1. Ensure firewall rules allow connections
+2. Check the configured port is available
+3. Ensure firewall rules allow connections
 
 ```bash
 # Check if server is running
@@ -113,8 +113,8 @@ curl http://localhost:3000/
 #### Solutions
 
 1. Reduce `max_concurrent_workflows` to decrease resource contention
-1. Increase `timeout_per_repo` if processing large repositories
-1. Monitor system resources (CPU, memory, disk I/O)
+2. Increase `timeout_per_repo` if processing large repositories
+3. Monitor system resources (CPU, memory, disk I/O)
 
 ```bash
 # Check current configuration
@@ -132,8 +132,8 @@ CircuitBreaker: Circuit is OPEN, request denied
 #### Solution
 
 1. Check underlying service health (LLM provider, database, etc.)
-1. Wait for the circuit breaker timeout to reset
-1. Adjust circuit breaker thresholds if needed
+2. Wait for the circuit breaker timeout to reset
+3. Adjust circuit breaker thresholds if needed
 
 ## Debugging Tips
 
@@ -183,12 +183,12 @@ Look for these patterns in logs:
 When reporting issues, include:
 
 1. Mahavishnu version
-1. Python version
-1. Operating system
-1. Relevant configuration
-1. Steps to reproduce
-1. Full error message and traceback
-1. Log snippets showing the issue
+2. Python version
+3. Operating system
+4. Relevant configuration
+5. Steps to reproduce
+6. Full error message and traceback
+7. Log snippets showing the issue
 
 ```bash
 # Collect system information

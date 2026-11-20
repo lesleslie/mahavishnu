@@ -28,8 +28,8 @@ ______________________________________________________________________
 ## Phases
 
 1. Triage and contain using telemetry, logs, and rollback or feature-flag options.
-1. Remediate with the smallest safe fix, then validate with the targeted test suites.
-1. Harden by scheduling rollout guardrails, maintenance follow-up, and monitoring updates.
+2. Remediate with the smallest safe fix, then validate with the targeted test suites.
+3. Harden by scheduling rollout guardrails, maintenance follow-up, and monitoring updates.
 
 ## Handoffs
 

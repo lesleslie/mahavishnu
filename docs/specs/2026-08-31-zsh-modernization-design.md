@@ -3,10 +3,9 @@ status: draft
 role: canonical
 date: 2026-08-31
 last_reviewed: 2026-10-15
-superseded_by: null
+superseded_by:
 topic: config-consolidation
 title: "Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)"
-
 ---
 
 # Spec: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)
@@ -21,6 +20,7 @@ all loaded by default unless whitelisted) and dated (heavy update model,
 assumes GitHub HEAD weekly).
 
 We want a leaner, faster, more maintainable shell stack that:
+
 1. Loads in under ~150ms even with several plugins.
 2. Has a declarative, diff-friendly config (TOML where possible).
 3. Is forward-looking — no frozen/archived dependencies.

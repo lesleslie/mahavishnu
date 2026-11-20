@@ -3,7 +3,7 @@ status: active
 role: canonical
 date: 2026-11-15
 last_reviewed: 2026-11-15
-superseded_by: null
+superseded_by:
 topic: dispatch-isolation
 title: "A dispatched worker runs in the directory the dispatch names"
 ---

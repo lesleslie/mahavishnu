@@ -3,16 +3,17 @@ status: active
 role: canonical
 date: 2026-09-10
 last_reviewed: 2026-10-28
-superseded_by: null
+superseded_by:
 blocks_on: []
 kind: followup
 topic: tier2-phase-d-cross-repo
 ---
+
 # Tier 2 Follow-up: Phase D Cross-Repo Akosha Detector Wiring
 
 **Created**: 2026-09-10
 **Status**: Active — **deferred work, NOT a defect**
-**Originating plan**: [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`] (Tier 1 §7 cross-repo stub + Phase 9)
+**Originating plan**: \[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`\] (Tier 1 §7 cross-repo stub + Phase 9)
 
 ## Why deferred
 
@@ -29,7 +30,7 @@ changepoint slot is a follow-on because:
 3. **The cross-repo mechanism is named** at Tier 1 §7: extend
    `mahavishnu/pools/fitness_analyzer.py:279` task_classes list to
    include `"routing_change_point"`, plus write `HotRecord` objects
-   with the right metadata when the detector fires. <100 LOC.
+   with the right metadata when the detector fires. \<100 LOC.
 
 ## Re-evaluation trigger (machine-checked)
 
@@ -58,7 +59,7 @@ When the trigger fires, open
    `effective_selector` field distribution in routing decisions).
 3. **The §7 mechanism**: extend
    `mahavishnu/pools/fitness_analyzer.py:279` task_classes list, plus
-   `HotRecord` writes; <100 LOC, no new transport.
+   `HotRecord` writes; \<100 LOC, no new transport.
 4. **Three integration modes** to choose between:
    - **In-process library import** (viable; release-coordination cost).
    - **Mahosha exposes an MCP service** (rejected — inverts seer/orchestrator dependency).
@@ -77,6 +78,6 @@ When the trigger fires, open
 ## Related
 
 - Tier 1 plan §7 cross-repo stub:
-  [`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`] §7
+  \[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`\] §7
 - Eligibility script: [`scripts/feature_eligibility.py`](../../scripts/feature_eligibility.py)
 - Feature tracking: [`docs/feature-tracking/2026-09-10-tier2-math-deferred.md`](../feature-tracking/2026-09-10-tier2-math-deferred.md)

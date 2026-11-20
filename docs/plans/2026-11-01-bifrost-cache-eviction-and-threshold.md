@@ -4,16 +4,16 @@ role: canonical
 kind: plan
 date: 2026-11-01
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 topic: bifrost-cache-eviction-and-threshold
 title: "Bifrost cache eviction sweep and cache-tuning retune"
 requirements:
-- id: REQ-BIFROST-042
-  title: Expired Bifrost cache entries are reclaimable without a gateway restart
-- id: REQ-BIFROST-043
-  title: The eviction sweep never removes a live entry or a non-Bifrost key
-- id: REQ-BIFROST-044
-  title: The cache tuning thresholds are justified by recorded measurement
+  - id: REQ-BIFROST-042
+    title: Expired Bifrost cache entries are reclaimable without a gateway restart
+  - id: REQ-BIFROST-043
+    title: The eviction sweep never removes a live entry or a non-Bifrost key
+  - id: REQ-BIFROST-044
+    title: The cache tuning thresholds are justified by recorded measurement
 ---
 
 # Plan — Bifrost cache eviction sweep and cache-tuning retune
@@ -411,15 +411,16 @@ gateway.
 1. `config/launchd/ai.bifrost.cache-sweep.plist` — a launchd agent with
    `StartInterval` (15 minutes), `RunAtLoad`, no `KeepAlive`, logging to
    `~/.local/state/mcp/logs/bifrost-cache-sweep.log`. **Done.**
+
 2. Install and load it through the CLI, following the pattern the
    existing `ai.bifrost.gateway` and `ai.bifrost.redis-stack` plists
    use. **Done** — `mahavishnu/bifrost/lifecycle.py` gained
    `install_cache_sweep_plist()`, `start_cache_sweep()` and
-   `stop_cache_sweep()`, exposed as `mahavishnu bifrost
-   install-sweep-agent` and `mahavishnu bifrost uninstall-sweep-agent`.
+   `stop_cache_sweep()`, exposed as `mahavishnu bifrost install-sweep-agent` and `mahavishnu bifrost uninstall-sweep-agent`.
 
    `launchctl bootstrap` can fail with `EIO` immediately after a
    `bootout`; `start_cache_sweep()` retries once after a short pause.
+
 3. Confirm the sweep does not fight the gateway: the two never hold the
    same key for long, and the Lua delete is atomic against writes.
 
@@ -446,18 +447,18 @@ loaded, and two consecutive intervals produce a sweep log line.
 - [x] `mahavishnu/bifrost/__init__.py` — export the sweep entry points.
 - [x] `mahavishnu/cli/bifrost_cli.py` — new `cache-sweep` subcommand.
 - [x] `mahavishnu/_main_cli.py` — no change (`bifrost_app` is already
-      registered; the new command is inside that app).
+  registered; the new command is inside that app).
 - [x] `config/launchd/ai.bifrost.cache-sweep.plist` — new: the timer.
 - [x] `mahavishnu/bifrost/lifecycle.py` — `install_cache_sweep_plist()`,
-      `start_cache_sweep()`, `stop_cache_sweep()`.
+  `start_cache_sweep()`, `stop_cache_sweep()`.
 - [x] `config/bifrost/config.template.json` — threshold and
-      conversation-history-threshold retune.
+  conversation-history-threshold retune.
 - [ ] `config/bifrost/README.md` — record the measurements and the reasoning.
 - [x] `tests/unit/test_bifrost_cache_eviction.py` — unit coverage.
 - [x] `tests/integration/test_bifrost_cache_eviction_e2e.py` — termination
-      and non-destructiveness regression coverage.
+  and non-destructiveness regression coverage.
 - [x] `tests/unit/cli/test_cli_wireup_invariants.py` — assert the new
-      subcommand is registered.
+  subcommand is registered.
 - [x] `pyproject.toml` — declare `anyio` in the `cache` group.
 - [x] `docs/plans/PLAN_INDEX.md` — index this plan.
 

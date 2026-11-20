@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-07-16
 last_reviewed: 2026-10-15
-superseded_by: null
+superseded_by:
 blocks_on: []
 decision_date: 2026-01-29
 topic: oneiric-config
@@ -62,22 +62,22 @@ Use Oneiric for all configuration and logging in Mahavishnu.
 
 1. **Orchestration-Native:** Oneiric is designed for orchestration workflows, making it a natural fit for Mahavishnu's multi-engine architecture.
 
-1. **Type Safety:** Pydantic models provide compile-time and runtime type checking, preventing configuration errors.
+2. **Type Safety:** Pydantic models provide compile-time and runtime type checking, preventing configuration errors.
 
-1. **Observability:** Built-in OpenTelemetry integration and structured logging provide excellent observability out of the box.
+3. **Observability:** Built-in OpenTelemetry integration and structured logging provide excellent observability out of the box.
 
-1. **Flexibility:** Multi-sink logging and runtime profiles support diverse deployment scenarios.
+4. **Flexibility:** Multi-sink logging and runtime profiles support diverse deployment scenarios.
 
-1. **Ecosystem Alignment:** Crackerjack and Session-Buddy already use Oneiric patterns, ensuring consistency across the ecosystem.
+5. **Ecosystem Alignment:** Crackerjack and Session-Buddy already use Oneiric patterns, ensuring consistency across the ecosystem.
 
 ### Configuration Hierarchy
 
 Following Oneiric patterns, configuration loads in this order (later overrides earlier):
 
 1. **Default values** in Pydantic models
-1. **settings/mahavishnu.yaml** (committed to git, base configuration)
-1. **settings/local.yaml** (gitignored, local development)
-1. **Environment variables** `MAHAVISHNU_{FIELD}`
+2. **settings/mahavishnu.yaml** (committed to git, base configuration)
+3. **settings/local.yaml** (gitignored, local development)
+4. **Environment variables** `MAHAVISHNU_{FIELD}`
 
 ```python
 from mcp_common.cli import MCPServerSettings

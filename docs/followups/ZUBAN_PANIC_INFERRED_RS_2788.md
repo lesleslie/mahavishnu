@@ -4,9 +4,10 @@ role: implementation
 kind: followup
 date: 2026-10-14
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: type-checking
 ---
+
 # zuban 0.8.0 panic at `inferred.rs:2788` on session-buddy
 
 ## Summary
@@ -113,11 +114,11 @@ Running `zuban check` on this minimal file produces a *clean, expected* output (
    arm list and trying to remove from an empty collection. Is this a known
    panic signature?
 
-1. **If you can provide a debug build**: a `zuban` binary that prints the
+2. **If you can provide a debug build**: a `zuban` binary that prints the
    offending source location and the AST shape it was processing at the time of
    the panic would let me bisect more precisely.
 
-1. **Workaround in the meantime**: pinning `zuban<0.8.0` in projects that hit
+3. **Workaround in the meantime**: pinning `zuban<0.8.0` in projects that hit
    this avoids the panic. The previous version (whatever was used before
    2026-06-01) presumably did not have this regression.
 

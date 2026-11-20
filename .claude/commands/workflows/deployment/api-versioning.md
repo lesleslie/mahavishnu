@@ -26,10 +26,10 @@ Use this workflow to introduce API changes safely and retire old versions withou
 ## Workflow
 
 1. Classify the change as compatible, breaking, or deprecation-only.
-1. Verify the current API docs, contracts, and consumer usage.
-1. Choose the right versioning approach and release plan.
-1. Define the deprecation timeline and migration support.
-1. Monitor usage before fully sunsetting old versions.
+2. Verify the current API docs, contracts, and consumer usage.
+3. Choose the right versioning approach and release plan.
+4. Define the deprecation timeline and migration support.
+5. Monitor usage before fully sunsetting old versions.
 
 ## Output
 

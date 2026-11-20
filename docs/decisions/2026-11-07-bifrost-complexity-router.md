@@ -46,8 +46,7 @@ Two constraints shape what a tier may route to:
   security-review plugin asks for `claude-opus-5-5` directly, falling back to
   `claude-sonnet-4-6` when the primary yields no verdict. That fallback
   exists because M3's adaptive thinking consumes the entire 16k output budget
-  on a review-sized diff and returns thinking-only with `stop_reason:
-  max_tokens`. A pinned model that overrides the caller's choice destroys it.
+  on a review-sized diff and returns thinking-only with `stop_reason: max_tokens`. A pinned model that overrides the caller's choice destroys it.
 
 And the credential: `env.X` provider keys resolve from the gateway's own
 process environment, and the gateway provisions those from
@@ -66,7 +65,7 @@ provider fails with `no_key_supports_model`.
    requires all three lists even though the decision classifier does not read
    them; a later switch to the semantic classifier needs no config change.
 
-1. **`session.enabled: true`.** The reason is coherence, not cost. Without
+2. **`session.enabled: true`.** The reason is coherence, not cost. Without
    session state, a turn's first request — the one carrying the human text —
    is classified and routed by tier, while the turn's continuation requests
    carry only tool results, get no tier, and fall through to the caller's
@@ -76,9 +75,10 @@ provider fails with `no_key_supports_model`.
    session. Session state stores only the tier, under a hashed session id — no
    prompts, no scores, no history.
 
-1. **The tier policy is downward-only. `SIMPLE` is the only tier with a model
+3. **The tier policy is downward-only. `SIMPLE` is the only tier with a model
    target.** `MEDIUM` and `COMPLEX` keep the caller's model through
    `route-anthropic-native`. This is what keeps the policy safe:
+
    - Nothing is ever moved *onto* the heavier model, so the haiku slot is
      never escalated.
    - The security-review plugin's Sonnet fallback is never overridden back
@@ -88,7 +88,7 @@ provider fails with `no_key_supports_model`.
      "Session affinity" below. A session bound to the cheaper model on a
      SIMPLE turn stays on it after it escalates.
 
-1. **One rule: `route-complexity-simple`, priority 3.** Routing rules are
+4. **One rule: `route-complexity-simple`, priority 3.** Routing rules are
    first-match-wins with the lower priority number evaluated first, and
    `route-anthropic-native` (priority 5) matches every Claude Code request
    because the harness always sends `x-bf-route` — so a tier rule at priority
@@ -97,7 +97,7 @@ provider fails with `no_key_supports_model`.
    direct-SDK callers such as the security-review plugin, that reach the
    gateway without the harness headers.
 
-1. **Jev is reached through Bifrost, not through a second transport.** Bifrost
+5. **Jev is reached through Bifrost, not through a second transport.** Bifrost
    already proxies `typesafe` / `jev-latest` via `/v1/decisions`, using the
    provider's own credential. Routing the decision model through Bifrost means
    one credential path, one config site, and unified logs and cost counters —
@@ -109,7 +109,7 @@ provider fails with `no_key_supports_model`.
    It also keeps the fleet at one gateway, per the same principle the
    tool-output-compaction plan states as REQ-COMP-06.
 
-1. **`TYPESAFE_API_KEY` joins `NEEDED_KEYS`.** Without it the gateway never
+6. **`TYPESAFE_API_KEY` joins `NEEDED_KEYS`.** Without it the gateway never
    resolves the variable, Bifrost drops the key at startup, and every
    classification fails with `no_key_supports_model` — which surfaces as *the
    router never produces a tier*, not as a credential error. The failure is
@@ -120,12 +120,12 @@ provider fails with `no_key_supports_model`.
    derives the requirement from the template, so a provider key cannot be
    added to the config without also being resolvable.
 
-1. **The five `x-bf-task` task-keyed rules are left alone.** They remain
+7. **The five `x-bf-task` task-keyed rules are left alone.** They remain
    unreachable and harmless. `complexity_tier` supersedes them as the
    mechanism; it does not require deleting them, and their removal is a
    separate change with its own risk.
 
-1. **The decision-adapter plan is rescoped, not cancelled.** See the
+8. **The decision-adapter plan is rescoped, not cancelled.** See the
    amendment in `docs/plans/2026-10-14-decision-adapter-category.md`: Task 1
    cuts to one Bifrost-backed adapter, Task 2's sequencing gate is already
    satisfied, Task 3's three `task_router` selectors are dropped, and Task 4
@@ -136,8 +136,7 @@ provider fails with `no_key_supports_model`.
 Verified against the gateway's own request log (`~/.config/bifrost/logs.db`)
 after the rebootstrap, and with controlled probes against the Anthropic
 ingress. The figures below are for one closed hour — **04:52 to 05:52
-local** (`timestamp > '2026-11-07 12:52' AND timestamp <= '2026-11-07
-13:52'` in the log's UTC timestamps) — and exclude the probe sessions, so
+local** (`timestamp > '2026-11-07 12:52' AND timestamp <= '2026-11-07 13:52'` in the log's UTC timestamps) — and exclude the probe sessions, so
 they are reproducible.
 
 **The classifier works.** 762 requests on the Claude Code path
@@ -148,13 +147,11 @@ after the restart onwards. The distribution was `MEDIUM` 504, `SIMPLE` 236,
 the rest.
 
 **Session mode works, and it is what makes the classifier affordable.** 741
-of the 762 tiered requests reused a stored tier (`complexity_mechanism:
-session`); only 21 called the decision model — **97% of tiered requests pay
+of the 762 tiered requests reused a stored tier (`complexity_mechanism: session`); only 21 called the decision model — **97% of tiered requests pay
 nothing for classification**.
 
 **The decision model is reached through Bifrost's `/v1/decisions`**, as
-designed. The routing metadata records `provider_used: typesafe,
-model_used: jev-1.14.0` on every classification.
+designed. The routing metadata records `provider_used: typesafe, model_used: jev-1.14.0` on every classification.
 
 **The classifier is not free, and session mode is what bounds it.** On the
 Claude Code path the 25 decision calls cost 88,229 input tokens and 1,177
@@ -259,8 +256,7 @@ admin-auth-gated). 30/30 config-contract tests pass, and the merge gate
 
 - **The analyzer config landed.** It reconciles into the store's
   `complexity_semantic_config` entity: `classifier=decision`,
-  `decision={provider: typesafe, model: jev-latest, previous_message_count: 1,
-  timeout: 1.5s}`, `session.enabled=true`. Bifrost hashed each of those six
+  `decision={provider: typesafe, model: jev-latest, previous_message_count: 1, timeout: 1.5s}`, `session.enabled=true`. Bifrost hashed each of those six
   template fields into that entity's `_config_hashes`, which is the proof
   that the reconcile read this template and not a stale one.
 - **The store's other complexity entity is a different thing.**

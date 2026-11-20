@@ -5,6 +5,7 @@ date: 2026-07-16
 last_reviewed: 2026-09-13
 topic: test-matrix-followups
 ---
+
 # Deferred MEDIUM / LOW Findings — `scripts/test_matrix.py` review
 
 One-line summary: tracks the medium- and low-severity items from the recent
@@ -37,13 +38,13 @@ that group in a single PR. Do not mix groups — each group touches a
 different sub-area of the repo and reviewers will be different.
 
 1. Pick a group below.
-1. Read each item in the group, including the "Why it matters" paragraph.
-1. For each code-level fix, add a unit test (the script has no test
+2. Read each item in the group, including the "Why it matters" paragraph.
+3. For each code-level fix, add a unit test (the script has no test
    suite today; the *minimum* is a smoke test in `tests/unit/`
    asserting the script runs end-to-end against a fixture project).
-1. Run `python scripts/test_matrix.py --project . --stack python --types unit,integration --out /tmp/test-matrix.json` to confirm no
+4. Run `python scripts/test_matrix.py --project . --stack python --types unit,integration --out /tmp/test-matrix.json` to confirm no
    regression.
-1. Update this file: mark the item as resolved with the PR link, or
+5. Update this file: mark the item as resolved with the PR link, or
    delete it if no longer applicable.
 
 When all items in a group are resolved, do **not** delete this file —
@@ -493,7 +494,7 @@ group.
 
   1. Retrofit YAML frontmatter across all 101 agent files. Mechanical
      transformation; safe but tedious.
-  1. Rewrite `agent_metadata_audit.py` to parse the current
+  2. Rewrite `agent_metadata_audit.py` to parse the current
      single-line `name: ... description: ... model: ...` format.
      Smaller blast radius; preserves the existing convention.
 

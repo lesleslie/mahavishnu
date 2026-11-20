@@ -4,7 +4,7 @@ role: canonical
 kind: spec
 date: 2026-10-14
 last_reviewed: 2026-11-07
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: decision-adapter-category
 title: "Decision Adapter Category — Design Spec"
@@ -551,9 +551,9 @@ disagreement test**, not a flipped selector. Specifically:
 
 1. Shadow-mode Jev Noul decisions alongside `mcp__mahavishnu__mahavishnu_request_approval`
    for 7 days. Log disagreements with the hand-coded approval gate.
-1. Compare P-value distribution vs. baseline (alert on >2σ shift).
-1. Compute precision vs. the hand-coded baseline over the 7-day window.
-1. Promote to live routing only when precision holds AND P-value distribution
+2. Compare P-value distribution vs. baseline (alert on >2σ shift).
+3. Compute precision vs. the hand-coded baseline over the 7-day window.
+4. Promote to live routing only when precision holds AND P-value distribution
    is within 2σ. Per `feedback-no-backwards-compat-pre-1.0.md`, no
    deprecation windows — if Phase 1 fails, the adapter stays at Phase 0
    (shadow mode) or gets removed entirely.
@@ -583,20 +583,20 @@ their workers run inside Mahavishnu's orchestration. They can consume
    `AdapterBridge` is the abstraction layer; swapping the implementation
    under the `typesafe_jev` provider is a config change, not a code change.
    Decision 3.0 is the open-source fallback for the same primitives.
-1. **vLLM Semantic Router is on the `--channel dev` channel** — not yet
+2. **vLLM Semantic Router is on the `--channel dev` channel** — not yet
    a stable release. Decision 3.0 production deployment is gated on
    vllm-sr's stable release. The substrate's `requires_secrets=False`
    stays correct regardless.
-1. **vllm-metal on Apple Silicon is experimental.** Per the contracollective.com
+3. **vllm-metal on Apple Silicon is experimental.** Per the contracollective.com
    comparison, "MPS support is experimental" and "the CUDA dependency is
    deep." Operators on Apple Silicon may need to use MLX or wait for
    vllm-sr to ship an official Apple Silicon path. The substrate
    transport-agnostic posture means this doesn't change the decision
    adapter protocol — only the serving runtime.
-1. **HNSW extension migration.** Mahavishnu's `pgvector_adapter.py` carries
+4. **HNSW extension migration.** Mahavishnu's `pgvector_adapter.py` carries
    HNSW indexing that Oneiric's `PgvectorAdapter` also has. The fork deletion
    is safe because Oneiric's class supports HNSW per the verified source.
-1. **Substrate-federation rot.** Per `feedback-substrate-compat-shim-rot.md`,
+5. **Substrate-federation rot.** Per `feedback-substrate-compat-shim-rot.md`,
    direct substrate extension can rot when Oneiric's surface evolves. The
    `DecisionBase[SettingsT]` typed base is intentionally narrow (two
    abstract methods) to keep the surface stable.

@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-11-05
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 topic: config-that-nobody-reads
 title: "Config that nobody reads — a settings/ sweep for the dead-knob pattern"
 requirements:
@@ -146,8 +146,7 @@ finding against a local copy — `settings/*.example` is the tracked stand-in.
    names this as the "dead flag" anti-pattern.
 
 4. **`caller_quota` is inert, and the YAML disagrees with the code by 60×.**
-   `settings/mahavishnu.yaml:470-473` says `default: 100,
-   window_seconds: 3600`; the enforcing code hardcodes
+   `settings/mahavishnu.yaml:470-473` says `default: 100, window_seconds: 3600`; the enforcing code hardcodes
    `window_size_seconds = 60, max_per_window = 60`
    (`mahavishnu/pools/manager.py:107-111`).
    `docs/CONFIGURATION.md:466-468` documents the YAML numbers as live.
@@ -229,6 +228,7 @@ YAML key dropped at `config.py:3547` and each sub-key dropped at
 warning fires for an unknown key and does not fire for a known one.
 
 #### Integration Contract
+
 - **Triggered from:** `get_settings()` (`mahavishnu/core/config.py:3455`).
 - **Returns to / updates:** the logger; no settings state.
 - **Demonstrable by:** `pytest tests/unit/test_config.py -k unknown_key -v`
@@ -250,6 +250,7 @@ top-level-vs-nested shape mismatch in `embeddings_oneiric.py:96-99` (which
 also affects the `embeddings:` block in `mahavishnu.yaml`).
 
 #### Integration Contract
+
 - **Triggered from:** `mahavishnu team create` / the embeddings loader.
 - **Returns to / updates:** `settings/`, `docs/CONFIGURATION.md`,
   `CLAUDE.md`, `settings/README.md`.
@@ -283,6 +284,7 @@ candidates for deletion, subject to a check that no *other* repo or a
 deployment script reads them.
 
 #### Integration Contract
+
 - **Triggered from:** `get_settings()`; `docs/CONFIGURATION.md` readers.
 - **Returns to / updates:** `settings/mahavishnu.yaml`,
   `docs/CONFIGURATION.md`, `mahavishnu/core/config.py` (delete the now-unused
@@ -306,6 +308,7 @@ reason. Fix the fields documented but non-existent —
 `pi_pool.default_model`.
 
 #### Integration Contract
+
 - **Triggered from:** a reader following the configuration doc.
 - **Returns to / updates:** `docs/CONFIGURATION.md` only.
 - **Demonstrable by:** every key named in the doc has a consumer greppable
@@ -321,6 +324,7 @@ reason. Fix the fields documented but non-existent —
 `crackerjack`, and `mcp-common` `settings/` directories.
 
 #### Integration Contract
+
 - **Triggered from:** this plan's audit method.
 - **Returns to / updates:** sibling repos — cross-repo, separate PRs.
 - **Demonstrable by:** a per-repo verdict table like §4.1.
@@ -333,11 +337,11 @@ reason. Fix the fields documented but non-existent —
 - [ ] `mahavishnu/core/config.py` — remove fields whose keys are deleted
 - [ ] `mahavishnu/mcp/lifecycle.py` — pass the `task_orphan_sweeper` values
 - [ ] `mahavishnu/core/embeddings_oneiric.py` — fix the top-level parse, or
-      leave the file deleted
+  leave the file deleted
 - [ ] `mahavishnu/cli/team_cli.py` — accept a YAML team config, or leave the
-      files deleted
+  files deleted
 - [ ] `settings/mahavishnu.yaml`, `settings/embeddings.yaml`,
-      `settings/agno_teams/*.yaml` — delete or complete
+  `settings/agno_teams/*.yaml` — delete or complete
 - [ ] `settings/mahavishnu.yaml.example` — track the same removals
 - [ ] `docs/CONFIGURATION.md`, `CLAUDE.md`, `settings/README.md` — correct
 

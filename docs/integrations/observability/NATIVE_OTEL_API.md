@@ -473,10 +473,10 @@ Performs semantic search using cosine similarity between query embedding and sto
 **Search Algorithm:**
 
 1. Generate embedding for query using same model as traces
-1. Query HNSW index for nearest neighbors
-1. Filter by similarity threshold
-1. Apply attribute filters if provided
-1. Sort by similarity and limit results
+2. Query HNSW index for nearest neighbors
+3. Filter by similarity threshold
+4. Apply attribute filters if provided
+5. Sort by similarity and limit results
 
 **Example:**
 
@@ -947,14 +947,14 @@ Embedding generation is the bottleneck (~80% of ingestion time). Optimize by:
    - `all-MiniLM-L6-v2`: Fast, good quality (384 dims)
    - `all-mpnet-base-v2`: Slower, better quality (768 dims)
 
-1. **Using batch ingestion:**
+2. **Using batch ingestion:**
 
    ```python
    # Batch embedding generation
    await ingester.batch_store(traces)  # Faster
    ```
 
-1. **Caching embeddings:**
+3. **Caching embeddings:**
 
    ```python
    # Larger cache for repeated queries
@@ -979,7 +979,7 @@ Optimize by:
    results = await ingester.search_traces(query, threshold=0.85)
    ```
 
-1. **Using attribute filters:**
+2. **Using attribute filters:**
 
    ```python
    # Pre-filter by attributes
@@ -989,7 +989,7 @@ Optimize by:
    )
    ```
 
-1. **Limiting results:**
+3. **Limiting results:**
 
    ```python
    # Smaller limit = faster

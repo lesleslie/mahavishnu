@@ -26,10 +26,10 @@ Use this workflow to reduce attack surface and close security gaps without disru
 ## Workflow
 
 1. Review findings, assets, and threat drivers.
-1. Rank fixes by risk, exposure, and compliance urgency.
-1. Assign owners and remediation windows.
-1. Verify fixes with tests, scans, or evidence.
-1. Update policies and monitoring after closure.
+2. Rank fixes by risk, exposure, and compliance urgency.
+3. Assign owners and remediation windows.
+4. Verify fixes with tests, scans, or evidence.
+5. Update policies and monitoring after closure.
 
 ## Output
 

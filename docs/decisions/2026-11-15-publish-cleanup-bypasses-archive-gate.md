@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-11-15
 last_reviewed: 2026-11-15
-superseded_by: null
+superseded_by:
 topic: archive-completed-plans
 title: "Publish-time documentation cleanup bypasses the archive gate"
 ---
@@ -14,8 +14,7 @@ title: "Publish-time documentation cleanup bypasses the archive gate"
 ## Context
 
 `docs/decisions/2026-10-18-archive-completed-plans.md` sets a gate for
-archiving a plan: **rule 2** — "Plans being archived must have `status:
-shipped` first. Mechanical 'complete → archive' is not allowed; the gate
+archiving a plan: **rule 2** — "Plans being archived must have `status: shipped` first. Mechanical 'complete → archive' is not allowed; the gate
 forces per-plan verification."
 
 Nothing enforces that gate in the tool that actually moves files.
@@ -54,8 +53,7 @@ This is the third occurrence of the same loss:
 | 2026-11-13 | v7 plan archived again |
 | 2026-11-15 | `check-local-links` failed on the two dangling links |
 
-Two of the swept plans are still live work, not history. Both are `status:
-complete` with `role: implementation`, which is exactly the state rule 2
+Two of the swept plans are still live work, not history. Both are `status: complete` with `role: implementation`, which is exactly the state rule 2
 forbids archiving from. The read-path plan still carries an open item — R-4's
 documentation sub-item, adding the `spans_substrate` path to
 `docs/ingestion/DATA_INGESTION.md`, never landed — so per rule 1 it stays at
@@ -67,8 +65,7 @@ read-path plan's own `blocked_by:` names the v7 plan.
 ## Decision rule
 
 **Publish-time documentation cleanup is disabled in this repo**
-(`settings/crackerjack.yaml` → `documentation.auto_cleanup_on_publish:
-false`) until the tool enforces the gate itself.
+(`settings/crackerjack.yaml` → `documentation.auto_cleanup_on_publish: false`) until the tool enforces the gate itself.
 
 - The archiver must gate on frontmatter `status: shipped` before moving a
   file, per rule 2 of the archive policy. A filename regex cannot

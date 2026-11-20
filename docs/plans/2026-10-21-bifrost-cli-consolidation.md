@@ -4,28 +4,28 @@ role: implementation
 kind: plan
 date: 2026-10-21
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 topic: bifrost-cli-consolidation
 title: "Bifrost CLI Consolidation — one Typer app replacing seven scripts"
 requirements:
-- id: REQ-BIFROST-024
-  title: Single Typer sub-app exposes all Bifrost capabilities
-- id: REQ-BIFROST-025
-  title: Toggle implementation is harness-parameterised, not duplicated
-- id: REQ-BIFROST-026
-  title: Claude toggle writes ANTHROPIC_CUSTOM_HEADERS with x-bf-vk
-- id: REQ-BIFROST-027
-  title: Qwen toggle writes modelProviders customHeaders with x-bf-vk
-- id: REQ-BIFROST-028
-  title: Virtual key resolved from env/flag, never hardcoded in settings
-- id: REQ-BIFROST-029
-  title: BIFROST_CTL_NO_CC_URL_REWRITE enforced in the single toggle path
-- id: REQ-BIFROST-030
-  title: LaunchAgent plist invokes the migrated gateway module
-- id: REQ-BIFROST-031
-  title: Smoke checks are harness-parameterised
-- id: REQ-BIFROST-032
-  title: No references to retired script paths remain
+  - id: REQ-BIFROST-024
+    title: Single Typer sub-app exposes all Bifrost capabilities
+  - id: REQ-BIFROST-025
+    title: Toggle implementation is harness-parameterised, not duplicated
+  - id: REQ-BIFROST-026
+    title: Claude toggle writes ANTHROPIC_CUSTOM_HEADERS with x-bf-vk
+  - id: REQ-BIFROST-027
+    title: Qwen toggle writes modelProviders customHeaders with x-bf-vk
+  - id: REQ-BIFROST-028
+    title: Virtual key resolved from env/flag, never hardcoded in settings
+  - id: REQ-BIFROST-029
+    title: BIFROST_CTL_NO_CC_URL_REWRITE enforced in the single toggle path
+  - id: REQ-BIFROST-030
+    title: LaunchAgent plist invokes the migrated gateway module
+  - id: REQ-BIFROST-031
+    title: Smoke checks are harness-parameterised
+  - id: REQ-BIFROST-032
+    title: No references to retired script paths remain
 ---
 
 > **Implementation status (verified 2026-11-07).** Phases 1-3 are shipped and
@@ -42,8 +42,7 @@ requirements:
 >   `pyproject.toml`, and `config/bifrost/README.md` carry no `scripts/bifrost*`
 >   reference; `docs/CLI_REFERENCE.md` has a `bifrost` section; the
 >   LaunchAgent plist's `ProgramArguments` invoke `mahavishnu bifrost`.
-> - The credential path (REQ-BIFROST-026/027/028) is live. `mahavishnu bifrost
->   status` reports `x-bf-vk header: present` for **both** harnesses, and the
+> - The credential path (REQ-BIFROST-026/027/028) is live. `mahavishnu bifrost status` reports `x-bf-vk header: present` for **both** harnesses, and the
 >   gateway (pid 39902, `127.0.0.1:8471` LISTEN, ready file present) is
 >   serving `200` responses to `claude-cli` traffic — satisfying the §9
 >   condition that both harnesses complete a request with enforcement on.
@@ -285,10 +284,7 @@ provider response, not `virtual key is required`.
 
 **Goal:** retire every remaining script and clear dangling references.
 
-**Tasks:** port `bifrost-auth-policy` → `mahavishnu bifrost policy
-{check,enforce}`; merge the two smoke scripts → `mahavishnu bifrost smoke
-[--harness claude|qwen|both]`; port `verify_qwen_bifrost_gate.sh` → `mahavishnu
-bifrost verify-gate`. Delete all seven scripts. Update plist, `pyproject.toml`,
+**Tasks:** port `bifrost-auth-policy` → `mahavishnu bifrost policy {check,enforce}`; merge the two smoke scripts → `mahavishnu bifrost smoke [--harness claude|qwen|both]`; port `verify_qwen_bifrost_gate.sh` → `mahavishnu bifrost verify-gate`. Delete all seven scripts. Update plist, `pyproject.toml`,
 `settings/mahavishnu.yaml`, `config/bifrost/README.md`, the three test
 modules, and `docs/CLI_REFERENCE.md`.
 
@@ -319,9 +315,9 @@ outside this plan and the deprecation note.
 - [x] `mahavishnu/bifrost/gateway.py` — port of `bifrost-gateway.py`
 - [x] `mahavishnu/bifrost/policy.py` — port of `bifrost-auth-policy`
 - [ ] `mahavishnu/bifrost/smoke.py` — merge of both smoke scripts — **never
-      shipped; REQ-BIFROST-031 outstanding**
+  shipped; REQ-BIFROST-031 outstanding**
 - [x] `mahavishnu/bifrost/cli.py` — Typer `bifrost_app` — shipped as
-      `mahavishnu/cli/bifrost_cli.py`
+  `mahavishnu/cli/bifrost_cli.py`
 - [x] `mahavishnu/bifrost/verify.py` — port of `verify_qwen_bifrost_gate.sh`
 
 **Modified**

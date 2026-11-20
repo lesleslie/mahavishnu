@@ -28,13 +28,13 @@ Mahavishnu follows a modular architecture with the following components:
 
 1. **Core Application (`mahavishnu/core/app.py`)**: Main application class that manages configuration, repository loading, and adapter initialization.
 
-1. **CLI Module (`mahavishnu/cli.py`)**: Implements the command-line interface with commands like `sweep`, `mcp-serve`, and `list-repos`.
+2. **CLI Module (`mahavishnu/cli.py`)**: Implements the command-line interface with commands like `sweep`, `mcp-serve`, and `list-repos`.
 
-1. **Engine Adapters (`mahavishnu/engines/`)**: Contains adapter implementations for different orchestration engines (Prefect, LlamaIndex, Agno).
+3. **Engine Adapters (`mahavishnu/engines/`)**: Contains adapter implementations for different orchestration engines (Prefect, LlamaIndex, Agno).
 
-1. **MCP Server (`mahavishnu/mcp/server_core.py`)**: Implements the Machine Learning Communication Protocol server for tool integration.
+4. **MCP Server (`mahavishnu/mcp/server_core.py`)**: Implements the Machine Learning Communication Protocol server for tool integration.
 
-1. **Shared Infrastructure (`mcp-common/`)**: Contains shared components used by both Mahavishnu and Session Buddy, including code graph analysis and messaging types.
+5. **Shared Infrastructure (`mcp-common/`)**: Contains shared components used by both Mahavishnu and Session Buddy, including code graph analysis and messaging types.
 
 ## Building and Running
 
@@ -78,9 +78,9 @@ mahavishnu terminal launch "python -c 'print(\"Hello\")'" --count 2
 Mahavishnu uses multiple configuration sources with the following precedence (later overrides earlier):
 
 1. Default values in Pydantic models
-1. `settings/mahavishnu.yaml` (committed)
-1. `settings/local.yaml` (gitignored)
-1. Environment variables `MAHAVISHNU_*`
+2. `settings/mahavishnu.yaml` (committed)
+3. `settings/local.yaml` (gitignored)
+4. Environment variables `MAHAVISHNU_*`
 
 #### Environment Variables
 
@@ -179,16 +179,16 @@ pytest --cov=mahavishnu --cov-report=html
 
 ## Key Features
 
-1. **Multi-engine Support**: Seamlessly switch between Prefect, LlamaIndex, and Agno
-1. **Repository Management**: Organize and operate on repositories using tags
-1. **CLI Interface**: Intuitive command-line interface powered by Typer
-1. **MCP Server**: Machine Learning Communication Protocol server for tool integration
-1. **Terminal Management**: Advanced terminal session management with multiple adapters
-1. **Quality Control**: Integration with Crackerjack for code quality checks
-1. **Session Management**: Integration with Session-Buddy for workflow checkpoints
-1. **Observability**: OpenTelemetry integration for metrics and tracing
-1. **Security**: JWT authentication with multiple provider support
-1. **Concurrency Control**: Built-in concurrency limits and circuit breakers
+01. **Multi-engine Support**: Seamlessly switch between Prefect, LlamaIndex, and Agno
+02. **Repository Management**: Organize and operate on repositories using tags
+03. **CLI Interface**: Intuitive command-line interface powered by Typer
+04. **MCP Server**: Machine Learning Communication Protocol server for tool integration
+05. **Terminal Management**: Advanced terminal session management with multiple adapters
+06. **Quality Control**: Integration with Crackerjack for code quality checks
+07. **Session Management**: Integration with Session-Buddy for workflow checkpoints
+08. **Observability**: OpenTelemetry integration for metrics and tracing
+09. **Security**: JWT authentication with multiple provider support
+10. **Concurrency Control**: Built-in concurrency limits and circuit breakers
 
 ## Current Status
 
@@ -224,11 +224,11 @@ pytest --cov=mahavishnu --cov-report=html
 To contribute to Mahavishnu:
 
 1. Fork the repository
-1. Create a virtual environment: `uv venv`
-1. Install in editable mode: `uv pip install -e .`
-1. Make your changes
-1. Run tests: `pytest`
-1. Submit a pull request
+2. Create a virtual environment: `uv venv`
+3. Install in editable mode: `uv pip install -e .`
+4. Make your changes
+5. Run tests: `pytest`
+6. Submit a pull request
 
 ## Shared Infrastructure (mcp-common)
 

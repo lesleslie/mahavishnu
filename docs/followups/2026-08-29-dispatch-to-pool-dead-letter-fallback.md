@@ -4,9 +4,10 @@ role: historical
 kind: followup
 date: 2026-08-29
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: error-handling
 ---
+
 # Fix: `dispatch_to_pool(async_callback=True)` → `workflow_result(not_found)`
 
 **Outcome #1 of** `docs/plans/2026-08-29-orchestrator-research-synthesis.md`
@@ -391,7 +392,7 @@ MCP server is restarted on the new build, the migration becomes the canonical pa
      `main` as a follow-up commit.
    - Cherry-pick the dead-letter helper into the worker-registry worktree directly
      (coordinate with that session; the helper is small).
-1. **Long term** — when the new MCP server build ships, complete the migration to
+2. **Long term** — when the new MCP server build ships, complete the migration to
    `execute_capability` + `get_capability_result(trace_id)` per plan Phase 0 task #4.
    The dead-letter fallback remains as a recovery layer for the new path too.
 

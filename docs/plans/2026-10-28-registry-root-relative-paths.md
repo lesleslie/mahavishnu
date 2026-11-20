@@ -3,20 +3,20 @@ status: complete
 role: implementation
 date: 2026-10-28
 last_reviewed: 2026-10-28
-superseded_by: null
+superseded_by:
 topic: registry-paths
 title: "Registry path disclosure — root-relative paths in BODAI_REPO_REGISTRY.md"
 requirements:
-- id: REQ-REGISTRY-001
-  title: Generator renders registry paths relative to the projects root
-- id: REQ-REGISTRY-002
-  title: Published registry declares the projects-root resolution rule
-- id: REQ-REGISTRY-003
-  title: Registry consumers resolve relative paths against the projects root
-- id: REQ-REGISTRY-004
-  title: Published registry contains no absolute path or account name
-- id: REQ-REGISTRY-005
-  title: Registry catalog lists only fleet-member Python packages
+  - id: REQ-REGISTRY-001
+    title: Generator renders registry paths relative to the projects root
+  - id: REQ-REGISTRY-002
+    title: Published registry declares the projects-root resolution rule
+  - id: REQ-REGISTRY-003
+    title: Registry consumers resolve relative paths against the projects root
+  - id: REQ-REGISTRY-004
+    title: Published registry contains no absolute path or account name
+  - id: REQ-REGISTRY-005
+    title: Registry catalog lists only fleet-member Python packages
 ---
 
 # Registry path disclosure — root-relative paths in `BODAI_REPO_REGISTRY.md`
@@ -114,8 +114,7 @@ from the tables. ADR 019 then settled the membership question outright:
 
 > as of 2026-10-17, the user explicitly clarified that the standalone MCP
 > server repo is still maintained by Bodai but is no longer a core component. The in-scope set for
-> any fleet release probe becomes `{mahavishnu, akosha, session-buddy,
-> crackerjack, oneiric, mcp-common}` — six repos, not seven.
+> any fleet release probe becomes `{mahavishnu, akosha, session-buddy, crackerjack, oneiric, mcp-common}` — six repos, not seven.
 
 The registry had already dropped that repo's row by hand on 2026-10-09
 (commit `84a66f8b`), so the generator was the only thing still disagreeing.
@@ -216,8 +215,7 @@ still resolves every repo and emits no absolute path.
   script).
 - **Demonstrable by**:
   `.venv/bin/python -m pytest tests/unit/test_bodai_build_system_guard.py -q`
-  → `4 passed`; `.venv/bin/python scripts/audit_mcp_launchers.py | grep -c
-  "/Users/"` → `0`.
+  → `4 passed`; `.venv/bin/python scripts/audit_mcp_launchers.py | grep -c "/Users/"` → `0`.
 - **Rollback signal**: `load_fleet_repo_paths()` returns an empty set (the
   gitignore gate would silently become a no-op) — logged as
   "Bodai registry not found".
@@ -270,22 +268,22 @@ registry reports 34 active repos and its summary matches its tables.
 **mahavishnu**
 
 - [x] `scripts/regen_bodai_registry.py` — root inference, relative
-      rendering, header contract, exclusion enforcement, shared bucketing
+  rendering, header contract, exclusion enforcement, shared bucketing
 - [x] `BODAI_REPO_REGISTRY.md` — regenerated
 - [x] `scripts/audit_mcp_launchers.py` — root-aware registry parsing,
-      root-relative output
+  root-relative output
 - [x] `settings/registry_metadata.yaml` — populate `excluded_repos`
 - [x] `settings/ecosystem.yaml` — mark the three excluded repos non-active
-      (gitignored; affects only the local catalog)
+  (gitignored; affects only the local catalog)
 - [x] `tests/unit/test_bodai_registry_paths.py` — generator + artifact guards
 - [x] `docs/plans/2026-10-28-registry-root-relative-paths.md` — this plan
 
 **crackerjack**
 
 - [x] `crackerjack/checks/bodai_registry.py` — `resolve_projects_root()`,
-      root-aware table parsing, one shared row iterator
+  root-aware table parsing, one shared row iterator
 - [x] `crackerjack/tests/unit/test_bodai_build_system_guard.py` — root-aware
-      extraction
+  extraction
 - [x] `tests/unit/test_bodai_registry.py` — root-resolution tests
 
 ## 7. Validation Matrix
@@ -335,7 +333,7 @@ out of scope and is a separate plan.
   (traversal segments, escaping symlinks, and absolute paths outside the
   root). Covered by three tests in `tests/unit/test_bodai_registry.py`.
 
----
+______________________________________________________________________
 
 ## 11. Follow-up pass: the two deferred items (2026-10-28)
 
@@ -397,19 +395,15 @@ the inventory script resolves a real repo without a flag.
 
 #### Integration Contract
 
-- **Triggered from**: `.venv/bin/python scripts/audit_cli_inventory.py repo
-  --repo <name>`, `... all`, and
+- **Triggered from**: `.venv/bin/python scripts/audit_cli_inventory.py repo --repo <name>`, `... all`, and
   `.venv/bin/python scripts/audit_mcp_launchers.py`.
 - **Returns to / updates**: `docs/audit-inventory/PHASE_0_BASELINE.json`
   (via `write_phase_0_baseline`) and
   `docs/mcp/SERVER_MIGRATION_TRACKER.md`'s path column (via the launcher
   audit's output).
 - **Demonstrable by**:
-  `.venv/bin/python -m pytest tests/unit/test_bodai_paths.py
-  tests/unit/test_audit_cli_inventory.py
-  tests/unit/test_published_docs_path_hygiene.py -q` → `24 passed`;
-  `.venv/bin/python scripts/audit_cli_inventory.py repo --repo mcp-common
-  --out-dir <tmp>` → resolves the checkout with no `--repo-path` flag.
+  `.venv/bin/python -m pytest tests/unit/test_bodai_paths.py tests/unit/test_audit_cli_inventory.py tests/unit/test_published_docs_path_hygiene.py -q` → `24 passed`;
+  `.venv/bin/python scripts/audit_cli_inventory.py repo --repo mcp-common --out-dir <tmp>` → resolves the checkout with no `--repo-path` flag.
 - **Rollback signal**: `resolve_projects_root()` returns a directory that
   does not hold the fleet checkouts — every inventory resolves to a
   non-existent path and each repo reports `FAIL`. Setting
@@ -437,7 +431,7 @@ the inventory script resolves a real repo without a flag.
 home path. `scripts/audit_cli_inventory.py` and the tracker are no longer
 among them.
 
----
+______________________________________________________________________
 
 ## References
 

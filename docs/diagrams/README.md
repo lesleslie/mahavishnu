@@ -158,24 +158,24 @@ ______________________________________________________________________
    - Architecture overview
    - Provider selection decision tree
 
-1. **Choose Provider** → [Provider Selection](#step-1-choose-your-provider)
+2. **Choose Provider** → [Provider Selection](#step-1-choose-your-provider)
 
    - Decision flowchart
    - Comparison matrix
 
-1. **Setup Guide** → [Setup Guide](../EMBEDDINGS_SETUP_GUIDE.md)
+3. **Setup Guide** → [Setup Guide](../EMBEDDINGS_SETUP_GUIDE.md)
 
    - Option 1: FastEmbed (production)
    - Option 2: Ollama (development)
    - Option 3: OpenAI (cloud)
 
-1. **Configuration** → [Configuration Examples](../EMBEDDINGS_SETUP_GUIDE.md#configuration-examples)
+4. **Configuration** → [Configuration Examples](../EMBEDDINGS_SETUP_GUIDE.md#configuration-examples)
 
    - Oneiric loading pattern
    - YAML configuration
    - Environment variables
 
-1. **Usage** → [Programmatic Usage](../EMBEDDINGS_SETUP_GUIDE.md#programmatic-usage)
+5. **Usage** → [Programmatic Usage](../EMBEDDINGS_SETUP_GUIDE.md#programmatic-usage)
 
    - Basic usage
    - MCP integration
@@ -188,12 +188,12 @@ ______________________________________________________________________
    - Choose migration path
    - Compare solutions
 
-1. **Code Changes** → Replace sentence-transformers
+2. **Code Changes** → Replace sentence-transformers
 
    - Before/after examples
    - Migration patterns
 
-1. **Testing** → [Verify Migration](../EMBEDDINGS_SETUP_GUIDE.md#troubleshooting)
+3. **Testing** → [Verify Migration](../EMBEDDINGS_SETUP_GUIDE.md#troubleshooting)
 
    - Test embeddings
    - Validate results
@@ -212,9 +212,9 @@ ______________________________________________________________________
 **Option 2: Mermaid Live Editor**
 
 1. Visit https://mermaid.live
-1. Copy Mermaid code from any diagram
-1. Paste into editor
-1. Export as PNG/SVG
+2. Copy Mermaid code from any diagram
+3. Paste into editor
+4. Export as PNG/SVG
 
 **Option 3: VS Code**
 
@@ -253,11 +253,11 @@ ______________________________________________________________________
 ## 💡 Tips for Visual Learners
 
 1. **Start with diagrams** - They provide context before reading details
-1. **Follow decision trees** - They guide you to the right solution
-1. **Compare visualizations** - Side-by-side comparisons aid understanding
-1. **Print key diagrams** - Physical reference while implementing
-1. **Use sequence diagrams** - Understand flow and timing
-1. **Check flowcharts** - Troubleshoot issues step-by-step
+2. **Follow decision trees** - They guide you to the right solution
+3. **Compare visualizations** - Side-by-side comparisons aid understanding
+4. **Print key diagrams** - Physical reference while implementing
+5. **Use sequence diagrams** - Understand flow and timing
+6. **Check flowcharts** - Troubleshoot issues step-by-step
 
 ______________________________________________________________________
 

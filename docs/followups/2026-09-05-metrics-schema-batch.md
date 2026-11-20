@@ -3,7 +3,7 @@ status: complete
 role: historical
 date: 2026-09-05
 last_reviewed: 2026-10-13
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: metrics-schema
 ---
@@ -15,7 +15,7 @@ metrics-schema recording defect. All three are complete/historical.
 
 Each section preserves the original content verbatim.
 
----
+______________________________________________________________________
 
 ## 1. `confidence` dead parameter (formerly `2026-09-05-metrics-schema-confidence-dead-parameter.md`)
 
@@ -57,7 +57,7 @@ this module — `predictions.py:227` defines its own method-local
    different z-scores / different widths.
 5. Mark Resolved citing fix location + regression test name.
 
----
+______________________________________________________________________
 
 ## 2. No input validation (formerly `2026-09-05-metrics-schema-no-input-validation.md`)
 
@@ -75,8 +75,9 @@ and `tests/unit/test_metrics_schema_extended.py::TestCalculatePercentilesBranche
 Coverage fanout 2026-09-05 (Brief 1) — subagent discovered
 `calculate_percentiles` at `mahavishnu/core/metrics_schema.py:291-324` has no
 input validation. Negative percentile values (e.g. `[-1.0]`) and values
->100 (e.g. `[150.0]`) silently produce near-edge values or literal `-1` keys.
-A caller passing bad data gets no signal.
+
+> 100 (e.g. `[150.0]`) silently produce near-edge values or literal `-1` keys.
+> A caller passing bad data gets no signal.
 
 `grep` confirms no production callers — zero blast radius.
 
@@ -91,7 +92,7 @@ A caller passing bad data gets no signal.
    silent acceptance — it must be inverted).
 5. Mark Resolved citing fix location + regression test name.
 
----
+______________________________________________________________________
 
 ## 3. p50 formula (formerly `2026-09-05-metrics-schema-p50-formula.md`)
 

@@ -4,9 +4,10 @@ role: canonical
 kind: decision
 date: 2026-08-29
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: persistence
 ---
+
 # 2026-08-29 — Settle vs LangGraph `interrupt()` + checkpointing vs Prefect paused-flow state
 
 > **SUPERSEDED CONTEXT (2026-09-25):** the "second persistence substrate alongside
@@ -28,10 +29,10 @@ documented memories of unverified-agent-output failures. The shape is:
 
 1. Spawn a worker with a task signature and a list of bindings (files
    the worker will produce).
-1. Persist a settle record in state=`proposed` BEFORE the worker
+2. Persist a settle record in state=`proposed` BEFORE the worker
    writes any file.
-1. The worker does its work; the operator inspects the result.
-1. The operator transitions the settle run through
+3. The worker does its work; the operator inspects the result.
+4. The operator transitions the settle run through
    `select | apply | release | discard`. `apply` shells out to
    `git merge-file` for the actual content merge.
 
@@ -101,18 +102,18 @@ graph = builder.compile(checkpointer=memory)
    `langgraph`, `pydantic` v2, and async runtime support. Mahavishnu
    is a control-plane service; adding a graph framework to surface
    one feature is a 5-10x cost increase for the feature surface.
-1. **Couples persistence to a `checkpointer` backend.** LangGraph's
+2. **Couples persistence to a `checkpointer` backend.** LangGraph's
    `MemorySaver` is in-memory; the Postgres-backed `PostgresSaver`
    requires a schema (`CREATE TABLE checkpoints`). The Bodai
    ecosystem already has a durable key-value store for persistence; introducing a second
    persistence substrate just for one feature is unwarranted.
-1. **The state machine is tiny (5 states, 4 transitions).** A graph
+3. **The state machine is tiny (5 states, 4 transitions).** A graph
    framework is overkill for a transition table of 4 entries.
-1. **Operator-visible audit trail.** LangGraph's checkpoint format is
+4. **Operator-visible audit trail.** LangGraph's checkpoint format is
    its own; subscribers would need a custom deserializer. The
    settle-record's `to_dict` / `from_dict` round-trip is a plain
    dict that any consumer can read.
-1. **No `git merge-file` integration.** The actual merge has to be a
+5. **No `git merge-file` integration.** The actual merge has to be a
    separate step anyway. Wrapping it in a graph node adds no value.
 
 ### Alt 2 — Prefect paused-flow state
@@ -151,20 +152,20 @@ def settle_run(run_ref: str):
    implementations (or skip the feature). That's a regression from
    the current "production-ready across all three adapters"
    posture.
-1. **Prefect is heavyweight for a CLI/MCP primitive.** Spinning up a
+2. **Prefect is heavyweight for a CLI/MCP primitive.** Spinning up a
    Prefect flow for every settle run adds 100-300ms of latency
    (Prefect task submission) and creates durable state in the
    Prefect database, not the durable key-value store.
-1. **The state machine is not flow-shaped.** Settle is a small
+3. **The state machine is not flow-shaped.** Settle is a small
    state machine with 5 states and 4 transitions; it has no
    retries, no parallel branches, no dynamic fan-out — none of the
    features Prefect's flow primitives buy you.
-1. **Operator-facing commands differ.** A Prefect-paused run is
+4. **Operator-facing commands differ.** A Prefect-paused run is
    resumed via `prefect deployment ls` + `prefect flow-run resume`;
    the MCP tool pair `worker_run_with_settle` / `worker_settle`
    gives a uniform CLI/MCP surface that doesn't depend on which
    adapter is enabled.
-1. **Audit trail formatting.** Prefect's flow-run logs are
+5. **Audit trail formatting.** Prefect's flow-run logs are
    Prefect-shaped; the settle record's transition log is a plain
    JSON list keyed by `(action, from_state, to_state, actor, at)` —
    any external audit pipeline (Grafana, Akosha, Session-Buddy)

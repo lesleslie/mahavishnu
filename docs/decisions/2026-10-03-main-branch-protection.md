@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-03
 last_reviewed: 2026-10-03
-superseded_by: null
+superseded_by:
 topic: main-branch-protection
 ---
 
@@ -24,6 +24,7 @@ This decision fills the gap.
 
 The pre-1.0 policy (per `bodai-pre-1.0-merge-policy.md`) is **direct merge to
 `main`, no PRs**. Branch protection must therefore:
+
 - Block the two catastrophic accidents (force-push, branch deletion)
 - **NOT** require pull-request reviews (would break pre-1.0 direct-merge)
 - **NOT** require status checks (no CI runs on any of the 6 yet)
@@ -104,7 +105,7 @@ botched merge that landed in the last few minutes):
 
 This is the only legitimate force-push path. Audit-log it (manual
 entry to `mahavishnu/core/dev_log.py`) if your change is not reversible
-from `git reflog` in <5 minutes.
+from `git reflog` in \<5 minutes.
 
 ## Cross-references
 
@@ -127,8 +128,7 @@ from `git reflog` in <5 minutes.
   `docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md`
   — the workflow whose auto-merge path relies on this protection being
   just-strict-enough.
-- **Implementation:** applied via `gh api -X PUT
-  /repos/lesleslie/<repo>/branches/main/protection`. Live state on 6
+- **Implementation:** applied via `gh api -X PUT /repos/lesleslie/<repo>/branches/main/protection`. Live state on 6
   repos verified 2026-10-03.
 - **Future amendments:** any change to the JSON rule (e.g. adding
   `required_status_checks`, switching `required_pull_request_reviews`

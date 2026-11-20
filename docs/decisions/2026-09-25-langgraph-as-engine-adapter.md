@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-09-25
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: adapter-architecture
 related: docs/decisions/2026-08-29-settle-vs-langgraph.md (predecessor); .claude/plans/nifty-gliding-stallman.md v3 (planning context); docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md (same-day audit refresh)
 ---
@@ -16,6 +16,7 @@ related: docs/decisions/2026-08-29-settle-vs-langgraph.md (predecessor); .claude
 > **STOP — implementation is OUT OF SCOPE for this decision record.**
 > This ADR documents the decision to **NOT** implement LangGraph now.
 > Future agents / sub-plans MUST:
+>
 > 1. Read this ADR in full before any `mahavishnu/adapters/langgraph_adapter.py`
 >    or `mahavishnu/adapters/langgraph_*` work.
 > 2. Confirm with the user (per `feedback-bodai-push-is-user-controlled.md`)
@@ -41,7 +42,7 @@ on two grounds:
    `langgraph`, `pydantic` v2, async runtime support — a 5-10x cost
    increase for one feature surface.
 2. **Second persistence substrate alongside the durable key-value
-   store.** LangGraph's ``MemorySaver`` / ``PostgresSaver`` introduce a
+   store.** LangGraph's `MemorySaver` / `PostgresSaver` introduce a
    checkpoint storage layer parallel to the durable key-value store,
    which the Bodai control plane already uses for state.
 
@@ -60,7 +61,7 @@ context materially — the "second persistence substrate" objection is
   future Mahavishnu plan that adds LangGraph MUST justify the import
   cost relative to the workflow complexity it serves.
 - **State-machine overkill for Settle.** The Settle primitive in
-  ``mahavishnu/settle/`` is a hand-rolled 5-state / 4-transition machine
+  `mahavishnu/settle/` is a hand-rolled 5-state / 4-transition machine
   in ~300 lines. LangGraph's graph primitives don't add value at
   that scale — the predecessor ADR's "overkill" objection survives.
 - **Persistence substrate is still an open question** _(strengthened
@@ -186,7 +187,7 @@ strengthen the prerequisites and reduce the future work scope.
   integration target, not a documentation migration to also
   perform.**
 
-- **Worker_* MCP tools audit** (commit `ca1cad18`,
+- **Worker\_* MCP tools audit*\* (commit `ca1cad18`,
   `docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md`): all
   18 `worker_*` tools are LIVE with real dual-path implementations
   (durable-manager + legacy fallback) and dedicated test coverage.
@@ -212,6 +213,7 @@ strengthen the prerequisites and reduce the future work scope.
   with**, but it does not change the cost calculus on its own.
 
 - **Open work parked** (from audit commit `ca1cad18`):
+
   - `mahavishnu_pool.py` §10 #5 rewrite (WorkerManager → route_task
     shape) — substantial refactor; needs its own plan.
   - `workers/cloud_worker.py` retirement — now a thin wrapper post
@@ -235,15 +237,14 @@ strengthen the prerequisites and reduce the future work scope.
 - `memories/bodai-auth-standardization.md` (cross-reference) — the
   Bodai auth substrate question LangGraph adapters would need to
   integrate with.
-- `feedback-bodai-push-is-user-controlled.md`, `feedback-mcp-common-
-  version-bump-is-user.md` — guardrails on adding dependencies and
+- `feedback-bodai-push-is-user-controlled.md`, `feedback-mcp-common- version-bump-is-user.md` — guardrails on adding dependencies and
   publishing without user consent.
 - **Same-day refinement (2026-09-25):**
   - `commit dddceca9` — doc-drift cleanup (10 task_router refs +
     bonus Phase 4.5b cleanup + `mahavishnu_pool.py` ASCII fix)
   - `commit ca1cad18` — pool/worker MCP audit
     (`docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md`):
-    18 worker_* tools LIVE; dispatch_to_pool env-failure
+    18 worker\_\* tools LIVE; dispatch_to_pool env-failure
     documented; §10 #5 rewrite deferred to separate plan
   - `commit 7d68bff2` — Phase 4.5b legacy worker deletions
     (`docs/decisions/2026-09-24-legacy-worker-deprecation.md`):

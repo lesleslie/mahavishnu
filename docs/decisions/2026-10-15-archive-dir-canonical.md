@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-15
 last_reviewed: 2026-10-16
-superseded_by: null
+superseded_by:
 topic: archive-dir-canonical
 ---
 
@@ -19,18 +19,20 @@ docs across the Bodai fleet. Over 2026 the convention drifted:
 - **mahavishnu** uses no top-level archive dir at all (it stores history
   in `docs/decisions/` and `docs/plans/.archive/` / `docs/specs/.archive/`
   per the plans-specs-canonical decision).
+
 - **crackerjack** runs both `docs/archive/` (309 files — bulk historical
   dumps, ADRs, design docs from the v1+v2 quality system era) AND
   `docs/.archive/` (62 files — newer convention, dated analysis).
+
 - **akosha, session-buddy, mcp-common, oneiric** still use `docs/archive/`
   exclusively, each with a per-repo `README.md` (or `ACB_COMPARISON.md`
   / `BUILD_PROMPTS.md`) that establishes the archive policy:
 
   > *"Archived docs are retained for provenance, audits, migration
-  >  history, and context recovery. They are not current authority unless
-  >  a current plan or root `docs/README.md` explicitly points here.
-  >  Generated files, coverage reports, tarballs, and temporary
-  >  artifacts should not live here long-term."*
+  > history, and context recovery. They are not current authority unless
+  > a current plan or root `docs/README.md` explicitly points here.
+  > Generated files, coverage reports, tarballs, and temporary
+  > artifacts should not live here long-term."*
 
   — `akosha/docs/archive/README.md` and `mcp-common/docs/archive/README.md`
   (text identical, original authorship unclear — preserved verbatim).

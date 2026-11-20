@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-11-15
 last_reviewed: 2026-11-15
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: merge-review
 title: "The ensemble review dispatches its reviewers concurrently, each in its own worktree"
@@ -43,8 +43,7 @@ into its own worktree — and that isolation is verified, not assumed.**
   unchanged, and the verdict list is still returned in dispatch order,
   so the aggregation rule the caller applies is unchanged.
 - Isolation is in the dispatch itself: `pool_route_execute` is called
-  with `worktree={"isolation": "worktree", "on_completion":
-  "discard"}`. A reviewer gets its own checkout, and anything it writes
+  with `worktree={"isolation": "worktree", "on_completion": "discard"}`. A reviewer gets its own checkout, and anything it writes
   there is discarded — a reviewer must not merge anything back.
 - The worktree is created **from the branch under review**, not from
   the merge base. The base branch belongs to stage 4's rebase; a

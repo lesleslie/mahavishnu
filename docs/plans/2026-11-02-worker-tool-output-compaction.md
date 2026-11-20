@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-11-02
 last_reviewed: 2026-11-02
-superseded_by: null
+superseded_by:
 topic: worker-output-compaction
 title: "Worker tool-output compaction — RTK-style savings without a second gateway"
 requirements:
@@ -341,8 +341,7 @@ $ PATH="$SHIM:$PATH" sh -lc 'export PATH="$SHIM:$PATH"; command -v pytest'
 /var/folders/.../pytest            # the shim wins
 ```
 
-`/etc/profile:3-4` runs `eval \`/usr/libexec/path_helper -s\``, which
-**prepends** the system directories to `PATH` and demotes everything
+`/etc/profile:3-4` runs `eval \`/usr/libexec/path_helper -s\``, which **prepends** the system directories to `PATH\` and demotes everything
 inherited below them. Measured as a *set* — the whole path, not a
 prefix — before and after the login shell:
 
@@ -800,9 +799,11 @@ the fail-open path, before writing production code.
    `terminal-claude` dispatch that the handler fires, that the
    replacement reaches the model, and that the command and its exit
    status are untouched (REQ-COMP-02).
+
 2. **Prove fail-open (REQ-COMP-03).** Break the handler three ways —
    missing binary, non-zero exit, malformed JSON on stdin — and
    confirm the original tool result reaches the model in each case.
+
 3. **Prove per-event hook survival.** The flag carries a settings
    layer, and a fleet worker runs the same `claude` binary as the
    user's interactive sessions — so whatever the layer does, it does to
@@ -818,14 +819,17 @@ the fail-open path, before writing production code.
    servers and permissions still apply, and (d) our hook fires. **If
    the user's hooks are displaced, the hook seam is unusable** and
    Phase 2 falls back to the PATH-shim seam (§4.4).
+
 4. **Bound the handler.** The consolidation plan holds the worker
    wall-clock in view (§4.11.1 rule 3). Give the handler a hard
    timeout and measure its overhead per tool call against RTK's
-   "<10 ms" claim, which is the number to beat or match.
+   "\<10 ms" claim, which is the number to beat or match.
+
 5. **Decide the filter set** from Phase 1's per-tool byte table —
    only the tools that actually carry bytes earn a filter. Start with
    the catalogue in §4.6 (pytest, git diff/status/log, ruff, ls/tree,
    grep/rg).
+
 6. **Decide the deployment shape.** The handler runs *inside the
    worker session*, on the worker's host. Options: a per-dispatch
    temp file in the existing `mkstemp` pattern
@@ -835,9 +839,11 @@ the fail-open path, before writing production code.
    hosts; the trade-off is a per-dispatch Python start-up. The settings
    file follows the same pattern and the same hygiene rules as the
    prompt file (§4.11.1 rule 5).
+
 7. **Confirm the `sh -lc` interaction.** The handler runs under the
    worker's shell; a handler written in Python must not depend on the
    demoted `PATH` (§4.4).
+
 8. **Assert the settings variable arrives in the pane.** After the
    consolidation plan's Phase 7, the session command is `sh <launcher>`
    and the registry command is `exec`'d from it, so the settings path
@@ -1004,8 +1010,7 @@ estimator stated — or a withdrawn mechanism with the reason recorded.
 
 **Integration Contract**
 
-- **Triggered from:** `mahavishnu workers compaction-report --corpus
-  tasks/worker-bench-v1`, run twice against a fixed corpus.
+- **Triggered from:** `mahavishnu workers compaction-report --corpus tasks/worker-bench-v1`, run twice against a fixed corpus.
 - **Returns to / updates:** the report artifact under
   `~/.local/state/mahavishnu/worker-context/`, and the result
   recorded in this plan's §4.1 evidence tables.

@@ -4,11 +4,10 @@ role: implementation
 kind: plan
 date: 2026-09-09
 last_reviewed: 2026-10-17
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: jot-read
 title: "Jot Inbox: Read Sub-Plan Design"
-
 ---
 
 # Jot Inbox: Read Sub-Plan Design
@@ -116,11 +115,11 @@ ______________________________________________________________________
 ## Goals (this sub-plan)
 
 1. **Read parity** — list, show, edit, done, reopen work identically via MCP and CLI.
-1. **Log-idempotent fold** — same log content + same `current_dir` produces same state. Git enrichment is best-effort and not part of the idempotency contract (CA-H1).
-1. **Out-of-order safe** — ops arriving before their target get parked and applied when target arrives.
-1. **Git-aware** — jots know which repo/branch/sha they were captured from (best-effort, fail-open, serverless-compatible).
-1. **Search via Session-Buddy** — semantic search delegates to `:8678` when available, falls back to lexical.
-1. **Type-safe MCP surface** — all return types are TypedDicts, no `Any` (TD-B1, TD-H5).
+2. **Log-idempotent fold** — same log content + same `current_dir` produces same state. Git enrichment is best-effort and not part of the idempotency contract (CA-H1).
+3. **Out-of-order safe** — ops arriving before their target get parked and applied when target arrives.
+4. **Git-aware** — jots know which repo/branch/sha they were captured from (best-effort, fail-open, serverless-compatible).
+5. **Search via Session-Buddy** — semantic search delegates to `:8678` when available, falls back to lexical.
+6. **Type-safe MCP surface** — all return types are TypedDicts, no `Any` (TD-B1, TD-H5).
 
 ## Non-goals (deferred)
 
@@ -543,18 +542,18 @@ ______________________________________________________________________
 
 ## Done Criteria
 
-1. All unit + property + integration tests pass
-1. Coverage ≥ 90% for `mahavishnu/jot/fold.py`, `handle.py`, `render.py`, `cli.py`, `errors.py`, `mahavishnu/mcp/tools/jot_tools.py`
-1. Mypy strict clean (no `Any` in tool inputs or return types — verified by `tests/unit/test_jot/test_no_any.py` static check)
-1. Ruff clean (BLE001 narrowed where possible; `# noqa: BLE001` for catch-all fail-open cases)
-1. Bandit clean (no B101, no high-severity)
-1. `mahavishnu jot list` works on real log
-1. 8 MCP tools registered in `profiles.py` (FULL_REGISTRATIONS + REGISTRATION_MAP)
-1. CI guard test asserts registration count
-1. `/jot` slash command visible in Claude Code TUI
-1. `mahavishnu/jot/short_id.py` updated to use `id[-6:]` (UD5 spec change from first-6 to last-6)
-1. `mahavishnu/jot/errors.py` exists with full hierarchy
-1. `FoldResult` returned by `build_states`, not `list[JotSummary]` directly
+01. All unit + property + integration tests pass
+02. Coverage ≥ 90% for `mahavishnu/jot/fold.py`, `handle.py`, `render.py`, `cli.py`, `errors.py`, `mahavishnu/mcp/tools/jot_tools.py`
+03. Mypy strict clean (no `Any` in tool inputs or return types — verified by `tests/unit/test_jot/test_no_any.py` static check)
+04. Ruff clean (BLE001 narrowed where possible; `# noqa: BLE001` for catch-all fail-open cases)
+05. Bandit clean (no B101, no high-severity)
+06. `mahavishnu jot list` works on real log
+07. 8 MCP tools registered in `profiles.py` (FULL_REGISTRATIONS + REGISTRATION_MAP)
+08. CI guard test asserts registration count
+09. `/jot` slash command visible in Claude Code TUI
+10. `mahavishnu/jot/short_id.py` updated to use `id[-6:]` (UD5 spec change from first-6 to last-6)
+11. `mahavishnu/jot/errors.py` exists with full hierarchy
+12. `FoldResult` returned by `build_states`, not `list[JotSummary]` directly
 
 ______________________________________________________________________
 

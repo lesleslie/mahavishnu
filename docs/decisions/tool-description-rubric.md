@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-09-27
 last_reviewed: 2026-09-27
-superseded_by: null
+superseded_by:
 blocks_on:
   - docs/plans/2026-09-26-tool-surface-quality.md
 topic: mcp-tool-design
@@ -94,6 +94,7 @@ user for confirmation.
 ### 6. No internal disclosure
 
 The description must NOT contain:
+
 - Absolute file paths (e.g. `/Users/les/Projects/mahavishnu/...`).
 - Internal-only tool names not exposed via the public MCP surface.
 - Auth-mechanism hints (token types, JWT claims, header names).
@@ -138,6 +139,7 @@ against this rubric. The top-10 list is produced by
 `scripts/audit_top_tool_calls.py` (Phase 2 Task 2.1) once production
 `mcp_tool_call` traces accumulate. Until then, this rubric is enforced
 on:
+
 - Any new tool added to `mahavishnu/mcp/tools/`.
 - Any rewrite of an existing tool's description string.
 

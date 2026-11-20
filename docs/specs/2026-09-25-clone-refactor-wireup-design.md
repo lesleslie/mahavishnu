@@ -10,7 +10,6 @@ owner: platform-team
 scope: clone-refactor-group wire-up + dispatch-to-pool env-failure
 related: docs/feature-tracking/2026-09-25-pool-worker-mcp-audit.md; docs/decisions/2026-09-25-langgraph-as-engine-adapter.md; docs/decisions/wire-up-contract.md; docs/plans/TEMPLATE.md
 title: "Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design"
-
 ---
 
 # Clone-Refactor Wire-Up + Dispatch-to-Pool Env-Failure — Design
@@ -31,6 +30,7 @@ After this design ships:
 - `dispatch_to_pool` async-callback env-failure root cause is identified and either fixed or formally deferred with a `decision: deferred` doc.
 
 **Proof it worked**:
+
 - `git grep -n "gh_client\|create_pr\|get_pr_status" mahavishnu/` returns zero hits.
 - `pytest tests/unit/clone/test_clone_refactor_workflow.py tests/unit/workflows/test_git_ops.py tests/integration/test_clone_refactor_group_e2e.py` — all green.
 - `python scripts/audit_orphans.py` exits 0; no new symbols with zero callers.
@@ -184,6 +184,7 @@ Use `uuid.uuid7()` (Python 3.14 stdlib; **RFC 9562** finalized 2024) instead of 
 ### 5.3 Failure semantics
 
 **Pre-DAG** (in `clone_refactor_group`):
+
 - `cluster_id` fails normalization → MCP 400 with `error: "invalid_cluster_id"` (REQ-CLONE-015)
 - `cluster_claim` finds existing in-flight job → MCP 409 `ConcurrentDAGError(existing_job_id=...)` (REQ-CLONE-009)
 - `verify_proposal` raises → MCP 500; release claim
@@ -192,6 +193,7 @@ Use `uuid.uuid7()` (Python 3.14 stdlib; **RFC 9562** finalized 2024) instead of 
 - `asyncio.create_task` raises or is cancelled by client → write `status: "failed"|"cancelled"` and release claim (REQ-CLONE-016)
 
 **DAG step failures** (inside `@flow`, wrapped in try/except/finally per REQ-CLONE-010):
+
 - Any unhandled exception from `@flow` body → `try/except` catches, writes `status: "failed"` + `error: <class + message>`, releases claim, then re-raises for Prefect to surface (NEW: previously `@task`-decorated `persist_dag_state` was unreachable on unhandled @flow exception, leaving record stuck at "running")
 - `detect_cluster_members` raises → DAG `failed`, no consumers attempted; finally branch writes terminal state (REQ-CLONE-010)
 - `write_canonical_symbol` raises → DAG `failed`, no consumers attempted (sequential before fan-out); finally branch; `_git_ops.git_commit` raises `GitCommitPermanent` → no retry; raises `GitCommitTransient` → 2 retries; raises `GitApplyConflict` → no retry (REQ-CLONE-013)
@@ -202,6 +204,7 @@ Use `uuid.uuid7()` (Python 3.14 stdlib; **RFC 9562** finalized 2024) instead of 
 ### 5.4 No-auto-revert policy + operator cleanup recipe
 
 **If consumers 1-3 succeed and consumer 4 fails**: DAG ends `status: failed`, repos 1-3 retain their commits on local main. **No automatic revert.** Operator reads `workflow/v1/{refactor_job_id}` and decides:
+
 - Manual revert: `cd repo && git reset --hard HEAD~1` (see Cleanup Recipe below — never naked reset)
 - Or leave as-is and open a follow-up DAG
 
@@ -242,6 +245,7 @@ done
 3. **No partial write is possible**: post-`git_commit`-failure, the working tree is provably clean.
 
 **Operator non-actions** (intentionally deferred):
+
 - No automated revert tool — the typed-exception + commit-message fields give operators the data, but the decision to revert is theirs.
 - No cross-DAG deduplication — `clone_refactor_group` is intentionally idempotent only at the cluster-claim level (REQ-CLONE-009); semantic equivalence ("same canonical_symbol + same diff") is out of scope.
 
@@ -250,6 +254,7 @@ done
 `dispatch_to_pool` async-callback env-failure root cause: the MCP substrate for `workflow/v1/{workflow_id}` writes is not configured in the local dev environment.
 
 **Path A (selected 2026-09-25 — committed)**: Configure MCP substrate. Add to `settings/mahavishnu.yaml`:
+
 ```yaml
 mcp_state:
   enabled: true
@@ -292,6 +297,7 @@ async def run_clone_refactor_dag(
 ```
 
 Step functions (all `@task`, with explicit `retry_condition_fn`):
+
 ```python
 # Prefect @task — retry ONLY GitCommitTransient (lock contention / brief I/O);
 # do NOT retry GitApplyConflict (deterministic content conflict) or
@@ -435,6 +441,7 @@ Dataclasses: `DAGResult`, `RepoCommit`, `RepoHit`, `DAGState`. **No** `Extractio
 Imports `_git_ops.py` (`mahavishnu/workflows/_git_ops.py`), `mahavishnu/core/state_backends/mcp.py`, `mahavishnu/core/loop_helpers.py` (`detect_until_dry`), `prefect`. Does **not** import from `mahavishnu/mcp/tools/clone_tools.py` (one-way dependency: tools call workflow).
 
 **Integration Contract:**
+
 - **Triggered from**: `mcp__mahavishnu__mahavishnu_clone_refactor_group` (in `mahavishnu/mcp/tools/clone_tools.py`) via `asyncio.create_task(run_clone_refactor_dag(...))` after `verify_proposal` succeeds and `cluster_claim` succeeds (REQ-CLONE-009)
 - **Returns to / updates**: `workflow/v1/{refactor_job_id}` MCP key (via `MCPStateBackend.dag_key()`), `workflow/v1/{refactor_job_id}/steps/{step_name}` per-step outcomes (REQ-CLONE-010), `cluster/v1/{cluster_id}` per-cluster consumer-progress, `cluster/v1/{cluster_id}/in_flight` claim sentinel; all wrapped in try/except with structured-log fallback on substrate failure (REQ-CLONE-014)
 - **Demonstrable by**: `pytest tests/integration/test_clone_refactor_group_e2e.py::test_clone_refactor_group_returns_job_id_and_starts_dag` passes and asserts `workflow/v1/{id}` exists post-DAG-start. Per-step durability tested by `test_dag_per_step_state_durability` (Layer 1). Unhandled-exception path tested by `test_dag_unhandled_exception_marks_failed` (Layer 1).
@@ -446,6 +453,7 @@ Imports `_git_ops.py` (`mahavishnu/workflows/_git_ops.py`), `mahavishnu/core/sta
 Thin async wrapper around `git apply` / `git commit` for DAG tasks. Uses `asyncio.create_subprocess_exec` (no `shell=True`). **Passes diffs via stdin, never argv** (avoids injection through malformed diff headers).
 
 Raises typed exceptions (per REQ-CLONE-013 subtype split):
+
 ```python
 class GitApplyConflict(Exception):
     """Structured conflict from `git apply --check`. Never retried."""
@@ -495,6 +503,7 @@ class GitCommitPermanent(GitCommitFailed):
 Stderr never contains user-controlled data; classification is deterministic on stderr pattern only.
 
 Public API:
+
 ```python
 async def git_apply(repo_path: Path, diff: str) -> None:
     # 1. validate path is inside repo_path (reject paths with '..' or absolute escapes)
@@ -514,12 +523,14 @@ async def current_head_sha(repo_path: Path) -> str: ...
 ```
 
 `git_commit` stderr parsing (REQ-CLONE-013):
+
 - Match against transient-regex list (`r"Unable to create \.git/index\.lock"`, etc.) → raise `GitCommitTransient(reason=matched_pattern, stderr=full)`.
 - Otherwise → raise `GitCommitPermanent(reason="see_stderr", stderr=full, exit_code=ec)`.
 
 Stderr never contains user-controlled data; classification is deterministic on stderr pattern only.
 
 **Integration Contract:**
+
 - **Triggered from**: DAG step functions in `clone_refactor_workflow.py` (calls inside `@task` bodies)
 - **Returns to / updates**: nothing (pure side-effect wrapper; `git_commit` returns the SHA via stdout)
 - **Demonstrable by**: `pytest tests/unit/workflows/test_git_ops.py` (5 tests, see §8 Layer 1)
@@ -529,6 +540,7 @@ Stderr never contains user-controlled data; classification is deterministic on s
 ### 6.3 `mahavishnu/mcp/tools/clone_tools.py` (modify, ~50 line delta)
 
 Seven changes:
+
 1. UUID7 import with **Python 3.14 guard** (per `bodai-pytest-binary-cwd.md` style):
    ```python
    import sys
@@ -557,13 +569,14 @@ class ConcurrentDAGError(Exception):
 ```
 
 The claim singleton shares the `mcp_backend` instance with the rest of the substrate writes (module-load instantiation in `clone_tools.py`, passed as parameter to `@flow` — see §6.1).
-5. **`asyncio.create_task` cancellation guard** (REQ-CLONE-016) — wrap the `create_task` call in `try/except/asyncio.CancelledError`; on cancel or create_task exception, write `status: "cancelled"|"failed"` terminal state and release claim before re-raising.
-6. Add `_record_dag_state` helper that writes initial `workflow/v1/{refactor_job_id}` record before `asyncio.create_task`. Initial write is **conditional**: skip when `consensus == REJECT` (write `"rejected"` instead — see §7.1).
-7. Update `clone_refactor_status` to read `workflow/v1/*` (was `clone-handled/*`)
+5\. **`asyncio.create_task` cancellation guard** (REQ-CLONE-016) — wrap the `create_task` call in `try/except/asyncio.CancelledError`; on cancel or create_task exception, write `status: "cancelled"|"failed"` terminal state and release claim before re-raising.
+6\. Add `_record_dag_state` helper that writes initial `workflow/v1/{refactor_job_id}` record before `asyncio.create_task`. Initial write is **conditional**: skip when `consensus == REJECT` (write `"rejected"` instead — see §7.1).
+7\. Update `clone_refactor_status` to read `workflow/v1/*` (was `clone-handled/*`)
 
 **Import direction invariant** (one-way dependency): `clone_tools.py` may import from `workflows/`, but `workflows/clone_refactor_workflow.py` must NOT import from `mcp/tools/clone_tools.py`. Verified by the §9 grep `git grep -nE "from mahavishnu\.workflows" mahavishnu/mcp/tools/clone_tools.py` (the spec previously had the grep backwards; this is the correct direction).
 
 **Integration Contract:**
+
 - **Triggered from**: MCP client invokes `mcp__mahavishnu__mahavishnu_clone_refactor_group`; existing `clone_refactor_status` MCP tool continues to be invoked by operators
 - **Returns to / updates**: returns `{refactor_job_id, status: queued, decision, verification}` to MCP client; `MCPStateBackend.put("workflow/v1/{id}", {...})` records initial state
 - **Demonstrable by**: `pytest tests/integration/test_clone_refactor_group_e2e.py` — all 4 Layer 3 tests pass
@@ -575,6 +588,7 @@ The claim singleton shares the `mcp_backend` instance with the rest of the subst
 **Do NOT redeclare `workflow_key(execution_id)` — it already exists at `state_backends/mcp.py:55-58` and is called by `dispatch_to_pool`, `clone_refactor_status` (line 282), and other consumers.** Adding `workflow_key(refactor_job_id)` as a second definition would silently shadow the first (Python keeps the later definition), breaking every existing caller.
 
 Add instead:
+
 - `dag_key(refactor_job_id: str) -> str` returning `f"workflow/v1/{refactor_job_id}"` — new key constructor for clone-refactor DAG records. Distinct name from `workflow_key` because it carries semantic intent ("DAG lifecycle" vs. "workflow execution"); avoids future collision when `execution_id` and `refactor_job_id` formats diverge.
 - `cluster_key(cluster_id: str) -> str` returning `f"cluster/v1/{cluster_id}"` — new key for per-cluster consumer-progress records.
 - `in_flight_key(cluster_id: str) -> str` returning `f"cluster/v1/{cluster_id}/in_flight"` — distinct name from `cluster_key()` for the same reason; claim sentinel and consumer-progress are two different concerns under the same prefix.
@@ -644,6 +658,7 @@ async def try_put_with_log_context(
 Existing `put()` is **kept unchanged** (preserves backward compatibility with all existing callers like `dispatch_to_pool` that depend on its no-throw semantics).
 
 **Integration Contract:**
+
 - **Triggered from**: `clone_refactor_workflow.py` (writes via `dag_key()`, `cluster_key()`, `in_flight_key()`); `clone_refactor_status` reads via `dag_key()`; per-step writes via `try_put_with_log_context` (REQ-CLONE-014)
 - **Returns to / updates**: MCP key strings (no state mutation by the constructors); substrate writes via `try_put_with_log_context` with structured-log fallback
 - **Demonstrable by**: `pytest tests/unit/test_mcp_state_backend.py` — every existing test continues to pass; new tests assert `dag_key("abc") == "workflow/v1/abc"`, `cluster_key("cluster-1") == "cluster/v1/cluster-1"`, `in_flight_key("cluster-1") == "cluster/v1/cluster-1/in_flight"`, and `try_put_with_log_context(...)` returns False + emits the expected log line when the substrate is unavailable
@@ -715,20 +730,20 @@ python -c "from fastmcp.test_client import TestClient; print('ok')"
 
 **Phase 0 — synchronous pre-DAG** (in `clone_refactor_group`):
 
-1. **Normalize `cluster_id`** (REQ-CLONE-015) — `^[a-z0-9-]{3,64}$` regex; reject non-conforming with MCP 400
-2. `refactor_job_id = str(uuid.uuid7())`
-3. Build `Proposal(proposal_id=refactor_job_id, proposal_type="clone_refactor", ...)`
-4. `verification_result = await verify_proposal(proposal)`
-5. `await self._store.persist(verification_result)` (existing)
-6. **`await cluster_state_claim(cluster_id, refactor_job_id)`** (REQ-CLONE-009) — write to `cluster/v1/{id}/in_flight` (via `in_flight_key()`) guarded by an in-process `dict[str, asyncio.Lock]` for single-process dedup. The substrate's existing `put()` is not CAS, so cross-process dedup is best-effort and explicitly documented in §3 Non-Goals. If existing in-flight `refactor_job_id` differs → raise `ConcurrentDAGError(existing_job_id)`. The `_record_dag_state` helper raises on claim failure; the finally-branch in the @flow releases it via `mcp_backend.delete(in_flight_key(cluster_id))`.
-7. If `consensus == REJECT` and verification enabled → write `workflow/v1/{id}.status = "rejected"` (terminal pre-DAG state — REQ-CLONE-007 conditional write), release claim, return `decision: "blocked_by_verification"`, skip step 8
-8. **Initial DAG state write** (new, best-effort): `workflow/v1/{refactor_job_id}` = `{status: "queued", cluster_id, target_repo, consumer_repos, decision, started_at: now}` (RECORD CREATED HERE — between cluster-claim and create_task)
-9. `asyncio.create_task(run_clone_refactor_dag(...))` — fire-and-forget, with try/except/except CancelledError (REQ-CLONE-016). On create_task exception or client cancellation: write `status: "cancelled"|"failed"`, release claim, re-raise
+01. **Normalize `cluster_id`** (REQ-CLONE-015) — `^[a-z0-9-]{3,64}$` regex; reject non-conforming with MCP 400
+02. `refactor_job_id = str(uuid.uuid7())`
+03. Build `Proposal(proposal_id=refactor_job_id, proposal_type="clone_refactor", ...)`
+04. `verification_result = await verify_proposal(proposal)`
+05. `await self._store.persist(verification_result)` (existing)
+06. **`await cluster_state_claim(cluster_id, refactor_job_id)`** (REQ-CLONE-009) — write to `cluster/v1/{id}/in_flight` (via `in_flight_key()`) guarded by an in-process `dict[str, asyncio.Lock]` for single-process dedup. The substrate's existing `put()` is not CAS, so cross-process dedup is best-effort and explicitly documented in §3 Non-Goals. If existing in-flight `refactor_job_id` differs → raise `ConcurrentDAGError(existing_job_id)`. The `_record_dag_state` helper raises on claim failure; the finally-branch in the @flow releases it via `mcp_backend.delete(in_flight_key(cluster_id))`.
+07. If `consensus == REJECT` and verification enabled → write `workflow/v1/{id}.status = "rejected"` (terminal pre-DAG state — REQ-CLONE-007 conditional write), release claim, return `decision: "blocked_by_verification"`, skip step 8
+08. **Initial DAG state write** (new, best-effort): `workflow/v1/{refactor_job_id}` = `{status: "queued", cluster_id, target_repo, consumer_repos, decision, started_at: now}` (RECORD CREATED HERE — between cluster-claim and create_task)
+09. `asyncio.create_task(run_clone_refactor_dag(...))` — fire-and-forget, with try/except/except CancelledError (REQ-CLONE-016). On create_task exception or client cancellation: write `status: "cancelled"|"failed"`, release claim, re-raise
 10. Return `{refactor_job_id, status: "queued", ...}`
 
 **Phase 1 — DAG start** (inside `run_clone_refactor_dag`):
 
-9. Update `workflow/v1/{refactor_job_id}.status = "running", dag_started_at = now` (best-effort)
+09. Update `workflow/v1/{refactor_job_id}.status = "running", dag_started_at = now` (best-effort)
 10. `detect_cluster_members(cluster_id, repos)` → list of `RepoHit`
 
 **Phase 2 — propose**:
@@ -934,15 +949,15 @@ This plan produces all three layers; `audit_orphans.py` should show zero new sym
 
 This design is "done enough" when:
 
-1. All 5 sections implemented per Section 6 (file changes).
-2. All 9 Layer 1-3 tests pass.
-3. `audit_orphans.py` exits 0.
-4. `crackerjack run` passes.
-5. `dispatch_to_pool` async-callback either works in local env (Path A) or is formally deferred with feature-tracking doc update (Path B).
-6. No production caller regression (no caller of old PR-shape API other than the rewritten tests).
-7. Pre-commit bypass via `git -c core.hooksPath=/dev/null commit`.
-8. Author email `les@wedgwoodwebworks.com`.
-9. No version bump (memory rule).
+01. All 5 sections implemented per Section 6 (file changes).
+02. All 9 Layer 1-3 tests pass.
+03. `audit_orphans.py` exits 0.
+04. `crackerjack run` passes.
+05. `dispatch_to_pool` async-callback either works in local env (Path A) or is formally deferred with feature-tracking doc update (Path B).
+06. No production caller regression (no caller of old PR-shape API other than the rewritten tests).
+07. Pre-commit bypass via `git -c core.hooksPath=/dev/null commit`.
+08. Author email `les@wedgwoodwebworks.com`.
+09. No version bump (memory rule).
 10. No `git push` (memory rule).
 
 ## 12. Universal invariants (apply to all phases)
@@ -957,7 +972,7 @@ This design is "done enough" when:
 
 ## 13. Critical files
 
-- `mahavishnu/workflows/clone_refactor_workflow.py` (rewrite, replaces PR-shape; adds try/except/finally, per-step writes, retry-condition reclassification, _write_step_outcome helper)
+- `mahavishnu/workflows/clone_refactor_workflow.py` (rewrite, replaces PR-shape; adds try/except/finally, per-step writes, retry-condition reclassification, \_write_step_outcome helper)
 - `mahavishnu/workflows/_git_ops.py` (new; adds `GitCommitTransient`/`GitCommitPermanent` subtypes, structured exception fields, plain `git stash` wrap with finally-pop)
 - `mahavishnu/mcp/tools/clone_tools.py` (modify ~50 LOC; adds cluster_id normalization, cluster_claim, asyncio cancellation guard)
 - `mahavishnu/mcp/tools/clone_claims.py` (new, `cluster_state_claim` + `release_cluster_claim` helpers; uses `MCPStateBackend.put` with optimized compare-and-swap)

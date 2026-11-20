@@ -26,10 +26,10 @@ Use this workflow to plan, secure, and roll out containerized services.
 ## Workflow
 
 1. Validate the registry, cluster, and pipeline access.
-1. Check secrets, config, quotas, and monitoring.
-1. Confirm network, DNS, and policy prerequisites.
-1. Deploy with a rollback path and health checks.
-1. Capture the runbook and follow-up items.
+2. Check secrets, config, quotas, and monitoring.
+3. Confirm network, DNS, and policy prerequisites.
+4. Deploy with a rollback path and health checks.
+5. Capture the runbook and follow-up items.
 
 ## Output
 

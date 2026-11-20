@@ -6,7 +6,7 @@ date: 2026-08-23
 last_reviewed: 2026-10-13
 supersedes: ["015-worktree-and-cache-storage", "015-worktree-and-cache-storage-v2", "015-worktree-and-cache-storage-v3"]
 blocks_on: []
-decision_date: null
+decision_date:
 topic: storage-consolidation
 related:
   - "015-multi-agent-review"
@@ -48,6 +48,7 @@ related:
 A 2026-08-23 ecosystem audit surfaced three related problems:
 
 **Worktrees** — 210 total, 83 misplaced. The misplacement stems from three bugs:
+
 1. `MAHAVISHNU_AUTO_WORKTREE_ROOT` defaults to `~/worktrees` (literal hardcoded string), but actual code path produces `~/worktrees/agent-<hex8>/` (wrong sub-shape).
 2. Auto-worktree tool computes `parent/<repo>.worktrees/<branch>/` (sibling of repo).
 3. Result: 65 mahavishnu `agent-*` worktrees in `~/worktrees/`, 16 fastblocks siblings at `~/Projects/{fb-*,fastblocks-task*}`, 1 neo4j sibling at `~/Projects/neo4j-mcp.worktrees/`, 1 fastblocks `phase-5-v4` at `~/.claude/worktrees/`.
@@ -410,14 +411,14 @@ S3 and GCS credentials are managed by Oneiric's `S3StorageSettings` / `GCSStorag
 
 | Backend | Operation | p50 | p95 | p99 | Availability |
 |---|---|---|---|---|---|
-| Local | create_worktree | <50ms | <200ms | <500ms | 99.9% |
-| Local | fetch | <20ms | <100ms | <300ms | 99.9% |
-| S3 | create_worktree | <500ms | <2s | <5s | 99.5% |
-| S3 | fetch (bundle <50MB) | <300ms | <1.5s | <4s | 99.5% |
-| Redis (L1 miss → L2) | cache.get | <5ms | <20ms | <50ms | 99.9% |
-| Durable KV store | state.set | <20ms | <100ms | <300ms | 99.5% |
+| Local | create_worktree | \<50ms | \<200ms | \<500ms | 99.9% |
+| Local | fetch | \<20ms | \<100ms | \<300ms | 99.9% |
+| S3 | create_worktree | \<500ms | \<2s | \<5s | 99.5% |
+| S3 | fetch (bundle \<50MB) | \<300ms | \<1.5s | \<4s | 99.5% |
+| Redis (L1 miss → L2) | cache.get | \<5ms | \<20ms | \<50ms | 99.9% |
+| Durable KV store | state.set | \<20ms | \<100ms | \<300ms | 99.5% |
 
-`S3WorktreeProvider` restricted to repos under 50k commits OR repos where the bundle is <100MB. Larger repos use shallow clone. The 200-500ms p99 SLO applies only to small bundles.
+`S3WorktreeProvider` restricted to repos under 50k commits OR repos where the bundle is \<100MB. Larger repos use shallow clone. The 200-500ms p99 SLO applies only to small bundles.
 
 ### 17. Observability metrics
 
@@ -441,10 +442,12 @@ worktree_registry_drift_total{missing_in_s3,missing_in_durable_kv}
 **Phase 0: Revert + bootstrap (1-2 days)**
 
 **Prerequisites before Phase 0 starts:**
+
 - [ ] Oneiric maintainer sign-off on `LifecycleError("local-storage-readonly-filesystem")` enhancement (cross-repo PR)
 - [ ] Durable-substrate maintainer sign-off on the worktree-registry schema in §11 (cross-repo PR)
 
 **Phase 0 work:**
+
 - Use `git revert -n eb247784 2f3649f9 c0b09a06` (preserves history)
 - Add `LifecycleError("local-storage-readonly-filesystem")` to Oneiric's `LocalStorageAdapter.init()` (after PR merge)
 - Unify the 5 default values for `MAHAVISHNU_AUTO_WORKTREE_ROOT` to `get_worktree_base_path()` across all 5 files
@@ -455,10 +458,12 @@ worktree_registry_drift_total{missing_in_s3,missing_in_durable_kv}
 **Phase 1: Provider subclasses + pre-v2 migration (2-3 days)**
 
 **Prerequisites before Phase 1 starts:**
+
 - [ ] Durable-KV worktree-registry schema merged (from Phase 0 prerequisite)
 - [ ] Phase 0 CI guard test passing on main
 
 **Phase 1 work:**
+
 - Add `LocalWorktreeProvider` extending the existing `WorktreeProvider` ABC
 - Add `S3WorktreeProvider` extending the existing `WorktreeProvider` ABC
 - Add concrete types: `WorktreeHandle`, `WorktreeRef` (ABC), `LocalWorktreeRef`, `S3WorktreeRef`, `BundleRef`, `WorktreeLock`, `WorktreeLocked`, `WorktreeIntegrityError` (all in `mahavishnu/core/worktree_providers/`)
@@ -471,6 +476,7 @@ worktree_registry_drift_total{missing_in_s3,missing_in_durable_kv}
 **Phase 1.5: Phase 4 pre-spike (1-2 days, BLOCKING before Phase 4)**
 
 **This is new in v4.** Before committing to the 83-worktree migration, run a spike on 3-5 actual misplaced worktrees:
+
 - Run `pre_migration_discover()` on a known-misplaced sample
 - Verify the `.git` pointer files are parseable (the 83 worktrees are misplaced BECAUSE of path-computation bugs; their pointers may also be misconfigured)
 - Verify the synthesized `WorktreeHandle` fields (principal, repo, branch) are correct
@@ -608,6 +614,6 @@ worktree_registry_drift_total{missing_in_s3,missing_in_durable_kv}
 - Multi-agent review (round 1): `docs/adr/015-multi-agent-review.md`
 - Multi-agent review (round 2): synthesis in commit history of `015-multi-agent-review-round-2.md`
 
----
+______________________________________________________________________
 
 **END OF ADR-015 v4**

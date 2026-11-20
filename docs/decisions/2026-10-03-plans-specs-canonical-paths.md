@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-03
 last_reviewed: 2026-10-03
-superseded_by: null
+superseded_by:
 topic: plans-specs-canonical-paths
 ---
 
@@ -25,8 +25,7 @@ in every Bodai repo:
 Plus, the SDD controller and brainstorm visual-companion were writing
 `.superpowers/sdd/<plan-basename>/` and `.superpowers/brainstorm/<id>/`
 scratch directories. Some of this scratch was committed to git because
-the `.gitignore` only exempted `.superpowers/sdd/{preserve/,*.diff,
-progress.md}` — three lines, not a blanket rule.
+the `.gitignore` only exempted `.superpowers/sdd/{preserve/,*.diff, progress.md}` — three lines, not a blanket rule.
 
 The combined picture: 110 + 64 plans/specs at `docs/superpowers/`, 100 +
 3 at `docs/plans/`/`docs/specs/`, 52 scratch files tracked in
@@ -63,8 +62,7 @@ document it:
 
 in `crackerjack/templates/GITIGNORE_BODAI.md` (the cross-repo source of
 truth) plus each repo's local `.gitignore`. The template's marker block
-is bounded by `# >>> bodai-shared-gitignore >>>` / `# <<< bodai-shared-
-gitignore <<<`, so `crackerjack gitignore sync` will propagate this rule
+is bounded by `# >>> bodai-shared-gitignore >>>` / `# <<< bodai-shared- gitignore <<<`, so `crackerjack gitignore sync` will propagate this rule
 to every fleet repo on next sync.
 
 `docs/plans/.archive/` and `docs/specs/.archive/` carry `!`-exceptions
@@ -142,8 +140,7 @@ The plan/spec migration is opt-in per repo because:
 - 90-day reflog window: the 174 deleted blobs from the old
   `docs/superpowers/{plans,specs}/` paths remain recoverable via
   `git reflog` until 2027-01-01.
-- `docs/superpowers/eval/` and its 1 file (`2026-06-22-bodai-
-  ecosystem-candidates.md`) were not migrated — they're legacy eval
+- `docs/superpowers/eval/` and its 1 file (`2026-06-22-bodai- ecosystem-candidates.md`) were not migrated — they're legacy eval
   reports and renaming them would falsify their authorial context.
 - The sed pattern was: `docs/superpowers/plans` → `docs/plans`,
   `docs/superpowers/specs` → `docs/specs` (no trailing slash to catch

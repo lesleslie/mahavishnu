@@ -4,7 +4,7 @@ role: historical
 topic: mcpretentious-removed
 date: 2026-08-12
 last_reviewed: 2026-08-12
-superseded_by: null
+superseded_by:
 blocks_on: []
 ---
 
@@ -19,8 +19,7 @@ action is required from operators on stock installs.
 
 ## Root cause
 
-The original [MHV-007] failure (`Failed to launch session: Timeout calling
-MCP tool mcpretentious-open`) traced to a dead upstream dependency:
+The original [MHV-007] failure (`Failed to launch session: Timeout calling MCP tool mcpretentious-open`) traced to a dead upstream dependency:
 
 1. `settings/mahavishnu.yaml:191` shipped with `adapter_preference: "crow"`.
 2. Stock installs with `crow_enabled: false` (the default) fell through to

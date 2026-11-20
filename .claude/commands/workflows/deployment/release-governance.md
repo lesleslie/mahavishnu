@@ -26,10 +26,10 @@ Use this workflow to move a release from readiness review to launch and stabiliz
 ## Workflow
 
 1. Validate notes, manifests, test results, and security evidence.
-1. Confirm approvals and launch window readiness.
-1. Check infrastructure, monitoring, and rollback options.
-1. Make the go/no-go decision and execute the launch.
-1. Capture stabilization notes and the final report.
+2. Confirm approvals and launch window readiness.
+3. Check infrastructure, monitoring, and rollback options.
+4. Make the go/no-go decision and execute the launch.
+5. Capture stabilization notes and the final report.
 
 ## Output
 

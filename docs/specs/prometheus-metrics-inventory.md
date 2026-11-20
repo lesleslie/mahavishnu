@@ -4,7 +4,7 @@ role: implementation
 kind: reference
 date: 2026-04-06
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: observability
 title: Prometheus Metrics Inventory
 ---

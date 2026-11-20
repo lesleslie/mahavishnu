@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-10-17
 last_reviewed: 2026-10-19
-superseded_by: null
+superseded_by:
 blocks_on: []
 related:
   - docs/plans/2026-10-16-drop-ollama-favor-llama-server.md
@@ -13,15 +13,15 @@ related:
   - docs/plans/2026-09-27-shared-bodai-substrate-design.md
   - docs/specs/2026-10-15-bifrost-gateway-wiring-design.md
   - docs/decisions/wire-up-contract.md
-replaces: null
+replaces:
 topic: bifrost-oneiric-gateway-adapter
 title: "Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation"
-
 ---
 
 # Bifrost gateway as a oneiric LLM router — Bodai LLM call-site consolidation
 
 > **Review status (2026-10-18)**: Plan rewritten twice after agent reviews.
+>
 > - **First rewrite** (commit `91331689`): 5-agent multi-agent review (architecture-council, pr-review-toolkit:type-design-analyzer, api-security-specialist, general-purpose, oneiric-specialist). Final design: URL-rewriter via `BifrostLLMRouter` (3-2 vote against chain-member pivot, decided on oneiric specialist's transparent-proxy argument).
 > - **Second rewrite** (this document): 3-agent final review pass (2 proper + 1 random). 33 findings addressed. See the §11 3-Agent Final Review Findings appendix.
 > - The generalist's B-1 (blocker) caught a real bug: the prior "drop dead fields" decision was based on a wrong audit. Live consumers in `mahavishnu/llm_gateway/contract.py`, `mahavishnu/health.py`, and `mahavishnu/core/health.py` need the fields. Redeclared on `BifrostLLMSettings`.
@@ -42,21 +42,21 @@ When this plan ships:
 
 ## 2. Goals
 
-1. **Add `oneiric.adapters.llm.bifrost.BifrostLLMRouter`** — a new routing-policy class, NOT a subclass of `LLMBase`. The router exposes `resolve(provider: LLMProvider) -> str | None` returning the gateway URL for the given provider when `enabled: True` and `provider` is in the configured `routes` set, else `None`. Also exposes `metadata = AdapterMetadata(...)` so it registers in the catalog.
-2. **Add `BifrostLLMSettings(pydantic_settings.BaseSettings)`** with `env_prefix="ONEIRIC_BIFROST_"` (set directly on `SettingsConfigDict`, no inheritance). Includes a back-compat shim for the legacy `MAHAVISHNU_BIFROST__*` env-var prefix (see REQ-BIFROST-011). **Redeclares** the fields live consumers need (`auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url`) so the deletion in Phase 7 doesn't break them. Defines `_SENSITIVE_FIELDS: frozenset[str] = frozenset({"auth_env"})` and overrides `model_dump` / `model_dump_json` so `auth_env` is excluded by default. Only `request_timeout_seconds` is dropped (genuinely dead).
-3. **Add a module-level `get_router() -> BifrostLLMRouter` singleton** at `oneiric/adapters/llm/bifrost.py`. Process-cached. **Plus a `reset_router_for_tests()` module-level helper** that clears the cache (the test seam — without it, test pollution is a real risk per REQ-BIFROST-018).
-4. **Declare the `LLMProvider → RouteKind` mapping explicitly** as a class-level `_PROVIDER_ROUTE: ClassVar[Mapping[LLMProvider, RouteKind]]`. The 7-value `LLMProvider` enum (`OPENAI`, `ANTHROPIC`, `AZURE_OPENAI`, `GOOGLE_VERTEX`, `AWS_BEDROCK`, `LOCAL`, `ZAI`) maps to a 2-value `RouteKind` enum (`CLAUDE_ROUTE`, `QWEN_ROUTE`) renamed from `CLAUDE_CODE`/`QWEN_CODE` to avoid the value-collision footgun with `worker_type == "terminal-claude"` (REQ-BIFROST-020).
-5. **Migrate mahavishnu's three Bifrost-aware call sites** to consume the new router:
-   - `mahavishnu/engines/agno_adapter_impl.py:_resolve_bifrost_base_url` (lines 334-378) → call `oneiric.adapters.llm.bifrost.get_router().resolve(LLMProvider.OPENAI)` instead of the local helper
-   - `mahavishnu/terminal/manager.py:_resolve_worker_env` (lines 32-68) → drop the `bifrost: BifrostConfig | None` parameter (caller-spoofable, see REQ-BIFROST-004); construct the router inside the function via `get_router()`; inject `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` per the resolved value
-   - `mahavishnu/terminal/manager.py:TerminalManager.__init__` (lines 138-169) → **also drop the `bifrost` parameter from the constructor** so the spoofable attack class is fully closed (REQ-BIFROST-023 — surfaces a gap in the previous plan; the constructor still accepted `bifrost` and stored `self.bifrost` even after `_resolve_worker_env` stopped using it)
-   - `mahavishnu/workers/capabilities/_probes.py:resolve_probe_endpoint` (lines 132-156) → use oneiric URL when `provider == "minimax"`
-6. **Migrate mahavishnu's two direct-from-config call sites** to oneiric-resolved URLs:
-   - `mahavishnu/workers/cloud_worker.py:_build_fallback_chain` (lines 73-101) — read both provider URLs from oneiric; pass them to `mcp_common.llm.OpenAICompatibleProvider`
-   - `mahavishnu/workers/shepherd_backend.py` and any other `MINIMAX_BASE_URL` / `LLAMA_SERVER_URL` env-var consumers — read from oneiric at startup, fall back to env var for backward compat
-7. **Migrate session-buddy's hand-rolled `BifrostClient`** at `session_buddy/bifrost_client.py:32-107` to use oneiric. The two dependents (`session_buddy/worker.py:96`, `session_buddy/memory/entity_extractor.py:132-148`) collapse to "ask oneiric for the URL."
-8. **Migrate crackerjack's `FallbackChainCodeFixer`** at `crackerjack/adapters/ai/unified.py:53-72` (per the generalist's M-1 citation correction; the old `:19-72` cite was 34 lines off) to oneiric for URL resolution. The `uses_bifrost: bool` field on `PROVIDER_INFO["minimax"]` is **dropped** (generalist H-3: it had no consumer and structurally mirrored the original `route_qwen_code: True while enabled: False` bug). The `doc_update_service.py:255-273` direct `anthropic.Anthropic` SDK call is **out of scope** (deferred).
-9. **Add a `pydantic_ai` adapter** if any Bodai LLM call uses pydantic-ai without going through oneiric. (Audit pending — `mahavishnu/adapters/ai/pydantic_ai_adapter.py:86, 99, 258` has direct `provider_prefixes` that may bypass oneiric. A regression test `tests/unit/adapters/test_pydantic_ai_no_bypass.py` pins the conclusion — the audit cannot degenerate to a PR comment.)
+01. **Add `oneiric.adapters.llm.bifrost.BifrostLLMRouter`** — a new routing-policy class, NOT a subclass of `LLMBase`. The router exposes `resolve(provider: LLMProvider) -> str | None` returning the gateway URL for the given provider when `enabled: True` and `provider` is in the configured `routes` set, else `None`. Also exposes `metadata = AdapterMetadata(...)` so it registers in the catalog.
+02. **Add `BifrostLLMSettings(pydantic_settings.BaseSettings)`** with `env_prefix="ONEIRIC_BIFROST_"` (set directly on `SettingsConfigDict`, no inheritance). Includes a back-compat shim for the legacy `MAHAVISHNU_BIFROST__*` env-var prefix (see REQ-BIFROST-011). **Redeclares** the fields live consumers need (`auth_env`, `cache_mode`, `cache_ttl_seconds`, `local_provider_enabled`, `local_provider_url`) so the deletion in Phase 7 doesn't break them. Defines `_SENSITIVE_FIELDS: frozenset[str] = frozenset({"auth_env"})` and overrides `model_dump` / `model_dump_json` so `auth_env` is excluded by default. Only `request_timeout_seconds` is dropped (genuinely dead).
+03. **Add a module-level `get_router() -> BifrostLLMRouter` singleton** at `oneiric/adapters/llm/bifrost.py`. Process-cached. **Plus a `reset_router_for_tests()` module-level helper** that clears the cache (the test seam — without it, test pollution is a real risk per REQ-BIFROST-018).
+04. **Declare the `LLMProvider → RouteKind` mapping explicitly** as a class-level `_PROVIDER_ROUTE: ClassVar[Mapping[LLMProvider, RouteKind]]`. The 7-value `LLMProvider` enum (`OPENAI`, `ANTHROPIC`, `AZURE_OPENAI`, `GOOGLE_VERTEX`, `AWS_BEDROCK`, `LOCAL`, `ZAI`) maps to a 2-value `RouteKind` enum (`CLAUDE_ROUTE`, `QWEN_ROUTE`) renamed from `CLAUDE_CODE`/`QWEN_CODE` to avoid the value-collision footgun with `worker_type == "terminal-claude"` (REQ-BIFROST-020).
+05. **Migrate mahavishnu's three Bifrost-aware call sites** to consume the new router:
+    - `mahavishnu/engines/agno_adapter_impl.py:_resolve_bifrost_base_url` (lines 334-378) → call `oneiric.adapters.llm.bifrost.get_router().resolve(LLMProvider.OPENAI)` instead of the local helper
+    - `mahavishnu/terminal/manager.py:_resolve_worker_env` (lines 32-68) → drop the `bifrost: BifrostConfig | None` parameter (caller-spoofable, see REQ-BIFROST-004); construct the router inside the function via `get_router()`; inject `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` per the resolved value
+    - `mahavishnu/terminal/manager.py:TerminalManager.__init__` (lines 138-169) → **also drop the `bifrost` parameter from the constructor** so the spoofable attack class is fully closed (REQ-BIFROST-023 — surfaces a gap in the previous plan; the constructor still accepted `bifrost` and stored `self.bifrost` even after `_resolve_worker_env` stopped using it)
+    - `mahavishnu/workers/capabilities/_probes.py:resolve_probe_endpoint` (lines 132-156) → use oneiric URL when `provider == "minimax"`
+06. **Migrate mahavishnu's two direct-from-config call sites** to oneiric-resolved URLs:
+    - `mahavishnu/workers/cloud_worker.py:_build_fallback_chain` (lines 73-101) — read both provider URLs from oneiric; pass them to `mcp_common.llm.OpenAICompatibleProvider`
+    - `mahavishnu/workers/shepherd_backend.py` and any other `MINIMAX_BASE_URL` / `LLAMA_SERVER_URL` env-var consumers — read from oneiric at startup, fall back to env var for backward compat
+07. **Migrate session-buddy's hand-rolled `BifrostClient`** at `session_buddy/bifrost_client.py:32-107` to use oneiric. The two dependents (`session_buddy/worker.py:96`, `session_buddy/memory/entity_extractor.py:132-148`) collapse to "ask oneiric for the URL."
+08. **Migrate crackerjack's `FallbackChainCodeFixer`** at `crackerjack/adapters/ai/unified.py:53-72` (per the generalist's M-1 citation correction; the old `:19-72` cite was 34 lines off) to oneiric for URL resolution. The `uses_bifrost: bool` field on `PROVIDER_INFO["minimax"]` is **dropped** (generalist H-3: it had no consumer and structurally mirrored the original `route_qwen_code: True while enabled: False` bug). The `doc_update_service.py:255-273` direct `anthropic.Anthropic` SDK call is **out of scope** (deferred).
+09. **Add a `pydantic_ai` adapter** if any Bodai LLM call uses pydantic-ai without going through oneiric. (Audit pending — `mahavishnu/adapters/ai/pydantic_ai_adapter.py:86, 99, 258` has direct `provider_prefixes` that may bypass oneiric. A regression test `tests/unit/adapters/test_pydantic_ai_no_bypass.py` pins the conclusion — the audit cannot degenerate to a PR comment.)
 10. **Delete the now-orphaned `BifrostConfig` model** in `mahavishnu/core/config.py:854-989` (per the generalist's H-2 citation correction; the old `:855-947` cite was 42 lines off — the class extends to line 989 where `HNSWIndexConfig` starts at 992). The oneiric router owns the schema from this point on. **`ProtocolFamily` in `mahavishnu/llm_gateway/client.py:17` is also deleted** — replaced by `oneiric.adapters.llm.llm_interface.LLMProvider`.
 11. **Preserve backward compat for env vars** — `MAHAVISHNU_BIFROST__*` env vars keep working via a back-compat shim in `BifrostLLMSettings` (lands in Phase 1, not Phase 7). The shim logs a `DeprecationWarning` AND mirrors to a structured INFO log line `legacy_env_prefix_in_use` with operator identity (`getpass.getuser()`, hostname) — `DeprecationWarning` is silent in production per the security agent's F-06. The structured log is the operator-visible surface. (REQ-BIFROST-011.)
 12. **Add SSRF defense** as a first-class concern (see §4.6). Pydantic `HttpUrl` for all URL fields, scheme allowlist, loopback-only default, opt-in `BIFROST_ALLOW_REMOTE=1` for non-loopback deployments, **and a metadata-IP + RFC1918 blocklist in the opt-in path** so an attacker who convinces an operator to set `BIFROST_ALLOW_REMOTE=1` still can't pivot to AWS/GCP/Azure IMDS endpoints.
@@ -115,6 +115,7 @@ These are **parallel**, not hierarchical. They happen to point at the same `loca
 ### 4.4 mcp-common substrate compatibility
 
 The active `2026-10-15-oneiric-substrate-rollout.md` umbrella plan (status: active, role: umbrella) covers:
+
 - oneiric runtime-config registry (`oneiric_report_runtime` MCP tool)
 - SessionBuddySettings oneiric-shape reshape
 - Pgvector warm-tier migration (supplanted)
@@ -175,7 +176,7 @@ The new `BifrostLLMRouter` and `BifrostLLMSettings` extend `BaseSettings` direct
 
 Each requirement is testable: a unit test in the appropriate repo pins the contract.
 
-```yaml
+````yaml
 requirements:
   - id: REQ-BIFROST-001
     title: "oneiric BifrostLLMRouter catalog entry registered"
@@ -396,7 +397,8 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
   cd /Users/les/Projects/oneiric
   .venv/bin/python -c "from oneiric.adapters.bootstrap import builtin_adapter_metadata; print(len(builtin_adapter_metadata()))"
   # Prints a non-zero number (currently ~57).
-  ```
+````
+
 - **Rollback signal**: Phase 0 fails → Phase 1 is blocked.
 - **Observability added**: none.
 
@@ -405,6 +407,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
 **Goal**: Land the new router in oneiric. No existing call site is touched; this is pure addition.
 
 **Tasks**:
+
 - `oneiric/adapters/llm/bifrost.py` (new):
   - `class RouteKind(StrEnum)`: `CLAUDE_ROUTE = "claude_route"`, `QWEN_ROUTE = "qwen_route"`. Renamed from `CLAUDE_CODE`/`QWEN_CODE` to avoid the value-collision footgun with `worker_type == "terminal-claude"` (type F5).
   - `class BifrostLLMSettings(pydantic_settings.BaseSettings)`:
@@ -486,6 +489,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
 **Triggered from**: `oneiric PyPI version ≥X.Y.Z` (the user runs `crackerjack run -p <level>` to publish after Phase 1 lands on oneiric's local main). The implementer does NOT do this.
 
 **Tasks**:
+
 - `mahavishnu/engines/agno_adapter_impl.py:198-332`: replace the 4 `_create_*_model` factory methods' use of `_resolve_bifrost_base_url` with `from oneiric.adapters.llm.bifrost import get_router; get_router().resolve(LLMProvider.OPENAI)` (or `LLMProvider.ANTHROPIC` for the Claude factory). Delete the local `_resolve_bifrost_base_url` helper (lines 334-378).
 - `mahavishnu/llm_gateway/client.py`: delete the `ProtocolFamily` enum and the `gateway_api_base` function. Both are no longer used after this phase.
 - `mahavishnu/workers/cloud_worker.py:73-101`: `_build_fallback_chain` reads `minimax_url` from `get_router().resolve(LLMProvider.OPENAI)` and `llama_server_url` from a local config. Pass to `mcp_common.llm.OpenAICompatibleProvider`.
@@ -518,6 +522,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
 **Triggered from**: oneiric PyPI publication (REQ-BIFROST-022).
 
 **Tasks**:
+
 - `mahavishnu/terminal/manager.py:32-68`: change `_resolve_worker_env(worker_type, bifrost)` to `_resolve_worker_env(worker_type: str) -> dict[str, str]`. Inside, call `from oneiric.adapters.llm.bifrost import get_router; router = get_router()`. The function consults `router._settings.enabled` and `router._settings.routes` directly.
 - `mahavishnu/terminal/manager.py:138-169`: **also change** `TerminalManager.__init__(self, adapter, config=None, bifrost: BifrostConfig | None = None)` to `TerminalManager.__init__(self, adapter, config=None)`. Remove the `self.bifrost = bifrost` assignment at line 159. Update the docstring at lines 148-156 (REQ-BIFROST-023).
 - `mahavishnu/terminal/manager.py:18`: drop the `from mahavishnu.llm_gateway.client import ProtocolFamily, gateway_api_base` import.
@@ -557,6 +562,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
 **Triggered from**: oneiric PyPI publication (REQ-BIFROST-022).
 
 **Tasks**:
+
 - `session_buddy/bifrost_client.py`: delete the file.
 - `session_buddy/worker.py:14, 96`: replace `BifrostClient` import with `from oneiric.adapters.llm.bifrost import get_router`.
 - `session_buddy/memory/entity_extractor.py:132-148`: replace the `BIFROST_OPENAI_BASE_URL` env-var read with `get_router().resolve(LLMProvider.OPENAI)`.
@@ -568,6 +574,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
 **Triggered from**: oneiric PyPI publication (REQ-BIFROST-022).
 
 **Tasks**:
+
 - `crackerjack/adapters/ai/unified.py:53-72`: `_build_llm_settings` reads provider URLs from `get_router().resolve(LLMProvider.OPENAI)` (generalist M-1 citation correction; the old `:19-72` cite was 34 lines off).
 - `crackerjack/adapters/ai/registry.py:9-12, 29-57`: **drop the `uses_bifrost: bool` field** from `PROVIDER_INFO["minimax"]` (generalist H-3 fix). The field had no consumer and structurally mirrored the original `route_qwen_code: True while enabled: False` bug. The audit script in Phase 8 catches any provider that bypasses oneiric.
 - Tests:
@@ -579,6 +586,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
 **Triggered from**: oneiric PyPI publication (REQ-BIFROST-022).
 
 **Tasks**:
+
 - **Audit** (mandatory): grep all `provider_prefixes`, `httpx` `base_url=`, and direct SDK instantiations in pydantic-ai adapter.
 - **Conditional migration** (if audit surfaces bypasses): migrate the bypassing call sites to `get_router()`.
 - **Pinned test** (L-1 fix): `tests/unit/adapters/test_pydantic_ai_no_bypass.py` asserts the audit grep result. The audit cannot degenerate to a one-line PR comment.
@@ -588,6 +596,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
 **Triggered from**: oneiric PyPI publication (REQ-BIFROST-022). **Phase 7 is NOT deferrable** (generalist M-4 fix); the migration is structurally incomplete without it.
 
 **Tasks**:
+
 - `mahavishnu/core/config.py:854-989` (generalist H-2 citation correction; the old `:855-947` cite was 42 lines off): delete `BifrostConfig` class. Migrate the live consumers to read from the oneiric router:
   - `mahavishnu/health.py:176, 456, 494` — replace `BifrostConfig.auth_env` reads with `get_router()._settings.auth_env`. Add the centralized-exclusion test that pins `_SENSITIVE_FIELDS` (REQ-BIFROST-017).
   - `mahavishnu/core/health.py:99, 1326, 1334, 1337` — replace `BifrostConfig.auth_env` and `BifrostConfig.local_provider_*` reads with `get_router()._settings.<field>`. The `local_provider_*` reads use the centralized `get_router()._settings` to avoid the dead-field-leak that the previous plan had.
@@ -612,6 +621,7 @@ Each phase is one squash-merge to local `main` per the trunk-based agent-review 
 **Triggered from**: oneiric PyPI publication (REQ-BIFROST-022).
 
 **Tasks**:
+
 - `scripts/audit_bifrost_callers.py` (new): a one-shot audit script that walks the 4 in-scope repos and asserts that any `base_url=...` argument to an LLM client construction is either (a) sourced from oneiric via `get_router().resolve(...)`, or (b) a hardcoded local URL on the `LOCAL_PROVIDER_ALLOWLIST`. Direct base URLs not in either set fail the audit.
 - `docs/llm-routing.md` (new): a one-page reference that documents the oneiric ownership and lists the call sites + their routing source.
 - `docs/plans/PLAN_INDEX.md`: move this plan from `draft` to `complete` (regenerated by `scripts/regenerate_plan_index.py`).

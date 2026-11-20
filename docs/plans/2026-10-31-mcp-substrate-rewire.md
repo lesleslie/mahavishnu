@@ -4,22 +4,22 @@ role: canonical
 kind: plan
 date: 2026-10-31
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 topic: mcp-substrate-rewire
 title: "Rewire the MCP substrate from the decommissioned service to the live owners"
 requirements:
-- id: REQ-SUB-001
-  title: Substrate URL resolves to mahavishnu's own MCP server
-- id: REQ-SUB-002
-  title: KV tools are registered at every tool profile tier
-- id: REQ-SUB-003
-  title: Durable state reads and writes through the live KV tools
-- id: REQ-SUB-004
-  title: No default or fallback points at the decommissioned port
-- id: REQ-SUB-005
-  title: Analytics with no writer report the absence of a source
-- id: REQ-SUB-006
-  title: The internal principal is granted only on a verified credential
+  - id: REQ-SUB-001
+    title: Substrate URL resolves to mahavishnu's own MCP server
+  - id: REQ-SUB-002
+    title: KV tools are registered at every tool profile tier
+  - id: REQ-SUB-003
+    title: Durable state reads and writes through the live KV tools
+  - id: REQ-SUB-004
+    title: No default or fallback points at the decommissioned port
+  - id: REQ-SUB-005
+    title: Analytics with no writer report the absence of a source
+  - id: REQ-SUB-006
+    title: The internal principal is granted only on a verified credential
 ---
 
 # Rewire the MCP substrate from the decommissioned service to the live owners
@@ -109,6 +109,7 @@ But:
 1. `MCPKvClient` is constructed with `resolve_mcp_url(...)`
    (`mahavishnu/mcp/lifecycle.py:160`), i.e. with the dead 8683. So even
    the client that speaks the right tool names points at nothing.
+
 2. The KV tools were **not registered on the running server at all**.
    This turned out to be three independent layers of drift, only the
    last of which was the actual blocker:
@@ -176,8 +177,7 @@ failure series) before a reader is meaningful.
 
 `config.tools.mcp_server_url` defaults to `http://localhost:8680/mcp` —
 mahavishnu's own MCP server, and the one that answers on this host.
-`settings/mahavishnu.yaml:141` already sets `akosha_url:
-"http://localhost:8682/mcp"` for the analytics provider.
+`settings/mahavishnu.yaml:141` already sets `akosha_url: "http://localhost:8682/mcp"` for the analytics provider.
 
 ### 4.6 The self-call's identity must be a credential, not a name
 
@@ -201,13 +201,12 @@ turns that into a privilege escalation: `mahavishnu-internal` with the
 So the internal path must present a **verified credential**, and the
 principal must be granted only on that basis:
 
-* a random per-process token (`mahavishnu/mcp/internal_auth.py`),
+- a random per-process token (`mahavishnu/mcp/internal_auth.py`),
   regenerated on every process start;
-* sent by the client in the `Authorization` header (`MCPClient(...,
-  internal=True)`);
-* verified by the auth middleware with `hmac.compare_digest` before the
+- sent by the client in the `Authorization` header (`MCPClient(..., internal=True)`);
+- verified by the auth middleware with `hmac.compare_digest` before the
   principal is recorded;
-* required by the gate before the principal is usable — a caller that
+- required by the gate before the principal is usable — a caller that
   supplies only the *name* is denied with `AUTH_INVALID_IDENTITY`.
 
 The credential is only ever sent to mahavishnu's own server: `MCPClient`
@@ -309,6 +308,7 @@ requirements:
 calls.
 
 **Tasks:**
+
 1. `resolve_mcp_url()` returns `config.tools.mcp_server_url` instead of
    the 8683 literal, keeping the `health.dependencies["mcp"]` override.
    (REQ-SUB-001)
@@ -347,8 +347,7 @@ material.
   `mahavishnu/mcp/tools/kv_tools.py` (`_kv_store`), keyed
   `workflow/v1/{id}`, `pool/v1/{id}`, `routing/v1/{class}/{ts}`,
   `approval/v1/{id}`, `plan-index/...`.
-- **Demonstrable by:** `pytest tests/unit/test_mcp_kv_client.py
-  tests/unit/test_state_backends.py` green, plus a live
+- **Demonstrable by:** `pytest tests/unit/test_mcp_kv_client.py tests/unit/test_state_backends.py` green, plus a live
   `tools/list` on 8680 showing `mahavishnu_kv_get`.
 - **Rollback signal:** the state backend's circuit breaker opens
   (3 consecutive failures) or `/health` reports the substrate feed
@@ -363,6 +362,7 @@ material.
 writer exists.
 
 **Tasks:**
+
 1. `fix-failures`, `improvement-records`, `git_velocity`,
    `repository_health` and `aggregate_patterns` raise
    `NoAnalyticsWriterError` naming the series, rather than returning an
@@ -379,8 +379,7 @@ shapes; no analytics call site references a bare time-series tool name.
   repository health).
 - **Returns to / updates:** the tool result dictionaries returned to the
   MCP caller — no durable state is written.
-- **Demonstrable by:** `pytest tests/unit/test_self_improvement_tools.py
-  tests/unit/test_git_analytics.py` green.
+- **Demonstrable by:** `pytest tests/unit/test_self_improvement_tools.py tests/unit/test_git_analytics.py` green.
 - **Rollback signal:** the tools report an explicit error instead of
   partial data; callers already handle the error envelope.
 - **Observability added:** the "no writer" result names the metric and
@@ -391,6 +390,7 @@ shapes; no analytics call site references a bare time-series tool name.
 **Goal:** no call site asks a live server for a tool that does not exist.
 
 **Tasks:**
+
 1. `MCPClient` gains `kv_get` / `kv_list`, unwrapping the KV tools'
    envelopes. (REQ-SUB-003)
 2. `envelopes.py`, `budget_watchdog.py` and `metrics_cli.py` move from
@@ -413,8 +413,7 @@ non-loopback request.
 - **Returns to / updates:** the process-local KV store in
   `mahavishnu/mcp/tools/kv_tools.py` (`_kv_store`), keyed
   `envelopes/<trace_id>/<envelope_id>` and `mahavishni://budgets/...`.
-- **Demonstrable by:** `pytest tests/unit/test_envelopes.py
-  tests/unit/test_budget_watchdog_methods.py` → green; the CLI's key
+- **Demonstrable by:** `pytest tests/unit/test_envelopes.py tests/unit/test_budget_watchdog_methods.py` → green; the CLI's key
   listing returns the stored records.
 - **Rollback signal:** the envelope read path raises
   `RESOURCE_NOT_FOUND` where it used to return a value — visible as
@@ -434,9 +433,7 @@ non-loopback request.
    `reason: "Internal principal requires a verified credential"`.
 5. `grep -rn 'call_tool("get"\|call_tool("put"\|call_tool("list_' -- mahavishnu/` → no
    retired tool names remain.
-6. `pytest tests/unit/test_mcp_kv_client.py tests/unit/test_state_backends.py
-   tests/unit/test_self_improvement_tools.py
-   tests/unit/test_mcp_internal_auth.py tests/unit/test_envelopes.py` → green.
+6. `pytest tests/unit/test_mcp_kv_client.py tests/unit/test_state_backends.py tests/unit/test_self_improvement_tools.py tests/unit/test_mcp_internal_auth.py tests/unit/test_envelopes.py` → green.
 7. `python scripts/audit_orphans.py` → no new orphans.
 8. `crackerjack run -v -f` → gate passes.
 

@@ -21,9 +21,9 @@ order:
 1. **Claude Code subscription** — auto-detected from the running CLI
    session. This is the default and preferred path for local dev because
    it requires no API key.
-1. **Qwen free service** — fallback when the Claude Code subscription is
+2. **Qwen free service** — fallback when the Claude Code subscription is
    unavailable. Used for low-stakes and experimentation traffic.
-1. **Custom JWT** — manual `MAHAVISHNU_AUTH_SECRET` configuration. Use
+3. **Custom JWT** — manual `MAHAVISHNU_AUTH_SECRET` configuration. Use
    this for CI, headless workers, or self-hosted deployments.
 
 Configuration lives in `settings/mahavishnu.yaml`:

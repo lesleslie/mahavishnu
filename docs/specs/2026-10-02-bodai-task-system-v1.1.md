@@ -4,10 +4,11 @@ role: implementation
 kind: spec
 date: 2026-10-02
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: bodai-task-system-v1-1
 title: Bodai Task System — v1.1 (deferred items)
 ---
+
 # Bodai Task System — v1.1 (deferred items)
 
 > **Spec addendum to**: `2026-09-29-task-system-design.md` (the original v1 spec).
@@ -129,7 +130,7 @@ the immediate return, but the next `_build_task` call still returns
    visibility from `sidecar_meta.get("visibility", "private")` instead
    of hardcoding. Default `"private"` only when sidecar metadata is
    missing (not when it explicitly says `"private"`).
-1. `_persist_task_update` in the same file: when the request includes
+2. `_persist_task_update` in the same file: when the request includes
    `visibility`, write `{"visibility": request.visibility}` into the
    sidecar metadata dict.
 

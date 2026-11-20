@@ -4,9 +4,10 @@ role: canonical
 kind: decision
 date: 2026-10-14
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: adapter-architecture
 ---
+
 # 2026-10-14-decision-adapter-category.md
 
 ## Context
@@ -51,7 +52,7 @@ cannot reach.
    on M1/M2 base). Operators with M1/M2 Max+ or M3/M4 Pro can override
    `model` to `vllm-sr/d3-flash` (8.39B) for the Jev Decision Index #1 result.
 
-1. **All three pieces of the substrate contract must hold for every decision
+2. **All three pieces of the substrate contract must hold for every decision
    adapter:** (a) class-level `metadata: ClassVar[AdapterMetadata]` slot;
    (b) `DecisionBaseSettings` Pydantic base (with `caller_namespace` per
    REQ-OSUB-B-004, `api_key_env` indirection, `base_url`, `model`,
@@ -59,7 +60,7 @@ cannot reach.
    lifecycle with default `health()` being a single-question probe (a Noul
    question by default; subclasses can override for cheaper probes).
 
-1. **Mahavishnu cannot consume the new category until the HybridAdapterRegistry
+3. **Mahavishnu cannot consume the new category until the HybridAdapterRegistry
    migration in `task_router.py` is complete.** The decision adapters exist
    in the substrate; they are unreachable from Mahavishnu's routing layer
    until the 5 references in `task_router.py:394, 403, 430, 493, 591` are
@@ -67,18 +68,18 @@ cannot reach.
    rule — building the Mahavishnu side before the migration is closed
    produces a category-with-no-consumers and must not happen.
 
-1. **The `decision` category name is singular** (matches `vector`, `cache`,
+4. **The `decision` category name is singular** (matches `vector`, `cache`,
    `llm`, `embedding`, `storage` convention in `oneiric/adapters/`).
    User-facing CLI/MCP tool names are also singular: `mahavishnu decision decide`, `mcp__mahavishnu__decision_decide`.
 
-1. **Adapters that do not support a method fail closed with
+5. **Adapters that do not support a method fail closed with
    `NotImplementedError`**, not silent stub. Jev raises on `rank()`; BGE/TEI
    raises on `decide()`. `AdapterBridge.use("decision", capabilities=["noul"])`
    resolves to Jev; `AdapterBridge.use("decision", capabilities=["rank"])`
    resolves to BGE; `AdapterBridge.use("decision", capabilities=["noul", "multimodal"])`
    resolves to Decision 3.0.
 
-1. **The Mahavishnu `mahavishnu/adapters/pgvector_adapter.py:126` fork is
+6. **The Mahavishnu `mahavishnu/adapters/pgvector_adapter.py:126` fork is
    deleted in the same change window** as the decision category consumption
    work. `PgvectorAdapter.metadata` is already in `builtin_adapter_metadata()`
    per `oneiric/adapters/bootstrap.py:124`, so `AdapterBridge.use("vector", provider="pgvector")` resolves to Oneiric's class. The Mahavishnu fork
@@ -87,14 +88,14 @@ cannot reach.
    `pgvector_adapter.py` HNSW extension is a candidate for upstreaming to
    Oneiric, not for carrying as a Mahavishnu fork).
 
-1. **PEP 735 `[dependency-groups].typesafe` covers the Jev SDK.** The BGE/TEI
+7. **PEP 735 `[dependency-groups].typesafe` covers the Jev SDK.** The BGE/TEI
    adapter uses `httpx2` (already a Oneiric baseline per
    `oneiric.adapters.httpx_base`); the Decision 3.0 adapter uses `httpx2`
    to call vllm-sr's `/v1/systemone` endpoint. Per
    `feedback-mcp-common-version-bump-is-user.md`, no version pin is bumped
    in any Bodai `pyproject.toml` without user approval.
 
-1. **The `decision_3_0` adapter exposes a `quantization: str | None = None`
+8. **The `decision_3_0` adapter exposes a `quantization: str | None = None`
    field.** Default `None` lets vllm-sr pick. Operators on Apple Silicon
    should pin a HuggingFace repo suffix like `vllm-sr/d3-mini-AWQ` and set
    `quantization="awq"` (or `"gptq"`, `"fp8"`) to fit within the available

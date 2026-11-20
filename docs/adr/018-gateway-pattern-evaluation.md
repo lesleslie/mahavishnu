@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-09-16
 last_reviewed: 2026-10-18
-superseded_by: null
+superseded_by:
 blocks_on:
   - "docs/adr/013-mahavishnu-adapter-tool-boundary.md"
   - "docs/adr/017-oneiric-shared-persistence-substrate.md"
@@ -195,8 +195,7 @@ generalization of Phase 1.5's `register_local_namespace` primitive.
   bus work makes this safe: producers/consumers decouple at the
   event layer, so a coordinated gateway release does not force
   every consumer to upgrade in lockstep.
-- **Tool names stable.** Agent prompts (`.claude/agents/akosha-
-  specialist.md`, etc.) continue to work because tool names are
+- **Tool names stable.** Agent prompts (`.claude/agents/akosha- specialist.md`, etc.) continue to work because tool names are
   namespaced (`mcp__mahavishnu__akosha_*`) but the prefix is
   implementation detail.
 
@@ -490,7 +489,7 @@ If Option C's wrapper consolidation introduces regressions:
    recoverable.
 3. **Full revert.** `git revert` the Phase 1.5 merge commit per
    repo. Restart the five launchd plists. Stateful surface returns
-   to Option A in <2 minutes.
+   to Option A in \<2 minutes.
 4. **No data migration.** Phase 1.5 changes tool *registration*, not
    tool *data*. HotStore, the durable store, Session-Buddy stores, Crackerjack
    indexes — none are touched. Rollback is configuration-only.

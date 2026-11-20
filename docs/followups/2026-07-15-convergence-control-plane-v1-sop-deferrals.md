@@ -4,7 +4,7 @@ role: implementation
 date: 2026-07-15
 last_reviewed: 2026-10-18
 resolved_at: 2026-10-18
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: convergence-control-plane
 ---
@@ -41,6 +41,7 @@ together under this umbrella until a re-evaluation trigger fires.
 ## Re-evaluation rule
 
 When ANY trigger column fires, the matching topic is unsuppressed:
+
 1. Open a new plan under `docs/plans/YYYY-MM-DD-<topic>-resume.md`.
 2. Reference this followup file and the archived siblings.
 3. Update this table's row to (re-filed, in flight).

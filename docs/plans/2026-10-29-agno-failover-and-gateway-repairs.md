@@ -3,20 +3,20 @@ status: complete
 role: implementation
 date: 2026-10-29
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 topic: agno-failover-gateway
 title: "Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key"
 requirements:
-- id: REQ-AGNO-006
-  title: The agno.llm block is authoritative over the legacy flat config shapes
-- id: REQ-AGNO-007
-  title: Per-call provider failover in the Agno agent loop
-- id: REQ-AGNO-008
-  title: A gateway-routed provider requests a model the gateway serves
-- id: REQ-AGNO-009
-  title: A fallback provider never inherits the primary's credential or endpoint
-- id: REQ-PIVK-006
-  title: The Pi pool resolves the Bifrost virtual key from the canonical source
+  - id: REQ-AGNO-006
+    title: The agno.llm block is authoritative over the legacy flat config shapes
+  - id: REQ-AGNO-007
+    title: Per-call provider failover in the Agno agent loop
+  - id: REQ-AGNO-008
+    title: A gateway-routed provider requests a model the gateway serves
+  - id: REQ-AGNO-009
+    title: A fallback provider never inherits the primary's credential or endpoint
+  - id: REQ-PIVK-006
+    title: The Pi pool resolves the Bifrost virtual key from the canonical source
 ---
 
 # Agno failover, gateway credential resolution, and the Pi pool's missing Bifrost key
@@ -178,11 +178,13 @@ requirements:
 **Goal:** a fallback provider never inherits the primary's credential.
 
 **Tasks:**
+
 - `_resolve_endpoint` applies `config.base_url` / `config.api_key_env` only
   to the configured provider; a fallback uses its own standard env var and
   resolves its own endpoint.
 
 #### Integration Contract ← REQUIRED
+
 - **Triggered from:** `LLMProviderFactory._resolve_endpoint`, called from
   `create_model_chain`.
 - **Returns to / updates:** the `_ResolvedEndpoint` for each candidate.
@@ -198,6 +200,7 @@ requirements:
 **Goal:** a provider that fails mid-run falls through to the next one.
 
 **Tasks:**
+
 - New `mahavishnu/engines/agno_fallback_model.py` with `FallbackModel`,
   an `agno.models.base.Model` subclass overriding `invoke`, `ainvoke`,
   `invoke_stream`, and `ainvoke_stream`.
@@ -207,6 +210,7 @@ requirements:
 - `AgnoAdapter._get_llm` uses the chain.
 
 #### Integration Contract ← REQUIRED
+
 - **Triggered from:** `AgnoAdapter._get_llm` → `create_model_chain`; the
   chain is then invoked once per turn by Agno's agent loop.
 - **Returns to / updates:** the model attached to the Agno `Agent`/`Team`.
@@ -216,14 +220,14 @@ requirements:
   `pytest tests/unit/engines/test_agno_fallback_model.py`.
 - **Rollback signal:** `pool`/`agent` runs failing with a provider 5xx
   mid-run instead of completing on the fallback.
-- **Observability added:** `WARNING "Agno failover: provider %s failed (%s);
-  trying the next provider"` per failover event.
+- **Observability added:** `WARNING "Agno failover: provider %s failed (%s); trying the next provider"` per failover event.
 
 ### Phase 3: Gateway model id
 
 **Goal:** a gateway-routed Anthropic provider asks for a served model.
 
 **Tasks:**
+
 - `core/config.py`: `GATEWAY_ANTHROPIC_MODEL_ID = "minimax-anthropic/MiniMax-M3"`.
   The provider id must be the *custom* provider's name, not the base type:
   a config entry named after a standard provider (`anthropic`) is dropped by
@@ -234,6 +238,7 @@ requirements:
   `_model_id_for` prefers it unless the operator pinned `model_id`.
 
 #### Integration Contract ← REQUIRED
+
 - **Triggered from:** `LLMProviderFactory._resolve_endpoint`.
 - **Returns to / updates:** the model id passed to the Agno model.
 - **Demonstrable by:** `pytest tests/unit/test_agno_adapter_impl.py::TestBifrostGatewayRouting`.
@@ -246,12 +251,14 @@ requirements:
 the server was launched.
 
 **Tasks:**
+
 - `pi_pool.BODAI_VIRTUAL_KEY_ENV = "BODAI_BIFROST_VK"`.
 - `_build_subprocess_env` resolves the credential via
   `bifrost.cache_headers.resolve_virtual_key()` and exposes it under that
   name when the parent env does not carry it.
 
 #### Integration Contract ← REQUIRED
+
 - **Triggered from:** `PiPool.execute_task` and
   `PiPool._startup_version_probe`, both of which build the subprocess env.
 - **Returns to / updates:** the Pi subprocess environment.
@@ -268,6 +275,7 @@ the server was launched.
 `AdapterMetadata` subscript assertions to attribute access.
 
 #### Integration Contract ← REQUIRED
+
 - **Triggered from:** the repo test suite.
 - **Returns to / updates:** `tests/unit/test_agno_adapter_impl.py`,
   `tests/unit/engines/test_agno_adapter.py`,
@@ -280,14 +288,14 @@ the server was launched.
 
 - [ ] `mahavishnu/core/config.py` — `GATEWAY_ANTHROPIC_MODEL_ID`.
 - [ ] `mahavishnu/engines/agno_adapter_impl.py` — endpoint isolation,
-      gateway model id, `_available_models`, `create_model_chain`.
+  gateway model id, `_available_models`, `create_model_chain`.
 - [ ] `mahavishnu/engines/agno_fallback_model.py` — new `FallbackModel`.
 - [ ] `mahavishnu/pools/pi_pool.py` — gateway credential resolution.
 - [ ] `tests/unit/engines/test_agno_fallback_model.py` — new.
 - [ ] `tests/unit/pools/test_pi_pool_gateway_credential.py` — new.
 - [ ] `tests/unit/test_agno_adapter_impl.py`,
-      `tests/unit/engines/test_agno_adapter.py`,
-      `tests/unit/test_adapters/test_worker_adapter.py` — updated assertions.
+  `tests/unit/engines/test_agno_adapter.py`,
+  `tests/unit/test_adapters/test_worker_adapter.py` — updated assertions.
 
 ## 7. Validation Matrix
 
@@ -312,8 +320,7 @@ the server was launched.
 ## 9. Decision Rule
 
 Ship when the affected suites pass, the gates are clean, and the live
-adapter reports a `FallbackModel` over `[MiniMax-via-Bifrost,
-llama-server]`.
+adapter reports a `FallbackModel` over `[MiniMax-via-Bifrost, llama-server]`.
 
 ## 10. Operator Decision — Deferred Store Repair
 
@@ -341,19 +348,19 @@ alone.**
 Rationale:
 
 1. The adapter-side fix is the durable deliverable — a gateway-routed
-   Anthropic provider now requests ``anthropic/MiniMax-M3``, which the
+   Anthropic provider now requests `anthropic/MiniMax-M3`, which the
    gateway serves. The path is correct the moment the provider is
    present.
 2. The Anthropic provider is not in the active chain
-   (``minimax -> llama_server``), so the missing store row does not
+   (`minimax -> llama_server`), so the missing store row does not
    affect the adapter's default behaviour.
-3. A concurrent session was actively editing ``config/bifrost/*`` and
-   ``mahavishnu/bifrost/gateway.py``, and its plan references
-   ``mahavishnu bifrost rebootstrap`` — a store write from this plan
+3. A concurrent session was actively editing `config/bifrost/*` and
+   `mahavishnu/bifrost/gateway.py`, and its plan references
+   `mahavishnu bifrost rebootstrap` — a store write from this plan
    would risk a write-conflict.
-4. The sanctioned repair (``--drop-db``) regenerates the virtual key,
-   which every client reads from ``~/.config/secrets.env`` and
-   ``~/.claude/settings.json``.
+4. The sanctioned repair (`--drop-db`) regenerates the virtual key,
+   which every client reads from `~/.config/secrets.env` and
+   `~/.claude/settings.json`.
 
-**Follow-up**: if the ``anthropic`` provider is restored to the store
+**Follow-up**: if the `anthropic` provider is restored to the store
 later, no adapter change is needed — the model id is already correct.

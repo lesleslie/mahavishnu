@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-17
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: runpod-status-truth
 ---
 

@@ -28,9 +28,9 @@ ______________________________________________________________________
 ## Phases
 
 1. Review usage, feedback, and the improvement goal.
-1. Draft the changes and keep the structure clear and consistent.
-1. Validate the updated prompts and telemetry hooks.
-1. Publish the update and record the change.
+2. Draft the changes and keep the structure clear and consistent.
+3. Validate the updated prompts and telemetry hooks.
+4. Publish the update and record the change.
 
 ## Handoffs
 

@@ -4,10 +4,9 @@ role: canonical
 kind: template
 date: 2026-07-16
 last_reviewed: 2026-09-13
-superseded_by: null
+superseded_by:
 topic: routing-composition
 title: "Plan Template — Integration-Contract Required"
-
 ---
 
 # Plan Template — Integration-Contract Required
@@ -90,11 +89,15 @@ block MUST link back to the requirement IDs it fulfils.
 > replaces the title.
 
 ## 5. Implementation Phases
+
 ### Phase N: <name>
+
 **Goal:**
 **Tasks:**
 **Exit criteria:**
+
 #### Integration Contract ← REQUIRED for every deliverable in this phase
+
 - **Triggered from**: \<prompt: what user action, schedule, or upstream
   event calls this? include exact entry-point symbol/path>
 - **Returns to / updates**: \<prompt: what state, store, or downstream
@@ -106,7 +109,9 @@ block MUST link back to the requirement IDs it fulfils.
   us to revert? include threshold if applicable>
 - **Observability added**: \<prompt: which OTel/metric/log signal was
   added so this wiring is visible in production>
+
 ## 6. Required Code Changes
+
 <checkbox list of file paths grouped by package>
 ## 7. Validation Matrix
 \<table: tool/command | expected outcome | evidence location>

@@ -1,12 +1,10 @@
 ---
-
 name: devops-troubleshooter
 description: >-
   DevOps troubleshooter for CI/CD, infrastructure, and deployment issues. Ecosystem:
   mcp__mahavishnu__get_health (service health), mcp__akosha__akosha_detect_anomalies (metrics
   anomalies), mcp__session-buddy__session_buddy_get_activity_summary (session logs).
 model: sonnet
-
 ---
 
 ## CI/CD convention for Bodai (read before recommending any CI mechanism)
@@ -29,6 +27,7 @@ When reviewing plans or making recommendations:
 - **DO** when other agents (DevOps engineers, CI-coordination reviewers) mention GitHub Actions paths in their findings, treat their workflow-content claims as suspect — the workflows don't exist here. Their concerns about CI gating are valid but should be re-routed to the local trunk-based workflow.
 
 See also:
+
 - `memory/feedback-no-github-actions-bodai.md` — full rule with worked example.
 - `memory/feedback-bodai-merge-workflow.md` — the local CI mechanism that replaces GitHub Actions.
 - `memory/feedback-crackerjack-run-vf-not-f.md` (`crackerjack run -v -f` for quick feedback).

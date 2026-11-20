@@ -20,8 +20,8 @@ def __init__(self, config: MahavishnuSettings):
 This created a critical authentication bypass vulnerability where:
 
 1. Attackers could forge JWT tokens using the known fallback secret
-1. Entire authentication system could be bypassed
-1. All JWT-protected endpoints were accessible without valid credentials
+2. Entire authentication system could be bypassed
+3. All JWT-protected endpoints were accessible without valid credentials
 
 ## Fix Implementation
 
@@ -71,13 +71,13 @@ Created comprehensive security tests:
 **TestJWTManagerSecurity** class with 8 tests:
 
 1. `test_jwt_manager_rejects_missing_secret` - Ensures no fallback secret
-1. `test_jwt_manager_rejects_short_secret` - Validates minimum entropy
-1. `test_jwt_manager_accepts_minimum_length_secret` - Boundary test
-1. `test_jwt_manager_accepts_long_secret` - Best practice validation
-1. `test_jwt_manager_with_valid_secret` - Normal operation
-1. `test_jwt_create_and_verify_token` - Functional test
-1. `test_jwt_token_refresh` - Token refresh functionality
-1. `test_jwt_invalid_token_raises_error` - Error handling
+2. `test_jwt_manager_rejects_short_secret` - Validates minimum entropy
+3. `test_jwt_manager_accepts_minimum_length_secret` - Boundary test
+4. `test_jwt_manager_accepts_long_secret` - Best practice validation
+5. `test_jwt_manager_with_valid_secret` - Normal operation
+6. `test_jwt_create_and_verify_token` - Functional test
+7. `test_jwt_token_refresh` - Token refresh functionality
+8. `test_jwt_invalid_token_raises_error` - Error handling
 
 **TestRBACManager** class with 3 tests:
 
@@ -194,15 +194,15 @@ print('✓ JWT authentication configured successfully')
 ## Additional Security Recommendations
 
 1. **Secret Rotation**: Implement periodic JWT secret rotation
-1. **Key Management**: Use HashiCorp Vault or AWS KMS for production
-1. **Monitoring**: Alert on authentication failures
-1. **Audit Logging**: Log all JWT validation attempts
-1. **HSM Integration**: Consider hardware security modules for high-security deployments
+2. **Key Management**: Use HashiCorp Vault or AWS KMS for production
+3. **Monitoring**: Alert on authentication failures
+4. **Audit Logging**: Log all JWT validation attempts
+5. **HSM Integration**: Consider hardware security modules for high-security deployments
 
 ## Files Modified
 
 1. `/Users/les/Projects/mahavishnu/mahavishnu/core/permissions.py` - Security fix
-1. `/Users/les/Projects/mahavishnu/tests/unit/test_permissions.py` - Test coverage
+2. `/Users/les/Projects/mahavishnu/tests/unit/test_permissions.py` - Test coverage
 
 ## Verification Commands
 

@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-18
 last_reviewed: 2026-10-18
-superseded_by: null
+superseded_by:
 topic: archive-completed-plans
 title: "Archive Policy for Completed Plans"
 ---
@@ -89,8 +89,7 @@ operations are: activate, park as `partial`, or supersede.
 The 2026-10-18 batch applied this policy to 10 plans. See the commit on
 the same date. The deferred cases:
 
-- `2026-09-14-common-mcp-client-transport-unification.md` (`complete,
-  umbrella`) — held because the active child
+- `2026-09-14-common-mcp-client-transport-unification.md` (`complete, umbrella`) — held because the active child
   `2026-10-12-mcp-common-test-backfill.md` is still in flight.
 - `2026-07-11-phase-6-bodai-observability.md` (`complete, implementation`)
   — held because it is the Authority Matrix link target for

@@ -75,6 +75,7 @@ The cost of retiring CloudWorker exceeds the benefit, on five counts:
    `FallbackChain` call.
 
 4. **Retirement cost > benefit** (concrete list):
+
    - Find external callers (out-of-repo audit needed — unverifiable
      from this codebase)
    - Update 4 live doc references + `CLAUDE.md`

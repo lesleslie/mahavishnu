@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-15
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: unified-event-bus
 title: "Bodai EventBus — Wrapper-Layer Adoption of Oneiric EventBridge"
 supersedes_plan: 2026-05-09-unified-event-bus-spec.md
@@ -27,6 +27,7 @@ The hard-cut migration did **not** ship. Instead, Mahavishnu built a wrapper lay
 **Adopt Oneiric's `EventBridge` via wrapper layer, not via hard-cut migration.**
 
 Concretely:
+
 - Oneiric's `EventBridge` is the authoritative transport and envelope shape
 - `mahavishnu/core/events/canonical.py` is the canonical envelope dataclass wrapper
 - `mahavishnu/core/events/eventbridge_adapter.py` exposes `EventBridgePublisher.emit()` to legacy callers
@@ -40,9 +41,9 @@ Concretely:
 The hard-cut migration was the correct **end state** but the wrong **migration shape**:
 
 1. **End-state compat preserved** — downstream callers (workers, schedulers, alerting) still see the same `EventEnvelope` and `subscribe_to_bodai_events()` API
-3. **Wrapper enables incremental rollout** — Akosha, crackerjack, and Session-Buddy can adopt the wrapper at their own pace without a coordinated cutover
-4. **DLQ integration works** via `mahavishnu/core/events/bodai_subscriber.py` and `mahavishnu/core/dead_letter_queue.py`; exhausted handler retries land in the DLQ as the spec required
-5. **WebSocket fan-out works** — `mahavishnu/websocket/integration.py` consumes the wrapper envelope directly; the spec's "WebSocketEventHandler" abstraction was implemented as direct integration instead of a separate `WebSocketEventHandler` class
+2. **Wrapper enables incremental rollout** — Akosha, crackerjack, and Session-Buddy can adopt the wrapper at their own pace without a coordinated cutover
+3. **DLQ integration works** via `mahavishnu/core/events/bodai_subscriber.py` and `mahavishnu/core/dead_letter_queue.py`; exhausted handler retries land in the DLQ as the spec required
+4. **WebSocket fan-out works** — `mahavishnu/websocket/integration.py` consumes the wrapper envelope directly; the spec's "WebSocketEventHandler" abstraction was implemented as direct integration instead of a separate `WebSocketEventHandler` class
 
 ## What did NOT ship (spec items deferred or reworked)
 

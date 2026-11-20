@@ -4,10 +4,9 @@ role: canonical
 kind: reference
 date: 2026-07-16
 last_reviewed: 2026-09-13
-superseded_by: null
+superseded_by:
 topic: convergence-control-plane
 title: "Plans README"
-
 ---
 
 # Plans README
@@ -18,7 +17,7 @@ This directory contains active and historical planning documents for Mahavishnu 
 
 1. Current plan map, implementation priority, and supersession notes:
    - [PLAN_INDEX.md](./PLAN_INDEX.md)
-1. **Authority for topic-specific plans**: see `PLAN_INDEX.md` (it lists the current spec/implementation plan for each concern, including Agno/TUI architecture, ecosystem health, docs canonicalization, and type-adapter migration). The historical plans formerly linked from this README (2026-04-16 master spec/impl, 2026-04-25 ecosystem update / docs canonicalization / type-adapter migration, 2026-05-11 remaining-work queue) are now under `docs/plans/.archive/` and tracked from `PLAN_INDEX.md`.
+2. **Authority for topic-specific plans**: see `PLAN_INDEX.md` (it lists the current spec/implementation plan for each concern, including Agno/TUI architecture, ecosystem health, docs canonicalization, and type-adapter migration). The historical plans formerly linked from this README (2026-04-16 master spec/impl, 2026-04-25 ecosystem update / docs canonicalization / type-adapter migration, 2026-05-11 remaining-work queue) are now under `docs/plans/.archive/` and tracked from `PLAN_INDEX.md`.
 
 ## Plan Categories
 

@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-10-14
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: merge-gate
 related: docs/specs/2026-10-03-agent-reviewed-trunk-based-dev.md §4.1, REQ-013
 ---
@@ -53,7 +53,7 @@ Adopt a **two-tier Crackerjack gate**:
 
 1. **Merge gate (per-worktree)** — runs crackerjack fast_hooks
    (scoped via phase flag). Catches link rot, formatting drift, ruff
-   autofix violations, simple syntax errors. Fast (typically <30s for
+   autofix violations, simple syntax errors. Fast (typically \<30s for
    a docs-only worktree).
 
 2. **Publish gate (pre-release)** — runs crackerjack comprehensive (ty,

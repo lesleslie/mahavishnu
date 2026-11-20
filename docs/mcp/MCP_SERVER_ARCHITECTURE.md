@@ -9,16 +9,16 @@ ______________________________________________________________________
 
 ## Table of Contents
 
-1. [Overview](#overview)
-1. [Core Architecture Patterns](#core-architecture-patterns)
-1. [Version Management](#version-management)
-1. [Import Path Discipline](#import-path-discipline)
-1. [Tool Registration Patterns](#tool-registration-patterns)
-1. [Authorization & Security](#authorization--security)
-1. [Testing Strategies](#testing-strategies)
-1. [Deployment Patterns](#deployment-patterns)
-1. [Troubleshooting Guide](#troubleshooting-guide)
-1. [Best Practices Checklist](#best-practices-checklist)
+01. [Overview](#overview)
+02. [Core Architecture Patterns](#core-architecture-patterns)
+03. [Version Management](#version-management)
+04. [Import Path Discipline](#import-path-discipline)
+05. [Tool Registration Patterns](#tool-registration-patterns)
+06. [Authorization & Security](#authorization--security)
+07. [Testing Strategies](#testing-strategies)
+08. [Deployment Patterns](#deployment-patterns)
+09. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Best Practices Checklist](#best-practices-checklist)
 
 ______________________________________________________________________
 
@@ -33,10 +33,10 @@ This document captures the architectural patterns and best practices for Model C
 ### Philosophy
 
 1. **Single Source of Truth** - Version numbers come from `pyproject.toml`
-1. **Import Discipline** - Relative imports follow strict conventions
-1. **Security First** - All tools require authentication and authorization
-1. **Testability** - Mock FastMCP for unit testing
-1. **Observability** - Comprehensive logging and error tracking
+2. **Import Discipline** - Relative imports follow strict conventions
+3. **Security First** - All tools require authentication and authorization
+4. **Testability** - Mock FastMCP for unit testing
+5. **Observability** - Comprehensive logging and error tracking
 
 ______________________________________________________________________
 
@@ -244,7 +244,7 @@ When releasing a new version:
    version = "0.3.0"  # Bump version
    ```
 
-1. **Commit and tag:**
+2. **Commit and tag:**
 
    ```bash
    git add pyproject.toml
@@ -252,14 +252,14 @@ When releasing a new version:
    git tag v0.3.0
    ```
 
-1. **Build and publish:**
+3. **Build and publish:**
 
    ```bash
    uv build
    uv publish
    ```
 
-1. **Verify MCP server reports correct version:**
+4. **Verify MCP server reports correct version:**
 
    ```bash
    python -m mahavishnu mcp start
@@ -325,14 +325,14 @@ Then descend: ...core.auth (down to core, then auth)
    from typing import Any
    ```
 
-1. **Third-Party Packages:**
+2. **Third-Party Packages:**
 
    ```python
    from fastmcp import FastMCP
    from pydantic import BaseModel
    ```
 
-1. **Local Imports (sorted by depth):**
+3. **Local Imports (sorted by depth):**
 
    ```python
    # Deep imports first (more dots)
@@ -406,13 +406,13 @@ async def sensitive_operation(
    - Decorator verifies `user_id` parameter exists
    - Returns error if missing: `"Authentication required"`
 
-1. **Authorization Check:**
+2. **Authorization Check:**
 
    - Extracts repo path from `require_repo_param`
    - Calls `rbac_manager.check_permission()`
    - Returns error if denied: `"Authorization denied"`
 
-1. **Audit Logging:**
+3. **Audit Logging:**
 
    - All access attempts logged to `data/audit.log`
    - Sensitive parameters redacted automatically

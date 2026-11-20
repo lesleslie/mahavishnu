@@ -7,6 +7,7 @@ date: 2026-07-16
 last_reviewed: 2026-09-19
 blocks_on:
 ---
+
 # `docs/followups/` index
 
 One-line summary: dated follow-up notes — each pairs a bug/task with its

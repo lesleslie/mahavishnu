@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-11-15
 last_reviewed: 2026-11-15
-superseded_by: null
+superseded_by:
 topic: mcp-dispatch-liveness
 title: "Report pool dispatch liveness so long calls survive the client idle timeout"
 requirements:
@@ -53,8 +53,7 @@ Success signal: a dispatch that takes longer than
   `resetTimeoutOnProgress: true` and a no-op `onprogress` callback on MCP
   tool calls; the presence of that callback is what makes the bundled MCP
   client attach `_meta.progressToken` to the request.
-- The idle timer is `Math.min(Math.max(CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT,
-  perServerTimeout, 1000), wallClockTimeout)`. With no per-server timeout
+- The idle timer is `Math.min(Math.max(CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT, perServerTimeout, 1000), wallClockTimeout)`. With no per-server timeout
   and this repo's global `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT = 600000`, the
   idle window is **10 minutes** while the wall clock defaults to `1e8` ms
   (~28 hours). The idle timer was the binding constraint, not the wall
@@ -130,8 +129,7 @@ for byte.
 - **Returns to / updates**: the checked-in surface snapshot
   (`tests/fixtures/mcp_surface/tools_list.json`) — unchanged by this work, and
   that is the point.
-- **Demonstrable by**: `pytest tests/unit/test_mcp/test_pool_route_progress.py
-  tests/integration/test_pool_route_progress_e2e.py`.
+- **Demonstrable by**: `pytest tests/unit/test_mcp/test_pool_route_progress.py tests/integration/test_pool_route_progress_e2e.py`.
 - **Rollback signal**: a signature-drift finding from
   `scripts/check_mcp_tool_surface.py` naming
   `mahavishnu_pool_route_execute`.
@@ -140,15 +138,15 @@ for byte.
 ## 6. Required Code Changes
 
 - [x] `mahavishnu/mcp/tools/pool_tools.py` — runtime `Context` import,
-      `_ProgressReporter` protocol, `_dispatch_with_progress` heartbeat,
-      `ctx` parameter on `mahavishnu_pool_route_execute`.
+  `_ProgressReporter` protocol, `_dispatch_with_progress` heartbeat,
+  `ctx` parameter on `mahavishnu_pool_route_execute`.
 - [x] `tests/unit/test_mcp/test_pool_route_progress.py` — heartbeat unit
-      tests and the schema assertion.
+  tests and the schema assertion.
 - [x] `tests/integration/test_pool_route_progress_e2e.py` — end-to-end
-      delivery through a real FastMCP client.
+  delivery through a real FastMCP client.
 - [x] `tests/unit/test_mcp/test_pool_tools.py` — drop the stale
-      `mahavishnu_budget_enforce` expectation (that tool moved to
-      `budget_tools`) and fix a pre-existing unsorted import block.
+  `mahavishnu_budget_enforce` expectation (that tool moved to
+  `budget_tools`) and fix a pre-existing unsorted import block.
 
 ## 7. Validation Matrix
 

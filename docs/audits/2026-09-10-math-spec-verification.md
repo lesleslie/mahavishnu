@@ -3,14 +3,14 @@ status: complete
 role: reference
 date: 2026-09-10
 last_reviewed: 2026-09-10
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: math-spec-verification
 ---
 
 # Math Spec Verification Audit — 2026-09-10
 
-> **Purpose**: Preserve the reasoning from the 3-agent verification pass that drove the v2→v3 patch of [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`]. Future contributors asking "why does v3 say X?" should find their answer here.
+> **Purpose**: Preserve the reasoning from the 3-agent verification pass that drove the v2→v3 patch of \[`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`\]. Future contributors asking "why does v3 say X?" should find their answer here.
 >
 > **Reading guide**: §1 Overview → §2 Synthesis (BLOCKER/CRITICAL/HIGH taxonomy) → §3 v2→v3 mapping table → §4 Per-agent findings. §5 Notes on what's preserved verbatim vs. summarized.
 >
@@ -85,7 +85,7 @@ The verification round surfaced 3 BLOCKERs, 7 CRITICAL findings, 5 HIGH findings
 | Phase 6 default `slack` | `0.5` | `0.25` (allows 0.5-σ shift detection) | 2 |
 | Phase 6 default `target_metric` | `workflow_duration_p99` | `pool_queue_depth` (Q3 resolved) | 2 |
 | Phase 6 marker style | module docstring `# req:` | method-level `# req:` on `_evaluate_change_point`/`_evaluate_3sigma` (matches §5.1) | 2 |
-| Phase 6 severity classifier | unspecified | `minor` (<2×threshold), `moderate` (<4×threshold), `critical` (≥4×threshold) | 2 |
+| Phase 6 severity classifier | unspecified | `minor` (\<2×threshold), `moderate` (\<4×threshold), `critical` (≥4×threshold) | 2 |
 | Phase 6 AnomalyResult type | undefined | `mahavishnu/observability/changepoint/anomaly.py` added to §8 | 2 |
 | Phase 7 programmatic gate | 2 assertions | 5 assertions including `cusum_fp_per_10080_quiet_samples == 0` | 2 |
 | §11 Decision Rule p95 bound | `< 50%` (single) | `< 25%` Poisson; `< 50%` bursty/hyperexponential | 2 |
@@ -133,15 +133,16 @@ Each agent's section below preserves: lens, key findings (summary), and a verbat
 **Key findings (10 CRITICAL · 7 HIGH · 8 MEDIUM)**:
 
 CRITICAL items the v3 patch addressed:
-1. Phase 6 default `threshold: 5.0` achieves ARL₀ ≈ 465, but §1 commits to ARL₀ ≥ 10,000.
-2. §11 Decision Rule p95 bound (`< 50%`) looser than §1's `±25% on Poisson`.
-3. Phase 2 "Demonstrable by" claim contradicts §1 success metric (only one workload type tested).
-4. Zero-FP-in-1-week criterion is an orphan — no Phase demonstrates it.
-5. Phase 2 QueueingScorer warmup description is garbled.
-6. Phase 2 still adds a new log line, contradicting §4.5.
-7. Phase 2 references `MMcQueue` (v1 name).
-8. Phase 6 marker-style inconsistency with §5.1 mapping (method-level vs module-docstring).
-9. Q3 open question conflicts with Phase 6 default metric.
+
+01. Phase 6 default `threshold: 5.0` achieves ARL₀ ≈ 465, but §1 commits to ARL₀ ≥ 10,000.
+02. §11 Decision Rule p95 bound (`< 50%`) looser than §1's `±25% on Poisson`.
+03. Phase 2 "Demonstrable by" claim contradicts §1 success metric (only one workload type tested).
+04. Zero-FP-in-1-week criterion is an orphan — no Phase demonstrates it.
+05. Phase 2 QueueingScorer warmup description is garbled.
+06. Phase 2 still adds a new log line, contradicting §4.5.
+07. Phase 2 references `MMcQueue` (v1 name).
+08. Phase 6 marker-style inconsistency with §5.1 mapping (method-level vs module-docstring).
+09. Q3 open question conflicts with Phase 6 default metric.
 10. Staged rollout is a "Recommendation" not a deliverable.
 
 **Verbatim on the threshold contradiction**: *"Phase 6 specifies `threshold: float = 5.0` (the classical `h`) with the comment 'chosen for ARL₀ ≈ 465 at standard settings.' But §1 commits to `ARL₀ ≥ 10,000` and §11 Decision Rule point 1 requires `change-point ARL₀ ≥ 10,000` to ship. The shipped default achieves ARL₀ ≈ 465, not ≥ 10,000."*
@@ -159,11 +160,13 @@ CRITICAL items the v3 patch addressed:
 **Key findings (3 BLOCKER · 8 CONCERNS · multiple OK)**:
 
 **BLOCKERS** (all addressed in v3):
+
 1. `audit_requirements.py:76-92 parse_frontmatter` reads frontmatter only — verified by reading the script. The `requirements:` block in the spec body is invisible to the audit.
 2. No top-level Makefile exists at the repo root — verified by `ls`. The `make tier2-eligibility` CI gate has no target.
 3. OTel span `runbook_url` references a non-existent file. No `docs/runbooks/` entry.
 
 **CONCERNS** (most addressed in v3):
+
 1. `bench.json` keys (`p95_error`, `cusum_p95_latency_at_0.5_sigma`, `cusum_arl0`) don't exist in pytest-benchmark's default output. Tests need to write a custom JSON.
 2. Spec misidentifies `mahavishnu_routing_decisions_total` location (`mahavishnu/monitoring/metrics.py:routing_metrics.py:163` — directory does not exist; actual is `mahavishnu/core/routing_metrics.py:164`).
 3. Spec says "queue cap 100" for fitness_analyzer; actual is `_MAX_BUFFER_SIZE = 1000`.
@@ -186,6 +189,7 @@ CRITICAL items the v3 patch addressed:
 This document preserves each agent's lens, key findings, and the most decision-affecting verbatim quote. The full text of each agent's response is in the ephemeral JSONL transcripts at `/private/tmp/claude-501/-Users-les-Projects-mahavishnu/0fabba93-19ac-4966-8208-e34b70f3e868/tasks/*.output`.
 
 The preservation strategy prioritizes **traceability of decisions** over verbatim completeness:
+
 - Convergent findings (§2.1) summarize with attribution because the value is in the agreement.
 - Severity taxonomy (§2.3) makes BLOCKER/CRITICAL/HIGH/MEDIUM explicit so the patch scope is auditable.
 - v2→v3 mapping table (§3) is the durable record of which v2 problem each v3 change fixes.
@@ -196,7 +200,7 @@ If a future contributor needs a specific fact that isn't in this doc, the JSONL 
 
 ## 6. References
 
-- [`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`] — the v3 spec this verification drove
+- \[`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`\] — the v3 spec this verification drove
 - [`docs/audits/2026-09-10-math-spec-review.md`](2026-09-10-math-spec-review.md) — the round-1 (9-agent) review that drove v1→v2
 - `docs/plans/TEMPLATE.md` — integration-contract template the spec follows
 - `docs/decisions/wire-up-contract.md` — Integration Contract policy

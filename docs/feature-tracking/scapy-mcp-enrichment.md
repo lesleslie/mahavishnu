@@ -50,6 +50,7 @@ scapy-mcp enrichment metadata merges into the `FlowEdge` proto published over th
 ## End-to-end check
 
 > **Cannot be named until v2 fixes ship.** Required pieces (per L5 BLOCKERs):
+>
 > 1. Add 4 mandatory feed observability metrics to `EnrichmentRegistry` (`entities_count`, `last_updated_timestamp`, `errors_total`, `cycles_total`)
 > 2. Specify `flowscape doctor --enrichment` output envelope
 > 3. Define SLO targets (latency p99, availability, error rate)

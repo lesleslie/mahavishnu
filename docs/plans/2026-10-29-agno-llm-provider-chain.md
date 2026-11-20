@@ -3,22 +3,22 @@ status: complete
 role: implementation
 date: 2026-10-29
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: agno-llm-routing
 title: "Agno LLM provider chain — MiniMax primary, llama-server as fallback"
 requirements:
-- id: REQ-AGNO-001
-  title: Agno LLM provider defaults to MiniMax
-- id: REQ-AGNO-002
-  title: llama-server reachable only as an ordered fallback
-- id: REQ-AGNO-003
-  title: base_url no longer defaults to the llama-server URL
-- id: REQ-AGNO-004
-  title: model_id resolves per provider and drops qwen2.5:7b
-- id: REQ-AGNO-005
-  title: Bifrost-routed calls authenticate with the gateway virtual key
-- id: REQ-AGNO-006
-  title: The agno.llm block is authoritative over the legacy flat config shapes
+  - id: REQ-AGNO-001
+    title: Agno LLM provider defaults to MiniMax
+  - id: REQ-AGNO-002
+    title: llama-server reachable only as an ordered fallback
+  - id: REQ-AGNO-003
+    title: base_url no longer defaults to the llama-server URL
+  - id: REQ-AGNO-004
+    title: model_id resolves per provider and drops qwen2.5:7b
+  - id: REQ-AGNO-005
+    title: Bifrost-routed calls authenticate with the gateway virtual key
+  - id: REQ-AGNO-006
+    title: The agno.llm block is authoritative over the legacy flat config shapes
 ---
 
 # Agno LLM provider chain — MiniMax primary, llama-server as fallback
@@ -44,15 +44,15 @@ string) in single-digit seconds.
 ## 2. Goals
 
 1. `agno.llm.provider` defaults to `minimax`, not `llama_server`.
-1. `llama_server` is reachable only as an ordered fallback, never as the
+2. `llama_server` is reachable only as an ordered fallback, never as the
    default target.
-1. `agno.llm.base_url` stops defaulting to the llama-server URL, so
+3. `agno.llm.base_url` stops defaulting to the llama-server URL, so
    selecting `minimax`/`openai`/`anthropic` cannot silently talk to
    `localhost:8081`.
-1. `agno.llm.model_id` stops naming the nonexistent `qwen2.5:7b` and
+4. `agno.llm.model_id` stops naming the nonexistent `qwen2.5:7b` and
    resolves per provider (`MiniMax-M3`, `qwen3.5`, `claude-sonnet-4-6`,
    `gpt-4o`).
-1. When the resolved base URL points at the Bifrost gateway, the
+5. When the resolved base URL points at the Bifrost gateway, the
    client-facing credential is the gateway **virtual key**, not the
    provider's own API key.
 
@@ -61,15 +61,15 @@ string) in single-digit seconds.
 1. **Not** reusing `mcp_common.llm.FallbackChain` for the Agno agent loop.
    `OpenAICompatibleProvider.execute()` returns only `content` — it drops
    `tool_calls` — so it cannot drive Agno's tool-calling loop. See §4.5.
-1. **Not** implementing mid-loop per-call failover. See §4.5 for why the
+2. **Not** implementing mid-loop per-call failover. See §4.5 for why the
    tool-call replay semantics make it a separate, riskier change.
-1. **Not** renaming the repo-wide `qwen3.5` label to the literal GGUF
+3. **Not** renaming the repo-wide `qwen3.5` label to the literal GGUF
    filename `Qwen3-8B-Q4_K_M.gguf`. See §4.4.
-1. **Not** adding a `settings/models.yaml` loader. The repo's established
+4. **Not** adding a `settings/models.yaml` loader. The repo's established
    pattern is in-code constants in `core/model_routing.py`, pinned to the
    YAML by `tests/unit/test_task_router.py::TestRoutingCoverage`.
    *(Superseded 2026-11-05 — see §10.7.)*
-1. **Not** touching `settings/local.yaml` in version control — it is
+5. **Not** touching `settings/local.yaml` in version control — it is
    gitignored operator-local state.
 
 ## 4. Current Findings
@@ -167,8 +167,7 @@ inconsistent LLM resolution paths**:
 
 - `initialize()` used `self.agno_config.llm` — the `agno.llm` block.
 - `_get_llm()` used `_resolve_legacy_llm_config()`, which reads the
-  **top-level `llm:` block** (`model: qwen3.5`, `base_url:
-  http://localhost:8081`) — the llama-server endpoint that block exists
+  **top-level `llm:` block** (`model: qwen3.5`, `base_url: http://localhost:8081`) — the llama-server endpoint that block exists
   for (LlamaIndex/embeddings).
 
 `_resolve_legacy_llm_config()` applied the legacy values *over* the
@@ -237,6 +236,7 @@ requirements:
 `base_url`, fictional `model_id`).
 
 **Tasks:**
+
 - `AgnoLLMConfig.provider` default → `LLMProvider.MINIMAX`.
 - `AgnoLLMConfig.base_url` default → `None`.
 - `AgnoLLMConfig.model_id` default → per-provider resolution via a
@@ -252,6 +252,7 @@ requirements:
 `[llama_server]`.
 
 #### Integration Contract ← REQUIRED
+
 - **Triggered from:** `MahavishnuSettings()` load — `core/config.py`
   `AgnoAdapterConfig.llm` default factory.
 - **Returns to / updates:** `mahavishnu/core/config.py` (`AgnoLLMConfig`);
@@ -267,6 +268,7 @@ requirements:
 `[provider] + fallback_providers`.
 
 **Tasks:**
+
 - `LLMProviderFactory.create_model()` iterates the ordered chain and
   returns the first provider whose credentials are present.
 - Add `_provider_available(provider)` — credential-presence check per
@@ -285,6 +287,7 @@ llama-server model; with it present, it returns the MiniMax model pointed
 at Bifrost.
 
 #### Integration Contract ← REQUIRED
+
 - **Triggered from:** `AgnoAdapter._get_llm()` →
   `LLMProviderFactory.create_model()` (`agno_adapter_impl.py:1342-1361`),
   called from `_create_agent` (`:1204`) when building `Agent(model=...)`.
@@ -296,8 +299,7 @@ at Bifrost.
   `http://localhost:8081` under llama-server.
 - **Rollback signal:** `AgnoError: Failed to create LLM model` with
   `details.provider` set — the chain exhausted every candidate.
-- **Observability added:** `logger.info("Agno LLM provider selected:
-  provider=%s model_id=%s base_url=%s")` at selection time.
+- **Observability added:** `logger.info("Agno LLM provider selected: provider=%s model_id=%s base_url=%s")` at selection time.
 
 ### Phase 3: Settings, tests, and documentation
 
@@ -305,6 +307,7 @@ at Bifrost.
 tests.
 
 **Tasks:**
+
 - Add an `agno:` block to `settings/mahavishnu.yaml` recording the
   intended provider chain.
 - Update `tests/unit/test_agno_adapter_impl.py:248` (asserts the old
@@ -317,6 +320,7 @@ tests.
 `crackerjack run -v -f` passes.
 
 #### Integration Contract ← REQUIRED
+
 - **Triggered from:** repo test suite and the Crackerjack merge gate.
 - **Returns to / updates:** `settings/mahavishnu.yaml`, `CLAUDE.md`,
   `tests/unit/test_agno_adapter_impl.py`.
@@ -330,14 +334,14 @@ tests.
 ## 6. Required Code Changes
 
 - [ ] `mahavishnu/core/config.py` — `AgnoLLMConfig`: provider default,
-      `base_url` default, per-provider `model_id`, `fallback_providers`,
-      docstrings.
+  `base_url` default, per-provider `model_id`, `fallback_providers`,
+  docstrings.
 - [ ] `mahavishnu/engines/agno_adapter_impl.py` — `LLMProviderFactory`:
-      ordered chain selection, availability check, per-provider model id,
-      Bifrost virtual-key binding, selection log line.
+  ordered chain selection, availability check, per-provider model id,
+  Bifrost virtual-key binding, selection log line.
 - [ ] `settings/mahavishnu.yaml` — `agno:` block.
 - [ ] `tests/unit/test_agno_adapter_impl.py` — updated default assertion
-      plus new chain/model-id/virtual-key tests.
+  plus new chain/model-id/virtual-key tests.
 - [ ] `CLAUDE.md` — document the Agno provider chain.
 
 ## 7. Validation Matrix

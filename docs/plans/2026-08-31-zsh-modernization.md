@@ -3,10 +3,9 @@ status: draft
 role: canonical
 date: 2026-08-31
 last_reviewed: 2026-10-15
-superseded_by: null
+superseded_by:
 topic: config-consolidation
 title: "Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)"
-
 ---
 
 # Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)
@@ -35,17 +34,22 @@ title: "Plan: Zsh Stack Modernization (oh-my-zsh → Sheldon/Starship)"
 - **Rollback signal per phase:** `~/dotfiles-backup-YYYY-MM-DD/` must contain a recoverable copy of every file the phase touches.
 - **Process Discipline (per `AGENTS.md`):** every Phase delivers an **Integration Contract** block before being marked complete: *Triggered from / Returns to / Demonstrable by / Rollback signal / Observability added*.
 
----
+______________________________________________________________________
 
 ## Phase 0 — Pre-flight (snapshot + baseline)
 
 > Goal: Capture everything we might need to revert to, and record baseline timings so we can prove the new stack is faster.
 
 **Files:**
+
 - Create: `~/dotfiles-backup-<date>/.zshrc`
+
 - Create: `~/dotfiles-backup-<date>/.zsh/` (recursive copy of OMZ dir if present)
+
 - Create: `~/dotfiles-backup-<date>/Library/Preferences/com.googlecode.iterm2.plist`
+
 - Create: `~/dotfiles-backup-<date>/ghostty-config` (if `~/.config/ghostty/config` exists)
+
 - Create: `~/.config/mahavishnu/zsh-migration.log` (timing baseline log)
 
 - [ ] **Step 0.1: Confirm Homebrew is installed and on PATH**
@@ -122,19 +126,21 @@ grep -E '^\s*plugins=\(' ~/.oh-my-zsh/lib/cli.zsh 2>/dev/null || \
 The result is a starting checklist of what *might* be useful — pick only those the engineer actually uses. Do **not** blindly mirror all of them into Sheldon; that defeats the purpose of the migration.
 
 **Integration Contract — Phase 0:**
+
 - *Triggered from:* User decides to start migration.
 - *Returns to / updates:* Creates `~/dotfiles-backup-<date>/` (recoverable) and `~/.config/mahavishnu/zsh-migration.log`.
 - *Demonstrable by:* `ls ~/dotfiles-backup-<date>/` shows OMZ dir, zshrc, iTerm plist, Ghostty config. `tail -3 zsh-migration.log` shows baseline ms.
 - *Rollback signal:* Restore from `~/dotfiles-backup-<date>/` with `cp -a ~/dotfiles-backup-<date>/.zshrc ~/`. OMZ still functions.
 - *Observability added:* baseline timing logged at `~/.config/mahavishnu/zsh-migration.log`.
 
----
+______________________________________________________________________
 
 ## Phase 1 — Install Nerd Font
 
 > Goal: A patched monospace font that ships glyph coverage for Starship, fzf, eza, etc.
 
 **Files:**
+
 - Read (no write): existing font selection in Ghostty/iTerm2.
 
 - [ ] **Step 1.1: Install JetBrainsMono Nerd Font Mono**
@@ -164,20 +170,23 @@ fc-list | grep -i 'JetBrains Mono Nerd Font Mono' | head -1
 Expected: a fontconfig line for the new font. If empty, run `brew reinstall font-jetbrains-mono-nerd-font`.
 
 **Integration Contract — Phase 1:**
+
 - *Triggered from:* Phase 0 complete.
 - *Returns to / updates:* No config files yet.
 - *Demonstrable by:* `fc-list` shows JetBrains Mono Nerd Font Mono.
 - *Rollback signal:* `brew uninstall --cask font-jetbrains-mono-nerd-font`.
 - *Observability added:* None yet.
 
----
+______________________________________________________________________
 
 ## Phase 2 — Install Ghostty and configure it for Nerd Fonts
 
 > Goal: Terminal pointed at the new font with a stable theme and the right cell-width behavior.
 
 **Files:**
+
 - Create/Modify: `~/.config/ghostty/config`
+
 - Backup: `~/dotfiles-backup-<date>/ghostty/config`
 
 - [ ] **Step 2.1: Install Ghostty (skip if already installed)**
@@ -235,19 +244,21 @@ Expected: empty output or "config valid". If errors, fix them in `~/.config/ghos
 Manual: open Ghostty, run `echo "  ⚡ ★  "`. The icons should render as actual icons, not box/missing-glyph squares. If they render as `?`, the font is wrong — re-check `font-family`.
 
 **Integration Contract — Phase 2:**
+
 - *Triggered from:* Phase 1 complete.
 - *Returns to / updates:* `~/.config/ghostty/config` now references JetBrainsMono Nerd Font Mono.
 - *Demonstrable by:* `ghostty +validate-config` exits clean. Visual: glyph icons render correctly.
 - *Rollback signal:* Restore `~/dotfiles-backup-<date>/ghostty/config`.
 - *Observability added:* Ghostty debug logs at `~/Library/Logs/com.mitchellh.ghostty/`.
 
----
+______________________________________________________________________
 
 ## Phase 3 — Install iTerm2 Nerd Font profile (secondary terminal)
 
 > Goal: Keep iTerm2 usable with the same font, so muscle memory carries over.
 
 **Files:**
+
 - Modify: `~/Library/Preferences/com.googlecode.iterm2.plist` (via iTerm2 GUI; no script edit).
 
 - [ ] **Step 3.1: Open iTerm2 and duplicate the current default profile**
@@ -263,20 +274,23 @@ Manual: with `NerdFont` selected → Text → Font → "JetBrainsMono Nerd Font 
 Manual: in a new iTerm2 window using the `NerdFont` profile, run `echo "  ⚡ ★  "`. Icons render correctly.
 
 **Integration Contract — Phase 3:**
+
 - *Triggered from:* Phase 2 complete.
 - *Returns to / updates:* iTerm2 has a `NerdFont` profile using the new font.
 - *Demonstrable by:* Visual glyph check passes; old profiles unchanged.
 - *Rollback signal:* Re-select "Default" profile; delete `NerdFont` profile.
 - *Observability added:* None.
 
----
+______________________________________________________________________
 
 ## Phase 4 — Install shell toolchain via Homebrew
 
 > Goal: All binaries installed and on PATH, before we wire them into `.zshrc`.
 
 **Files:**
+
 - Create: `~/Brewfile.zsh-migration`
+
 - Modify (later phases): `~/.zshrc`, dotfiles repo.
 
 - [ ] **Step 4.1: Write a Brewfile so the install is reproducible**
@@ -350,20 +364,23 @@ direnv --version
 Expected: each prints a version. Save the versions for the dotfiles Brewfile lock.
 
 **Integration Contract — Phase 4:**
+
 - *Triggered from:* Phase 3 complete.
 - *Returns to / updates:* `~/Brewfile.zsh-migration` exists; 11 binaries on PATH.
 - *Demonstrable by:* `command -v` returns paths for all 11. Each `<tool> --version` succeeds.
 - *Rollback signal:* `brew uninstall` per formula. Or restore PATH to pre-Brewfile state (no env changes were made — pure installs).
 - *Observability added:* `~/Brewfile.zsh-migration` documents the install for replay.
 
----
+______________________________________________________________________
 
 ## Phase 5 — Configure Sheldon
 
 > Goal: Plugin manager running with TOML config; plugins generate a lockfile and source into a test shell.
 
 **Files:**
+
 - Create: `~/.config/sheldon/plugins.toml`
+
 - Create: `~/.config/sheldon/plugins.lock` (generated; commit to dotfiles)
 
 - [ ] **Step 5.1: Snapshot any existing Sheldon state**
@@ -444,19 +461,21 @@ zsh -c 'eval "$(sheldon source)" && echo "sheldon OK: loaded ${#plugins[@]} plug
 Expected: `sheldon OK: loaded N plugins` with N matching the plugin count.
 
 **Integration Contract — Phase 5:**
+
 - *Triggered from:* Phase 4 complete.
 - *Returns to / updates:* `~/.config/sheldon/plugins.toml` + `plugins.lock` exist.
 - *Demonstrable by:* `sheldon source` prints valid zsh script; subshell can source it.
 - *Rollback signal:* `rm -rf ~/.config/sheldon`; copy `$BACKUP/sheldon` back.
 - *Observability added:* `sheldon --log-level=debug source` writes to stderr.
 
----
+______________________________________________________________________
 
 ## Phase 6 — Configure Starship
 
 > Goal: Fast, legible prompt with the perf mitigations that prevent the Chromium-repo slowdown.
 
 **Files:**
+
 - Create: `~/.config/starship.toml`
 
 - [ ] **Step 6.1: Write `~/.config/starship.toml`**
@@ -536,20 +555,23 @@ cd /tmp && rm -rf bench && mkdir bench && cd bench && git init -q
 Expected: under 30 ms in a fresh empty repo. Compare against the same in a real repo — if real repo > 100 ms, that's the git_status tax and we've already configured `ahead_behind_count = false` to minimize it.
 
 **Integration Contract — Phase 6:**
+
 - *Triggered from:* Phase 5 complete.
 - *Returns to / updates:* `~/.config/starship.toml` written with perf tunables.
 - *Demonstrable by:* `starship prompt` runs; `starship print-config` parses.
 - *Rollback signal:* `rm ~/.config/starship.toml` (falls back to defaults).
 - *Observability added:* `STARSHIP_LOG=trace starship prompt` shows per-module ms.
 
----
+______________________________________________________________________
 
 ## Phase 7 — Configure Atuin, zoxide, delta, and iTerm2/Ghostty integration
 
 > Goal: Each tool has its config file and is wired so it's "live" once `.zshrc` sources it.
 
 **Files:**
+
 - Create: `~/.config/atuin/config.toml`
+
 - Create: `~/.config/delta/themes.gitconfig` (gitconfig fragment, sourced via `~/.gitconfig`)
 
 - [ ] **Step 7.1: Initialize Atuin**
@@ -643,19 +665,21 @@ zoxide query /tmp/zoxide 2>&1
 Expected: prints the path (or empty if it's the first run). zoxide learns on first `cd` to a path.
 
 **Integration Contract — Phase 7:**
+
 - *Triggered from:* Phase 6 complete.
 - *Returns to / updates:* `~/.config/atuin/config.toml`, `~/.gitconfig` updated.
 - *Demonstrable by:* `git diff` uses delta; `atuin search test` returns results from history.
 - *Rollback signal:* Restore `~/.gitconfig` from backup; `rm ~/.config/atuin/config.toml`.
 - *Observability added:* Atuin DB at `~/.local/share/atuin/history.db` (gitignored from dotfiles).
 
----
+______________________________________________________________________
 
 ## Phase 8 — Write the new `.zshrc`
 
 > Goal: A minimal, readable `.zshrc` (~80 lines) that wires everything together. Nothing more.
 
 **Files:**
+
 - Modify: `~/.zshrc` (rewritten from scratch — old version is backed up)
 - Touch (preserve): `~/.zprofile` (do NOT touch in this plan)
 
@@ -771,13 +795,14 @@ echo "FD=$commands[fd]"
 Expected: `PROMPT4` is set (Starship overrode it), and the commands resolve.
 
 **Integration Contract — Phase 8:**
+
 - *Triggered from:* Phases 5–7 complete.
 - *Returns to / updates:* `~/.zshrc` rewritten. OMZ is **not** yet uninstalled.
 - *Demonstrable by:* `time zsh -i -c exit` < 200 ms; all key commands resolve; prompt is Starship-rendered.
 - *Rollback signal:* `cp -a ~/dotfiles-backup-<date>/.zshrc ~/.zshrc` restores the OMZ version.
 - *Observability added:* Timing comparison logged at `~/.config/mahavishnu/zsh-migration.log`.
 
----
+______________________________________________________________________
 
 ## Phase 9 — Validate in a real interactive shell (parallel mode)
 
@@ -815,20 +840,23 @@ Use the new shell as your daily driver for 5–7 working days. Track anything th
 Gate: if more than two real issues remain after a week, debug those issues and re-test before moving on. If everything works, proceed to Phase 10.
 
 **Integration Contract — Phase 9:**
+
 - *Triggered from:* Phase 8 complete.
 - *Returns to / updates:* `~/.config/mahavishnu/zsh-migration-issues.md` accumulates any complaints.
 - *Demonstrable by:* After 5+ days of daily use, no unresolved issues remain.
 - *Rollback signal:* `cp -a ~/dotfiles-backup-<date>/.zshrc ~/.zshrc`.
 - *Observability added:* Issues log under `~/.config/mahavishnu/`.
 
----
+______________________________________________________________________
 
 ## Phase 10 — Uninstall oh-my-zsh
 
 > Goal: Remove the OMZ directory and any leftover scaffolding. Only proceed if Phase 9 gate passed.
 
 **Files:**
+
 - Delete: `~/.oh-my-zsh/`
+
 - Modify: confirm `~/.zshrc` no longer references OMZ (already true from Phase 8).
 
 - [ ] **Step 10.0: Verify the gate from Phase 9 passed**
@@ -868,26 +896,35 @@ echo "Oh-My-Zsh installed?: $([ -d ~/.oh-my-zsh ] && echo yes || echo no)"
 Expected: under 200 ms; `no`. If `yes`, repeat Step 10.2.
 
 **Integration Contract — Phase 10:**
+
 - *Triggered from:* Phase 9 gate passed.
 - *Returns to / updates:* `~/.oh-my-zsh/` archived (not deleted); `~/.zshrc` confirmed OMZ-free.
 - *Demonstrable by:* `[ -d ~/.oh-my-zsh ]` returns false; shell still loads cleanly.
 - *Rollback signal:* `mv ~/dotfiles-backup-<date>/.oh-my-zsh.archived-<date> ~/.oh-my-zsh; cp -a ~/dotfiles-backup-<date>/.zshrc ~/.zshrc` restores the original setup.
 - *Observability added:* `~/dotfiles-backup-<date>/.oh-my-zsh.archived-<date>/` retained for 30 days, then `rm -rf`.
 
----
+______________________________________________________________________
 
 ## Phase 11 — Dotfiles sync (reproducible on any machine)
 
 > Goal: Capture the entire setup in a git repo so a fresh machine can reproduce it with one command.
 
 **Files:**
+
 - Create: `~/dotfiles/` (bare git repo working tree)
+
 - Create: `~/dotfiles/zsh/zshrc` (the new `.zshrc`)
+
 - Create: `~/dotfiles/zsh/starship.toml`
+
 - Create: `~/dotfiles/zsh/sheldon/plugins.toml` + `plugins.lock`
+
 - Create: `~/dotfiles/zsh/atuin/config.toml`
+
 - Create: `~/dotfiles/zsh/Brewfile`
+
 - Create: `~/dotfiles/zsh/ghostty/config`
+
 - Create: `~/dotfiles/bootstrap.sh`
 
 - [ ] **Step 11.1: Initialize a bare git repo as the dotfiles working tree**
@@ -1004,13 +1041,14 @@ bash ~/dotfiles/bootstrap.sh
 Expected: shell ready in under 5 minutes with identical prompt and behavior.
 
 **Integration Contract — Phase 11:**
+
 - *Triggered from:* Phase 10 complete.
 - *Returns to / updates:* `~/dotfiles/` is now a tracked git repo. `bootstrap.sh` reproduces the entire setup.
 - *Demonstrable by:* Running `bash bootstrap.sh` on a fresh machine produces a working shell with the same plugin set, prompt, and aliases.
 - *Rollback signal:* Not strictly reversible — the dotfiles repo is the new source of truth. To undo, delete `~/dotfiles/` and restore `~/dotfiles-backup-<date>/` files manually.
 - *Observability added:* Single source of truth for cross-machine parity.
 
----
+______________________________________________________________________
 
 ## Phase 12 — Final verification + cleanup
 
@@ -1019,10 +1057,15 @@ Expected: shell ready in under 5 minutes with identical prompt and behavior.
 **Files:** none new.
 
 **Integration Contract — Phase 12:**
+
 - *Triggered from:* Phase 11 (dotfiles synced) complete.
+
 - *Returns to / updates:* `~/.config/mahavishnu/zsh-migration.log` gains a completion entry; backup deletion scheduled.
+
 - *Demonstrable by:* All Step 12.1 smoke tests pass; `atq` shows the scheduled deletion; log has the completion entry.
+
 - *Rollback signal:* The `~/dotfiles-backup-<date>/` directory still exists until 2026-09-30 (manual `rm -rf` if needed sooner). The dotfiles repo at `~/dotfiles/` is the new source of truth — restore from there if Phase 12 itself goes wrong.
+
 - *Observability added:* Final completion entry in the migration log; `atq` job ID for the cleanup.
 
 - [ ] **Step 12.1: Run the success-criteria smoke tests from the spec**
@@ -1103,13 +1146,14 @@ Append to `~/.config/mahavishnu/zsh-migration.log`:
 ```
 
 **Integration Contract — Plan as a whole:**
+
 - *Triggered from:* User decision to move off OMZ.
 - *Returns to / updates:* New zsh stack installed, OMZ archived, dotfiles repo ready for sync.
 - *Demonstrable by:* Fresh shell has Starship prompt, all 11 commands resolve, plugins load, OMZ absent.
 - *Rollback signal:* `~/dotfiles-backup-<date>/` retained for 30 days.
 - *Observability added:* `~/.config/mahavishnu/zsh-migration.log` records baseline + completion.
 
----
+______________________________________________________________________
 
 ## Self-Review
 
@@ -1138,13 +1182,14 @@ Append to `~/.config/mahavishnu/zsh-migration.log`:
 **Placeholder scan:** No "TBD", "TODO", "implement later", or "fill in details" in any task. All code blocks contain literal content. Each task's verification command is concrete.
 
 **Type/name consistency:**
+
 - File paths use `~/.config/...` consistently; Brewfile lives at `~/Brewfile.zsh-migration` then moves to `~/dotfiles/zsh/Brewfile`.
 - Backup dir `~/dotfiles-backup-<date>/` is referenced identically across all phases.
 - Tool names match exactly between Phase 4 (install) and Phase 7/8 (configure): sheldon, starship, atuin, zoxide, delta, fzf, bat, eza, fd, rg, direnv.
 
 **Integration Contract discipline:** Every phase has all five required fields (Triggered from / Returns to / Demonstrable by / Rollback signal / Observability added) per `AGENTS.md` Process Discipline.
 
----
+______________________________________________________________________
 
 ## Plan Complete
 

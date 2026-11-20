@@ -4,10 +4,11 @@ role: canonical
 kind: reference
 date: 2026-04-06
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: mcp-design
 title: Event Envelope Specification
 ---
+
 # Event Envelope Specification
 
 ## Overview
@@ -101,6 +102,6 @@ Built-in schemas registered at startup for all Mahavishnu event types:
 The `EventBus` provides two paths:
 
 1. `publish(event_type, data, source)` — legacy, auto-wraps in EventEnvelope
-1. `publish_envelope(envelope)` — preferred, explicit envelope construction
+2. `publish_envelope(envelope)` — preferred, explicit envelope construction
 
 All persisted events include the envelope JSON in a dedicated `envelope` column.

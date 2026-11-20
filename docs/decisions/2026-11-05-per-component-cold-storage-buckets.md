@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-11-05
 last_reviewed: 2026-11-05
-superseded_by: null
+superseded_by:
 topic: per-component-cold-storage-buckets
 ---
 
@@ -103,8 +103,8 @@ wins") is:
 2. env source (`{PREFIX}_{SECTION}__{FIELD}`)
 3. legacy single-underscore alias source
 4. `ONEIRIC__SUBSTRATE__*` source
-5-9. **YAML layers** — XDG local, XDG config, project local, project yaml, project yml
-10-11. dotenv (deactivated by the loader), file secrets
+   5-9. **YAML layers** — XDG local, XDG config, project local, project yaml, project yml
+   10-11. dotenv (deactivated by the loader), file secrets
 
 **Env vars outrank every YAML layer, including the XDG overlay.** An operator
 who writes `cold:` in `~/.config/akosha/local.yaml` expects it to take

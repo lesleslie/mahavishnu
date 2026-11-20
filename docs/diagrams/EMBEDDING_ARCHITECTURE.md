@@ -417,17 +417,17 @@ ______________________________________________________________________
    mmdc -i docs/diagrams/EMBEDDING_ARCHITECTURE.md -o docs/diagrams/embedding-architecture.png
    ```
 
-1. **With Mermaid Live Editor**:
+2. **With Mermaid Live Editor**:
 
    - Copy diagram code to https://mermaid.live
    - Export as PNG/SVG
 
-1. **In Markdown (GitHub/GitLab)**:
+3. **In Markdown (GitHub/GitLab)**:
 
    - Diagrams render automatically in supported Markdown viewers
    - Use fenced code blocks with `mermaid` language
 
-1. **With Mermaid MCP Server**:
+4. **With Mermaid MCP Server**:
 
    ```bash
    # Generate diagram programmatically

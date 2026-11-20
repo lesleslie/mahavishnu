@@ -25,10 +25,9 @@ The fleet carried three separate git-hook systems, and a **global**
 
 2. **System B — deleted.**
    `scripts/install-bodai-git-hooks.sh` wrote a *different* pre-commit
-   wrapper that ended in `exec uv run … mahavishnu git-hook
-   pre-commit`, plus post-* wrappers that published to the Oneiric
+   wrapper that ended in `exec uv run … mahavishnu git-hook pre-commit`, plus post-\* wrappers that published to the Oneiric
    bus. It was installed in **no** repo, and it was **broken**: its
-   post-* hooks ran `mahavishnu jot capture`, a command that never
+   post-\* hooks ran `mahavishnu jot capture`, a command that never
    shipped (`mahavishnu jot` has no `capture` sub-command), so every
    post-commit it installed would print `No such command 'capture'`
    and exit non-zero. Removed 2026-11-15 along with the whole

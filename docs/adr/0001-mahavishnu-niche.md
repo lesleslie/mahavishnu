@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-09-26
 last_reviewed: 2026-10-15
-superseded_by: null
+superseded_by:
 blocks_on: []
 decision_date: 2026-09-26
 topic: mahavishnu-niche

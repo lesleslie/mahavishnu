@@ -26,10 +26,10 @@ Use this workflow for complex work that needs a deliberate planning gate before 
 ## Workflow
 
 1. Analyze requirements, current state, and constraints.
-1. Design the solution and compare alternatives.
-1. Create a phased implementation plan with risks and mitigations.
-1. Wait for explicit approval before execution.
-1. Review outcomes against the plan and capture lessons learned.
+2. Design the solution and compare alternatives.
+3. Create a phased implementation plan with risks and mitigations.
+4. Wait for explicit approval before execution.
+5. Review outcomes against the plan and capture lessons learned.
 
 ## Output
 

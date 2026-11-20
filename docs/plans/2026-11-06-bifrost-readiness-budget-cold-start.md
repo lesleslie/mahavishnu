@@ -4,12 +4,12 @@ role: implementation
 kind: plan
 date: 2026-11-06
 last_reviewed: 2026-11-06
-superseded_by: null
+superseded_by:
 topic: bifrost-readiness-budget
 title: "Make the Bifrost readiness budget clear the observed cold start"
 requirements:
-- id: REQ-BIFROST-045
-  title: Readiness budget clears the worst observed cold start
+  - id: REQ-BIFROST-045
+    title: Readiness budget clears the worst observed cold start
 ---
 
 # Make the Bifrost readiness budget clear the observed cold start
@@ -92,6 +92,7 @@ requirements:
 wait covers the spawn.
 
 **Tasks:**
+
 1. Raise `gateway.READY_TIMEOUT_SECONDS` from 180s to 600s.
 2. Anchor the deadline *before* `launch_bifrost()` so the fork/exec stall
    is charged against the budget instead of extending it.
@@ -147,10 +148,10 @@ deadline and the progress line.
 ## 6. Required Code Changes
 
 - [x] `mahavishnu/bifrost/gateway.py` — `READY_TIMEOUT_SECONDS` 180 → 600;
-      deadline anchored before `launch_bifrost()`.
+  deadline anchored before `launch_bifrost()`.
 - [x] `mahavishnu/bifrost/lifecycle.py` — `READY_BUDGET_SECONDS` = timeout
-      + 60; `REPORT_INTERVAL_SECONDS`; progress line in
-      `wait_for_ready_file`.
+  \+ 60; `REPORT_INTERVAL_SECONDS`; progress line in
+  `wait_for_ready_file`.
 - [x] `tests/unit/test_bifrost_gateway_readiness.py` — new.
 
 ## 7. Validation Matrix

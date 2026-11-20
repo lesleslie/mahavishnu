@@ -4,7 +4,7 @@ status: complete
 role: historical
 topic: bodai-ecosystem-candidates
 last_reviewed: 2026-06-22
-superseded_by: null
+superseded_by:
 ---
 
 # Bodai Ecosystem Candidate Evaluation
@@ -122,8 +122,8 @@ ______________________________________________________________________
 **Integration shape — three options ranked**:
 
 1. **Emdash as a CLIENT of Mahavishnu (best)**: A thin `mahavishnu-emdash-bridge` CLI that calls `pool_route_execute` and streams progress back over a PTY-compatible interface. Register as a provider in Emdash's 31-CLI registry. Users get Mahavishnu's routing/observability/memory aggregation + Emdash's UI/review workflow. **Effort: M**.
-1. **Borrow Emdash's patterns (cheap)**: Implement `mahavishnu repo diff <worktree-id>` + `mahavishnu repo pr create <worktree-id> --fill` in `mahavishnu/cli/`. `mahavishnu ingest issue --from <tracker>` mirroring `content_ingester.py` shape. Document local-first single-machine pool pattern. **Effort: S–M, scattered**.
-1. **Emdash as a MahavishnuPool implementation (skip)**: Would require extracting the git-worktree + agent-spawn + diff-render core from Electron and re-hosting as a Node CLI. **Effort: L. Recommendation: NO.**
+2. **Borrow Emdash's patterns (cheap)**: Implement `mahavishnu repo diff <worktree-id>` + `mahavishnu repo pr create <worktree-id> --fill` in `mahavishnu/cli/`. `mahavishnu ingest issue --from <tracker>` mirroring `content_ingester.py` shape. Document local-first single-machine pool pattern. **Effort: S–M, scattered**.
+3. **Emdash as a MahavishnuPool implementation (skip)**: Would require extracting the git-worktree + agent-spawn + diff-render core from Electron and re-hosting as a Node CLI. **Effort: L. Recommendation: NO.**
 
 **Recommended next step**: Spike Path A (1 week) + Path B (1 week) = 2-week scoped commitment. After spike, evaluate full M-scope (A+B+C+D+F) vs. stop at B as standalone QoL improvement.
 
@@ -188,8 +188,8 @@ ______________________________________________________________________
 **Integration shape**:
 
 1. **Akosha ingester pipeline** (M effort) — ship `graphifyy` as optional dep; new `mahavishnu/ingesters/graphify_ingester.py` calls `graphify <path> --update --json` and pipes into Akosha; new MCP tool `mcp__mahavishnu__ingest_graphify <repo_path>`. Confidence-tag passthrough.
-1. **Mahavishnu CLI utility** (S effort) — `mahavishnu code graphify <path>` wrapper for orchestrators.
-1. **Decline** (zero effort) — multimodal/MCP-config gap is real but could be filled in-tree by ~200 LOC of `ingesters/content_ingester.py` extensions.
+2. **Mahavishnu CLI utility** (S effort) — `mahavishnu code graphify <path>` wrapper for orchestrators.
+3. **Decline** (zero effort) — multimodal/MCP-config gap is real but could be filled in-tree by ~200 LOC of `ingesters/content_ingester.py` extensions.
 
 **Recommended next step** (more conservative than full Akosha integration):
 
@@ -243,22 +243,22 @@ ______________________________________________________________________
 ### 3.1 What to invest in
 
 1. **OpenObserve POC** — highest fit (72/100), addresses a real cost/operational concern (Parquet/S3 retention), OTLP-native so the protocol work is zero.
-1. **Emdash as a client of Mahavishnu** (Path A) — addresses a genuine UX gap (human review of parallel-agent diffs). Apache-2.0, YC-backed, the 31-provider registry is the right extension point.
-1. **PageIndex 2-day spike** — narrow but well-defined use case (long structured PDF QA). Spike with hard go/no-go criteria prevents sunk-cost commitment.
+2. **Emdash as a client of Mahavishnu** (Path A) — addresses a genuine UX gap (human review of parallel-agent diffs). Apache-2.0, YC-backed, the 31-provider registry is the right extension point.
+3. **PageIndex 2-day spike** — narrow but well-defined use case (long structured PDF QA). Spike with hard go/no-go criteria prevents sunk-cost commitment.
 
 ### 3.2 What to decline (with experiments to prove it)
 
 4. **Graphify broad integration** — narrow MCP-config-inventory prototype only. Decline if it surfaces nothing new. The Session-Buddy code-graph tools + existing ingesters likely cover actual needs.
-1. **Keystone write-side authority** — shape mismatch is too large. Read-side pilot only; borrow the `keystone_show` MCP pattern regardless of adoption decision.
+5. **Keystone write-side authority** — shape mismatch is too large. Read-side pilot only; borrow the `keystone_show` MCP pattern regardless of adoption decision.
 
 ### 3.3 What to acknowledge and move on
 
-6. **claude-mem / claude-memory-compiler** — both overlap with Session-Buddy; not deep-dived. If the user wants memory-tool FOMO addressed, spin a separate evaluation of "memory compiler for Bodai" using the patterns from these two.
-1. **crewAI** — already decided in `LIBRARY_EVALUATION_2025.md` (deprecate in favor of LangGraph). No re-evaluation needed.
-1. **Repomix** — likely already used by some agents. No action.
-1. **GSD** — moved-repo signal is a yellow flag. If plan-then-execute workflow needs enhancement, look at GSD's patterns in-tree rather than adopting the framework.
-1. **Ray / Unsloth / Firecrawl / Arbor** — off-topic or off-strategy. No action.
-1. **5 Medium articles** — kept as reference reading. If user wants a follow-up "what did we learn from these articles" summary, can be a separate ask.
+06. **claude-mem / claude-memory-compiler** — both overlap with Session-Buddy; not deep-dived. If the user wants memory-tool FOMO addressed, spin a separate evaluation of "memory compiler for Bodai" using the patterns from these two.
+07. **crewAI** — already decided in `LIBRARY_EVALUATION_2025.md` (deprecate in favor of LangGraph). No re-evaluation needed.
+08. **Repomix** — likely already used by some agents. No action.
+09. **GSD** — moved-repo signal is a yellow flag. If plan-then-execute workflow needs enhancement, look at GSD's patterns in-tree rather than adopting the framework.
+10. **Ray / Unsloth / Firecrawl / Arbor** — off-topic or off-strategy. No action.
+11. **5 Medium articles** — kept as reference reading. If user wants a follow-up "what did we learn from these articles" summary, can be a separate ask.
 
 ### 3.4 What to update in the repo
 
@@ -348,52 +348,52 @@ Per-action fields: **description**, **effort** (S/M/L), **probability** of succe
 ### Tier 1 — Quick wins, high confidence (8 actions, 70–85% probability each)
 
 1. **`mahavishnu repo diff <worktree-id>`** — Effort: S. Probability: 90%. Owner: CLI/tooling. Blockers: none. Tier: 1.
-1. **`mahavishnu repo pr create <worktree-id> --fill`** — Effort: S. Probability: 80%. Owner: CLI/tooling. Blockers: `gh` system prereq. Tier: 1.
-1. **`mcp__mahavishnu__show_primitive`** — Effort: S. Probability: 85%. Owner: Mahavishnu MCP. Blockers: scan logic for skills/rules. Tier: 1.
-1. **`mcp__mahavishnu__list_primitives` (companion)** — Effort: XS. Probability: 90%. Owner: Mahavishnu MCP. Blockers: tied to #3. Tier: 1.
-1. **`mcp__session-buddy__session_buddy_export_markdown`** — Effort: S. Probability: 85%. Owner: Session-Buddy MCP. Blockers: bulk-export adapter. Tier: 1.
-1. **`mcp__session-buddy__session_buddy_lint_memory` (broken_links)** — Effort: S. Probability: 90%. Owner: Session-Buddy MCP. Blockers: v2 schema verification. Tier: 1.
-1. **`mcp__session-buddy__session_buddy_lint_memory` (orphans + staleness)** — Effort: S. Probability: 85%. Owner: Session-Buddy MCP. Blockers: v2 schema verification. Tier: 1.
-1. **`mcp__session-buddy__session_buddy_lint_memory` (contradictions)** — Effort: M. Probability: 70%. Owner: Session-Buddy MCP. Blockers: LLM cost ceiling for fingerprinting deltas. Tier: 1.
+2. **`mahavishnu repo pr create <worktree-id> --fill`** — Effort: S. Probability: 80%. Owner: CLI/tooling. Blockers: `gh` system prereq. Tier: 1.
+3. **`mcp__mahavishnu__show_primitive`** — Effort: S. Probability: 85%. Owner: Mahavishnu MCP. Blockers: scan logic for skills/rules. Tier: 1.
+4. **`mcp__mahavishnu__list_primitives` (companion)** — Effort: XS. Probability: 90%. Owner: Mahavishnu MCP. Blockers: tied to #3. Tier: 1.
+5. **`mcp__session-buddy__session_buddy_export_markdown`** — Effort: S. Probability: 85%. Owner: Session-Buddy MCP. Blockers: bulk-export adapter. Tier: 1.
+6. **`mcp__session-buddy__session_buddy_lint_memory` (broken_links)** — Effort: S. Probability: 90%. Owner: Session-Buddy MCP. Blockers: v2 schema verification. Tier: 1.
+7. **`mcp__session-buddy__session_buddy_lint_memory` (orphans + staleness)** — Effort: S. Probability: 85%. Owner: Session-Buddy MCP. Blockers: v2 schema verification. Tier: 1.
+8. **`mcp__session-buddy__session_buddy_lint_memory` (contradictions)** — Effort: M. Probability: 70%. Owner: Session-Buddy MCP. Blockers: LLM cost ceiling for fingerprinting deltas. Tier: 1.
 
 ### Tier 2 — Time-boxed spikes (5 actions, 35–75% go-probability each, hard go/no-go criteria)
 
-9. **Graphify MCP-inventory prototype** — Effort: XS (4h). Probability: 60%. Owner: experimental. Blockers: none. Tier: 2.
-1. **Maxun pre-check (Playwright dependency audit)** — Effort: XS (30m). Probability: 80% (re-defer). Owner: experimental. Blockers: none. Tier: 2.
-1. **Maxun full spike (only if pre-check passes)** — Effort: S (1.5d). Probability: 50%. Owner: experimental. Blockers: pre-check passes. Tier: 2.
-1. **OpenObserve docker POC** — Effort: S (2-3d). Probability: 65%. Owner: observability. Blockers: AGPL legal review. Tier: 2.
-1. **PageIndex 2-day spike** — Effort: S (2d). Probability: 55%. Owner: content ingestion. Blockers: SHA pin if no SemVer. Tier: 2.
-1. **Keystone read-side pilot** — Effort: XS (1d). Probability: 70%. Owner: experimental. Blockers: brew tap availability. Tier: 2.
-1. **Emdash-as-client bridge (separate repo)** — Effort: M (1-2w). Probability: 35%. Owner: CLI/integration. Blockers: Emdash upstream responsiveness (14-day window). Tier: 2.
+09. **Graphify MCP-inventory prototype** — Effort: XS (4h). Probability: 60%. Owner: experimental. Blockers: none. Tier: 2.
+10. **Maxun pre-check (Playwright dependency audit)** — Effort: XS (30m). Probability: 80% (re-defer). Owner: experimental. Blockers: none. Tier: 2.
+11. **Maxun full spike (only if pre-check passes)** — Effort: S (1.5d). Probability: 50%. Owner: experimental. Blockers: pre-check passes. Tier: 2.
+12. **OpenObserve docker POC** — Effort: S (2-3d). Probability: 65%. Owner: observability. Blockers: AGPL legal review. Tier: 2.
+13. **PageIndex 2-day spike** — Effort: S (2d). Probability: 55%. Owner: content ingestion. Blockers: SHA pin if no SemVer. Tier: 2.
+14. **Keystone read-side pilot** — Effort: XS (1d). Probability: 70%. Owner: experimental. Blockers: brew tap availability. Tier: 2.
+15. **Emdash-as-client bridge (separate repo)** — Effort: M (1-2w). Probability: 35%. Owner: CLI/integration. Blockers: Emdash upstream responsiveness (14-day window). Tier: 2.
 
 ### Tier 3 — Backlog (7 actions, conditional on Tier 1 patterns landing)
 
 16. **`mode: keyword` for `quick_search`** — Effort: M. Probability: 95%. Owner: Session-Buddy MCP. Blockers: requires `db.search_conversations` class-method signature change. Tier: 3.
-01. **`mahavishnu ingest issue --from <tracker>`** — Effort: M. Probability: 80%. Owner: ingesters. Blockers: token env vars. Tier: 3.
-01. **`mahavishnu workflow wait --for-ci`** — Effort: M. Probability: 80%. Owner: integrations/ci. Blockers: Item 13 lands first. Tier: 3.
-01. **31-provider worker-registry refactor** — Effort: S. Probability: 90%. Owner: workers/registry. Blockers: none. Tier: 3.
-01. **`pools/POOL_ARCHITECTURE.md` doc** — Effort: S. Probability: 95%. Owner: docs. Blockers: none. Tier: 3.
-01. **`docs/MONITORING.md`** — Effort: M (1-2h). Probability: 95%. Owner: docs. Blockers: identifies new health surfaces. Tier: 3.
-01. **`THIRD_PARTY_NOTICES.md` at both repos** — Effort: XS (30m). Probability: 95%. Owner: docs. Blockers: AGPL posture verification. Tier: 3.
+17. **`mahavishnu ingest issue --from <tracker>`** — Effort: M. Probability: 80%. Owner: ingesters. Blockers: token env vars. Tier: 3.
+18. **`mahavishnu workflow wait --for-ci`** — Effort: M. Probability: 80%. Owner: integrations/ci. Blockers: Item 13 lands first. Tier: 3.
+19. **31-provider worker-registry refactor** — Effort: S. Probability: 90%. Owner: workers/registry. Blockers: none. Tier: 3.
+20. **`pools/POOL_ARCHITECTURE.md` doc** — Effort: S. Probability: 95%. Owner: docs. Blockers: none. Tier: 3.
+21. **`docs/MONITORING.md`** — Effort: M (1-2h). Probability: 95%. Owner: docs. Blockers: identifies new health surfaces. Tier: 3.
+22. **`THIRD_PARTY_NOTICES.md` at both repos** — Effort: XS (30m). Probability: 95%. Owner: docs. Blockers: AGPL posture verification. Tier: 3.
 
 ### Tier 4 — Decline with experiment (4 actions, decision memo only)
 
 23. **Crawl4A** — Re-deferred per `docs/specs/defer-crawl4ai.md`. Decision memo only.
-01. **Firecrawl** — Commercial; decline. Decision memo only.
-01. **AutoGen / CrewAI / LangGraph** — Out of strategy (already-decided per `docs/LIBRARY_EVALUATION_2025.md`). Decision memo only.
-01. **Hermes / MAOS runtime** — Conceptual pattern source; no implementation. Decision memo only.
+24. **Firecrawl** — Commercial; decline. Decision memo only.
+25. **AutoGen / CrewAI / LangGraph** — Out of strategy (already-decided per `docs/LIBRARY_EVALUATION_2025.md`). Decision memo only.
+26. **Hermes / MAOS runtime** — Conceptual pattern source; no implementation. Decision memo only.
 
 ### Tier 5 — Acknowledge / move on (3 actions, no work)
 
 27. **Arbor** — Niche academic; not strategic. No implementation.
-01. **Ghost DB** — Hobby project; no traction. No implementation.
-01. **5 Medium articles** — Pattern sources only (already cited). No implementation.
+28. **Ghost DB** — Hobby project; no traction. No implementation.
+29. **5 Medium articles** — Pattern sources only (already cited). No implementation.
 
 ### Tier 6 — Skip (5 actions, no work)
 
 30. **GitHub repos roundup** — Already covered by Tier 1-3 actions.
-01. **Senior-dev prompt patterns** — Reference material only.
-01. **Production agent harness** — Article source; conceptual only.
+31. **Senior-dev prompt patterns** — Reference material only.
+32. **Production agent harness** — Article source; conceptual only.
 
 ______________________________________________________________________
 
@@ -441,17 +441,17 @@ Invoke on demand, no long-lived process. Stateless.
 Adopted third-party projects under AGPL-3.0 (OpenObserve, Maxun, possibly others) require:
 
 1. **No source linking** — Bodai code does NOT import AGPL libraries directly. Only via unmodified external subprocess / OTLP / HTTP.
-1. **No source distribution** — Bodai repos do NOT bundle AGPL source. Distributed binary contains only Bodai code.
-1. **Attribution** — `THIRD_PARTY_NOTICES.md` at every repo root lists AGPL projects with version, license, URL, copyright.
-1. **Legal review (recommended)** — Before any Phase 3 promotion of an AGPL project, formal legal sign-off.
-1. **Loki/Grafana precedent** — Existing Grafana/Loki integration (same AGPL-3.0, same OTLP/PromQL pattern, same conclusion) is the established precedent.
+2. **No source distribution** — Bodai repos do NOT bundle AGPL source. Distributed binary contains only Bodai code.
+3. **Attribution** — `THIRD_PARTY_NOTICES.md` at every repo root lists AGPL projects with version, license, URL, copyright.
+4. **Legal review (recommended)** — Before any Phase 3 promotion of an AGPL project, formal legal sign-off.
+5. **Loki/Grafana precedent** — Existing Grafana/Loki integration (same AGPL-3.0, same OTLP/PromQL pattern, same conclusion) is the established precedent.
 
 ### Implementation order (re-stated)
 
 1. Phase 1 (Tier 1, 8 actions, 3 PRs): ~1-2 weeks. Items 1+2 share `repo_cli.py`; items 5-8 share `export_tools.py`; item 3+4 share `primitive_tools.py`.
-1. Phase 2 (Tier 2 spikes, sequential): ~2.5 weeks. Graphify 4h → Maxun 30m+1.5d → OpenObserve 2-3d → PageIndex 2d → Keystone 1d → Emdash 1-2w.
-1. Phase 3 (decisions, contingent): promote-or-decline per spike. Promotion = full implementation (2-4 weeks more per go).
-1. Phase 4 (Tier 3 backlog): ~1 week. Items 11/14/15 parallel with Phase 1; Item 12 after Item 13; Item 16 in parallel.
+2. Phase 2 (Tier 2 spikes, sequential): ~2.5 weeks. Graphify 4h → Maxun 30m+1.5d → OpenObserve 2-3d → PageIndex 2d → Keystone 1d → Emdash 1-2w.
+3. Phase 3 (decisions, contingent): promote-or-decline per spike. Promotion = full implementation (2-4 weeks more per go).
+4. Phase 4 (Tier 3 backlog): ~1 week. Items 11/14/15 parallel with Phase 1; Item 12 after Item 13; Item 16 in parallel.
 
 **Total deterministic** (Phases 0, 1, 2, 4): **5-7 weeks**.
 **Total contingent** (Phase 3): **0-12 weeks additional**, depends on Phase 2 outcomes.

@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-11-07
 last_reviewed: 2026-11-08
-superseded_by: null
+superseded_by:
 topic: bifrost-complexity-accounting
 title: "Complexity-router accounting — price the classifier, watch the session binding"
 requirements:
@@ -22,8 +22,7 @@ requirements:
 # Complexity-router accounting — price the classifier, watch the session binding
 
 > **Status: complete** (verified 2026-11-08). Shipped in `7ab4257a`; the
-> §9 rule holds. Re-verified live: `mahavishnu bifrost complexity-report
-> --hours 24` runs against the live store and reports the classifier's
+> §9 rule holds. Re-verified live: `mahavishnu bifrost complexity-report --hours 24` runs against the live store and reports the classifier's
 > spend and the session binding's overruns.
 
 ## 1. Outcome
@@ -65,12 +64,13 @@ request log:
    3,500 input tokens, and the input scales with the turn being classified.
    Session mode holds the number of calls at roughly 5% of classified
    requests; without it every request would pay.
+
 2. **The session binding overrides the tier.** Bifrost's
    `session-affinity` engine binds `(session id, requested model)` to the
    provider and model the session was first served, and it runs *after* the
    routing rules. Its own log says so:
-   `Session stays on minimax-anthropic/MiniMax-M3.1-Flash for MiniMax-M3;
-   routing proposed minimax-anthropic/MiniMax-M3`.
+   `Session stays on minimax-anthropic/MiniMax-M3.1-Flash for MiniMax-M3; routing proposed minimax-anthropic/MiniMax-M3`.
+
 3. **The "SIMPLE discount" is a session-wide downgrade.** The binding
    persists for the session, so one SIMPLE turn rebinds that session's model
    class to the cheap model and every later request in the class is served by
@@ -112,8 +112,7 @@ SQL query over the same window.
 #### Integration Contract
 
 - **Triggered from:** an operator running
-  `mahavishnu bifrost complexity-report [--hours N] [--json]
-  [--fail-on-hazard] [--db PATH]`, or a monitor invoking the same command
+  `mahavishnu bifrost complexity-report [--hours N] [--json] [--fail-on-hazard] [--db PATH]`, or a monitor invoking the same command
   with `--fail-on-hazard`.
 - **Returns to / updates:** nothing is written. The module opens
   `~/.config/bifrost/logs.db` read-only (`file:...?mode=ro`) and writes
@@ -134,13 +133,13 @@ SQL query over the same window.
 ## 6. Required Code Changes
 
 - [x] `mahavishnu/bifrost/complexity_report.py` — new: the accounting
-      module (`REQ-BIFROST-046`, `REQ-BIFROST-047`).
+  module (`REQ-BIFROST-046`, `REQ-BIFROST-047`).
 - [x] `mahavishnu/cli/bifrost_cli.py` — new `complexity-report` command
-      (`REQ-BIFROST-048`).
+  (`REQ-BIFROST-048`).
 - [x] `tests/unit/test_bifrost_complexity_report.py` — new: 9 tests.
 - [x] `docs/decisions/2026-11-07-bifrost-complexity-router.md` — the
-      measured-behaviour section corrected for the session-wide effect, and
-      the status updated to point at the report.
+  measured-behaviour section corrected for the session-wide effect, and
+  the status updated to point at the report.
 - [x] `config/bifrost/README.md` — the command documented.
 - [x] `docs/CLI_REFERENCE.md` — the command listed.
 

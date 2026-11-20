@@ -7,7 +7,7 @@ owner: les
 topic: demo-surface
 scope: mahavishnu-demo-cli
 purpose: sweep every `mahavishnu demo <name>` subcommand against live substrates, fix the defects that surfaced, and add `mahavishnu demo all` so the sweep is repeatable
-superseded_by: null
+superseded_by:
 blocks_on: []
 title: "Demo Surface Sweep"
 ---
@@ -276,8 +276,7 @@ the resulting file is mode 0600.
   (`index_id: mahavishnu_0`) and the repo scope correctly filters out
   the other repository's chunks, so the synthesizer has no context to
   work with: the demo completes in **50 s** (it used to overrun the
-  1200 s ceiling) and reports `success_count: 1`, `answer: "Empty
-  Response"`, `sources: []`. That is the honest answer — the persisted
+  1200 s ceiling) and reports `success_count: 1`, `answer: "Empty Response"`, `sources: []`. That is the honest answer — the persisted
   index on this host holds *another* repo's content, so there is
   nothing in it for mahavishnu. Build the right index with
   `--task-type ingest_and_query` (slow: the local CPU-only embedder
@@ -558,6 +557,7 @@ sweeps in this session were run while the tree was being edited, so
 this run is the one that establishes the committed state.
 
 ## `mahavishnu demo all`
+
 A new sweep command runs every demo in its own subprocess and reports a
 verdict matrix, distinguishing *missing substrate* from *broken demo*:
 

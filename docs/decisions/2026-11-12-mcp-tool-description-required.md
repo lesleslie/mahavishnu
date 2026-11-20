@@ -4,7 +4,7 @@ role: canonical
 kind: decision
 date: 2026-11-12
 last_reviewed: 2026-11-12
-superseded_by: null
+superseded_by:
 topic: mcp-tool-descriptions
 title: "Every MCP tool must publish a non-empty description"
 ---

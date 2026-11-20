@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-10-12
 last_reviewed: 2026-11-10
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: mcpserver-settings-convention
 title: "mcp-common CommonMCPClient + HealthFeedState Test Backfill"
@@ -40,6 +40,7 @@ separate umbrella-plan concern and must not be implied by this backfill.
 `mcp-common/tests/unit/clients/` and `mcp-common/tests/unit/health/` exist with the 20 tests enumerated in the umbrella Phase 1 task 7 + task 8. Pytest passes with `asyncio_mode = "auto"` and `@pytest.mark.req(["REQ-001…003", "REQ-007", "REQ-008"])` markers. `mcp-common/scripts/smoke_common_mcp_client.py` and `smoke_health_feed.py` execute offline and exit 0. `mcp-common` test coverage gate (≥80%) holds.
 
 **Concrete success signals:**
+
 1. `pytest mcp-common/tests/unit/clients/ mcp-common/tests/unit/health/ -v` exits 0; all 20 tests pass.
 2. `python mcp-common/scripts/smoke_health_feed.py` exits 0 and prints the time-bounded decay narrative (matches REQ-007 + REQ-008 canary).
 3. `python mcp-common/scripts/smoke_common_mcp_client.py --help` exits 0 and prints the contract documented in §6 (CLI shape parity with `smoke_health_feed.py`).
@@ -70,6 +71,7 @@ separate umbrella-plan concern and must not be implied by this backfill.
 ### 4.1 What shipped without tests (umbrella Phase 1a)
 
 `ls /Users/les/Projects/mcp-common/mcp_common/clients/`:
+
 ```
 __init__.py
 __pycache__
@@ -77,6 +79,7 @@ common_mcp_client.py
 ```
 
 `ls /Users/les/Projects/mcp-common/mcp_common/health/`:
+
 ```
 __init__.py
 __pycache__
@@ -100,6 +103,7 @@ The umbrella's `tests/integration/mcp/test_common_mcp_client.py` (Phase 3 delive
 ### 4.4 `audit_requirements.py` canary
 
 Each new test must carry `@pytest.mark.req(["REQ-NNN"])` markers per the umbrella Phase 1 task 7+8 enumeration:
+
 - `tests/unit/clients/test_common_mcp_client.py` → `@pytest.mark.req(["REQ-001"])`
 - `tests/unit/health/test_feed.py` → `@pytest.mark.req(["REQ-002"])`
 - `tests/unit/health/test_aggregator.py` → `@pytest.mark.req(["REQ-002", "REQ-003", "REQ-007", "REQ-008"])`
@@ -113,6 +117,7 @@ If `mcp-common/scripts/audit_requirements.py` (or equivalent) does not exist, no
 **Goal:** ship all 20 unit tests + 2 smoke scripts + the markers + the CHANGELOG entry in one commit.
 
 #### Integration Contract ← Phase 1
+
 - **Triggered from**: `pytest mcp-common/tests/unit/clients/ mcp-common/tests/unit/health/ -v` after the commit lands.
 - **Returns to / updates**: 3 new test files + 2 new smoke scripts + 1 CHANGELOG line. No source-file changes (the SDK code shipped in umbrella Phase 1a is the contract under test). No `pyproject.toml` change.
 - **Demonstrable by**: the pytest invocation above exits 0 with 20+ tests reported, plus the two smoke-script invocations exit 0.
@@ -122,26 +127,31 @@ If `mcp-common/scripts/audit_requirements.py` (or equivalent) does not exist, no
 **Tasks (TDD, one step per action — 5-10 minutes each):**
 
 - [ ] **Task 1.1: TDD `CommonMCPClient` wire-shape contract tests (3 tests, REQ-001)**
+
   - Tests: `test_call_tool_sends_jsonrpc_envelope`, `test_call_tool_sends_mcp_session_id_header_on_second_request`, `test_call_tool_parses_response_from_result_payload`.
   - Use `respx` to mock the streamable-HTTP endpoint; assert the outbound JSON-RPC envelope shape (`{"jsonrpc": "2.0", "id": <int>, "method": "tools/call", "params": {"name": ..., "arguments": ...}}`) and the inbound `result.structuredContent` payload.
   - Mark each: `@pytest.mark.req(["REQ-001"])`.
 
 - [ ] **Task 1.2: TDD `CommonMCPClient` negative tests (4 tests, REQ-001)**
+
   - Tests: `test_call_tool_raises_on_error_envelope`, `test_call_tool_raises_mcp_http_error_on_5xx`, `test_call_tool_raises_mcp_timeout_on_read_timeout`, `test_call_tool_raises_on_malformed_json`.
   - Assert the new `MCPClientHTTPError` and `MCPClientTimeoutError` exception types from `mcp_common/clients/exceptions.py` (created if absent — umbrella §6 said NEW but didn't enumerate). If absent, create the module with the two exception classes and empty `__init__.py` re-export.
   - Mark each: `@pytest.mark.req(["REQ-001"])`.
 
 - [ ] **Task 1.3: TDD `CommonMCPClient` lifecycle tests (4 tests, REQ-001)**
+
   - Tests: `test_session_id_handshake_after_first_response`, `test_reconnect_on_410_with_new_session_id`, `test_multiple_calls_reuse_session`, `test_ssrf_guard_rejects_file_scheme`.
   - The SSRF-guard test exercises the existing `_ALLOWED_SCHREFS = frozenset({"http", "https"})` block the umbrella §4.4 cited.
   - Mark each: `@pytest.mark.req(["REQ-001"])`.
 
 - [ ] **Task 1.4: TDD `HealthFeedState` helper tests (5 tests, REQ-002)**
+
   - Tests: `test_record_success_resets_errors_within_window`, `test_record_success_clears_first_unhealthy_at_on_recovery`, `test_record_error_sets_first_unhealthy_at_on_healthy_to_unhealthy_transition`, `test_record_error_idempotent_on_subsequent_errors` (no double-set), `test_is_healthy_returns_healthy_when_no_errors_and_entities_populated`.
   - These cover the umbrella Phase 1 task 4 helper description; the actual API may need adjustment if `record_success` / `record_error` differ from the description (verify against `mcp_common/health/feed.py` first; if signatures differ, update the tests to match what's there — the goal is to backfill coverage, not enforce a different API).
   - Mark each: `@pytest.mark.req(["REQ-002"])`.
 
 - [ ] **Task 1.5: TDD `aggregate_feed_states` tests (4 tests, REQ-002, REQ-003, REQ-007, REQ-008)**
+
   - Tests per umbrella Phase 1 task 8:
     - `test_is_healthy_true_when_no_errors` → `@pytest.mark.req(["REQ-002"])`
     - `test_is_healthy_true_when_error_outside_halflife` → `@pytest.mark.req(["REQ-007"])`
@@ -151,20 +161,24 @@ If `mcp-common/scripts/audit_requirements.py` (or equivalent) does not exist, no
   - The umbrella listed 4 tests but `aggregate_picks_worst_status` is load-bearing — ship 5 to maintain the canary.
 
 - [ ] **Task 1.6: Write `mcp-common/scripts/smoke_health_feed.py` (offline; REQ-002/007/008)**
+
   - Per umbrella Phase 1 task 7 (smoke scripts). Construct a `HealthFeedState` with `last_error_at = now - halflife_seconds - 1`; assert `aggregate_feed_states({...})` returns `healthy`. Construct one with `last_error_at = now`; assert `degraded`. Construct one with `entities_count == 0`, `cycles_total >= 1`, `ingester_running = True`; assert `warming_up` with `reason_codes == ["warming_up_empty_feed"]`.
   - CLI: `python scripts/smoke_health_feed.py [--halflife-seconds=300]`. Exit 0 on success; exit 1 on assertion failure with the failing state printed.
 
 - [ ] **Task 1.7: Write `mcp-common/scripts/smoke_common_mcp_client.py` (online; REQ-001)**
+
   - Per umbrella Phase 1 task 7. CLI shape mirrors `smoke_health_feed.py`:
     `python scripts/smoke_common_mcp_client.py --target URL --tool NAME [--args JSON_STRING] [--timeout-seconds=10]`.
   - Behavior: instantiate `CommonMCPClient(target=URL, timeout=10)`; call `await client.call(name=NAME, arguments=json.loads(ARGS))`; print the result; exit 0 if no exception, exit 1 with the exception class + message on failure.
   - Mark operators: this script requires a running server at `--target URL`; it is **not** offline. The `smoke_health_feed.py` script (Task 1.6) is offline; this one is not. Document the difference in `--help`.
 
 - [ ] **Task 1.8: Add the markers audit (if `audit_requirements.py` missing, just add the markers anyway)**
+
   - If `mcp-common/scripts/audit_requirements.py` exists, run it locally and confirm the 5 new files have `@pytest.mark.req(["REQ-NNN"])` markers and produce a non-empty REQ-coverage report.
   - If `audit_requirements.py` does NOT exist, this task is a no-op. Mark with a comment in the commit message: "test markers per umbrella §Phase 1 task 7 enumeration; no `audit_requirements.py` exists at time of this commit."
 
 - [ ] **Task 1.9: Update `mcp-common/CHANGELOG.md` `[Unreleased]`**
+
   - Add an entry naming the test backfill:
     ```
     Added: Test backfill for `mcp_common/clients/common_mcp_client.py` (11 tests)
@@ -177,6 +191,7 @@ If `mcp-common/scripts/audit_requirements.py` (or equivalent) does not exist, no
   - **DO NOT modify `pyproject.toml` version.** Per `feedback-mcp-common-version-bump-is-user.md`, user bumps via `crackerjack run -p minor`.
 
 - [ ] **Task 1.10: Commit**
+
   ```bash
   cd /Users/les/Projects/mcp-common
 
@@ -190,6 +205,7 @@ If `mcp-common/scripts/audit_requirements.py` (or equivalent) does not exist, no
   git -c user.email=les@wedgwoodwebworks.com -c user.name=les commit -m \
       "test(mcp-common): backfill CommonMCPClient + HealthFeedState tests (Phase 1b of $(PLAN_UMBRELLA))"
   ```
+
   **DO NOT tag or bump version.** User does that via `crackerjack run -p minor`.
 
 ## 6. Required Code Changes
@@ -243,6 +259,7 @@ mcp-common:
 ## 9. Decision Rule
 
 Plan is **done enough** when:
+
 1. All 20 (or 21 — including `aggregate_picks_worst_status`) new tests pass with `pytest mcp-common/tests/unit/clients/ mcp-common/tests/unit/health/ -v`.
 2. The 2 smoke scripts exist; `smoke_health_feed.py` exits 0; `smoke_common_mcp_client.py --help` exits 0.
 3. `python -m pytest mcp-common/tests/ --cov=mcp_common --cov-fail-under=80` exits 0 (coverage gate holds).
@@ -250,6 +267,7 @@ Plan is **done enough** when:
 5. The completed umbrella plan `docs/plans/2026-09-14-common-mcp-client-transport-unification.md` remains the historical source for the Phase 1 contract; this backfill does not change its lifecycle or claim the separate Phase 3 integration work.
 
 Plan is **not done** when:
+
 - Any source file in `mcp_common/{clients,health}/` is modified (this plan is test-only — the SDK was the umbrella's delivery).
 - `pyproject.toml` is touched.
 - `git grep Implements.REQ-00. mcp_common/health/` returns 0 hits and the implementer did not add the markers.
