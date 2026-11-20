@@ -99,17 +99,25 @@ the same SDK as the model it replaces, with one extra request field.
 **Why 1024.** Three independent constraints, each of which the other
 candidate widths fail.
 
-1. **The storage layer caps it.** pgvector's HNSW and IVFFlat index
-   ceiling is **2000 dimensions** for the float32 `vector` type (4000 for
-   `halfvec`), and it has not moved since pgvector 0.4.0 in January 2023.
-   A `vector(3072)` column ingests rows without complaint and then fails
-   at `CREATE INDEX` with *"column cannot have more than 2000 dimensions
-   for hnsw index"*. Akosha's warm tier is the pgvector store, and the
-   plan's outcome O5 requires an HNSW index on it. So 3072 needs a
-   `halfvec` type plus a cast-expression index
+1. **3072 is not indexable at all.** pgvector's *column* type cap is
+   16,000 dimensions (`VECTOR_MAX_DIM`), but its **index** cap is
+   **2000 dimensions** for the float32 `vector` type (4000 for
+   `halfvec`, 64,000 for `bit`), and it has not moved since pgvector
+   0.4.0 in January 2023. A `vector(3072)` column therefore ingests rows
+   without complaint and then fails at `CREATE INDEX` with *"column
+   cannot have more than 2000 dimensions for hnsw index"* — and it
+   fails twice over, because an HNSW element tuple must fit inside one
+   8 kB page: a `vector(3072)` tuple needs 12,360 bytes, so even if
+   the dimension check were lifted it would fail with *"index tuple too
+   large"*. Akosha's warm tier is the pgvector store, and the plan's
+   outcome O5 requires an HNSW index on it. The only supported path is
+   `halfvec(3072)` with a cast-expression index
    (`((embedding::halfvec(3072)) halfvec_cosine_ops)`) — a change to the
-   distance function's precision, not just a number. **2048 fails the
-   same way.** 1024 and 1536 index as plain `vector`.
+   distance function's precision, not just a number — and that path
+   **costs exactly what `vector(1536)` costs** (6,152 bytes per vector,
+   index included), so 3072 buys nothing over 1536 even once it is
+   reachable. **2048 fails the same way.** 1024 and 1536 index as plain
+   `vector`.
 2. **1536 is a legacy width, and it excludes the field's leader.**
    Voyage's own documentation states that `voyage-4-large`, `voyage-4`,
    `voyage-4-lite`, `voyage-3-large`, `voyage-3.5`, `voyage-3.5-lite` and
@@ -149,13 +157,33 @@ the field returned the native 1536. Any width a model can serve is
 reachable through the gateway, so the width is decided by the storage
 layer and by admissibility — not by the gateway.
 
-**What 1024 costs.** Storage is 4096 bytes per float32 vector against
-6144 at 1536 and 12288 at 3072, so 1024 is a third less than 1536 and
-two thirds less than 3072; the int8 warm store quantises *better* at
-fewer dimensions, because the per-pair distance error accumulates as
-√dimensions. Nothing else changes: the price is identical (OpenAI bills
-input tokens, and output dimensions are free), and embedding latency is
-unchanged — the same forward pass, only a smaller response payload.
+**What 1024 costs.** pgvector stores a float32 `vector` as
+`4 × dimensions + 8` bytes — **4,104** bytes at 1024, **6,152** at 1536,
+**12,300** at 3072 — so 1024 is a third less than 1536 and two thirds
+less than 3072. The HNSW index is not a small overlay on top of that:
+every index tuple embeds a copy of the vector (`memcpy(&etup->data,
+valuePtr, …)` in `hnswutils.c`), so the index adds roughly another full
+column plus ~200 bytes per row of neighbour pointers. Table plus HNSW
+index is therefore ≈8.5 GB per million vectors at 1024 against ≈12.6 GB
+at 1536. (IVFFlat stores one centroid per list instead of a copy of
+every vector and is ~430× smaller again — but O5 requires an HNSW index,
+and `PgvectorSettings` has no IVFFlat knob either.) Nothing else changes:
+the price is identical (OpenAI bills input tokens, and output dimensions
+are free), and embedding latency is unchanged — the same forward pass,
+only a smaller response payload.
+
+**A caveat on the int8 warm store — width is not the lever that protects
+it.** The intuition that quantisation error grows with √dimensions is
+real for the *absolute* L2 error of a quantised vector, but it is not the
+quantity that decides retrieval quality. Qdrant's published sweep
+reports scalar-quantisation error as "less significant for
+high-dimensional vectors" and finds one-bit binary quantisation *worse*
+at 512 dimensions than at 3,072; Elastic's optimised-scalar-quantisation
+write-up finds recall degrading where the score distribution is dense —
+which is our case, because one codebase's corpus is homogeneous and its
+scores sit close together. The rule that follows is not "narrow the
+width" but **"if you quantise, re-rank at full precision"**. Width does
+not protect the warm tier; re-ranking does.
 
 **One bonus that only 1024 and 2048 get.** The Voyage 4 family shares a
 single embedding space across all its models — *"All embeddings created
@@ -1014,7 +1042,7 @@ idle since boot, and `health()` returns true on `entities_count > 0`).
       rebuild is cheap.
 - [ ] **Migrate the BLOB-backed embeddings separately.** The script only
       sees `FLOAT[N]` (`:96-120`). `skill_invocation.embedding` and
-      `centroid_embedding` are BLOBs; `EMBEDDING_BYTES` must go to 6144
+      `centroid_embedding` are BLOBs; `EMBEDDING_BYTES` must go to 4096
       at 1024 (`storage/skills_embeddings.py:46-47`) and every existing
       blob must be re-embedded and re-packed, or `unpack_embedding`
       (`:98-99`) raises.
