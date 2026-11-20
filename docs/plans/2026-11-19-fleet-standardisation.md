@@ -33,7 +33,7 @@ Phases 1–4 were partly built; **Phase 5 — "Runtime verification: all
 components restart, all tools work end-to-end" — was never done**, and that
 is what this plan discovers and completes.
 
----
+______________________________________________________________________
 
 ## 1. What "working as intended" means
 
@@ -170,8 +170,7 @@ layer and by admissibility — not by the gateway.
 `4 × dimensions + 8` bytes — **4,104** bytes at 1024, **6,152** at 1536,
 **12,300** at 3072 — so 1024 is a third less than 1536 and two thirds
 less than 3072. The HNSW index is not a small overlay on top of that:
-every index tuple embeds a copy of the vector (`memcpy(&etup->data,
-valuePtr, …)` in `hnswutils.c`), so the index adds roughly another full
+every index tuple embeds a copy of the vector (`memcpy(&etup->data, valuePtr, …)` in `hnswutils.c`), so the index adds roughly another full
 column plus ~200 bytes per row of neighbour pointers. Table plus HNSW
 index is therefore ≈8.5 GB per million vectors at 1024 against ≈12.6 GB
 at 1536. (IVFFlat stores one centroid per list instead of a copy of
@@ -204,8 +203,7 @@ the *provider* level rather than only within one model.
 
 **What is provisional.** The decision is *not* that 3-large is the best
 model available — it is that it is the best model reachable without
-adding a dependency. The candidate that scores higher is `cohere
-embed-v4` (MTEB retrieval 58.4, 128K context, built-in int8/binary
+adding a dependency. The candidate that scores higher is `cohere embed-v4` (MTEB retrieval 58.4, 128K context, built-in int8/binary
 output), and it is **named in the benchmark's candidate set** (§5, and the
 2026-11-20 memory-retrieval-quality plan's Phase 1). It is not the
 standard today for three concrete reasons:
@@ -295,7 +293,7 @@ cross-encoder is fast and cheap, but it is a second provider and a
 second credential. The **interface and the contract** ship in this plan;
 the populator is a later decision with its own cost and latency review.
 
----
+______________________________________________________________________
 
 ## 2. The three root causes
 
@@ -331,8 +329,7 @@ the probe returns `None`, and the service **silently** selects the mock.
   `oneiric/core/lifecycle.py:327-334` calls `factory()` with no arguments;
   `PgvectorAdapter.__init__` and `OpenAIEmbeddingAdapter.__init__` both
   require `settings` positionally. Live:
-  `use("vector", provider="pgvector")` → `LifecycleError: Swap failed for
-  adapter:vector (pgvector)`; `use("embedding", provider="openai")` → the
+  `use("vector", provider="pgvector")` → `LifecycleError: Swap failed for adapter:vector (pgvector)`; `use("embedding", provider="openai")` → the
   same. The settings model is already on `AdapterMetadata` and
   `DomainBridge.get_settings()` already builds it — the wiring never
   reaches the constructor.
@@ -342,8 +339,7 @@ column. **The system was self-consistent while broken** — which is why the
 original dimension defect stayed invisible until a real provider came up.
 
 Three separate components each carry their own now-stale idea of the width:
-Akosha's `BACKEND_DEFAULT_DIMS` (`mock 384, model2vec 256, llama_cpp 768,
-minimax 1024` — and `embo-01` is actually **1536**, so even that entry is
+Akosha's `BACKEND_DEFAULT_DIMS` (`mock 384, model2vec 256, llama_cpp 768, minimax 1024` — and `embo-01` is actually **1536**, so even that entry is
 wrong), Mahavishnu's `EmbeddingConfig.provider`/`model`
 (`FASTEMBED` / `BAAI/bge-small-en-v1.5`, both ignored by the chain), and
 the substrate's five `embedding__*` knobs, which have **one** production
@@ -425,7 +421,7 @@ November transcript ingester was designed to consume
 **So the transport exists and the parser does not.** That makes the corpus
 repair a decode-and-filter job, not a new-pipeline job.
 
----
+______________________________________________________________________
 
 ## 3. The work, by repository
 
@@ -438,57 +434,56 @@ Eight lines, and every MCP server in the fleet starts emitting enriched
 spans.
 
 - [ ] **`mcp_common/server/telemetry.py:125-126`** — in the `tools/call`
-      branch, add `task_class = "mcp_tool_call"` and
-      `selector = component_name`. Both values are already in hand: the
-      method is `context.method`, the tool name is `component_name`.
+  branch, add `task_class = "mcp_tool_call"` and
+  `selector = component_name`. Both values are already in hand: the
+  method is `context.method`, the tool name is `component_name`.
 - [ ] **`_annotate_result` (`:136-152`)** — set `outcome` from the result:
-      `"error"` when `mcp.result.error` is present, else `"success"`.
+  `"error"` when `mcp.result.error` is present, else `"success"`.
 - [ ] **Set the attributes on the middleware's own span**, not via
-      `trace.get_current_span()`. The launcher installs the global tracer
-      provider before any component builds, so `trace.set_tracer_provider`
-      is a no-op on the launchd path
-      (`mahavishnu/core/observability.py:296-299`) — a `get_current_span()`
-      lookup can land in the wrong provider. The middleware already has
-      its span.
+  `trace.get_current_span()`. The launcher installs the global tracer
+  provider before any component builds, so `trace.set_tracer_provider`
+  is a no-op on the launchd path
+  (`mahavishnu/core/observability.py:296-299`) — a `get_current_span()`
+  lookup can land in the wrong provider. The middleware already has
+  its span.
 - [ ] The receiver already promotes all three attributes into typed
-      columns, and `spans_substrate` already indexes
-      `(selector, task_class, outcome, received_at_unix_nano DESC)`.
+  columns, and `spans_substrate` already indexes
+  `(selector, task_class, outcome, received_at_unix_nano DESC)`.
 - [ ] **mcp-common → release → every server picks it up.** This is the
-      single change that makes `mcp_tool_call_feed` populate for
-      mahavishnu, akosha, session-buddy and crackerjack at once.
+  single change that makes `mcp_tool_call_feed` populate for
+  mahavishnu, akosha, session-buddy and crackerjack at once.
 - [ ] **Mahavishnu's `tool_enrichment_enabled` must also be turned on**
-      (`mahavishnu/core/config.py:1580`) — it is the second, independent
-      gate on the producer. With mcp-common fixed, the enricher is
-      redundant for `task_class`, but leaving it off keeps the
-      `task.class` attribute (a second spelling the receiver also accepts)
-      unavailable.
+  (`mahavishnu/core/config.py:1580`) — it is the second, independent
+  gate on the producer. With mcp-common fixed, the enricher is
+  redundant for `task_class`, but leaving it off keeps the
+  `task.class` attribute (a second spelling the receiver also accepts)
+  unavailable.
 - [ ] **Mahavishnu's `/health` needs a `data_feeds_ok` field and a
-      `source` string per feed.** Both are absent from the payload
-      entirely, so "which feeds are live" has no machine-readable answer
-      on that component.
+  `source` string per feed.** Both are absent from the payload
+  entirely, so "which feeds are live" has no machine-readable answer
+  on that component.
 - [ ] **Populate `ingester_running` truthfully — it is the whole
-      dead-vs-warming discriminator.** mcp-common's feed vocabulary
-      already distinguishes `FAILED` + `[feed_never_populated,
-      ingester_not_running]` from `WARMING_UP` + `[warming_up_empty_feed]`
-      on the strength of `ingester_running`
-      (`mcp_common/health/feed.py:202-235`). But **Crackerjack hard-codes
-      `True`** (`crackerjack/mcp/health.py:74`) and **Akosha uses
-      out-of-contract keys** (`akosha/mcp/server.py:2105-2106`), so
-      Akosha's `source_producer_running: false` produces **no**
-      `ingester_not_running` code. Live, a dead producer reports as
-      merely `warming_up` — which is exactly what Akosha's
-      `mcp_tool_call_feed` (0 entities, 16,365 cycles) does today. A feed
-      that has cycled 16,365 times and holds nothing is not warming up.
+  dead-vs-warming discriminator.** mcp-common's feed vocabulary
+  already distinguishes `FAILED` + `[feed_never_populated,     ingester_not_running]` from `WARMING_UP` + `[warming_up_empty_feed]`
+  on the strength of `ingester_running`
+  (`mcp_common/health/feed.py:202-235`). But **Crackerjack hard-codes
+  `True`** (`crackerjack/mcp/health.py:74`) and **Akosha uses
+  out-of-contract keys** (`akosha/mcp/server.py:2105-2106`), so
+  Akosha's `source_producer_running: false` produces **no**
+  `ingester_not_running` code. Live, a dead producer reports as
+  merely `warming_up` — which is exactly what Akosha's
+  `mcp_tool_call_feed` (0 entities, 16,365 cycles) does today. A feed
+  that has cycled 16,365 times and holds nothing is not warming up.
 - [ ] **Align the health envelope shape.** Crackerjack's `/health`
-      envelope drops the four counters mcp-common's aggregator produces
-      (`entities_count`, `last_updated_timestamp`, `cycles_total`,
-      `errors_total`) — `crackerjack/mcp/health.py:108-129`. Oneiric keeps
-      them; Crackerjack and Akosha must be checked against the same shape.
+  envelope drops the four counters mcp-common's aggregator produces
+  (`entities_count`, `last_updated_timestamp`, `cycles_total`,
+  `errors_total`) — `crackerjack/mcp/health.py:108-129`. Oneiric keeps
+  them; Crackerjack and Akosha must be checked against the same shape.
 - [ ] **Three `ReasonCode` members are dead** —
-      `warming_up_never_cycled`, `no_producer_ever_cycled`,
-      `producer_not_alive` (`mcp_common/health/feed.py:60-76`). Implement
-      them or delete them; the vocabulary's value is that it is
-      exhaustive.
+  `warming_up_never_cycled`, `no_producer_ever_cycled`,
+  `producer_not_alive` (`mcp_common/health/feed.py:60-76`). Implement
+  them or delete them; the vocabulary's value is that it is
+  exhaustive.
 
 ### 3.2 Oneiric — the foundation
 
@@ -496,228 +491,227 @@ spans.
 about embeddings.
 
 - [ ] **BLOCKER 1 — the embedding and pgvector adapters cannot be
-      instantiated through the registry.**
-      `oneiric/core/lifecycle.py:327-334` calls `factory()` with no
-      arguments; `PgvectorAdapter.__init__` (`pgvector.py:85`) and
-      `OpenAIEmbeddingAdapter.__init__` (`openai.py:61`) both require
-      `settings` positionally. Live: `use("vector", provider="pgvector")`
-      → `LifecycleError: Swap failed for adapter:vector (pgvector)`;
-      `use("embedding", provider="openai")` → the same. The settings model
-      is already declared on `AdapterMetadata`
-      (`settings_model=PgvectorSettings`) and `DomainBridge.get_settings()`
-      already builds it (`domains/base.py:65-70`) — the wiring just never
-      reaches the constructor. **Until this is fixed, no component can get
-      the fleet's vector adapter or its embedding adapter through the
-      registry.**
+  instantiated through the registry.**
+  `oneiric/core/lifecycle.py:327-334` calls `factory()` with no
+  arguments; `PgvectorAdapter.__init__` (`pgvector.py:85`) and
+  `OpenAIEmbeddingAdapter.__init__` (`openai.py:61`) both require
+  `settings` positionally. Live: `use("vector", provider="pgvector")`
+  → `LifecycleError: Swap failed for adapter:vector (pgvector)`;
+  `use("embedding", provider="openai")` → the same. The settings model
+  is already declared on `AdapterMetadata`
+  (`settings_model=PgvectorSettings`) and `DomainBridge.get_settings()`
+  already builds it (`domains/base.py:65-70`) — the wiring just never
+  reaches the constructor. **Until this is fixed, no component can get
+  the fleet's vector adapter or its embedding adapter through the
+  registry.**
 - [ ] **BLOCKER 2 — the OpenAI embedding adapter cannot authenticate to
-      Bifrost.** `adapters/embedding/openai.py:98-106` passes no
-      `default_headers`, so the adapter authenticates with
-      `Authorization: Bearer <provider key>` — and Bifrost rejects a
-      provider key with `401 virtual_key_required`. The SDK *accepts*
-      `default_headers`, and Oneiric's own **LLM** adapter already does
-      exactly this for Bifrost (`adapters/llm/config.py:61`,
-      `adapters/llm/provider.py:113-140`). Copy that mechanism — do not
-      invent a second one.
+  Bifrost.** `adapters/embedding/openai.py:98-106` passes no
+  `default_headers`, so the adapter authenticates with
+  `Authorization: Bearer <provider key>` — and Bifrost rejects a
+  provider key with `401 virtual_key_required`. The SDK *accepts*
+  `default_headers`, and Oneiric's own **LLM** adapter already does
+  exactly this for Bifrost (`adapters/llm/config.py:61`,
+  `adapters/llm/provider.py:113-140`). Copy that mechanism — do not
+  invent a second one.
 
 **Then the chain itself.**
 
 - [ ] **Finish the August hybrid-embeddings design**, with the leg list
-      corrected for the operator's decisions:
-      - **Remove the Ollama leg.** It is in the approved design
-        (`:59`); Ollama has since been retired fleet-wide.
-      - **`llama_cpp_base_url` default `http://localhost:8080` → `:8081`**
-        (`adapters/observability/embedding_settings.py:48`). Port 8080 is
-        too common a default and the fleet moved to 8081.
-      - **Add the OpenAI legs, first:** `openai_gateway` (Bifrost,
-        `x-bf-vk`) → `openai_direct` (`OPENAI_API_KEY`), reusing
-        `adapters/embedding/openai.py` rather than writing a parallel
-        HTTP client.
-      - **MiniMax `embo-01` is natively 1536, not 1024** — the August
-        design's dimension note (`:239`) is stale, and so is Akosha's
-        `BACKEND_DEFAULT_DIMS`. It stays as a *tier* (a different model is
-        a different space), never as a provider failover.
-      - **Model2Vec (256) and the mock (384) leave the semantic chain.**
-        The mock becomes a **startup failure** in any tier that holds
-        semantic vectors.
+  corrected for the operator's decisions:
+  \- **Remove the Ollama leg.** It is in the approved design
+  (`:59`); Ollama has since been retired fleet-wide.
+  \- **`llama_cpp_base_url` default `http://localhost:8080` → `:8081`**
+  (`adapters/observability/embedding_settings.py:48`). Port 8080 is
+  too common a default and the fleet moved to 8081.
+  \- **Add the OpenAI legs, first:** `openai_gateway` (Bifrost,
+  `x-bf-vk`) → `openai_direct` (`OPENAI_API_KEY`), reusing
+  `adapters/embedding/openai.py` rather than writing a parallel
+  HTTP client.
+  \- **MiniMax `embo-01` is natively 1536, not 1024** — the August
+  design's dimension note (`:239`) is stale, and so is Akosha's
+  `BACKEND_DEFAULT_DIMS`. It stays as a *tier* (a different model is
+  a different space), never as a provider failover.
+  \- **Model2Vec (256) and the mock (384) leave the semantic chain.**
+  The mock becomes a **startup failure** in any tier that holds
+  semantic vectors.
 - [ ] **Add the legs at the chain's real seam.** The order is decided in
-      one place — `EmbeddingService.initialize()`'s `probe_order` tuple
-      (`adapters/observability/embeddings.py:109-113`). The OpenAI legs go
-      in front of `llama_cpp` there, not inside the probe functions.
+  one place — `EmbeddingService.initialize()`'s `probe_order` tuple
+  (`adapters/observability/embeddings.py:109-113`). The OpenAI legs go
+  in front of `llama_cpp` there, not inside the probe functions.
 - [ ] **Two conventions coexist, deliberately.** The OpenAI legs use a
-      base URL that **includes `/v1`** (the SDK appends `/embeddings`);
-      the existing `llama_cpp` leg uses a **bare root**. Do not "fix" the
-      llama leg.
+  base URL that **includes `/v1`** (the SDK appends `/embeddings`);
+  the existing `llama_cpp` leg uses a **bare root**. Do not "fix" the
+  llama leg.
 - [ ] **Send `dimensions` on the OpenAI legs only, and decide that from a
-      declared capability, not from the model's name.**
-      `_probe_encode_via` (`:375`) and `_encode_llama_cpp` (`:397`) both
-      send a fixed `{"model","input"}`. `_probe_encode_via` also sends
-      **no headers at all**, so it cannot be reused as-is against an
-      authenticated endpoint — it needs a `headers=` parameter.
-      llama.cpp rejects unknown body fields, so the `dimensions` key must
-      not be added there.
-      `text-embedding-3-large` is natively 3072 and the fleet width is
-      1024, so the OpenAI legs **must** send `dimensions: 1024`.
-      **Where that decision is made today is the bug.**
-      `adapters/embedding/openai.py:206-220` gates the field on
-      `model.startswith("text-embedding-3")` — a hard-coded vendor naming
-      convention inside the shared substrate. Swap the model to
-      `cohere/embed-v4`, `voyage-3-large` or anything self-hosted and the
-      field is dropped **silently**: the provider answers at its native
-      width and a mis-sized vector reaches the store. Replace the name
-      check with a **declared capability on the leg** (`native_width`,
-      `supports_server_truncation`), so the client sends `dimensions`
-      exactly when the target width differs from the declared native
-      width, and a leg that cannot truncate is either refused or
-      truncated client-side.
+  declared capability, not from the model's name.**
+  `_probe_encode_via` (`:375`) and `_encode_llama_cpp` (`:397`) both
+  send a fixed `{"model","input"}`. `_probe_encode_via` also sends
+  **no headers at all**, so it cannot be reused as-is against an
+  authenticated endpoint — it needs a `headers=` parameter.
+  llama.cpp rejects unknown body fields, so the `dimensions` key must
+  not be added there.
+  `text-embedding-3-large` is natively 3072 and the fleet width is
+  1024, so the OpenAI legs **must** send `dimensions: 1024`.
+  **Where that decision is made today is the bug.**
+  `adapters/embedding/openai.py:206-220` gates the field on
+  `model.startswith("text-embedding-3")` — a hard-coded vendor naming
+  convention inside the shared substrate. Swap the model to
+  `cohere/embed-v4`, `voyage-3-large` or anything self-hosted and the
+  field is dropped **silently**: the provider answers at its native
+  width and a mis-sized vector reaches the store. Replace the name
+  check with a **declared capability on the leg** (`native_width`,
+  `supports_server_truncation`), so the client sends `dimensions`
+  exactly when the target width differs from the declared native
+  width, and a leg that cannot truncate is either refused or
+  truncated client-side.
 - [ ] **The width parameter is per-vendor, so the leg must declare how
-      it sets the width — not merely what the width is.**
-      OpenAI's field is `dimensions`. Voyage's is `output_dimension`;
-      Cohere's is `output_dimension` too, and Cohere's
-      `/compatibility/v1/embeddings` endpoint lists `dimensions` under
-      **"Unsupported parameters"** — a call through it drops the field
-      and returns the default width. Gemini's native field is
-      `output_dimensionality`; Vertex AI has no documented
-      OpenAI-compatible embeddings endpoint at all; Ark's *text*
-      endpoint has no width parameter (only its multimodal one does);
-      and Nomic's endpoint is not OpenAI-shaped at all.
-      **The dangerous case is silent**: Bifrost forwards `dimensions`
-      verbatim to a *generic* OpenAI-type custom provider, so a Voyage
-      model behind Bifrost returns its 1024-dim default with no error
-      and no warning — and the vector lands in a 1024-wide store
-      looking entirely correct. Bifrost renames the field per upstream
-      only for its *built-in* providers.
-      So the leg's declared capability needs a third field alongside
-      `native_width` and `supports_server_truncation`: **how the width
-      is requested** (`width_parameter`, and whether the endpoint can
-      set it at all). A leg whose endpoint cannot set the width is
-      eligible only when its declared `native_width` equals the fleet
-      width — otherwise it must be refused, not silently accepted.
-      Perplexity's `pplx-embed-v1-*` is a trap of its own: its
-      `encoding_format` enum is `base64_int8` / `base64_binary` only,
-      with no float, so it needs a decode plus an L2 normalisation — the
-      provider states that casting the int8 values to float "does not
-      restore a full-precision embedding".
+  it sets the width — not merely what the width is.**
+  OpenAI's field is `dimensions`. Voyage's is `output_dimension`;
+  Cohere's is `output_dimension` too, and Cohere's
+  `/compatibility/v1/embeddings` endpoint lists `dimensions` under
+  **"Unsupported parameters"** — a call through it drops the field
+  and returns the default width. Gemini's native field is
+  `output_dimensionality`; Vertex AI has no documented
+  OpenAI-compatible embeddings endpoint at all; Ark's *text*
+  endpoint has no width parameter (only its multimodal one does);
+  and Nomic's endpoint is not OpenAI-shaped at all.
+  **The dangerous case is silent**: Bifrost forwards `dimensions`
+  verbatim to a *generic* OpenAI-type custom provider, so a Voyage
+  model behind Bifrost returns its 1024-dim default with no error
+  and no warning — and the vector lands in a 1024-wide store
+  looking entirely correct. Bifrost renames the field per upstream
+  only for its *built-in* providers.
+  So the leg's declared capability needs a third field alongside
+  `native_width` and `supports_server_truncation`: **how the width
+  is requested** (`width_parameter`, and whether the endpoint can
+  set it at all). A leg whose endpoint cannot set the width is
+  eligible only when its declared `native_width` equals the fleet
+  width — otherwise it must be refused, not silently accepted.
+  Perplexity's `pplx-embed-v1-*` is a trap of its own: its
+  `encoding_format` enum is `base64_int8` / `base64_binary` only,
+  with no float, so it needs a decode plus an L2 normalisation — the
+  provider states that casting the int8 values to float "does not
+  restore a full-precision embedding".
 - [ ] **Make the OpenAI-compatible leg generic over
-      `(base_url, model, dimensions, auth)`.** The chain has separate code
-      paths per provider today — `openai_gateway`, `openai_direct`,
-      `llama_embed`, `llama_server` — each with its own request builder.
-      Bifrost, direct OpenAI, Cohere's OpenAI-compatible endpoint, a local
-      llama.cpp server, or any future vendor should be **one leg type with
-      four configuration values**, not four functions. This is the change
-      that makes a future provider a configuration edit rather than a new
-      adapter module, and it keeps the self-hosted option alive as a
-      *possibility* even though this machine cannot run one (Intel i5 at
-      2.0 GHz, no CUDA — see §1.2).
+  `(base_url, model, dimensions, auth)`.** The chain has separate code
+  paths per provider today — `openai_gateway`, `openai_direct`,
+  `llama_embed`, `llama_server` — each with its own request builder.
+  Bifrost, direct OpenAI, Cohere's OpenAI-compatible endpoint, a local
+  llama.cpp server, or any future vendor should be **one leg type with
+  four configuration values**, not four functions. This is the change
+  that makes a future provider a configuration edit rather than a new
+  adapter module, and it keeps the self-hosted option alive as a
+  *possibility* even though this machine cannot run one (Intel i5 at
+  2.0 GHz, no CUDA — see §1.2).
 - [ ] **Make the fallback a hard failure.** `initialize()` never raises;
-      it always lands on the 384-wide mock (`:130-136`).
-      `OpenAIEmbeddingAdapter.init()` (`openai.py:84-86`) already raises
-      `LifecycleError` — and already *calls* `embed_text("initialization
-      test")`, so it is a real reachability probe. That is the natural
-      gate; wire it into the chain.
+  it always lands on the 384-wide mock (`:130-136`).
+  `OpenAIEmbeddingAdapter.init()` (`openai.py:84-86`) already raises
+  `LifecycleError` — and already *calls* `embed_text("initialization     test")`, so it is a real reachability probe. That is the natural
+  gate; wire it into the chain.
 - [ ] **Add `FLEET_EMBEDDING_MODEL` / `_DIM` / `_SPACE` constants and a
-      construction-time cross-check** that a configured width equals
-      `FLEET_EMBEDDING_DIM`.
+  construction-time cross-check** that a configured width equals
+  `FLEET_EMBEDDING_DIM`.
 - [ ] **Widen the four hard-coded 384s in the observability subsystem.**
-      They would reject every 1024-wide vector the new leg produces:
-      `observability/models.py:31` `Vector(384)`;
-      `observability/queries.py:55` `shape != (384,)`;
-      `observability/migrations.py:22` `embedding VECTOR(384)`;
-      `observability/settings.py:36` `embedding_dimension` (default 384,
-      `le=1024`).
+  They would reject every 1024-wide vector the new leg produces:
+  `observability/models.py:31` `Vector(384)`;
+  `observability/queries.py:55` `shape != (384,)`;
+  `observability/migrations.py:22` `embedding VECTOR(384)`;
+  `observability/settings.py:36` `embedding_dimension` (default 384,
+  `le=1024`).
 - [ ] **Raise the `le=1024` validation bounds — and note that the fleet
-      width lands exactly on the current ceiling.** Four fields in the
-      fleet cap a width at 1024: `EmbeddingCreate.embedding_dim` and
-      `EmbeddingCreate.embedding` (mahavishnu
-      `core/repositories/embeddings.py:78-83`, `ge=128, le=1024` and
-      `min_length=128, max_length=1024`),
-      `OTelStorageSettings.embedding_dimension` (oneiric
-      `adapters/observability/settings.py:35-37`, `ge=128, le=1024`), and
-      `SemanticConfig.embedding_dimension` (crackerjack
-      `models/semantic_models.py:168-173`, `ge=128, le=1024`).
-      **1024 passes all four exactly at the bound; 1536 and 3072 are
-      rejected at construction.** That is not a reason to pick 1024 on
-      its own — it is a reason to know the cost of any other width: the
-      oneiric bound is the sharp one, because
-      `mahavishnu/core/config.py:1035` subclasses
-      `OTelStorageSettings` (`class OTelStorageConfig(_OneiricOTelStorageSettings)`)
-      and loads it from `settings/mahavishnu.yaml:119`, so **a width
-      above 1024 fails Mahavishnu's entire settings load until Oneiric
-      releases.** Raise them to `le=4096` so the bound stops being a
-      hidden ceiling on the contract.
+  width lands exactly on the current ceiling.** Four fields in the
+  fleet cap a width at 1024: `EmbeddingCreate.embedding_dim` and
+  `EmbeddingCreate.embedding` (mahavishnu
+  `core/repositories/embeddings.py:78-83`, `ge=128, le=1024` and
+  `min_length=128, max_length=1024`),
+  `OTelStorageSettings.embedding_dimension` (oneiric
+  `adapters/observability/settings.py:35-37`, `ge=128, le=1024`), and
+  `SemanticConfig.embedding_dimension` (crackerjack
+  `models/semantic_models.py:168-173`, `ge=128, le=1024`).
+  **1024 passes all four exactly at the bound; 1536 and 3072 are
+  rejected at construction.** That is not a reason to pick 1024 on
+  its own — it is a reason to know the cost of any other width: the
+  oneiric bound is the sharp one, because
+  `mahavishnu/core/config.py:1035` subclasses
+  `OTelStorageSettings` (`class OTelStorageConfig(_OneiricOTelStorageSettings)`)
+  and loads it from `settings/mahavishnu.yaml:119`, so **a width
+  above 1024 fails Mahavishnu's entire settings load until Oneiric
+  releases.** Raise them to `le=4096` so the bound stops being a
+  hidden ceiling on the contract.
 - [ ] **Make `SubstrateSettings` the source of truth for the width, and
-      add the missing validator.** `embedding__dim` (`:211-219`) and
-      `warm__embedding_dim` (`:106-115`) both default **384**. Their
-      bounds (`ge=64, le=4096`) **already admit 1536** — the problem is
-      the default and the absence of a consumer, not the bound. Add a
-      `model_validator` asserting `embedding__dim == warm__embedding_dim`;
-      the docstring at `:216-218` already promises it and nothing
-      enforces it. (The three `le=1024` bounds at `:132`, `:141`, `:230`
-      are **HNSW `ef_construction`, HNSW `ef_search` and `batch_size`** —
-      not dimensions. Leave them alone.)
+  add the missing validator.** `embedding__dim` (`:211-219`) and
+  `warm__embedding_dim` (`:106-115`) both default **384**. Their
+  bounds (`ge=64, le=4096`) **already admit 1536** — the problem is
+  the default and the absence of a consumer, not the bound. Add a
+  `model_validator` asserting `embedding__dim == warm__embedding_dim`;
+  the docstring at `:216-218` already promises it and nothing
+  enforces it. (The three `le=1024` bounds at `:132`, `:141`, `:230`
+  are **HNSW `ef_construction`, HNSW `ef_search` and `batch_size`** —
+  not dimensions. Leave them alone.)
 - [ ] **Wire or delete the substrate's `embedding__*` knobs.** They are
-      declared, they resolve, and **nothing reads them** — a fleet-wide
-      grep returns only the definitions and one test file. This plan's
-      sibling `mahavishnu/docs/plans/2026-11-05-config-that-nobody-reads.md`
-      already states the requirement (**REQ-DEAD-001/002/003**); the
-      embedding knobs are the largest instance of it in the fleet.
+  declared, they resolve, and **nothing reads them** — a fleet-wide
+  grep returns only the definitions and one test file. This plan's
+  sibling `mahavishnu/docs/plans/2026-11-05-config-that-nobody-reads.md`
+  already states the requirement (**REQ-DEAD-001/002/003**); the
+  embedding knobs are the largest instance of it in the fleet.
 - [ ] **Reconcile `embedding__backend`'s vocabulary.** Its `Literal` is
-      `["openai","fastembed","llama_server"]` — which matches neither the
-      chain's actual leg names (`llama_cpp`, `minimax`, `model2vec`,
-      `mock`) nor has a leg for `"fastembed"`. It cannot select anything
-      until the vocabulary agrees.
+  `["openai","fastembed","llama_server"]` — which matches neither the
+  chain's actual leg names (`llama_cpp`, `minimax`, `model2vec`,
+  `mock`) nor has a leg for `"fastembed"`. It cannot select anything
+  until the vocabulary agrees.
 - [ ] **`EmbeddingSettings` is a plain `pydantic.BaseModel`, not
-      `BaseSettings`** — it reads **nothing** from the environment today.
-      It needs a `from_env()` factory (or to become a `BaseSettings`).
+  `BaseSettings`** — it reads **nothing** from the environment today.
+  It needs a `from_env()` factory (or to become a `BaseSettings`).
 - [ ] `PgvectorAdapter`: add `halfvec` and HNSW; read the substrate's
-      `warm__hnsw_*` parameters (today it creates **ivfflat** with
-      `lists=100` and `PgvectorSettings` has no HNSW knobs at all, while
-      `warm__hnsw_m` / `_ef_construction` / `_ef_search` are declared and
-      read by nothing — the substrate advertises an ANN configuration it
-      cannot deliver); derive the index name from the index method (today
-      the fork's `{t}_embedding_hnsw_idx` and Oneiric's `{t}_embedding_idx`
-      never collide, so switching a table silently leaves **two** ANN
-      indexes on one column); detect a build-parameter mismatch, because
-      `CREATE INDEX IF NOT EXISTS` matches on name only.
+  `warm__hnsw_*` parameters (today it creates **ivfflat** with
+  `lists=100` and `PgvectorSettings` has no HNSW knobs at all, while
+  `warm__hnsw_m` / `_ef_construction` / `_ef_search` are declared and
+  read by nothing — the substrate advertises an ANN configuration it
+  cannot deliver); derive the index name from the index method (today
+  the fork's `{t}_embedding_hnsw_idx` and Oneiric's `{t}_embedding_idx`
+  never collide, so switching a table silently leaves **two** ANN
+  indexes on one column); detect a build-parameter mismatch, because
+  `CREATE INDEX IF NOT EXISTS` matches on name only.
 - [ ] **Pin the vector provider.** Unpinned `use("vector")` resolves to
-      **agentdb** (priority 600), not pgvector (450) — and
-      `settings/oneiric.yaml` pins only `queue: "redis-streams"`. The
-      fleet intends pgvector for the warm tier; say so in config.
+  **agentdb** (priority 600), not pgvector (450) — and
+  `settings/oneiric.yaml` pins only `queue: "redis-streams"`. The
+  fleet intends pgvector for the warm tier; say so in config.
 - [ ] **`DuckdbHotStore` is not an adapter.** It is a plain class with no
-      `AdapterMetadata`, is not exported from `vector/__init__.py`, and is
-      unreachable through `use("vector", provider="duckdb_hot_store")`.
-      Register it or document that it is deliberately out of the registry.
+  `AdapterMetadata`, is not exported from `vector/__init__.py`, and is
+  unreachable through `use("vector", provider="duckdb_hot_store")`.
+  Register it or document that it is deliberately out of the registry.
 - [ ] **Add an embeddings route to the Bifrost gateway.** The gateway's
-      `routes` currently contains only LLM routes
-      (`ONEIRIC_BIFROST_ROUTES=claude_route,qwen_route`) — **there is no
-      embeddings route**, and `text-embedding-3-large` appears nowhere in
-      Mahavishnu's Bifrost wiring. The `openai` *provider* is configured,
-      so the route is the missing piece, not the provider — but its key
-      allowlist must now carry **`text-embedding-3-large`**. A model
-      outside the allowlist fails locally with `no_key_supports_model`
-      before the request is ever sent, so this is a hard gate, not a
-      preference.
+  `routes` currently contains only LLM routes
+  (`ONEIRIC_BIFROST_ROUTES=claude_route,qwen_route`) — **there is no
+  embeddings route**, and `text-embedding-3-large` appears nowhere in
+  Mahavishnu's Bifrost wiring. The `openai` *provider* is configured,
+  so the route is the missing piece, not the provider — but its key
+  allowlist must now carry **`text-embedding-3-large`**. A model
+  outside the allowlist fails locally with `no_key_supports_model`
+  before the request is ever sent, so this is a hard gate, not a
+  preference.
 - [ ] **The gateway's `cache_mode` is `semantic`, and it is NOT part of the
-      fleet's embedding contract.** Its plugin is configured
-      `embedding_model: text-embedding-3-small`, `dimension: 1536`,
-      `provider: openai`, `threshold: 0.95`, `ttl: 30m`. It is an
-      **LLM-response** cache: it embeds requests and responses to decide
-      whether a cached response matches, and those vectors are its own
-      cache keys, not the fleet's semantic vectors. It can therefore keep
-      using `text-embedding-3-small` at 1536 whatever width the fleet's
-      semantic model uses, **and changing the fleet's model does not
-      invalidate its cache** — there is nothing to flush and nothing to
-      repoint. The only coupling is that the model the plugin names must
-      stay allowed for that provider key, and this plan adds a model
-      rather than removing one. Note the known upstream issue where this
-      plugin cannot resolve a local/custom embedding provider inside its
-      `PreLLMHook` even when the same provider/model succeeds through
-      `/v1/embeddings`, and its 8192-token input limit below.
+  fleet's embedding contract.** Its plugin is configured
+  `embedding_model: text-embedding-3-small`, `dimension: 1536`,
+  `provider: openai`, `threshold: 0.95`, `ttl: 30m`. It is an
+  **LLM-response** cache: it embeds requests and responses to decide
+  whether a cached response matches, and those vectors are its own
+  cache keys, not the fleet's semantic vectors. It can therefore keep
+  using `text-embedding-3-small` at 1536 whatever width the fleet's
+  semantic model uses, **and changing the fleet's model does not
+  invalidate its cache** — there is nothing to flush and nothing to
+  repoint. The only coupling is that the model the plugin names must
+  stay allowed for that provider key, and this plan adds a model
+  rather than removing one. Note the known upstream issue where this
+  plugin cannot resolve a local/custom embedding provider inside its
+  `PreLLMHook` even when the same provider/model succeeds through
+  `/v1/embeddings`, and its 8192-token input limit below.
 - [ ] **Watch the gateway's 8192-token input limit.** The semantic-cache
-      plugin does not truncate: 514 of 869 consulted requests failed on
-      that limit. And the model must be in the provider key's `models: [...]`
-      allowlist, or every attempt fails locally with `no_key_supports_model`.
-      The direct `/v1/embeddings` round trip is verified live at 1024; the
-      *plugin* path is the one with the limit.
+  plugin does not truncate: 514 of 869 consulted requests failed on
+  that limit. And the model must be in the provider key's `models: [...]`
+  allowlist, or every attempt fails locally with `no_key_supports_model`.
+  The direct `/v1/embeddings` round trip is verified live at 1024; the
+  *plugin* path is the one with the limit.
 - [ ] **Release, then the operator bumps each consumer's pin.**
 
 ### 3.3 Mahavishnu
@@ -728,154 +722,153 @@ about embeddings.
 sometimes engages — it is what the running server uses.
 
 - [ ] **Adopt the shared embedding client** and delete the local
-      `EmbeddingService` subclass in favour of Oneiric's — the August
-      design's Phase 4 ("Simplify mahavishnu"), never done. Mahavishnu
-      currently subclasses Oneiric's service but builds
-      `_OneiricEmbeddingSettings()` from library defaults, so it never
-      sees the fleet's settings either.
+  `EmbeddingService` subclass in favour of Oneiric's — the August
+  design's Phase 4 ("Simplify mahavishnu"), never done. Mahavishnu
+  currently subclasses Oneiric's service but builds
+  `_OneiricEmbeddingSettings()` from library defaults, so it never
+  sees the fleet's settings either.
 - [ ] **Delete the dead config.** `EmbeddingConfig.provider` and
-      `.model` (`mahavishnu/core/embeddings_oneiric.py:48-57`) have no
-      effect: `EmbeddingService(provider=...)` at `:232` is
-      *accepted-and-ignored* (`:149-158` — *"retained for API
-      compatibility but ignored"*). `openai_model` (`:64`),
-      `openai_api_key` (`:60`) and `model` (`:54`) are written and read by
-      nothing. The `backend == "openai"` branch at `embeddings.py:218-221`
-      is unreachable. This is `REQ-DEAD-001` again, in the same file.
+  `.model` (`mahavishnu/core/embeddings_oneiric.py:48-57`) have no
+  effect: `EmbeddingService(provider=...)` at `:232` is
+  *accepted-and-ignored* (`:149-158` — *"retained for API
+  compatibility but ignored"*). `openai_model` (`:64`),
+  `openai_api_key` (`:60`) and `model` (`:54`) are written and read by
+  nothing. The `backend == "openai"` branch at `embeddings.py:218-221`
+  is unreachable. This is `REQ-DEAD-001` again, in the same file.
 - [ ] **Remove the FastEmbed traces the dead-config work does not
-      reach.** FastEmbed survives in two places that are not the dead
-      config:
-      - `mahavishnu/ingesters/otel_ingester.py` carries its **own**
-        embedder, separate from the shared service: `EmbeddingBackend.FASTEMBED`
-        (`:61`), `FastEmbedWrapper` (`:126`), a guarded
-        `import fastembed` (`:23-39`), and `_map_to_fastembed_model`.
-        The guard is *always false* — `fastembed` is not a dependency —
-        so the leg is unreachable, not merely unused.
-      - `mahavishnu/ingestion_cli.py` carries four CLI help strings
-        advertising `"fastembed|openai"` as a provider choice.
-      - `settings/embeddings.yaml:35` sets `provider: fastembed` in a
-        file nothing reads, and `settings/mahavishnu.yaml:414` comments
-        `# auto, fastembed, openai` on a key that is accepted and
-        ignored. A reader who finds either will believe FastEmbed is a
-        live choice.
-      `EmbeddingProvider.FASTEMBED` goes with `EmbeddingConfig.provider`
-      in the same edit as the subclass removal; the OTel leg, the CLI
-      strings and the two settings go with it.
+  reach.** FastEmbed survives in two places that are not the dead
+  config:
+  \- `mahavishnu/ingesters/otel_ingester.py` carries its **own**
+  embedder, separate from the shared service: `EmbeddingBackend.FASTEMBED`
+  (`:61`), `FastEmbedWrapper` (`:126`), a guarded
+  `import fastembed` (`:23-39`), and `_map_to_fastembed_model`.
+  The guard is *always false* — `fastembed` is not a dependency —
+  so the leg is unreachable, not merely unused.
+  \- `mahavishnu/ingestion_cli.py` carries four CLI help strings
+  advertising `"fastembed|openai"` as a provider choice.
+  \- `settings/embeddings.yaml:35` sets `provider: fastembed` in a
+  file nothing reads, and `settings/mahavishnu.yaml:414` comments
+  `# auto, fastembed, openai` on a key that is accepted and
+  ignored. A reader who finds either will believe FastEmbed is a
+  live choice.
+  `EmbeddingProvider.FASTEMBED` goes with `EmbeddingConfig.provider`
+  in the same edit as the subclass removal; the OTel leg, the CLI
+  strings and the two settings go with it.
 - [ ] **The committed `embeddings:` YAML block is unreachable.**
-      `settings/mahavishnu.yaml:413` nests it under `embeddings:`, but
-      `EmbeddingConfig` has no such sub-model and pydantic's
-      `extra="ignore"` drops the nested dict — it only reads **top-level**
-      `provider`/`model`/`openai_model` keys, which the file does not have.
-      The file that *does* carry a correct block, `settings/embeddings.yaml`,
-      is **never read** (only schema-validated,
-      `mahavishnu/core/unified_config.py:24`). Also fix `load()`
-      replacing rather than merging (`:173`) and its CWD-relative paths
-      (`:168-171`).
+  `settings/mahavishnu.yaml:413` nests it under `embeddings:`, but
+  `EmbeddingConfig` has no such sub-model and pydantic's
+  `extra="ignore"` drops the nested dict — it only reads **top-level**
+  `provider`/`model`/`openai_model` keys, which the file does not have.
+  The file that *does* carry a correct block, `settings/embeddings.yaml`,
+  is **never read** (only schema-validated,
+  `mahavishnu/core/unified_config.py:24`). Also fix `load()`
+  replacing rather than merging (`:173`) and its CWD-relative paths
+  (`:168-171`).
 - [ ] **Remove the mock tier from `ResilientEmbeddingClient`.**
-      `mahavishnu/core/resilient_embeddings.py:26-27` documents Tier 4 as
-      *"Mock Embedding (last resort) — Non-semantic but functional"* and
-      implements it at `:236-246`. It is live, via
-      `mahavishnu/pools/memory_aggregator.py:66`. This is the clearest
-      single violation of the fleet rule.
+  `mahavishnu/core/resilient_embeddings.py:26-27` documents Tier 4 as
+  *"Mock Embedding (last resort) — Non-semantic but functional"* and
+  implements it at `:236-246`. It is live, via
+  `mahavishnu/pools/memory_aggregator.py:66`. This is the clearest
+  single violation of the fleet rule.
 - [ ] **Fix the ecosystem dimension constant.**
-      `mahavishnu/core/resilient_embeddings.py:53`
-      `STANDARD_EMBEDDING_DIMENSION = 384` → 1024, and
-      `_validate_dimension` (`:206-222`) must *reject* a mismatch rather
-      than count it. As it stands, a width mismatch returns `False`, every
-      tier falls through, and `generate_embedding` lands on the mock tier
-      (`:227-252`) — so a width change becomes **100% mock embeddings
-      with one `logger.warning` per call**, and no error anywhere.
+  `mahavishnu/core/resilient_embeddings.py:53`
+  `STANDARD_EMBEDDING_DIMENSION = 384` → 1024, and
+  `_validate_dimension` (`:206-222`) must *reject* a mismatch rather
+  than count it. As it stands, a width mismatch returns `False`, every
+  tier falls through, and `generate_embedding` lands on the mock tier
+  (`:227-252`) — so a width change becomes **100% mock embeddings
+  with one `logger.warning` per call**, and no error anywhere.
 - [ ] **Carry the width in the embedding cache key.**
-      `core/embedding_cache.py:190` declares `model_version: str = "1.0.0"`
-      and the cache key is `f"{model_version}:{text_hash}"` (`:347`) —
-      it carries **no width and no space id**. A width change without
-      bumping `model_version` serves stale-width vectors out of the L1/L2
-      cache. The key must include the space id, not a hand-bumped
-      version string.
+  `core/embedding_cache.py:190` declares `model_version: str = "1.0.0"`
+  and the cache key is `f"{model_version}:{text_hash}"` (`:347`) —
+  it carries **no width and no space id**. A width change without
+  bumping `model_version` serves stale-width vectors out of the L1/L2
+  cache. The key must include the space id, not a hand-bumped
+  version string.
 - [ ] **Raise `EmbeddingCreate`'s width bounds.**
-      `core/repositories/embeddings.py:78-83` caps `embedding_dim` at
-      `le=1024` and `embedding` at `max_length=1024`, while the column it
-      writes to is `vector(384)`
-      (`migrations/versions/V202604021200__initial_consolidated_schema.sql:166`).
-      The check accepts widths the schema rejects — and
-      `core/search/hybrid_search.py:623-639` writes the same table with
-      **raw SQL**, bypassing `EmbeddingCreate` entirely, so a wide
-      embedding reaches `vector(384)` with no validation gate at all.
-      Two write paths, two different gates, one table: both must go
-      through the contract.
+  `core/repositories/embeddings.py:78-83` caps `embedding_dim` at
+  `le=1024` and `embedding` at `max_length=1024`, while the column it
+  writes to is `vector(384)`
+  (`migrations/versions/V202604021200__initial_consolidated_schema.sql:166`).
+  The check accepts widths the schema rejects — and
+  `core/search/hybrid_search.py:623-639` writes the same table with
+  **raw SQL**, bypassing `EmbeddingCreate` entirely, so a wide
+  embedding reaches `vector(384)` with no validation gate at all.
+  Two write paths, two different gates, one table: both must go
+  through the contract.
 - [ ] **Delete the committed `bifrost:` block or make it live.**
-      `settings/mahavishnu.yaml:110-112` (`route_qwen_code`,
-      `ssl_show_warn`) is inert — `bifrost` is **not** a
-      `MahavishnuSettings` field, and oneiric's `BifrostLLMSettings`
-      (`oneiric/adapters/llm/bifrost.py:218-275`) is a `BaseSettings` with
-      an env prefix that reads **env vars only**, never YAML. Same for
-      `settings/local.yaml:86`.
+  `settings/mahavishnu.yaml:110-112` (`route_qwen_code`,
+  `ssl_show_warn`) is inert — `bifrost` is **not** a
+  `MahavishnuSettings` field, and oneiric's `BifrostLLMSettings`
+  (`oneiric/adapters/llm/bifrost.py:218-275`) is a `BaseSettings` with
+  an env prefix that reads **env vars only**, never YAML. Same for
+  `settings/local.yaml:86`.
 - [ ] **Make the pgvector fork a true subclass of Oneiric's.** It is a
-      standalone 715-line class with zero `oneiric` imports
-      (`mahavishnu/adapters/pgvector_adapter.py:143`), despite its own
-      docstring at `:3`. Oneiric's adapter has **no HNSW**, no GIN index
-      and no `created_at`/`updated_at`; the fork has all three and none of
-      Oneiric's safety controls (namespace ACL, JSONB decode, injectable
-      pool factory). **Do not ship that asymmetry.** Either port HNSW +
-      GIN + timestamps *upstream* and delete the fork, or add the three
-      safety features to the fork. **Deleting the fork on the stated
-      rationale — "Oneiric's class supports HNSW per the verified source"
-      (`docs/specs/2026-10-14-decision-adapter-category-design.md:596-598`)
-      — would silently drop HNSW indexing.**
+  standalone 715-line class with zero `oneiric` imports
+  (`mahavishnu/adapters/pgvector_adapter.py:143`), despite its own
+  docstring at `:3`. Oneiric's adapter has **no HNSW**, no GIN index
+  and no `created_at`/`updated_at`; the fork has all three and none of
+  Oneiric's safety controls (namespace ACL, JSONB decode, injectable
+  pool factory). **Do not ship that asymmetry.** Either port HNSW +
+  GIN + timestamps *upstream* and delete the fork, or add the three
+  safety features to the fork. **Deleting the fork on the stated
+  rationale — "Oneiric's class supports HNSW per the verified source"
+  (`docs/specs/2026-10-14-decision-adapter-category-design.md:596-598`)
+  — would silently drop HNSW indexing.**
 - [ ] **Fix `ef_search`.** `SET LOCAL hnsw.ef_search = $1` (`:238`) is
-      rejected by PostgreSQL — `SET` is a utility statement and takes no
-      bind parameters — and it runs on a different pooled connection from
-      the query (`:236` vs `:259`). The portable form is
-      `SELECT set_config('hnsw.ef_search', $1, true)` on the same
-      connection inside an explicit transaction. The configured value has
-      **never** reached a query.
+  rejected by PostgreSQL — `SET` is a utility statement and takes no
+  bind parameters — and it runs on a different pooled connection from
+  the query (`:236` vs `:259`). The portable form is
+  `SELECT set_config('hnsw.ef_search', $1, true)` on the same
+  connection inside an explicit transaction. The configured value has
+  **never** reached a query.
 - [ ] **Add a real-Postgres integration test for that path.** The
-      `AsyncMock` harness structurally cannot catch a SQL syntax error —
-      which is why the bug survived.
+  `AsyncMock` harness structurally cannot catch a SQL syntax error —
+  which is why the bug survived.
 - [ ] **Fix the JSONB decode.** asyncpg returns JSONB as `str`;
-      `register_vector` registers no jsonb codec. `otel_ingester.py:986`
-      does `result["metadata"].get(...)` on a `str` and raises
-      `AttributeError`, which the MCP tool's broad `except Exception`
-      swallows into an empty result list. The GET path at `:1073-1078`
-      already works around it.
+  `register_vector` registers no jsonb codec. `otel_ingester.py:986`
+  does `result["metadata"].get(...)` on a `str` and raises
+  `AttributeError`, which the MCP tool's broad `except Exception`
+  swallows into an empty result list. The GET path at `:1073-1078`
+  already works around it.
 - [ ] **Make the MCP tool path honour `storage_type`.**
-      `mahavishnu/mcp/tools/otel_tools.py:166,381,421` construct
-      `OtelIngester(...)` without `storage_type` or `pgvector_dsn`, so the
-      server always uses DuckDB regardless of the XDG
-      `otel_ingester.storage_type: postgresql`. Only
-      `create_otel_ingester()` reads the config, and it has **no
-      production caller** — only tests and examples.
+  `mahavishnu/mcp/tools/otel_tools.py:166,381,421` construct
+  `OtelIngester(...)` without `storage_type` or `pgvector_dsn`, so the
+  server always uses DuckDB regardless of the XDG
+  `otel_ingester.storage_type: postgresql`. Only
+  `create_otel_ingester()` reads the config, and it has **no
+  production caller** — only tests and examples.
 - [ ] **Stop reporting a hardcoded backend.**
-      `mahavishnu/mcp/tools/otel_tools.py:203` and the default at `:36`
-      return the literal `"duckdb_hotstore"`. Read
-      `ingester.storage_type` instead.
+  `mahavishnu/mcp/tools/otel_tools.py:203` and the default at `:36`
+  return the literal `"duckdb_hotstore"`. Read
+  `ingester.storage_type` instead.
 - [ ] **Fix the live `mahavishnu_hybrid_search` break.**
-      `mahavishnu/core/database.py:74-83` defaults `ssl_mode="prefer"` and
-      `_get_ssl_config()` (`:238-248`) returns `None` for `"prefer"`, but
-      the DSN handling still attempts an SSL upgrade that Homebrew
-      Postgres rejects — the tool errors live with
-      `[MHV-002] Unexpected database error: PostgreSQL server at
-      "localhost:5432" rejected SSL upgrade`.
+  `mahavishnu/core/database.py:74-83` defaults `ssl_mode="prefer"` and
+  `_get_ssl_config()` (`:238-248`) returns `None` for `"prefer"`, but
+  the DSN handling still attempts an SSL upgrade that Homebrew
+  Postgres rejects — the tool errors live with
+  `[MHV-002] Unexpected database error: PostgreSQL server at     "localhost:5432" rejected SSL upgrade`.
 - [ ] **Re-embed the live pgvector table.** In the `mahavishnu` database,
-      `public.vectors_otel_traces` holds **7 rows, all 384-dim**, with the
-      fork's exact schema and its HNSW (`m=16, ef_construction=64`) and GIN
-      indexes. The rows carry `task.class` values of
-      `CODE_GENERATION`/`REASONING`/`SEARCH` — **never** `mcp_tool_call` —
-      and are from a manual run, not a live feed. A 1024 move needs a new
-      column or table plus a re-embed; the rows cannot be reused.
+  `public.vectors_otel_traces` holds **7 rows, all 384-dim**, with the
+  fork's exact schema and its HNSW (`m=16, ef_construction=64`) and GIN
+  indexes. The rows carry `task.class` values of
+  `CODE_GENERATION`/`REASONING`/`SEARCH` — **never** `mcp_tool_call` —
+  and are from a manual run, not a live feed. A 1024 move needs a new
+  column or table plus a re-embed; the rows cannot be reused.
 - [ ] **Promote `transcript_path` and `prompt_id` to the top level of the
-      hook payload.** `mahavishnu/bodai_hook_bridge.py:159-187`
-      (`_normalize`) — both are already present on every live entry but
-      **one level down inside `raw`**, and no consumer reads them there.
-      `raw.prompt` (the user's prompt text) and `raw.tool_response` are
-      also flowing and unread. This is the cheapest path to an Akosha
-      conversation corpus.
+  hook payload.** `mahavishnu/bodai_hook_bridge.py:159-187`
+  (`_normalize`) — both are already present on every live entry but
+  **one level down inside `raw`**, and no consumer reads them there.
+  `raw.prompt` (the user's prompt text) and `raw.tool_response` are
+  also flowing and unread. This is the cheapest path to an Akosha
+  conversation corpus.
 - [ ] **Register the `hook_bridge_feed`.** The name at
-      `bodai_hook_bridge.py:360` appears nowhere else; `_health_monitor`
-      (`:706`) is set only by tests. The bridge's `errors_total` and
-      `publish_failures_total` are a permanent no-op.
+  `bodai_hook_bridge.py:360` appears nowhere else; `_health_monitor`
+  (`:706`) is set only by tests. The bridge's `errors_total` and
+  `publish_failures_total` are a permanent no-op.
 - [ ] Delete the dead `HNSWIndexConfig` (`core/config.py:989-1032`), the
-      third pgvector implementation in `core/vector_search.py`, and the
-      0-byte `scripts/setup_otel_storage.sh` (referenced by three docs).
+  third pgvector implementation in `core/vector_search.py`, and the
+  0-byte `scripts/setup_otel_storage.sh` (referenced by three docs).
 
 ### 3.4 Akosha
 
@@ -883,91 +876,90 @@ Plan M (`akosha/docs/plans/2026-11-17-unified-pgvector-warm-tier.md`) holds
 the detail. The fleet-relevant additions:
 
 - [ ] **Phase 0** — adopt Oneiric's client; delete `BACKEND_DEFAULT_DIMS`;
-      rebuild `conversations` at 1024 (it holds 0 rows, so this is close to
-      free; `hot.db` is 894 MB and needs `hot.db` **and** `hot.db.wal`
-      backed up together).
+  rebuild `conversations` at 1024 (it holds 0 rows, so this is close to
+  free; `hot.db` is 894 MB and needs `hot.db` **and** `hot.db.wal`
+  backed up together).
 - [ ] **Parameterize the one hard-coded width left in Akosha's executable
-      path: `embedding INT8[384]`** at `storage/warm_store.py:77`.
-      `WarmStore.__init__` (`:49`) takes **no dimension parameter at
-      all**, so the DDL cannot be parameterized today — and DuckDB
-      rejects the cast outright (verified: *"Cannot cast list with length
-      1024 to array with length 384"*). This breaks every hot→warm
-      migration, and the exception is **swallowed** at `storage/aging.py:253`
-      (`except Exception` → `stats.errors += len(batch)`), so the aging
-      tier quietly stops migrating and reports only an error count.
-      `create_warm_store` (`storage/__init__.py:243`) must thread the
-      resolved dimension through, mirroring `PgvectorWarmStore`.
-      **This single line breaks the fleet** — it is the first thing to
-      fix.
+  path: `embedding INT8[384]`** at `storage/warm_store.py:77`.
+  `WarmStore.__init__` (`:49`) takes **no dimension parameter at
+  all**, so the DDL cannot be parameterized today — and DuckDB
+  rejects the cast outright (verified: *"Cannot cast list with length
+  1024 to array with length 384"*). This breaks every hot→warm
+  migration, and the exception is **swallowed** at `storage/aging.py:253`
+  (`except Exception` → `stats.errors += len(batch)`), so the aging
+  tier quietly stops migrating and reports only an error count.
+  `create_warm_store` (`storage/__init__.py:243`) must thread the
+  resolved dimension through, mirroring `PgvectorWarmStore`.
+  **This single line breaks the fleet** — it is the first thing to
+  fix.
 - [ ] **Fix the ingestion worker's zero-vector fallback.**
-      `ingestion/worker.py:564` writes `embedding=conv.get("embedding",
-      [0.0] * 384)` — a 384-wide fallback regardless of the schema. At the
-      fleet width a payload with no `embedding` key produces a
-      wrong-width zero vector → `ValueError` from `HotStore.insert` →
-      caught at `:580` → **the conversation is silently dropped**.
+  `ingestion/worker.py:564` writes `embedding=conv.get("embedding",     [0.0] * 384)` — a 384-wide fallback regardless of the schema. At the
+  fleet width a payload with no `embedding` key produces a
+  wrong-width zero vector → `ValueError` from `HotStore.insert` →
+  caught at `:580` → **the conversation is silently dropped**.
 - [ ] **Fix the byte-accounting constants.** `storage/aging.py:144` and
-      `:246` add a flat `2500` bytes per record ("int8 embedding (384B)").
-      At the fleet width that under-reports. Derive it from the width.
+  `:246` add a flat `2500` bytes per record ("int8 embedding (384B)").
+  At the fleet width that under-reports. Derive it from the width.
 - [ ] **Widen `akosha_store_memory`'s dimension check.**
-      `mcp/tools/session_buddy_tools.py:138-145` compares the incoming
-      width against a hardcoded 384 and, on a mismatch, **logs a warning
-      and proceeds** — it does not reject. Only a `None` embedding is
-      rejected, and its error message ("must be a 384-dimensional vector")
-      is itself stale. So this does **not** block Session-Buddy's push;
-      it fires a misleading warning on every push at the fleet width.
-      Fix it to check the fleet width against the *contract*, not a
-      literal — and against the **live schema width**, not a second
-      literal, or the check and the column disagree in both directions.
-      It also discards ten lineage fields (`:26-42`), so the
-      pushed rows carry no provenance — the same vocabulary problem the
-      aging filter has.
+  `mcp/tools/session_buddy_tools.py:138-145` compares the incoming
+  width against a hardcoded 384 and, on a mismatch, **logs a warning
+  and proceeds** — it does not reject. Only a `None` embedding is
+  rejected, and its error message ("must be a 384-dimensional vector")
+  is itself stale. So this does **not** block Session-Buddy's push;
+  it fires a misleading warning on every push at the fleet width.
+  Fix it to check the fleet width against the *contract*, not a
+  literal — and against the **live schema width**, not a second
+  literal, or the check and the column disagree in both directions.
+  It also discards ten lineage fields (`:26-42`), so the
+  pushed rows carry no provenance — the same vocabulary problem the
+  aging filter has.
 - [ ] **Carry the space id on every stored vector.** The warm tier's
-      `public.vectors_otel_traces` has no width column and no model
-      column, and Crackerjack's `embeddings` table has neither. Without
-      them, "which rows came from the old model?" is a guess rather than
-      a query, and a model change becomes a blind rebuild. Add
-      `embedding_model` and `embedding_dim` (or a single `space_version`)
-      to every vector-bearing table, write them on every insert, and
-      assert the pair on read. This is the difference between a re-embed
-      being a `DELETE` and it being a `SELECT ... WHERE`.
+  `public.vectors_otel_traces` has no width column and no model
+  column, and Crackerjack's `embeddings` table has neither. Without
+  them, "which rows came from the old model?" is a guess rather than
+  a query, and a model change becomes a blind rebuild. Add
+  `embedding_model` and `embedding_dim` (or a single `space_version`)
+  to every vector-bearing table, write them on every insert, and
+  assert the pair on read. This is the difference between a re-embed
+  being a `DELETE` and it being a `SELECT ... WHERE`.
 - [ ] **Add the rerank stage to the retrieval pipeline.**
-      `retrieve (vector) → fuse with FTS (RRF) → rerank → top-k`. The
-      rerank leg is a separately configured model with **its own** space
-      id, deliberately *not* the index space (§1.2), so the ranker can be
-      changed without re-embedding the corpus. Today the stage is a
-      documented pass-through that reports its configuration; the
-      populator is deferred (§1.2). `/health` reports the index space and
-      the ranker's model and space id separately, and the search response
-      carries `rerank: {model, applied, reordered}` so the stage is
-      observable rather than invisible.
+  `retrieve (vector) → fuse with FTS (RRF) → rerank → top-k`. The
+  rerank leg is a separately configured model with **its own** space
+  id, deliberately *not* the index space (§1.2), so the ranker can be
+  changed without re-embedding the corpus. Today the stage is a
+  documented pass-through that reports its configuration; the
+  populator is deferred (§1.2). `/health` reports the index space and
+  the ranker's model and space id separately, and the search response
+  carries `rerank: {model, applied, reordered}` so the stage is
+  observable rather than invisible.
 - [ ] **The Redis subscriber.** Per-process consumer name → XAUTOCLAIM the
-      660 pending entries → delete the 405,790 stale consumers in pages →
-      decode `{channel, headers, payload}` → drop the
-      `payload["version"] == "1.0.0"` check → **widen the topic filter to
-      the `bodai.hooks.*` channels** → read the PEL, not `>`. Log decode
-      failures; a silent drop is how a retired producer survived unnoticed.
+  660 pending entries → delete the 405,790 stale consumers in pages →
+  decode `{channel, headers, payload}` → drop the
+  `payload["version"] == "1.0.0"` check → **widen the topic filter to
+  the `bodai.hooks.*` channels** → read the PEL, not `>`. Log decode
+  failures; a silent drop is how a retired producer survived unnoticed.
 - [ ] **The false-negative health flag.** `subscriber_wiring.py:128` reads
-      `.running` off the *orchestrator*, which has no such property — it
-      exists only on the inner subscriber. So `_event_subscriber_running`
-      is always False while the consumer is demonstrably alive.
+  `.running` off the *orchestrator*, which has no such property — it
+  exists only on the inner subscriber. So `_event_subscriber_running`
+  is always False while the consumer is demonstrably alive.
 - [ ] **The analytics instance that is never initialised.**
-      `group_registers.py:73` creates a **second** `TimeSeriesAnalytics()`
-      that never gets `initialize()`d, while the real one
-      (`server.py:931-934`) is only used at shutdown. **47,386 rows sit in
-      `~/.akosha/state/metrics.db` and are never loaded**, so four
-      advertised analytics tools return "Insufficient data". A one-line
-      wiring fix turns four dead tools into working ones.
+  `group_registers.py:73` creates a **second** `TimeSeriesAnalytics()`
+  that never gets `initialize()`d, while the real one
+  (`server.py:931-934`) is only used at shutdown. **47,386 rows sit in
+  `~/.akosha/state/metrics.db` and are never loaded**, so four
+  advertised analytics tools return "Insufficient data". A one-line
+  wiring fix turns four dead tools into working ones.
 - [ ] **The metadata conventions.** `AgingService` filters
-      `metadata->>'task_class' = 'mcp_tool_call'` — a *span* vocabulary —
-      over a table holding both spans and memories. The Session-Buddy
-      push path sets no `task_class` and discards ten lineage fields
-      (`session_buddy_tools.py:26-42`). Settle the vocabulary **before**
-      building the writer, or the writer produces rows no consumer can see.
+  `metadata->>'task_class' = 'mcp_tool_call'` — a *span* vocabulary —
+  over a table holding both spans and memories. The Session-Buddy
+  push path sets no `task_class` and discards ten lineage fields
+  (`session_buddy_tools.py:26-42`). Settle the vocabulary **before**
+  building the writer, or the writer produces rows no consumer can see.
 - [ ] `suppress(Exception)` around the feed count (a raised query reads as
-      zero); `local_traces_feed` counts `query_traces` only while claiming
-      `spans_substrate` too; `metrics_substrate` has 1,000 rows and **no MCP
-      tool reads it**; `fitness_analyzer` has no `declared_pairs`;
-      `discover_tools` is mcp-common's, not Akosha's.
+  zero); `local_traces_feed` counts `query_traces` only while claiming
+  `spans_substrate` too; `metrics_substrate` has 1,000 rows and **no MCP
+  tool reads it**; `fitness_analyzer` has no `declared_pairs`;
+  `discover_tools` is mcp-common's, not Akosha's.
 - [ ] **Phase 2** — the unified pgvector warm tier.
 
 ### 3.5 Session-Buddy
@@ -1038,117 +1030,117 @@ exported to **nothing**. `/health` carries two feeds (`skills_signer`,
 idle since boot, and `health()` returns true on `entities_count > 0`).
 
 - [ ] **Move 768 → 1024 in both constants, atomically**
-      (`memory/embedding_dim.py:39` **and** `reflection/embeddings.py:81`).
-      Leaving `llama_server` declared at its true 4096 and `llama_embed`
-      at 768 is *correct* — they then become ineligible, which is the
-      intended outcome, not a bug to fix.
+  (`memory/embedding_dim.py:39` **and** `reflection/embeddings.py:81`).
+  Leaving `llama_server` declared at its true 4096 and `llama_embed`
+  at 768 is *correct* — they then become ineligible, which is the
+  intended outcome, not a bug to fix.
 - [ ] **Point the request body at the fleet model and width.** Both OpenAI
-      legs send `{"model", "input", "dimensions": OPENAI_EMBEDDING_DIM}`
-      (`reflection/embeddings.py:323` and `:339`), and the model names
-      come from `BIFROST_EMBEDDING_MODEL` / `OPENAI_EMBEDDING_MODEL`,
-      both defaulting to `text-embedding-3-small`. Change the default to
-      **`text-embedding-3-large`** and keep `dimensions` — 3-large is
-      natively 3072, so `dimensions: 1024` is now **required**, not
-      optional (§1). The field is what makes the *same* width reachable
-      from a model of a different native width, so it stays part of the
-      request; what changes is that it is now load-bearing. Note the
-      current bug it papers over: today that field asks
-      `text-embedding-3-small` for a **768-wide truncation of a
-      native-1536 model**, so the fleet has been running a lossy vector
-      and calling it the model's width.
+  legs send `{"model", "input", "dimensions": OPENAI_EMBEDDING_DIM}`
+  (`reflection/embeddings.py:323` and `:339`), and the model names
+  come from `BIFROST_EMBEDDING_MODEL` / `OPENAI_EMBEDDING_MODEL`,
+  both defaulting to `text-embedding-3-small`. Change the default to
+  **`text-embedding-3-large`** and keep `dimensions` — 3-large is
+  natively 3072, so `dimensions: 1024` is now **required**, not
+  optional (§1). The field is what makes the *same* width reachable
+  from a model of a different native width, so it stays part of the
+  request; what changes is that it is now load-bearing. Note the
+  current bug it papers over: today that field asks
+  `text-embedding-3-small` for a **768-wide truncation of a
+  native-1536 model**, so the fleet has been running a lossy vector
+  and calling it the model's width.
 - [ ] **Add the hard startup gate.** A `verify_provider_reachable()` that
-      probes the eligible legs and returns the serving leg + width; the
-      lifespan calls it and **aborts startup** on failure. The failure
-      message must name both ("no real embedding provider reachable;
-      required width 1024"). Do not follow the surrounding
-      swallow-everything pattern.
+  probes the eligible legs and returns the serving leg + width; the
+  lifespan calls it and **aborts startup** on failure. The failure
+  message must name both ("no real embedding provider reachable;
+  required width 1024"). Do not follow the surrounding
+  swallow-everything pattern.
 - [ ] **Add an embedding health feed** and expose `get_embedding_system_info()`
-      via an MCP tool and in `/health` (mirroring the `skills_signer`
-      pattern at `server_optimized.py:460-475`). The feed reports the
-      **index space** and the **ranker's** model and space id separately
-      (§1.2) — a single space id cannot express both.
+  via an MCP tool and in `/health` (mirroring the `skills_signer`
+  pattern at `server_optimized.py:460-475`). The feed reports the
+  **index space** and the **ranker's** model and space id separately
+  (§1.2) — a single space id cannot express both.
 - [ ] **Stop storing embedding-less rows.** `coerce_embedding` and the
-      write path (`adapters/reflection_adapter_oneiric.py:1284-1292`)
-      must raise on a missing or wrong-width vector, not log a warning
-      and store a degraded row.
+  write path (`adapters/reflection_adapter_oneiric.py:1284-1292`)
+  must raise on a missing or wrong-width vector, not log a warning
+  and store a degraded row.
 - [ ] **Rebuild the database at 1024.**
-      `scripts/migrate_embedding_dim.py --to-dim 1024 --replace --re-embed`.
-      **Without `--re-embed` the database comes back 100% NULL-embedded**
-      (the script drops every vector, `:235-236`). Stop the server first
-      — DuckDB is single-writer. 313 vectors in a 53 MB database, so the
-      rebuild is cheap.
+  `scripts/migrate_embedding_dim.py --to-dim 1024 --replace --re-embed`.
+  **Without `--re-embed` the database comes back 100% NULL-embedded**
+  (the script drops every vector, `:235-236`). Stop the server first
+  — DuckDB is single-writer. 313 vectors in a 53 MB database, so the
+  rebuild is cheap.
 - [ ] **Migrate the BLOB-backed embeddings separately.** The script only
-      sees `FLOAT[N]` (`:96-120`). `skill_invocation.embedding` and
-      `centroid_embedding` are BLOBs; `EMBEDDING_BYTES` must go to 4096
-      at 1024 (`storage/skills_embeddings.py:46-47`) and every existing
-      blob must be re-embedded and re-packed, or `unpack_embedding`
-      (`:98-99`) raises.
+  sees `FLOAT[N]` (`:96-120`). `skill_invocation.embedding` and
+  `centroid_embedding` are BLOBs; `EMBEDDING_BYTES` must go to 4096
+  at 1024 (`storage/skills_embeddings.py:46-47`) and every existing
+  blob must be re-embedded and re-packed, or `unpack_embedding`
+  (`:98-99`) raises.
 - [ ] **Remove the `llama_embed` leg from the fleet chain.** It is
-      width-eligible at 768 alongside the two OpenAI legs, but it is a
-      *different model in a different vector space* — the same width, a
-      different meaning, silently mixable.
+  width-eligible at 768 alongside the two OpenAI legs, but it is a
+  *different model in a different vector space* — the same width, a
+  different meaning, silently mixable.
 - [ ] **Adopt the shared client, or pin SB's chain to the same constants
-      and the same startup-failure rule.** Two embedding clients is the
-      problem; SB's chain is currently the best of them, which is why it
-      is worth keeping — but it must obey the same contract.
+  and the same startup-failure rule.** Two embedding clients is the
+  problem; SB's chain is currently the best of them, which is why it
+  is worth keeping — but it must obey the same contract.
 - [ ] **Fix the push client — five defects, not one.** The current push
-      does not reach Akosha at all:
-      1. `storage/akosha_sync.py:191` uses `config.cloud_endpoint` — the
-         **Cloudflare R2 S3 endpoint** — as the Akosha base URL.
-      2. `:1067` appends `/mcp/v1`; Akosha mounts `/mcp` only (404).
-      3. **The tool names do not exist.** The live Akosha server
-         registers 39 tools, and only two are in the store family:
-         `akosha_store_memory` and `akosha_batch_store_memories`.
-         Session-Buddy calls `store_reflection` (`:540`),
-         `create_entity` (`:700`), `create_relation` (`:732`) and
-         `batch_store_memories` (`:981`) — none of them unprefixed, and
-         **`create_entity` and `create_relation` have no counterpart on
-         the Akosha side at all**, prefixed or not. The knowledge-graph
-         write path Session-Buddy intends has no receiver; it has to be
-         designed, not renamed.
-      4. `storage/akosha_config.py:222-224` reads `HOSTNAME`, which macOS
-         does not export into a launchd process — the live `system_id` is
-         **`"unknown-system"`**, not the hostname. `socket.gethostname()`
-         is the fix (as `bodai_events_publisher.py:191` already does).
-      5. Akosha's dimension check compares against a hardcoded 384
-         (`akosha/mcp/tools/session_buddy_tools.py:138-145`). It only
-         **warns** — it does not reject — so it does not block the push,
-         but it fires a misleading warning on every row. Fix it
-         alongside Akosha's own width move; Session-Buddy should not
-         paper over it.
-      A **second** URL defect lives in `sync.py:521-527`
-      (`POST {akosha_url}/store_memory` → 404); it must be an MCP
-      `tools/call` to `/mcp` with the tool name `akosha_store_memory`.
+  does not reach Akosha at all:
+  1\. `storage/akosha_sync.py:191` uses `config.cloud_endpoint` — the
+  **Cloudflare R2 S3 endpoint** — as the Akosha base URL.
+  2\. `:1067` appends `/mcp/v1`; Akosha mounts `/mcp` only (404).
+  3\. **The tool names do not exist.** The live Akosha server
+  registers 39 tools, and only two are in the store family:
+  `akosha_store_memory` and `akosha_batch_store_memories`.
+  Session-Buddy calls `store_reflection` (`:540`),
+  `create_entity` (`:700`), `create_relation` (`:732`) and
+  `batch_store_memories` (`:981`) — none of them unprefixed, and
+  **`create_entity` and `create_relation` have no counterpart on
+  the Akosha side at all**, prefixed or not. The knowledge-graph
+  write path Session-Buddy intends has no receiver; it has to be
+  designed, not renamed.
+  4\. `storage/akosha_config.py:222-224` reads `HOSTNAME`, which macOS
+  does not export into a launchd process — the live `system_id` is
+  **`"unknown-system"`**, not the hostname. `socket.gethostname()`
+  is the fix (as `bodai_events_publisher.py:191` already does).
+  5\. Akosha's dimension check compares against a hardcoded 384
+  (`akosha/mcp/tools/session_buddy_tools.py:138-145`). It only
+  **warns** — it does not reject — so it does not block the push,
+  but it fires a misleading warning on every row. Fix it
+  alongside Akosha's own width move; Session-Buddy should not
+  paper over it.
+  A **second** URL defect lives in `sync.py:521-527`
+  (`POST {akosha_url}/store_memory` → 404); it must be an MCP
+  `tools/call` to `/mcp` with the tool name `akosha_store_memory`.
 - [ ] **Interim path: use the MCP tool directly**
-      (`akosha_batch_store_memories`) — it is already reachable and its
-      payload matches the existing serializer. Land the HTTP-push repair
-      as the automated path once Akosha's width moves to 1024.
-      **Do not use Redis** — the Redis path publishes only `task.*`
-      envelopes and a heartbeat, never conversation content.
+  (`akosha_batch_store_memories`) — it is already reachable and its
+  payload matches the existing serializer. Land the HTTP-push repair
+  as the automated path once Akosha's width moves to 1024.
+  **Do not use Redis** — the Redis path publishes only `task.*`
+  envelopes and a heartbeat, never conversation content.
 - [ ] **Build the transcript ingester, or decode the Redis hook events.**
-      The receiving schema is ready (`source_type` CHECK, the
-      `claude_turn` category, `turn_parent_id`, and an adapter writer that
-      takes `source_type`); the *producer* is missing. **The corpus is
-      already on the stream** — the `bodai.hooks.*` topics carry
-      `transcript_path` and `session_id` — so decoding them needs no new
-      transport and restores the original intent. Until one of these
-      ships, `conversations_v2` stays 156 synthetic markers and every
-      semantic search over it is meaningless.
+  The receiving schema is ready (`source_type` CHECK, the
+  `claude_turn` category, `turn_parent_id`, and an adapter writer that
+  takes `source_type`); the *producer* is missing. **The corpus is
+  already on the stream** — the `bodai.hooks.*` topics carry
+  `transcript_path` and `session_id` — so decoding them needs no new
+  transport and restores the original intent. Until one of these
+  ships, `conversations_v2` stays 156 synthetic markers and every
+  semantic search over it is meaningless.
 - [ ] **Route the MCP `store_conversation` path through the
-      provenance-capable writer** — the current path writes no
-      `source_type`, so the manual tool would still write NULL provenance
-      even after the ingester lands.
+  provenance-capable writer** — the current path writes no
+  `source_type`, so the manual tool would still write NULL provenance
+  even after the ingester lands.
 - [ ] **Update `2026-11-06-fleet-embedding-width-768.md`** to 1024 and
-      startup failure, and **retract its line 36** ("the `mock` fallback
-      widens 384 → 768") — under startup failure the mock is not a write
-      path. Its status is `draft`, 8-agent reviewed; it should be
-      *updated*, not replaced. The companion spec
-      (`2026-11-05-conversation-transcript-ingestion-design.md`) is also
-      `draft` and must be marked superseded for its fleet section.
+  startup failure, and **retract its line 36** ("the `mock` fallback
+  widens 384 → 768") — under startup failure the mock is not a write
+  path. Its status is `draft`, 8-agent reviewed; it should be
+  *updated*, not replaced. The companion spec
+  (`2026-11-05-conversation-transcript-ingestion-design.md`) is also
+  `draft` and must be marked superseded for its fleet section.
 - [ ] **Re-pin the stale fixtures and claims**: the test constants and
-      `FLOAT[384]` DDL in the test suite, the `embeddings.py` docstring
-      (claims `FLOAT[1536]`, live is `FLOAT[768]`), and `CLAUDE.md`
-      (claims `FLOAT[384]` + a local ONNX MiniLM that was removed).
+  `FLOAT[384]` DDL in the test suite, the `embeddings.py` docstring
+  (claims `FLOAT[1536]`, live is `FLOAT[768]`), and `CLAUDE.md`
+  (claims `FLOAT[384]` + a local ONNX MiniLM that was removed).
 
 ### 3.6 Crackerjack
 
@@ -1172,98 +1164,97 @@ The current state is worse than "wrong width":
 | Cross-service embedding reads | **none** — `akosha_search_code_patterns` is regex/PyCharm-index; Session-Buddy reads metrics and skills only |
 
 - [ ] **Replace the hash embedder with real embeddings** at the fleet
-      width. A hash is not a semantic vector; every similarity against one
-      is noise — and the index that would hold them is empty anyway.
+  width. A hash is not a semantic vector; every similarity against one
+  is noise — and the index that would hold them is empty anyway.
 - [ ] **Raise the `embedding_dimension` bound**
-      (`crackerjack/models/semantic_models.py:171`, `le=1024` → `le=4096`)
-      and its default (`:169`, 384 → the fleet constant).
+  (`crackerjack/models/semantic_models.py:171`, `le=1024` → `le=4096`)
+  and its default (`:169`, 384 → the fleet constant).
 - [ ] **Widen every 384 literal to the fleet constant**:
-      `semantic_models.py:169`; `services/ai/embeddings.py:108, 111` (the
-      hash pad/slice — both, not a magic number); `:290`
-      (`get_model_info`); `services/vector_store.py:488` (the
-      `index_size_mb` math); `mcp/tools/semantic_tools.py:566`
-      (`_parse_semantic_config` default); `cli/semantic_handlers.py:39,
-      100, 189, 257` and the hard-coded display row `"384"` at `:211`.
+  `semantic_models.py:169`; `services/ai/embeddings.py:108, 111` (the
+  hash pad/slice — both, not a magic number); `:290`
+  (`get_model_info`); `services/vector_store.py:488` (the
+  `index_size_mb` math); `mcp/tools/semantic_tools.py:566`
+  (`_parse_semantic_config` default); `cli/semantic_handlers.py:39,     100, 189, 257` and the hard-coded display row `"384"` at `:211`.
 - [ ] **Create the leaf dimension constant**
-      (`crackerjack/services/ai/dimensions.py` — does not exist). Both
-      `semantic_models.py` and `services/ai/embeddings.py` must import it,
-      and it must import nothing from `crackerjack.*` — otherwise the
-      `semantic_models → embeddings → semantic_models` cycle makes
-      `import crackerjack.models.semantic_models` fail.
+  (`crackerjack/services/ai/dimensions.py` — does not exist). Both
+  `semantic_models.py` and `services/ai/embeddings.py` must import it,
+  and it must import nothing from `crackerjack.*` — otherwise the
+  `semantic_models → embeddings → semantic_models` cycle makes
+  `import crackerjack.models.semantic_models` fail.
 - [ ] **Add an OpenAI leg to the embedder**: Bifrost first (base URL from
-      `get_router().resolve(LLMProvider.OPENAI)` — Crackerjack already
-      uses this resolver at `adapters/ai/unified.py:68`; credential
-      `BIFROST_VIRTUAL_KEY`), then direct OpenAI (`OPENAI_API_KEY`), then
-      local llama, then a local lexical embedder. Send
-      `{"model":"text-embedding-3-large","input",...,"dimensions":1024}`
-      on the OpenAI legs — 3-large is natively 3072, so the `dimensions`
-      field is **required** to reach the fleet width (§1) — and
-      `{"model","input"}` on llama (llama.cpp rejects unknown body
-      fields). The client is **sync** (`httpx2.Client`, per the
-      repo's `import httpx2 as httpx` convention).
+  `get_router().resolve(LLMProvider.OPENAI)` — Crackerjack already
+  uses this resolver at `adapters/ai/unified.py:68`; credential
+  `BIFROST_VIRTUAL_KEY`), then direct OpenAI (`OPENAI_API_KEY`), then
+  local llama, then a local lexical embedder. Send
+  `{"model":"text-embedding-3-large","input",...,"dimensions":1024}`
+  on the OpenAI legs — 3-large is natively 3072, so the `dimensions`
+  field is **required** to reach the fleet width (§1) — and
+  `{"model","input"}` on llama (llama.cpp rejects unknown body
+  fields). The client is **sync** (`httpx2.Client`, per the
+  repo's `import httpx2 as httpx` convention).
 - [ ] **Make `embedding_backend` mean something** — it should gate which
-      legs are eligible: `"auto"` = the chain, `"openai"` = OpenAI legs
-      only, `"local"` = local legs only. Today it selects nothing.
+  legs are eligible: `"auto"` = the chain, `"openai"` = OpenAI legs
+  only, `"local"` = local legs only. Today it selects nothing.
 - [ ] **Record the index width and rebuild on mismatch.** The `embeddings`
-      table has no width column, so a stale 384-wide BLOB is read as if
-      it were 1024. Add an `embedding_dim` column (or a `meta` table);
-      compare on open and rebuild. The current failure mode is a loud
-      numpy shape `ValueError` — the rebuild makes it deliberate.
+  table has no width column, so a stale 384-wide BLOB is read as if
+  it were 1024. Add an `embedding_dim` column (or a `meta` table);
+  compare on open and rebuild. The current failure mode is a loud
+  numpy shape `ValueError` — the rebuild makes it deliberate.
 - [ ] **Fix the `file_types` filter** (`services/vector_store.py:396-416`)
-      — the stored value is `Path.suffix` (dotted, `.py`) but callers
-      pass `"py"`, and the SQL `WHERE file_type IN (?)` is exact-match, so
-      the filter silently returns zero rows. Cheap, and strictly an
-      improvement rather than a standard-alignment blocker.
+  — the stored value is `Path.suffix` (dotted, `.py`) but callers
+  pass `"py"`, and the SQL `WHERE file_type IN (?)` is exact-match, so
+  the filter silently returns zero rows. Cheap, and strictly an
+  improvement rather than a standard-alignment blocker.
 - [ ] **Add a semantic-index health feed.** `/health` reports `healthy`
-      while the index is empty and the vectors are hashes, so the fleet
-      cannot see the semantic subsystem fail. A `semantic_index` feed
-      (`entities_count` = indexed chunks, `ingester_running` = whether a
-      producer exists) closes this.
+  while the index is empty and the vectors are hashes, so the fleet
+  cannot see the semantic subsystem fail. A `semantic_index` feed
+  (`entities_count` = indexed chunks, `ingester_running` = whether a
+  producer exists) closes this.
 - [ ] **Do not plan against the deleted fixer path.** The on-disk plan's
-      B5 task list is stale; there is nothing to align.
+  B5 task list is stale; there is nothing to align.
 
 ### 3.7 Operational — the operator's actions
 
 - [ ] **Oneiric release → pin bumps → publishes.** The floor moves in this
-      order: oneiric → mcp-common → each consumer. The version bump is the
-      operator's, per the standing rule.
+  order: oneiric → mcp-common → each consumer. The version bump is the
+  operator's, per the standing rule.
 - [ ] **Restart every server after the pins move.** The running Mahavishnu
-      reports version **0.39.0** while its repo is at **0.40.0** — it has
-      been up ~85 hours and predates the current tree. The same is likely
-      elsewhere; compare process start time against commit time before
-      trusting any live observation.
+  reports version **0.39.0** while its repo is at **0.40.0** — it has
+  been up ~85 hours and predates the current tree. The same is likely
+  elsewhere; compare process start time against commit time before
+  trusting any live observation.
 - [ ] **The gateway's virtual key is present and the gateway is live**
-      (`x-bf-vk` auth, `BIFROST_VIRTUAL_KEY` in the environment and
-      mirrored as `BODAI_BIFROST_VK`). No credential needs to be created
-      or moved — but no credential should ever be written into a committed
-      file or a plan.
+  (`x-bf-vk` auth, `BIFROST_VIRTUAL_KEY` in the environment and
+  mirrored as `BODAI_BIFROST_VK`). No credential needs to be created
+  or moved — but no credential should ever be written into a committed
+  file or a plan.
 - [ ] **Do not run `/tmp/akosha-pgvector-activation.py`.** It is obsolete:
-      it sets `shard_count: 16` for a per-shard design the unified tier
-      deletes, and sets `AKOSHA__STORAGE__WARM__PG_URL` — which
-      `akosha/mcp/server.py:1833` ignores, because the lifespan hard-codes
-      `create_warm_store(backend="duckdb-ssd")`.
+  it sets `shard_count: 16` for a per-shard design the unified tier
+  deletes, and sets `AKOSHA__STORAGE__WARM__PG_URL` — which
+  `akosha/mcp/server.py:1833` ignores, because the lifespan hard-codes
+  `create_warm_store(backend="duckdb-ssd")`.
 - [ ] **Do not run `/tmp/pgbouncer-add-crackerjack.py`.** The `crackerjack`
-      route is already in `pgbouncer.ini`.
+  route is already in `pgbouncer.ini`.
 - [ ] **pgbouncer and Postgres are already in place**: `127.0.0.1:6432`,
-      `auth_type=trust`, `pool_mode=transaction`,
-      `default_pool_size=20`, `max_client_conn=1000`; PostgreSQL 18.6 with
-      routes for `akosha_pgvector`, `mahavishnu`, `otel`, `postgres` and
-      `crackerjack`. **No infrastructure work is needed for this plan.**
+  `auth_type=trust`, `pool_mode=transaction`,
+  `default_pool_size=20`, `max_client_conn=1000`; PostgreSQL 18.6 with
+  routes for `akosha_pgvector`, `mahavishnu`, `otel`, `postgres` and
+  `crackerjack`. **No infrastructure work is needed for this plan.**
 - [ ] Pushes are the operator's. Currently unpushed: oneiric 7,
-      session-buddy 11, mahavishnu 5, mcp-common 2, crackerjack 0 — all
-      docs, coverage and release-tooling work, none of it this plan.
-      Akosha is on `fix/pgvector-warm-backend`, 7 commits ahead of
-      `origin/main`: 4 warm-tier commits plus 3 unrelated (a coverage
-      ratchet, a coverage-doc fix, and a plan-index wrapper).
+  session-buddy 11, mahavishnu 5, mcp-common 2, crackerjack 0 — all
+  docs, coverage and release-tooling work, none of it this plan.
+  Akosha is on `fix/pgvector-warm-backend`, 7 commits ahead of
+  `origin/main`: 4 warm-tier commits plus 3 unrelated (a coverage
+  ratchet, a coverage-doc fix, and a plan-index wrapper).
 - [ ] **Do not run `scripts/regenerate_plan_index.py` in this repo.** It
-      rewrites `PLAN_INDEX.md` into a broken shape — it prepends an
-      unrelated document's frontmatter to the index and drops the whole
-      table. The fix already exists as `5464a2c` ("make the plan-index
-      script a wrapper over the one renderer") on Akosha's
-      `fix/pgvector-warm-backend` branch; it has not reached `main` here.
-      Use `crackerjack.tools.plan_index_sync` until it does.
+  rewrites `PLAN_INDEX.md` into a broken shape — it prepends an
+  unrelated document's frontmatter to the index and drops the whole
+  table. The fix already exists as `5464a2c` ("make the plan-index
+  script a wrapper over the one renderer") on Akosha's
+  `fix/pgvector-warm-backend` branch; it has not reached `main` here.
+  Use `crackerjack.tools.plan_index_sync` until it does.
 
----
+______________________________________________________________________
 
 ## 4. Sequencing
 
@@ -1298,13 +1289,11 @@ ones are worse. In dependency order:
    `queries.py:55`'s `(384,)` shape gate; mahavishnu's
    `migrations/init.sql:126,285` and
    `V202604021200__initial_consolidated_schema.sql:166`. Each needs the
-   literal changed **and** a real widening migration: `CREATE TABLE IF
-   NOT EXISTS` never alters, and DuckDB cannot widen a fixed-size ARRAY
+   literal changed **and** a real widening migration: `CREATE TABLE IF NOT EXISTS` never alters, and DuckDB cannot widen a fixed-size ARRAY
    in place — the vectors must be dropped and re-embedded, because they
    carry no meaning in the new space.
 
-Then, so that the width is one fact rather than five guesses: **`FLEET_
-EMBEDDING_DIM` does not exist anywhere in the fleet.** Oneiric already
+Then, so that the width is one fact rather than five guesses: **`FLEET_ EMBEDDING_DIM` does not exist anywhere in the fleet.** Oneiric already
 has `embedding__dim` and `warm__embedding_dim` with the right bounds
 (`le=4096`) and docstrings that *promise* enforcement that exists
 nowhere — wire them or delete them. Session-Buddy's
@@ -1358,7 +1347,7 @@ into a 384-wide DuckDB `FLOAT[N]` column at all. Widening the producer
 without widening the receiver produces rows that cannot be written, or
 that must be re-embedded later.
 
----
+______________________________________________________________________
 
 ## 5. Verification gate
 
@@ -1366,97 +1355,110 @@ The fleet is up to speed when all of these hold. **None of them is an HTTP
 status code.**
 
 - [ ] `/health` on every server: `_aggregate.status == "ok"`,
-      `data_feeds_ok == true`.
+  `data_feeds_ok == true`.
 - [ ] Every feed's `source` names a producer that is **running**, and the
-      feed's `entities_count > 0`.
+  feed's `entities_count > 0`.
 - [ ] Every component reports the same embedding model, width and space
-      id; `embeddings.mode == "real"` on Akosha. The model is
-      `text-embedding-3-large` and the width is **1024**.
+  id; `embeddings.mode == "real"` on Akosha. The model is
+  `text-embedding-3-large` and the width is **1024**.
 - [ ] **The request body carries `dimensions: 1024`, and the response is
-      1024-wide.** 3-large is natively 3072, so this asserts the
-      truncation actually happened rather than trusting the request. A
-      3072-wide response against a 1024-wide store is the silent
-      corruption this gate exists to catch.
+  1024-wide.** 3-large is natively 3072, so this asserts the
+  truncation actually happened rather than trusting the request. A
+  3072-wide response against a 1024-wide store is the silent
+  corruption this gate exists to catch.
 - [ ] **`text-embedding-3-large` is on the OpenAI provider key's model
-      allowlist.** Verified live: the gateway answers HTTP 403 — *"Model
-      'text-embedding-3-large' is not allowed for virtual key
-      'bodai-pi-pool'"*. The virtual key itself allows everything
-      (`allow_all_keys=1`, `allowed_models=["*"]`); the gate is the
-      provider key `openai-primary`'s `models_json`, which lists
-      `text-embedding-3-small` and not `-large`. A model outside that
-      allowlist fails locally, before the request ever reaches OpenAI.
+  allowlist.** Verified live: the gateway answers HTTP 403 — *"Model
+  'text-embedding-3-large' is not allowed for virtual key
+  'bodai-pi-pool'"*. The virtual key itself allows everything
+  (`allow_all_keys=1`, `allowed_models=["*"]`); the gate is the
+  provider key `openai-primary`'s `models_json`, which lists
+  `text-embedding-3-small` and not `-large`. A model outside that
+  allowlist fails locally, before the request ever reaches OpenAI.
+  **The allowlist entry was added on 2026-11-20** —
+  `config_keys.id = 3` (`openai-primary`) now reads
+  `["gpt-5.4","gpt-5.4-mini","gpt-5.6-luna","gpt-5.3-codex","text-embedding-3-small","text-embedding-3-large"]`,
+  confirmed by reading it back. **What remains is the round trip**:
+  restart the gateway (`launchctl kickstart -k ai.bifrost.gateway`) if
+  the running process has the old list cached, then prove that
+  `text-embedding-3-large` at `dimensions: 1024` returns a 1024-wide
+  vector and at `dimensions: 3072` returns a 3072-wide one. Both the
+  restart and the credentialed probe were blocked by the auto-mode
+  classifier, so they are operator steps, not agent steps.
 - [ ] **The gateway forwards `dimensions` — verified; keep it that way.**
-      Live probe against the local Bifrost (v2.5.1), using
-      `text-embedding-3-small`, whose native width is 1536 and which
-      supports Matryoshka truncation: requesting 1536 / 1024 / 768 / 256
-      each returned exactly that width, and omitting the field returned
-      the native 1536. **Any width a model can serve natively or by
-      truncation is therefore reachable through the gateway, and the fleet
-      width is not constrained by the gateway.** Re-run this probe in the
-      gate: a gateway that dropped the field would answer at the native
-      width, and a mis-sized vector would reach the store.
+  Live probe against the local Bifrost (v2.5.1), using
+  `text-embedding-3-small`, whose native width is 1536 and which
+  supports Matryoshka truncation: requesting 1536 / 1024 / 768 / 256
+  each returned exactly that width, and omitting the field returned
+  the native 1536. **Any width a model can serve natively or by
+  truncation is therefore reachable through the gateway, and the fleet
+  width is not constrained by the gateway.** Re-run this probe in the
+  gate: a gateway that dropped the field would answer at the native
+  width, and a mis-sized vector would reach the store. **Re-run it with
+  `text-embedding-3-large`**, not `-small`: the point of the probe is
+  that the *fleet's* model honours the field, and `-large` is the one
+  the fleet uses.
 - [ ] The index space and the **ranker's** space id are reported
-      separately, and the search response carries
-      `rerank: {model, applied, reordered}` (§1.2).
+  separately, and the search response carries
+  `rerank: {model, applied, reordered}` (§1.2).
 - [ ] Every stored vector row carries its `embedding_model` and
-      `embedding_dim` (or `space_version`), and a row written before the
-      last model change is *queryable* by it.
+  `embedding_dim` (or `space_version`), and a row written before the
+  last model change is *queryable* by it.
 - [ ] A live Bifrost `/v1/embeddings` round trip returns 1024-wide
-      unit-norm vectors, and the direct-OpenAI failover returns vectors in
-      the **same** space.
+  unit-norm vectors, and the direct-OpenAI failover returns vectors in
+  the **same** space.
 - [ ] A wrong-width vector is rejected; so is a right-width vector from
-      the wrong model.
+  the wrong model.
 - [ ] **The recall benchmark scores the candidates, not just the
-      incumbent.** The committed baseline is recorded for
-      `text-embedding-3-large` at 1024 *and* for `cohere embed-v4` at
-      1024 (§1.1), so the model decision rests on our corpus rather than
-      on a leaderboard. This is the 2026-11-20 memory-retrieval-quality
-      plan's Phase 1; the standardisation plan does not ship without it.
+  incumbent.** The committed baseline is recorded for
+  `text-embedding-3-large` at 1024 *and* for `cohere embed-v4` at
+  1024 (§1.1), so the model decision rests on our corpus rather than
+  on a leaderboard. This is the 2026-11-20 memory-retrieval-quality
+  plan's Phase 1; the standardisation plan does not ship without it.
 - [ ] **The benchmark also measures the *width* on our own corpus, at
-      three widths of one model.** Take `text-embedding-3-large` at
-      3072, 1536 and 1024 and measure nDCG@10 on our own labelled
-      queries at each. Every vendor curve says the answer will be
-      "1024 is fine" — OpenAI's own table puts 1024 within 0.5 points
-      of 3072, and the measured loss across models is 0.3 to 1.05
-      points, which is inside a leaderboard run's noise — but only our
-      corpus can confirm it. This is the one measurement that could
-      reopen the width, so it is the one measurement to run.
+  three widths of one model.** Take `text-embedding-3-large` at
+  3072, 1536 and 1024 and measure nDCG@10 on our own labelled
+  queries at each. Every vendor curve says the answer will be
+  "1024 is fine" — OpenAI's own table puts 1024 within 0.5 points
+  of 3072, and the measured loss across models is 0.3 to 1.05
+  points, which is inside a leaderboard run's noise — but only our
+  corpus can confirm it. This is the one measurement that could
+  reopen the width, so it is the one measurement to run.
 - [ ] **The candidate set includes the models that post-date the
-      decision**: `cohere embed-v5.0-pro` / `-fast` (released 30 Sep
-      2026, native 2048, admissible at 1024, Pro and Fast share one
-      embedding space), and `perplexity pplx-embed-v1-4b` (native 2560,
-      MRL to 128, int8/binary output only — its `encoding_format` enum
-      has no float, so it needs a decode and an L2 normalisation).
+  decision**: `cohere embed-v5.0-pro` / `-fast` (released 30 Sep
+  2026, native 2048, admissible at 1024, Pro and Fast share one
+  embedding space), and `perplexity pplx-embed-v1-4b` (native 2560,
+  MRL to 128, int8/binary output only — its `encoding_format` enum
+  has no float, so it needs a decode and an L2 normalisation).
 - [ ] **`use("vector", provider="pgvector")` and
-      `use("embedding", provider="openai")` both resolve and instantiate.**
-      They currently raise `LifecycleError: Swap failed`. If they do not
-      work, no component can reach the fleet's adapters.
+  `use("embedding", provider="openai")` both resolve and instantiate.**
+  They currently raise `LifecycleError: Swap failed`. If they do not
+  work, no component can reach the fleet's adapters.
 - [ ] **`ingester_running` is truthful on every feed.** A feed that has
-      cycled thousands of times and holds nothing must read `FAILED` with
-      `ingester_not_running`, not `WARMING_UP` with
-      `warming_up_empty_feed`.
+  cycled thousands of times and holds nothing must read `FAILED` with
+  `ingester_not_running`, not `WARMING_UP` with
+  `warming_up_empty_feed`.
 - [ ] `conversations` has rows, written by a named producer.
 - [ ] `akosha_search_all_systems` returns real rows and the response does
-      **not** carry `mode: "fallback"`.
+  **not** carry `mode: "fallback"`.
 - [ ] `akosha_get_system_metrics` returns a non-zero `total_metrics`.
 - [ ] `knowledge_graph_feed` reports entities **and** edges.
 - [ ] `akosha_warm` has an HNSW index; `EXPLAIN` shows an index scan.
 - [ ] `mcp_tool_call_feed.entities_count > 0` **and** the row count of the
-      table aging reads is greater than zero. Both, not either.
+  table aging reads is greater than zero. Both, not either.
 - [ ] The mock is unreachable in any semantic tier — a startup failure.
 - [ ] **Session-Buddy refuses to start** when no real provider is
-      reachable, and the failure names the required width. Its `/health`
-      reports the serving leg and the width, and
-      `get_embedding_system_info()` is reachable from a tool.
+  reachable, and the failure names the required width. Its `/health`
+  reports the serving leg and the width, and
+  `get_embedding_system_info()` is reachable from a tool.
 - [ ] **Both** Session-Buddy width constants read 1024. A check that
-      reads only `memory/embedding_dim.py` is not a check.
+  reads only `memory/embedding_dim.py` is not a check.
 - [ ] No embedding-less rows: the count of rows with a NULL embedding is
-      zero, and no write path logs a warning and stores a degraded row.
+  zero, and no write path logs a warning and stores a degraded row.
 - [ ] `conversations_v2` rows carry a non-NULL `source_type`, written by a
-      named producer — and `session_buddy_search_by_source` returns rows
-      under at least one real category rather than only `[all sources]`.
+  named producer — and `session_buddy_search_by_source` returns rows
+  under at least one real category rather than only `[all sources]`.
 
----
+______________________________________________________________________
 
 ## 6. Risks
 
@@ -1477,7 +1479,7 @@ status code.**
 | Session-Buddy's **two** width constants diverge | High | `memory/embedding_dim.py:39` and `reflection/embeddings.py:81` are independent. Moving one makes every leg ineligible and the chain returns `None` — silent, and every write degrades to a NULL vector. Move both in one change; assert both. |
 | Session-Buddy's BLOB embeddings are missed by the migration | Medium | `migrate_embedding_dim.py` only sees `FLOAT[N]`. `skill_invocation.embedding` and `centroid_embedding` are BLOBs and need their own re-embed and re-pack, or `unpack_embedding` raises. |
 
----
+______________________________________________________________________
 
 ## 7. Explicitly not being done
 
