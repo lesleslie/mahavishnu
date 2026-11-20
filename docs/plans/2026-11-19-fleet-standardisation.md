@@ -41,7 +41,7 @@ Five outcomes, each independently checkable:
 
 | # | Outcome | How it is checked |
 |---|---|---|
-| **O1** | One embedding model (`text-embedding-3-small`) at one width (1536 native), produced by one client (Oneiric's), under one contract — `(model, dimensions, space_version)` | Every component reports the same model, width and space id on `/health` |
+| **O1** | One **index** model (`text-embedding-3-large`) at one width (1536), produced by one client (Oneiric's), under one contract — `(model, dimensions, space_version)` — with a **frozen index space** and a **separately configurable ranker** | Every component reports the same index model, width and space id on `/health`; the ranker's model and space id are reported separately |
 | **O2** | No health feed is empty because its producer is dead, mis-wired, or filtered | `/health` `_aggregate.status == "ok"` and `data_feeds_ok == true`; each feed's `source` names a producer that is running |
 | **O3** | The conversation corpus reaches the store that analyses it | `conversations` has rows, written by a named producer |
 | **O4** | Semantic search, trends, anomalies, correlation, the knowledge graph and fitness analysis all return real data | Each tool returns rows, not "Insufficient data" and not a fallback placeholder |
@@ -51,15 +51,16 @@ Five outcomes, each independently checkable:
 
 | Decision | Value | Why |
 |---|---|---|
-| Fleet width | **1536, native** (`text-embedding-3-small`, no `dimensions` truncation) | Operator decision, 2026-11-19. The corpus is small but **not empty** — Session-Buddy holds 156 embedded conversations at 768, Akosha holds 7 trace vectors at 384 — so a quality gap is not provably worthless; it is simply not yet *measured*. The contract makes a later model change a re-embed, not a migration. See §1.1. |
+| Fleet width | **1536** — `text-embedding-3-large` truncated from its native 3072 | Operator decision, 2026-11-20, superseding the 2026-11-19 choice of `text-embedding-3-small` at native 1536. The width is a property of the chosen model, not an absolute: 1536 keeps the corpus at the width it was already heading for, and a later model change re-derives it. See §1.1. |
 | Llama.cpp `dimensions` | **not sent** | llama.cpp does not implement the `dimensions` parameter (issue #25210 open). Truncation must be client-side, and the fleet's client is OpenAI-compatible. |
-| Local fallback legs | **llama-server, model2vec and the mock leave the semantic chain** | Hardware-limited today, and the mock is a startup failure, not a fallback. A different model is a different vector space, not a failover. |
-| The `dimensions` parameter itself | **sent only when the target width is not the model's native width** | 1536 is `text-embedding-3-small`'s native width, so sending it is a no-op that invites a future reader to think truncation is in play. But the rule cannot be "never send": `text-embedding-3-large` at 1536 *requires* `dimensions: 1536`, and a rule of "never send" would make that model unreachable. Omit when native, send when truncating — and record the sent value in the contract either way. |
-| The model itself | **a contract field with a re-embed path, not a constant** | `text-embedding-3-small` has not been updated since late 2023 and sits well behind the current open-weights leader. Price is *not* the reason to keep it — at fleet volume the entire embedding bill is single-digit dollars a month. See §1.1 for the review trigger. |
+| Local fallback legs | **llama-server, model2vec and the mock leave the semantic chain** | Hardware-limited today, and the mock is a startup failure, not a fallback. A different model is a different vector space, not a failover. The *capability* of an OpenAI-compatible leg stays in the contract, so a local server remains a configuration change rather than a project (§3.2). |
+| The `dimensions` parameter itself | **sent whenever the target width is not the model's native width** | `text-embedding-3-large` is natively 3072, so reaching 1536 *requires* `dimensions: 1536` on every request. The rule is not "never send" (that would make 3-large unreachable) and not "always send" (on a native-width model it is a no-op that invites a reader to think truncation is in play). The client decides from a **declared capability on the leg**, never from the model's name — see §3.2. |
+| The model itself | **`text-embedding-3-large`**, a contract field with a re-embed path, not a constant | Operator decision, 2026-11-20. Chosen over `text-embedding-3-small` on retrieval quality (MTEB retrieval nDCG@10 **55.4** against **51.7**) at a price difference that is immaterial at fleet volume (10M tokens/month is $1.30 against $0.20). Provisional: §1.1 names `cohere embed-v4` at 1024 as the candidate the recall benchmark must score against it. |
+| Index space vs ranker | **the index space is frozen; the ranker is separately configurable** | The corpus is re-embedded only when the *index* model changes. Ranking quality lives in a separate leg with its own model and space id, so the ranker can be upgraded — or replaced by a cross-encoder — without touching a single stored vector. See §1.2. |
 | Records | **may be lost** | Operator decision, 2026-11-19. No legacy support, no backwards-compat shims. Rebuilds are cheap; the data is not worth a shim. |
 | Provider failover | **same model, same space** | A failover to a different model is not a failover — it is a different vector space with the same width, and it is silently mixable. |
 
-### 1.1 Why `text-embedding-3-small`, and when that changes
+### 1.1 Why `text-embedding-3-large`, and when that changes
 
 The model is the one decision here with a shelf life, so the reasoning is
 recorded here rather than left implicit.
@@ -67,11 +68,11 @@ recorded here rather than left implicit.
 **What the fleet runs today.** Nothing is at 1536. Session-Buddy serves
 **768** (`memory/embedding_dim.py:39` `DEFAULT_EMBEDDING_DIM = 768`;
 `reflection/embeddings.py:81` `OPENAI_EMBEDDING_DIM = 768`) and asks
-`text-embedding-3-small` for `{"dimensions": 768}` — a **truncation of a
-native-1536 model**. Mahavishnu resolves to the 384-wide mock;
-Crackerjack runs 384-wide SHA-256 hashes. "1536 native" is therefore a
-*target*, not a current state, and reaching it is a re-embed of a small
-corpus rather than a migration of a large one.
+`text-embedding-3-small` for `{"dimensions": 768}` — a truncation of that
+model's native 1536. Mahavishnu resolves to the 384-wide mock;
+Crackerjack runs 384-wide SHA-256 hashes. 1536 is therefore a *target*,
+not a current state, and reaching it is a re-embed of a small corpus
+rather than a migration of a large one.
 
 **The corpus, measured.** Session-Buddy's reflection store holds 156
 conversations, all with embeddings. Akosha's `public.vectors_otel_traces`
@@ -79,41 +80,94 @@ holds 7 rows, all 384-dim. Session-Buddy's `conversations` table holds 0
 rows. Small, but not empty — this plan's earlier "empty corpus" wording
 overstated it.
 
-**The quality gap is real.** `text-embedding-3-small` scores ~62.3 MTEB
-and **51.7 on MTEB retrieval (nDCG@10)**, against ~64.6 / 55.4 for
-`text-embedding-3-large` and ~65.2 / 58.4 for `cohere embed-v4`. Two
-caveats: OpenAI's figures come from its own 2024 evaluation and are not
-comparable to the MTEB v2 boards the newer models report on, and
-**retrieval**, not the composite average, is what a memory fleet is judged
-on.
+**Why 3-large over 3-small.** On the one internally-consistent
+comparison available (MTEB retrieval, nDCG@10), `text-embedding-3-large`
+scores **55.4** against `text-embedding-3-small`'s **51.7**; on the
+composite average, 64.6 against 62.3. Caveat: OpenAI's figures come from
+its own 2024 evaluation and are not comparable to the MTEB v2 boards the
+newer models report on — and **retrieval**, not the composite, is what a
+memory fleet is judged on.
 
-**Price does not settle it.** At fleet volume the entire embedding bill is
-single-digit dollars a month — 10M tokens/month is $0.20 at 3-small and
-$1.30 at 3-large. The 6.5x difference is a rounding error, and it must
-not be allowed to decide the fleet's retrieval quality.
+**Price does not settle it, and neither does the switching cost.** At
+fleet volume the entire embedding bill is single-digit dollars a month —
+10M tokens/month is $0.20 at 3-small and $1.30 at 3-large, so the 6.5x
+difference is a rounding error. And the switching cost is near zero
+*because* nothing is embedded at 1536 yet: `text-embedding-3-large` at
+1536 is the same provider, the same base URL, the same `x-bf-vk` auth and
+the same SDK as the model it replaces, with one extra request field.
 
-**What actually holds the decision in place.** Two things, and only the
-second is real:
+**What is provisional.** The decision is *not* that 3-large is the best
+model available — it is that it is the best model reachable without
+adding a dependency. The candidate that scores higher is `cohere
+embed-v4` (MTEB retrieval 58.4, 128K context, built-in int8/binary
+output), and it is **named in the benchmark's candidate set** (§5, and the
+2026-11-20 memory-retrieval-quality plan's Phase 1). It is not the
+standard today for three concrete reasons:
 
-1. *The gateway wiring.* The semantic-cache plugin is configured for
-   `text-embedding-3-small` at `dimension: 1536`, and the OpenAI key's
-   allowlist contains it. This is **not** a constraint: it is a model id
-   in a config, and changing it is a one-line edit plus a cache re-key.
-2. *No measurement.* Nobody has run a retrieval benchmark against the
-   fleet's own corpus. The 2026-11-20 memory-retrieval-quality plan
-   (Phase 1: a recall benchmark with a committed baseline) is the
-   instrument that settles it.
+1. It is a **new provider leg** with a new credential, and Bifrost's
+   Cohere route has to convert OpenAI's request shape into Cohere's
+   (`texts`, `input_type`, `output_dimension`) — a dependency the fleet
+   does not have today.
+2. **Width control for Cohere is demonstrably unreliable.** Vercel's AI
+   Gateway issue #16272 shows `cohere/embed-v4.0` intermittently
+   returning 1536 when a narrower width was requested, while the OpenAI
+   control behaves. The fleet cannot adopt a model whose width the
+   gateway may silently change — that is exactly the corruption the
+   `space_version` contract exists to prevent.
+3. Its own numbers are **softly measured**: MTEB for `embed-v4` ranges
+   from ~55 to ~66.3 across sources, against 62.3 / 64.6 for the two
+   OpenAI models, which come from one vendor evaluation. A 3-point
+   retrieval advantage that is not consistently reproduced is not a
+   reason to add a dependency.
 
-**The trigger.** Re-open the model when the recall benchmark exists and
-the baseline shows retrieval quality is the binding constraint — not when
-a newer model is published. At that point the field is
-`text-embedding-3-large` at 1536 (same provider, same base URL, same
-auth, one extra request field) against `cohere embed-v4` at 1536 (better
-retrieval, 128K context, built-in int8/binary output — but a new
-provider, a new credential, and a gateway that does not reliably honour
-the requested width for Cohere: Vercel's AI Gateway issue #16272 shows
-`cohere/embed-v4.0` intermittently returning 1536 when a narrower
-`dimensions` was requested, while the OpenAI control behaves).
+**The trigger.** The model is re-opened when the recall benchmark exists
+and the baseline shows retrieval quality is the binding constraint. Until
+then the standard is what §5 verifies. If the benchmark puts `embed-v4`
+— or `voyage-3-large` at 1024 (retrieval 59.8), if its Bifrost route can
+be added — materially ahead, the model changes and the corpus is
+re-embedded, which is cheap precisely because the contract carries the
+space id.
+
+### 1.2 The index space is frozen; the ranker is not
+
+The corpus is re-embedded only when the **index** model changes. Ranking
+quality lives in a **separate leg with its own model and space id**, so
+the ranker can be upgraded — or replaced outright by a cross-encoder —
+without touching a single stored vector.
+
+This is the structural decision that makes the fleet's embeddings
+future-proof, and it is why the rerank stage is in scope (§3.4, §3.5):
+
+```
+query ─► embed(index model) ─► vector search ─► fuse with FTS ─┐
+                                                                 ├─► rerank ─► top-k
+        candidate ─► embed(ranker model) ───────────────────────┘
+```
+
+- The **index space** (`text-embedding-3-large`, 1536, `space_version`
+  recorded with every row) is written once, and it is the expensive
+  thing.
+- The **ranker** is a configured leg with its own model, width and space
+  id. Today it is the same model as the index; the point is that it
+  *can* be different tomorrow.
+- Because the ranker lives in a **different space** from the index, it
+  is free to change model, provider or class (bi-encoder →
+  cross-encoder) with **zero corpus migration**.
+
+The contract therefore has two faces: `(model, dimensions, space_version)`
+describes an embedding space, and a **pipeline** names an index space
+plus a ranker. `/health` reports both. A ranker that shared the index's
+space would gain nothing and would re-introduce the coupling this design
+removes.
+
+The populator for the rerank stage is **deferred**, and the reason is
+worth stating rather than hiding: this machine is an Intel i5-1038NG7 at
+2.0 GHz with integrated graphics and no CUDA, so a local cross-encoder
+is not viable — a 0.6B-parameter bi-encoder on this CPU is seconds per
+query, and a first re-embed of the corpus is tens of hours. A hosted
+cross-encoder is fast and cheap, but it is a second provider and a
+second credential. The **interface and the contract** ship in this plan;
+the populator is a later decision with its own cost and latency review.
 
 ---
 
@@ -367,13 +421,39 @@ about embeddings.
       base URL that **includes `/v1`** (the SDK appends `/embeddings`);
       the existing `llama_cpp` leg uses a **bare root**. Do not "fix" the
       llama leg.
-- [ ] **Send `dimensions` on the OpenAI legs only.**
+- [ ] **Send `dimensions` on the OpenAI legs only, and decide that from a
+      declared capability, not from the model's name.**
       `_probe_encode_via` (`:375`) and `_encode_llama_cpp` (`:397`) both
       send a fixed `{"model","input"}`. `_probe_encode_via` also sends
       **no headers at all**, so it cannot be reused as-is against an
       authenticated endpoint — it needs a `headers=` parameter.
       llama.cpp rejects unknown body fields, so the `dimensions` key must
       not be added there.
+      `text-embedding-3-large` is natively 3072 and the fleet width is
+      1536, so the OpenAI legs **must** send `dimensions: 1536`.
+      **Where that decision is made today is the bug.**
+      `adapters/embedding/openai.py:206-220` gates the field on
+      `model.startswith("text-embedding-3")` — a hard-coded vendor naming
+      convention inside the shared substrate. Swap the model to
+      `cohere/embed-v4`, `voyage-3-large` or anything self-hosted and the
+      field is dropped **silently**: the provider answers at its native
+      width and a mis-sized vector reaches the store. Replace the name
+      check with a **declared capability on the leg** (`native_width`,
+      `supports_server_truncation`), so the client sends `dimensions`
+      exactly when the target width differs from the declared native
+      width, and a leg that cannot truncate is either refused or
+      truncated client-side.
+- [ ] **Make the OpenAI-compatible leg generic over
+      `(base_url, model, dimensions, auth)`.** The chain has separate code
+      paths per provider today — `openai_gateway`, `openai_direct`,
+      `llama_embed`, `llama_server` — each with its own request builder.
+      Bifrost, direct OpenAI, Cohere's OpenAI-compatible endpoint, a local
+      llama.cpp server, or any future vendor should be **one leg type with
+      four configuration values**, not four functions. This is the change
+      that makes a future provider a configuration edit rather than a new
+      adapter module, and it keeps the self-hosted option alive as a
+      *possibility* even though this machine cannot run one (Intel i5 at
+      2.0 GHz, no CUDA — see §1.2).
 - [ ] **Make the fallback a hard failure.** `initialize()` never raises;
       it always lands on the 384-wide mock (`:130-136`).
       `OpenAIEmbeddingAdapter.init()` (`openai.py:84-86`) already raises
@@ -435,17 +515,24 @@ about embeddings.
 - [ ] **Add an embeddings route to the Bifrost gateway.** The gateway's
       `routes` currently contains only LLM routes
       (`ONEIRIC_BIFROST_ROUTES=claude_route,qwen_route`) — **there is no
-      embeddings route**, and `text-embedding-3-small` appears nowhere in
-      Mahavishnu's Bifrost wiring. The `openai` *provider* is configured
-      and its key allowlist already contains `text-embedding-3-small`, so
-      the route is the missing piece, not the provider.
+      embeddings route**, and `text-embedding-3-large` appears nowhere in
+      Mahavishnu's Bifrost wiring. The `openai` *provider* is configured,
+      so the route is the missing piece, not the provider — but its key
+      allowlist must now carry **`text-embedding-3-large`**. A model
+      outside the allowlist fails locally with `no_key_supports_model`
+      before the request is ever sent, so this is a hard gate, not a
+      preference.
 - [ ] **The gateway's `cache_mode` is `semantic`** — its semantic-cache
       plugin is configured for `text-embedding-3-small` at
-      `dimension: 1536`, the native width this plan selects. The gateway's
-      internals already agree with the standard; the fleet's components do
-      not. Note the known upstream issue where that plugin cannot resolve
-      a local/custom embedding provider inside its `PreLLMHook` even when
-      the same provider/model succeeds through `/v1/embeddings`.
+      `dimension: 1536`. Repoint it at `text-embedding-3-large` and
+      **flush the cache**. The plugin's cached entries were keyed by the
+      old model's vectors; two models' vectors sharing one semantic cache
+      is the same corruption the `space_version` contract exists to
+      prevent. The width stays 1536, so the plugin's dimension setting
+      does not change — only the model does. Note the known upstream issue
+      where that plugin cannot resolve a local/custom embedding provider
+      inside its `PreLLMHook` even when the same provider/model succeeds
+      through `/v1/embeddings`.
 - [ ] **Watch the gateway's 8192-token input limit.** The semantic-cache
       plugin does not truncate: 514 of 869 consulted requests failed on
       that limit. And the model must be in the provider key's `models: [...]`
@@ -610,6 +697,25 @@ the detail. The fleet-relevant additions:
       literal. It also discards ten lineage fields (`:26-42`), so the
       pushed rows carry no provenance — the same vocabulary problem the
       aging filter has.
+- [ ] **Carry the space id on every stored vector.** The warm tier's
+      `public.vectors_otel_traces` has no width column and no model
+      column, and Crackerjack's `embeddings` table has neither. Without
+      them, "which rows came from the old model?" is a guess rather than
+      a query, and a model change becomes a blind rebuild. Add
+      `embedding_model` and `embedding_dim` (or a single `space_version`)
+      to every vector-bearing table, write them on every insert, and
+      assert the pair on read. This is the difference between a re-embed
+      being a `DELETE` and it being a `SELECT ... WHERE`.
+- [ ] **Add the rerank stage to the retrieval pipeline.**
+      `retrieve (vector) → fuse with FTS (RRF) → rerank → top-k`. The
+      rerank leg is a separately configured model with **its own** space
+      id, deliberately *not* the index space (§1.2), so the ranker can be
+      changed without re-embedding the corpus. Today the stage is a
+      documented pass-through that reports its configuration; the
+      populator is deferred (§1.2). `/health` reports the index space and
+      the ranker's model and space id separately, and the search response
+      carries `rerank: {model, applied, reordered}` so the stage is
+      observable rather than invisible.
 - [ ] **The Redis subscriber.** Per-process consumer name → XAUTOCLAIM the
       660 pending entries → delete the 405,790 stale consumers in pages →
       decode `{channel, headers, payload}` → drop the
@@ -712,16 +818,20 @@ idle since boot, and `health()` returns true on `entities_count > 0`).
       Leaving `llama_server` declared at its true 4096 and `llama_embed`
       at 768 is *correct* — they then become ineligible, which is the
       intended outcome, not a bug to fix.
-- [ ] **Take `dimensions` out of the request body.** Both OpenAI legs
-      send `{"model", "input", "dimensions": OPENAI_EMBEDDING_DIM}`
-      (`reflection/embeddings.py:323` and `:339`). Today that asks
+- [ ] **Point the request body at the fleet model and width.** Both OpenAI
+      legs send `{"model", "input", "dimensions": OPENAI_EMBEDDING_DIM}`
+      (`reflection/embeddings.py:323` and `:339`), and the model names
+      come from `BIFROST_EMBEDDING_MODEL` / `OPENAI_EMBEDDING_MODEL`,
+      both defaulting to `text-embedding-3-small`. Change the default to
+      **`text-embedding-3-large`** and keep `dimensions` — 3-large is
+      natively 3072, so `dimensions: 1536` is now **required**, not
+      optional (§1). The field is what makes the *same* width reachable
+      from a model of a different native width, so it stays part of the
+      request; what changes is that it is now load-bearing. Note the
+      current bug it papers over: today that field asks
       `text-embedding-3-small` for a **768-wide truncation of a
-      native-1536 model**. At 1536 the field is a no-op, and per the
-      settled decision it is not sent (§1) — but it is also the field
-      that makes a *different* model at the same width reachable, so it
-      belongs to the contract rather than to the constant: the client
-      sends it only when the target width differs from the model's
-      native width.
+      native-1536 model**, so the fleet has been running a lossy vector
+      and calling it the model's width.
 - [ ] **Add the hard startup gate.** A `verify_provider_reachable()` that
       probes the eligible legs and returns the serving leg + width; the
       lifespan calls it and **aborts startup** on failure. The failure
@@ -730,7 +840,9 @@ idle since boot, and `health()` returns true on `entities_count > 0`).
       swallow-everything pattern.
 - [ ] **Add an embedding health feed** and expose `get_embedding_system_info()`
       via an MCP tool and in `/health` (mirroring the `skills_signer`
-      pattern at `server_optimized.py:460-475`).
+      pattern at `server_optimized.py:460-475`). The feed reports the
+      **index space** and the **ranker's** model and space id separately
+      (§1.2) — a single space id cannot express both.
 - [ ] **Stop storing embedding-less rows.** `coerce_embedding` and the
       write path (`adapters/reflection_adapter_oneiric.py:1284-1292`)
       must raise on a missing or wrong-width vector, not log a warning
@@ -859,10 +971,11 @@ The current state is worse than "wrong width":
       uses this resolver at `adapters/ai/unified.py:68`; credential
       `BIFROST_VIRTUAL_KEY`), then direct OpenAI (`OPENAI_API_KEY`), then
       local llama, then a local lexical embedder. Send
-      `{"model","input"}` on the OpenAI legs — 1536 is
-      `text-embedding-3-small`'s native width, so `dimensions` is omitted
-      (§1) — and `{"model","input"}` on llama (llama.cpp rejects unknown
-      body fields). The client is **sync** (`httpx2.Client`, per the
+      `{"model":"text-embedding-3-large","input",...,"dimensions":1536}`
+      on the OpenAI legs — 3-large is natively 3072, so the `dimensions`
+      field is **required** to reach the fleet width (§1) — and
+      `{"model","input"}` on llama (llama.cpp rejects unknown body
+      fields). The client is **sync** (`httpx2.Client`, per the
       repo's `import httpx2 as httpx` convention).
 - [ ] **Make `embedding_backend` mean something** — it should gate which
       legs are eligible: `"auto"` = the chain, `"openai"` = OpenAI legs
@@ -986,12 +1099,30 @@ status code.**
 - [ ] Every feed's `source` names a producer that is **running**, and the
       feed's `entities_count > 0`.
 - [ ] Every component reports the same embedding model, width and space
-      id; `embeddings.mode == "real"` on Akosha.
+      id; `embeddings.mode == "real"` on Akosha. The model is
+      `text-embedding-3-large` and the width is **1536**.
+- [ ] **The request body carries `dimensions: 1536`, and the response is
+      1536-wide.** 3-large is natively 3072, so this asserts the
+      truncation actually happened rather than trusting the request. A
+      3072-wide response against a 1536-wide store is the silent
+      corruption this gate exists to catch.
+- [ ] The index space and the **ranker's** space id are reported
+      separately, and the search response carries
+      `rerank: {model, applied, reordered}` (§1.2).
+- [ ] Every stored vector row carries its `embedding_model` and
+      `embedding_dim` (or `space_version`), and a row written before the
+      last model change is *queryable* by it.
 - [ ] A live Bifrost `/v1/embeddings` round trip returns 1536-wide
       unit-norm vectors, and the direct-OpenAI failover returns vectors in
       the **same** space.
 - [ ] A wrong-width vector is rejected; so is a right-width vector from
       the wrong model.
+- [ ] **The recall benchmark scores the candidates, not just the
+      incumbent.** The committed baseline is recorded for
+      `text-embedding-3-large` at 1536 *and* for `cohere embed-v4` at
+      1024 (§1.1), so the model decision rests on our corpus rather than
+      on a leaderboard. This is the 2026-11-20 memory-retrieval-quality
+      plan's Phase 1; the standardisation plan does not ship without it.
 - [ ] **`use("vector", provider="pgvector")` and
       `use("embedding", provider="openai")` both resolve and instantiate.**
       They currently raise `LifecycleError: Swap failed`. If they do not
