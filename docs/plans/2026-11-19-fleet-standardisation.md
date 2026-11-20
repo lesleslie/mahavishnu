@@ -144,6 +144,26 @@ query ─► embed(index model) ─► vector search ─► fuse with FTS ─┐
         candidate ─► embed(ranker model) ───────────────────────┘
 ```
 
+That is the **bi-encoder** form: the ranker embeds each candidate in its
+own space and re-scores. It is the general shape — a ranker in a
+different space from the index — but it is **not** the practical
+populator, because it costs one extra embedding call per candidate. At a
+rerank depth of 20 that is 20 round trips per query, which is seconds,
+not milliseconds.
+
+The practical form is a **cross-encoder**, which scores the query and
+each candidate *together* in one call and needs no second space at all:
+
+```
+query ─► embed(index model) ─► vector search ─► fuse with FTS ─► cross-encoder ─► top-k
+```
+
+So the stage's contract is "a ranker over the fused candidates, in its
+own space or none", and its populator is a hosted cross-encoder — the
+only kind that is both fast and a genuine upgrade over the bi-encoder
+index. That is a second provider and a second credential, which is why
+it is deferred rather than built (§1.2's closing note).
+
 - The **index space** (`text-embedding-3-large`, 1536, `space_version`
   recorded with every row) is written once, and it is the expensive
   thing.
