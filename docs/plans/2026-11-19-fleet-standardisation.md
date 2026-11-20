@@ -41,7 +41,7 @@ Five outcomes, each independently checkable:
 
 | # | Outcome | How it is checked |
 |---|---|---|
-| **O1** | One **index** model (`text-embedding-3-large`) at one width (1536), produced by one client (Oneiric's), under one contract — `(model, dimensions, space_version)` — with a **frozen index space** and a **separately configurable ranker** | Every component reports the same index model, width and space id on `/health`; the ranker's model and space id are reported separately |
+| **O1** | One **index** model (`text-embedding-3-large`) at one width (1024), produced by one client (Oneiric's), under one contract — `(model, dimensions, space_version)` — with a **frozen index space** and a **separately configurable ranker** | Every component reports the same index model, width and space id on `/health`; the ranker's model and space id are reported separately |
 | **O2** | No health feed is empty because its producer is dead, mis-wired, or filtered | `/health` `_aggregate.status == "ok"` and `data_feeds_ok == true`; each feed's `source` names a producer that is running |
 | **O3** | The conversation corpus reaches the store that analyses it | `conversations` has rows, written by a named producer |
 | **O4** | Semantic search, trends, anomalies, correlation, the knowledge graph and fitness analysis all return real data | Each tool returns rows, not "Insufficient data" and not a fallback placeholder |
@@ -51,10 +51,10 @@ Five outcomes, each independently checkable:
 
 | Decision | Value | Why |
 |---|---|---|
-| Fleet width | **1536** — a **fixed fleet width, independent of the model** | Operator decision, 2026-11-20. The rule is that a **model must be admissible at the fleet width** (natively, or by Matryoshka truncation), *not* that the width follows the model. A fixed width keeps the storage contract stable: a model change is then a re-embed, not a re-embed *plus* a schema migration — and the migration is the expensive half, because DuckDB cannot widen a fixed-size ARRAY and `CREATE TABLE IF NOT EXISTS` never alters. `text-embedding-3-large` is admissible at 1536 by MRL. Supersedes the 2026-11-19 choice of `text-embedding-3-small` at native 1536: the **model** changed, the **width** did not. See §1.1. |
+| Fleet width | **1024** — a **fixed fleet width, independent of the model** | Operator decision, 2026-11-20. The rule is that a **model must be admissible at the fleet width** (natively, or by Matryoshka truncation), *not* that the width follows the model. 1024 is the only width that satisfies every hard constraint at once. (a) It indexes as plain `vector` with HNSW in pgvector, whose ceiling is **2000 dimensions** — 3072 and 2048 both exceed it and would need a `halfvec` type plus a cast-expression index. (b) It is admitted by **every** candidate model in the field; 1536 is a legacy width that only OpenAI and the retired `embed-v4` still offer, and the whole Voyage family excludes it. (c) The quality difference among 1024 / 1536 / 3072 is far below what our corpus can measure. A fixed width keeps the storage contract stable, so a model change costs one re-embed rather than a re-embed *plus* a schema migration — and the migration is the expensive half, because DuckDB cannot widen a fixed-size ARRAY and `CREATE TABLE IF NOT EXISTS` never alters. See §1.1. |
 | Llama.cpp `dimensions` | **not sent** | llama.cpp does not implement the `dimensions` parameter (issue #25210 open). Truncation must be client-side, and the fleet's client is OpenAI-compatible. |
 | Local fallback legs | **llama-server, model2vec and the mock leave the semantic chain** | Hardware-limited today, and the mock is a startup failure, not a fallback. A different model is a different vector space, not a failover. The *capability* of an OpenAI-compatible leg stays in the contract, so a local server remains a configuration change rather than a project (§3.2). |
-| The `dimensions` parameter itself | **sent whenever the target width is not the model's native width** | `text-embedding-3-large` is natively 3072, so reaching 1536 *requires* `dimensions: 1536` on every request. The rule is not "never send" (that would make 3-large unreachable) and not "always send" (on a native-width model it is a no-op that invites a reader to think truncation is in play). The client decides from a **declared capability on the leg**, never from the model's name — see §3.2. |
+| The `dimensions` parameter itself | **sent whenever the target width is not the model's native width** | `text-embedding-3-large` is natively 3072, so reaching 1024 *requires* `dimensions: 1024` on every request. The rule is not "never send" (that would make 3-large unreachable) and not "always send" (on a native-width model it is a no-op that invites a reader to think truncation is in play). The client decides from a **declared capability on the leg**, never from the model's name — see §3.2. |
 | The model itself | **`text-embedding-3-large`**, a contract field with a re-embed path, not a constant | Operator decision, 2026-11-20. Chosen over `text-embedding-3-small` on retrieval quality (MTEB retrieval nDCG@10 **55.4** against **51.7**) at a price difference that is immaterial at fleet volume (10M tokens/month is $1.30 against $0.20). Provisional: §1.1 names `cohere embed-v4` at 1024 as the candidate the recall benchmark must score against it. |
 | Index space vs ranker | **the index space is frozen; the ranker is separately configurable** | The corpus is re-embedded only when the *index* model changes. Ranking quality lives in a separate leg with its own model and space id, so the ranker can be upgraded — or replaced by a cross-encoder — without touching a single stored vector. See §1.2. |
 | Records | **may be lost** | Operator decision, 2026-11-19. No legacy support, no backwards-compat shims. Rebuilds are cheap; the data is not worth a shim. |
@@ -65,12 +65,12 @@ Five outcomes, each independently checkable:
 The model is the one decision here with a shelf life, so the reasoning is
 recorded here rather than left implicit.
 
-**What the fleet runs today.** Nothing is at 1536. Session-Buddy serves
+**What the fleet runs today.** Nothing is at 1024. Session-Buddy serves
 **768** (`memory/embedding_dim.py:39` `DEFAULT_EMBEDDING_DIM = 768`;
 `reflection/embeddings.py:81` `OPENAI_EMBEDDING_DIM = 768`) and asks
 `text-embedding-3-small` for `{"dimensions": 768}` — a truncation of that
 model's native 1536. Mahavishnu resolves to the 384-wide mock;
-Crackerjack runs 384-wide SHA-256 hashes. 1536 is therefore a *target*,
+Crackerjack runs 384-wide SHA-256 hashes. 1024 is therefore a *target*,
 not a current state, and reaching it is a re-embed of a small corpus
 rather than a migration of a large one.
 
@@ -92,37 +92,78 @@ memory fleet is judged on.
 fleet volume the entire embedding bill is single-digit dollars a month —
 10M tokens/month is $0.20 at 3-small and $1.30 at 3-large, so the 6.5x
 difference is a rounding error. And the switching cost is near zero
-*because* nothing is embedded at 1536 yet: `text-embedding-3-large` at
-1536 is the same provider, the same base URL, the same `x-bf-vk` auth and
+*because* nothing is embedded at 1024 yet: `text-embedding-3-large` at
+1024 is the same provider, the same base URL, the same `x-bf-vk` auth and
 the same SDK as the model it replaces, with one extra request field.
 
-**Why not 3072, 3-large's native width.** It is the more elegant choice
-for a *single model* — no `dimensions` field, no truncation to reason
-about, and it restores the "native width, nothing sent" discipline this
-plan used for 3-small. It is the weakest of the three as a **fleet**
-standard, because it makes the width a function of the current model.
-Then every future model change is also a width change, and a width
-change is a schema rebuild in all three stores rather than a re-embed
-alone. The other differences do not favour it either: the quality gap is
-**+0.4 MTEB** (64.6 against ~64.2 at 1536), which is below the noise;
-the price is **identical**, because OpenAI bills input tokens and output
-dimensions are free; embedding latency is unchanged (same forward pass —
-only the response payload doubles, 24 KB against 12 KB per vector); and
-storage is **2x** — 6144 against 12288 bytes per float32 vector, 6.1 GB
-against 12.3 GB per million vectors before the HNSW index on top.
+**Why 1024.** Three independent constraints, each of which the other
+candidate widths fail.
+
+1. **The storage layer caps it.** pgvector's HNSW and IVFFlat index
+   ceiling is **2000 dimensions** for the float32 `vector` type (4000 for
+   `halfvec`), and it has not moved since pgvector 0.4.0 in January 2023.
+   A `vector(3072)` column ingests rows without complaint and then fails
+   at `CREATE INDEX` with *"column cannot have more than 2000 dimensions
+   for hnsw index"*. Akosha's warm tier is the pgvector store, and the
+   plan's outcome O5 requires an HNSW index on it. So 3072 needs a
+   `halfvec` type plus a cast-expression index
+   (`((embedding::halfvec(3072)) halfvec_cosine_ops)`) — a change to the
+   distance function's precision, not just a number. **2048 fails the
+   same way.** 1024 and 1536 index as plain `vector`.
+2. **1536 is a legacy width, and it excludes the field's leader.**
+   Voyage's own documentation states that `voyage-4-large`, `voyage-4`,
+   `voyage-4-lite`, `voyage-3-large`, `voyage-3.5`, `voyage-3.5-lite` and
+   `voyage-code-3` support `output_dimension` ∈ **{2048, 1024 (default),
+   512, 256}** — 1536 is not a Voyage width. Matryoshka truncates
+   downward only, so a 1536-wide fleet standard permanently excludes the
+   entire Voyage family (`voyage-4-large` is the retrieval leader: it
+   beat Gemini Embedding 001 by 3.87%, `embed-v4` by 8.20% and
+   `text-embedding-3-large` by 14.05% on Voyage's RTEB evaluation), plus
+   `jina-v5`, `BGE-M3`, `mistral-embed`, `nomic-embed-text-v2-moe` and
+   `embeddinggemma`. **1024 is admitted by every one of them** — it is
+   Voyage's *default*, and it is a supported MRL breakpoint for
+   `text-embedding-3-large`, `embed-v4`, `embed-5`, `gemini-embedding`,
+   `Qwen3-Embedding` and `voyage-4-nano`.
+3. **The quality difference is below what our corpus can measure.**
+   `text-embedding-3-large` scores 64.0 at 1024 against 64.6 at 3072 on
+   OpenAI's own MTEB evaluation, and the fleet holds **163 embedded
+   documents** (156 conversations, 7 trace rows). A retrieval benchmark
+   on 163 documents can resolve a large gap, not a 0.6-point one — so
+   quality cannot decide this, and the decision must be made on
+   structure instead.
 
 **Why the width is fixed rather than native.** A fixed width means the
 storage contract, the DDL, the indexes and the migration path are
-model-independent, so a model change costs one re-embed. The price of
-that rule is that not every model is admissible: 1536 excludes the
-1024-native family (`voyage-3-large`, `voyage-4`, `jina-v5`), which
-Matryoshka can only truncate downward. **`1024` would admit all of
-them**, at a quality difference inside the noise (3-large scores ~64.0
-at 1024 against ~64.2 at 1536) and a third less storage — so the
-benchmark should score the candidates **at their own native widths**, and
-the fleet width is then whichever admits the winner. That is a benchmark
-output, not a preference, and it is why the width is in scope for
-re-decision rather than settled.
+model-independent, so a model change costs one re-embed. The native-width
+alternative (3072 for `text-embedding-3-large`) makes every future model
+change also a width change, and a width change is a schema rebuild in
+all three stores rather than a re-embed alone. That is the expensive
+half, because DuckDB cannot widen a fixed-size ARRAY and
+`CREATE TABLE IF NOT EXISTS` never alters.
+
+**The gateway is not a constraint, and that is now proven.** Live probe
+against the local Bifrost (v2.5.1) using `text-embedding-3-small`, whose
+native width is 1536 and which supports Matryoshka truncation: requesting
+1536 / 1024 / 768 / 256 each returned exactly that width, and omitting
+the field returned the native 1536. Any width a model can serve is
+reachable through the gateway, so the width is decided by the storage
+layer and by admissibility — not by the gateway.
+
+**What 1024 costs.** Storage is 4096 bytes per float32 vector against
+6144 at 1536 and 12288 at 3072, so 1024 is a third less than 1536 and
+two thirds less than 3072; the int8 warm store quantises *better* at
+fewer dimensions, because the per-pair distance error accumulates as
+√dimensions. Nothing else changes: the price is identical (OpenAI bills
+input tokens, and output dimensions are free), and embedding latency is
+unchanged — the same forward pass, only a smaller response payload.
+
+**One bonus that only 1024 and 2048 get.** The Voyage 4 family shares a
+single embedding space across all its models — *"All embeddings created
+with the 4 series are compatible with each other"*. At 1024 that means
+the index can be written by `voyage-4-large` and queried by
+`voyage-4-lite` in the same space, at different cost and latency. That
+is the frozen-index-space / swappable-ranker design (§1.2) working at
+the *provider* level rather than only within one model.
 
 **What is provisional.** The decision is *not* that 3-large is the best
 model available — it is that it is the best model reachable without
@@ -192,7 +233,7 @@ only kind that is both fast and a genuine upgrade over the bi-encoder
 index. That is a second provider and a second credential, which is why
 it is deferred rather than built (§1.2's closing note).
 
-- The **index space** (`text-embedding-3-large`, 1536, `space_version`
+- The **index space** (`text-embedding-3-large`, 1024, `space_version`
   recorded with every row) is written once, and it is the expensive
   thing.
 - The **ranker** is a configured leg with its own model, width and space
@@ -478,7 +519,7 @@ about embeddings.
       llama.cpp rejects unknown body fields, so the `dimensions` key must
       not be added there.
       `text-embedding-3-large` is natively 3072 and the fleet width is
-      1536, so the OpenAI legs **must** send `dimensions: 1536`.
+      1024, so the OpenAI legs **must** send `dimensions: 1024`.
       **Where that decision is made today is the bug.**
       `adapters/embedding/openai.py:206-220` gates the field on
       `model.startswith("text-embedding-3")` — a hard-coded vendor naming
@@ -512,12 +553,32 @@ about embeddings.
       construction-time cross-check** that a configured width equals
       `FLEET_EMBEDDING_DIM`.
 - [ ] **Widen the four hard-coded 384s in the observability subsystem.**
-      They would reject every 1536-wide vector the new leg produces:
+      They would reject every 1024-wide vector the new leg produces:
       `observability/models.py:31` `Vector(384)`;
       `observability/queries.py:55` `shape != (384,)`;
       `observability/migrations.py:22` `embedding VECTOR(384)`;
       `observability/settings.py:36` `embedding_dimension` (default 384,
       `le=1024`).
+- [ ] **Raise the `le=1024` validation bounds — and note that the fleet
+      width lands exactly on the current ceiling.** Four fields in the
+      fleet cap a width at 1024: `EmbeddingCreate.embedding_dim` and
+      `EmbeddingCreate.embedding` (mahavishnu
+      `core/repositories/embeddings.py:78-83`, `ge=128, le=1024` and
+      `min_length=128, max_length=1024`),
+      `OTelStorageSettings.embedding_dimension` (oneiric
+      `adapters/observability/settings.py:35-37`, `ge=128, le=1024`), and
+      `SemanticConfig.embedding_dimension` (crackerjack
+      `models/semantic_models.py:168-173`, `ge=128, le=1024`).
+      **1024 passes all four exactly at the bound; 1536 and 3072 are
+      rejected at construction.** That is not a reason to pick 1024 on
+      its own — it is a reason to know the cost of any other width: the
+      oneiric bound is the sharp one, because
+      `mahavishnu/core/config.py:1035` subclasses
+      `OTelStorageSettings` (`class OTelStorageConfig(_OneiricOTelStorageSettings)`)
+      and loads it from `settings/mahavishnu.yaml:119`, so **a width
+      above 1024 fails Mahavishnu's entire settings load until Oneiric
+      releases.** Raise them to `le=4096` so the bound stops being a
+      hidden ceiling on the contract.
 - [ ] **Make `SubstrateSettings` the source of truth for the width, and
       add the missing validator.** `embedding__dim` (`:211-219`) and
       `warm__embedding_dim` (`:106-115`) both default **384**. Their
@@ -570,22 +631,27 @@ about embeddings.
       outside the allowlist fails locally with `no_key_supports_model`
       before the request is ever sent, so this is a hard gate, not a
       preference.
-- [ ] **The gateway's `cache_mode` is `semantic`** — its semantic-cache
-      plugin is configured for `text-embedding-3-small` at
-      `dimension: 1536`. Repoint it at `text-embedding-3-large` and
-      **flush the cache**. The plugin's cached entries were keyed by the
-      old model's vectors; two models' vectors sharing one semantic cache
-      is the same corruption the `space_version` contract exists to
-      prevent. The width stays 1536, so the plugin's dimension setting
-      does not change — only the model does. Note the known upstream issue
-      where that plugin cannot resolve a local/custom embedding provider
-      inside its `PreLLMHook` even when the same provider/model succeeds
-      through `/v1/embeddings`.
+- [ ] **The gateway's `cache_mode` is `semantic`, and it is NOT part of the
+      fleet's embedding contract.** Its plugin is configured
+      `embedding_model: text-embedding-3-small`, `dimension: 1536`,
+      `provider: openai`, `threshold: 0.95`, `ttl: 30m`. It is an
+      **LLM-response** cache: it embeds requests and responses to decide
+      whether a cached response matches, and those vectors are its own
+      cache keys, not the fleet's semantic vectors. It can therefore keep
+      using `text-embedding-3-small` at 1536 whatever width the fleet's
+      semantic model uses, **and changing the fleet's model does not
+      invalidate its cache** — there is nothing to flush and nothing to
+      repoint. The only coupling is that the model the plugin names must
+      stay allowed for that provider key, and this plan adds a model
+      rather than removing one. Note the known upstream issue where this
+      plugin cannot resolve a local/custom embedding provider inside its
+      `PreLLMHook` even when the same provider/model succeeds through
+      `/v1/embeddings`, and its 8192-token input limit below.
 - [ ] **Watch the gateway's 8192-token input limit.** The semantic-cache
       plugin does not truncate: 514 of 869 consulted requests failed on
       that limit. And the model must be in the provider key's `models: [...]`
       allowlist, or every attempt fails locally with `no_key_supports_model`.
-      The direct `/v1/embeddings` round trip is verified live at 1536; the
+      The direct `/v1/embeddings` round trip is verified live at 1024; the
       *plugin* path is the one with the limit.
 - [ ] **Release, then the operator bumps each consumer's pin.**
 
@@ -647,9 +713,30 @@ sometimes engages — it is what the running server uses.
       single violation of the fleet rule.
 - [ ] **Fix the ecosystem dimension constant.**
       `mahavishnu/core/resilient_embeddings.py:53`
-      `STANDARD_EMBEDDING_DIMENSION = 384` → 1536, and
+      `STANDARD_EMBEDDING_DIMENSION = 384` → 1024, and
       `_validate_dimension` (`:206-222`) must *reject* a mismatch rather
-      than count it.
+      than count it. As it stands, a width mismatch returns `False`, every
+      tier falls through, and `generate_embedding` lands on the mock tier
+      (`:227-252`) — so a width change becomes **100% mock embeddings
+      with one `logger.warning` per call**, and no error anywhere.
+- [ ] **Carry the width in the embedding cache key.**
+      `core/embedding_cache.py:190` declares `model_version: str = "1.0.0"`
+      and the cache key is `f"{model_version}:{text_hash}"` (`:347`) —
+      it carries **no width and no space id**. A width change without
+      bumping `model_version` serves stale-width vectors out of the L1/L2
+      cache. The key must include the space id, not a hand-bumped
+      version string.
+- [ ] **Raise `EmbeddingCreate`'s width bounds.**
+      `core/repositories/embeddings.py:78-83` caps `embedding_dim` at
+      `le=1024` and `embedding` at `max_length=1024`, while the column it
+      writes to is `vector(384)`
+      (`migrations/versions/V202604021200__initial_consolidated_schema.sql:166`).
+      The check accepts widths the schema rejects — and
+      `core/search/hybrid_search.py:623-639` writes the same table with
+      **raw SQL**, bypassing `EmbeddingCreate` entirely, so a wide
+      embedding reaches `vector(384)` with no validation gate at all.
+      Two write paths, two different gates, one table: both must go
+      through the contract.
 - [ ] **Delete the committed `bifrost:` block or make it live.**
       `settings/mahavishnu.yaml:110-112` (`route_qwen_code`,
       `ssl_show_warn`) is inert — `bifrost` is **not** a
@@ -708,7 +795,7 @@ sometimes engages — it is what the running server uses.
       fork's exact schema and its HNSW (`m=16, ef_construction=64`) and GIN
       indexes. The rows carry `task.class` values of
       `CODE_GENERATION`/`REASONING`/`SEARCH` — **never** `mcp_tool_call` —
-      and are from a manual run, not a live feed. A 1536 move needs a new
+      and are from a manual run, not a live feed. A 1024 move needs a new
       column or table plus a re-embed; the rows cannot be reused.
 - [ ] **Promote `transcript_path` and `prompt_id` to the top level of the
       hook payload.** `mahavishnu/bodai_hook_bridge.py:159-187`
@@ -731,9 +818,31 @@ Plan M (`akosha/docs/plans/2026-11-17-unified-pgvector-warm-tier.md`) holds
 the detail. The fleet-relevant additions:
 
 - [ ] **Phase 0** — adopt Oneiric's client; delete `BACKEND_DEFAULT_DIMS`;
-      rebuild `conversations` at 1536 (it holds 0 rows, so this is close to
+      rebuild `conversations` at 1024 (it holds 0 rows, so this is close to
       free; `hot.db` is 894 MB and needs `hot.db` **and** `hot.db.wal`
       backed up together).
+- [ ] **Parameterize the one hard-coded width left in Akosha's executable
+      path: `embedding INT8[384]`** at `storage/warm_store.py:77`.
+      `WarmStore.__init__` (`:49`) takes **no dimension parameter at
+      all**, so the DDL cannot be parameterized today — and DuckDB
+      rejects the cast outright (verified: *"Cannot cast list with length
+      1024 to array with length 384"*). This breaks every hot→warm
+      migration, and the exception is **swallowed** at `storage/aging.py:253`
+      (`except Exception` → `stats.errors += len(batch)`), so the aging
+      tier quietly stops migrating and reports only an error count.
+      `create_warm_store` (`storage/__init__.py:243`) must thread the
+      resolved dimension through, mirroring `PgvectorWarmStore`.
+      **This single line breaks the fleet** — it is the first thing to
+      fix.
+- [ ] **Fix the ingestion worker's zero-vector fallback.**
+      `ingestion/worker.py:564` writes `embedding=conv.get("embedding",
+      [0.0] * 384)` — a 384-wide fallback regardless of the schema. At the
+      fleet width a payload with no `embedding` key produces a
+      wrong-width zero vector → `ValueError` from `HotStore.insert` →
+      caught at `:580` → **the conversation is silently dropped**.
+- [ ] **Fix the byte-accounting constants.** `storage/aging.py:144` and
+      `:246` add a flat `2500` bytes per record ("int8 embedding (384B)").
+      At the fleet width that under-reports. Derive it from the width.
 - [ ] **Widen `akosha_store_memory`'s dimension check.**
       `mcp/tools/session_buddy_tools.py:138-145` compares the incoming
       width against a hardcoded 384 and, on a mismatch, **logs a warning
@@ -742,7 +851,9 @@ the detail. The fleet-relevant additions:
       is itself stale. So this does **not** block Session-Buddy's push;
       it fires a misleading warning on every push at the fleet width.
       Fix it to check the fleet width against the *contract*, not a
-      literal. It also discards ten lineage fields (`:26-42`), so the
+      literal — and against the **live schema width**, not a second
+      literal, or the check and the column disagree in both directions.
+      It also discards ten lineage fields (`:26-42`), so the
       pushed rows carry no provenance — the same vocabulary problem the
       aging filter has.
 - [ ] **Carry the space id on every stored vector.** The warm tier's
@@ -812,7 +923,7 @@ them, zero real conversation turns.**
 | `openai_direct` leg | live (eligible) |
 | `llama_embed` leg | live (eligible) — but a *different vector space* |
 | `llama_server` leg | **skipped** — declared 4096 ≠ 768, and nothing on :8081 |
-| Width served | **768**, not 1536 |
+| Width served | **768**, not 1024 |
 | MCP tools registered | **227** (215 `session_buddy_*` + 12 bare) |
 | Search surface | functionally live, **semantically empty** |
 
@@ -827,11 +938,11 @@ out by hand. The chain's legs declare their widths from that constant
 (`_PROVIDER_LEGS`, `:379-384`), and `_eligible_legs` (`:392-405`) admits
 a leg only when `leg.width == EMBEDDING_DIM`.
 
-Live-probed consequence: raising only `DEFAULT_EMBEDDING_DIM` to 1536
-moves `EMBEDDING_DIM` to 1536 while every leg still *declares* 768
+Live-probed consequence: raising only `DEFAULT_EMBEDDING_DIM` to 1024
+moves `EMBEDDING_DIM` to 1024 while every leg still *declares* 768
 (OpenAI), 768 (`llama_embed`) or 4096 (`llama_server`). **No leg is
 eligible; the chain returns `None` for every request**
-(`chain result (width=1536): None`) and every write degrades to a NULL
+(`chain result (width=1024): None`) and every write degrades to a NULL
 embedding. The November plan's fleet-width check (B6, `:744-748`) reads
 only `memory/embedding_dim.py:39` — which is exactly the constant that
 *looks* right and is not the one that breaks. **The two literals must
@@ -861,7 +972,7 @@ exported to **nothing**. `/health` carries two feeds (`skills_signer`,
 `bodai_events`); the latter is stale-but-green (its publisher has been
 idle since boot, and `health()` returns true on `entities_count > 0`).
 
-- [ ] **Move 768 → 1536 in both constants, atomically**
+- [ ] **Move 768 → 1024 in both constants, atomically**
       (`memory/embedding_dim.py:39` **and** `reflection/embeddings.py:81`).
       Leaving `llama_server` declared at its true 4096 and `llama_embed`
       at 768 is *correct* — they then become ineligible, which is the
@@ -872,7 +983,7 @@ idle since boot, and `health()` returns true on `entities_count > 0`).
       come from `BIFROST_EMBEDDING_MODEL` / `OPENAI_EMBEDDING_MODEL`,
       both defaulting to `text-embedding-3-small`. Change the default to
       **`text-embedding-3-large`** and keep `dimensions` — 3-large is
-      natively 3072, so `dimensions: 1536` is now **required**, not
+      natively 3072, so `dimensions: 1024` is now **required**, not
       optional (§1). The field is what makes the *same* width reachable
       from a model of a different native width, so it stays part of the
       request; what changes is that it is now load-bearing. Note the
@@ -884,7 +995,7 @@ idle since boot, and `health()` returns true on `entities_count > 0`).
       probes the eligible legs and returns the serving leg + width; the
       lifespan calls it and **aborts startup** on failure. The failure
       message must name both ("no real embedding provider reachable;
-      required width 1536"). Do not follow the surrounding
+      required width 1024"). Do not follow the surrounding
       swallow-everything pattern.
 - [ ] **Add an embedding health feed** and expose `get_embedding_system_info()`
       via an MCP tool and in `/health` (mirroring the `skills_signer`
@@ -895,8 +1006,8 @@ idle since boot, and `health()` returns true on `entities_count > 0`).
       write path (`adapters/reflection_adapter_oneiric.py:1284-1292`)
       must raise on a missing or wrong-width vector, not log a warning
       and store a degraded row.
-- [ ] **Rebuild the database at 1536.**
-      `scripts/migrate_embedding_dim.py --to-dim 1536 --replace --re-embed`.
+- [ ] **Rebuild the database at 1024.**
+      `scripts/migrate_embedding_dim.py --to-dim 1024 --replace --re-embed`.
       **Without `--re-embed` the database comes back 100% NULL-embedded**
       (the script drops every vector, `:235-236`). Stop the server first
       — DuckDB is single-writer. 313 vectors in a 53 MB database, so the
@@ -904,7 +1015,7 @@ idle since boot, and `health()` returns true on `entities_count > 0`).
 - [ ] **Migrate the BLOB-backed embeddings separately.** The script only
       sees `FLOAT[N]` (`:96-120`). `skill_invocation.embedding` and
       `centroid_embedding` are BLOBs; `EMBEDDING_BYTES` must go to 6144
-      at 1536 (`storage/skills_embeddings.py:46-47`) and every existing
+      at 1024 (`storage/skills_embeddings.py:46-47`) and every existing
       blob must be re-embedded and re-packed, or `unpack_embedding`
       (`:98-99`) raises.
 - [ ] **Remove the `llama_embed` leg from the fleet chain.** It is
@@ -946,7 +1057,7 @@ idle since boot, and `health()` returns true on `entities_count > 0`).
 - [ ] **Interim path: use the MCP tool directly**
       (`akosha_batch_store_memories`) — it is already reachable and its
       payload matches the existing serializer. Land the HTTP-push repair
-      as the automated path once Akosha's width moves to 1536.
+      as the automated path once Akosha's width moves to 1024.
       **Do not use Redis** — the Redis path publishes only `task.*`
       envelopes and a heartbeat, never conversation content.
 - [ ] **Build the transcript ingester, or decode the Redis hook events.**
@@ -962,7 +1073,7 @@ idle since boot, and `health()` returns true on `entities_count > 0`).
       provenance-capable writer** — the current path writes no
       `source_type`, so the manual tool would still write NULL provenance
       even after the ingester lands.
-- [ ] **Update `2026-11-06-fleet-embedding-width-768.md`** to 1536 and
+- [ ] **Update `2026-11-06-fleet-embedding-width-768.md`** to 1024 and
       startup failure, and **retract its line 36** ("the `mock` fallback
       widens 384 → 768") — under startup failure the mock is not a write
       path. Its status is `draft`, 8-agent reviewed; it should be
@@ -1019,7 +1130,7 @@ The current state is worse than "wrong width":
       uses this resolver at `adapters/ai/unified.py:68`; credential
       `BIFROST_VIRTUAL_KEY`), then direct OpenAI (`OPENAI_API_KEY`), then
       local llama, then a local lexical embedder. Send
-      `{"model":"text-embedding-3-large","input",...,"dimensions":1536}`
+      `{"model":"text-embedding-3-large","input",...,"dimensions":1024}`
       on the OpenAI legs — 3-large is natively 3072, so the `dimensions`
       field is **required** to reach the fleet width (§1) — and
       `{"model","input"}` on llama (llama.cpp rejects unknown body
@@ -1030,7 +1141,7 @@ The current state is worse than "wrong width":
       only, `"local"` = local legs only. Today it selects nothing.
 - [ ] **Record the index width and rebuild on mismatch.** The `embeddings`
       table has no width column, so a stale 384-wide BLOB is read as if
-      it were 1536. Add an `embedding_dim` column (or a `meta` table);
+      it were 1024. Add an `embedding_dim` column (or a `meta` table);
       compare on open and rebuild. The current failure mode is a loud
       numpy shape `ValueError` — the rebuild makes it deliberate.
 - [ ] **Fix the `file_types` filter** (`services/vector_store.py:396-416`)
@@ -1091,20 +1202,67 @@ The current state is worse than "wrong width":
 
 ## 4. Sequencing
 
+### 4.1 The five things to fix first
+
+The width change touches more code than the literals suggest, and the
+failure modes are uneven: some are loud, some are silent, and the silent
+ones are worse. In dependency order:
+
+1. **`akosha/storage/warm_store.py:77` — `embedding INT8[384]`.** The
+   only hard-coded width in Akosha's executable path, and the one that
+   breaks the fleet: DuckDB rejects the cast outright, and the exception
+   is swallowed by the aging service, so the warm tier quietly stops
+   migrating. `WarmStore.__init__` takes no dimension parameter today.
+2. **The four `le=1024` validation bounds** (oneiric's
+   `OTelStorageSettings.embedding_dimension`, mahavishnu's
+   `EmbeddingCreate` pair, crackerjack's `SemanticConfig`). Nothing can
+   be tested above 1024 until they are raised, and the oneiric one gates
+   **Mahavishnu's entire settings load**.
+3. **`session_buddy/reflection/embeddings.py:81` —
+   `OPENAI_EMBEDDING_DIM`.** A hard-coded duplicate of
+   `DEFAULT_EMBEDDING_DIM` that is not derived from it. Move the
+   constant and the two OpenAI legs become *ineligible* — the chain
+   silently has no provider, and the only signal is a
+   `skipped_providers` entry in `get_embedding_system_info()`.
+4. **`mahavishnu/core/resilient_embeddings.py:206-224` —
+   `_validate_dimension`.** It must raise, not count. As written, a
+   width mismatch falls through every tier to the mock, turning the
+   change into 100% mock embeddings with one warning per call.
+5. **The schema literals no constant can reach** — oneiric's
+   `observability/models.py:31` and `migrations.py:22`, and
+   `queries.py:55`'s `(384,)` shape gate; mahavishnu's
+   `migrations/init.sql:126,285` and
+   `V202604021200__initial_consolidated_schema.sql:166`. Each needs the
+   literal changed **and** a real widening migration: `CREATE TABLE IF
+   NOT EXISTS` never alters, and DuckDB cannot widen a fixed-size ARRAY
+   in place — the vectors must be dropped and re-embedded, because they
+   carry no meaning in the new space.
+
+Then, so that the width is one fact rather than five guesses: **`FLEET_
+EMBEDDING_DIM` does not exist anywhere in the fleet.** Oneiric already
+has `embedding__dim` and `warm__embedding_dim` with the right bounds
+(`le=4096`) and docstrings that *promise* enforcement that exists
+nowhere — wire them or delete them. Session-Buddy's
+`memory/embedding_dim.py` is the cleanest existing source-of-truth
+implementation and should be the model. Every check must read the
+**live schema width**, never a second literal: today ten such
+check-vs-schema disagreements exist, and each one is a place where the
+fleet accepts a width its own column will reject.
+
 ```
   mcp-common: emit task_class/selector/outcome   ─┐
                                                     ├─► mcp_tool_call_feed populates
   Akosha: fix the subscriber + decode the shape  ─┘
 
   Oneiric: registry wiring + Bifrost header + the   ──► release
-           OpenAI legs + 1536                        │
+           OpenAI legs + 1024                        │
                                                     │
   Akosha: adopt it, rebuild conversations, widen  ┤
            store_memory's accepted width  ─────────┤
-  Session-Buddy: both constants → 1536, rebuild,  ┤
+  Session-Buddy: both constants → 1024, rebuild,  ┤
            startup gate, health feed ──────────────┤
   Mahavishnu: subclass the adapter, fix ef_search ┤
-  Crackerjack: real embeddings at 1536 ───────────┘
+  Crackerjack: real embeddings at 1024 ───────────┘
                                                     │
                                                     ▼
                               operator bumps pins, publishes
@@ -1113,7 +1271,7 @@ The current state is worse than "wrong width":
                         unified pgvector warm tier → enable aging
                                                     │
                                                     ▼
-              Session-Buddy pushes conversations → Akosha (now 1536)
+              Session-Buddy pushes conversations → Akosha (now 1024)
 ```
 
 **The Oneiric release is the critical path, and two things must land in
@@ -1130,7 +1288,7 @@ The warm tier needs both.
 **One ordering constraint inside the embedding track.** Akosha's
 `conversations` table must be at the fleet width **before** Session-Buddy
 pushes to it. Akosha's own dimension check is only a warning, so a push
-at the wrong width is *accepted* — but a 1536-wide vector cannot bind
+at the wrong width is *accepted* — but a 1024-wide vector cannot bind
 into a 384-wide DuckDB `FLOAT[N]` column at all. Widening the producer
 without widening the receiver produces rows that cannot be written, or
 that must be re-embedded later.
@@ -1148,36 +1306,44 @@ status code.**
       feed's `entities_count > 0`.
 - [ ] Every component reports the same embedding model, width and space
       id; `embeddings.mode == "real"` on Akosha. The model is
-      `text-embedding-3-large` and the width is **1536**.
-- [ ] **The request body carries `dimensions: 1536`, and the response is
-      1536-wide.** 3-large is natively 3072, so this asserts the
+      `text-embedding-3-large` and the width is **1024**.
+- [ ] **The request body carries `dimensions: 1024`, and the response is
+      1024-wide.** 3-large is natively 3072, so this asserts the
       truncation actually happened rather than trusting the request. A
-      3072-wide response against a 1536-wide store is the silent
+      3072-wide response against a 1024-wide store is the silent
       corruption this gate exists to catch.
-- [ ] **Bifrost forwards `dimensions` on `/v1/embeddings`.** 1536 is a
-      truncation of a 3072-native model, so the request has to carry
-      `dimensions: 1536` **through the gateway**, not only direct to
-      OpenAI. A gateway that silently drops the field answers at 3072 and
-      a mis-sized vector reaches the store. If Bifrost does not forward
-      it, then 1536 is unreachable through the gateway and the width
-      would be forced to 3072 by a gateway *capability* rather than by
-      quality — the wrong reason to choose a width, and one to surface
-      rather than absorb. This is the single check the model decision
-      depends on, and it is cheap.
+- [ ] **`text-embedding-3-large` is on the OpenAI provider key's model
+      allowlist.** Verified live: the gateway answers HTTP 403 — *"Model
+      'text-embedding-3-large' is not allowed for virtual key
+      'bodai-pi-pool'"*. The virtual key itself allows everything
+      (`allow_all_keys=1`, `allowed_models=["*"]`); the gate is the
+      provider key `openai-primary`'s `models_json`, which lists
+      `text-embedding-3-small` and not `-large`. A model outside that
+      allowlist fails locally, before the request ever reaches OpenAI.
+- [ ] **The gateway forwards `dimensions` — verified; keep it that way.**
+      Live probe against the local Bifrost (v2.5.1), using
+      `text-embedding-3-small`, whose native width is 1536 and which
+      supports Matryoshka truncation: requesting 1536 / 1024 / 768 / 256
+      each returned exactly that width, and omitting the field returned
+      the native 1536. **Any width a model can serve natively or by
+      truncation is therefore reachable through the gateway, and the fleet
+      width is not constrained by the gateway.** Re-run this probe in the
+      gate: a gateway that dropped the field would answer at the native
+      width, and a mis-sized vector would reach the store.
 - [ ] The index space and the **ranker's** space id are reported
       separately, and the search response carries
       `rerank: {model, applied, reordered}` (§1.2).
 - [ ] Every stored vector row carries its `embedding_model` and
       `embedding_dim` (or `space_version`), and a row written before the
       last model change is *queryable* by it.
-- [ ] A live Bifrost `/v1/embeddings` round trip returns 1536-wide
+- [ ] A live Bifrost `/v1/embeddings` round trip returns 1024-wide
       unit-norm vectors, and the direct-OpenAI failover returns vectors in
       the **same** space.
 - [ ] A wrong-width vector is rejected; so is a right-width vector from
       the wrong model.
 - [ ] **The recall benchmark scores the candidates, not just the
       incumbent.** The committed baseline is recorded for
-      `text-embedding-3-large` at 1536 *and* for `cohere embed-v4` at
+      `text-embedding-3-large` at 1024 *and* for `cohere embed-v4` at
       1024 (§1.1), so the model decision rests on our corpus rather than
       on a leaderboard. This is the 2026-11-20 memory-retrieval-quality
       plan's Phase 1; the standardisation plan does not ship without it.
@@ -1202,7 +1368,7 @@ status code.**
       reachable, and the failure names the required width. Its `/health`
       reports the serving leg and the width, and
       `get_embedding_system_info()` is reachable from a tool.
-- [ ] **Both** Session-Buddy width constants read 1536. A check that
+- [ ] **Both** Session-Buddy width constants read 1024. A check that
       reads only `memory/embedding_dim.py` is not a check.
 - [ ] No embedding-less rows: the count of rows with a NULL embedding is
       zero, and no write path logs a warning and stores a degraded row.
