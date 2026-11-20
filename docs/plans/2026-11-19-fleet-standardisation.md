@@ -51,7 +51,7 @@ Five outcomes, each independently checkable:
 
 | Decision | Value | Why |
 |---|---|---|
-| Fleet width | **1536** — `text-embedding-3-large` truncated from its native 3072 | Operator decision, 2026-11-20, superseding the 2026-11-19 choice of `text-embedding-3-small` at native 1536. The width is a property of the chosen model, not an absolute: 1536 keeps the corpus at the width it was already heading for, and a later model change re-derives it. See §1.1. |
+| Fleet width | **1536** — a **fixed fleet width, independent of the model** | Operator decision, 2026-11-20. The rule is that a **model must be admissible at the fleet width** (natively, or by Matryoshka truncation), *not* that the width follows the model. A fixed width keeps the storage contract stable: a model change is then a re-embed, not a re-embed *plus* a schema migration — and the migration is the expensive half, because DuckDB cannot widen a fixed-size ARRAY and `CREATE TABLE IF NOT EXISTS` never alters. `text-embedding-3-large` is admissible at 1536 by MRL. Supersedes the 2026-11-19 choice of `text-embedding-3-small` at native 1536: the **model** changed, the **width** did not. See §1.1. |
 | Llama.cpp `dimensions` | **not sent** | llama.cpp does not implement the `dimensions` parameter (issue #25210 open). Truncation must be client-side, and the fleet's client is OpenAI-compatible. |
 | Local fallback legs | **llama-server, model2vec and the mock leave the semantic chain** | Hardware-limited today, and the mock is a startup failure, not a fallback. A different model is a different vector space, not a failover. The *capability* of an OpenAI-compatible leg stays in the contract, so a local server remains a configuration change rather than a project (§3.2). |
 | The `dimensions` parameter itself | **sent whenever the target width is not the model's native width** | `text-embedding-3-large` is natively 3072, so reaching 1536 *requires* `dimensions: 1536` on every request. The rule is not "never send" (that would make 3-large unreachable) and not "always send" (on a native-width model it is a no-op that invites a reader to think truncation is in play). The client decides from a **declared capability on the leg**, never from the model's name — see §3.2. |
@@ -95,6 +95,34 @@ difference is a rounding error. And the switching cost is near zero
 *because* nothing is embedded at 1536 yet: `text-embedding-3-large` at
 1536 is the same provider, the same base URL, the same `x-bf-vk` auth and
 the same SDK as the model it replaces, with one extra request field.
+
+**Why not 3072, 3-large's native width.** It is the more elegant choice
+for a *single model* — no `dimensions` field, no truncation to reason
+about, and it restores the "native width, nothing sent" discipline this
+plan used for 3-small. It is the weakest of the three as a **fleet**
+standard, because it makes the width a function of the current model.
+Then every future model change is also a width change, and a width
+change is a schema rebuild in all three stores rather than a re-embed
+alone. The other differences do not favour it either: the quality gap is
+**+0.4 MTEB** (64.6 against ~64.2 at 1536), which is below the noise;
+the price is **identical**, because OpenAI bills input tokens and output
+dimensions are free; embedding latency is unchanged (same forward pass —
+only the response payload doubles, 24 KB against 12 KB per vector); and
+storage is **2x** — 6144 against 12288 bytes per float32 vector, 6.1 GB
+against 12.3 GB per million vectors before the HNSW index on top.
+
+**Why the width is fixed rather than native.** A fixed width means the
+storage contract, the DDL, the indexes and the migration path are
+model-independent, so a model change costs one re-embed. The price of
+that rule is that not every model is admissible: 1536 excludes the
+1024-native family (`voyage-3-large`, `voyage-4`, `jina-v5`), which
+Matryoshka can only truncate downward. **`1024` would admit all of
+them**, at a quality difference inside the noise (3-large scores ~64.0
+at 1024 against ~64.2 at 1536) and a third less storage — so the
+benchmark should score the candidates **at their own native widths**, and
+the fleet width is then whichever admits the winner. That is a benchmark
+output, not a preference, and it is why the width is in scope for
+re-decision rather than settled.
 
 **What is provisional.** The decision is *not* that 3-large is the best
 model available — it is that it is the best model reachable without
@@ -1126,6 +1154,16 @@ status code.**
       truncation actually happened rather than trusting the request. A
       3072-wide response against a 1536-wide store is the silent
       corruption this gate exists to catch.
+- [ ] **Bifrost forwards `dimensions` on `/v1/embeddings`.** 1536 is a
+      truncation of a 3072-native model, so the request has to carry
+      `dimensions: 1536` **through the gateway**, not only direct to
+      OpenAI. A gateway that silently drops the field answers at 3072 and
+      a mis-sized vector reaches the store. If Bifrost does not forward
+      it, then 1536 is unreachable through the gateway and the width
+      would be forced to 3072 by a gateway *capability* rather than by
+      quality — the wrong reason to choose a width, and one to surface
+      rather than absorb. This is the single check the model decision
+      depends on, and it is cheap.
 - [ ] The index space and the **ranker's** space id are reported
       separately, and the search response carries
       `rerank: {model, applied, reordered}` (§1.2).
