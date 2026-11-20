@@ -35,7 +35,15 @@ BIFROST_BACKUP_DIR = BIFROST_CONFIG_DIR
 #: launchd's ``EnvironmentVariables`` replace the inherited environment, so
 #: an exported ``BIFROST_TRANSPORT_VERSION`` never reaches the launchd job,
 #: and ``install_plist()`` re-copies the repo plist over the installed one.
-BIFROST_TRANSPORT_VERSION = "v2.5.1"
+#:
+#: v2.6.0 (2026-11-20) is a Go 1.27.4 security release -- net/http
+#: (CVE-2026-97054, a possible HTTP server crash), golang.org/x/net
+#: (CVE-2026-78661, CVE-2026-97045), klauspost/compress (CVE-2026-116591)
+#: and brotli (CVE-2026-111497). Its only breaking change is an ElevenLabs
+#: Go-SDK field rename, which this fleet does not use; the ``compat``,
+#: ``semanticcache`` and ``governance`` components carry no behavioural
+#: change that touches the embeddings path.
+BIFROST_TRANSPORT_VERSION = "v2.6.0"
 
 #: Bifrost's structured request log. This -- not ``LOG_OUT`` -- is where the
 #: per-request record with virtual-key attribution actually lives. The stdout

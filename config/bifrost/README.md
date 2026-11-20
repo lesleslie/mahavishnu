@@ -11,8 +11,11 @@ Current status (verified live, 2026-10-30):
   `@maximhq/bifrost`'s native binary) has been resolved or worked around. The
   launchd job (`ai.bifrost.gateway`) and the Oneiric-secret-resolving
   `mahavishnu bifrost status` are healthy.
-- The transport binary is pinned to **v2.5.1** (upgraded from v2.5.0 on
-  2026-11-07) — see "Transport Version Pin" below. Verify with
+- The transport binary is pinned to **v2.6.0** (upgraded from v2.5.1 on
+  2026-11-20 — a Go 1.27.4 security release fixing net/http
+  CVE-2026-97054, x/net CVE-2026-78661 and CVE-2026-97045, compress
+  CVE-2026-116591 and brotli CVE-2026-111497) — see "Transport Version Pin"
+  below. Verify with
   `curl -s http://127.0.0.1:8471/api/version`.
 - Live providers: `minimax-anthropic` (MiniMax's Anthropic-native
   `/anthropic/v1/messages` — the path Claude Code needs), `minimax-openai`
@@ -47,11 +50,11 @@ Current status (verified live, 2026-10-30):
 Before any cutover, run these checks in order. Any failure = pause and investigate.
 
 1. `lsof -tiTCP:8471 -sTCP:LISTEN` — non-empty means a listener is bound.
-1. `curl -fsS http://127.0.0.1:8471/health` — must return
+2. `curl -fsS http://127.0.0.1:8471/health` — must return
    `{"components":{"db_pings":"ok"},"status":"ok"}` (or equivalent).
-1. `test -f ~/.local/state/mcp/ready/bifrost.ready` — ready file written
+3. `test -f ~/.local/state/mcp/ready/bifrost.ready` — ready file written
    by `mahavishnu bifrost foreground` only after the listener probe succeeds.
-1. `tail -5 ~/.local/state/mcp/logs/bifrost.log` — recent JSON lines, not stale.
+4. `tail -5 ~/.local/state/mcp/logs/bifrost.log` — recent JSON lines, not stale.
 
 ## Transport Version Pin
 
@@ -60,13 +63,13 @@ native `bifrost-http` binary from `downloads.getmaxim.ai` and resolves
 `latest` on every boot. The npm version number (1.6.x) is unrelated to the
 transport version that actually runs.
 
-The transport version is pinned to **v2.5.1** in two places that a CI guard
+The transport version is pinned to **v2.6.0** in two places that a CI guard
 test keeps in sync:
 
 - `mahavishnu/bifrost/paths.py` → `BIFROST_TRANSPORT_VERSION`
 - `config/launchd/ai.bifrost.gateway.plist` → `BIFROST_TRANSPORT_VERSION`
 
-The launcher receives `--transport-version=v2.5.1` and strips the flag before
+The launcher receives `--transport-version=v2.6.0` and strips the flag before
 exec'ing the binary.
 
 **To roll back on the launchd path**, edit `BIFROST_TRANSPORT_VERSION` in
@@ -99,7 +102,7 @@ them verbatim, and the binary refuses to boot on a flag it does not know.
 Verify what is actually running:
 
 ```bash
-curl -s http://127.0.0.1:8471/api/version   # e.g. "v2.5.0"
+curl -s http://127.0.0.1:8471/api/version   # e.g. "v2.6.0"
 ```
 
 **Architecture matters.** The launcher picks the build from `node -p process.arch` (`x64` → `darwin/amd64`, `arm64` → `darwin/arm64`). Downloading
@@ -526,7 +529,7 @@ Two limits worth stating plainly:
   a convention that keeps this deployment honest, not an enforcement.
 
 > **`off` means off.** It suppresses the cache *read* as well as the write.
-> Bifrost v2.5.1 has no header that suppresses a read —
+> Bifrost v2.6.0 has no header that suppresses a read —
 > `x-bf-cache-no-store` is documented upstream as "skip writing the response
 > to cache (still served from cache on hit)" — so the repo's `off` mode
 > points at a bucket nothing was ever written to. The cache key is encoded
@@ -704,7 +707,7 @@ client-side:
    `"host_wait"`, waiting up to that many ms for the MCP hosts to
    connect. With the tools present from request one, the `tools` array
    never changes and the prefix never breaks.
-1. **`"alwaysLoad": true`** on an MCP server's entry in
+2. **`"alwaysLoad": true`** on an MCP server's entry in
    `~/.claude.json` — set for `bodai`. Claude Code's own description:
    *"all tools from this server are always included in the prompt and
    never deferred behind tool search … As a side effect, true also
@@ -934,7 +937,7 @@ sqlite3 ~/.config/bifrost/logs.db \
     WHERE routing_rule_id='route-complexity-simple' ORDER BY timestamp DESC LIMIT 1"
 ```
 
-`session-affinity` is a built-in engine in the pinned v2.5.1 transport — not
+`session-affinity` is a built-in engine in the pinned v2.6.0 transport — not
 a provider setting, not a plugin, and not a `governance_config` key. The
 store exposes no switch for it.
 
@@ -1316,7 +1319,7 @@ Two upstream requirements that are easy to miss:
    every embedding attempt fails locally with `no_key_supports_model` and the
    request never reaches OpenAI — so no amount of upstream credit fixes it.
 
-1. **The embedding model has an 8192-token input limit.** The plugin embeds
+2. **The embedding model has an 8192-token input limit.** The plugin embeds
    the request's key material with no truncation, and long agentic turns
    exceed the limit — the embedding request comes back as
    `Invalid 'input': maximum context length is 8192 tokens`. The plugin
