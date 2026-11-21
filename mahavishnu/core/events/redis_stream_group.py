@@ -445,6 +445,17 @@ class RedisStreamGroup:
                 continue
             if int(_row_field(row, "idle", 0) or 0) < stale_after_ms:
                 continue
+            # Re-read the consumer's own pending list immediately before
+            # the delete. The listing above is a snapshot: a consumer
+            # that takes delivery of a message in between would have
+            # that message destroyed by the delete -- it is neither
+            # acked nor redelivered, and it can never be reclaimed. So
+            # a consumer that owns anything is left in place.
+            owned = await client.xpending(
+                self._stream, self._group, "-", "+", 1, None, name
+            )
+            if owned:
+                continue
             lost = int(
                 await client.xgroup_delconsumer(self._stream, self._group, name) or 0
             )

@@ -57,6 +57,7 @@ class _FakeRedis:
         self.deleted_consumers: list[str] = []
         self.autoclaim_calls: list[dict[str, Any]] = []
         self.group_creates: list[tuple[str, str, str, bool]] = []
+        self.pending_reply: Any = ()
 
     async def xreadgroup(
         self,
@@ -114,6 +115,10 @@ class _FakeRedis:
 
     async def xinfo_groups(self, key: str) -> tuple[dict[Any, Any], ...]:
         return self.groups_reply
+
+    async def xpending(self, *args: Any, **kwargs: Any) -> Any:
+        """Pending entries of one consumer; empty by default."""
+        return self.pending_reply
 
     async def xgroup_create(
         self, key: str, groupname: str, identifier: str, mkstream: bool
@@ -643,3 +648,58 @@ class TestTheReclaimBoundsTheWork:
         result = await group.reclaim(min_idle_ms=0, count=512, max_entries=10)
 
         assert result.claimed_count == 10
+
+
+class TestThePruneDoesNotDestroyAMessage:
+    """The listing above the delete is a snapshot.
+
+    A consumer that takes delivery of a message between the listing
+    and the delete would have that message destroyed by the delete --
+    it is neither acked nor redelivered, and it can never be
+    reclaimed. So the consumer's pending list is re-read immediately
+    before the delete, and a consumer that owns anything is left alone.
+    """
+
+    async def test_a_consumer_that_took_delivery_is_not_deleted(self) -> None:
+        from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
+
+        class _RacingConsumer(_FakeRedis):
+            async def xpending(self, *args: Any, **kwargs: Any) -> Any:
+                return (("1-0", "mahavishnu-111", 0, 0),)
+
+        client = _RacingConsumer()
+        client.consumers_reply = (
+            {b"name": b"mahavishnu-111", b"pending": 0, b"idle": 999_999},
+        )
+        group = RedisStreamGroup(
+            stream="bodai:events", group="g", consumer="mahavishnu-999", client=client
+        )
+
+        result = await group.prune_consumers(
+            keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
+        )
+
+        assert result.removed == []
+        assert client.deleted_consumers == []
+
+    async def test_a_consumer_with_no_pending_is_still_deleted(self) -> None:
+        from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
+
+        class _NoPending(_FakeRedis):
+            async def xpending(self, *args: Any, **kwargs: Any) -> Any:
+                return ()
+
+        client = _NoPending()
+        client.consumers_reply = (
+            {b"name": b"mahavishnu-111", b"pending": 0, b"idle": 999_999},
+        )
+        group = RedisStreamGroup(
+            stream="bodai:events", group="g", consumer="mahavishnu-999", client=client
+        )
+
+        result = await group.prune_consumers(
+            keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
+        )
+
+        assert result.removed == ["mahavishnu-111"]
+        assert client.deleted_consumers == ["mahavishnu-111"]

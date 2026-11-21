@@ -393,8 +393,11 @@ returns how many pending messages the consumer owned; a non-zero
 return means messages that were never acknowledged have just become
 unrecoverable. The listing that precedes the delete is inherently
 racy — a consumer can take delivery of a message in between. The
-return value is now captured, logged at ERROR, counted in
-`destroyed_messages_total`, and surfaced in the health payload.
+consumer's own pending list is therefore re-read immediately before
+the delete, and a consumer that owns anything is left in place. The
+delete's return value is still captured, logged at ERROR, counted in
+`destroyed_messages_total`, and surfaced in the health payload, so a
+loss that slips past the re-check is visible rather than silent.
 
 **H3 — the bound was on the scan, not the work.** The reclaim
 accumulated every claimed entry, and each entry costs several round
