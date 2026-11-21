@@ -85,26 +85,30 @@ def test_namespace_helpers_are_independent_closures(
 # ---------------------------------------------------------------------------
 
 
-def test_ps_helper_runs_via_asyncio_run(shell: MahavishnuShell) -> None:
+def test_ps_helper_runs_via_run_sync(shell: MahavishnuShell) -> None:
     """Calling ``namespace['ps']()`` should run ``ps(self.app)`` and
-    feed the resulting coroutine into ``asyncio.run``.
+    feed the resulting coroutine into ``run_sync``.
 
     ``ps`` is an async function so ``patch`` makes it an ``AsyncMock``;
-    calling the mock returns a coroutine that ``asyncio.run`` then
+    calling the mock returns a coroutine that ``run_sync`` then
     awaits. We assert both ends of the contract: ``ps`` was invoked
-    with the shell's app, and ``asyncio.run`` was invoked with a
+    with the shell's app, and ``run_sync`` was invoked with a
     coroutine produced from that call.
+
+    ``run_sync`` rather than ``asyncio.run``: the shell is driven by a
+    human, synchronously, and it may be driven from inside a running
+    loop -- where ``asyncio.run`` refuses to start a second one.
     """
     with (
         patch("mahavishnu.shell.adapter.ps") as mock_ps,
-        patch("mahavishnu.shell.adapter.asyncio.run") as mock_run,
+        patch("mahavishnu.shell.adapter.run_sync") as mock_run,
     ):
         shell.namespace["ps"]()
 
     mock_ps.assert_called_once_with(shell.app)
     mock_run.assert_called_once()
     run_arg = mock_run.call_args.args[0]
-    # The argument to asyncio.run is the coroutine returned by ps(app).
+    # The argument to run_sync is the coroutine returned by ps(app).
     assert hasattr(run_arg, "__await__") or hasattr(run_arg, "send")
     _drain(mock_ps)
 
@@ -116,7 +120,7 @@ def test_errors_helper_passes_default_limit_through(
     closure forwards arguments verbatim to ``errors(shell.app, limit)``."""
     with (
         patch("mahavishnu.shell.adapter.errors") as mock_errors,
-        patch("mahavishnu.shell.adapter.asyncio.run"),
+        patch("mahavishnu.shell.adapter.run_sync"),
     ):
         shell.namespace["errors"]()
 
@@ -129,7 +133,7 @@ def test_errors_helper_propagates_explicit_limit(
 ) -> None:
     with (
         patch("mahavishnu.shell.adapter.errors") as mock_errors,
-        patch("mahavishnu.shell.adapter.asyncio.run"),
+        patch("mahavishnu.shell.adapter.run_sync"),
     ):
         shell.namespace["errors"](5)
 
@@ -137,13 +141,13 @@ def test_errors_helper_propagates_explicit_limit(
     _drain(mock_errors)
 
 
-def test_top_and_sync_helpers_wrap_via_asyncio_run(
+def test_top_and_sync_helpers_wrap_via_run_sync(
     shell: MahavishnuShell,
 ) -> None:
     with (
         patch("mahavishnu.shell.adapter.top") as mock_top,
         patch("mahavishnu.shell.adapter.sync") as mock_sync,
-        patch("mahavishnu.shell.adapter.asyncio.run") as mock_run,
+        patch("mahavishnu.shell.adapter.run_sync") as mock_run,
     ):
         shell.namespace["top"]()
         shell.namespace["sync"]()

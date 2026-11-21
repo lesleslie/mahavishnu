@@ -9,11 +9,12 @@ Example:
     $ mahavishnu ingest batch blogs.txt
 """
 
-import asyncio
 from pathlib import Path
 
 import structlog
 import typer
+
+from mahavishnu.core.async_patterns import run_sync
 
 from .core.embeddings import EmbeddingProvider
 from .ingesters.content_ingester import create_content_ingester
@@ -128,7 +129,7 @@ def ingest_url(
             result = await ingester.ingest_url(url)
             return result.to_dict()
 
-    result = asyncio.run(_ingest())
+    result = run_sync(_ingest())
     _format_result(result)
 
     # Exit with appropriate code
@@ -184,7 +185,7 @@ def ingest_file(
             result = await ingester.ingest_file(file_path)
             return result.to_dict()
 
-    result = asyncio.run(_ingest())
+    result = run_sync(_ingest())
     _format_result(result)
 
     # Exit with appropriate code
@@ -257,7 +258,7 @@ def ingest_batch(
 
             return results
 
-    results = asyncio.run(_ingest())
+    results = run_sync(_ingest())
 
     # Report summary
     success_count = sum(1 for r in results if r["success"])
@@ -327,7 +328,7 @@ def ingestion_stats(
             "embedding_provider": "auto (oneiric probe chain)",
         }
 
-    stats = asyncio.run(_stats())
+    stats = run_sync(_stats())
 
     typer.secho("📊 Content Ingestion Status:", fg=typer.colors.BLUE)
     typer.secho(f"   Output directory: {stats['output_dir']}", fg=typer.colors.BLUE)

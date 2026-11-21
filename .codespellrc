@@ -11,4 +11,6 @@
 # iTerm = Apple terminal app proper noun.
 # retuned = "tuned again" -- the correct word for adjusting a setting to a
 # new value. codespell maps it to "returned", which reverses the meaning.
-ignore-words-list = iTerm, ND, retuned
+# asend = the async-generator method ``agen.asend(value)``, the counterpart
+# of ``athrow`` and ``aclose``. codespell maps it to "ascend" / "as end".
+ignore-words-list = iTerm, ND, retuned, asend

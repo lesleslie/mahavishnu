@@ -13,6 +13,8 @@ from oneiric.adapters.llm.bifrost import get_router
 import typer
 import yaml
 
+from mahavishnu.core.async_patterns import run_sync
+
 from ..core.config import MahavishnuSettings
 from ..core.config_validator import (
     ConfigValidationReport,
@@ -550,7 +552,7 @@ def add_config_validation_commands(app: typer.Typer) -> None:
             if not report["valid"]:
                 raise typer.Exit(code=1)
 
-        asyncio.run(_validate())
+        run_sync(_validate())
 
 
 def _bifrost_schema_dump() -> dict[str, object]:

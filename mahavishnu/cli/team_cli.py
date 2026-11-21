@@ -22,7 +22,6 @@ Example:
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from rich.console import Console
@@ -32,6 +31,7 @@ from rich.table import Table
 import typer
 
 from mahavishnu.core import team_learning
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.core.errors import GoalParsingError, GoalTeamError
 from mahavishnu.core.feature_flags import is_feature_enabled
 from mahavishnu.engines.agno_teams.config import TeamConfig, TeamMode
@@ -330,7 +330,7 @@ def create_team(
             console.print(f"\n[red]Unexpected error:[/red] {e}")
             raise typer.Exit(code=1) from None
 
-    asyncio.run(_create())
+    run_sync(_create())
 
 
 @app.command("parse")
@@ -377,7 +377,7 @@ def parse_goal_cmd(
             console.print(f"\n[red]Error parsing goal:[/red] {e}")
             raise typer.Exit(code=1) from None
 
-    asyncio.run(_parse())
+    run_sync(_parse())
 
 
 @app.command("skills")

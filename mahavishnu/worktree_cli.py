@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import inspect
 import json
 from pathlib import Path
@@ -10,6 +9,8 @@ from typing import Any, Literal
 
 import typer
 import yaml
+
+from mahavishnu.core.async_patterns import run_sync
 
 from .core.app import MahavishnuApp
 from .core.config import MahavishnuSettings
@@ -42,7 +43,7 @@ def _run_async(coro):
     Returns:
         Result of the coroutine execution
     """
-    return asyncio.run(coro)
+    return run_sync(coro)
 
 
 @worktree_app.command("create")

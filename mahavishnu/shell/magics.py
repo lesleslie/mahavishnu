@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
 from IPython.core.magic import Magics, line_magic, magics_class
 
+from ..core.async_patterns import run_sync
 from .formatters import RepoFormatter, WorkflowFormatter
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ class MahavishnuMagics(Magics):
             return
 
         try:
-            workflow = asyncio.run(self.app.workflow_state_manager.get(workflow_id))
+            workflow = run_sync(self.app.workflow_state_manager.get(workflow_id))
             if not workflow:
                 print(f"Workflow not found: {workflow_id}")
                 return

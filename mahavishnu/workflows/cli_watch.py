@@ -20,6 +20,7 @@ from typing import Annotated
 
 import typer
 
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.workflows.progress import (
     list_progress_snapshots,
     record_progress_snapshot,
@@ -48,7 +49,7 @@ def watch_cmd(
     Client-side polling against the in-process recorder. Prints each new
     snapshot as it appears. Ctrl+C cleanly stops the loop.
     """
-    asyncio.run(_watch(workflow_id=workflow_id, poll=poll, once=once))
+    run_sync(_watch(workflow_id=workflow_id, poll=poll, once=once))
 
 
 @watch_app.command("emit")
@@ -64,7 +65,7 @@ def emit_cmd(
     without going through the full substrate flow. Stub substrate persists
     no-op when the HTTP CRUD endpoint is blocked.
     """
-    snap = asyncio.run(
+    snap = run_sync(
         record_progress_snapshot(
             workflow_id=workflow_id,
             step=step,

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 
 import typer
 
 from mahavishnu.core._lock_sentinel import Lock
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.core.precommitment import (
     Hypothesis,
     HypothesisLock,
@@ -48,7 +48,7 @@ def precommit_lock(
         typer.echo(f"Locked hypothesis: {result.lock_id}")
         typer.echo(f"Signature: {result.signature[:16]}...")
 
-    asyncio.run(_run())
+    run_sync(_run())
 
 
 @precommit_app.command("verify")
@@ -58,7 +58,7 @@ def precommit_verify(lock_id: str = typer.Option(...)) -> None:
         ok = await lock.verify_lock(lock_id)
         typer.echo("valid" if ok else "not found")
 
-    asyncio.run(_run())
+    run_sync(_run())
 
 
 @precommit_app.command("check-post-hoc")
@@ -74,4 +74,4 @@ def precommit_check_post_hoc(
         except SignatureMismatchError as exc:
             typer.echo(f"signature mismatch: {exc.message}")
 
-    asyncio.run(_run())
+    run_sync(_run())

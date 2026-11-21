@@ -219,7 +219,7 @@ class TestWorkflowMagic:
         magics.set_app(app)
         app.workflow_state_manager = _make_workflow_state_manager(workflow=None)
 
-        with patch("mahavishnu.shell.magics.asyncio.run", return_value=None):
+        with patch("mahavishnu.shell.magics.run_sync", return_value=None):
             magics.workflow("nonexistent")
         captured = capsys.readouterr()
         assert "Workflow not found: nonexistent" in captured.out
@@ -230,7 +230,7 @@ class TestWorkflowMagic:
         workflow = {"id": "wf-1", "status": "running", "progress": 50}
         app.workflow_state_manager = _make_workflow_state_manager(workflow=workflow)
 
-        with patch("mahavishnu.shell.magics.asyncio.run", return_value=workflow):
+        with patch("mahavishnu.shell.magics.run_sync", return_value=workflow):
             magics.workflow("wf-1")
         magics.workflow_formatter.format_workflow_detail.assert_called_once_with(
             workflow
@@ -244,7 +244,7 @@ class TestWorkflowMagic:
         )
 
         with patch(
-            "mahavishnu.shell.magics.asyncio.run", side_effect=RuntimeError("boom")
+            "mahavishnu.shell.magics.run_sync", side_effect=RuntimeError("boom")
         ):
             magics.workflow("wf-1")
         captured = capsys.readouterr()
@@ -258,7 +258,7 @@ class TestWorkflowMagic:
         )
 
         with patch(
-            "mahavishnu.shell.magics.asyncio.run", return_value={"id": "wf-1"}
+            "mahavishnu.shell.magics.run_sync", return_value={"id": "wf-1"}
         ) as mock_run:
             magics.workflow("  wf-1  ")
             mock_run.assert_called_once()

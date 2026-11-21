@@ -62,7 +62,7 @@ def _strip_typer_echo_fg(monkeypatch: pytest.MonkeyPatch) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _fake_asyncio_run(coro):
+def _fake_run_sync(coro):
     """Run the coroutine on a fresh event loop (test environment safe)."""
     loop = asyncio.new_event_loop()
     try:
@@ -238,9 +238,7 @@ class TestIngestUrl:
     def test_url_success(self, mock_factory):
         """A successful ingestion should print the success banner and exit 0."""
         mock_factory.return_value = _mock_ingester()
-        with patch(
-            "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-        ):
+        with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
             app = _make_app()
             result = runner.invoke(app, ["ingest", "url", "https://example.com/post"])
         assert result.exit_code == 0
@@ -261,9 +259,7 @@ class TestIngestUrl:
         mock_factory.return_value = _mock_ingester(
             result_dict=_ingest_result(success=False)
         )
-        with patch(
-            "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-        ):
+        with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
             app = _make_app()
             result = runner.invoke(app, ["ingest", "url", "https://example.com/post"])
         assert result.exit_code == 1
@@ -275,9 +271,7 @@ class TestIngestUrl:
         from mahavishnu.core.embeddings import EmbeddingProvider
 
         mock_factory.return_value = _mock_ingester()
-        with patch(
-            "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-        ):
+        with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
             app = _make_app()
             runner.invoke(
                 app,
@@ -317,9 +311,7 @@ class TestIngestFile:
         real_file = tmp_path / "doc.txt"
         real_file.write_text("hello world", encoding="utf-8")
         mock_factory.return_value = _mock_ingester()
-        with patch(
-            "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-        ):
+        with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
             app = _make_app()
             result = runner.invoke(app, ["ingest", "file", str(real_file)])
         assert result.exit_code == 0
@@ -361,9 +353,7 @@ class TestIngestBatch:
             return_value=[_ingest_result(success=True), _ingest_result(success=True)]
         )
         mock_factory.return_value = ingester
-        with patch(
-            "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-        ):
+        with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
             app = _make_app()
             result = runner.invoke(
                 app, ["ingest", "batch", str(urls_file), "--parallel", "2"]
@@ -387,9 +377,7 @@ class TestIngestBatch:
         )
         mock_factory.return_value = ingester
 
-        with patch(
-            "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-        ):
+        with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
             app = _make_app()
             result = runner.invoke(app, ["ingest", "batch", str(urls_file)])
         assert result.exit_code == 1
@@ -411,9 +399,7 @@ class TestIngestStats:
         ingester = _mock_ingester()
         ingester._output_dir = tmp_path  # exists, but is empty
         mock_factory.return_value = ingester
-        with patch(
-            "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-        ):
+        with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
             app = _make_app()
             result = runner.invoke(app, ["ingest", "stats"])
         assert result.exit_code == 0
@@ -428,9 +414,7 @@ class TestIngestStats:
         ingester = _mock_ingester()
         ingester._output_dir = missing_dir
         mock_factory.return_value = ingester
-        with patch(
-            "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-        ):
+        with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
             app = _make_app()
             result = runner.invoke(app, ["ingest", "stats"])
         assert result.exit_code == 0
@@ -456,9 +440,7 @@ class TestTurboquantGate:
         """When the flag is None, the factory should receive ``turboquant_bits=None``."""
         with patch("mahavishnu.ingestion_cli._DEFAULT_TURBOQUANT_BITS", None):
             mock_factory.return_value = _mock_ingester()
-            with patch(
-                "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-            ):
+            with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
                 app = _make_app()
                 runner.invoke(app, ["ingest", "url", "https://example.com/x"])
         assert mock_factory.call_args.kwargs["turboquant_bits"] is None
@@ -468,9 +450,7 @@ class TestTurboquantGate:
         """When the flag is an int, the factory should receive the same int."""
         with patch("mahavishnu.ingestion_cli._DEFAULT_TURBOQUANT_BITS", 4):
             mock_factory.return_value = _mock_ingester()
-            with patch(
-                "mahavishnu.ingestion_cli.asyncio.run", side_effect=_fake_asyncio_run
-            ):
+            with patch("mahavishnu.ingestion_cli.run_sync", side_effect=_fake_run_sync):
                 app = _make_app()
                 runner.invoke(app, ["ingest", "url", "https://example.com/x"])
         assert mock_factory.call_args.kwargs["turboquant_bits"] == 4

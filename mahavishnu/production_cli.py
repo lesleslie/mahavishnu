@@ -1,8 +1,8 @@
 """Production readiness CLI commands."""
 
-import asyncio
-
 import typer
+
+from mahavishnu.core.async_patterns import run_sync
 
 
 def add_production_commands(app: typer.Typer) -> None:
@@ -37,7 +37,7 @@ def add_production_commands(app: typer.Typer) -> None:
 
                 typer.echo(json.dumps(results, indent=2))
 
-        asyncio.run(_check())
+        run_sync(_check())
 
     @production_app.command("test")
     def production_test(
@@ -59,7 +59,7 @@ def add_production_commands(app: typer.Typer) -> None:
 
                 typer.echo(json.dumps(results, indent=2))
 
-        asyncio.run(_test())
+        run_sync(_test())
 
     @production_app.command("benchmark")
     def production_benchmark(
@@ -81,7 +81,7 @@ def add_production_commands(app: typer.Typer) -> None:
 
                 typer.echo(json.dumps(results, indent=2))
 
-        asyncio.run(_benchmark())
+        run_sync(_benchmark())
 
     @production_app.command("suite")
     def production_suite(
@@ -102,4 +102,4 @@ def add_production_commands(app: typer.Typer) -> None:
 
                 typer.echo(json.dumps(results, indent=2))
 
-        asyncio.run(_suite())
+        run_sync(_suite())

@@ -8,13 +8,13 @@ to follow-on CLI; placeholder returns "not yet implemented" until then).
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 from typing import TYPE_CHECKING
 
 import typer
 
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.plan_index import PlanId
 from mahavishnu.plan_index.store import PlanIndexStore
 from mahavishnu.plan_index.testing import (
@@ -47,7 +47,7 @@ def _get_store() -> PlanIndexStore:
 
 def _run_async[T](coro: Coroutine[object, object, T]) -> T:
     """Bridge for running async coroutines from sync CLI commands."""
-    return asyncio.run(coro)
+    return run_sync(coro)
 
 
 @plan_app.command("list")

@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 import re
+import threading
 import time
 from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 
@@ -284,10 +285,18 @@ def _validate_ctx(op: str, ctx: dict[str, object]) -> None:
     _check_literal_keys(op, ctx)
 
 
-# Shared in-process asyncio lock. Both capture (sub-plan 1) and drain
-# acquire this lock before writing to log.jsonl. Single-process assumption
-# per spec §4.6 (cross-process atomicity is out of scope).
-_append_lock = asyncio.Lock()
+# Shared in-process lock. Both capture (sub-plan 1) and drain acquire
+# this lock before writing to log.jsonl. Single-process assumption per
+# spec §4.6 (cross-process atomicity is out of scope).
+#
+# It is a THREADING lock, not an asyncio one, and that is deliberate: an
+# ``asyncio.Lock`` binds to the loop that first uses it, and this module
+# is reached from more than one -- the MCP server's loop, and the CLI's
+# own loop, which is a fresh one per command. A lock bound to a loop
+# that is not the running one raises "is bound to a different event
+# loop". The critical section is synchronous I/O with no await inside
+# it, so a thread lock is the right primitive.
+_append_lock = threading.Lock()
 
 # Per-jot waiter events for adversarial test observability of
 # _auto_retry_after. The reconciler schedules retries as fire-and-forget
@@ -384,7 +393,7 @@ async def _append_event(
     path = log_path()
     line = serialize(event)
 
-    async with _append_lock:
+    with _append_lock:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a") as f:

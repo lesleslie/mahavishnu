@@ -53,6 +53,7 @@ from .cli.team_cli import add_team_commands
 # Import coordination CLI
 from .coordination_cli import add_coordination_commands, add_repo_commands
 from .core.app import MahavishnuApp
+from .core.async_patterns import run_sync
 from .core.health import HealthResponse, HealthStatus, ReadyResponse
 from .core.metrics_schema import TaskType
 from .core.subscription_auth import MultiAuthHandler
@@ -174,7 +175,7 @@ def workflow_sweep(
     ),
 ):
     """Run an AI code sweep across repositories matching a tag."""
-    result = asyncio.run(_async_sweep(tag, adapter))
+    result = run_sync(_async_sweep(tag, adapter))
     typer.echo(f"Sweep completed with result: {result}")
 
 
@@ -189,7 +190,7 @@ def workflow_quality_check(
     ),
 ):
     """Run quality assurance evaluation across repositories."""
-    result = asyncio.run(
+    result = run_sync(
         _async_trigger_workflow(
             task_type="quality_check",
             adapter=adapter,
@@ -203,7 +204,7 @@ def workflow_quality_check(
 @workflows_app.command("heal")
 def workflow_heal():
     """Auto-recover failed workflows from the dead letter queue."""
-    result = asyncio.run(_async_heal_workflows())
+    result = run_sync(_async_heal_workflows())
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -221,7 +222,7 @@ def workflow_fix(
     ),
 ):
     """Execute a fix via worker pool with quality gate validation."""
-    result = asyncio.run(
+    result = run_sync(
         _async_fix_orchestrate(
             pool_id=pool_id,
             issue_id=issue_id,
@@ -248,7 +249,7 @@ def workflow_review(
     ),
 ):
     """Run automated code review with optional auto-fix."""
-    result = asyncio.run(_async_review_and_fix(scope, auto_fix, dry_run))
+    result = run_sync(_async_review_and_fix(scope, auto_fix, dry_run))
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -272,9 +273,7 @@ def workflow_prefect_list_deployments(
         mahavishnu workflow prefect-list-deployments --flow my-etl-flow
         mahavishnu workflow prefect-list-deployments --tag production --limit 10
     """
-    result = asyncio.run(
-        _async_prefect_list_deployments(flow_name, tags, limit, offset)
-    )
+    result = run_sync(_async_prefect_list_deployments(flow_name, tags, limit, offset))
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -287,7 +286,7 @@ def workflow_prefect_get_deployment(
     Examples:
         mahavishnu workflow prefect-get-deployment dep-123
     """
-    result = asyncio.run(_async_prefect_get_deployment(deployment_id))
+    result = run_sync(_async_prefect_get_deployment(deployment_id))
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -312,7 +311,7 @@ def workflow_prefect_list_flow_runs(
         mahavishnu workflow prefect-list-flow-runs --state FAILED --limit 10
         mahavishnu workflow prefect-list-flow-runs --deployment dep-123
     """
-    result = asyncio.run(
+    result = run_sync(
         _async_prefect_list_flow_runs(deployment_id, state, limit, offset)
     )
     typer.echo(json.dumps(result, indent=2, default=str))
@@ -327,7 +326,7 @@ def workflow_prefect_cancel_flow_run(
     Examples:
         mahavishnu workflow prefect-cancel-flow-run run-123
     """
-    result = asyncio.run(_async_prefect_cancel_flow_run(flow_run_id))
+    result = run_sync(_async_prefect_cancel_flow_run(flow_run_id))
     typer.echo(json.dumps({"flow_run_id": flow_run_id, "cancelled": result}, indent=2))
 
 
@@ -338,7 +337,7 @@ def workflow_prefect_list_work_pools():
     Examples:
         mahavishnu workflow prefect-list-work-pools
     """
-    result = asyncio.run(_async_prefect_list_work_pools())
+    result = run_sync(_async_prefect_list_work_pools())
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -351,7 +350,7 @@ def workflow_prefect_clear_schedule(
     Examples:
         mahavishnu workflow prefect-clear-schedule dep-123
     """
-    result = asyncio.run(_async_prefect_clear_schedule(deployment_id))
+    result = run_sync(_async_prefect_clear_schedule(deployment_id))
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
@@ -627,7 +626,7 @@ def sweep(
     Prefer: mahavishnu workflow sweep --tag TAG
     """
     # Run the async function synchronously
-    result = asyncio.run(_async_sweep(tag, adapter))
+    result = run_sync(_async_sweep(tag, adapter))
     typer.echo(f"Sweep completed with result: {result}")
 
 
@@ -736,7 +735,7 @@ def mcp_start(
         finally:
             await server.stop()
 
-    asyncio.run(_start())
+    run_sync(_start())
 
 
 @mcp_app.command("stop")
@@ -797,7 +796,7 @@ def mcp_status() -> None:
         )
         typer.echo("\nTo start the server, run: mahavishnu mcp start")
 
-    asyncio.run(_status())
+    run_sync(_status())
 
 
 @mcp_app.command("health")
@@ -825,7 +824,7 @@ def mcp_health() -> None:
         ) as e:  # CLI entry point — broad catch is the documented contract
             typer.echo(f"MCP Server: ? Unknown status: {e}")
 
-    asyncio.run(_health())
+    run_sync(_health())
 
 
 @mcp_app.command("audit-health")
@@ -910,7 +909,7 @@ def mcp_audit_health(
             timeout=timeout,
         )
 
-    report = asyncio.run(_run())
+    report = run_sync(_run())
 
     if json_output:
         typer.echo(json.dumps(report, indent=2, default=str))
@@ -1126,7 +1125,7 @@ def health_command(
             overall_status,
         )
 
-    asyncio.run(_health())
+    run_sync(_health())
 
 
 @app.command()
@@ -1377,7 +1376,7 @@ def terminal_launch(
             typer.echo(f"ERROR: Failed to launch sessions: {e}")
             raise typer.Exit(code=1) from None
 
-    asyncio.run(_launch())
+    run_sync(_launch())
 
 
 @terminal_app.command("list")
@@ -1406,7 +1405,7 @@ def terminal_list() -> None:
             typer.echo(f"ERROR: Failed to list sessions: {e}")
             raise typer.Exit(code=1) from None
 
-    asyncio.run(_list())
+    run_sync(_list())
 
 
 @terminal_app.command("send")
@@ -1436,7 +1435,7 @@ def terminal_send(
             typer.echo(f"ERROR: Failed to send command: {e}")
             raise typer.Exit(code=1) from None
 
-    asyncio.run(_send())
+    run_sync(_send())
 
 
 @terminal_app.command("capture")
@@ -1469,7 +1468,7 @@ def terminal_capture(
             typer.echo(f"ERROR: Failed to capture output: {e}")
             raise typer.Exit(code=1) from None
 
-    asyncio.run(_capture())
+    run_sync(_capture())
 
 
 @terminal_app.command("close")
@@ -1507,7 +1506,7 @@ def terminal_close(
             typer.echo(f"ERROR: Failed to close session(s): {e}")
             raise typer.Exit(code=1) from None
 
-    asyncio.run(_close())
+    run_sync(_close())
 
 
 # Add production readiness commands
@@ -1701,7 +1700,7 @@ def workers_spawn(
             typer.echo(f"❌ Failed to spawn workers: {e}", err=True)
             raise typer.Exit(code=1)
 
-    asyncio.run(_spawn())
+    run_sync(_spawn())
 
 
 #: Capability the worker engine fills. Nodes carrying it are the dispatchable
@@ -1958,7 +1957,7 @@ def workers_execute(
             repo=repo,
         )
 
-    asyncio.run(_execute())
+    run_sync(_execute())
 
 
 @workers_app.command("list-types")
@@ -2155,7 +2154,7 @@ def pool_spawn(
             "will NOT be visible to future SessionStart bootstraps.",
             err=True,
         )
-        asyncio.run(
+        run_sync(
             _spawn_transient(
                 name=name,
                 canonical_pool_type=canonical_pool_type,
@@ -2433,7 +2432,7 @@ def pool_list() -> None:
             typer.echo(f"❌ Failed to list pools: {e}", err=True)
             raise typer.Exit(code=1)
 
-    asyncio.run(_list())
+    run_sync(_list())
 
 
 @pool_app.command("execute")
@@ -2479,7 +2478,7 @@ def pool_execute(
             typer.echo(f"❌ Failed to execute task: {e}", err=True)
             raise typer.Exit(code=1)
 
-    asyncio.run(_execute())
+    run_sync(_execute())
 
 
 @pool_app.command("route")
@@ -2540,7 +2539,7 @@ def pool_route(
             typer.echo(f"❌ Failed to plan capability DAG: {e}", err=True)
             raise typer.Exit(code=1)
 
-    asyncio.run(_route())
+    run_sync(_route())
 
 
 @pool_app.command("scale")
@@ -2582,7 +2581,7 @@ def pool_scale(
             typer.echo(f"❌ Failed to scale pool: {e}", err=True)
             raise typer.Exit(code=1)
 
-    asyncio.run(_scale())
+    run_sync(_scale())
 
 
 @pool_app.command("close")
@@ -2612,7 +2611,7 @@ def pool_close(
             typer.echo(f"❌ Failed to close pool: {e}", err=True)
             raise typer.Exit(code=1)
 
-    asyncio.run(_close())
+    run_sync(_close())
 
 
 @pool_app.command("close-all")
@@ -2640,7 +2639,7 @@ def pool_close_all() -> None:
             typer.echo(f"❌ Failed to close pools: {e}", err=True)
             raise typer.Exit(code=1)
 
-    asyncio.run(_close_all())
+    run_sync(_close_all())
 
 
 @pool_app.command("health")
@@ -2678,7 +2677,7 @@ def pool_health() -> None:
             typer.echo(f"❌ Failed to get health: {e}", err=True)
             raise typer.Exit(code=1)
 
-    asyncio.run(_health())
+    run_sync(_health())
 
 
 @app.command("shell")
@@ -2713,7 +2712,7 @@ def shell_cmd() -> None:
         shell = MahavishnuShell(maha_app)
         shell.start()
 
-    asyncio.run(_shell())
+    run_sync(_shell())
 
 
 @app.command("dashboard")

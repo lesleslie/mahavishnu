@@ -7,7 +7,6 @@ and other quality metrics across the Mahavishnu ecosystem.
 
 from __future__ import annotations
 
-import asyncio
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 import json
@@ -24,6 +23,7 @@ from rich.console import Console
 from rich.table import Table
 import typer
 
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.core.mcp_adapter import DEFAULT_SUBSTRATE_MCP_URL
 
 # Create metrics app
@@ -717,7 +717,7 @@ def _fetch_engine_metrics(
             errors.append("postgres: no DSN configured")
         else:
             try:
-                metrics = asyncio.run(
+                metrics = run_sync(
                     _load_engine_metrics_from_postgres(resolved_dsn, days)
                 )
                 selected_source = "postgres"
@@ -1210,7 +1210,7 @@ def verification_metrics(
     """
     effective_url = _resolve_mcp_url(mcp_url)
     cutoff = _parse_since(since)
-    entries = asyncio.run(_fetch_mcp_entries(effective_url, VERIFICATION_KEY_PREFIX))
+    entries = run_sync(_fetch_mcp_entries(effective_url, VERIFICATION_KEY_PREFIX))
     _render_verification_output(
         entries,
         cutoff=cutoff,
@@ -1372,9 +1372,7 @@ def dispatch_metrics(
     """
     effective_url = _resolve_mcp_url(mcp_url)
     cutoff = _parse_since(since)
-    entries = asyncio.run(
-        _fetch_mcp_entries(effective_url, ROUTING_DECISIONS_KEY_PREFIX)
-    )
+    entries = run_sync(_fetch_mcp_entries(effective_url, ROUTING_DECISIONS_KEY_PREFIX))
     _render_dispatch_output(
         entries,
         cutoff=cutoff,

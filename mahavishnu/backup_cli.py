@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 
 import typer
+
+from mahavishnu.core.async_patterns import run_sync
 
 
 def _do_backup_create(backup_type: str) -> None:
@@ -30,7 +31,7 @@ def _do_backup_create(backup_type: str) -> None:
         typer.echo(f"  Size: {backup_info.size_bytes / (1024 * 1024):.2f} MB")
         typer.echo(f"  Time: {backup_info.timestamp.isoformat()}")
 
-    asyncio.run(_create())
+    run_sync(_create())
 
 
 def _do_backup_list() -> None:
@@ -55,7 +56,7 @@ def _do_backup_list() -> None:
             typer.echo(f"    Size: {backup.size_bytes / (1024 * 1024):.2f} MB")
             typer.echo(f"    Status: {backup.status}")
 
-    asyncio.run(_list())
+    run_sync(_list())
 
 
 def _do_backup_restore(backup_id: str) -> None:
@@ -82,7 +83,7 @@ def _do_backup_restore(backup_id: str) -> None:
         typer.echo(f"✗ Restore failed: {backup_id}", err=True)
         raise typer.Exit(code=1)
 
-    asyncio.run(_restore())
+    run_sync(_restore())
 
 
 def _do_backup_info(backup_id: str) -> None:
@@ -94,7 +95,17 @@ def _do_backup_info(backup_id: str) -> None:
         maha_app = MahavishnuApp()
         backup_manager = BackupManager(maha_app)
 
-        info = await backup_manager.get_backup_info(backup_id)
+        try:
+            info = await backup_manager.get_backup_info(backup_id)
+        except ValueError as e:
+            # An id that is not a backup id is the operator's mistake,
+            # not a backend failure, and it deserves a sentence rather
+            # than a traceback. A backend error is a different thing
+            # and it propagates -- the backup commands' convention,
+            # which the CLI test suite pins for list, info, check and
+            # procedures alike.
+            typer.echo(f"✗ Backup info error: {e}", err=True)
+            raise typer.Exit(code=1) from None
 
         if not info:
             typer.echo(f"Backup not found: {backup_id}", err=True)
@@ -109,7 +120,7 @@ def _do_backup_info(backup_id: str) -> None:
         if info.checksum:
             typer.echo(f"Checksum: {info.checksum}")
 
-    asyncio.run(_info())
+    run_sync(_info())
 
 
 def _do_backup_check() -> None:
@@ -129,7 +140,7 @@ def _do_backup_check() -> None:
             status_symbol = "✓" if check_result.get("status") == "pass" else "✗"
             typer.echo(f"  {status_symbol} {check_name}: {check_result.get('status')}")
 
-    asyncio.run(_check())
+    run_sync(_check())
 
 
 def _do_backup_procedures() -> None:
@@ -145,7 +156,7 @@ def _do_backup_procedures() -> None:
 
         typer.echo(json.dumps(procedures, indent=2))
 
-    asyncio.run(_procedures())
+    run_sync(_procedures())
 
 
 def add_backup_commands(app: typer.Typer) -> None:

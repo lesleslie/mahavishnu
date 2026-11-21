@@ -11,6 +11,7 @@ from oneiric.core.logging import get_logger
 from sqlalchemy import select
 import typer
 
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.core.errors import DatabaseError, ErrorCode, MahavishnuError
 from mahavishnu.core.event_store import (
     ExecutionEvent,
@@ -20,40 +21,12 @@ from mahavishnu.core.event_store import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Coroutine
+    from collections.abc import AsyncGenerator
 
 logger = get_logger(__name__)
 executions_app = typer.Typer(
     help="Inspect workflow executions (LLM dispatch history).",
 )
-
-
-def _run[T](coro: Coroutine[Any, Any, T]) -> T:
-    """Run an awaitable, reusing the active loop when one is running.
-
-    ``asyncio.run`` raises ``RuntimeError`` when called inside an
-    already-running event loop (e.g. inside ``pytest-asyncio`` tests).
-    Detect the active loop and await the coroutine directly so the same
-    CLI callable works in both sync CLI invocation and async test
-    contexts.
-    """
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-    # Running loop: drive the coroutine to completion via a fresh loop
-    # in a worker thread so we never block the caller's loop.
-    import concurrent.futures
-
-    def _driver() -> T:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(coro)
-        finally:
-            loop.close()
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(_driver).result()
 
 
 @asynccontextmanager
@@ -144,7 +117,7 @@ def list_cmd(
 ) -> None:
     """List recent executions."""
     try:
-        executions = _run(
+        executions = run_sync(
             _list_async(status=status, workflow_id=workflow_id, limit=limit)
         )
     except MahavishnuError as exc:
@@ -191,7 +164,7 @@ def show_cmd(
 ) -> None:
     """Show execution details for a given execution_id."""
     try:
-        _run(_show_async(execution_id, step, watch, fmt, raw))
+        run_sync(_show_async(execution_id, step, watch, fmt, raw))
     except MahavishnuError as exc:
         typer.echo(f"ERROR: {exc}", err=True)
         raise typer.Exit(code=1) from exc

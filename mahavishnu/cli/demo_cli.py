@@ -57,6 +57,8 @@ from uuid import UUID
 import httpx2 as httpx
 import typer
 
+from mahavishnu.core.async_patterns import run_sync
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, Sequence
 
@@ -133,7 +135,7 @@ def _build_terminal_manager():
         maha_app = MahavishnuApp()
         return await TerminalManager.create(maha_app.config, mcp_client=None)
 
-    return asyncio.run(_build())
+    return run_sync(_build())
 
 
 async def _best_effort_reap(adapter, session_ids: list[str]) -> None:
@@ -222,7 +224,7 @@ def demo_tmux(
             typer.echo(f"  - {failure}", err=True)
         raise typer.Exit(code=1)
     terminal_manager = _build_terminal_manager()
-    asyncio.run(
+    run_sync(
         _run_tmux_demo(
             command=command,
             workers=workers,
@@ -755,7 +757,7 @@ def demo_prefect(
         )
 
     try:
-        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+        result = run_sync(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
     except TimeoutError:
         typer.echo(f"Timed out after {timeout}s waiting for the flow run", err=True)
         raise typer.Exit(code=2) from None
@@ -1020,7 +1022,7 @@ def demo_agno(
         )
 
     try:
-        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+        result = run_sync(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
     except TimeoutError:
         typer.echo(
             f"Timed out after {timeout}s waiting for AgnoAdapter.execute", err=True
@@ -1230,7 +1232,7 @@ def demo_llamaindex(
         )
 
     try:
-        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+        result = run_sync(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
     except TimeoutError:
         typer.echo(
             f"Timed out after {timeout}s waiting for LlamaIndexAdapter.execute",
@@ -1616,7 +1618,7 @@ def demo_pydantic_ai(
         )
 
     try:
-        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+        result = run_sync(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
     except TimeoutError:
         typer.echo(
             f"Timed out after {timeout}s waiting for PydanticAIAdapter.execute",
@@ -2020,7 +2022,7 @@ def demo_crow(
         )
 
     try:
-        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+        result = run_sync(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
     except TimeoutError:
         typer.echo(f"Timed out after {timeout}s running the crow demo", err=True)
         raise typer.Exit(code=2) from None
@@ -2352,7 +2354,7 @@ def demo_hatchet(
         )
 
     try:
-        result = asyncio.run(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
+        result = run_sync(asyncio.wait_for(_run_with_timeout(), timeout=timeout))
     except TimeoutError:
         typer.echo(
             f"Timed out after {timeout}s waiting for HatchetAdapterImpl.execute",
@@ -2637,7 +2639,7 @@ def demo_pool_mahavishnu(
     typer.echo(f"Command: {command}")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_pool_mahavishnu_demo(
                     pool_name=pool_name,
@@ -2789,7 +2791,7 @@ def demo_pool_session_buddy(
     typer.echo(f"Prompt: {prompt}")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_pool_session_buddy_demo(
                     pool_name=pool_name,
@@ -3041,7 +3043,7 @@ def demo_pool_runpod_public(
     typer.echo(f"Prompt: {prompt}")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_pool_runpod_public_demo(
                     pool_name=pool_name,
@@ -3115,7 +3117,7 @@ def demo_pool_runpod(
     typer.echo(f"Prompt: {prompt}")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_pool_runpod_demo(
                     pool_name=pool_name,
@@ -3262,7 +3264,7 @@ def demo_pool_pi(
     typer.echo(f"Prompt: {prompt}")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_pool_pi_demo(
                     pool_name=pool_name,
@@ -3522,7 +3524,7 @@ def demo_workflow_pool_worker_terminal(
     typer.echo(f"Prompt:   {prompt}")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_workflow_pool_worker_terminal_demo(
                     prompt=prompt,
@@ -3737,7 +3739,7 @@ def demo_workflow_multi_pool_handoff(
     typer.echo(f"Workflow: {source_pool} -> {target_pool} pool handoff")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_workflow_multi_pool_handoff_demo(
                     source_pool=source_pool,
@@ -3913,7 +3915,7 @@ def demo_workflow_adapter_swap(
     typer.echo(f"Prompt:   {prompt}")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_workflow_adapter_swap_demo(
                     prompt=prompt,
@@ -4075,7 +4077,7 @@ def demo_workflow_pi_cascade(
     typer.echo(f"Turn 2:  {followup}")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_workflow_pi_cascade_demo(
                     prompt=prompt,
@@ -4264,7 +4266,7 @@ def demo_workflow_pi_then_local(
     typer.echo(f"Local prompt: {local_prompt}")
 
     try:
-        result = asyncio.run(
+        result = run_sync(
             asyncio.wait_for(
                 _run_workflow_pi_then_local_demo(
                     pi_prompt=pi_prompt,

@@ -7,6 +7,7 @@ import json
 import logging
 from operator import itemgetter
 from pathlib import Path
+import re
 import shutil
 import tarfile
 import tempfile
@@ -28,6 +29,12 @@ class BackupInfo:
 
 class BackupManager:
     """Manages backups of Mahavishnu configuration and data."""
+
+    #: What a backup id may contain. The id becomes a file name, so it
+    #: must not carry a path separator, a dot, or anything else that
+    #: could point the lookup outside the backup directory. The ids
+    #: this module writes are ``backup_<date>_<time>_<microseconds>``.
+    _BACKUP_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
 
     def __init__(self, app) -> None:
         self.app = app
@@ -102,6 +109,9 @@ class BackupManager:
 
                 # Calculate checksum
                 checksum = await self._calculate_checksum(backup_path)
+                # Record it next to the archive, so a restore can check
+                # the archive against the checksum it was made with.
+                self._checksum_sidecar(backup_path).write_text(f"{checksum}\n")
 
                 # Get file size
                 size_bytes = backup_path.stat().st_size
@@ -173,6 +183,46 @@ class BackupManager:
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
 
+    @staticmethod
+    def _checksum_sidecar(backup_path: Path) -> Path:
+        """The file holding the checksum recorded when the backup was made."""
+        return backup_path.with_suffix(backup_path.suffix + ".sha256")
+
+    @classmethod
+    def _recorded_checksum(cls, backup_path: Path) -> str:
+        """The checksum recorded when the backup was made, if it has one."""
+        sidecar = cls._checksum_sidecar(backup_path)
+        if not sidecar.exists():
+            return ""
+        return sidecar.read_text().strip()
+
+    async def _verify_checksum(self, backup_path: Path) -> None:
+        """Check the archive against the checksum recorded at creation.
+
+        The sidecar is written next to the archive by
+        :meth:`create_backup`. A backup with no sidecar was made before
+        the check existed, so it is restored without one rather than
+        refused -- refusing would make the old backups unrestorable.
+
+        Raises:
+            ValueError: The archive does not match its recorded
+                checksum.
+        """
+        sidecar = self._checksum_sidecar(backup_path)
+        if not sidecar.exists():
+            self.logger.warning(
+                "backup %s has no recorded checksum; restoring it unverified",
+                backup_path.name,
+            )
+            return
+        recorded = sidecar.read_text().strip()
+        actual = await self._calculate_checksum(backup_path)
+        if recorded != actual:
+            raise ValueError(
+                f"Backup checksum mismatch for {backup_path.name}: "
+                f"recorded {recorded}, found {actual}"
+            )
+
     async def _cleanup_old_backups(self) -> None:
         """Clean up old backups based on retention policy."""
         try:
@@ -240,6 +290,22 @@ class BackupManager:
                     self.logger.warning(
                         f"Failed to delete backup {backup_file.name}: {e}"
                     )
+                    continue
+                # The checksum sidecar goes with the archive it belongs
+                # to -- but only once the archive is gone. Deleting the
+                # sidecar when the archive could NOT be deleted would
+                # leave the surviving archive with no recorded
+                # checksum, and _verify_checksum restores an archive
+                # that has no sidecar WITHOUT verifying it: the tamper
+                # check would be skipped for the very archive the
+                # cleanup failed to remove.
+                sidecar = self._checksum_sidecar(backup_file)
+                try:
+                    sidecar.unlink(missing_ok=True)
+                except OSError as e:
+                    self.logger.warning(
+                        f"Failed to delete checksum sidecar {sidecar.name}: {e}"
+                    )
 
         except Exception as e:  # cleanup iteration may raise any storage/IO error  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self.logger.warning(f"Failed to cleanup old backups: {e}")
@@ -251,15 +317,23 @@ class BackupManager:
            ``restore_backup`` MCP tool over calling this method directly.
            See ``docs/reports/golden-paths-guide.md`` for canonical pathways.
         """
+        if not self._BACKUP_ID_RE.fullmatch(backup_id):
+            # The id becomes a file name. An id carrying a path
+            # separator would point the lookup outside the backup
+            # directory, so it is refused before the path is built.
+            raise ValueError(f"Invalid backup id: {backup_id!r}")
+
         backup_path = self.backup_dir / f"{backup_id}.tar.gz"
 
         if not backup_path.exists():
             raise FileNotFoundError(f"Backup not found: {backup_path}")
 
         try:
-            # Verify checksum (placeholder - would compare against stored checksum)
-            _stored_checksum = await self._calculate_checksum(backup_path)
-            # Note: We'd need to store the original checksum to verify
+            # Verify the archive against the checksum recorded when it
+            # was created. The sidecar is written by ``create_backup``;
+            # a backup with no sidecar predates the check, so it is
+            # restored without one rather than refused.
+            await self._verify_checksum(backup_path)
 
             # Extract to temporary directory
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -267,20 +341,24 @@ class BackupManager:
 
                 # Extract archive
                 with tarfile.open(backup_path, "r:gz") as tar:
-                    # Filter members to defend against path-traversal attacks.
-                    # Only members without traversal segments or absolute paths
-                    # are passed to extractall via the ``members=`` filter,
-                    # which prevents the tarfile module from writing outside
-                    # ``temp_path`` (CVE-class B202 hardening).
+                    # Refuse the obvious traversal first, with an error
+                    # the operator can read. ``filter="data"`` behind it
+                    # refuses what this check cannot see -- a link
+                    # that points outside, an absolute path spelled
+                    # differently, a device file -- and it is stated
+                    # explicitly because the default is not the same in
+                    # every Python the fleet runs on.
                     safe_members: list[tarfile.TarInfo] = []
                     for member in tar.getmembers():
-                        if "../" in member.name or member.name.startswith("/"):
+                        if ".." in Path(member.name).parts or member.name.startswith(
+                            "/"
+                        ):
                             raise ValueError(
                                 f"Path traversal attempt detected in backup: {member.name}"
                             )
                         safe_members.append(member)
 
-                    tar.extractall(path=temp_path, members=safe_members)
+                    tar.extractall(path=temp_path, members=safe_members, filter="data")
 
                 # Restore configuration
                 config_dir = temp_path / "config"
@@ -347,7 +425,10 @@ class BackupManager:
                     location=str(backup_file),
                     status="available",
                     files_backed_up=0,  # Would need to extract to get exact count
-                    checksum="",  # Would need to calculate
+                    # The checksum recorded when the backup was made, if
+                    # it has one -- reading it is cheaper than hashing
+                    # every archive in the directory.
+                    checksum=self._recorded_checksum(backup_file),
                 )
 
                 backups.append(backup_info)
@@ -363,6 +444,12 @@ class BackupManager:
 
     async def get_backup_info(self, backup_id: str) -> BackupInfo | None:
         """Get information about a specific backup."""
+        if not self._BACKUP_ID_RE.fullmatch(backup_id):
+            # Same rule as ``restore_backup``: the id becomes a file
+            # name, so an id carrying a path separator would point the
+            # lookup outside the backup directory.
+            raise ValueError(f"Invalid backup id: {backup_id!r}")
+
         backup_path = self.backup_dir / f"{backup_id}.tar.gz"
 
         if not backup_path.exists():
@@ -394,7 +481,12 @@ class BackupManager:
                 location=str(backup_path),
                 status="available",
                 files_backed_up=0,  # Would need to count files in archive
-                checksum=await self._calculate_checksum(backup_path),
+                # The checksum RECORDED when the backup was made, the
+                # same one ``list_backups`` reports and the same one a
+                # restore verifies the archive against. A fresh hash of
+                # the file would report the checksum of a TAMPERED
+                # archive as the backup's own.
+                checksum=self._recorded_checksum(backup_path),
             )
         except Exception as e:  # backup metadata may be missing or corrupt; graceful degradation  # background task — broad catch is the documented contract  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
             self.logger.warning(f"Failed to get backup info for {backup_id}: {e}")

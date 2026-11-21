@@ -7,12 +7,12 @@ sanity-check a board without running the watcher daemon.
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path  # noqa: TC003
 
 from oneiric.core.logging import get_logger
 import typer
 
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.core.errors import MahavishnuError, MarkdownParseError
 from mahavishnu.jot.markdown_parser import parse_board
 
@@ -53,7 +53,7 @@ def status_cmd(
     if not path.exists():
         typer.echo(f"No board at {path}", err=True)
         raise typer.Exit(code=1)
-    cards = asyncio.run(parse_board(path.read_text()))
+    cards = run_sync(parse_board(path.read_text()))
     counts: dict[str, int] = {}
     for card in cards:
         section = str(card.get("status", "backlog"))
@@ -73,7 +73,7 @@ def validate_cmd(
         typer.echo(f"No board at {path}", err=True)
         raise typer.Exit(code=1)
     try:
-        cards = asyncio.run(parse_board(path.read_text()))
+        cards = run_sync(parse_board(path.read_text()))
     except MarkdownParseError as exc:
         typer.echo(f"ERROR: {exc}", err=True)
         raise typer.Exit(code=1) from exc

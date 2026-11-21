@@ -25,7 +25,6 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 import logging
 import os
@@ -35,6 +34,8 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
+from mahavishnu.core.async_patterns import run_sync
 
 # Note: These imports would work in production but may need mocking in tests
 # from mahavishnu.core.task_store import TaskStore, TaskCreate, TaskUpdate, TaskStatus, TaskPriority, TaskListFilter
@@ -240,7 +241,7 @@ def task_create(
                 )
             )
 
-    asyncio.run(_create())
+    run_sync(_create())
 
 
 # Task List Command
@@ -377,7 +378,7 @@ def task_list(
 
             console.print(table)
 
-    asyncio.run(_list())
+    run_sync(_list())
 
 
 # Task Update Command
@@ -469,7 +470,7 @@ def task_update(
                 )
             )
 
-    asyncio.run(_update())
+    run_sync(_update())
 
 
 # Task Delete Command
@@ -501,7 +502,7 @@ def task_delete(task_id: str, force: bool) -> None:
         await store.delete(task_id)
         console.print(f"[green]Deleted task:[/] {task_id}")
 
-    asyncio.run(_delete())
+    run_sync(_delete())
 
 
 # Task Status Command (shorthand for update --status)
@@ -532,7 +533,7 @@ def task_status(task_id: str, status: str) -> None:
 
         console.print(f"[green]Status updated:[/] {task.id} -> {task.status.value}")
 
-    asyncio.run(_status())
+    run_sync(_status())
 
 
 # Utility functions

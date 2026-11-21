@@ -23,7 +23,6 @@ The factory wires either:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 from typing import Any
@@ -31,6 +30,7 @@ from typing import Any
 import typer
 
 from mahavishnu.acp.server import serve
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.core.config import ACPSettings
 from mahavishnu.core.execute_fn_factory import build_execute_fn
 
@@ -146,7 +146,7 @@ def serve_cmd(
     """
     execute_fn = _build_default_execute_fn()
     try:
-        asyncio.run(
+        run_sync(
             serve(
                 execute_fn=execute_fn,
                 bearer_token=bearer_token,

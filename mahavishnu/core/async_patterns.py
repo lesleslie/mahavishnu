@@ -16,16 +16,20 @@ from __future__ import annotations
 
 import asyncio
 import builtins
-from contextlib import asynccontextmanager
+from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import asynccontextmanager, suppress
+import contextvars
 import logging
+import signal
+import threading
 from typing import TYPE_CHECKING, Any, ParamSpec, Self, TypeVar
 
 from mahavishnu.core.errors import ErrorCode, MahavishnuError, TimeoutError
 from mahavishnu.core.resilience import RetryExhaustedError, RetryPolicy, retry_async
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable
-    from types import TracebackType
+    from collections.abc import AsyncGenerator, Callable, Coroutine
+    from types import FrameType, TracebackType
 
 logger = logging.getLogger(__name__)
 
@@ -367,3 +371,199 @@ class AsyncTaskManager:
     def is_empty(self) -> bool:
         """Check if no active tasks."""
         return len(self._tasks) == 0
+
+
+#: How long the interrupt handler waits for the worker thread to publish
+#: its event loop before giving up on stopping it. The worker publishes
+#: the loop before it starts the coroutine, so this is only ever a
+#: scheduling delay -- the bound is there so a worker that never starts
+#: cannot hold the CLI open.
+_INTERRUPT_LOOP_WAIT_SECONDS: float = 5.0
+
+
+def run_sync[T](coro: Coroutine[Any, Any, T]) -> T:
+    """Run a coroutine to completion from synchronous code.
+
+    ``asyncio.run`` refuses to start a new event loop when one is already
+    running in this thread, and raises ``RuntimeError: asyncio.run()
+    cannot be called from a running event loop``. That is exactly the
+    case for a CLI command invoked from async code — an async test, or
+    any in-process async caller — and the crash names neither the cause
+    nor the remedy: the command simply exits 1 with a stack trace that
+    points at the event loop rather than at the command.
+
+    When a loop is already running, the coroutine is driven to
+    completion on its OWN loop in a worker thread. The teardown is the
+    same as the synchronous path's: the worker path uses
+    ``asyncio.Runner`` — the same machinery ``asyncio.run`` uses — so a
+    fresh loop is created and set as the *worker thread's* current
+    event loop (so ``get_event_loop()`` works there), pending tasks
+    are cancelled, async generators are shut down, the default executor
+    is joined, and the loop is closed.
+
+    What the caller gives up: the caller's THREAD is blocked until the
+    coroutine finishes. That is what a synchronous helper does, and it
+    cannot be otherwise — the caller asked for a value, not for a
+    schedule. If the caller's thread is the one running its own loop,
+    that loop is stalled for the duration; nothing is scheduled on it,
+    and nothing on it is re-entered.
+
+    The one behaviour that differs is SIGINT. On the main thread,
+    ``asyncio.run`` installs a handler that cancels the coroutine's
+    task, so Ctrl+C unwinds the coroutine. A worker thread cannot
+    install one — ``Runner`` guards its handler with a main-thread
+    check — so on the worker path the interrupt lands in the CALLER,
+    which stops the worker's loop and re-raises. Either way the
+    operator's Ctrl+C ends the command; only the shape of the
+    unwinding differs.
+
+    That matters more than it sounds, because the caller here is
+    usually itself under an ``asyncio.run``: its handler cancels the
+    caller's task, and a task blocked in this synchronous wait cannot
+    be cancelled. So the default handler is restored for the duration
+    of the wait, and the interrupt lands in the caller's thread where
+    it can stop the worker's loop. Without that, Ctrl+C under an
+    ``asyncio.run`` caller would do nothing at all.
+
+    Args:
+        coro: The coroutine to run.
+
+    Returns:
+        Whatever the coroutine returns.
+
+    Raises:
+        Exception: Whatever the coroutine raises, unchanged.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        # No loop is running in this thread: the ordinary path.
+        return asyncio.run(coro)
+
+    # A loop IS running in this thread. Drive the coroutine on a fresh
+    # loop in a worker thread so the caller's loop is left alone.
+    #
+    # The caller's CONTEXT is carried over explicitly: a worker thread
+    # starts with an empty ``contextvars`` context, and the logging
+    # context oneiric binds to a request id lives there. Without the
+    # copy, a command driven from async code would log without the
+    # context its caller had.
+    context = contextvars.copy_context()
+    worker_loop: list[asyncio.AbstractEventLoop] = []
+    loop_published = threading.Event()
+
+    def _driver() -> T:
+        # ``asyncio.Runner`` rather than a hand-rolled loop. It is what
+        # ``asyncio.run`` uses internally, so the worker path gets the
+        # same lifecycle: the loop is installed as this thread's
+        # current event loop, the coroutine runs as a task, and on exit
+        # pending tasks are cancelled, async generators are shut down,
+        # the default executor is joined, and the loop is closed. A
+        # hand-rolled ``new_event_loop()`` + ``run_until_complete`` +
+        # ``close()`` skipped all of that -- and left the thread's
+        # current event loop unset, so ``get_event_loop()`` in the
+        # worker raised ``RuntimeError: There is no current event loop
+        # in thread ...`` whenever it was reached outside the running
+        # loop.
+        #
+        # ``Runner`` is safe off the main thread: the SIGINT handler it
+        # installs is guarded by a main-thread check, so in a worker it
+        # simply does not install one.
+        with asyncio.Runner() as runner:
+            loop = runner.get_loop()
+            worker_loop.append(loop)
+            # Published BEFORE the coroutine starts: the interrupt
+            # handler needs the loop to stop it, and an interrupt can
+            # land at any moment.
+            loop_published.set()
+            return runner.run(coro)
+
+    def _submit() -> T:
+        # Wrapping the call rather than passing ``context.run`` to
+        # ``submit`` as a function: ``submit`` binds its result type to
+        # the callable it is handed, and a generic callable leaves that
+        # type unresolved.
+        return context.run(_driver)
+
+    # ``asyncio.run`` -- and ``asyncio.Runner``, which it uses -- replaces
+    # the SIGINT handler with one that CANCELS the main task. A task
+    # blocked in a synchronous call cannot be cancelled: the cancellation
+    # is only delivered when the task yields to the loop, and the wait
+    # below is exactly such a call. So under an asyncio Runner, Ctrl+C
+    # would do nothing at all -- the task would sit in the wait forever,
+    # and a command that runs a server would never stop.
+    #
+    # Restore the default handler for the duration of the wait, so the
+    # interrupt lands in THIS thread, where the handler below can stop
+    # the worker's loop. The caller's own handler is put back when the
+    # wait is over. Only the main thread may install a handler, and
+    # only a caller whose handler is not already the default needs it
+    # changed.
+    previous_sigint: (
+        signal.Handlers | Callable[[int, FrameType | None], Any] | int | None
+    ) = None
+    sigint_swapped = False
+    if threading.current_thread() is threading.main_thread():
+        current_sigint = signal.getsignal(signal.SIGINT)
+        if current_sigint is not signal.default_int_handler:
+            previous_sigint = current_sigint
+            signal.signal(signal.SIGINT, signal.default_int_handler)
+            sigint_swapped = True
+
+    pool = ThreadPoolExecutor(max_workers=1)
+    # The submit is inside the try, so an interrupt that lands between
+    # the handler swap above and the wait still runs the finally -- and
+    # the finally is what puts the caller's own SIGINT handler back.
+    future: Future[T] | None = None
+    try:
+        future = pool.submit(_submit)
+        return future.result()
+    except KeyboardInterrupt:
+        # The operator interrupted the CALLER's thread, but the
+        # coroutine is running on the worker's loop -- so it has to be
+        # stopped there. Without this, a command that runs a server
+        # (`mahavishnu acp serve`) would keep the server alive on the
+        # worker thread and the CLI would wait for it instead of
+        # shutting down.
+        #
+        # Wait for the worker to publish its loop first. The interrupt
+        # can land before the worker has created one, and a worker that
+        # then runs the coroutine anyway leaves a live thread that
+        # ``concurrent.futures`` joins at exit -- the process would hang
+        # on the way out instead of shutting down.
+        loop_published.wait(timeout=_INTERRUPT_LOOP_WAIT_SECONDS)
+        loop = worker_loop[0] if worker_loop else None
+        if loop is not None and not loop.is_closed():
+            loop.call_soon_threadsafe(loop.stop)
+            # Wait for the worker to wind down, and ignore whatever it
+            # reports: the worker is stopping, and its own failure is
+            # not what the operator needs to see. The interrupt is
+            # re-raised below.
+            with suppress(BaseException):
+                if future is not None:
+                    future.result(timeout=10)
+        elif future is not None:
+            # No loop was published, so the worker never ran the
+            # coroutine -- or it has not started yet. Cancelling stops
+            # a worker that has not begun, which is the one case where
+            # the shutdown below cannot: ``cancel_futures`` only
+            # cancels what has not started, and a worker that HAS
+            # started is stopped by the branch above.
+            future.cancel()
+        raise
+    finally:
+        if sigint_swapped:
+            with suppress(ValueError, TypeError):
+                # ``None`` is not a legal handler -- ``signal.signal``
+                # raises on it -- and it means SIG_DFL. Mapping it
+                # keeps a restore from failing over a value the
+                # platform does not actually hand back, and the
+                # suppression keeps a failed restore from masking the
+                # result the caller is waiting for.
+                signal.signal(
+                    signal.SIGINT,
+                    signal.SIG_DFL if previous_sigint is None else previous_sigint,
+                )
+        # ``wait=False`` so the caller's thread is not held by a worker
+        # that is already stopping.
+        pool.shutdown(wait=False, cancel_futures=True)

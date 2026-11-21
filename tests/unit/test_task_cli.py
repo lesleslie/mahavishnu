@@ -829,7 +829,7 @@ class TestCLIErrorHandling:
 
     def test_create_handles_exception(self) -> None:
         with patch(
-            "mahavishnu.task_cli.asyncio.run",
+            "mahavishnu.task_cli.run_sync",
             side_effect=RuntimeError("database error"),
         ):
             result = runner.invoke(
@@ -845,7 +845,7 @@ class TestCLIErrorHandling:
 
     def test_list_handles_exception(self) -> None:
         with patch(
-            "mahavishnu.task_cli.asyncio.run",
+            "mahavishnu.task_cli.run_sync",
             side_effect=RuntimeError("database error"),
         ):
             result = runner.invoke(task_group, ["list"])
@@ -853,7 +853,7 @@ class TestCLIErrorHandling:
 
     def test_update_handles_exception(self) -> None:
         with patch(
-            "mahavishnu.task_cli.asyncio.run",
+            "mahavishnu.task_cli.run_sync",
             side_effect=RuntimeError("database error"),
         ):
             result = runner.invoke(
@@ -863,7 +863,7 @@ class TestCLIErrorHandling:
 
     def test_delete_handles_exception(self) -> None:
         with patch(
-            "mahavishnu.task_cli.asyncio.run",
+            "mahavishnu.task_cli.run_sync",
             side_effect=RuntimeError("database error"),
         ):
             result = runner.invoke(task_group, ["delete", "task-abc123", "-f"])
@@ -871,7 +871,7 @@ class TestCLIErrorHandling:
 
     def test_status_handles_exception(self) -> None:
         with patch(
-            "mahavishnu.task_cli.asyncio.run",
+            "mahavishnu.task_cli.run_sync",
             side_effect=RuntimeError("database error"),
         ):
             result = runner.invoke(task_group, ["status", "task-abc123", "completed"])

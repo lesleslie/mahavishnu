@@ -25,8 +25,6 @@ types the command has already decided.
 
 from __future__ import annotations
 
-import asyncio
-
 # typer resolves the command's annotations at runtime
 # (annotationlib.get_annotations), so a TYPE_CHECKING-only ``Path``
 # raises NameError when the command is registered. Verified 2026-11-06
@@ -36,6 +34,7 @@ from typing import TYPE_CHECKING
 
 import typer
 
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.core.errors import EvalStorageError
 
 if TYPE_CHECKING:
@@ -257,7 +256,7 @@ def run_suite(
     from mahavishnu.core.eval.report import default_report_path, write_run_markdown
 
     scorer_names = _scorer_names(scorers)
-    result, details = asyncio.run(_run_suite_async(suite, model, budget, scorer_names))
+    result, details = run_sync(_run_suite_async(suite, model, budget, scorer_names))
     summary = result.summary
 
     if report_dir is not None:
@@ -299,7 +298,7 @@ def list_runs(
     limit: int = typer.Option(10, "--limit", min=1, help="How many runs to list."),
 ) -> None:
     """List the most recent evaluation runs."""
-    runs = asyncio.run(_list_runs_async(limit))
+    runs = run_sync(_list_runs_async(limit))
     if not runs:
         typer.echo("no evaluation runs recorded")
         return
@@ -328,7 +327,7 @@ def show_run(
     run_id: str = typer.Argument(..., help="The run id to show."),
 ) -> None:
     """Show one evaluation run's details."""
-    details = asyncio.run(_fetch_details(run_id))
+    details = run_sync(_fetch_details(run_id))
     if details is None:
         typer.echo(f"no evaluation run with id {run_id!r}", err=True)
         raise typer.Exit(code=1)

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path  # noqa: TC003
 
 import typer
 
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.jot.cli import (
     cmd_add,
     cmd_defer,
@@ -223,7 +223,7 @@ def watch_cmd(
         raise typer.Exit(code=2)
     sidecar_suffix = settings.markdown_board.state_sidecar_suffix
     state_sidecar = board.with_suffix(board.suffix + sidecar_suffix)
-    asyncio.run(
+    run_sync(
         watch_board(
             board_path=board,
             state_sidecar=state_sidecar,

@@ -129,15 +129,25 @@ class ProductionReadinessChecker:
             }
             return False
 
-    def _check_adapter_health(self) -> bool:
-        """Check if all enabled adapters are healthy."""
+    async def _check_adapter_health(self) -> bool:
+        """Check if all enabled adapters are healthy.
+
+        Async because ``run_all_checks`` is: this check is reached from
+        inside a running loop, and ``asyncio.run`` refuses to start a
+        second one in a thread that already has one. The old
+        ``asyncio.run(adapter.get_health())`` therefore raised
+        ``RuntimeError: asyncio.run() cannot be called from a running
+        event loop`` on every ``production check`` -- and the broad
+        catch around it turned the crash into a silent "ERROR" line in
+        the report rather than a visible failure.
+        """
         try:
             healthy_adapters = 0
             total_adapters = len(self.app.adapters)
 
             for name, adapter in self.app.adapters.items():
                 try:
-                    health = asyncio.run(adapter.get_health())
+                    health = await adapter.get_health()
                     if health.get("status") == "healthy":
                         healthy_adapters += 1
                     else:

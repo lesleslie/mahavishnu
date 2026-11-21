@@ -5,7 +5,6 @@ This module provides CLI commands for managing cross-repository issues,
 plans, todos, and dependencies.
 """
 
-import asyncio
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -13,6 +12,7 @@ from rich.console import Console
 from rich.table import Table
 import typer
 
+from mahavishnu.core.async_patterns import run_sync
 from mahavishnu.core.coordination.manager import CoordinationManager
 from mahavishnu.core.coordination.models import (
     CrossRepoIssue,
@@ -772,7 +772,7 @@ def repo_list_tasks(
 
         console.print(table)
 
-    asyncio.run(_list())
+    run_sync(_list())
 
 
 @repo_app.command("show-task")
@@ -798,7 +798,7 @@ def repo_show_task(
         if task.description:
             console.print(f"\n[bold]Description:[/bold]\n{task.description}")
 
-    asyncio.run(_show())
+    run_sync(_show())
 
 
 @repo_app.command("list-runs")
@@ -833,7 +833,7 @@ def repo_list_runs(
 
         console.print(table)
 
-    asyncio.run(_list())
+    run_sync(_list())
 
 
 @repo_app.command("list-events")
@@ -878,7 +878,7 @@ def repo_list_events(
 
         console.print(table)
 
-    asyncio.run(_list())
+    run_sync(_list())
 
 
 @repo_app.command("create-event")
@@ -909,4 +909,4 @@ def repo_create_event(
         if event.actor:
             console.print(f"Actor: {event.actor}")
 
-    asyncio.run(_create())
+    run_sync(_create())

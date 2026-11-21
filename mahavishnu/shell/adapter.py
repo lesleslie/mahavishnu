@@ -1,11 +1,11 @@
 """Mahavishnu admin shell adapter."""
 
-import asyncio
 import logging
 
 from oneiric.shell import AdminShell, ShellConfig
 
 from ..core.app import MahavishnuApp
+from ..core.async_patterns import run_sync
 from ..core.workflow_state import WorkflowStatus
 from .formatters import LogFormatter, RepoFormatter, WorkflowFormatter
 from .magics import MahavishnuMagics
@@ -51,10 +51,10 @@ class MahavishnuShell(AdminShell):
                 # App class for introspection
                 "MahavishnuApp": MahavishnuApp,
                 # Convenience helper functions (wrapped for async execution)
-                "ps": lambda: asyncio.run(ps(self.app)),
-                "top": lambda: asyncio.run(top(self.app)),
-                "errors": lambda limit=10: asyncio.run(errors(self.app, limit)),
-                "sync": lambda: asyncio.run(sync(self.app)),
+                "ps": lambda: run_sync(ps(self.app)),
+                "top": lambda: run_sync(top(self.app)),
+                "errors": lambda limit=10: run_sync(errors(self.app, limit)),
+                "sync": lambda: run_sync(sync(self.app)),
             }
         )
 

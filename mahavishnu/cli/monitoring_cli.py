@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 from pathlib import Path  # noqa: TC003
 
 import typer
+
+from mahavishnu.core.async_patterns import run_sync
 
 from ..core.app import MahavishnuApp
 from ..tui import TUI_AVAILABLE, FallbackRichFormatter, get_console
@@ -38,7 +39,7 @@ def get_dashboard(
     async def _get_dashboard():
         return await maha_app.monitoring_service.get_dashboard_data()
 
-    dashboard_data = asyncio.run(_get_dashboard())
+    dashboard_data = run_sync(_get_dashboard())
 
     if output_file:
         with open(output_file, "w") as f:
@@ -96,7 +97,7 @@ def get_alerts(
     async def _get_alerts():
         return await maha_app.monitoring_service.alert_manager.get_active_alerts()
 
-    alerts = asyncio.run(_get_alerts())
+    alerts = run_sync(_get_alerts())
 
     if output_file:
         alert_data = [
@@ -164,7 +165,7 @@ def acknowledge_alert(
     async def _acknowledge():
         return await maha_app.monitoring_service.acknowledge_alert(alert_id, user)
 
-    success = asyncio.run(_acknowledge())
+    success = run_sync(_acknowledge())
 
     if success:
         typer.echo(f"✅ Alert {alert_id} acknowledged by {user}")
@@ -214,7 +215,7 @@ def trigger_test_alert(
         )
 
     try:
-        alert = asyncio.run(_trigger())
+        alert = run_sync(_trigger())
         typer.echo(f"✅ Test alert created with ID: {alert.id}")
         raise typer.Exit(code=0)
     except typer.Exit:
@@ -259,7 +260,7 @@ def _print_rich_dashboard() -> None:
 
     try:
         app_instance = MahavishnuApp()
-        metrics = asyncio.run(app_instance.get_metrics())
+        metrics = run_sync(app_instance.get_metrics())
     except Exception as e:  # CLI entry point — Rich fallback prints a structured error block rather than stack-tracing when app init fails  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
         formatter.format_dict({"error": str(e)}, title="Monitor Error")
         return

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, ClassVar
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,7 +16,6 @@ from mahavishnu.core.production_readiness import (
     _calculate_overall_assessment,
     run_production_readiness_suite,
 )
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -151,14 +150,6 @@ def _make_app(
     )
 
 
-def _run_in_new_loop(coro):
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
-
-
 def _sync_check(name: str, result: bool):
     def _check(self):
         self.results[name[7:]] = {"status": "PASS" if result else "FAIL"}
@@ -206,8 +197,8 @@ def _raising_suite_test():
     return _test
 
 
-def test_config_resource_security_and_adapter_checks(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+async def test_config_resource_security_and_adapter_checks(
+    tmp_path: Path,
 ) -> None:
     config = _make_config(repos_path=str(tmp_path / "repos.txt"))
     checker = ProductionReadinessChecker(_make_app(config=config))
@@ -237,7 +228,7 @@ def test_config_resource_security_and_adapter_checks(
         def config(self):
             raise RuntimeError("broken")
 
-        adapters: dict[str, object] = {}
+        adapters: ClassVar[dict[str, object]] = {}
 
     assert ProductionReadinessChecker(_BrokenApp())._check_config_validity() is False
 
@@ -282,8 +273,7 @@ def test_config_resource_security_and_adapter_checks(
         },
     )
     checker = ProductionReadinessChecker(healthy_app)
-    monkeypatch.setattr(pr.asyncio, "run", _run_in_new_loop, raising=True)
-    assert checker._check_adapter_health() is True
+    assert await checker._check_adapter_health() is True
     assert checker.results["adapter_health"]["status"] == "PASS"
 
     unhealthy_app = _make_app(
@@ -293,7 +283,9 @@ def test_config_resource_security_and_adapter_checks(
             "b": _FakeAdapter({"status": "unhealthy"}),
         },
     )
-    assert ProductionReadinessChecker(unhealthy_app)._check_adapter_health() is False
+    assert (
+        await ProductionReadinessChecker(unhealthy_app)._check_adapter_health() is False
+    )
 
     error_app = _make_app(
         config=_make_config(),
@@ -302,7 +294,7 @@ def test_config_resource_security_and_adapter_checks(
             "b": _FakeAdapter(error=RuntimeError("bad")),
         },
     )
-    assert ProductionReadinessChecker(error_app)._check_adapter_health() is False
+    assert await ProductionReadinessChecker(error_app)._check_adapter_health() is False
 
     class _BrokenAdaptersApp:
         config = _make_config()
@@ -312,7 +304,7 @@ def test_config_resource_security_and_adapter_checks(
             raise RuntimeError("broken")
 
     assert (
-        ProductionReadinessChecker(_BrokenAdaptersApp())._check_adapter_health()
+        await ProductionReadinessChecker(_BrokenAdaptersApp())._check_adapter_health()
         is False
     )
 
@@ -666,7 +658,7 @@ async def test_remaining_readiness_branches(
         def config(self):
             raise RuntimeError("config")
 
-        adapters: dict[str, object] = {}
+        adapters: ClassVar[dict[str, object]] = {}
 
     assert (
         ProductionReadinessChecker(_ConfigErrorApp())._check_resource_limits() is False
