@@ -384,7 +384,7 @@ class TestTheConsumerPrune:
             keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
         )
 
-        assert removed == ["mahavishnu-111"]
+        assert removed.removed == ["mahavishnu-111"]
         assert client.deleted_consumers == ["mahavishnu-111"]
 
     async def test_the_live_consumer_is_never_removed(self) -> None:
@@ -402,7 +402,7 @@ class TestTheConsumerPrune:
             keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
         )
 
-        assert removed == []
+        assert removed.removed == []
         assert client.deleted_consumers == []
 
     async def test_a_consumer_holding_pending_is_never_removed(self) -> None:
@@ -420,7 +420,7 @@ class TestTheConsumerPrune:
             keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
         )
 
-        assert removed == []
+        assert removed.removed == []
         assert client.deleted_consumers == []
 
     async def test_a_recently_active_consumer_is_never_removed(self) -> None:
@@ -438,7 +438,7 @@ class TestTheConsumerPrune:
             keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
         )
 
-        assert removed == []
+        assert removed.removed == []
 
     async def test_a_consumer_outside_the_prefix_is_never_removed(self) -> None:
         from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
@@ -455,7 +455,7 @@ class TestTheConsumerPrune:
             keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
         )
 
-        assert removed == []
+        assert removed.removed == []
 
 
 # ---------------------------------------------------------------------------
@@ -530,3 +530,116 @@ class TestTheGroupIsCreatedOnInit:
         )
 
         await group.init()  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# A failure must never be published as a zero
+# ---------------------------------------------------------------------------
+
+
+class TestAFailureIsNeverPublishedAsAZero:
+    """A probe that failed did not measure zero.
+
+    Returning ``GroupState()`` or ``[]`` when the probe raises makes
+    "could not be determined" indistinguishable from "nothing is
+    wrong" — and the health payload then reads as pristine on a group
+    that could not be inspected at all.
+    """
+
+    async def test_a_failed_group_state_read_raises(self) -> None:
+        from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
+
+        class _BrokenGroups(_FakeRedis):
+            async def xinfo_groups(self, key: str) -> tuple[dict[Any, Any], ...]:
+                raise ConnectionError("redis is down")
+
+        group = RedisStreamGroup(
+            stream="bodai:events", group="g", consumer="c", client=_BrokenGroups()
+        )
+
+        with pytest.raises(ConnectionError):
+            await group.group_state()
+
+    async def test_a_failed_consumer_listing_raises(self) -> None:
+        from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
+
+        class _BrokenConsumers(_FakeRedis):
+            async def xinfo_consumers(
+                self, key: str, groupname: str
+            ) -> tuple[dict[Any, Any], ...]:
+                raise ConnectionError("redis is down")
+
+        group = RedisStreamGroup(
+            stream="bodai:events", group="g", consumer="c", client=_BrokenConsumers()
+        )
+
+        with pytest.raises(ConnectionError):
+            await group.prune_consumers(keep="c", prefix="mahavishnu-")
+
+
+# ---------------------------------------------------------------------------
+# A prune that destroyed a message is a message-loss event
+# ---------------------------------------------------------------------------
+
+
+class TestAPruneThatDestroysAMessage:
+    """``XGROUP DELCONSUMER`` returns how many pending messages the
+    consumer owned. A non-zero return means the delete destroyed
+    messages that were never acknowledged and can never be reclaimed.
+    """
+
+    async def test_the_destroyed_message_count_is_reported(self) -> None:
+        from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
+
+        class _RacingConsumer(_FakeRedis):
+            async def xgroup_delconsumer(
+                self, key: str, groupname: str, consumername: str
+            ) -> int:
+                return 3
+
+        client = _RacingConsumer()
+        client.consumers_reply = (
+            {b"name": b"mahavishnu-111", b"pending": 0, b"idle": 999_999},
+        )
+        group = RedisStreamGroup(
+            stream="bodai:events", group="g", consumer="mahavishnu-999", client=client
+        )
+
+        result = await group.prune_consumers(
+            keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
+        )
+
+        assert result.removed == ["mahavishnu-111"]
+        assert result.destroyed_messages == 3
+
+
+# ---------------------------------------------------------------------------
+# The reclaim bounds the work it hands back, not just the scan
+# ---------------------------------------------------------------------------
+
+
+class TestTheReclaimBoundsTheWork:
+    async def test_the_claimed_entries_are_capped(self) -> None:
+        from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
+
+        client = _FakeRedis()
+        client.autoclaim_replies = [
+            (
+                b"0-0",
+                tuple(
+                    _StreamEntry(
+                        identifier=f"{i}-0".encode(),
+                        field_values=OrderedDict({b"channel": b"task.handoff_orphan"}),
+                    )
+                    for i in range(50)
+                ),
+                (),
+            )
+        ]
+        group = RedisStreamGroup(
+            stream="bodai:events", group="g", consumer="c", client=client
+        )
+
+        result = await group.reclaim(min_idle_ms=0, count=512, max_entries=10)
+
+        assert result.claimed_count == 10

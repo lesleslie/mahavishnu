@@ -192,6 +192,9 @@ class TestTaskOrphanSweeperHealthAggregation:
         assert check["reclaimed_total"] == 7
         assert check["purged_total"] == 18_198
         assert check["pruned_consumers_total"] == 357
+        assert check["group_state_ok"] is True
+        assert check["destroyed_messages_total"] == 0
+        assert check["hygiene_failures"] == 0
 
     async def test_sweeper_healthy_returns_200(self) -> None:
         """Healthy sweeper — /health stays 200 and the per-feed
@@ -248,3 +251,23 @@ class TestTaskOrphanSweeperHealthAggregation:
             f"got {body['checks']['task_orphan_sweeper']!r}"
         )
         assert body["checks"]["task_orphan_sweeper"]["ok"] is True
+
+    async def test_a_failed_probe_does_not_read_as_a_pristine_group(self) -> None:
+        """``pending_total: None`` means "could not be determined"."""
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        sweeper = TaskOrphanSweeper()
+        sweeper._group_state_ok = False
+        fake = _FakeFastMCP()
+        fake._task_orphan_sweeper = sweeper
+        register_health_endpoint(fake, version="test")
+        health_handler = fake.routes.get(("/health", "GET"))
+        assert health_handler is not None
+
+        response = await health_handler()
+        body = json.loads(response.body)
+        check = body["checks"]["task_orphan_sweeper"]
+
+        assert check["group_state_ok"] is False
+        assert check["pending_total"] is None
+        assert check["consumers_total"] is None

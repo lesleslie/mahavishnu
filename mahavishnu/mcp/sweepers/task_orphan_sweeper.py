@@ -68,7 +68,7 @@ import time
 from typing import Any
 
 from opentelemetry import trace
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from mahavishnu.core.events.redis_stream_group import (
     DEFAULT_PRUNE_STALE_AFTER_MS,
@@ -178,8 +178,13 @@ class TaskOrphanSweeper:
         self.reclaimed_total = 0
         self.purged_total = 0
         self.pruned_consumers_total = 0
+        self.destroyed_messages_total = 0
         self.pending_last = 0
         self.consumers_last = 0
+        # False when the last hygiene pass could not measure the group.
+        # A probe that failed did not measure zero, and the health body
+        # must not say it did.
+        self._group_state_ok = True
         # Read-failure streak (separate signal from init success).
         self._consecutive_read_failures: int = 0
         # Hygiene-failure streak (separate signal from read failures).
@@ -281,11 +286,17 @@ class TaskOrphanSweeper:
             "cycles_total": self.cycles_total,
             "errors_total": self.errors_total,
             "last_updated_timestamp": self.last_updated_timestamp,
-            "pending_total": self.pending_last,
-            "consumers_total": self.consumers_last,
+            # ``None`` means "could not be determined". Publishing 0
+            # there would make a group that could not be inspected read
+            # as pristine.
+            "pending_total": self.pending_last if self._group_state_ok else None,
+            "consumers_total": self.consumers_last if self._group_state_ok else None,
+            "group_state_ok": self._group_state_ok,
             "reclaimed_total": self.reclaimed_total,
             "purged_total": self.purged_total,
             "pruned_consumers_total": self.pruned_consumers_total,
+            "destroyed_messages_total": self.destroyed_messages_total,
+            "hygiene_failures": self._consecutive_hygiene_failures,
         }
 
     async def _recover_orphan(self, entry: dict[str, Any]) -> str:
@@ -379,29 +390,56 @@ class TaskOrphanSweeper:
                     outcome = await self._recover_orphan(entry)
                     span.set_attribute("outcome", outcome)
                     results.append((entry, outcome))
-            except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+            except ValidationError as exc:
+                # A payload that can never be recovered is PERMANENT.
+                # Ack it so the entry does not loop forever, and say so
+                # loudly: this is data the sweeper could not act on.
                 self.errors_total += 1
-                # Emit a failed-outcome span so the failure is observable
-                # in the same trace tree as a successful sibling would be.
-                with _tracer.start_as_current_span(
-                    "task_orphan_sweeper.recover"
-                ) as span:
-                    span.set_attribute(
-                        "task_id", str(payload.get("task_id", "unknown"))
-                    )
-                    span.set_attribute(
-                        "workflow_id", str(payload.get("workflow_id", "unknown"))
-                    )
-                    span.set_attribute("outcome", "failed")
-                logger.warning(
-                    "task_orphan_sweeper: recover failed for %s: %s",
+                self._emit_failed_span(payload)
+                logger.error(
+                    "task_orphan_sweeper: orphan payload is malformed for %s: %s",
                     payload.get("task_id"),
                     exc,
                 )
-            # Ack AFTER the recovery attempt (success or fail) so the
-            # entry cannot be replayed twice — at-most-once semantics.
+                await self._stream_group.ack([entry["message_id"]])
+                continue
+            except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+                # A TRANSIENT failure — session-buddy unreachable, a
+                # timeout, a dropped connection. The handoff is not
+                # lost: leave the entry pending and it is reclaimed and
+                # retried once it has been idle long enough. Acking it
+                # would drop the recovery permanently, which is the one
+                # thing this sweeper exists to prevent.
+                self.errors_total += 1
+                self._emit_failed_span(payload)
+                logger.warning(
+                    "task_orphan_sweeper: recover failed for %s (leaving it "
+                    "pending for retry): %s",
+                    payload.get("task_id"),
+                    exc,
+                )
+                continue
+            # Ack AFTER a successful recovery so the entry cannot be
+            # replayed twice.
             await self._stream_group.ack([entry["message_id"]])
+            # Yield between entries: a large reclaimed batch must not
+            # monopolise the event loop.
+            await asyncio.sleep(0)
         return results
+
+    @staticmethod
+    def _emit_failed_span(payload: dict[str, Any]) -> None:
+        """Emit a failed-outcome span so the failure is observable.
+
+        The failure is observable in the same trace tree as a
+        successful sibling would be.
+        """
+        with _tracer.start_as_current_span("task_orphan_sweeper.recover") as span:
+            span.set_attribute("task_id", str(payload.get("task_id", "unknown")))
+            span.set_attribute(
+                "workflow_id", str(payload.get("workflow_id", "unknown"))
+            )
+            span.set_attribute("outcome", "failed")
 
     async def _run_hygiene(self) -> list[tuple[dict[str, Any], str]]:
         """Maintain the consumer group: reclaim, purge, prune.
@@ -415,7 +453,7 @@ class TaskOrphanSweeper:
             result = await self._stream_group.reclaim(
                 min_idle_ms=self._reclaim_min_idle_ms,
             )
-            pruned = await self._stream_group.prune_consumers(
+            prune = await self._stream_group.prune_consumers(
                 keep=self._consumer_name,
                 prefix=_CONSUMER_PREFIX,
                 stale_after_ms=self._prune_stale_after_ms,
@@ -423,6 +461,7 @@ class TaskOrphanSweeper:
             state = await self._stream_group.group_state()
         except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             self._consecutive_hygiene_failures += 1
+            self._group_state_ok = False
             logger.warning(
                 "task_orphan_sweeper: hygiene pass failed (consecutive=%d): %s",
                 self._consecutive_hygiene_failures,
@@ -430,18 +469,21 @@ class TaskOrphanSweeper:
             )
             return []
         self._consecutive_hygiene_failures = 0
+        self._group_state_ok = True
         self.reclaimed_total += result.claimed_count
         self.purged_total += result.purged_count
-        self.pruned_consumers_total += len(pruned)
+        self.pruned_consumers_total += len(prune.removed)
+        self.destroyed_messages_total += prune.destroyed_messages
         self.pending_last = state.pending
         self.consumers_last = state.consumers
-        if result.purged_count or pruned:
+        if result.purged_count or prune.removed or prune.destroyed_messages:
             logger.info(
                 "task_orphan_sweeper: hygiene purged=%d reclaimed=%d pruned=%d "
-                "pending=%d consumers=%d",
+                "destroyed=%d pending=%d consumers=%d",
                 result.purged_count,
                 result.claimed_count,
-                len(pruned),
+                len(prune.removed),
+                prune.destroyed_messages,
                 state.pending,
                 state.consumers,
             )

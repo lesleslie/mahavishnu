@@ -66,6 +66,15 @@ DEFAULT_RECLAIM_COUNT = 512
 #: hold the event loop indefinitely on a very large pending list.
 DEFAULT_RECLAIM_MAX_ROUNDS = 64
 
+#: Upper bound on the entries one sweep hands back for processing.
+#:
+#: The scan continues past this cap -- the zombies beyond it are still
+#: purged -- but the entries past it are left pending for a later
+#: sweep. Each entry costs several round trips (read the task, link
+#: it, emit the completion, acknowledge it), so an unbounded backlog
+#: would otherwise monopolise the event loop in one pass.
+DEFAULT_RECLAIM_MAX_ENTRIES = 100
+
 #: A consumer that has not read for this long is treated as dead.
 DEFAULT_PRUNE_STALE_AFTER_MS = 300_000
 
@@ -118,6 +127,20 @@ class ReclaimResult:
     def purged_count(self) -> int:
         """Number of zombie pending entries purged by Redis."""
         return len(self.deleted_ids)
+
+
+@dataclass(frozen=True)
+class PruneResult:
+    """Outcome of one consumer prune.
+
+    ``destroyed_messages`` is how many pending messages the deletes
+    destroyed. ``XGROUP DELCONSUMER`` returns the number of pending
+    messages the consumer owned, and a non-zero return means messages
+    that were never acknowledged have just been made unrecoverable.
+    """
+
+    removed: list[str] = field(default_factory=list)
+    destroyed_messages: int = 0
 
 
 @dataclass(frozen=True)
@@ -339,6 +362,7 @@ class RedisStreamGroup:
         min_idle_ms: int = DEFAULT_RECLAIM_MIN_IDLE_MS,
         count: int = DEFAULT_RECLAIM_COUNT,
         max_rounds: int = DEFAULT_RECLAIM_MAX_ROUNDS,
+        max_entries: int = DEFAULT_RECLAIM_MAX_ENTRIES,
     ) -> ReclaimResult:
         """Sweep the pending list: reclaim stale messages, purge zombies.
 
@@ -347,6 +371,13 @@ class RedisStreamGroup:
         made. Trimming the stream does not trim the pending list, so
         the zombies accumulate; a single pass that stops early would
         leave them for another pass to find.
+
+        ``max_entries`` bounds the *work handed back*, not the scan.
+        The scan continues past the cap so the zombies beyond it are
+        still purged; the entries past the cap are simply not
+        accumulated. They stay pending under this consumer and are
+        reclaimed by a later pass, so a huge backlog drains over
+        several passes instead of in one monopolising sweep.
         # req: REQ-SWEEPERHYGIENE-002, REQ-SWEEPERHYGIENE-003
         """
         client = self._ensure_client()
@@ -358,12 +389,18 @@ class RedisStreamGroup:
                 self._stream,
                 self._group,
                 self._consumer,
-                min_idle_ms,
-                cursor,
+                min_idle_time=min_idle_ms,
+                start=cursor,
                 count=count,
             )
             next_cursor, claimed, purged = reply
-            entries.extend(self._format_messages(claimed))
+            for message in claimed or ():
+                if len(entries) >= max_entries:
+                    break
+                message_id, payload = self._split_entry(message)
+                if message_id is None:
+                    continue
+                entries.append({"message_id": message_id, "payload": payload})
             deleted.extend(_as_text(message_id) for message_id in (purged or ()))
             cursor = _as_text(next_cursor)
             if not cursor or cursor == "0-0":
@@ -376,29 +413,28 @@ class RedisStreamGroup:
         keep: str,
         prefix: str | None = None,
         stale_after_ms: int = DEFAULT_PRUNE_STALE_AFTER_MS,
-    ) -> list[str]:
-        """Remove consumers that are gone, and return the names removed.
+    ) -> PruneResult:
+        """Remove consumers that are gone, and report what that cost.
 
         A consumer is removed only when all of the following hold: it is
         not ``keep`` (this handle's own consumer), it matches ``prefix``
         when one is given, it owns **no** pending messages, and it has
         not read for ``stale_after_ms``. Deleting a consumer that still
-        owns pending messages destroys them — they are neither acked nor
-        redelivered — so a stale consumer is left in place rather than
-        risk losing a message.
+        owns pending messages destroys them, so a stale consumer is left
+        in place rather than risk losing a message.
+
+        ``XGROUP DELCONSUMER`` returns how many pending messages the
+        consumer owned when it was deleted. The listing above is
+        inherently racy -- a consumer can take delivery of a message
+        between the listing and the delete -- so a non-zero return is
+        reported as ``destroyed_messages`` rather than counted as a
+        clean prune.
         # req: REQ-SWEEPERHYGIENE-004
         """
         client = self._ensure_client()
-        try:
-            rows = await client.xinfo_consumers(self._stream, self._group)
-        except Exception:
-            logger.exception(
-                "redis_stream_group: xinfo_consumers failed for %s/%s",
-                self._stream,
-                self._group,
-            )
-            return []
+        rows = await client.xinfo_consumers(self._stream, self._group)
         removed: list[str] = []
+        destroyed = 0
         for row in rows or ():
             name = _as_text(_row_field(row, "name"))
             if not name or name == keep:
@@ -409,28 +445,29 @@ class RedisStreamGroup:
                 continue
             if int(_row_field(row, "idle", 0) or 0) < stale_after_ms:
                 continue
-            try:
-                await client.xgroup_delconsumer(self._stream, self._group, name)
-            except Exception:
-                logger.exception(
-                    "redis_stream_group: xgroup_delconsumer failed for %s",
+            lost = int(
+                await client.xgroup_delconsumer(self._stream, self._group, name) or 0
+            )
+            if lost:
+                logger.error(
+                    "redis_stream_group: xgroup_delconsumer destroyed %d pending "
+                    "message(s) for %s -- they were never acknowledged",
+                    lost,
                     name,
                 )
-                continue
+                destroyed += lost
             removed.append(name)
-        return removed
+        return PruneResult(removed=removed, destroyed_messages=destroyed)
 
     async def group_state(self) -> GroupState:
-        """Return the group's pending count, consumer count and lag."""
+        """Return the group's pending count, consumer count and lag.
+
+        A failed read raises. It must not return an empty
+        :class:`GroupState`: "could not be determined" and "zero" are
+        different facts, and only one of them is safe to publish.
+        """
         client = self._ensure_client()
-        try:
-            rows = await client.xinfo_groups(self._stream)
-        except Exception:
-            logger.exception(
-                "redis_stream_group: xinfo_groups failed for %s",
-                self._stream,
-            )
-            return GroupState()
+        rows = await client.xinfo_groups(self._stream)
         for row in rows or ():
             if _as_text(_row_field(row, "name")) != self._group:
                 continue

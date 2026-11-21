@@ -65,8 +65,7 @@ Concretely, after this ships:
    consumer name, so it has no leak. It is a separate subscriber
    (`mahavishnu/core/events/bodai_subscriber.py`) that does not use
    this handle. Follow-up.
-3. **Not** changing the sweeper's at-most-once ack semantics or its
-   idempotency guard.
+3. **Not** changing the sweeper's idempotency guard.
 4. **Not** adding `reclaim()`/`delete_consumer()` to oneiric's
    `RedisStreamsQueueAdapter`. See §4.4.
 5. **Not** wiring `settings/mahavishnu.yaml`'s `task_orphan_sweeper`
@@ -372,6 +371,53 @@ end-to-end against live Redis for the first time.
 | A hygiene pass raises and takes the sweeper down | Low | hygiene runs inside its own try/except; the read/ack path is untouched |
 | Reclaimed orphan is processed twice | Low | the sweeper's existing idempotency guard (`_is_already_handed_off`) makes a repeat a no-op |
 | The live cleanup races the running sweeper | Medium | reclaim only claims entries idle beyond the threshold; the live consumer is `keep`-listed |
+
+## 8.5 Phase 5 — hardening (security review)
+
+A security review of the merged branch raised four findings against
+the new code. All four are addressed here.
+
+**H1 — a failed probe was published as a zero.** `group_state()`
+returned an empty `GroupState` and `prune_consumers()` returned `[]`
+when their Redis command raised, so "could not be determined" was
+indistinguishable from "nothing is wrong" and the health body read as
+pristine on a group that could not be inspected. Both now raise; the
+sweeper counts the failure in its hygiene streak and leaves the last
+known values in place. `feed_state()` publishes `pending_total: None`
+and `consumers_total: None` when the last probe failed, plus a
+`group_state_ok` flag, so the body cannot read as clean on a group
+nobody measured.
+
+**H2 — the prune could destroy a message.** `XGROUP DELCONSUMER`
+returns how many pending messages the consumer owned; a non-zero
+return means messages that were never acknowledged have just become
+unrecoverable. The listing that precedes the delete is inherently
+racy — a consumer can take delivery of a message in between. The
+return value is now captured, logged at ERROR, counted in
+`destroyed_messages_total`, and surfaced in the health payload.
+
+**H3 — the bound was on the scan, not the work.** The reclaim
+accumulated every claimed entry, and each entry costs several round
+trips, so a large backlog could monopolise the event loop in one
+pass. `max_entries` now bounds the entries handed back; the scan
+continues past the cap so the zombies beyond it are still purged, and
+the surplus stays pending for a later pass. The sweeper also yields
+between entries.
+
+**H4 — a transient failure was acked away.** The sweeper acked every
+entry after the recovery attempt, success or failure. A session-buddy
+timeout therefore dropped the handoff permanently — the one thing the
+sweeper exists to prevent. The ack is now reserved for outcomes that
+will never change: a successful recovery, an already-handed-off task,
+an orphan with no workflow id, and a malformed payload (which is
+permanent and is logged at ERROR). A transient failure leaves the
+entry pending, and the reclaim retries it once it has been idle long
+enough.
+
+The at-most-once contract is therefore refined rather than dropped: it
+still holds for every terminal outcome, and it no longer discards work
+that a later attempt could still complete. The contract was a code
+decision, not a requirement of the v1.1 task-system spec.
 
 ## 9. Decision Rule
 

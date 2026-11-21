@@ -47,11 +47,13 @@ class _FakeStreamGroup:
         reclaimed: list[dict[str, Any]] | None = None,
         purged: list[str] | None = None,
         pruned: list[str] | None = None,
+        destroyed: int = 0,
     ) -> None:
         self.entries = list(entries or [])
         self.reclaimed_entries = list(reclaimed or [])
         self.purged_ids = list(purged or [])
         self.pruned = list(pruned or [])
+        self.destroyed = destroyed
         self.acked: list[str] = []
         self.xadds: list[dict[str, Any]] = []
         self.init_calls = 0
@@ -90,10 +92,12 @@ class _FakeStreamGroup:
             deleted_ids=self.purged_ids,
         )
 
-    async def prune_consumers(self, **kwargs: Any) -> list[str]:
+    async def prune_consumers(self, **kwargs: Any) -> Any:
+        from mahavishnu.core.events.redis_stream_group import PruneResult
+
         self.prune_calls += 1
         self.prune_kwargs = kwargs
-        return list(self.pruned)
+        return PruneResult(removed=list(self.pruned), destroyed_messages=self.destroyed)
 
     async def group_state(self) -> Any:
         from mahavishnu.core.events.redis_stream_group import GroupState
@@ -636,3 +640,106 @@ class TestTheGroupHygiene:
         assert sweeper.consumer == f"mahavishnu-{os.getpid()}"
         assert sweeper.group == "bodai-task-orphan-sweeper"
         assert sweeper.stream == "bodai:events"
+
+
+# ---------------------------------------------------------------------------
+# The health feed must never publish a zero it did not measure
+# ---------------------------------------------------------------------------
+
+
+class TestTheHealthFeedNeverFakesAZero:
+    async def test_a_failed_hygiene_pass_publishes_unknown_not_zero(self) -> None:
+        """A probe that failed did not measure zero.
+
+        Publishing ``pending_total: 0`` after a failed probe makes the
+        health body read as pristine on a group that could not be
+        inspected at all.
+        """
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        class _FailingHygiene(_FakeStreamGroup):
+            async def reclaim(self, **kwargs: Any) -> Any:
+                raise ConnectionError("redis is down")
+
+        sweeper = TaskOrphanSweeper(stream_group=_FailingHygiene())
+
+        await sweeper.init()
+        state = sweeper.feed_state()
+
+        assert state["pending_total"] is None
+        assert state["consumers_total"] is None
+        assert state["group_state_ok"] is False
+
+    async def test_a_successful_hygiene_pass_publishes_the_measurement(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        fake = _FakeStreamGroup(purged=["1-0"], pruned=["mahavishnu-111"])
+        sweeper = TaskOrphanSweeper(stream_group=fake)
+
+        await sweeper.init()
+        state = sweeper.feed_state()
+
+        assert state["pending_total"] == 1
+        assert state["consumers_total"] == 2
+        assert state["group_state_ok"] is True
+
+
+# ---------------------------------------------------------------------------
+# A transient recovery failure must not lose the handoff
+# ---------------------------------------------------------------------------
+
+
+class TestATransientRecoveryFailureIsRetried:
+    """A transport error is not the same as a malformed payload.
+
+    Acking a transient failure drops the handoff permanently — the
+    sweeper's whole reason for existing. Leaving it pending lets the
+    next reclaim retry it.
+    """
+
+    async def test_a_transient_failure_leaves_the_entry_pending(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        class _UnreachableSB(_FakeSB):
+            async def tasks_get(self, task_id: str) -> dict[str, Any]:
+                raise ConnectionError("session-buddy is down")
+
+        fake = _FakeStreamGroup(entries=[_orphan_entry()])
+        sweeper = TaskOrphanSweeper(
+            session_buddy_client=_UnreachableSB(), stream_group=fake
+        )
+
+        await sweeper._run_once()
+
+        assert fake.acked == [], "a transient failure must stay pending for retry"
+        assert sweeper.errors_total == 1
+
+    async def test_a_malformed_payload_is_acked_and_dropped(self) -> None:
+        """A payload that can never be recovered is permanent."""
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        malformed = {
+            "message_id": "5-0",
+            "payload": {"channel": "task.handoff_orphan"},
+        }
+        fake = _FakeStreamGroup(entries=[malformed])
+        sweeper = TaskOrphanSweeper(session_buddy_client=_FakeSB(), stream_group=fake)
+
+        await sweeper._run_once()
+
+        assert fake.acked == ["5-0"]
+
+
+class TestThePruneReportsDestroyedMessages:
+    async def test_destroyed_messages_are_counted_and_surfaced(self) -> None:
+        """A delete that destroyed a pending message is a loss event."""
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        fake = _FakeStreamGroup(pruned=["mahavishnu-111"], destroyed=3)
+        sweeper = TaskOrphanSweeper(stream_group=fake)
+
+        await sweeper.init()
+        state = sweeper.feed_state()
+
+        assert sweeper.destroyed_messages_total == 3
+        assert state["destroyed_messages_total"] == 3
