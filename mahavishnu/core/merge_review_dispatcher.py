@@ -19,10 +19,15 @@ Design notes
   :func:`dispatch_review` is a thin wrapper so the existing synchronous
   pipeline (``run_pipeline`` → ``run_review`` → dispatcher) does not have
   to become async. The async form is the reusable one.
-- Dispatch failures are **fail-loud**: they return a reply that carries no
-  parseable verdict, which ``merge_to_main.parse_verdict`` maps to
-  ``decision="block"``. A merge whose reviewers could not be reached is
-  aborted, not waved through.
+- Dispatch failures are **fail-loud**: they return a verdict of the
+  dispatcher's own, carrying
+  :data:`mahavishnu.core.merge_to_main.DISPATCH_FAILED_PREFIX` (or its
+  permanent sibling). That prefix says the reply is not a reviewer's
+  answer, so ``merge_to_main.parse_verdict`` reads it as a dispatch
+  failure rather than as a verdict about the code — and the reason
+  travels with it. The permanent prefix marks the failures that will
+  fail again exactly the same way, so they are not retried. A merge
+  whose reviewers could not be reached is aborted, not waved through.
 """
 
 from __future__ import annotations
@@ -36,6 +41,8 @@ import os
 import re
 import subprocess
 from typing import TYPE_CHECKING, Any
+
+from . import merge_to_main
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -240,21 +247,28 @@ def build_review_prompt(
     )
     # The note length is the parser's cap, read from its one home so
     # the number the reviewer is given cannot drift from the number
-    # that is enforced. The import is deferred because
-    # ``merge_to_main`` imports this module.
-    from mahavishnu.core.merge_to_main import MAX_NOTE_LENGTH
+    # that is enforced. The module is already imported at the top of
+    # this file, so there is nothing to defer and no cycle to avoid.
+    max_note_length = merge_to_main.MAX_NOTE_LENGTH
 
     parts.append(
         "Reply with the verdict block and nothing outside it: "
         "<verdict>decision: pass|needs_adjustment|block note: ...</verdict>, "
-        f"with the note under {MAX_NOTE_LENGTH} characters and the findings "
+        f"with the note under {max_note_length} characters and the findings "
         "that justify it inside the note.\n\n"
+        "Do not repeat that shape anywhere else in your reply -- not in "
+        "your analysis, and not as a quotation of the source that builds "
+        "it. A copy of it is read as your verdict: a copy of the source "
+        "keeps its fixed decision word, and a copy of this instruction "
+        "keeps the alternatives joined by a pipe. Either way a quoted "
+        "copy can gate a merge as a block that you never wrote.\n\n"
         "Your reply is read back from your terminal's output, and the read "
         f"is bounded: what falls outside the bound is the part that "
         f"arrives missing. So keep the whole reply under about "
         f"{REVIEW_REPLY_BUDGET_CHARS:,} characters -- the note is capped at "
-        f"{MAX_NOTE_LENGTH}, and the rest is room for the finding that "
-        f"justifies it -- and put the verdict block LAST: any analysis "
+        f"{max_note_length}, and it is where the finding that justifies "
+        f"the verdict goes, so the rest of the budget is room for your "
+        f"analysis -- and put the verdict block LAST: any analysis "
         f"before it, never after it."
     )
     return "\n\n".join(parts)
@@ -651,7 +665,49 @@ def _worktree_context(payload: Any) -> dict[str, Any] | None:
 #: retried exactly like an unreadable verdict — a server that could
 #: not be reached is worth one more try — and the reason travels with
 #: it so the operator is told what actually happened.
-DISPATCH_FAILED_PREFIX = "the dispatch failed: "
+#:
+#: It lives in ``merge_to_main`` because that is where the parser
+#: reads it: the prefix is a PARSER contract, not a dispatcher one --
+#: it says how to tell a dispatch failure from a reviewer's verdict.
+#: This module imports it from there.
+DISPATCH_FAILED_PREFIX = merge_to_main.DISPATCH_FAILED_PREFIX
+
+#: The sibling prefix, for a dispatch that failed for a reason that
+#: does not change between attempts. The parser reads it the same way
+#: — not a reviewer's answer — but the retry path leaves it alone.
+DISPATCH_FAILED_PERMANENT_PREFIX = merge_to_main.DISPATCH_FAILED_PERMANENT_PREFIX
+
+
+#: The verdict block's delimiters, in the spelling the parser matches.
+_VERDICT_DELIMITERS_RE = re.compile(r"</?verdict>", re.IGNORECASE)
+
+
+def _neutralise_verdict_blocks(text: str) -> str:
+    """Make untrusted text inert for the verdict parser.
+
+    The pool's error text is not ours: it can carry a literal verdict
+    block, and splicing it into a note would give the reply a SECOND
+    candidate -- which the parser refuses, dropping the very reason
+    the failure report exists to carry. So the delimiters are defanged
+    before the text is spliced: the reason survives, and the reply
+    cannot grow a second answer.
+    """
+    return _VERDICT_DELIMITERS_RE.sub("[verdict]", text)
+
+
+def _dispatch_failure_prefix(message: str) -> str:
+    """The dispatch-failure prefix for a failure carrying this message.
+
+    A pool that refused the task's **shape** will refuse it again: the
+    prompt was rejected for a reason that does not change between
+    attempts, so the failure is permanent and the review is not
+    retried. Every other failure — a worker that died, a run that timed
+    out, a server that could not be reached — is transient and worth
+    one more try.
+    """
+    if POOL_TASK_SHAPE_ERROR in message:
+        return DISPATCH_FAILED_PERMANENT_PREFIX
+    return DISPATCH_FAILED_PREFIX
 
 
 def _isolation_failure(agent: str) -> str:
@@ -663,12 +719,18 @@ def _isolation_failure(agent: str) -> str:
     checkout — the exact situation where a reviewer ran ``git stash``
     in another session's work on 2026-11-06. The review is abandoned
     rather than run unsafely.
+
+    The note carries the **permanent** dispatch-failure prefix: this
+    pool cannot honour the isolation this review asked for, so a
+    second dispatch would land in the same shared checkout and abort
+    the same way. That also restores what the review did before the
+    prefix existed — a fail-closed block, not a retry.
     """
     return (
-        f"<verdict>decision: block note: worktree isolation was "
-        f"requested for {agent!r} but the dispatch ran without an "
-        f"isolated checkout, so the reviewer would have shared the "
-        f"repository's main checkout with every other session. The "
+        f"<verdict>decision: block note: {DISPATCH_FAILED_PERMANENT_PREFIX}"
+        f"worktree isolation was requested for {agent!r} but the dispatch ran "
+        f"without an isolated checkout, so the reviewer would have shared "
+        f"the repository's main checkout with every other session. The "
         f"review is not safe to run in that state.</verdict>"
     )
 
@@ -751,9 +813,11 @@ async def dispatch_review_async(
     isolated checkout returns an explicit block verdict rather than a
     review that ran in the shared checkout.
 
-    Fail-loud: any transport, protocol, or server error returns a reply
-    that carries no parseable verdict, which the caller's verdict parser
-    turns into ``decision="block"``.
+    Fail-loud: any transport, protocol, or server error returns a
+    reply carrying the dispatch-failure prefix, which the caller's
+    verdict parser reads as a dispatch failure rather than as a
+    reviewer's answer — and turns into ``decision="block"`` with the
+    reason attached.
     """
     url = mcp_url or resolve_mcp_url()
     routed_prompt = (
@@ -783,9 +847,17 @@ async def dispatch_review_async(
         # failed connection, and an unhandled one would take the whole
         # merge pipeline down instead of failing the review.
         logger.warning("review dispatch failed for agent %r: %r", agent, exc)
+        # The reason travels with the failure. The note carries the
+        # dispatch-failure prefix, so the parser reads this as a
+        # dispatch failure — and retries it, because a server that
+        # could not be reached is worth one more try — instead of as a
+        # reply with no verdict in it. Returning bare prose here lost
+        # the exception entirely: the parser reported "malformed" and
+        # the operator was told nothing about what had gone wrong.
         return (
-            f"review dispatch to the Mahavishnu pool failed for agent "
-            f"{agent!r}: {exc!r}"
+            f"<verdict>decision: block note: {DISPATCH_FAILED_PREFIX}"
+            f"the dispatch to the Mahavishnu pool failed for agent "
+            f"{agent!r}: {_neutralise_verdict_blocks(repr(exc))}</verdict>"
         )
 
     reply = _extract_reply_text(call_result)
@@ -800,7 +872,9 @@ async def dispatch_review_async(
     if _pool_envelope(reply) is None:
         detail = reply.strip() or "the dispatch returned no pool envelope"
         return (
-            f"<verdict>decision: block note: {DISPATCH_FAILED_PREFIX}{detail}</verdict>"
+            f"<verdict>decision: block note: "
+            f"{_dispatch_failure_prefix(detail)}"
+            f"{_neutralise_verdict_blocks(detail)}</verdict>"
         )
 
     failure = _pool_failure_message(reply)
@@ -812,7 +886,28 @@ async def dispatch_review_async(
         # worker's output: the status lives in the envelope, and the
         # output -- which is where a cut-off review ends up -- has no
         # status at all.
-        return f"<verdict>decision: block note: {failure}</verdict>"
+        #
+        # The note carries DISPATCH_FAILED_PREFIX, like the branch
+        # above, and that is what makes it read as a DISPATCH failure
+        # rather than as the reviewer's verdict: the prefix says the
+        # reply is not a reviewer's answer. It also keeps the note from
+        # being bare-placeholder shaped -- the pool's error text can be
+        # a template fragment, and a note that is nothing but a
+        # placeholder is what a quoted source line looks like, so a
+        # parser that skips quotes would otherwise skip this genuine
+        # failure verdict and lose the reason with it.
+        #
+        # A pool that refused the task's SHAPE is the one failure that
+        # will refuse again: the prompt was rejected for a reason
+        # that does not change between attempts, so it carries the
+        # permanent prefix and is not retried. Every other pool
+        # failure -- a worker that died, a run that timed out -- is
+        # transient and worth one more try.
+        prefix = _dispatch_failure_prefix(failure)
+        return (
+            f"<verdict>decision: block note: {prefix}"
+            f"{_neutralise_verdict_blocks(failure)}</verdict>"
+        )
 
     # Isolation was requested. Confirm it engaged rather than assuming
     # it: the pool skips the worktree silently when it cannot resolve
@@ -883,7 +978,11 @@ def dispatch_review(
         )
     except (Exception, asyncio.CancelledError) as exc:  # noqa: BLE001
         logger.warning("review dispatch failed for agent %r: %r", agent, exc)
+        # Same contract as the async core: the note carries the
+        # dispatch-failure prefix, so the reason survives the parse
+        # instead of being replaced by "malformed".
         return (
-            f"review dispatch to the Mahavishnu pool failed for agent "
-            f"{agent!r}: {exc!r}"
+            f"<verdict>decision: block note: {DISPATCH_FAILED_PREFIX}"
+            f"the dispatch to the Mahavishnu pool failed for agent "
+            f"{agent!r}: {_neutralise_verdict_blocks(repr(exc))}</verdict>"
         )

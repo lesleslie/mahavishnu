@@ -179,6 +179,19 @@ slicing now actually works, because `before` is the scrollback the
 later capture extends), and the CLI and MCP capture surfaces (where
 `lines` now bounds the read).
 
+Updated 2026-11-21: the clause above — "the verdict parser reads the
+**last** verdict block rather than the first" — is **superseded** by
+`2026-11-21-verdict-parser-single-candidate.md`. The parser no longer
+decides by position: it reads a reply only when exactly one block
+could be the reviewer's answer, and refuses the reply when two could
+be. Three rounds of one plan's review showed that a position-based
+rule reads a quoted block as the verdict, and that the ensemble gate
+proceeds on two passes out of three — so a quoted `pass` could open a
+gate on a verdict nobody wrote. Everything else in this record stands:
+the capture keeps the newest bytes, the reply is taken from the last
+`"result"` event, and the prompt still asks for the verdict block
+last.
+
 Covered by `tests/unit/terminal/test_tmux_adapter_capture.py`,
 `tests/unit/workers/contract/test_tmux_adapter.py`,
 `tests/unit/test_merge_review_dispatcher.py`, and

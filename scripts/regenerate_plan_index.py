@@ -130,6 +130,14 @@ SYSTEM_DIR_PARTS: frozenset[str] = frozenset(
         # part of the live working tree and PLAN_INDEX should reflect
         # only what's actually on local main.
         "worktree-snapshots",
+        # The pool's isolation worktrees: the review dispatch forks one
+        # per reviewer under ``<repo>/.worktrees/``, and each is a whole
+        # COPY of the repository. Walking into them finds a second copy
+        # of every plan and every agent file, so the audit reported the
+        # copies as documents missing from the index and the generator
+        # would index them twice.
+        ".worktrees",
+        "worktrees",
     }
 )
 

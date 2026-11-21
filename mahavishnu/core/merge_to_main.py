@@ -42,6 +42,77 @@ VERDICT_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
+#: A note carrying this prefix is not a reviewer's answer: the
+#: dispatch itself failed, so there is no verdict about the code to
+#: read. It is retried exactly like an unreadable verdict — a server
+#: that could not be reached is worth one more try — and the reason
+#: travels with it so the operator is told what actually happened.
+#:
+#: It lives here because it is a PARSER contract, not a dispatcher's
+#: one: it says how to tell a dispatch failure from a reviewer's
+#: verdict. The dispatcher puts it on every verdict it synthesises, and
+#: :func:`_is_retryable` reads it to decide whether the failure is
+#: worth another attempt.
+DISPATCH_FAILED_PREFIX: str = "the dispatch failed: "
+
+#: The same contract, for a dispatch that failed for a reason that
+#: does not change between attempts: the pool refused the task's
+#: shape, or it cannot honour the isolation the review asked for. It
+#: is still not a reviewer's answer — so :func:`parse_verdict` reads it
+#: as a ``block`` whose note names the failure — but it is NOT retried,
+#: because a second dispatch would spend a full review cycle to learn
+#: the same thing. The word differs from
+#: :data:`DISPATCH_FAILED_PREFIX` (``permanently`` against a colon), so
+#: the two are distinguishable by prefix alone.
+DISPATCH_FAILED_PERMANENT_PREFIX: str = "the dispatch failed permanently: "
+
+#: A decision word carrying this separator is the PROMPT's contract — the
+#: alternatives joined by a pipe — copied back by a reviewer that repeated
+#: the instruction. A reviewer's own decision word is one word.
+VERDICT_CONTRACT_SEPARATOR: str = "|"
+
+#: A note that is nothing but template placeholders — ``{failure}`` — is a
+#: quoted source line, not prose. A reviewer's note is prose.
+PLACEHOLDER_NOTE_RE = re.compile(r"^(?:\{[^{}]*\}\s*)+$")
+
+#: The phrase the parser puts in the note of an AMBIGUOUS reply -- one
+#: carrying more than one candidate verdict block. The retry says what
+#: to change, so it recognises the phrase.
+_AMBIGUOUS_NOTE: str = "more than one verdict block"
+
+#: The phrase the parser puts in the note of a reply whose decision
+#: word is not one the pipeline knows.
+_UNKNOWN_DECISION_NOTE: str = "unknown decision"
+
+#: The phrase the parser puts in the note of a reply that carried only
+#: a quotation of the verdict block and no verdict of the reviewer's
+#: own.
+_QUOTED_ONLY_NOTE: str = "only quoted verdict templates"
+
+#: What to tell the reviewer on a retry, keyed by the phrase in the
+#: note that says what went wrong. Without it the retry repeats the
+#: same instruction, the reviewer makes the same mistake, and the
+#: merge blocks for a reason nobody was told about.
+_RETRY_HINTS: dict[str, str] = {
+    _AMBIGUOUS_NOTE: (
+        "\n\nYour previous reply carried more than one verdict block, so it "
+        "could not be read: which one was yours could not be told. Reply "
+        "with the verdict block ALONE -- no analysis, and no quotation of "
+        "the block's shape anywhere in the reply."
+    ),
+    _UNKNOWN_DECISION_NOTE: (
+        "\n\nYour previous reply named a decision the pipeline does not "
+        "know, so it could not be read. Name one of: pass, "
+        "needs_adjustment, block -- and name it as one word, with no "
+        "other text in place of it."
+    ),
+    _QUOTED_ONLY_NOTE: (
+        "\n\nYour previous reply carried only a quotation of the verdict "
+        "block and no verdict of your own, so it could not be read. Reply "
+        "with your own verdict block."
+    ),
+}
+
 # Exit codes (spec §4.1 Outputs)
 EXIT_OK = 0
 EXIT_REVIEW_FAILURE = 1
@@ -149,7 +220,26 @@ _CREDENTIAL_RE = re.compile(
 #: The longest reviewer note printed to the operator's stderr. A note is
 #: model-authored free text, so its length is bounded: one reviewer must
 #: not be able to flood the log.
-MAX_NOTE_LENGTH: int = 500
+#:
+#: The bound has to leave the finding room to FIT. The note is where the
+#: finding that justifies the verdict goes -- the prompt says so -- and
+#: the reply budget the prompt declares
+#: (``REVIEW_REPLY_BUDGET_CHARS``, 1,500) is the whole reply: the
+#: verdict block, the note inside it, and whatever analysis precedes
+#: it. A 500-character note was a third of that budget, so a reviewer
+#: writing a fuller finding had it cut mid-sentence: a real
+#: architectural finding arrived as its first half and a guess. The
+#: note is now 1,200 -- most of the reply budget, leaving room for the
+#: analysis and the block itself -- and the number the reviewer is
+#: told is read from this constant, so the two cannot drift.
+#:
+#: What the cap does NOT do is sanitise: control characters are
+#: stripped, credential-shaped substrings are masked and whitespace is
+#: collapsed BEFORE the length is taken, so a longer note carries no
+#: more injection or secret-leak risk than a short one. The cap's own
+#: cost is the length of the stderr line it allows, and that is the
+#: whole of it.
+MAX_NOTE_LENGTH: int = 1_200
 
 
 def sanitize_note(note: str, *, limit: int = MAX_NOTE_LENGTH) -> str:
@@ -195,37 +285,137 @@ def parse_verdict(agent_text: str) -> dict[str, str]:
     verdict (the retry message, the operator-facing summary, and the
     persisted review state).
 
-    The **last** verdict block is the answer, not the first. The prompt
-    asks the reviewer to put its verdict block last, with any analysis
-    before it -- and an analysis that quotes a line of code can carry a
-    literal ``<verdict>...</verdict>`` in it. A review of this branch
-    quoted the integration test's own reply-builder line, and the parser
-    took the quote as the verdict: the reviewer had said
-    ``decision: pass``, and the merge read a note that was a fragment of
-    Python. Reading the first block also contradicts the prompt, and
-    contradicts the capture, which keeps the newest bytes -- so a reply
-    that was cut at the head keeps its tail, where the verdict block is.
+    **One block, or none.** The reply is read only when exactly one
+    block could be the reviewer's answer. The prompt asks the reviewer
+    to put its verdict block last, with any analysis before it -- and an
+    analysis that quotes a line of code can carry a literal
+    ``<verdict>...</verdict>`` in it. A review of this branch quoted
+    the integration test's own reply-builder line, and the parser took
+    the quote as the verdict: the reviewer had said ``decision: pass``,
+    and the merge read a note that was a fragment of Python. So a
+    reply carrying two possible answers is refused rather than parsed,
+    and the reviewer is asked again.
 
-    Among the blocks, the last one is the answer. A block that names no
-    known decision is not skipped in favour of an earlier one: that
-    would report an earlier quote as the verdict and hide the reviewer's
-    own answer, which is a fail-loud case the retry path handles.
+    **Two blocks, and the parser refuses.** A quoted block with a
+    single-word decision and a prose note is indistinguishable from a
+    verdict the reviewer wrote, and reviewers of this repo quote source
+    lines verbatim. Picking one of two candidates could open the
+    ensemble gate on a verdict nobody wrote -- two passes are enough to
+    proceed -- so the parser refuses: more than one candidate is a
+    fail-loud ``malformed`` note, and the retry path gives the
+    reviewer another chance to answer unambiguously.
+
+    There is no tie-break to fall back on, and that is deliberate. A
+    block standing on its own line is usually the reviewer's, but a
+    quotation of a verdict block also stands on its own line -- and the
+    mirror of that mistake is the same mistake: a reviewer that wrote
+    its verdict inside a sentence and quoted a block beneath it would
+    have the QUOTE read as the answer. Position cannot separate those
+    two replies, so the parser refuses both.
+
+    The same reasoning rules out the OTHER way of telling them apart:
+    by their surroundings. A block inside a quoted literal is usually
+    a quotation, but a reviewer that wraps its own verdict in quote
+    marks would be hidden by that rule -- and what a rule hides, a rule
+    can promote to be the only candidate, which is how a quoted
+    ``pass`` opens the gate.
+
+    So the only shapes the parser acts on are the ones a genuine
+    verdict **cannot** have: a note that is nothing but template
+    placeholders (``{failure}``), and a decision word that is the
+    prompt's alternatives joined by a pipe. A reviewer's note is prose
+    and its decision word is one word. Everything else is either the
+    answer or a reason to refuse.
+
+    A block that names no known decision decides nothing on its own,
+    and it does not poison the blocks around it: a reviewer whose last
+    block is fine has answered, whatever it quoted earlier. But it is
+    not skipped in favour of an earlier block either -- when the LAST
+    block is one the pipeline cannot read, the parser reports it,
+    because reporting an earlier quote as the verdict would hide the
+    reviewer's own answer and let the review pass on the strength of a
+    line of code.
+
+    A note carrying ``DISPATCH_FAILED_PREFIX`` is the DISPATCHER's
+    failure report rather than a reviewer's answer, and it is read as
+    the block it is -- a ``block`` whose note names the failure. The
+    prefix is what makes the difference visible to the operator and to
+    :func:`_is_retryable`, which retries it: a dispatch that failed
+    says nothing about the code. A dispatch that failed *permanently*
+    carries the sibling prefix and is not retried.
     """
     matches = list(VERDICT_RE.finditer(agent_text))
-    if not matches:
+    # req: REQ-MERGEREV-006
+    blocks: list[tuple[str, str, bool]] = []
+    for match in matches:
+        decision_raw = match.group(1).strip().lower()
+        note_raw = (match.group(2) or "").strip()
+        if PLACEHOLDER_NOTE_RE.match(note_raw):
+            # A quoted template: the note is a placeholder, not prose.
+            # A reviewer's note is prose, so a genuine verdict cannot
+            # have this shape -- skipping it cannot hide one.
+            continue
+        if VERDICT_CONTRACT_SEPARATOR in decision_raw:
+            # The prompt's contract, quoted back. A genuine decision
+            # word is one word, so this cannot hide one either.
+            continue
+        blocks.append((decision_raw, note_raw, decision_raw in VALID_DECISIONS))
+    if not blocks:
+        if matches:
+            return {
+                "decision": "block",
+                "note": (
+                    "malformed: the reply carried only quoted verdict templates, "
+                    "no verdict of the reviewer's own"
+                ),
+            }
         return {
             "decision": "block",
             "note": "malformed: <verdict> block not found in agent response",
         }
-    match = matches[-1]
-    decision_raw = match.group(1).strip().lower()
-    note = sanitize_note((match.group(2) or "").strip())
-    if decision_raw not in VALID_DECISIONS:
+    last_decision, _last_note, last_known = blocks[-1]
+    if not last_known:
+        # The LAST block the reviewer wrote names a decision the
+        # pipeline does not know. Fail loud rather than read an earlier
+        # block: reporting an earlier quote as the verdict would hide
+        # the reviewer's own answer, and the review would pass on the
+        # strength of a line of code.
+        #
+        # An unknown decision word EARLIER in the reply does not
+        # poison it: a reviewer whose last block is fine has answered,
+        # whatever it quoted earlier.
         return {
             "decision": "block",
-            "note": f"malformed: unknown decision {decision_raw!r}",
+            "note": f"malformed: unknown decision {last_decision!r}",
         }
-    return {"decision": decision_raw, "note": note}
+    reviewer_verdicts: list[tuple[str, str]] = [
+        (d, n) for d, n, known in blocks if known
+    ]
+    if len(reviewer_verdicts) > 1:
+        # More than one block could be the reviewer's own verdict, so
+        # which one it is cannot be told from the reply -- a quoted
+        # line with a prose note looks exactly like a verdict, and
+        # reviewers of this repo quote source lines verbatim. Fail loud
+        # rather than pick one: a wrong pick can open the ensemble
+        # gate on a verdict nobody wrote.
+        #
+        # There is no tie-break to fall back on. A block that stands
+        # on its own line is usually the reviewer's, but a quotation
+        # of a verdict block also stands on its own line -- and the
+        # mirror of that mistake is the same mistake: a reviewer that
+        # writes its verdict inside a sentence and quotes a block
+        # beneath it would have the QUOTE read as the answer. Position
+        # cannot separate the two, so the reply is refused and the
+        # reviewer is asked again.
+        return {
+            "decision": "block",
+            "note": (
+                "malformed: the reply carried more than one verdict block, "
+                "so the reviewer's own cannot be identified"
+            ),
+        }
+    decision_raw, note_raw = reviewer_verdicts[0]
+    return {"decision": decision_raw, "note": sanitize_note(note_raw)}
 
 
 # In-repo generalist pool per spec §4.4 (verified 2026-10-03). The random
@@ -246,9 +436,14 @@ def _is_retryable(note: str) -> bool:
     server that could not be reached and a reviewer whose reply was
     cut off are both worth another try — and a second failure still
     blocks, so the gate is not weakened.
-    """
-    from .merge_review_dispatcher import DISPATCH_FAILED_PREFIX
 
+    A dispatch that failed **permanently** is not retried: the pool
+    refused the task's shape, or it cannot honour the isolation the
+    review asked for, and neither changes between attempts. The
+    permanent prefix deliberately does not start with the transient one
+    — ``permanently`` where the transient form has a colon — so this
+    check does not match it.
+    """
     return note.startswith(_RETRYABLE_NOTE_PREFIXES) or note.startswith(
         DISPATCH_FAILED_PREFIX
     )
@@ -316,8 +511,11 @@ def run_review(
     def _review_one(agent: str) -> dict[str, str]:
         verdict = parse_verdict("")
         started = time.monotonic()
+        # Local to this reviewer: the prompt is shared by the three
+        # concurrent dispatches, so it must not be rebound here.
+        attempt_prompt = prompt
         for attempt in range(1, max(1, attempts) + 1):
-            response = dispatcher(agent, prompt)
+            response = dispatcher(agent, attempt_prompt)
             verdict = parse_verdict(response)
             if not _is_retryable(verdict["note"]):
                 break
@@ -327,6 +525,11 @@ def run_review(
                     f"verdict ({verdict['note']}); retrying",
                     file=sys.stderr,
                 )
+                attempt_prompt = prompt
+                for marker, hint in _RETRY_HINTS.items():
+                    if marker in verdict["note"]:
+                        attempt_prompt = prompt + hint
+                        break
         elapsed = time.monotonic() - started
         return {
             "agent": agent,

@@ -28,6 +28,7 @@ consumer of a verdict inherits it.
 from __future__ import annotations
 
 from mahavishnu.core.merge_to_main import (
+    MAX_NOTE_LENGTH,
     _format_verdicts,
     parse_verdict,
     sanitize_note,
@@ -108,8 +109,17 @@ class TestCredentialsDoNotReachTheLog:
 
 class TestANoteCannotFloodTheLog:
     def test_an_over_long_note_is_capped(self) -> None:
+        """The cap is the constant's, and a cut note keeps its marker.
+
+        The cap moved from 500 to 1,200 so a reviewer's finding is not
+        cut mid-sentence -- the finding is what the note carries, and
+        the reply budget the prompt declares leaves the note only a
+        third of it. So the test reads the constant rather than a
+        number: the cap is the bound, and the trailing ``...`` sits
+        outside it.
+        """
         cleaned = sanitize_note("x" * 5000)
-        assert len(cleaned) == 503
+        assert len(cleaned) == MAX_NOTE_LENGTH + 3
         assert cleaned.endswith("...")
 
     def test_a_truncated_note_is_marked_as_truncated(self) -> None:

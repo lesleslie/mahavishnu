@@ -4,7 +4,7 @@ role: implementation
 kind: plan
 date: 2026-11-21
 last_reviewed: 2026-11-21
-superseded_by: null
+superseded_by:
 blocks_on:
   - docs/specs/2026-11-20-fleet-session-start-status-banners-design.md
 topic: fleet-session-status

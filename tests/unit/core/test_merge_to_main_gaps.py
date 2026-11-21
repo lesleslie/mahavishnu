@@ -23,6 +23,7 @@ import pytest
 
 from mahavishnu.core import dev_log, merge_to_main
 from mahavishnu.core.merge_review_dispatcher import (
+    DISPATCH_FAILED_PREFIX,
     _extract_reply_text,
     _parse_pool_result,
     _pool_failure_message,
@@ -243,6 +244,59 @@ class TestAReviewThatCouldNotBeReadIsRetried:
         assert [r["decision"] for r in results] == ["pass", "pass", "pass"]
         assert results[0]["note"] == "python-pro"
 
+    def test_an_ambiguous_reply_is_retried_with_a_hint(self) -> None:
+        """The retry must say what to change, or it repeats the mistake.
+
+        An ambiguous reply — one carrying more than one candidate verdict
+        block — is refused by the parser, so the reviewer is asked
+        again. A retry that repeats the same prompt gets the same
+        ambiguous reply, and the merge then blocks for a reason nobody
+        could act on. The retry therefore carries the hint, and the
+        second answer is the one that is read.
+        """
+        prompts: dict[str, list[str]] = {}
+
+        def dispatcher(agent: str, prompt: str) -> str:
+            prompts.setdefault(agent, []).append(prompt)
+            if len(prompts[agent]) == 1:
+                return (
+                    "<verdict>decision: needs_adjustment note: one thing to fix"
+                    "</verdict>\n"
+                    "<verdict>decision: pass note: nothing to change</verdict>\n"
+                )
+            return "<verdict>decision: pass note: clean second answer</verdict>"
+
+        results = run_review("python-pro", ["generalist"], "prompt", dispatcher)
+
+        assert len(prompts["python-pro"]) == 2
+        assert "the verdict block ALONE" not in prompts["python-pro"][0]
+        assert "the verdict block ALONE" in prompts["python-pro"][1]
+        assert results[0]["decision"] == "pass"
+        assert results[0]["note"] == "clean second answer"
+
+    def test_an_unknown_decision_is_retried_with_a_hint(self) -> None:
+        """The hint says what to change, for this refusal too.
+
+        A reply naming a decision the pipeline does not know is
+        refused, and the reviewer is asked again. A retry that repeats
+        the same prompt gets the same reply, and the merge then blocks
+        for a reason nobody was told about.
+        """
+        prompts: dict[str, list[str]] = {}
+
+        def dispatcher(agent: str, prompt: str) -> str:
+            prompts.setdefault(agent, []).append(prompt)
+            if len(prompts[agent]) == 1:
+                return "<verdict>decision: maybe note: a good idea</verdict>"
+            return "<verdict>decision: pass note: clean second answer</verdict>"
+
+        results = run_review("python-pro", ["generalist"], "prompt", dispatcher)
+
+        assert len(prompts["python-pro"]) == 2
+        assert "pass, needs_adjustment, block" in prompts["python-pro"][1]
+        assert results[0]["decision"] == "pass"
+        assert results[0]["note"] == "clean second answer"
+
 
 class TestDispatcher:
     """The stub dispatcher must be gone, and failures must block."""
@@ -301,13 +355,18 @@ class TestDispatcher:
 
         assert seen["worktree"] == option
 
-    def test_dispatch_failure_returns_unparseable_reply(self) -> None:
+    def test_dispatch_failure_returns_a_block_with_the_reason(self) -> None:
         """An unreachable pool must fail loud, not return a synthetic pass.
 
         Driven through the synchronous wrapper: the MCP client's anyio
         task-group teardown does not survive pytest-asyncio's event loop
         under xdist, and this test is about the fail-loud contract, not
         about the transport.
+
+        The reply carries a verdict block of the dispatcher's own, and
+        the note names the transport failure: the operator is told what
+        went wrong instead of being shown a bare "malformed" that says
+        only that no verdict was found.
         """
         reply = dispatch_review(
             "python-pro",
@@ -315,8 +374,11 @@ class TestDispatcher:
             mcp_url="http://127.0.0.1:1/mcp",
             timeout=5.0,
         )
-        assert "<verdict>" not in reply
-        assert parse_verdict(reply)["decision"] == "block"
+        verdict = parse_verdict(reply)
+
+        assert verdict["decision"] == "block"
+        assert verdict["note"].startswith(DISPATCH_FAILED_PREFIX)
+        assert "failed" in verdict["note"]
 
 
 class TestSuccessDevLog:

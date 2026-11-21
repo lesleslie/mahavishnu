@@ -1,8 +1,8 @@
 ---
 status: active
 role: canonical
-date: 2026-11-20
-last_reviewed: 2026-11-20
+date: 2026-11-21
+last_reviewed: 2026-11-21
 superseded_by:
 blocks_on:
   - docs/schemas/document-frontmatter-v1.md
@@ -229,6 +229,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
+| [`docs/decisions/2026-11-21-verdict-parser-single-candidate.md`](../../docs/decisions/2026-11-21-verdict-parser-single-candidate.md) | 2026-11-21 | `active` | `canonical` | `decision` | `merge-review` | A reviewer's reply is read only when one block could be the answer |
 | [`docs/decisions/2026-11-20-bifrost-config-store-lock-contention.md`](../../docs/decisions/2026-11-20-bifrost-config-store-lock-contention.md) | 2026-11-20 | `active` | `canonical` | | `bifrost-config-store-contention` | 2026 11 20 bifrost config store lock contention |
 | [`docs/decisions/2026-11-16-no-grpc-in-forking-processes.md`](../../docs/decisions/2026-11-16-no-grpc-in-forking-processes.md) | 2026-11-16 | `active` | `canonical` | | `no-grpc-in-forking-processes` | A process that forks must not have grpcio loaded |
 | [`docs/decisions/2026-11-15-dispatch-worker-working-directory.md`](../../docs/decisions/2026-11-15-dispatch-worker-working-directory.md) | 2026-11-15 | `active` | `canonical` | | `dispatch-isolation` | A dispatched worker runs in the directory the dispatch names |
@@ -385,6 +386,8 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/plans/2026-11-21-fleet-session-start-status-banners.md`](2026-11-21-fleet-session-start-status-banners.md) | 2026-11-21 | `active` | `implementation` | | `fleet-session-status` | Fleet SessionStart Status Banners — Implementation Plan |
+| [`docs/plans/2026-11-21-merge-review-convergence.md`](2026-11-21-merge-review-convergence.md) | 2026-11-21 | `active` | `canonical` | | `merge-review` | Merge Review Convergence — stop paying for reviews the code does not need |
+| [`docs/plans/2026-11-21-task-orphan-sweeper-group-hygiene.md`](2026-11-21-task-orphan-sweeper-group-hygiene.md) | 2026-11-21 | `active` | `canonical` | | `redis-stream-consumer-groups` | Task-orphan sweeper group hygiene — reclaim, prune, honest health |
 | [`docs/plans/2026-11-20-fleet-memory-retrieval-quality.md`](2026-11-20-fleet-memory-retrieval-quality.md) | 2026-11-20 | `draft` | `implementation` | | `fleet-memory-retrieval` | Fleet Memory Retrieval Quality — make the memory layer measurable, then make it good |
 | [`docs/plans/2026-11-19-fleet-standardisation.md`](2026-11-19-fleet-standardisation.md) | 2026-11-19 | `draft` | `implementation` | | `fleet-standardisation` | Fleet Standardisation — getting Akosha, Mahavishnu, Session-Buddy, Oneiric, Crackerjack and mcp-common working as intended |
 | [`docs/plans/2026-11-16-narrow-the-affinity-policy.md`](2026-11-16-narrow-the-affinity-policy.md) | 2026-11-16 | `complete` | `implementation` | | `pool-routing-affinity` | Narrow the shipped affinity policy to the deployment's pinnable pools |
@@ -611,7 +614,7 @@ Durable decision records — covers both ADRs in `docs/adr/` and repo-local poli
 | [`docs/decisions/technical-debt-roadmap.md`](../../docs/decisions/technical-debt-roadmap.md) | 2026-07-16 | Technical Debt Roadmap |
 | [`docs/decisions/wire-up-contract.md`](../../docs/decisions/wire-up-contract.md) | 2026-07-16 | Wire-up contract |
 
-### `plan` (192 entries)
+### `plan` (195 entries)
 
 Work items. The bulk of the registry — see the per-store tables above for full detail with status/role/topic.
 
@@ -623,10 +626,10 @@ Counts of entries per (lifecycle, role) cell across all 17 stores. Useful as a s
 
 | Role \\ Lifecycle | draft | active | partial | shipped | complete | Total |
 |---|---|---|---|---|---|---|
-| `canonical` | 6 | 72 | 6 | 2 | 20 | **106** |
+| `canonical` | 6 | 74 | 6 | 2 | 20 | **108** |
 | `implementation` | 6 | 7 | 6 | 6 | 28 | **53** |
 | `umbrella` | · | · | · | · | 1 | **1** |
 | `historical` | · | · | · | · | 33 | **33** |
 | `superseded` | · | · | · | · | 11 | **11** |
 
-| **Total** | **12** | **79** | **12** | **8** | **93** | **204** |
+| **Total** | **12** | **81** | **12** | **8** | **93** | **206** |
