@@ -118,15 +118,16 @@ class TestTaskOrphanSweeperHealthAggregation:
         reset_plan_index_feed_state()
 
     async def test_sweeper_degraded_returns_503(self) -> None:
-        # Stash a sweeper stub on the fake server with health() -> False.
+        # Stash a sweeper on the fake server whose health() is False.
         # The /health handler in ``register_health_endpoint`` reads
         # ``server._task_orphan_sweeper`` via ``getattr`` (the seam
         # established by ``mahavishnu.mcp.lifecycle.start_server``).
-        sweeper = type(
-            "StubSweeper",
-            (),
-            {"health": AsyncMock(return_value=False)},
-        )()
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        sweeper = TaskOrphanSweeper()
+        # Three consecutive read failures is the documented degraded
+        # threshold — the same signal the sweeper reports in production.
+        sweeper._consecutive_read_failures = 3
         fake = _FakeFastMCP()
         fake._task_orphan_sweeper = sweeper
         register_health_endpoint(fake, version="test")
@@ -151,7 +152,46 @@ class TestTaskOrphanSweeperHealthAggregation:
             f"task_orphan_sweeper feed check must report ok=False when "
             f"sweeper.health() returns False, got {body['checks']['task_orphan_sweeper']!r}"
         )
-        sweeper.health.assert_awaited_once()
+
+    async def test_the_sweeper_check_carries_the_group_counters(self) -> None:
+        """The sweeper's own numbers must reach /health.
+
+        A health check that reports only ``ok`` cannot distinguish a
+        sweeper that is working from one whose group has 18,198 zombie
+        pending entries and 437 leaked consumers — which is exactly
+        what the live system reported as ``healthy``.
+        """
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        sweeper = TaskOrphanSweeper()
+        sweeper.entities_count = 3
+        sweeper.cycles_total = 11
+        sweeper.errors_total = 0
+        sweeper.last_updated_timestamp = 1234.5
+        sweeper.reclaimed_total = 7
+        sweeper.purged_total = 18_198
+        sweeper.pruned_consumers_total = 357
+        sweeper.pending_last = 0
+        sweeper.consumers_last = 1
+        fake = _FakeFastMCP()
+        fake._task_orphan_sweeper = sweeper
+        register_health_endpoint(fake, version="test")
+        health_handler = fake.routes.get(("/health", "GET"))
+        assert health_handler is not None
+
+        response = await health_handler()
+        body = json.loads(response.body)
+        check = body["checks"]["task_orphan_sweeper"]
+
+        assert check["ok"] is True
+        assert check["entities_count"] == 3
+        assert check["cycles_total"] == 11
+        assert check["errors_total"] == 0
+        assert check["pending_total"] == 0
+        assert check["consumers_total"] == 1
+        assert check["reclaimed_total"] == 7
+        assert check["purged_total"] == 18_198
+        assert check["pruned_consumers_total"] == 357
 
     async def test_sweeper_healthy_returns_200(self) -> None:
         """Healthy sweeper — /health stays 200 and the per-feed
@@ -162,7 +202,10 @@ class TestTaskOrphanSweeperHealthAggregation:
         sweeper = type(
             "StubSweeper",
             (),
-            {"health": AsyncMock(return_value=True)},
+            {
+                "health": AsyncMock(return_value=True),
+                "feed_state": staticmethod(lambda: {}),
+            },
         )()
         fake = _FakeFastMCP()
         fake._task_orphan_sweeper = sweeper

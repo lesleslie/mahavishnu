@@ -386,6 +386,12 @@ async def collect_component_checks(server: FastMCPServer) -> dict[str, dict[str,
             "ok": bool(sweeper_ok),
             "status": "healthy" if sweeper_ok else "degraded",
             "feed": "task_orphan_sweeper",
+            # The sweeper's own counters. Without them a healthy check
+            # cannot distinguish a working sweeper from one whose group
+            # holds 18,198 zombie pending entries and 437 leaked
+            # consumers — which is exactly what the live system reported
+            # as "healthy" for months.
+            **sweeper.feed_state(),
         }
 
     return checks

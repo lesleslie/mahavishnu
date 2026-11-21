@@ -19,6 +19,44 @@ stream from replaying the same orphan forever.
 
 The sweeper is wired into the MCP server's start/stop hooks by T10
 and exercised end-to-end by T12.
+
+Group maintenance
+-----------------
+
+Owning a consumer group means owning its maintenance too. Three things
+accumulate without it, all measured on the live system on 2026-11-21:
+
+* **Zombie pending entries.** Redis does not trim a group's pending
+  list when the stream is trimmed, so every trimmed message leaves a
+  pending entry pointing at an id that no longer exists — permanently
+  un-ackable and invisible to a read. The stream had been trimmed
+  from 18,203 entries to 14,399; the group still listed 18,198 pending.
+* **Stale consumers.** The consumer name carries the process id, so
+  every restart registers a new consumer and Redis never expires the
+  old one: 437 of them, 357 holding nothing.
+* **Lost handoffs.** ``XREADGROUP`` with ``>`` delivers only *new*
+  messages, so anything handed to a consumer that died before
+  acknowledging it was never re-read.
+
+The sweeper therefore runs a hygiene pass on start and periodically
+after that: ``XAUTOCLAIM`` reclaims the stale entries and purges the
+zombies, and ``XGROUP DELCONSUMER`` removes consumers that are gone.
+Reclaim runs first, so a message that could still be recovered is
+recovered before any consumer is deleted.
+
+Heartbeat: :meth:`health` returns False after 3 consecutive ``read()``
+failures, or after 3 consecutive failed hygiene passes; it resets to
+True on the first success of either.
+Backoff: 1, 2, 4, 8, 16, 32 s, then capped at 60 s — applied inside
+:meth:`_run_once` so :meth:`run_forever` does not need its own sleep.
+
+§3 counters: ``entities_count``, ``cycles_total``, ``errors_total``,
+``last_updated_timestamp`` — same surface as BodaiEventsPublisher so
+the master health aggregator can union them — plus the group counters
+``reclaimed_total``, ``purged_total``, ``pruned_consumers_total``,
+``pending_last`` and ``consumers_last``.
+OTel span: ``task_orphan_sweeper.recover`` with task_id, workflow_id,
+outcome ∈ {success, skipped, failed}.
 """
 
 from __future__ import annotations
@@ -29,12 +67,15 @@ import os
 import time
 from typing import Any
 
-from oneiric.adapters.queue.redis_streams import (
-    RedisStreamsQueueAdapter,
-    RedisStreamsQueueSettings,
-)
 from opentelemetry import trace
 from pydantic import BaseModel
+
+from mahavishnu.core.events.redis_stream_group import (
+    DEFAULT_PRUNE_STALE_AFTER_MS,
+    DEFAULT_RECLAIM_MIN_IDLE_MS,
+    DEFAULT_REDIS_URL,
+    RedisStreamGroup,
+)
 
 logger = logging.getLogger(__name__)
 _tracer = trace.get_tracer(__name__)
@@ -44,6 +85,10 @@ _tracer = trace.get_tracer(__name__)
 # with ``session_buddy.mcp.tools.tasks_events._ENVELOPE_BY_EVENT_TYPE``.
 _HANDSHAKE_ORPHAN_CHANNEL = "task.handoff_orphan"
 _HANDSHAKE_COMPLETED_CHANNEL = "task.handoff_completed"
+
+#: Prefix shared by every consumer this sweeper registers. Used to
+#: recognise its own past consumers — and only its own — when pruning.
+_CONSUMER_PREFIX = "mahavishnu-"
 
 
 class TaskHandoffOrphan(BaseModel):
@@ -67,10 +112,10 @@ class TaskOrphanSweeper:
     ``bodai-task-orphan-sweeper``), filters on payload channel=task.handoff_orphan,
     and re-links tasks via session-buddy's ``tasks_update``.
 
-    Adapter entry shape (per oneiric RedisStreamsQueueAdapter._format_entries):
-    each entry returned by read() is ``[{"message_id": message_id, "payload":
-    <XADD-fields-dict>}]``. The channel filter reads ``entry["payload"]["channel"]`` —
-    never from the entry root.
+    Entry shape (per ``RedisStreamGroup.read``): each entry is
+    ``{"message_id": message_id, "payload": <XADD-fields-dict>}``. The
+    channel filter reads ``entry["payload"]["channel"]`` — never from
+    the entry root.
 
     Recovery loop per orphan entry:
       1. ``_is_already_handed_off(task)`` check (uses session_buddy.tasks_get).
@@ -80,7 +125,8 @@ class TaskOrphanSweeper:
          or fail) so the stream cannot replay the entry twice.
 
     Heartbeat: :meth:`health` returns False after 3 consecutive ``read()``
-    failures; resets to True on the first successful read.
+    failures, or after 3 consecutive failed hygiene passes; resets to
+    True on the first success of either.
     Backoff: 1, 2, 4, 8, 16, 32 s, then capped at 60 s — applied inside
     :meth:`_run_once` so :meth:`run_forever` does not need its own sleep.
 
@@ -101,27 +147,65 @@ class TaskOrphanSweeper:
         block_ms: int = 5000,
         count: int = 10,
         session_buddy_client: Any = None,
+        redis_url: str = DEFAULT_REDIS_URL,
+        stream_group: Any | None = None,
+        hygiene_interval_cycles: int = 60,
+        reclaim_min_idle_ms: int = DEFAULT_RECLAIM_MIN_IDLE_MS,
+        prune_stale_after_ms: int = DEFAULT_PRUNE_STALE_AFTER_MS,
     ) -> None:
-        self._settings = RedisStreamsQueueSettings(
+        self._stream_name = stream
+        self._group_name = consumer_group
+        self._consumer_name = consumer_name or f"{_CONSUMER_PREFIX}{os.getpid()}"
+        self._stream_group = stream_group or RedisStreamGroup(
             stream=stream,
             group=consumer_group,
-            consumer=consumer_name or f"mahavishnu-{os.getpid()}",
+            consumer=self._consumer_name,
+            redis_url=redis_url,
         )
-        self._adapter = RedisStreamsQueueAdapter(settings=self._settings)
         self.enabled = enabled
         self.block_ms = block_ms
         self.count = count
         self._session_buddy = session_buddy_client
+        self._hygiene_interval_cycles = max(1, hygiene_interval_cycles)
+        self._reclaim_min_idle_ms = reclaim_min_idle_ms
+        self._prune_stale_after_ms = prune_stale_after_ms
         # §3 counters (mirrors BodaiEventsPublisher).
         self.entities_count = 0
         self.cycles_total = 0
         self.errors_total = 0
         self.last_updated_timestamp: float = 0.0
+        # Group-maintenance counters.
+        self.reclaimed_total = 0
+        self.purged_total = 0
+        self.pruned_consumers_total = 0
+        self.pending_last = 0
+        self.consumers_last = 0
         # Read-failure streak (separate signal from init success).
         self._consecutive_read_failures: int = 0
+        # Hygiene-failure streak (separate signal from read failures).
+        self._consecutive_hygiene_failures: int = 0
+
+    # -- properties ------------------------------------------------------
+
+    @property
+    def stream(self) -> str:
+        """Name of the stream this sweeper consumes."""
+        return self._stream_name
+
+    @property
+    def group(self) -> str:
+        """Name of the consumer group this sweeper maintains."""
+        return self._group_name
+
+    @property
+    def consumer(self) -> str:
+        """Name this sweeper reads under."""
+        return self._consumer_name
+
+    # -- lifecycle -------------------------------------------------------
 
     async def init(self) -> None:
-        """Initialise the Redis adapter.
+        """Initialise the stream handle and run the first hygiene pass.
 
         Failures are swallowed + logged so a Redis outage at MCP-server
         startup does not crash the server. The degraded state is picked up
@@ -130,33 +214,40 @@ class TaskOrphanSweeper:
         if not self.enabled:
             return
         try:
-            await self._adapter.init()
+            await self._stream_group.init()
         except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning(
                 "task_orphan_sweeper: init failed (degraded to no-op): %s",
                 exc,
             )
+            return
+        await self._run_hygiene()
 
     async def cleanup(self) -> None:
         try:
-            await self._adapter.cleanup()
+            await self._stream_group.cleanup()
         except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.warning("task_orphan_sweeper: cleanup failed: %s", exc)
 
     async def health(self) -> bool:
-        """True when fewer than 3 consecutive ``read()`` calls have failed.
+        """True while the sweeper is both reading and maintaining its group.
 
         A single transport hiccup is tolerable; a sustained failure
         streak flips the sweeper to degraded so monitoring surfaces it
-        without requiring the operator to inspect logs.
+        without requiring the operator to inspect logs. Read failures
+        and hygiene failures are counted separately — a group that
+        cannot be maintained is broken even when reads succeed.
         """
-        return self._consecutive_read_failures < 3
+        return (
+            self._consecutive_read_failures < 3
+            and self._consecutive_hygiene_failures < 3
+        )
 
     def _backoff_seconds(self) -> int:
         """Exponential backoff: 1, 2, 4, 8, 16, 32 s, capped at 60 s.
 
         Applied inside :meth:`_run_once` so the caller does not have to
-        manage a separate sleep loop. ``_consecutive_read_failures=0`` still
+        manage its own sleep loop. ``_consecutive_read_failures=0`` still
         returns 1 s — the block_ms on the underlying ``xreadgroup`` already
         covers the no-entries case, so the backoff only fires on a real
         read error.
@@ -176,6 +267,27 @@ class TaskOrphanSweeper:
             task.get("workflow_id") or task.get("status") in {"done", "cancelled"}
         )
 
+    def feed_state(self) -> dict[str, Any]:
+        """Return this sweeper's counters for the ``/health`` payload.
+
+        Mirrors ``plan_index``'s ``as_dict()``: the feed owns the shape
+        of its own numbers, so the health endpoint never has to know
+        which attribute holds which counter — and a counter that is
+        added here cannot be silently left at zero on the far side.
+        # req: REQ-SWEEPERHYGIENE-006
+        """
+        return {
+            "entities_count": self.entities_count,
+            "cycles_total": self.cycles_total,
+            "errors_total": self.errors_total,
+            "last_updated_timestamp": self.last_updated_timestamp,
+            "pending_total": self.pending_last,
+            "consumers_total": self.consumers_last,
+            "reclaimed_total": self.reclaimed_total,
+            "purged_total": self.purged_total,
+            "pruned_consumers_total": self.pruned_consumers_total,
+        }
+
     async def _recover_orphan(self, entry: dict[str, Any]) -> str:
         """Process one orphan entry: idempotency check → link →
         synthetic emit → return outcome string for the OTel span.
@@ -193,7 +305,7 @@ class TaskOrphanSweeper:
 
         Implements: REQ-009, REQ-006
         """
-        # Adapter entry shape: {"message_id": ..., "payload": <XADD-fields-dict>}.
+        # Entry shape: {"message_id": ..., "payload": <XADD-fields-dict>}.
         payload = entry.get("payload", {})
         # Defensive field filter — the orphan envelope may grow new fields
         # upstream without breaking this sweeper.
@@ -224,7 +336,7 @@ class TaskOrphanSweeper:
         )
         # Synthetic emit on the same stream so downstream consumers
         # observe a clean handoff_completed alongside the orphan.
-        await self._adapter.enqueue(
+        await self._stream_group.enqueue(
             {
                 "channel": _HANDSHAKE_COMPLETED_CHANNEL,
                 "task_id": orphan.task_id,
@@ -236,44 +348,23 @@ class TaskOrphanSweeper:
         self.last_updated_timestamp = time.time()
         return "success"
 
-    async def _run_once(self) -> list[tuple[dict[str, Any], str]]:
-        """Run exactly one read iteration.
+    async def _handle_entries(
+        self, entries: list[dict[str, Any]]
+    ) -> list[tuple[dict[str, Any], str]]:
+        """Process every entry: recover the orphans, ack the rest.
 
-        Returns one ``(entry, outcome)`` tuple per orphan that was
-        processed (skipped or recovered). Non-orphan entries are
-        consumed and acked but do not appear in the return list.
-        The OTel span ``task_orphan_sweeper.recover`` is emitted for
-        every orphan entry — outcome reflects the recovery decision.
-
-        Public testability helper: tests call this directly without
-        needing to manage ``asyncio`` cancellation timing.
+        Non-orphan entries are consumed and acked but do not appear in
+        the return list. The OTel span ``task_orphan_sweeper.recover`` is
+        emitted for every orphan entry — outcome reflects the recovery
+        decision.
+        # req: REQ-SWEEPERHYGIENE-005
         """
-        self.cycles_total += 1
-        try:
-            entries = await self._adapter.read(
-                count=self.count,
-                block_ms=self.block_ms,
-            )
-            # Reset the failure streak on any successful read — even one
-            # that returns zero entries.
-            self._consecutive_read_failures = 0
-        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
-            self.errors_total += 1
-            self._consecutive_read_failures += 1
-            logger.warning(
-                "task_orphan_sweeper: read failed (consecutive=%d): %s",
-                self._consecutive_read_failures,
-                exc,
-            )
-            await asyncio.sleep(self._backoff_seconds())
-            return []
-
         results: list[tuple[dict[str, Any], str]] = []
         for entry in entries:
             payload = entry.get("payload", {})
             if payload.get("channel") != _HANDSHAKE_ORPHAN_CHANNEL:
                 # Non-orphan entry on the same stream — ack and move on.
-                await self._adapter.ack([entry["message_id"]])
+                await self._stream_group.ack([entry["message_id"]])
                 continue
             try:
                 with _tracer.start_as_current_span(
@@ -309,7 +400,92 @@ class TaskOrphanSweeper:
                 )
             # Ack AFTER the recovery attempt (success or fail) so the
             # entry cannot be replayed twice — at-most-once semantics.
-            await self._adapter.ack([entry["message_id"]])
+            await self._stream_group.ack([entry["message_id"]])
+        return results
+
+    async def _run_hygiene(self) -> list[tuple[dict[str, Any], str]]:
+        """Maintain the consumer group: reclaim, purge, prune.
+
+        Reclaim runs first, so a message that could still be recovered
+        is recovered before any consumer is deleted. A failure is
+        counted, not raised — the read path is independent of it.
+        # req: REQ-SWEEPERHYGIENE-002, REQ-SWEEPERHYGIENE-003, REQ-SWEEPERHYGIENE-004
+        """
+        try:
+            result = await self._stream_group.reclaim(
+                min_idle_ms=self._reclaim_min_idle_ms,
+            )
+            pruned = await self._stream_group.prune_consumers(
+                keep=self._consumer_name,
+                prefix=_CONSUMER_PREFIX,
+                stale_after_ms=self._prune_stale_after_ms,
+            )
+            state = await self._stream_group.group_state()
+        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+            self._consecutive_hygiene_failures += 1
+            logger.warning(
+                "task_orphan_sweeper: hygiene pass failed (consecutive=%d): %s",
+                self._consecutive_hygiene_failures,
+                exc,
+            )
+            return []
+        self._consecutive_hygiene_failures = 0
+        self.reclaimed_total += result.claimed_count
+        self.purged_total += result.purged_count
+        self.pruned_consumers_total += len(pruned)
+        self.pending_last = state.pending
+        self.consumers_last = state.consumers
+        if result.purged_count or pruned:
+            logger.info(
+                "task_orphan_sweeper: hygiene purged=%d reclaimed=%d pruned=%d "
+                "pending=%d consumers=%d",
+                result.purged_count,
+                result.claimed_count,
+                len(pruned),
+                state.pending,
+                state.consumers,
+            )
+        # A reclaimed entry is an orphan this sweeper already took
+        # delivery of and never acknowledged. It goes through the same
+        # recovery path as a fresh one.
+        return await self._handle_entries(result.entries)
+
+    async def _run_once(self) -> list[tuple[dict[str, Any], str]]:
+        """Run exactly one read iteration.
+
+        Returns one ``(entry, outcome)`` tuple per orphan that was
+        processed (skipped or recovered). Non-orphan entries are
+        consumed and acked but do not appear in the return list.
+        The OTel span ``task_orphan_sweeper.recover`` is emitted for
+        every orphan entry — outcome reflects the recovery decision.
+
+        Public testability helper: tests call this directly without
+        needing to manage ``asyncio`` cancellation timing.
+        """
+        self.cycles_total += 1
+        results: list[tuple[dict[str, Any], str]] = []
+        if self.cycles_total % self._hygiene_interval_cycles == 0:
+            results.extend(await self._run_hygiene())
+        try:
+            entries = await self._stream_group.read(
+                count=self.count,
+                block_ms=self.block_ms,
+            )
+            # Reset the failure streak on any successful read — even one
+            # that returns zero entries.
+            self._consecutive_read_failures = 0
+        except Exception as exc:  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
+            self.errors_total += 1
+            self._consecutive_read_failures += 1
+            logger.warning(
+                "task_orphan_sweeper: read failed (consecutive=%d): %s",
+                self._consecutive_read_failures,
+                exc,
+            )
+            await asyncio.sleep(self._backoff_seconds())
+            return results
+
+        results.extend(await self._handle_entries(entries))
         return results
 
     async def run_forever(self) -> None:

@@ -2,7 +2,7 @@
 
 Pins the public contract of :class:`TaskOrphanSweeper`:
 
-* settings shape (``_settings.group`` / ``_settings.stream``) is
+* settings shape (``group`` / ``stream``) is
   forwarded from the constructor kwargs;
 * backoff doubles (1, 2, 4, 8, 16, 32) and caps at 60 s;
 * the idempotency guard short-circuits when session-buddy already
@@ -34,20 +34,33 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 
 
-class _FakeAdapter:
-    """Stand-in for ``oneiric.adapters.queue.redis_streams.RedisStreamsQueueAdapter``.
+class _FakeStreamGroup:
+    """Stand-in for ``mahavishnu.core.events.redis_stream_group.RedisStreamGroup``.
 
-    Mirrors the real shape returned by ``_format_entries``:
-    ``read()`` returns ``[{"message_id": ..., "payload": <XADD-fields-dict>}]``.
+    Mirrors the real shape returned by ``read()``:
+    ``[{"message_id": ..., "payload": <XADD-fields-dict>}]``.
     """
 
-    def __init__(self, entries: list[dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self,
+        entries: list[dict[str, Any]] | None = None,
+        reclaimed: list[dict[str, Any]] | None = None,
+        purged: list[str] | None = None,
+        pruned: list[str] | None = None,
+    ) -> None:
         self.entries = list(entries or [])
+        self.reclaimed_entries = list(reclaimed or [])
+        self.purged_ids = list(purged or [])
+        self.pruned = list(pruned or [])
         self.acked: list[str] = []
         self.xadds: list[dict[str, Any]] = []
         self.init_calls = 0
         self.cleanup_calls = 0
         self.read_block_ms: int | None = None
+        self.reclaim_calls = 0
+        self.prune_calls = 0
+        self.reclaim_kwargs: dict[str, Any] = {}
+        self.prune_kwargs: dict[str, Any] = {}
 
     async def read(self, *, count: int, block_ms: int) -> list[dict[str, Any]]:
         self.read_block_ms = block_ms
@@ -66,6 +79,26 @@ class _FakeAdapter:
 
     async def cleanup(self) -> None:
         self.cleanup_calls += 1
+
+    async def reclaim(self, **kwargs: Any) -> Any:
+        from mahavishnu.core.events.redis_stream_group import ReclaimResult
+
+        self.reclaim_calls += 1
+        self.reclaim_kwargs = kwargs
+        return ReclaimResult(
+            entries=self.reclaimed_entries,
+            deleted_ids=self.purged_ids,
+        )
+
+    async def prune_consumers(self, **kwargs: Any) -> list[str]:
+        self.prune_calls += 1
+        self.prune_kwargs = kwargs
+        return list(self.pruned)
+
+    async def group_state(self) -> Any:
+        from mahavishnu.core.events.redis_stream_group import GroupState
+
+        return GroupState(pending=len(self.purged_ids), consumers=1 + len(self.pruned))
 
 
 class _FakeSB:
@@ -123,8 +156,8 @@ def test_consumer_group_maps_to_group_in_settings() -> None:
     from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
 
     sweeper = TaskOrphanSweeper()
-    assert sweeper._settings.group == "bodai-task-orphan-sweeper"
-    assert sweeper._settings.stream == "bodai:events"
+    assert sweeper.group == "bodai-task-orphan-sweeper"
+    assert sweeper.stream == "bodai:events"
 
 
 def test_consumer_group_and_stream_overrides_take_effect() -> None:
@@ -134,8 +167,8 @@ def test_consumer_group_and_stream_overrides_take_effect() -> None:
         stream="custom:events",
         consumer_group="custom-sweeper",
     )
-    assert sweeper._settings.stream == "custom:events"
-    assert sweeper._settings.group == "custom-sweeper"
+    assert sweeper.stream == "custom:events"
+    assert sweeper.group == "custom-sweeper"
 
 
 # ---------------------------------------------------------------------------
@@ -215,10 +248,10 @@ async def test_sweeper_health_false_after_three_failures() -> None:
 async def test_sweeper_processes_orphan_event(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
 
-    adapter = _FakeAdapter(entries=[_orphan_entry()])
+    adapter = _FakeStreamGroup(entries=[_orphan_entry()])
     sb = _FakeSB()
     sweeper = TaskOrphanSweeper(session_buddy_client=sb)
-    monkeypatch.setattr(sweeper, "_adapter", adapter)
+    monkeypatch.setattr(sweeper, "_stream_group", adapter)
 
     results = await sweeper._run_once()
 
@@ -253,12 +286,12 @@ async def test_sweeper_skips_if_workflow_id_already_set(
 ) -> None:
     from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
 
-    adapter = _FakeAdapter(entries=[_orphan_entry()])
+    adapter = _FakeStreamGroup(entries=[_orphan_entry()])
     sb = _FakeSB(
         task_payloads={"t-x": {"status": "in_progress", "workflow_id": "w-existing"}}
     )
     sweeper = TaskOrphanSweeper(session_buddy_client=sb)
-    monkeypatch.setattr(sweeper, "_adapter", adapter)
+    monkeypatch.setattr(sweeper, "_stream_group", adapter)
 
     results = await sweeper._run_once()
 
@@ -279,10 +312,10 @@ async def test_sweeper_skips_if_workflow_id_already_set(
 async def test_sweeper_skips_if_status_done(monkeypatch: pytest.MonkeyPatch) -> None:
     from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
 
-    adapter = _FakeAdapter(entries=[_orphan_entry()])
+    adapter = _FakeStreamGroup(entries=[_orphan_entry()])
     sb = _FakeSB(task_payloads={"t-x": {"status": "done"}})
     sweeper = TaskOrphanSweeper(session_buddy_client=sb)
-    monkeypatch.setattr(sweeper, "_adapter", adapter)
+    monkeypatch.setattr(sweeper, "_stream_group", adapter)
 
     results = await sweeper._run_once()
 
@@ -297,10 +330,10 @@ async def test_sweeper_skips_if_status_cancelled(
 ) -> None:
     from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
 
-    adapter = _FakeAdapter(entries=[_orphan_entry(task_id="t-c")])
+    adapter = _FakeStreamGroup(entries=[_orphan_entry(task_id="t-c")])
     sb = _FakeSB(task_payloads={"t-c": {"status": "cancelled"}})
     sweeper = TaskOrphanSweeper(session_buddy_client=sb)
-    monkeypatch.setattr(sweeper, "_adapter", adapter)
+    monkeypatch.setattr(sweeper, "_stream_group", adapter)
 
     results = await sweeper._run_once()
 
@@ -333,10 +366,10 @@ async def test_sweeper_emits_otel_span_on_recovery(
     # Monkeypatch the module-level _tracer to use the new provider.
     monkeypatch.setattr(mod, "_tracer", provider.get_tracer(__name__))
 
-    adapter = _FakeAdapter(entries=[_orphan_entry()])
+    adapter = _FakeStreamGroup(entries=[_orphan_entry()])
     sb = _FakeSB()
     sweeper = mod.TaskOrphanSweeper(session_buddy_client=sb)
-    monkeypatch.setattr(sweeper, "_adapter", adapter)
+    monkeypatch.setattr(sweeper, "_stream_group", adapter)
 
     await sweeper._run_once()
 
@@ -363,7 +396,7 @@ async def test_sweeper_init_failure_is_swallowed(
     async def boom() -> None:
         raise RuntimeError("redis down")
 
-    monkeypatch.setattr(sweeper._adapter, "init", boom)
+    monkeypatch.setattr(sweeper._stream_group, "init", boom)
 
     # init() does not raise even though the adapter init blew up — a Redis
     # outage at MCP-server startup must not crash the server. The degraded
@@ -388,10 +421,10 @@ async def test_sweeper_filters_out_non_orphan_channels(
         "payload": {"channel": "task.handoff_completed", "task_id": "t-other"},
     }
     orphan = _orphan_entry(message_id="3-0")
-    adapter = _FakeAdapter(entries=[other_entry, orphan])
+    adapter = _FakeStreamGroup(entries=[other_entry, orphan])
     sb = _FakeSB()
     sweeper = TaskOrphanSweeper(session_buddy_client=sb)
-    monkeypatch.setattr(sweeper, "_adapter", adapter)
+    monkeypatch.setattr(sweeper, "_stream_group", adapter)
 
     await sweeper._run_once()
 
@@ -412,7 +445,7 @@ async def test_sweeper_read_failure_increments_failure_count(
 ) -> None:
     from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
 
-    class _FailingAdapter(_FakeAdapter):
+    class _FailingAdapter(_FakeStreamGroup):
         def __init__(self) -> None:
             super().__init__()
             self.read_calls = 0
@@ -423,7 +456,7 @@ async def test_sweeper_read_failure_increments_failure_count(
 
     adapter = _FailingAdapter()
     sweeper = TaskOrphanSweeper()
-    monkeypatch.setattr(sweeper, "_adapter", adapter)
+    monkeypatch.setattr(sweeper, "_stream_group", adapter)
 
     # First failure — health is still True (only 1 consecutive failure).
     await sweeper._run_once()
@@ -441,10 +474,165 @@ async def test_sweeper_read_failure_increments_failure_count(
     # Recovery — successful read resets the consecutive counter.
     monkeypatch.setattr(
         sweeper,
-        "_adapter",
-        _FakeAdapter(entries=[_orphan_entry()]),
+        "_stream_group",
+        _FakeStreamGroup(entries=[_orphan_entry()]),
     )
     sweeper._session_buddy = _FakeSB()
     await sweeper._run_once()
     assert sweeper._consecutive_read_failures == 0
     assert await sweeper.health() is True
+
+
+# ---------------------------------------------------------------------------
+# Step 10 — group hygiene: reclaim, purge, prune
+# ---------------------------------------------------------------------------
+
+
+class TestTheGroupHygiene:
+    """The sweeper owns a consumer group, so it maintains it.
+
+    Without this, the group accumulates a zombie pending entry for
+    every message the stream trimmed away, and a stale consumer for
+    every process start — both of which are invisible to a read.
+    """
+
+    async def test_init_runs_a_hygiene_pass(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        fake = _FakeStreamGroup()
+        sweeper = TaskOrphanSweeper(stream_group=fake)
+
+        await sweeper.init()
+
+        assert fake.reclaim_calls == 1
+        assert fake.prune_calls == 1
+
+    async def test_a_reclaimed_orphan_is_recovered_and_acked(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        fake = _FakeStreamGroup(reclaimed=[_orphan_entry(message_id="9-0")])
+        sb = _FakeSB()
+        sweeper = TaskOrphanSweeper(session_buddy_client=sb, stream_group=fake)
+
+        await sweeper.init()
+
+        assert len(sb.updates) == 1
+        assert sb.updates[0][0] == "t-x"
+        assert "9-0" in fake.acked
+        assert sweeper.reclaimed_total == 1
+
+    async def test_purged_zombies_are_counted(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        fake = _FakeStreamGroup(purged=["1-0", "2-0"])
+        sweeper = TaskOrphanSweeper(stream_group=fake)
+
+        await sweeper.init()
+
+        assert sweeper.purged_total == 2
+
+    async def test_pruned_consumers_are_counted(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        fake = _FakeStreamGroup(pruned=["mahavishnu-111", "mahavishnu-222"])
+        sweeper = TaskOrphanSweeper(stream_group=fake)
+
+        await sweeper.init()
+
+        assert sweeper.pruned_consumers_total == 2
+
+    async def test_the_group_state_is_recorded(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        fake = _FakeStreamGroup(purged=["1-0"], pruned=["mahavishnu-111"])
+        sweeper = TaskOrphanSweeper(stream_group=fake)
+
+        await sweeper.init()
+
+        assert sweeper.pending_last == 1
+        assert sweeper.consumers_last == 2
+
+    async def test_the_prune_keeps_this_sweeper_own_consumer(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        fake = _FakeStreamGroup()
+        sweeper = TaskOrphanSweeper(stream_group=fake)
+
+        await sweeper.init()
+
+        assert fake.prune_kwargs["keep"] == sweeper.consumer
+        assert fake.prune_kwargs["prefix"] == "mahavishnu-"
+
+    async def test_a_failing_hygiene_pass_does_not_raise(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        class _FailingHygiene(_FakeStreamGroup):
+            async def reclaim(self, **kwargs: Any) -> Any:
+                raise ConnectionError("redis is down")
+
+        sweeper = TaskOrphanSweeper(stream_group=_FailingHygiene())
+
+        await sweeper.init()
+
+        assert sweeper._consecutive_hygiene_failures == 1
+
+    async def test_health_degrades_after_three_hygiene_failures(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        class _FailingHygiene(_FakeStreamGroup):
+            async def reclaim(self, **kwargs: Any) -> Any:
+                raise ConnectionError("redis is down")
+
+        sweeper = TaskOrphanSweeper(stream_group=_FailingHygiene())
+
+        assert await sweeper.health() is True
+        for _ in range(3):
+            await sweeper._run_hygiene()
+        assert await sweeper.health() is False
+
+    async def test_health_recovers_after_a_successful_hygiene_pass(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        class _FlakyHygiene(_FakeStreamGroup):
+            def __init__(self) -> None:
+                super().__init__()
+                self.fail = True
+
+            async def reclaim(self, **kwargs: Any) -> Any:
+                if self.fail:
+                    raise ConnectionError("redis is down")
+                return await super().reclaim(**kwargs)
+
+        fake = _FlakyHygiene()
+        sweeper = TaskOrphanSweeper(stream_group=fake)
+
+        for _ in range(3):
+            await sweeper._run_hygiene()
+        assert await sweeper.health() is False
+
+        fake.fail = False
+        await sweeper._run_hygiene()
+        assert await sweeper.health() is True
+
+    async def test_the_hygiene_pass_repeats_on_the_configured_interval(self) -> None:
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        fake = _FakeStreamGroup()
+        sweeper = TaskOrphanSweeper(stream_group=fake, hygiene_interval_cycles=2)
+
+        await sweeper._run_once()
+        assert fake.reclaim_calls == 0
+
+        await sweeper._run_once()
+        assert fake.reclaim_calls == 1
+
+    async def test_the_consumer_name_carries_the_process_id(self) -> None:
+        import os
+
+        from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+        sweeper = TaskOrphanSweeper()
+
+        assert sweeper.consumer == f"mahavishnu-{os.getpid()}"
+        assert sweeper.group == "bodai-task-orphan-sweeper"
+        assert sweeper.stream == "bodai:events"

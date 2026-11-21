@@ -9,7 +9,7 @@ flow against a real local Redis:
        Redis (one deterministic iteration; no ``asyncio.sleep``
        timing).
     3. Assert the three observable properties:
-       (a) ``session_buddy.tasks_update`` was called with the
+       (a) ``session_buddy.tasks_link_workflow`` was called with the
            workflow_id from the orphan payload,
        (b) a synthetic ``task.handoff_completed`` entry was emitted
            on the same stream (recovered downstream consumers can
@@ -37,22 +37,30 @@ pytestmark = [pytest.mark.integration, pytest.mark.requires_network]
 class _FakeSB:
     """Stand-in for the session-buddy MCP client.
 
-    Records every ``tasks_update`` invocation so the test can
+    Records every ``tasks_link_workflow`` invocation so the test can
     assert the sweeper called it with the workflow_id pulled from
     the orphan payload. ``tasks_get`` returns an in-progress task
     so the idempotency guard does NOT short-circuit — the recovery
     side-effects must fire.
+
+    ``tasks_link_workflow`` is the typed channel that is the only
+    writer of ``Task.workflow_id``; the generic ``tasks_update``
+    metadata bag cannot reach the field, so a sweeper that used it
+    re-linked forever without binding anything. This fake therefore
+    implements the typed channel, and the test asserts on it.
     """
 
     def __init__(self) -> None:
-        self.updates: list[tuple[str, dict[str, Any]]] = []
+        self.updates: list[tuple[str, str]] = []
 
     async def tasks_get(self, task_id: str) -> dict[str, Any]:
         return {"id": task_id, "status": "in_progress"}
 
-    async def tasks_update(self, task_id: str, **kw: Any) -> dict[str, Any]:
-        self.updates.append((task_id, kw))
-        return {"id": task_id, **kw}
+    async def tasks_link_workflow(
+        self, task_id: str, workflow_id: str
+    ) -> dict[str, Any]:
+        self.updates.append((task_id, workflow_id))
+        return {"id": task_id, "workflow_id": workflow_id}
 
 
 async def test_sweeper_xreadgroup_recovers_orphan(redis_client: Any) -> None:
@@ -101,55 +109,35 @@ async def test_sweeper_xreadgroup_recovers_orphan(redis_client: Any) -> None:
         # asyncio.sleep, no cancellation races.
         await sweeper._run_once()
 
-        # Step 3a — recovery side effect: tasks_update was called.
-        assert len(sb.updates) == 1, f"expected one tasks_update, got {len(sb.updates)}"
-        task_id, update_kw = sb.updates[0]
+        # Step 3a — recovery side effect: the typed link channel was
+        # called with the workflow_id pulled from the orphan payload.
+        assert len(sb.updates) == 1, (
+            f"expected one tasks_link_workflow, got {len(sb.updates)}"
+        )
+        task_id, workflow_id = sb.updates[0]
         assert task_id == "t-x"
-        assert update_kw["metadata"]["workflow_id"] == "w-z"
+        assert workflow_id == "w-z"
 
         # Counters advanced.
         assert sweeper.entities_count == 1
         assert sweeper.cycles_total >= 1
 
-        # Step 3b — synthetic handoff_completed emit landed on the
-        # same stream. Reading from "0" returns the consumer's own
-        # PEL — the sweeper's consumer IS this test's consumer, so
-        # the entry should be visible there.
-        entries = await redis_client.xreadgroup(
-            groupname=group,
-            consumername=consumer,
-            streams={stream: "0"},
-            count=10,
-            block=100,
-        )
-        # coredis 6.x returns a dict keyed by stream name; values
-        # are tuples of StreamEntry(identifier, field_values, ...).
+        # Step 3b — the synthetic handoff_completed emit landed on the
+        # same stream. It was *published*, never delivered, so it is in
+        # no pending list — the stream itself is where to look for it.
+        entries = await redis_client.xrange(stream)
+        # coredis 6.x yields StreamEntry(identifier, field_values, ...).
         found_synthetic = False
-        if isinstance(entries, dict):
-            for _stream_key, stream_entries in entries.items():
-                for entry in stream_entries or ():
-                    field_values = getattr(entry, "field_values", {}) or {}
-                    channel = field_values.get(b"channel") or field_values.get(
-                        "channel"
-                    )
-                    if isinstance(channel, bytes):
-                        channel = channel.decode("utf-8")
-                    if channel == "task.handoff_completed":
-                        found_synthetic = True
-                        break
-                if found_synthetic:
-                    break
-        else:
-            # Defensive: legacy coredis shape (list of (stream, msgs))
-            for _stream_key, msgs in entries or []:
-                for entry in msgs or []:
-                    _raw_id, raw_fields = entry[0], entry[1]
-                    if (
-                        isinstance(raw_fields, dict)
-                        and raw_fields.get(b"channel") == b"task.handoff_completed"
-                    ):
-                        found_synthetic = True
-                        break
+        for entry in entries or ():
+            field_values = getattr(entry, "field_values", None)
+            if field_values is None:
+                field_values = getattr(entry, "field_values", {}) or {}
+            channel = field_values.get(b"channel") or field_values.get("channel")
+            if isinstance(channel, bytes):
+                channel = channel.decode("utf-8")
+            if channel == "task.handoff_completed":
+                found_synthetic = True
+                break
         assert found_synthetic, (
             f"synthetic task.handoff_completed not found in {entries!r}"
         )
