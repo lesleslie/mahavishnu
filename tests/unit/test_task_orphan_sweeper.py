@@ -22,6 +22,7 @@ Pins the public contract of :class:`TaskOrphanSweeper`:
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import pytest
@@ -58,6 +59,7 @@ class _FakeStreamGroup:
         self.xadds: list[dict[str, Any]] = []
         self.init_calls = 0
         self.cleanup_calls = 0
+        self.read_calls = 0
         self.read_block_ms: int | None = None
         self.reclaim_calls = 0
         self.prune_calls = 0
@@ -65,7 +67,12 @@ class _FakeStreamGroup:
         self.prune_kwargs: dict[str, Any] = {}
 
     async def read(self, *, count: int, block_ms: int) -> list[dict[str, Any]]:
+        self.read_calls += 1
         self.read_block_ms = block_ms
+        # Yield to the event loop so a caller that bounds the run loop
+        # with a timeout can actually fire it — a tight await chain that
+        # never suspends starves the loop's timers.
+        await asyncio.sleep(0)
         return self.entries
 
     async def ack(self, ids: list[str]) -> int:
@@ -173,6 +180,27 @@ def test_consumer_group_and_stream_overrides_take_effect() -> None:
     )
     assert sweeper.stream == "custom:events"
     assert sweeper.group == "custom-sweeper"
+
+
+@pytest.mark.asyncio
+async def test_disabled_sweeper_never_reads() -> None:
+    """A sweeper configured with ``enabled=False`` must not read at all.
+
+    ``init()`` already skips opening the Redis handle when the sweeper
+    is disabled, but the run loop had no guard of its own: it kept
+    calling ``_run_once``, every read raised "client not initialised",
+    and the sweeper spun on errors forever. The ``enabled`` key was
+    dead config — nothing read it — so the missing guard was never
+    exercised. Wiring the key without the guard would turn a
+    deliberately disabled sweeper into a hot error loop.
+    """
+    from mahavishnu.mcp.sweepers.task_orphan_sweeper import TaskOrphanSweeper
+
+    group = _FakeStreamGroup()
+    sweeper = TaskOrphanSweeper(enabled=False, stream_group=group)
+    await sweeper.init()
+    await asyncio.wait_for(sweeper.run_forever(), timeout=1.0)
+    assert group.read_calls == 0
 
 
 # ---------------------------------------------------------------------------

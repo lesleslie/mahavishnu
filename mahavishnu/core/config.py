@@ -2957,6 +2957,47 @@ class JotSettings(BaseModel):
     # and the ``drain`` field on ``JotSettings``. Re-add when drain ships.
 
 
+class TaskOrphanSweeperSettings(BaseModel):
+    """Task-orphan sweeper configuration (T9, v1.1 Bodai task system).
+
+    The sweeper re-links tasks whose handoff back-link to session-buddy
+    failed: it reads ``task.handoff_orphan`` events off a Redis stream
+    and re-links them through session-buddy's ``tasks_link_workflow``.
+
+    This block was DEAD config until 2026-11-21. It named the stream,
+    the consumer group, the read window and the batch size, but no
+    code path read it — the sweeper was constructed from its
+    constructor defaults, and those defaults happened to match this
+    YAML exactly. The block therefore looked honoured while editing
+    any of it changed nothing at runtime.
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Run the orphan sweeper as a background task.",
+    )
+    stream: str = Field(
+        default="bodai:events",
+        description="Redis stream the sweeper reads orphan events from.",
+    )
+    consumer_group: str = Field(
+        default="bodai-task-orphan-sweeper",
+        description="Consumer group the sweeper reads under.",
+    )
+    block_ms: int = Field(
+        default=5000,
+        ge=0,
+        description="Blocking read window in milliseconds.",
+    )
+    count: int = Field(
+        default=10,
+        ge=1,
+        description="Maximum messages to read per pass.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class MahavishnuSettings(BaseSettings):
     """Mahavishnu configuration extending MCPServerSettings.
 
@@ -3247,6 +3288,16 @@ class MahavishnuSettings(BaseSettings):
     changepoint: ChangepointConfig = Field(
         default_factory=ChangepointConfig,
         description="Change-point detection (CUSUM/Page-Hinkley + 3-sigma reference) on observability metrics.",
+    )
+
+    # T9 (v1.1 Bodai task system): the orphan sweeper re-links tasks whose
+    # handoff back-link to session-buddy failed. It runs as a background
+    # asyncio task started/stopped by the MCP server's lifespan hooks (T10).
+    # Top-level `task_orphan_sweeper:` block so the documented env-var name
+    # MAHAVISHNU_TASK_ORPHAN_SWEEPER__<FIELD> binds.
+    task_orphan_sweeper: TaskOrphanSweeperSettings = Field(
+        default_factory=TaskOrphanSweeperSettings,
+        description="Task-orphan sweeper configuration (T9).",
     )
 
     # OpenTelemetry storage

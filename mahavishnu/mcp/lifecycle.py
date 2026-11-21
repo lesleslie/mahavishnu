@@ -15,6 +15,8 @@ from .tools.profiles import PROFILE_REGISTRATIONS, get_active_profile
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from mahavishnu.core.config import TaskOrphanSweeperSettings
+
 logger = get_logger(__name__)
 
 
@@ -41,6 +43,26 @@ def get_session_buddy_client() -> Any:
     )
 
     return get_session_buddy_task_client()
+
+
+def _load_sweeper_settings() -> TaskOrphanSweeperSettings:
+    """Read the task-orphan sweeper's block from the layered settings.
+
+    The block lives at the top level of ``settings/mahavishnu.yaml`` and
+    names the stream, the consumer group, the read window and the batch
+    size. It used to be dead config: the sweeper was constructed from
+    its constructor defaults, and those defaults happened to match the
+    YAML exactly, so the block looked honoured while changing any of it
+    changed nothing at runtime.
+
+    ``load_config`` is the canonical loader (defaults -> YAML ->
+    local.yaml -> env vars), so the block now honours the same
+    precedence as every other setting, and the env-var override
+    ``MAHAVISHNU_TASK_ORPHAN_SWEEPER__<FIELD>`` binds.
+    """
+    from mahavishnu.core.bootstrap import load_config
+
+    return load_config().task_orphan_sweeper
 
 
 async def start_change_point_tick_loop(server: Any) -> None:
@@ -134,7 +156,13 @@ def build_post_start_lifespan(server: Any) -> Any:
         sweeper_task: asyncio.Task | None = None
         try:
             # req: REQ-TASKLINK-009
+            sweeper_config = _load_sweeper_settings()
             sweeper = TaskOrphanSweeper(
+                stream=sweeper_config.stream,
+                consumer_group=sweeper_config.consumer_group,
+                enabled=sweeper_config.enabled,
+                block_ms=sweeper_config.block_ms,
+                count=sweeper_config.count,
                 session_buddy_client=get_session_buddy_client(),
             )
             await sweeper.init()
@@ -143,7 +171,9 @@ def build_post_start_lifespan(server: Any) -> Any:
             )
             server._task_orphan_sweeper = sweeper
             server._task_orphan_sweeper_task = sweeper_task
-            logger.info("task_orphan_sweeper started (stream=bodai:events)")
+            logger.info(
+                "task_orphan_sweeper started (stream=%s)", sweeper_config.stream
+            )
         except Exception as exc:  # background task init — keep server alive on any failure  # MCP tool error handler — broad catch is the documented contract  # MCP tool error handler — broad catch is the documented contract  # noqa: BLE001, RUF100
             logger.error(f"Failed to start task_orphan_sweeper: {exc}")
             # Don't crash — /health reports task_orphan_sweeper

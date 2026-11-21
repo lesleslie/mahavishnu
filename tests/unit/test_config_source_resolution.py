@@ -382,6 +382,34 @@ def test_app_config_loader_lets_env_vars_beat_the_yaml(
     assert load_config().workers.enabled is False
 
 
+def test_task_orphan_sweeper_block_is_read_from_yaml() -> None:
+    """The ``task_orphan_sweeper`` block must actually be READ.
+
+    It used to be dead config: the block named the stream, the consumer
+    group, the read window and the batch size, but no code path read
+    it — the sweeper's constructor defaults happened to match the YAML
+    exactly, so the block looked honoured while editing any of it
+    changed nothing at runtime.
+    """
+    from pathlib import Path
+
+    from mahavishnu.core.bootstrap import load_config
+
+    repo_root = Path(__file__).resolve().parents[2]
+    committed = yaml.safe_load((repo_root / "settings" / "mahavishnu.yaml").read_text())
+    block = committed["task_orphan_sweeper"]
+    # The YAML must actually carry the block, or the assertions below
+    # would be vacuous.
+    assert block["stream"] == "bodai:events"
+
+    configured = load_config().task_orphan_sweeper
+    assert configured.enabled is block["enabled"]
+    assert configured.stream == block["stream"]
+    assert configured.consumer_group == block["consumer_group"]
+    assert configured.block_ms == block["block_ms"]
+    assert configured.count == block["count"]
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

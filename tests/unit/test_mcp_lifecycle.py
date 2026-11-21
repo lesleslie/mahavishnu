@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from mahavishnu.core.config import TaskOrphanSweeperSettings
 from mahavishnu.mcp.lifecycle import (
     build_post_start_lifespan,
     register_worktree_tools,
@@ -108,6 +109,21 @@ async def test_lifespan_spawns_task_orphan_sweeper(
         "mahavishnu.mcp.lifecycle.TaskOrphanSweeper",
         fake_sweeper_factory,
     )
+    # Hermetic settings: the sweeper's block is read from the layered
+    # config, and the machine's own settings/local.yaml must not leak
+    # into the assertion.
+    monkeypatch.setattr(
+        "mahavishnu.mcp.lifecycle._load_sweeper_settings",
+        Mock(
+            return_value=TaskOrphanSweeperSettings(
+                enabled=True,
+                stream="configured:stream",
+                consumer_group="configured-group",
+                block_ms=1234,
+                count=7,
+            )
+        ),
+    )
 
     lifespan = build_post_start_lifespan(server)
     # Drive the async context manager manually so we can also exercise
@@ -140,8 +156,25 @@ async def test_lifespan_spawns_task_orphan_sweeper(
         SessionBuddyTaskClient,
     )
 
-    assert set(created_kwargs) == {"session_buddy_client"}
+    assert set(created_kwargs) == {
+        "session_buddy_client",
+        "stream",
+        "consumer_group",
+        "enabled",
+        "block_ms",
+        "count",
+    }
     assert isinstance(created_kwargs["session_buddy_client"], SessionBuddyTaskClient)
+    # The sweeper's block in settings/mahavishnu.yaml used to be dead
+    # config: the lifespan built the sweeper from constructor defaults
+    # only, and the defaults happened to match the YAML — so the block
+    # looked honoured while changing any of it did nothing. The
+    # configured values must reach the constructor.
+    assert created_kwargs["stream"] == "configured:stream"
+    assert created_kwargs["consumer_group"] == "configured-group"
+    assert created_kwargs["enabled"] is True
+    assert created_kwargs["block_ms"] == 1234
+    assert created_kwargs["count"] == 7
     # init() awaited once before the loop started; run_forever() is
     # the body of the scheduled background task (we can't directly
     # observe the call from here, but the task attribute below proves
@@ -247,8 +280,7 @@ async def test_stop_server_handles_client_stop_failure() -> None:
         await stop_server(server)
 
     assert any(
-        "Error stopping embedded MCP client" in entry.get("event", "")
-        for entry in logs
+        "Error stopping embedded MCP client" in entry.get("event", "") for entry in logs
     )
 
 

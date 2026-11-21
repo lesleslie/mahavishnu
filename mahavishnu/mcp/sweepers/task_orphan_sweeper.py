@@ -534,6 +534,17 @@ class TaskOrphanSweeper:
         """Main loop. The natural per-iteration sleep happens inside
         :meth:`_run_once` (block_ms on the read, or backoff_seconds after
         a transport failure); no asyncio.sleep needed here.
+
+        A sweeper constructed with ``enabled=False`` returns
+        immediately. ``init()`` skips opening the Redis handle when the
+        sweeper is disabled, so without this guard the loop kept
+        calling ``_run_once``, every read raised "client not
+        initialised", and the sweeper spun on errors forever. The
+        ``enabled`` key was dead config until 2026-11-21, so the guard
+        was never exercised.
         """
+        if not self.enabled:
+            logger.info("task_orphan_sweeper disabled by configuration")
+            return
         while True:
             await self._run_once()
