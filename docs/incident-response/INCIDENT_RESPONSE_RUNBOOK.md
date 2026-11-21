@@ -9,11 +9,11 @@ ______________________________________________________________________
 ## Table of Contents
 
 1. [Incident Classification](#incident-classification)
-2. [Escalation Paths](#escalation-paths)
-3. [Common Incident Scenarios](#common-incident-scenarios)
-4. [Diagnostic Commands](#diagnostic-commands)
-5. [Recovery Procedures](#recovery-procedures)
-6. [Post-Incident Process](#post-incident-process)
+1. [Escalation Paths](#escalation-paths)
+1. [Common Incident Scenarios](#common-incident-scenarios)
+1. [Diagnostic Commands](#diagnostic-commands)
+1. [Recovery Procedures](#recovery-procedures)
+1. [Post-Incident Process](#post-incident-process)
 
 ______________________________________________________________________
 
@@ -96,9 +96,9 @@ ______________________________________________________________________
 **Escalation Chain**
 
 1. **On-Call Engineer** → Slack: @oncall-mahavishnu
-2. **Tech Lead** → Slack: @tech-lead, Phone: +1-XXX-XXXX
-3. **Engineering Manager** → Slack: @eng-manager, Phone: +1-XXX-XXXX
-4. **CTO** → Slack: @cto (P1 or security only)
+1. **Tech Lead** → Slack: @tech-lead, Phone: +1-XXX-XXXX
+1. **Engineering Manager** → Slack: @eng-manager, Phone: +1-XXX-XXXX
+1. **CTO** → Slack: @cto (P1 or security only)
 
 ### External Communication
 
@@ -145,9 +145,9 @@ tail -f /var/log/mahavishnu/mcp.log | grep ERROR
 **Root Causes**
 
 1. Memory leak in worker
-2. Infinite loop in adapter
-3. Large request processing
-4. Worker pool not scaling
+1. Infinite loop in adapter
+1. Large request processing
+1. Worker pool not scaling
 
 **Recovery**
 
@@ -205,9 +205,9 @@ grep "slow query" /var/log/session-buddy/app.log | tail -20
 **Root Causes**
 
 1. Too many concurrent requests
-2. Queries not releasing connections
-3. Connection leaks
-4. Database lock contention
+1. Queries not releasing connections
+1. Connection leaks
+1. Database lock contention
 
 **Recovery**
 
@@ -272,9 +272,9 @@ journalctl -u mahavishnu-mcp -n 100
 **Root Causes**
 
 1. MCP server crashed
-2. Port already in use
-3. Configuration error
-4. Missing dependencies
+1. Port already in use
+1. Configuration error
+1. Missing dependencies
 
 **Recovery**
 
@@ -334,9 +334,9 @@ grep "rate limit exceeded" /var/log/mahavishnu/access.log | tail -20
 **Root Causes**
 
 1. Rate limits too strict
-2. Burst size too small
-3. Shared IP address (NAT, proxy)
-4. Bot attack consuming quota
+1. Burst size too small
+1. Shared IP address (NAT, proxy)
+1. Bot attack consuming quota
 
 **Recovery**
 
@@ -401,9 +401,9 @@ cat settings/backup.yaml
 **Root Causes**
 
 1. Disk full
-2. Database locked during backup
-3. Backup script permission error
-4. Network issue (remote backup)
+1. Database locked during backup
+1. Backup script permission error
+1. Network issue (remote backup)
 
 **Recovery**
 
@@ -469,9 +469,9 @@ python monitoring/security_audit.py
 **Root Causes**
 
 1. Brute force attack
-2. DDoS attack
-3. SQL injection attempt
-4. Unauthorized access attempt
+1. DDoS attack
+1. SQL injection attempt
+1. Unauthorized access attempt
 
 **Recovery**
 
@@ -711,10 +711,10 @@ ______________________________________________________________________
 **Agenda**:
 
 1. Timeline of events
-2. Root cause analysis
-3. What went well
-4. What could be improved
-5. Action items
+1. Root cause analysis
+1. What went well
+1. What could be improved
+1. Action items
 
 ### 2. Post-Mortem Document
 

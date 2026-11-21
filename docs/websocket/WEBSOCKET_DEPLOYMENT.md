@@ -25,19 +25,19 @@ ______________________________________________________________________
 
 ## Table of Contents
 
-01. [Prerequisites](#prerequisites)
-02. [Environment Setup](#environment-setup)
-03. [Certificate Management](#certificate-management)
-04. [Service Configuration](#service-configuration)
-05. [Security Hardening](#security-hardening)
-06. [Deployment Steps](#deployment-steps)
-07. [Docker Deployment](#docker-deployment)
-08. [Kubernetes Deployment](#kubernetes-deployment)
-09. [Performance Tuning](#performance-tuning)
-10. [High Availability](#high-availability)
-11. [Monitoring & Alerting](#monitoring--alerting)
-12. [Backup & Recovery](#backup--recovery)
-13. [Troubleshooting](#troubleshooting)
+1. [Prerequisites](#prerequisites)
+1. [Environment Setup](#environment-setup)
+1. [Certificate Management](#certificate-management)
+1. [Service Configuration](#service-configuration)
+1. [Security Hardening](#security-hardening)
+1. [Deployment Steps](#deployment-steps)
+1. [Docker Deployment](#docker-deployment)
+1. [Kubernetes Deployment](#kubernetes-deployment)
+1. [Performance Tuning](#performance-tuning)
+1. [High Availability](#high-availability)
+1. [Monitoring & Alerting](#monitoring--alerting)
+1. [Backup & Recovery](#backup--recovery)
+1. [Troubleshooting](#troubleshooting)
 
 ______________________________________________________________________
 
@@ -1726,20 +1726,20 @@ websocket_errors = Counter(
    - Disconnection rate
    - Average connection duration
 
-2. **Message Throughput**
+1. **Message Throughput**
 
    - Messages sent per second
    - Messages received per second
    - Message size distribution
    - Broadcast queue size
 
-3. **Performance Metrics**
+1. **Performance Metrics**
 
    - Message processing latency (P50, P95, P99)
    - Broadcast duration
    - Room join/leave latency
 
-4. **Error Tracking**
+1. **Error Tracking**
 
    - Connection errors by type
    - Authentication failures
@@ -1846,14 +1846,14 @@ cp /opt/bodhisattnu/data/akosha/hotstore.duckdb /backup/akosha/
    tar -xzf /backup/websocket/20260210.tar.gz -C /
    ```
 
-2. **Restore data:**
+1. **Restore data:**
 
    ```bash
    rsync -av /backup/sessions/ /opt/bodhisattnu/data/sessions/
    cp /backup/akosha/hotstore.duckdb /opt/bodhisattnu/data/akosha/
    ```
 
-3. **Restart services:**
+1. **Restart services:**
 
    ```bash
    for service in mahavishnu session-buddy crackerjack akosha excalidraw fastblocks; do

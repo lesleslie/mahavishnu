@@ -2,6 +2,7 @@
 status: partial
 role: implementation
 kind: plan
+origin_plan: docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md
 date: 2026-09-10
 last_reviewed: 2026-10-18
 superseded_by:
@@ -93,7 +94,7 @@ ______________________________________________________________________
 - **Lens:** ops-UX (Round-5 original; parked before Round-6)
 - **Location:** `docs/feature-tracking/2026-09-10-observability-changepoint.md` (Round-5 section, ~lines 152–160)
 - **Defect:** The Round-5 entry mentions two_stage opt-in but doesn't link the migration narrative to the spec's Phase 8 promotion timing.
-- **Proposed fix:** Cross-link to `docs/plans/2026-09-10-bodai-math-initiatives-tier1.md §6 Phase 8` and the runbook migration section.
+- **Proposed fix:** Cross-link to `docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md §6 Phase 8` and the runbook migration section.
 - **Acceptance:** Feature-tracking entry mentions Phase 8 promotion as the migration window.
 
 ______________________________________________________________________

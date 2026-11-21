@@ -7,10 +7,10 @@ This guide explains how to evaluate whether specific articles, blogs, or books w
 Not all content is equally valuable. Before ingesting large amounts of content, you should evaluate:
 
 1. **Relevance**: Does it match your domain/use-cases?
-2. **Uniqueness**: Does it duplicate existing knowledge?
-3. **Quality**: Is it accurate, comprehensive, well-written?
-4. **Freshness**: Is it current or outdated?
-5. **Retrievability**: Can it be found when needed?
+1. **Uniqueness**: Does it duplicate existing knowledge?
+1. **Quality**: Is it accurate, comprehensive, well-written?
+1. **Freshness**: Is it current or outdated?
+1. **Retrievability**: Can it be found when needed?
 
 ## Quick Evaluation Methods
 
@@ -388,23 +388,23 @@ Based on Shannon entropy of category distribution (higher = more diverse)
 ### DO ✅
 
 1. **Evaluate before ingesting**: Use quality checklists to assess value
-2. **Start small**: Ingest 10-20 items, evaluate, then scale
-3. **Focus on gaps**: Target underrepresented domains
-4. **Check freshness**: Prioritize recent content (\<1 year)
-5. **Verify quality**: Prefer authoritative sources
-6. **Test retrieval**: Validate search actually works
-7. **Monitor redundancy**: Regular deduplication checks
-8. **Iterate**: Use evaluation metrics to guide future ingestion
+1. **Start small**: Ingest 10-20 items, evaluate, then scale
+1. **Focus on gaps**: Target underrepresented domains
+1. **Check freshness**: Prioritize recent content (\<1 year)
+1. **Verify quality**: Prefer authoritative sources
+1. **Test retrieval**: Validate search actually works
+1. **Monitor redundancy**: Regular deduplication checks
+1. **Iterate**: Use evaluation metrics to guide future ingestion
 
 ### DON'T ❌
 
 1. **Bulk ingest without evaluation**: Large batches may fill KB with low-quality content
-2. **Ignore relevance**: Content outside your domain wastes resources
-3. **Skip freshness checks**: Old content may be outdated or misleading
-4. **Neglect uniqueness**: Duplicates waste storage and confuse search
-5. **Assume quality**: Without testing, you can't measure effectiveness
-6. **Forget retrievability**: If it can't be found, it's useless
-7. **Static strategy**: Regular evaluation and adjustment is essential
+1. **Ignore relevance**: Content outside your domain wastes resources
+1. **Skip freshness checks**: Old content may be outdated or misleading
+1. **Neglect uniqueness**: Duplicates waste storage and confuse search
+1. **Assume quality**: Without testing, you can't measure effectiveness
+1. **Forget retrievability**: If it can't be found, it's useless
+1. **Static strategy**: Regular evaluation and adjustment is essential
 
 ## Tools Reference
 

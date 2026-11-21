@@ -188,13 +188,13 @@ async def my_function():
 **Panels**:
 
 1. Request Rate (5m avg)
-2. Request Latency (p50, p95, p99)
-3. Tool Success Rate %
-4. Active Workers by Pool Type
-5. Agent Task Rate
-6. Memory Usage
-7. CPU Usage
-8. Disk Usage
+1. Request Latency (p50, p95, p99)
+1. Tool Success Rate %
+1. Active Workers by Pool Type
+1. Agent Task Rate
+1. Memory Usage
+1. CPU Usage
+1. Disk Usage
 
 **Import**:
 
@@ -472,12 +472,12 @@ async def metrics():
    - Username: admin
    - Password: admin (change on first login)
 
-2. Import dashboard:
+1. Import dashboard:
 
    - Dashboards → Import
    - Upload `monitoring/dashboards/mcp_ecosystem.json`
 
-3. View traces (optional):
+1. View traces (optional):
 
    - Access Jaeger at http://localhost:1668
    - Search by service name, trace ID, or tags
@@ -592,10 +592,10 @@ groups:
 ## Next Steps
 
 1. ✅ Core monitoring infrastructure implemented
-2. ⏳ Log aggregation (Loki/ELK) - planned
-3. ⏳ AlertManager integration - planned
-4. ⏳ Synthetic monitoring - planned
-5. ⏳ Performance baselines - planned
+1. ⏳ Log aggregation (Loki/ELK) - planned
+1. ⏳ AlertManager integration - planned
+1. ⏳ Synthetic monitoring - planned
+1. ⏳ Performance baselines - planned
 
 ## Files Created
 

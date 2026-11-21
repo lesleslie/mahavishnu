@@ -323,10 +323,10 @@ results = await ingester.search_traces("database errors", threshold=0.6)
 ### Optimization Tips
 
 1. **Use In-Memory for Testing**: `hot_store_path=":memory:"`
-2. **Use Persistent Storage**: `hot_store_path="/data/traces.db"`
-3. **Increase Cache Size**: For repeated content, set `cache_size=5000`
-4. **Batch Ingestion**: Use `ingest_batch()` for bulk loads
-5. **Tune Threshold**: Lower threshold (0.6) for more results, higher (0.9) for precision
+1. **Use Persistent Storage**: `hot_store_path="/data/traces.db"`
+1. **Increase Cache Size**: For repeated content, set `cache_size=5000`
+1. **Batch Ingestion**: Use `ingest_batch()` for bulk loads
+1. **Tune Threshold**: Lower threshold (0.6) for more results, higher (0.9) for precision
 
 ## Error Handling
 

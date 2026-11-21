@@ -1244,9 +1244,9 @@ ______________________________________________________________________
 After collecting **100+ team executions**, implement:
 
 1. **Extend StatisticalRouter** for team configs (not separate TeamLearningEngine)
-2. **Multi-dimensional quality scoring** from Crackerjack
-3. **A/B testing** for team configurations
-4. **Cold-start fallback** strategy
+1. **Multi-dimensional quality scoring** from Crackerjack
+1. **A/B testing** for team configurations
+1. **Cold-start fallback** strategy
 
 ### Why Defer
 
@@ -1286,8 +1286,8 @@ ______________________________________________________________________
 Create/update:
 
 1. `docs/.archive/GOAL_DRIVEN_TEAMS.md` - User guide
-2. `docs/mcp/MCP_TOOLS_SPECIFICATION.md` - Add team_from_goal docs
-3. `README.md` - Add CLI examples
+1. `docs/mcp/MCP_TOOLS_SPECIFICATION.md` - Add team_from_goal docs
+1. `README.md` - Add CLI examples
 
 ______________________________________________________________________
 

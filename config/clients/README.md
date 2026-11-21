@@ -113,26 +113,26 @@ Once you've sent telemetry, view it in the UIs:
 ### Viewing Traces in Jaeger
 
 1. Open http://localhost:16686
-2. Click "Search" (or select your service from the dropdown)
-3. Click "Find Traces"
-4. Click on a trace to see details
-5. Expand spans to see nested operations
+1. Click "Search" (or select your service from the dropdown)
+1. Click "Find Traces"
+1. Click on a trace to see details
+1. Expand spans to see nested operations
 
 ### Viewing Metrics in Prometheus
 
 1. Open http://localhost:9090
-2. Enter a query like: `operations_total`
-3. Click "Execute"
-4. View the graph or table results
+1. Enter a query like: `operations_total`
+1. Click "Execute"
+1. View the graph or table results
 
 ### Viewing Metrics in Grafana
 
 1. Open http://localhost:3000
-2. Login with `admin` / `admin`
-3. Click "Explore" (on the left)
-4. Select "Prometheus" datasource
-5. Enter query: `operations_total`
-6. Click "Run query"
+1. Login with `admin` / `admin`
+1. Click "Explore" (on the left)
+1. Select "Prometheus" datasource
+1. Enter query: `operations_total`
+1. Click "Run query"
 
 ## Environment Variables
 

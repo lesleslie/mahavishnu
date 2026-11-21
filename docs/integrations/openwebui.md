@@ -110,10 +110,10 @@ alias mahavishnu-bridge='uvx mcpo --config ~/.config/mcpo/mahavishnu.json --host
 ## Registering in OpenWebUI
 
 1. Open OpenWebUI (launch from Applications or `open /Applications/Open\ WebUI.app`)
-2. Navigate to **Admin Panel → Settings → Tools**
-3. Click **Add Tool Server**
-4. Enter URL: `http://127.0.0.1:8001`
-5. Click **Save** — OpenWebUI will discover all registered Mahavishnu tools
+1. Navigate to **Admin Panel → Settings → Tools**
+1. Click **Add Tool Server**
+1. Enter URL: `http://127.0.0.1:8001`
+1. Click **Save** — OpenWebUI will discover all registered Mahavishnu tools
 
 ### Recommended First Tools to Verify
 
@@ -153,7 +153,7 @@ OpenWebUI's Arena mode enables blind ELO comparisons between models. Use this to
 1. In OpenWebUI **Admin → Settings → Connections**:
    - Add MiniMax endpoint: `https://api.minimax.io/v1` with your `MINIMAX_API_KEY`
    - Add llama-server endpoint: `http://localhost:8081/v1` (or your llama-server host)
-2. Enable models: `MiniMax-M3`, `qwen3-8b-q4_k_m`
+1. Enable models: `MiniMax-M3`, `qwen3-8b-q4_k_m`
 
 ### Benchmark Prompt Set
 

@@ -5,10 +5,10 @@
 Mahavishnu now supports multiple authentication methods to work seamlessly with Claude Code subscriptions, Codex subscriptions, and Qwen (free service). This implementation provides:
 
 1. **Claude Code subscription token authentication** - For users with Claude Code subscriptions
-2. **Codex subscription token authentication** - For users with Codex subscriptions (legacy support)
-3. **Qwen free service support** - Recognizing Qwen as a free service that doesn't require authentication
-4. **Backward compatibility** - Maintains existing JWT authentication
-5. **Flexible configuration** - Support for multiple auth methods simultaneously
+1. **Codex subscription token authentication** - For users with Codex subscriptions (legacy support)
+1. **Qwen free service support** - Recognizing Qwen as a free service that doesn't require authentication
+1. **Backward compatibility** - Maintains existing JWT authentication
+1. **Flexible configuration** - Support for multiple auth methods simultaneously
 
 ## Configuration
 
@@ -93,8 +93,8 @@ curl -H "Authorization: Bearer $CLAUDE_CODE_TOKEN" \
 The authentication system follows this priority order:
 
 1. **Subscription Token** - If the token contains subscription-specific claims (`subscription_type`), it's processed as a subscription token
-2. **JWT Token** - Standard JWT authentication for backward compatibility
-3. **Qwen Free** - Qwen is recognized as a free service requiring no authentication
+1. **JWT Token** - Standard JWT authentication for backward compatibility
+1. **Qwen Free** - Qwen is recognized as a free service requiring no authentication
 
 ## API Usage
 
@@ -123,10 +123,10 @@ Authorization: Bearer <jwt-token>
 The authentication system is built around the `MultiAuthHandler` class which:
 
 1. **Supports multiple authentication methods** simultaneously
-2. **Determines the correct method** by inspecting token claims
-3. **Validates tokens** using the appropriate validator
-4. **Returns consistent results** regardless of the authentication method used
-5. **Distinguishes between Claude Code and Codex** subscriptions based on the `subscription_type` claim
+1. **Determines the correct method** by inspecting token claims
+1. **Validates tokens** using the appropriate validator
+1. **Returns consistent results** regardless of the authentication method used
+1. **Distinguishes between Claude Code and Codex** subscriptions based on the `subscription_type` claim
 
 ### Classes
 
@@ -138,9 +138,9 @@ The authentication system is built around the `MultiAuthHandler` class which:
 ## Security Considerations
 
 1. **Secret Length**: Both JWT and subscription auth secrets must be at least 32 characters
-2. **Token Expiration**: Subscription tokens have configurable expiration times
-3. **Claim Verification**: Authentication method is determined by inspecting token claims before validation
-4. **Environment Variables**: Secrets should be stored in environment variables, not hardcoded
+1. **Token Expiration**: Subscription tokens have configurable expiration times
+1. **Claim Verification**: Authentication method is determined by inspecting token claims before validation
+1. **Environment Variables**: Secrets should be stored in environment variables, not hardcoded
 
 ## Backward Compatibility
 
@@ -151,8 +151,8 @@ This implementation maintains full backward compatibility with existing JWT auth
 ### Common Issues
 
 1. **Token Expiration**: If you receive "Token has expired" errors, regenerate your token
-2. **Invalid Signature**: Ensure your secret keys match between token generation and validation
-3. **Wrong Authentication Method**: Check that you're using the correct token type for your use case
+1. **Invalid Signature**: Ensure your secret keys match between token generation and validation
+1. **Wrong Authentication Method**: Check that you're using the correct token type for your use case
 
 ### Debugging
 

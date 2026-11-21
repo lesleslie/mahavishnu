@@ -166,10 +166,10 @@ pytest tests/production/ -v --timeout=600
 When adding new tests:
 
 1. Use appropriate test markers (`@pytest.mark.production`)
-2. Follow async/await patterns
-3. Clean up resources in fixtures
-4. Add docstrings explaining test scenarios
-5. Update this README with new test categories
+1. Follow async/await patterns
+1. Clean up resources in fixtures
+1. Add docstrings explaining test scenarios
+1. Update this README with new test categories
 
 ## References
 

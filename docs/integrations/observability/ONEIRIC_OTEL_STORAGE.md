@@ -614,13 +614,13 @@ ANALYZE traces;
 ## Best Practices
 
 1. **Connection Pooling**: Use connection pools to avoid connection overhead
-2. **Batch Writes**: Use batch operations for high-throughput scenarios
-3. **Index Maintenance**: Rebuild IVFFlat indexes periodically for optimal performance
-4. **Monitoring**: Track database metrics (connections, query times, storage)
-5. **Security**: Use environment variables for sensitive credentials
-6. **Backups**: Implement regular PostgreSQL backups
-7. **Schema Validation**: Use Pydantic models to validate trace data
-8. **Error Handling**: Implement proper error handling and retry logic
+1. **Batch Writes**: Use batch operations for high-throughput scenarios
+1. **Index Maintenance**: Rebuild IVFFlat indexes periodically for optimal performance
+1. **Monitoring**: Track database metrics (connections, query times, storage)
+1. **Security**: Use environment variables for sensitive credentials
+1. **Backups**: Implement regular PostgreSQL backups
+1. **Schema Validation**: Use Pydantic models to validate trace data
+1. **Error Handling**: Implement proper error handling and retry logic
 
 ## References
 
@@ -635,10 +635,10 @@ ANALYZE traces;
 To contribute improvements to OTelStorageAdapter:
 
 1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
+1. Create a feature branch
+1. Add tests for new functionality
+1. Ensure all tests pass
+1. Submit a pull request
 
 ## License
 

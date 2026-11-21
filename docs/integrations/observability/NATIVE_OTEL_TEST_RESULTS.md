@@ -171,11 +171,11 @@ ______________________________________________________________________
 ### **✅ Fully Functional**
 
 1. **DuckDB HotStore** - Zero-setup storage
-2. **Trace Ingestion** - From JSON files or direct data
-3. **Trace Storage** - Automatic schema creation
-4. **Trace Retrieval** - By ID with metadata
-5. **System Filtering** - By Claude/Qwen/custom
-6. **Semantic Search API** - Framework ready
+1. **Trace Ingestion** - From JSON files or direct data
+1. **Trace Storage** - Automatic schema creation
+1. **Trace Retrieval** - By ID with metadata
+1. **System Filtering** - By Claude/Qwen/custom
+1. **Semantic Search API** - Framework ready
 
 ### **⚠️ Requires sentence-transformers**
 
@@ -265,19 +265,19 @@ ______________________________________________________________________
    # Modify OtelIngester to use HF API instead
    ```
 
-2. **Use file-persistent storage** (instead of in-memory)
+1. **Use file-persistent storage** (instead of in-memory)
 
    ```python
    hot_store = HotStore(database_path="otel_traces.db")  # Persists!
    ```
 
-3. **Ingest real Claude/Qwen logs**
+1. **Ingest real Claude/Qwen logs**
 
    - Export logs from your sessions
    - Convert to OTel JSON format
    - Use `ingest_otel_traces` MCP tool
 
-4. **Set up monitoring**
+1. **Set up monitoring**
 
    - Create Grafana dashboard
    - Alert on error spikes
@@ -301,9 +301,9 @@ ______________________________________________________________________
 **What You Can Do Now:**
 
 1. ✅ Store Claude/Qwen session traces
-2. ✅ Search traces by content
-3. ✅ Filter by system (Claude vs Qwen)
-4. ✅ Retrieve traces by ID
-5. ✅ Get storage statistics
+1. ✅ Search traces by content
+1. ✅ Filter by system (Claude vs Qwen)
+1. ✅ Retrieve traces by ID
+1. ✅ Get storage statistics
 
 **Zero infrastructure. Zero setup. Pure Python.** 🎉

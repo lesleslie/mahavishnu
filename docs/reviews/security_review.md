@@ -34,28 +34,28 @@ ______________________________________________________________________
    - Comprehensive test coverage in `/tests/unit/test_auth.py`
    - Environment variable enforcement for secrets (no hardcoded secrets)
 
-2. **Path Traversal Prevention**
+1. **Path Traversal Prevention**
 
    - `_validate_path()` function in `core/app.py` properly checks for `..` patterns
    - `Path.resolve()` used to canonicalize paths
    - Relative-to-cwd validation prevents escaping allowed directories
    - Validation applied to all repository paths
 
-3. **Input Validation with Pydantic**
+1. **Input Validation with Pydantic**
 
    - All configuration uses `MahavishnuSettings(BaseSettings)` with field validators
    - Type coercion and validation enforced at boundaries
    - Secret validation fails fast if auth enabled but secret missing
    - MCP tool parameters use Pydantic models (documented in MCP_TOOLS_SPECIFICATION.md)
 
-4. **Secrets Management Discipline**
+1. **Secrets Management Discipline**
 
    - SECURITY_CHECKLIST.md emphasizes environment variables only
    - `settings/local.yaml` properly gitignored
    - Configuration examples show `${MAHAVISHNU_AUTH_SECRET}` pattern
    - No secrets in committed configuration files
 
-5. **Security Tooling Integrated**
+1. **Security Tooling Integrated**
 
    - `bandit>=1.9.3` for security linting
    - `safety>=2.3.4` for dependency vulnerability scanning
@@ -72,7 +72,7 @@ ______________________________________________________________________
    - **Impact:** Code indexing, RAG queries, and workflow logs sent in plaintext
    - **Risk:** HIGH - sensitive code exposed on network
 
-2. **No OpenSearch Authentication/Authorization**
+1. **No OpenSearch Authentication/Authorization**
 
    - OpenSearch prototype shows no security configuration
    - No mention of OpenSearch security plugins
@@ -80,7 +80,7 @@ ______________________________________________________________________
    - **Impact:** Any client can read/write all indices
    - **Risk:** CRITICAL - unauthorized code access, data leakage
 
-3. **No Cross-Project Authentication Strategy**
+1. **No Cross-Project Authentication Strategy**
 
    - Session Buddy ↔ Mahavishnu communication undefined
    - No mutual authentication between MCP servers
@@ -88,7 +88,7 @@ ______________________________________________________________________
    - **Impact:** Compromised Session Buddy could exploit Mahavishnu
    - **Risk:** HIGH - lateral movement attack surface
 
-4. **No Data-at-Rest Encryption Plan**
+1. **No Data-at-Rest Encryption Plan**
 
    - OpenSearch encryption at rest not addressed
    - No disk encryption for vector indices
@@ -106,14 +106,14 @@ ______________________________________________________________________
    - **Impact:** All workflows have access to all repos
    - **Recommendation:** Define RBAC model in Phase 0 or Phase 1
 
-2. **SQL Injection Protection Unclear**
+1. **SQL Injection Protection Unclear**
 
    - LlamaIndex uses OpenSearch, not SQL (lower risk)
    - But plan shows messaging stored in OpenSearch with raw queries
    - No mention of parameterized queries or sanitization
    - **Recommendation:** Enforce parameterized OpenSearch queries
 
-3. **No Audit Logging Defined**
+1. **No Audit Logging Defined**
 
    - SECURITY_CHECKLIST.md mentions audit logs but not implemented
    - No logging of authentication failures, access denials
@@ -121,7 +121,7 @@ ______________________________________________________________________
    - **Impact:** Cannot detect or investigate security incidents
    - **Recommendation:** Add to Phase 4 (Observability)
 
-4. **OpenSearch Security Hardening Missing**
+1. **OpenSearch Security Hardening Missing**
 
    - No network segmentation (localhost exposure)
    - No rate limiting or DoS protection
@@ -129,7 +129,7 @@ ______________________________________________________________________
    - No security baseline or hardening guide
    - **Recommendation:** Add OpenSearch security sprint in Phase 0
 
-5. **Supply Chain Security Incomplete**
+1. **Supply Chain Security Incomplete**
 
    - `safety` and `bandit` in dev dependencies but not automated
    - No pre-commit hooks for security scanning
@@ -137,7 +137,7 @@ ______________________________________________________________________
    - No vulnerability update process defined
    - **Recommendation:** Add to Phase 4 or CI/CD
 
-6. **Error Messages May Leak Information**
+1. **Error Messages May Leak Information**
 
    - Plan shows detailed error messages in workflows
    - No mention of sanitizing stack traces in API responses
@@ -167,7 +167,7 @@ ______________________________________________________________________
    - Add certificate validation to Phase 0 prototype
    - **Time Estimate:** 8-12 hours
 
-2. **OpenSearch Authentication Plugin (Priority: CRITICAL)**
+1. **OpenSearch Authentication Plugin (Priority: CRITICAL)**
 
    ```bash
    # Install OpenSearch Security plugin
@@ -192,7 +192,7 @@ ______________________________________________________________________
    - Store credentials in environment variables
    - **Time Estimate:** 12-16 hours
 
-3. **Cross-Project Mutual Authentication (Priority: HIGH)**
+1. **Cross-Project Mutual Authentication (Priority: HIGH)**
 
    ```python
    # mcp-common/messaging/auth.py
@@ -218,7 +218,7 @@ ______________________________________________________________________
    - Validate signatures in Session Buddy and Mahavishnu
    - **Time Estimate:** 6-8 hours
 
-4. **RBAC for Multi-Repository Access (Priority: HIGH)**
+1. **RBAC for Multi-Repository Access (Priority: HIGH)**
 
    ```python
    # mahavishnu/core/permissions.py
@@ -260,7 +260,7 @@ ______________________________________________________________________
    - Integrate with JWT auth (include role claims)
    - **Time Estimate:** 16-20 hours
 
-5. **Data-at-Rest Encryption for OpenSearch (Priority: MEDIUM)**
+1. **Data-at-Rest Encryption for OpenSearch (Priority: MEDIUM)**
 
    ```yaml
    # opensearch.yml
@@ -300,7 +300,7 @@ ______________________________________________________________________
    - Add to Phase 4 (Observability)
    - **Time Estimate:** 8-10 hours
 
-7. **OpenSearch Network Security (Priority: MEDIUM)**
+1. **OpenSearch Network Security (Priority: MEDIUM)**
 
    ```yaml
    # Production deployment
@@ -319,7 +319,7 @@ ______________________________________________________________________
    - Add nginx reverse proxy for TLS termination
    - **Time Estimate:** 4-6 hours
 
-8. **Error Message Sanitization (Priority: MEDIUM)**
+1. **Error Message Sanitization (Priority: MEDIUM)**
 
    ```python
    # mahavishnu/core/errors.py (enhanced)
@@ -445,10 +445,10 @@ ______________________________________________________________________
 **Recommendations:**
 
 1. Add pre-commit hooks (run bandit/safety before push)
-2. Integrate security scanning into Crackerjack and the repo-local validation flow
-3. Generate SBOM with `cyclonedx-bom` for each release
-4. Define 7-day SLA for critical vulnerabilities
-5. Subscribe to security advisories for all dependencies
+1. Integrate security scanning into Crackerjack and the repo-local validation flow
+1. Generate SBOM with `cyclonedx-bom` for each release
+1. Define 7-day SLA for critical vulnerabilities
+1. Subscribe to security advisories for all dependencies
 
 **Estimated Time to Address:** 12-16 hours
 
@@ -483,13 +483,13 @@ ______________________________________________________________________
    - Log all cross-project MCP calls
    - Include tamper-evident hashing
 
-2. **Alerting** (Phase 4)
+1. **Alerting** (Phase 4)
 
    - Alert on >5 auth failures per minute (possible brute force)
    - Alert on workflow execution failures (possible DoS)
    - Alert on cross-project call failures (possible compromise)
 
-3. **Incident Response** (Phase 4)
+1. **Incident Response** (Phase 4)
 
    - Document incident response playbook
    - Define severity levels (P0-P3)
@@ -526,13 +526,13 @@ ______________________________________________________________________
    - Verify certificates in Python client
    - Test with `openssl s_client` to confirm
 
-2. **Encryption at Rest** (Phase 2 - MEDIUM)
+1. **Encryption at Rest** (Phase 2 - MEDIUM)
 
    - Enable OpenSearch encryption at rest
    - Use encrypted volumes for data directories
    - Document key management strategy
 
-3. **Data Retention** (Phase 4 - MEDIUM)
+1. **Data Retention** (Phase 4 - MEDIUM)
 
    - Define retention periods for different data types:
      - Workflow logs: 90 days
@@ -541,7 +541,7 @@ ______________________________________________________________________
      - Messages: 30 days
    - Implement automated deletion
 
-4. **Backups** (Phase 2 - HIGH)
+1. **Backups** (Phase 2 - HIGH)
 
    - Daily OpenSearch snapshots (encrypted)
    - Test restoration procedure monthly
@@ -584,7 +584,7 @@ ______________________________________________________________________
    query = Q("match", content=escape_opensearch_query(user_input))
    ```
 
-2. **LLM Prompt Injection** (Phase 2)
+1. **LLM Prompt Injection** (Phase 2)
 
    - Sanitize all code before sending to LLM
    - Remove sensitive strings (API keys, passwords)
@@ -634,13 +634,13 @@ ______________________________________________________________________
            return hmac.compare_digest(expected, signature)
    ```
 
-2. **Replay Attack Prevention** (Phase 1)
+1. **Replay Attack Prevention** (Phase 1)
 
    - Add timestamp and nonce to all messages
    - Reject messages older than 5 minutes
    - Track seen nonces (in-memory, TTL 5 minutes)
 
-3. **Rate Limiting** (Phase 2)
+1. **Rate Limiting** (Phase 2)
 
    - Max 100 cross-project calls per minute per project
    - Circuit breaker after 10 consecutive failures
@@ -851,14 +851,14 @@ ______________________________________________________________________
    - ✅ mcp-common cross-project authentication defined
    - ✅ Security prototype validated in Phase 0
 
-2. **MUST FIX Before Production Deployment** (High Priority):
+1. **MUST FIX Before Production Deployment** (High Priority):
 
    - ✅ RBAC implemented for all MCP tools
    - ✅ Audit logging enabled for all security events
    - ✅ Encryption at rest enabled for OpenSearch
    - ✅ Network security configured (firewall rules)
 
-3. **SHOULD FIX During Implementation** (Best Practices):
+1. **SHOULD FIX During Implementation** (Best Practices):
 
    - ✅ Supply chain security automation (pre-commit hooks)
    - ✅ Error message sanitization
@@ -931,10 +931,10 @@ The Mahavishnu implementation plan demonstrates **strong security awareness** in
 **Next Steps:**
 
 1. Address all CRITICAL security gaps in Phase 0 (OpenSearch TLS/auth)
-2. Define cross-project authentication in mcp-common (Phase 0)
-3. Implement RBAC model during Phase 2 (Mahavishnu adapters)
-4. Add security sprint to timeline (2 weeks)
-5. Re-review security after Phase 0 completion
+1. Define cross-project authentication in mcp-common (Phase 0)
+1. Implement RBAC model during Phase 2 (Mahavishnu adapters)
+1. Add security sprint to timeline (2 weeks)
+1. Re-review security after Phase 0 completion
 
 ______________________________________________________________________
 

@@ -209,9 +209,9 @@ If `mahavishnu acp serve` hangs without producing output:
 
 1. Check that `MAHAVISHNU_ACP_BEARER_TOKEN` is set (or
    `MAHAVISHNU_ACP_BEARER_TOKEN_FILE`).
-2. Check the file mode on `MAHAVISHNU_ACP_BEARER_TOKEN_FILE` — must be
+1. Check the file mode on `MAHAVISHNU_ACP_BEARER_TOKEN_FILE` — must be
    `0600` (group/world readable fails).
-3. Try `MAHAVISHNU_ACP_BEARER_TOKEN=$(python -c 'import secrets;print(secrets.token_urlsafe(32))')`
+1. Try `MAHAVISHNU_ACP_BEARER_TOKEN=$(python -c 'import secrets;print(secrets.token_urlsafe(32))')`
    inline to rule out a stale env.
 
 ### Client reports "Parse error" / `-32700`
@@ -230,9 +230,9 @@ The client forgot to call `authenticate` before a non-`initialize`
 method. Check the client's startup sequence:
 
 1. `initialize`
-2. `authenticate` (with bearer)
-3. `session/new`
-4. `session/prompt` / `session/cancel` / etc.
+1. `authenticate` (with bearer)
+1. `session/new`
+1. `session/prompt` / `session/cancel` / etc.
 
 ### Bearer visible in process environment
 

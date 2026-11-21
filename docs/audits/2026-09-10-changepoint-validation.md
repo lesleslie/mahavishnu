@@ -185,20 +185,20 @@ pass (commit `0e4d2dce`). Key changes:
 
 1. **CR-1 (CRITICAL, math+arch+audit):** `route_task` was
    calling `execute_on_pool` twice. Now called exactly once.
-2. **CR-2 (CRITICAL, math+arch+audit):** `_record_arrival` was
+1. **CR-2 (CRITICAL, math+arch+audit):** `_record_arrival` was
    called twice per routing. Now called once.
-3. **S-1 (HIGH, observability):** Detector resets after fire so
+1. **S-1 (HIGH, observability):** Detector resets after fire so
    subsequent samples don't continuously re-fire.
-4. **S-4 (CRITICAL, arch):** `_apply_queueing_penalty` honors
+1. **S-4 (CRITICAL, arch):** `_apply_queueing_penalty` honors
    `caller_pool_allowlist`.
-5. **S-5 (CRITICAL, arch):** Queueing re-rank runs before
+1. **S-5 (CRITICAL, arch):** Queueing re-rank runs before
    `_apply_gpu_category_override` per spec.
-6. **S-6 (CRITICAL, math):** PageHinkleyDetector is now genuinely
+1. **S-6 (CRITICAL, math):** PageHinkleyDetector is now genuinely
    two-sided (high + low cumulative deviations).
-7. **CAL-1 (CRITICAL, math+arch+obs+audit):** Detector defaults
+1. **CAL-1 (CRITICAL, math+arch+obs+audit):** Detector defaults
    re-tuned from (slack=0.25, h=8.0) → (slack=0.25, h=14.0) so the
    §7 gate passes.
-8. **CAL-2 (CRITICAL, arch):** Phase 6 pipeline wired into
+1. **CAL-2 (CRITICAL, arch):** Phase 6 pipeline wired into
    app startup via `ObservabilityManager.start_change_point_tick_loop`.
 
 ## Round-5 fixes summary (two-stage architecture)
@@ -213,17 +213,17 @@ Key changes:
    `CUSUMDetector(confirm_threshold=14.0)` via a 3-state machine
    (`idle` → `warning_pending` → `confirmed` → `idle`). Lives at
    `mahavishnu/observability/changepoint/two_stage.py`.
-2. **`ObservabilityManager._evaluate_change_point` dispatch**:
+1. **`ObservabilityManager._evaluate_change_point` dispatch**:
    branches on `isinstance(detector, TwoStageDetector)`; emits
    `mahavishnu.observability.drift_warning` on warn fires and
    `mahavishnu.observability.drift_detected` on confirm fires.
-3. **`drift_warning_total` Prometheus counter**: separate from
+1. **`drift_warning_total` Prometheus counter**: separate from
    `drift_detected_total` so dashboards can show both rates
    (warn rate ~30 / 10,080; confirmed rate ~0.02 / 10,080).
-4. **Config defaults**: `ChangepointConfig.detector` accepts
+1. **Config defaults**: `ChangepointConfig.detector` accepts
    `"cusum" | "page_hinkley" | "two_stage"`; the two_stage-only
    fields `warn_threshold`, `confirm_threshold`,
    `confirm_window_samples` default to 8.0 / 14.0 / 100.
-5. **Spec §1/§7 wording updated** (v3.2): §1 latency is measured
+1. **Spec §1/§7 wording updated** (v3.2): §1 latency is measured
    on warnings; §7 FP is measured on confirmed alerts; both
    gates pass empirically.

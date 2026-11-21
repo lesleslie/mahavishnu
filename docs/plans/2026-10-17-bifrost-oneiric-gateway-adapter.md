@@ -7,10 +7,10 @@ last_reviewed: 2026-10-19
 superseded_by:
 blocks_on: []
 related:
-  - docs/plans/2026-10-16-drop-ollama-favor-llama-server.md
+  - docs/plans/.archive/2026-10-16-drop-ollama-favor-llama-server.md
   - docs/plans/.archive/2026-10-15-bifrost-gateway-wiring.md
-  - docs/plans/2026-10-15-oneiric-substrate-rollout.md
-  - docs/plans/2026-09-27-shared-bodai-substrate-design.md
+  - docs/plans/.archive/2026-10-15-oneiric-substrate-rollout.md
+  - docs/specs/2026-09-27-shared-bodai-substrate-design.md
   - docs/specs/2026-10-15-bifrost-gateway-wiring-design.md
   - docs/decisions/wire-up-contract.md
 replaces:

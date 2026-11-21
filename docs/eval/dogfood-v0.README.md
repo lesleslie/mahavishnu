@@ -47,14 +47,14 @@ exact token.
    `['backend', 'python']` and a query 'refactor the API layer', which
    adapter should Mahavishnu route this to?" is answerable; "which
    adapter?" is not.
-2. Choose the *shortest* phrase that a wrong answer would not contain.
+1. Choose the *shortest* phrase that a wrong answer would not contain.
    `least_loaded` is gradeable; "the least-loaded pool selector" is not,
    because a model that says "round robin is often better" would fail
    it for the right reason but a model that says "least_loaded" for the
    wrong reason would pass.
-3. Record the failure mode. This is the field that keeps the set
+1. Record the failure mode. This is the field that keeps the set
    honest when it grows.
-4. Set `last_reviewed` to today.
+1. Set `last_reviewed` to today.
 
 Then run the freshness check and the suite:
 

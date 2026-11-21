@@ -101,9 +101,9 @@ class WebhookValidator:
 **Implementation Requirements**:
 
 1. Reject webhooks with invalid signatures (HTTP 401)
-2. Log all webhook validation failures
-3. Rate limit webhook endpoints (prevent DoS)
-4. Add replay attack protection (timestamp validation)
+1. Log all webhook validation failures
+1. Rate limit webhook endpoints (prevent DoS)
+1. Add replay attack protection (timestamp validation)
 
 ______________________________________________________________________
 
@@ -158,9 +158,9 @@ async def approve_task_proposal(
 **Authorization Model Requirements**:
 
 1. Define approver roles (admin, maintainer, trusted-developer)
-2. Store approval decisions with approver identity
-3. Require approval reason for audit trail
-4. Implement approval revocation capability
+1. Store approval decisions with approver identity
+1. Require approval reason for audit trail
+1. Implement approval revocation capability
 
 ______________________________________________________________________
 
@@ -743,8 +743,8 @@ async def create_task_wrong(self, **kwargs):
 **Requirement**: Update master plan to include:
 
 1. Mandate parameterized queries for all DB operations
-2. Use SQLAlchemy or similar ORM (not raw SQL)
-3. Add unit tests for SQL injection attempts
+1. Use SQLAlchemy or similar ORM (not raw SQL)
+1. Add unit tests for SQL injection attempts
 
 ______________________________________________________________________
 
@@ -955,12 +955,12 @@ class TaskOrchestrator:
 **Audit Logging Requirements**:
 
 1. **Immutable logs**: Append-only file storage
-2. **Comprehensive coverage**: Log all task state changes
-3. **Structured format**: JSON for easy querying
-4. **Retention policy**: 1-7 years (compliance)
-5. **Access control**: Only admins can view logs
-6. **Tamper detection**: Cryptographic hashing/log signing
-7. **Regular backup**: Separate from main database
+1. **Comprehensive coverage**: Log all task state changes
+1. **Structured format**: JSON for easy querying
+1. **Retention policy**: 1-7 years (compliance)
+1. **Access control**: Only admins can view logs
+1. **Tamper detection**: Cryptographic hashing/log signing
+1. **Regular backup**: Separate from main database
 
 ______________________________________________________________________
 
@@ -1003,8 +1003,8 @@ async def github_webhook(request: Request):
 **Requirement**:
 
 1. Enforce TLS 1.2+ for all webhook endpoints
-2. Certificate pinning for GitHub/GitLab webhooks
-3. Document TLS setup in deployment guide
+1. Certificate pinning for GitHub/GitLab webhooks
+1. Document TLS setup in deployment guide
 
 ### 8.3 Secret Rotation ⚠️
 
@@ -1164,14 +1164,14 @@ ______________________________________________________________________
    - TaskAuditLogger class
    - WebhookValidator class
 
-2. **Update Master Plan**:
+1. **Update Master Plan**:
 
    - Add "Security Implementation" section
    - Define authentication/authorization model
    - Specify audit logging requirements
    - Add security testing to Phase 1 deliverables
 
-3. **Security Hardening**:
+1. **Security Hardening**:
 
    - Enable webhook signature validation
    - Implement rate limiting
@@ -1213,11 +1213,11 @@ The Task Orchestration Master Plan has **solid architectural foundations** but r
 **Required Changes**:
 
 1. Add comprehensive input sanitization (CRITICAL)
-2. Implement access control model (CRITICAL)
-3. Add audit logging system (CRITICAL)
-4. Validate webhook signatures (CRITICAL)
-5. Integrate secrets scanner in task creation (HIGH)
-6. Add security test suite (HIGH)
+1. Implement access control model (CRITICAL)
+1. Add audit logging system (CRITICAL)
+1. Validate webhook signatures (CRITICAL)
+1. Integrate secrets scanner in task creation (HIGH)
+1. Add security test suite (HIGH)
 
 **Estimated Effort**: 14-21 developer days
 

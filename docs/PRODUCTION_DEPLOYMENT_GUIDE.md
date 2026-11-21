@@ -10,13 +10,13 @@ ______________________________________________________________________
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
-2. [Infrastructure Setup](#infrastructure-setup)
-3. [Environment Configuration](#environment-configuration)
-4. [Deployment Process](#deployment-process)
-5. [Smoke Tests](#smoke-tests)
-6. [Monitoring & Validation](#monitoring--validation)
-7. [Rollback Procedures](#rollback-procedures)
-8. [Troubleshooting](#troubleshooting)
+1. [Infrastructure Setup](#infrastructure-setup)
+1. [Environment Configuration](#environment-configuration)
+1. [Deployment Process](#deployment-process)
+1. [Smoke Tests](#smoke-tests)
+1. [Monitoring & Validation](#monitoring--validation)
+1. [Rollback Procedures](#rollback-procedures)
+1. [Troubleshooting](#troubleshooting)
 
 ______________________________________________________________________
 
@@ -704,9 +704,9 @@ curl http://localhost:8680/debug/rate_limits
 ### Escalation Path
 
 1. **P1 (Critical)**: Page on-call immediately
-2. **P2 (High)**: Page on-call, create ticket
-3. **P3 (Medium)**: Create ticket, address in next business day
-4. **P4 (Low)**: Create ticket, address in next sprint
+1. **P2 (High)**: Page on-call, create ticket
+1. **P3 (Medium)**: Create ticket, address in next business day
+1. **P4 (Low)**: Create ticket, address in next sprint
 
 ______________________________________________________________________
 

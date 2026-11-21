@@ -34,26 +34,26 @@ ______________________________________________________________________
    - ML Commons for automated error pattern detection
    - Single infrastructure service reduces operational overhead
 
-2. **Configuration Management (Oneiric)** - Sound approach
+1. **Configuration Management (Oneiric)** - Sound approach
 
    - Layered configuration (defaults → committed → local → env vars)
    - Type-safe with Pydantic models
    - Environment variable overrides for secrets
    - Already implemented and working
 
-3. **OpenTelemetry Observability Stack** - Industry standard
+1. **OpenTelemetry Observability Stack** - Industry standard
 
    - Traces, logs, metrics already instrumented
    - OTLP exporter for flexibility in backend choice
    - Structured logging with structlog
 
-4. **Security Checklist** - Comprehensive guidance
+1. **Security Checklist** - Comprehensive guidance
 
    - Input validation, path traversal prevention
    - JWT authentication
    - Secrets management best practices
 
-5. **Phase 0 Prototype Approach** - Smart risk mitigation
+1. **Phase 0 Prototype Approach** - Smart risk mitigation
 
    - OpenSearch prototype in Week 1-2 validates assumptions early
    - Clear rollback plan to pgvector if prototype fails
@@ -68,7 +68,7 @@ ______________________________________________________________________
    - No infrastructure-as-code (Terraform, CloudFormation, etc.)
    - Production deployment requirements completely undefined
 
-2. **OpenSearch Production Deployment Unclear**
+1. **OpenSearch Production Deployment Unclear**
 
    - Homebrew is for local development only
    - No production deployment strategy:
@@ -78,7 +78,7 @@ ______________________________________________________________________
    - Cluster sizing not addressed (single-node vs. multi-node)
    - Backup strategy not defined
 
-3. **No Backup/Disaster Recovery Plan**
+1. **No Backup/Disaster Recovery Plan**
 
    - How to backup OpenSearch indices?
    - How to restore from backup?
@@ -86,7 +86,7 @@ ______________________________________________________________________
    - Multi-region replication not considered
    - What happens if OpenSearch cluster fails?
 
-4. **Missing Monitoring/Alerting Implementation**
+1. **Missing Monitoring/Alerting Implementation**
 
    - OpenTelemetry configured but where to send data?
    - No observability backend specified (Jaeger? Tempo? Prometheus? Grafana?)
@@ -94,7 +94,7 @@ ______________________________________________________________________
    - No dashboard specifications
    - No runbook guidance
 
-5. **Scalability Not Addressed**
+1. **Scalability Not Addressed**
 
    - "OpenSearch is horizontally scalable" is not a scalability plan
    - No horizontal scaling strategy
@@ -111,34 +111,34 @@ ______________________________________________________________________
    - How to isolate development from production data?
    - No environment-specific configuration examples
 
-2. **Dependency Conflicts Not Addressed**
+1. **Dependency Conflicts Not Addressed**
 
    - httpx version conflict between fastmcp and llama-index-embeddings-ollama
    - Plan shows LlamaIndex adapter work in Phase 2 but conflict not resolved
    - No timeline for resolving upstream dependency conflicts
 
-3. **Resource Requirements Undefined**
+1. **Resource Requirements Undefined**
 
    - OpenSearch memory requirements (minimum 2GB for Java heap?)
    - Ollama resource requirements (embedding model memory)
    - Disk space planning for vector indices
    - Network bandwidth requirements
 
-4. **No CI/CD Pipeline**
+1. **No CI/CD Pipeline**
 
    - How to test and deploy changes?
    - How to run integration tests before deployment?
    - How to rollback failed deployments?
    - No blue/green or canary deployment strategy
 
-5. **Observability Implementation Missing**
+1. **Observability Implementation Missing**
 
    - Plan mentions OpenSearch log analytics (Phase 4.2) but no implementation details
    - Data Prepper pipeline configuration not specified
    - ML Commons agent setup not documented
    - Correlation of traces/logs/metrics not explained
 
-6. **No Service Level Objectives (SLOs)**
+1. **No Service Level Objectives (SLOs)**
 
    - What is the target availability? (99.9%? 99.99%?)
    - What is the acceptable latency? (p95 < 500ms for queries?)
@@ -655,26 +655,26 @@ ______________________________________________________________________
 The implementation plan has strong architectural foundations but **lacks critical DevOps components** required for production deployment:
 
 1. **No production deployment architecture** - Cannot approve without knowing how to deploy
-2. **OpenSearch production deployment undefined** - Homebrew is not production-ready
-3. **No backup/disaster recovery** - Unacceptable for production system
-4. **Missing monitoring/alerTing** - Cannot operate production system without observability
-5. **Scalability not addressed** - Will hit scaling walls without planning
+1. **OpenSearch production deployment undefined** - Homebrew is not production-ready
+1. **No backup/disaster recovery** - Unacceptable for production system
+1. **Missing monitoring/alerTing** - Cannot operate production system without observability
+1. **Scalability not addressed** - Will hit scaling walls without planning
 
 ### Path to Approval
 
 To achieve **APPROVE WITH RECOMMENDATIONS**, the plan must include:
 
 1. Production deployment architecture (Week 1 deliverable)
-2. OpenSearch operations guide with backup/restore (Week 2 deliverable)
-3. Monitoring and alerting implementation plan (Week 2 deliverable)
-4. Disaster recovery procedures with RPO/RTO (Week 2 deliverable)
-5. Scalability and capacity planning strategy (Week 2 deliverable)
+1. OpenSearch operations guide with backup/restore (Week 2 deliverable)
+1. Monitoring and alerting implementation plan (Week 2 deliverable)
+1. Disaster recovery procedures with RPO/RTO (Week 2 deliverable)
+1. Scalability and capacity planning strategy (Week 2 deliverable)
 
 ### Secondary Recommendations (for full approval)
 
 6. CI/CD pipeline implementation (Phase 1)
-7. Multi-environment strategy (Phase 1)
-8. Dependency conflict resolution (Phase 0)
+1. Multi-environment strategy (Phase 1)
+1. Dependency conflict resolution (Phase 0)
 
 ______________________________________________________________________
 
@@ -683,11 +683,11 @@ ______________________________________________________________________
 Despite the critical gaps, there are several aspects of the plan that demonstrate DevOps awareness:
 
 1. **Phase 0 Prototype Approach** - Smart to validate OpenSearch early
-2. **Rollback Plan to pgvector** - Good contingency planning
-3. **Oneiric Configuration** - Excellent choice for multi-environment config
-4. **OpenTelemetry Instrumentation** - Industry-standard observability
-5. **Security Checklist** - Comprehensive security guidance
-6. **Performance Success Criteria** - Clear metrics for prototype validation
+1. **Rollback Plan to pgvector** - Good contingency planning
+1. **Oneiric Configuration** - Excellent choice for multi-environment config
+1. **OpenTelemetry Instrumentation** - Industry-standard observability
+1. **Security Checklist** - Comprehensive security guidance
+1. **Performance Success Criteria** - Clear metrics for prototype validation
 
 With the addition of the required DevOps components, this plan will be production-ready.
 
@@ -701,13 +701,13 @@ ______________________________________________________________________
    - Document OpenSearch production deployment strategy
    - Add backup/disaster recovery section to plan
 
-2. **Short-term (Week 2-3)**
+1. **Short-term (Week 2-3)**
 
    - Create monitoring implementation guide
    - Define scalability and capacity planning
    - Set up CI/CD pipeline skeleton
 
-3. **Phase 0 Review (Week 2.5)**
+1. **Phase 0 Review (Week 2.5)**
 
    - Re-review plan with DevOps additions
    - Approve Phase 1 start if all blockers addressed

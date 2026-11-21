@@ -40,7 +40,7 @@ Three concrete steps, in order:
 
    Run this from each Mahavishnu node. A connection refused / timeout confirms OpenSearch is not running on that host. The `-k` flag accepts the self-signed cert that OpenSearch via Homebrew ships with — without it, the curl error masks the real connectivity question.
 
-2. **Is cert trust in the way?**
+1. **Is cert trust in the way?**
    Check the operator's env var configuration:
 
    ```bash
@@ -49,7 +49,7 @@ Three concrete steps, in order:
 
    Default config (`settings/mahavishnu.yaml:48-55`) ships with `verify_certs: true` and `ssl_assert_hostname: true`. The Homebrew install of OpenSearch uses a self-signed cert, so the TLS handshake fails before any HTTP request is made. Two valid remediations — see below.
 
-3. **Consistency check across nodes (multi-node only):**
+1. **Consistency check across nodes (multi-node only):**
    Compare `opensearch_healthy` across all nodes. If `node-a` reports `true` and `node-b` reports `false`, the integration is diverging per-process. That is the expected behavior of fallback, but it is also how silent data-loss starts in DLQ paths. Cross-reference the DLQ followup below.
 
 ## Remediation
@@ -124,7 +124,7 @@ Two acceptable outcomes:
 
 1. **`opensearch_healthy: true`** — OpenSearch is reachable, writes are going through. This is the prod posture.
 
-2. **`opensearch_healthy: false`, `opensearch_info.status: "unhealthy"`** — auto-fallback active. The integration is writing to its in-memory mock. **This is by design**, not a failure mode, when OpenSearch is not running.
+1. **`opensearch_healthy: false`, `opensearch_info.status: "unhealthy"`** — auto-fallback active. The integration is writing to its in-memory mock. **This is by design**, not a failure mode, when OpenSearch is not running.
 
 Outcome #2 is fine for dev. It is a sign of misconfiguration in prod — do not accept it as the steady-state on a production node. If you see `opensearch_healthy: false` in prod but `true` in staging, the divergence is the bug, not the value.
 

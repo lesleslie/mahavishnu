@@ -50,11 +50,11 @@ Current status (verified live, 2026-10-30):
 Before any cutover, run these checks in order. Any failure = pause and investigate.
 
 1. `lsof -tiTCP:8471 -sTCP:LISTEN` — non-empty means a listener is bound.
-2. `curl -fsS http://127.0.0.1:8471/health` — must return
+1. `curl -fsS http://127.0.0.1:8471/health` — must return
    `{"components":{"db_pings":"ok"},"status":"ok"}` (or equivalent).
-3. `test -f ~/.local/state/mcp/ready/bifrost.ready` — ready file written
+1. `test -f ~/.local/state/mcp/ready/bifrost.ready` — ready file written
    by `mahavishnu bifrost foreground` only after the listener probe succeeds.
-4. `tail -5 ~/.local/state/mcp/logs/bifrost.log` — recent JSON lines, not stale.
+1. `tail -5 ~/.local/state/mcp/logs/bifrost.log` — recent JSON lines, not stale.
 
 ## Transport Version Pin
 
@@ -707,7 +707,7 @@ client-side:
    `"host_wait"`, waiting up to that many ms for the MCP hosts to
    connect. With the tools present from request one, the `tools` array
    never changes and the prefix never breaks.
-2. **`"alwaysLoad": true`** on an MCP server's entry in
+1. **`"alwaysLoad": true`** on an MCP server's entry in
    `~/.claude.json` — set for `bodai`. Claude Code's own description:
    *"all tools from this server are always included in the prompt and
    never deferred behind tool search … As a side effect, true also
@@ -1319,7 +1319,7 @@ Two upstream requirements that are easy to miss:
    every embedding attempt fails locally with `no_key_supports_model` and the
    request never reaches OpenAI — so no amount of upstream credit fixes it.
 
-2. **The embedding model has an 8192-token input limit.** The plugin embeds
+1. **The embedding model has an 8192-token input limit.** The plugin embeds
    the request's key material with no truncation, and long agentic turns
    exceed the limit — the embedding request comes back as
    `Invalid 'input': maximum context length is 8192 tokens`. The plugin

@@ -16,12 +16,12 @@ Successfully implemented a **native OTel trace ingester** using Akosha's HotStor
    - Context manager support
    - Factory function for convenient instantiation
 
-2. **`/Users/les/Projects/mahavishnu/mahavishnu/ingesters/__init__.py`**
+1. **`/Users/les/Projects/mahavishnu/mahavishnu/ingesters/__init__.py`**
 
    - Module exports: `OtelIngester`, `create_otel_ingester`
    - Package initialization
 
-3. **`/Users/les/Projects/mahavishnu/mahavishnu/ingesters/README.md`**
+1. **`/Users/les/Projects/mahavishnu/mahavishnu/ingesters/README.md`**
 
    - Complete documentation
    - Usage examples
@@ -225,10 +225,10 @@ export MAHAVISHNU_OTEL_INGESTER_SIMILARITY_THRESHOLD=0.7
 ### Optimization Tips
 
 1. **Use In-Memory for Testing**: `hot_store_path=":memory:"`
-2. **Use Persistent for Production**: `hot_store_path="/data/traces.db"`
-3. **Increase Cache Size**: For repeated content
-4. **Batch Ingestion**: Use `ingest_batch()` for bulk loads
-5. **Tune Threshold**: Lower (0.6) for more results, higher (0.9) for precision
+1. **Use Persistent for Production**: `hot_store_path="/data/traces.db"`
+1. **Increase Cache Size**: For repeated content
+1. **Batch Ingestion**: Use `ingest_batch()` for bulk loads
+1. **Tune Threshold**: Lower (0.6) for more results, higher (0.9) for precision
 
 ## Dependencies
 
@@ -298,7 +298,7 @@ mahavishnu/ingesters/
        await self.otel_ingester.initialize()
    ```
 
-2. **Add MCP Tool** (optional):
+1. **Add MCP Tool** (optional):
 
    ```python
    @mcp.tool()
@@ -314,7 +314,7 @@ mahavishnu/ingesters/
        return await app.otel_ingester.search_traces(query, limit)
    ```
 
-3. **Add CLI Commands** (optional):
+1. **Add CLI Commands** (optional):
 
    ```bash
    mahavishnu otel ingest trace.json
@@ -342,19 +342,19 @@ Create integration tests in `tests/integration/test_otel_ingester.py`:
    pip install sentence-transformers
    ```
 
-2. **HotStore Not Initialized**
+1. **HotStore Not Initialized**
 
    ```python
    await ingester.initialize()  # Must call before other methods
    ```
 
-3. **No Search Results**
+1. **No Search Results**
 
    - Lower the `threshold` parameter
    - Check traces were ingested successfully
    - Verify `system_id` filter matches trace data
 
-4. **Slow Embedding Generation**
+1. **Slow Embedding Generation**
 
    - Increase `cache_size` parameter
    - Use faster model: `embedding_model="all-MiniLM-L6-v2"`

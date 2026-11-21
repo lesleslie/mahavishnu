@@ -124,9 +124,9 @@ ______________________________________________________________________
 Feature freeze is **mandatory** when ANY of the following conditions are met:
 
 1. **Availability budget < 10%** (4.3 minutes remaining)
-2. **Error rate budget < 10%** remaining
-3. **P0 incident active** and consuming budget
-4. **Two consecutive P1 incidents** in 7 days
+1. **Error rate budget < 10%** remaining
+1. **P0 incident active** and consuming budget
+1. **Two consecutive P1 incidents** in 7 days
 
 ### Feature Freeze Actions
 
@@ -157,9 +157,9 @@ Feature freeze is **mandatory** when ANY of the following conditions are met:
 Feature freeze can only be lifted when:
 
 1. **Budget recovered to > 20%** (8.6 minutes buffer)
-2. **No active P0/P1 incidents**
-3. **SRE team approval**
-4. **Postmortem completed** for triggering incident
+1. **No active P0/P1 incidents**
+1. **SRE team approval**
+1. **Postmortem completed** for triggering incident
 
 ______________________________________________________________________
 
@@ -180,8 +180,8 @@ daily_budget_allowance = 43.2 / 30  # ~1.44 minutes/day
 For severe incidents, consider:
 
 1. **Rolling window adjustment**: Temporarily use 14-day window to accelerate recovery
-2. **SLO target adjustment**: If incident revealed unrealistic target, adjust SLO
-3. **Risk acceptance**: Leadership can accept higher risk for specific period
+1. **SLO target adjustment**: If incident revealed unrealistic target, adjust SLO
+1. **Risk acceptance**: Leadership can accept higher risk for specific period
 
 ______________________________________________________________________
 

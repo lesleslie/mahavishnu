@@ -345,24 +345,24 @@ async def test_external_api_with_resilience():
 ### DO ✓
 
 1. **Use circuit breakers for external service calls** - Prevents cascading failures
-2. **Use retry for transient failures** - Handles network blips
-3. **Combine both for critical paths** - Maximum resilience
-4. **Monitor circuit breaker state** - Track OPEN/CLOSED transitions
-5. **Set appropriate timeouts** - Don't wait indefinitely
-6. **Use exponential backoff** - Prevents thundering herd
-7. **Log all failures** - Essential for debugging
-8. **Test failure scenarios** - Verify resilience works
+1. **Use retry for transient failures** - Handles network blips
+1. **Combine both for critical paths** - Maximum resilience
+1. **Monitor circuit breaker state** - Track OPEN/CLOSED transitions
+1. **Set appropriate timeouts** - Don't wait indefinitely
+1. **Use exponential backoff** - Prevents thundering herd
+1. **Log all failures** - Essential for debugging
+1. **Test failure scenarios** - Verify resilience works
 
 ### DON'T ✗
 
 1. **Don't use retry for non-idempotent operations** - Could cause duplicate actions
-2. **Don't set failure_threshold too low** - Opens circuit too easily
-3. **Don't set recovery_timeout too short** - Doesn't give service time to recover
-4. **Don't use circuit breaker for fast local operations** - Adds unnecessary overhead
-5. **Don't ignore CircuitBreakerError** - Handle it explicitly
-6. **Don't retry on validation errors** - Those won't succeed on retry
-7. **Don't forget to test resilience** - Must verify it works
-8. **Don't set max_attempts too high** - Wastes resources on dead services
+1. **Don't set failure_threshold too low** - Opens circuit too easily
+1. **Don't set recovery_timeout too short** - Doesn't give service time to recover
+1. **Don't use circuit breaker for fast local operations** - Adds unnecessary overhead
+1. **Don't ignore CircuitBreakerError** - Handle it explicitly
+1. **Don't retry on validation errors** - Those won't succeed on retry
+1. **Don't forget to test resilience** - Must verify it works
+1. **Don't set max_attempts too high** - Wastes resources on dead services
 
 ## Migration Guide
 
@@ -384,8 +384,8 @@ grep -r "asyncpg.connect" akosha/
 Start with most critical operations:
 
 1. LLM API calls (highest latency)
-2. Payment processing (highest risk)
-3. User-facing operations (highest impact)
+1. Payment processing (highest risk)
+1. User-facing operations (highest impact)
 
 ### Step 3: Monitor Metrics
 

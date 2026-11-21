@@ -214,8 +214,8 @@ ______________________________________________________________________
 **Active Adapters** (status snapshot at 2026-01-24 — **superseded** by the 2026-09-09 verification above):
 
 1. **LlamaIndex**: Fully implemented with llama-server integration
-2. **Prefect**: Stub implementation, needs real orchestration logic
-3. **Agno**: Stub implementation, needs agent framework integration
+1. **Prefect**: Stub implementation, needs real orchestration logic
+1. **Agno**: Stub implementation, needs agent framework integration
 
 > This Phase 3 snapshot reflects the codebase state on 2026-01-24. The "stub" labels for Prefect and Agno were true then but are no longer accurate — see the **Current adapter status** block at the top of this document for the verified 2026-09-09 status.
 
@@ -338,9 +338,9 @@ Mahavishnu uses Oneiric patterns for layered configuration loading:
 **Priority Order** (highest to lowest):
 
 1. Environment variables `MAHAVISHNU_{FIELD}`
-2. `settings/local.yaml` (gitignored, local dev)
-3. `settings/mahavishnu.yaml` (committed to git)
-4. Default values in Pydantic models
+1. `settings/local.yaml` (gitignored, local dev)
+1. `settings/mahavishnu.yaml` (committed to git)
+1. Default values in Pydantic models
 
 **Example Configuration**:
 
@@ -584,10 +584,10 @@ ______________________________________________________________________
 **Critical Path** (Priority 1 tasks):
 
 1. MCP core tools: 1 week
-2. Complete Prefect adapter: 2 weeks
-3. Complete Agno adapter: 2-3 weeks
-4. Production error recovery: 1 week
-5. Production testing: 2 weeks
+1. Complete Prefect adapter: 2 weeks
+1. Complete Agno adapter: 2-3 weeks
+1. Production error recovery: 1 week
+1. Production testing: 2 weeks
 
 **Total**: 8-11 weeks to production-ready v1.0
 

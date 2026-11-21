@@ -243,14 +243,14 @@ asyncio.run(test())
 ### From Jaeger
 
 1. Export traces from Jaeger API
-2. Convert to OTel format
-3. Import using `adapter.batch_store()`
+1. Convert to OTel format
+1. Import using `adapter.batch_store()`
 
 ### From Tempo
 
 1. Query Tempo API
-2. Convert trace format
-3. Import using `adapter.store_trace()`
+1. Convert trace format
+1. Import using `adapter.store_trace()`
 
 ## Monitoring
 
@@ -282,11 +282,11 @@ print(f"Average duration: {stats['avg_duration_ms']}ms")
 ## Security Best Practices
 
 1. **Use environment variables** for sensitive credentials
-2. **Restrict network access** to PostgreSQL
-3. **Use SSL connections** in production
-4. **Regular backups** with pg_dump
-5. **Rotate credentials** periodically
-6. **Monitor access logs** for suspicious activity
+1. **Restrict network access** to PostgreSQL
+1. **Use SSL connections** in production
+1. **Regular backups** with pg_dump
+1. **Rotate credentials** periodically
+1. **Monitor access logs** for suspicious activity
 
 ## Backup and Recovery
 
@@ -305,11 +305,11 @@ psql "postgresql://postgres:password@localhost:5432/otel_traces" < otel_backup.s
 ## Next Steps
 
 1. Read full documentation: `docs/ONEIRIC_OTEL_STORAGE.md`
-2. Review implementation plan: `OTEL_STORAGE_SETUP_PLAN.md`
-3. Run examples: `examples/otel_storage_example.py`
-4. Configure OpenTelemetry SDK integration
-5. Set up monitoring and alerts
-6. Implement backup strategy
+1. Review implementation plan: `OTEL_STORAGE_SETUP_PLAN.md`
+1. Run examples: `examples/otel_storage_example.py`
+1. Configure OpenTelemetry SDK integration
+1. Set up monitoring and alerts
+1. Implement backup strategy
 
 ## Support
 

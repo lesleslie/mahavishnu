@@ -8,16 +8,16 @@ ______________________________________________________________________
 
 ## Table of Contents
 
-01. [Daily Maintenance Tasks](#daily-maintenance-tasks)
-02. [Weekly Maintenance Tasks](#weekly-maintenance-tasks)
-03. [Monthly Maintenance Tasks](#monthly-maintenance-tasks)
-04. [Backup Verification](#backup-verification)
-05. [Scaling Procedures](#scaling-procedures)
-06. [Log Rotation and Cleanup](#log-rotation-and-cleanup)
-07. [Database Maintenance](#database-maintenance)
-08. [Performance Tuning](#performance-tuning)
-09. [Security Updates](#security-updates)
-10. [Monitoring and Alerting Verification](#monitoring-and-alerting-verification)
+1. [Daily Maintenance Tasks](#daily-maintenance-tasks)
+1. [Weekly Maintenance Tasks](#weekly-maintenance-tasks)
+1. [Monthly Maintenance Tasks](#monthly-maintenance-tasks)
+1. [Backup Verification](#backup-verification)
+1. [Scaling Procedures](#scaling-procedures)
+1. [Log Rotation and Cleanup](#log-rotation-and-cleanup)
+1. [Database Maintenance](#database-maintenance)
+1. [Performance Tuning](#performance-tuning)
+1. [Security Updates](#security-updates)
+1. [Monitoring and Alerting Verification](#monitoring-and-alerting-verification)
 
 ______________________________________________________________________
 
@@ -748,10 +748,10 @@ echo "=== Alert Testing Complete ==="
 **Schedule**: Weekly
 
 1. **Access Grafana dashboard**: http://localhost:3000
-2. **Verify all panels loading**
-3. **Check data freshness** (last update < 5 minutes)
-4. **Verify alert rules configured**
-5. **Test alert notifications**
+1. **Verify all panels loading**
+1. **Check data freshness** (last update < 5 minutes)
+1. **Verify alert rules configured**
+1. **Test alert notifications**
 
 ______________________________________________________________________
 
@@ -782,9 +782,9 @@ ______________________________________________________________________
 ### During Maintenance
 
 1. **Execute maintenance script**
-2. **Monitor for errors**
-3. **Verify service health**
-4. **Document any issues**
+1. **Monitor for errors**
+1. **Verify service health**
+1. **Document any issues**
 
 ### Post-Maintenance Checklist
 

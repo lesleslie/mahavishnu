@@ -28,12 +28,12 @@ Resolution order:
 1. **No `MAHAVISHNU_USER_ID`** → `ReviewerNotTrustedError`. A CLI flag
    (`--reviewer`) is recorded for forensic visibility but NEVER
    authorizes publication. Env wins.
-2. **`MAHAVISHNU_USER_ID` + allowlist present + user listed** → ALLOWED.
-3. **`MAHAVISHNU_USER_ID` + allowlist present + user NOT listed** →
+1. **`MAHAVISHNU_USER_ID` + allowlist present + user listed** → ALLOWED.
+1. **`MAHAVISHNU_USER_ID` + allowlist present + user NOT listed** →
    `ReviewerNotTrustedError` (MHV-483).
-4. **`MAHAVISHNU_USER_ID` + allowlist missing or empty** →
+1. **`MAHAVISHNU_USER_ID` + allowlist missing or empty** →
    **bootstrap mode**: ALLOWED with WARNING + audit log entry.
-5. Reserved for future RBAC: signed tokens from a configured trust
+1. Reserved for future RBAC: signed tokens from a configured trust
    root (placeholder).
 
 ## Allowlist file format
@@ -76,9 +76,9 @@ allowlist before promoting distillers to multi-tenant use.
    ```bash
    echo "$MAHAVISHNU_USER_ID"
    ```
-2. Confirm `MAHAVISHNU_PUBLISHER_ALLOWLIST` resolves to a readable file
+1. Confirm `MAHAVISHNU_PUBLISHER_ALLOWLIST` resolves to a readable file
    or a valid inline CSV.
-3. Compare the resolved user (trimmed) against the allowlist contents.
+1. Compare the resolved user (trimmed) against the allowlist contents.
    Comparison is exact (case-sensitive, no normalization).
 
 ### Bootstrap warnings flooding the logs

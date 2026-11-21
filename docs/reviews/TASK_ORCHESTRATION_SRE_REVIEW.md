@@ -333,28 +333,28 @@ ______________________________________________________________________
    - Set up error budget tracking
    - Define error budget policy
 
-2. **Implement Monitoring** (2-3 days)
+1. **Implement Monitoring** (2-3 days)
 
    - Design metrics schema (20-30 metrics)
    - Set up Prometheus metrics export
    - Create Grafana dashboards (3-5 dashboards)
    - Configure alerting rules (10-15 rules)
 
-3. **Document Deployment** (1 day)
+1. **Document Deployment** (1 day)
 
    - Choose deployment pattern (recommend blue/green)
    - Write deployment runbook
    - Add health check endpoints
    - Test rollback procedures
 
-4. **Capacity Testing** (2-3 days)
+1. **Capacity Testing** (2-3 days)
 
    - Define capacity targets
    - Perform load testing (k6, locust)
    - Document system limits
    - Create scaling playbook
 
-5. **Backup Verification** (1-2 days)
+1. **Backup Verification** (1-2 days)
 
    - Implement automated backup testing
    - Document restore procedures
@@ -374,14 +374,14 @@ ______________________________________________________________________
    - Create anomaly detection (PromQL queries)
    - Set up SLO dashboards
 
-2. **Improve Reliability**
+1. **Improve Reliability**
 
    - Implement circuit breakers for external integrations
    - Add retry policies with exponential backoff
    - Create graceful degradation patterns
    - Add rate limiting
 
-3. **Operational Excellence**
+1. **Operational Excellence**
 
    - Create runbook library (10+ scenarios)
    - Implement on-call rotation (if multi-user)
@@ -399,14 +399,14 @@ ______________________________________________________________________
    - Add connection pooling
    - Set up automated failover
 
-2. **Performance Optimization**
+1. **Performance Optimization**
 
    - Implement caching layer (Redis)
    - Add query optimization
    - Create database indexes
    - Optimize embedding generation
 
-3. **Multi-Region Deployment**
+1. **Multi-Region Deployment**
 
    - Design multi-region architecture
    - Implement data replication
@@ -617,10 +617,10 @@ ______________________________________________________________________
 **Required before production deployment**:
 
 1. Define SLIs/SLOs with error budget policy
-2. Implement monitoring (metrics, dashboards, alerting)
-3. Document deployment and rollback procedures
-4. Complete capacity testing (1000+ tasks)
-5. Verify backup/recovery procedures
+1. Implement monitoring (metrics, dashboards, alerting)
+1. Document deployment and rollback procedures
+1. Complete capacity testing (1000+ tasks)
+1. Verify backup/recovery procedures
 
 **Estimated effort**: 7-11 days
 
@@ -629,10 +629,10 @@ ______________________________________________________________________
 **Required before scaling to 100+ users**:
 
 1. Migrate from SQLite to PostgreSQL (HA)
-2. Implement database migration strategy (Alembic)
-3. Add rate limiting for task creation
-4. Implement worktree lifecycle management
-5. Add emergency override audit trail
+1. Implement database migration strategy (Alembic)
+1. Add rate limiting for task creation
+1. Implement worktree lifecycle management
+1. Add emergency override audit trail
 
 **Estimated effort**: 14-21 days
 
@@ -641,10 +641,10 @@ ______________________________________________________________________
 **Required for production excellence**:
 
 1. Create runbook library (10+ scenarios)
-2. Implement distributed tracing
-3. Add synthetic canary tasks
-4. Set up on-call rotation
-5. Conduct quarterly DR drills
+1. Implement distributed tracing
+1. Add synthetic canary tasks
+1. Set up on-call rotation
+1. Conduct quarterly DR drills
 
 **Estimated effort**: 7-10 days
 
@@ -659,9 +659,9 @@ The Task Orchestration Master Plan demonstrates excellent architectural design a
 **Required Actions**:
 
 1. Complete Phase 0: SRE Fundamentals (7-11 days)
-2. Address critical findings (SLIs/SLOs, monitoring, capacity, backups, deployment)
-3. Implement production hardening (Phase 1)
-4. Plan for scalability migration (Phase 2)
+1. Address critical findings (SLIs/SLOs, monitoring, capacity, backups, deployment)
+1. Implement production hardening (Phase 1)
+1. Plan for scalability migration (Phase 2)
 
 **Operational Readiness Rating**: **5/10** (Significant gaps, needs SRE investment)
 

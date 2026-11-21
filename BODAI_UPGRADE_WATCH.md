@@ -26,11 +26,11 @@ When 3.15.0 final releases AND all tracked deps have 3.15 wheels:
 Same as Phase 0 (3.14 migration):
 
 1. **mcp-common** — leaf dependency
-2. **oneiric** — adapter framework
-3. **session-buddy** — builder
-4. **akosha** — seer
-5. **crackerjack** — inspector
-6. **mahavishnu** — orchestrator (last; consumes all of the above)
+1. **oneiric** — adapter framework
+1. **session-buddy** — builder
+1. **akosha** — seer
+1. **crackerjack** — inspector
+1. **mahavishnu** — orchestrator (last; consumes all of the above)
 
 Per Bodai pre-1.0 policy: merge directly to `main`, no PRs. Branch + squash/ff-merge into main is the expected flow.
 

@@ -238,8 +238,8 @@ maintain separate per-document counts that can drift.
 ### Adding a New Repository
 
 1. Create the repository
-2. Add it to `ecosystem.yaml` in the appropriate role section
-3. Include audit timestamps
+1. Add it to `ecosystem.yaml` in the appropriate role section
+1. Include audit timestamps
 
 ### Repository Audit Fields
 
@@ -387,9 +387,9 @@ mahavishnu ecosystem cleanup
 When adding or updating servers:
 
 1. Update `last_validated` timestamp
-2. Add meaningful notes in `audit.notes`
-3. Include dependencies if applicable
-4. Set correct category and tags
+1. Add meaningful notes in `audit.notes`
+1. Include dependencies if applicable
+1. Set correct category and tags
 
 ### 4. Port Allocation
 
@@ -417,9 +417,9 @@ The `repos.yaml` file remains a legacy compatibility input. Key differences:
 **Migration plan**:
 
 1. ✅ All repos are now in ecosystem.yaml
-2. ✅ Update tools to read from ecosystem.yaml instead of repos.yaml (`repos_path` defaults to `settings/ecosystem.yaml`)
-3. ✅ Deprecate repos.yaml (deprecation warning added to `config_validator.py`)
-4. ⏳ Eventually remove repos.yaml (after compatibility window)
+1. ✅ Update tools to read from ecosystem.yaml instead of repos.yaml (`repos_path` defaults to `settings/ecosystem.yaml`)
+1. ✅ Deprecate repos.yaml (deprecation warning added to `config_validator.py`)
+1. ⏳ Eventually remove repos.yaml (after compatibility window)
 
 ## Troubleshooting
 
@@ -454,8 +454,8 @@ The `repos.yaml` file remains a legacy compatibility input. Key differences:
 If `generate-claude-config` fails:
 
 1. Check file permissions on ~/.claude.json
-2. Validate ecosystem.yaml first: `mahavishnu ecosystem validate`
-3. Check JSON syntax in existing ~/.claude.json
+1. Validate ecosystem.yaml first: `mahavishnu ecosystem validate`
+1. Check JSON syntax in existing ~/.claude.json
 
 ## Related Documentation
 

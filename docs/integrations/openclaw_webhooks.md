@@ -138,8 +138,8 @@ Authorization: Bearer <token>
 Authentication is handled by `MultiAuthHandler` which supports multiple providers:
 
 1. **JWT tokens** - Standard JWT with expiry validation
-2. **API keys** - Pre-configured API keys for service-to-service auth
-3. **Subscription tokens** - Claude Code subscription-based auth
+1. **API keys** - Pre-configured API keys for service-to-service auth
+1. **Subscription tokens** - Claude Code subscription-based auth
 
 **Error Response (401):**
 

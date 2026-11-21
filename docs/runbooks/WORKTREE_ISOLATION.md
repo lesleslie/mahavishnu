@@ -20,16 +20,16 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 **Diagnosis:**
 
 1. Check active worktrees: `psql $DATABASE_URL -c "SELECT count(*) FROM audit.worktree_registry WHERE state='active'"`
-2. Check lock holder: `git worktree list --porcelain | grep locked`
-3. Check if the lock holder is hung: `ps -p <pid>` (the pid is in the worktree_registry row)
-4. Verify dispatch concurrency: `cat settings/mahavishnu.yaml | grep -A5 worktree_storage`
+1. Check lock holder: `git worktree list --porcelain | grep locked`
+1. Check if the lock holder is hung: `ps -p <pid>` (the pid is in the worktree_registry row)
+1. Verify dispatch concurrency: `cat settings/mahavishnu.yaml | grep -A5 worktree_storage`
 
 **Recovery:**
 
 1. **If lock holder is hung**: `kill -TERM <pid>`; the `finally` block in `pool_route_execute` cleans up the worktree
-2. **If lock holder is a misbehaving test**: `pytest --collect-only` to find orphaned tests; cancel them with `pytest --exitfirst`
-3. **If concurrent dispatches are over-subscribed**: lower `worktree_storage.max_concurrent` in settings; restart Mahavishnu
-4. **If disk is full**: `git worktree remove --force <path>` for stale worktrees; the disk signal is `df -h`, not a gauge — see the note on `worktree_disk_bytes` below
+1. **If lock holder is a misbehaving test**: `pytest --collect-only` to find orphaned tests; cancel them with `pytest --exitfirst`
+1. **If concurrent dispatches are over-subscribed**: lower `worktree_storage.max_concurrent` in settings; restart Mahavishnu
+1. **If disk is full**: `git worktree remove --force <path>` for stale worktrees; the disk signal is `df -h`, not a gauge — see the note on `worktree_disk_bytes` below
 
 **Verification:**
 
@@ -55,14 +55,14 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 **Diagnosis:**
 
 1. Check `IdempotencyCircuitBreaker` state (if exposed) or `eventbridge_publish_total{result="error"}` rate
-2. Check EventStore health: `curl http://localhost:8680/health | jq .event_store`
-3. Check DB connection: `psql $DATABASE_URL -c "SELECT 1"` (round-trip latency should be \<10ms)
+1. Check EventStore health: `curl http://localhost:8680/health | jq .event_store`
+1. Check DB connection: `psql $DATABASE_URL -c "SELECT 1"` (round-trip latency should be \<10ms)
 
 **Recovery:**
 
 1. **If circuit breaker open**: wait for cooldown (default 30s); subsequent calls fast-fail until cooldown expires
-2. **If DB unreachable**: `pg_ctl restart` or failover to replica (operator-specific)
-3. **If EventStore has a transient bug**: restart Mahavishnu; idempotency state is durable in DB, no data loss
+1. **If DB unreachable**: `pg_ctl restart` or failover to replica (operator-specific)
+1. **If EventStore has a transient bug**: restart Mahavishnu; idempotency state is durable in DB, no data loss
 
 **Verification:**
 
@@ -82,16 +82,16 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 **Diagnosis:**
 
 1. Confirm circuit state: `curl http://localhost:8680/metrics | grep idempotency_circuit_state`
-2. Check EventStore health: `curl http://localhost:8680/health | jq .event_store`
-3. Check DB latency: `psql $DATABASE_URL -c "SELECT 1"` (round-trip should be \<10ms)
-4. Check if circuit is in cooldown probe: `idempotency_circuit_transitions_total{transition="half_open"}` — frequent probes indicate sustained outage
+1. Check EventStore health: `curl http://localhost:8680/health | jq .event_store`
+1. Check DB latency: `psql $DATABASE_URL -c "SELECT 1"` (round-trip should be \<10ms)
+1. Check if circuit is in cooldown probe: `idempotency_circuit_transitions_total{transition="half_open"}` — frequent probes indicate sustained outage
 
 **Recovery:**
 
 1. **If DB genuinely down**: fix the DB outage first; circuit will self-recover on next successful probe after cooldown (default 30s)
-2. **If circuit threshold too aggressive** (transient blips trip it): raise `idempotency.failure_threshold` in settings; restart Mahavishnu
-3. **If probe storm overwhelming sick DB**: increase `idempotency.cooldown_seconds` to reduce probe frequency; restart Mahavishnu
-4. **Restart clears in-memory breaker** but does NOT fix the underlying outage — restart only helps if the breaker is itself stuck (rare; bug)
+1. **If circuit threshold too aggressive** (transient blips trip it): raise `idempotency.failure_threshold` in settings; restart Mahavishnu
+1. **If probe storm overwhelming sick DB**: increase `idempotency.cooldown_seconds` to reduce probe frequency; restart Mahavishnu
+1. **Restart clears in-memory breaker** but does NOT fix the underlying outage — restart only helps if the breaker is itself stuck (rare; bug)
 
 **Verification:**
 
@@ -110,14 +110,14 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 **Diagnosis:**
 
 1. List worktrees by age: `find ~/.local/share/mahavishnu/worktrees/ -maxdepth 1 -type d -mmin +1440 | sort`
-2. For each stale worktree, check whether the owning dispatch is still running: `ps aux | grep <branch_name>`
-3. If no process holds the worktree, it's a leak (the `finally` block failed or the process was killed)
+1. For each stale worktree, check whether the owning dispatch is still running: `ps aux | grep <branch_name>`
+1. If no process holds the worktree, it's a leak (the `finally` block failed or the process was killed)
 
 **Recovery:**
 
 1. **Manual cleanup**: `git worktree remove --force <path>` for each leaked worktree
-2. **Verify**: `git worktree list --porcelain` shows only active worktrees
-3. **If leaks recur**: file a bug — the `finally` block in `pool_route_execute` may not be running on signal interrupts (consider adding `asyncio.shield()` around the cleanup call)
+1. **Verify**: `git worktree list --porcelain` shows only active worktrees
+1. **If leaks recur**: file a bug — the `finally` block in `pool_route_execute` may not be running on signal interrupts (consider adding `asyncio.shield()` around the cleanup call)
 
 **Verification:**
 
@@ -144,25 +144,25 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 **Diagnosis:**
 
 1. Read the reason off the counter: `curl http://localhost:8680/metrics | grep worktree_isolation_refusals_total`
-2. `reason="no_capable_pool"` — no registered pool can start a session
+1. `reason="no_capable_pool"` — no registered pool can start a session
    in a named directory. The merge pipeline provisions one
    (`merge-review`, a one-shot `terminal-claude` pool); a pool of that
    name that reports `supports_working_directory: false` is the wrong
    kind. Check `curl http://localhost:8680/mcp` → `mahavishnu_pool_list`.
-3. `reason="not_authorized"` — the repository named in the
+1. `reason="not_authorized"` — the repository named in the
    dispatch prompt is outside `allowed_repo_paths`. Either the
    repository is not allowed (add it) or the prompt named the wrong
    one.
-4. `reason="unresolved"` — the named repository is not a local
+1. `reason="unresolved"` — the named repository is not a local
    path. The prompt's `Repository:` line must name a path on this host.
-5. `reason="not_a_git_repo"` — the named path is not a git working
+1. `reason="not_a_git_repo"` — the named path is not a git working
    tree; a worktree cannot be forked from it.
-6. `reason="settings_unavailable"` — the server could not read its
+1. `reason="settings_unavailable"` — the server could not read its
    settings. Check `curl http://localhost:8680/health`.
-7. `reason="rerank_moved_the_task"` — the re-ranking picked a pool that
+1. `reason="rerank_moved_the_task"` — the re-ranking picked a pool that
    cannot honour a directory. That is a routing bug, not an operator
    action; the counter is the only signal that it happened.
-8. `reason="pool_cannot_honour_cwd"` — a dispatch named a pool directly
+1. `reason="pool_cannot_honour_cwd"` — a dispatch named a pool directly
    and that pool cannot honour the directory the task named. The task
    was refused rather than run in the wrong directory. Pick a pool
    that reports `supports_working_directory: true`, or drop the
@@ -172,7 +172,7 @@ Operational guide for the `pool_route_execute(worktree=WorktreeOptions(...))` fe
 
 1. Fix the reason the counter names — the refusal message carries the
    same text the operator sees.
-2. Re-run the merge. The refusal happens *before* the worker runs, so
+1. Re-run the merge. The refusal happens *before* the worker runs, so
    nothing was started and nothing needs cleaning up.
 
 **Verification:**

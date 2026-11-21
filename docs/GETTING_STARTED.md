@@ -32,7 +32,7 @@ Mahavishnu includes comprehensive visual documentation with **50+ diagrams** cov
    - Dead letter queue flow
    - Quality metrics timeline
 
-2. **~~Workflow Diagrams~~** ***(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))*** - Step-by-step operational procedures
+1. **~~Workflow Diagrams~~** ***(removed 2026-10-14; see [docs consolidation log](https://github.com/lesleslie/mahavishnu/commits/main))*** - Step-by-step operational procedures
 
    - Quick start setup flow
    - Pool spawn and execute sequences
@@ -145,9 +145,9 @@ You should see the Mahavishnu CLI help message with all available commands.
 Mahavishnu uses a layered configuration system:
 
 1. **Default values** in Pydantic models
-2. **`settings/mahavishnu.yaml`** (committed to git)
-3. **`settings/local.yaml`** (gitignored, for local development)
-4. **Environment variables** (`MAHAVISHNU_{GROUP}__{FIELD}`)
+1. **`settings/mahavishnu.yaml`** (committed to git)
+1. **`settings/local.yaml`** (gitignored, for local development)
+1. **Environment variables** (`MAHAVISHNU_{GROUP}__{FIELD}`)
 
 ### Step 1: Review Default Configuration
 
@@ -615,9 +615,9 @@ export MAHAVISHNU_DEBUG="true"  # "true" or "false"
 Configuration is loaded in this order (later overrides earlier):
 
 1. Default values in Pydantic models
-2. `settings/mahavishnu.yaml` (committed)
-3. `settings/local.yaml` (gitignored)
-4. Environment variables
+1. `settings/mahavishnu.yaml` (committed)
+1. `settings/local.yaml` (gitignored)
+1. Environment variables
 
 ### Validation
 
@@ -643,9 +643,9 @@ otel_storage:
 We welcome contributions! Please see the main README.md for contribution guidelines.
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `pytest`
-5. Submit a pull request
+1. Create a feature branch
+1. Make your changes
+1. Run tests: `pytest`
+1. Submit a pull request
 
 **Happy orchestrating!**

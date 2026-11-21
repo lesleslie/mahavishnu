@@ -18,6 +18,20 @@ topic: event-sourced-otel
 **Operator-config scope:** Bifrost gateway (port 8471) — no code change; UI values listed in Appendix C
 **Out of scope:** `bifrost-mcp` (not done; doesn't do what earlier conversation assumed)
 
+> **Note — 2026-11-21.** This spec is `status: draft` while two documents
+> derived from it are `status: active`:
+> `docs/specs/2026-10-19-bodai-substrate-otel-v7.md` and
+> `docs/specs/2026-10-20-bodai-otel-substrate-read-path.md`. That inversion is
+> deliberate, not an oversight: the two children were promoted to `active` on
+> 2026-11-07 (`eaf9e162`) as approved contracts whose work is in flight, while
+> this parent stays `draft` because it is still awaiting review of the
+> architecture narrative itself. `draft` here means "the narrative is not
+> signed off", not "the contracts below it are unapproved".
+>
+> It is recorded here because the plan index renders this spec as `draft`
+> next to two `active` children, and an index reader has no way to tell a
+> deliberate inversion from a mistake.
+
 ______________________________________________________________________
 
 ## 1. Context

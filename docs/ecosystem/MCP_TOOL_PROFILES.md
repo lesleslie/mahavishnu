@@ -78,11 +78,11 @@ The Tier-A repos expose the conventional 3-tier model (`MINIMAL` / `STANDARD` / 
 ## How to add a new tool to a profile
 
 1. Add the tool to the appropriate group in `<repo>/<package>/mcp/tools/<group>.py` (Tier-A) or `<repo>/<package>/tools/<group>.py` (Tier-B + Bodai-maintained).
-2. Add the group to `STANDARD_REGISTRATIONS` or `FULL_REGISTRATIONS` in the repo's `profiles.py`.
-3. Re-run `python scripts/generate_tool_profiles_doc.py` to refresh this file.
+1. Add the group to `STANDARD_REGISTRATIONS` or `FULL_REGISTRATIONS` in the repo's `profiles.py`.
+1. Re-run `python scripts/generate_tool_profiles_doc.py` to refresh this file.
 
 ## How to add a new Bodai-maintained `*-mcp`
 
 1. Wire `_apply_tool_profile` (or `apply_tool_profile` in a sync context) from the new repo's `server.py` startup path.
-2. Move the repo entry from Tier-C to `Bodai-maintained \`-mcp\``in`REPO_LIST\`.
-3. Re-run `python scripts/generate_tool_profiles_doc.py`.
+1. Move the repo entry from Tier-C to `Bodai-maintained \`-mcp\``in`REPO_LIST\`.
+1. Re-run `python scripts/generate_tool_profiles_doc.py`.

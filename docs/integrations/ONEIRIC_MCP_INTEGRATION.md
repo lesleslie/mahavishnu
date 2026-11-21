@@ -11,13 +11,13 @@ Mahavishnu integrates with Oneiric MCP to provide dynamic adapter discovery and 
 ## Table of Contents
 
 1. [Architecture](#architecture)
-2. [Configuration](#configuration)
-3. [MCP Tools](#mcp-tools)
-4. [Python API](#python-api)
-5. [Workflow Integration](#workflow-integration)
-6. [Examples](#examples)
-7. [Testing](#testing)
-8. [Troubleshooting](#troubleshooting)
+1. [Configuration](#configuration)
+1. [MCP Tools](#mcp-tools)
+1. [Python API](#python-api)
+1. [Workflow Integration](#workflow-integration)
+1. [Examples](#examples)
+1. [Testing](#testing)
+1. [Troubleshooting](#troubleshooting)
 
 ## Architecture
 
@@ -714,13 +714,13 @@ logging.getLogger("mahavishnu.core.oneiric_client").setLevel(logging.DEBUG)
 ## Best Practices
 
 1. **Always close client**: Use `async with` or `finally` block
-2. **Enable caching in production**: Set `cache_ttl_sec=300`
-3. **Use circuit breaker**: Prevent cascading failures
-4. **Implement fallback chains**: Try multiple adapters
-5. **Monitor health**: Check adapter health before critical operations
-6. **Handle connection errors**: Graceful degradation when Oneiric MCP unavailable
-7. **Use parallel queries**: Batch adapter discovery for better performance
-8. **Invalidate cache strategically**: After adapter registration changes
+1. **Enable caching in production**: Set `cache_ttl_sec=300`
+1. **Use circuit breaker**: Prevent cascading failures
+1. **Implement fallback chains**: Try multiple adapters
+1. **Monitor health**: Check adapter health before critical operations
+1. **Handle connection errors**: Graceful degradation when Oneiric MCP unavailable
+1. **Use parallel queries**: Batch adapter discovery for better performance
+1. **Invalidate cache strategically**: After adapter registration changes
 
 ## References
 

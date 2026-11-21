@@ -135,9 +135,9 @@ ______________________________________________________________________
 When a trigger condition is met:
 
 1. Copy the entry's "What it is" / "Where it would live" / "Effort estimate" sections into a new file at `docs/feature-tracking/<slug>.md`, populating the standard feature-tracking template fields.
-2. Update this parking lot file: set state to **promoted** with a date, link to the new file in this entry, and decrement the entry count above.
-3. Create a focused plan in `docs/plans/` for the promoted feature, OR add it as a phase to an existing plan if it's a small enough delta.
-4. Update `docs/plans/PLAN_INDEX.md`.
+1. Update this parking lot file: set state to **promoted** with a date, link to the new file in this entry, and decrement the entry count above.
+1. Create a focused plan in `docs/plans/` for the promoted feature, OR add it as a phase to an existing plan if it's a small enough delta.
+1. Update `docs/plans/PLAN_INDEX.md`.
 
 ## Session-Buddy
 

@@ -10,11 +10,11 @@ counters.
 ## Table of Contents
 
 1. [How to Use This Table](#how-to-use-this-table)
-2. [Severity Definitions](#severity-definitions)
-3. [Retry Behavior](#retry-behavior)
-4. [Alert Channels](#alert-channels)
-5. [Error Code Table](#error-code-table)
-6. [PHASE 3 Streaming-tar Decisions](#phase-3-streaming-tar-decisions)
+1. [Severity Definitions](#severity-definitions)
+1. [Retry Behavior](#retry-behavior)
+1. [Alert Channels](#alert-channels)
+1. [Error Code Table](#error-code-table)
+1. [PHASE 3 Streaming-tar Decisions](#phase-3-streaming-tar-decisions)
 
 ______________________________________________________________________
 
@@ -22,9 +22,9 @@ ______________________________________________________________________
 
 1. Find the MHV code from the log line or the `error_code` field on
    the exception.
-2. Read the **Severity** column to know how urgent the response is.
-3. Read **Retry?** to know whether the coordinator will re-attempt.
-4. Read **Alert Channel** to know where to expect a page or message.
+1. Read the **Severity** column to know how urgent the response is.
+1. Read **Retry?** to know whether the coordinator will re-attempt.
+1. Read **Alert Channel** to know where to expect a page or message.
 
 When a single incident produces multiple MHV codes, take the
 **highest** severity across the observed set. Example: a fetch that

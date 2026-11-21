@@ -6,6 +6,7 @@ last_reviewed: 2026-10-28
 superseded_by:
 blocks_on: []
 kind: followup
+origin_plan: docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md
 topic: tier2-hyperbolic-embeddings
 ---
 
@@ -13,7 +14,7 @@ topic: tier2-hyperbolic-embeddings
 
 **Created**: 2026-09-10
 **Status**: Active — **deferred work, NOT a defect**
-**Originating plan**: \[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`\] (Tier 1 Phase 9)
+**Originating plan**: \[`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`\] (Tier 1 Phase 9)
 
 ## Why deferred
 
@@ -61,6 +62,6 @@ When the trigger fires, open `docs/plans/YYYY-MM-DD-tier2-hyperbolic-embeddings.
 
 ## Related
 
-- Tier 1 plan: \[`docs/plans/2026-09-10-bodai-math-initiatives-tier1.md`\] §4.7, §6 Phase 9
+- Tier 1 plan: \[`docs/plans/.archive/2026-09-10-bodai-math-initiatives-tier1.md`\] §4.7, §6 Phase 9
 - Eligibility script: [`scripts/feature_eligibility.py`](../../scripts/feature_eligibility.py)
 - Feature tracking: [`docs/feature-tracking/2026-09-10-tier2-math-deferred.md`](../feature-tracking/2026-09-10-tier2-math-deferred.md)

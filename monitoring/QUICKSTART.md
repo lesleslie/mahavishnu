@@ -155,8 +155,8 @@ You should see Prometheus metrics output!
 **Import Dashboard**:
 
 1. Navigate to Dashboards → Import
-2. Upload `monitoring/dashboards/mcp_ecosystem.json`
-3. View your MCP ecosystem metrics in real-time!
+1. Upload `monitoring/dashboards/mcp_ecosystem.json`
+1. View your MCP ecosystem metrics in real-time!
 
 **Dashboard Features**:
 
@@ -171,9 +171,9 @@ You should see Prometheus metrics output!
 **Search Traces**:
 
 1. Select your service from the dropdown
-2. Search by operation name, trace ID, or tags
-3. View detailed trace timeline
-4. Identify bottlenecks and errors
+1. Search by operation name, trace ID, or tags
+1. View detailed trace timeline
+1. Identify bottlenecks and errors
 
 ### Prometheus (http://localhost:9090)
 
@@ -257,14 +257,14 @@ Canonical standard:
 ### Metrics not appearing
 
 1. Check Prometheus targets: http://localhost:9090/targets
-2. Verify `/metrics` endpoint is accessible
-3. Check Docker logs: `docker-compose logs prometheus`
+1. Verify `/metrics` endpoint is accessible
+1. Check Docker logs: `docker-compose logs prometheus`
 
 ### Traces not appearing
 
 1. Check Jaeger UI: http://localhost:16686
-2. Verify OTLP endpoint is correct
-3. Check Docker logs: `docker-compose logs otel-collector`
+1. Verify OTLP endpoint is correct
+1. Check Docker logs: `docker-compose logs otel-collector`
 
 ### Grafana can't connect to Prometheus
 
@@ -287,10 +287,10 @@ See `monitoring/example_integration.py` for a complete working example showing:
 ## Next Steps
 
 1. **Configure alerting** - Set up AlertManager rules
-2. **Add log aggregation** - Configure Promtail for MCP server logs
-3. **Create custom dashboards** - Build domain-specific views
-4. **Set up synthetic monitoring** - Health checks and uptime monitoring
-5. **Performance baselines** - Establish normal operating ranges
+1. **Add log aggregation** - Configure Promtail for MCP server logs
+1. **Create custom dashboards** - Build domain-specific views
+1. **Set up synthetic monitoring** - Health checks and uptime monitoring
+1. **Performance baselines** - Establish normal operating ranges
 
 ## Architecture Overview
 

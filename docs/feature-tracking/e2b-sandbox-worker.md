@@ -28,7 +28,7 @@ executing tasks in hosted E2B Firecracker sandboxes (~150ms create,
 1. **Fallback tier** when the local Apple `container` runtime is
    unsupported (Intel Macs, Linux hosts) — reached automatically via
    `AppleContainerUnsupported` in `_create_isolated_worker`.
-2. **Explicit tier** via worker type `e2b-sandbox` (skips the Apple tier).
+1. **Explicit tier** via worker type `e2b-sandbox` (skips the Apple tier).
 
 Shares `workers/_exec_guard.py` command validation with
 `AppleContainerWorker`. The Docker/OrbStack `ContainerWorker` was removed

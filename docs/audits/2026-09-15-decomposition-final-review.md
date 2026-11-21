@@ -24,12 +24,12 @@ ______________________________________________________________________
 ### Hot-Spot Convergence (≥2 lenses flag the same concern)
 
 1. **Plan source-map Phases 1-11 TDD gap** — Critical-audit H1 + MCP-integration H2 + Data-retention M6 = **3 lenses**; committed risk for execution.
-2. **Enumeration discipline (Phase 1 caller grep + Phase 12 hook grep, too-narrow scope)** — Data-retention H3+H4 + Performance L5 + Critical-audit = **3 lenses**.
-3. **Bus + audit observability for hooks** — Observability H1+H3 + Performance M3+M4 + MCP-integration M1 = **3 lenses**.
-4. **`mcp_common` cross-repo coordination** — MCP-integration H3 + Observability H4 + Critical-audit via §4.3 = **3 lenses**.
-5. **Plan ⇔ spec divergences** — Critical-audit H2-H6 + MCP-integration H5 + Data-retention H5 = **4 lenses**.
-6. **`oneiric.adapters.bootstrap.queued_publisher()` factory existence** — MCP-integration M1 + Performance M2+H1 + Observability H1 = **3 lenses**.
-7. **HealthMonitor primitives + `observed_tool_span` decorator lack TDD** — MCP-integration M2 + Critical-audit (via spec §4.8) + Observability M2 = **3 lenses**.
+1. **Enumeration discipline (Phase 1 caller grep + Phase 12 hook grep, too-narrow scope)** — Data-retention H3+H4 + Performance L5 + Critical-audit = **3 lenses**.
+1. **Bus + audit observability for hooks** — Observability H1+H3 + Performance M3+M4 + MCP-integration M1 = **3 lenses**.
+1. **`mcp_common` cross-repo coordination** — MCP-integration H3 + Observability H4 + Critical-audit via §4.3 = **3 lenses**.
+1. **Plan ⇔ spec divergences** — Critical-audit H2-H6 + MCP-integration H5 + Data-retention H5 = **4 lenses**.
+1. **`oneiric.adapters.bootstrap.queued_publisher()` factory existence** — MCP-integration M1 + Performance M2+H1 + Observability H1 = **3 lenses**.
+1. **HealthMonitor primitives + `observed_tool_span` decorator lack TDD** — MCP-integration M2 + Critical-audit (via spec §4.8) + Observability M2 = **3 lenses**.
 
 ### PATH A — Applied in commit `8badf605`
 
@@ -210,11 +210,11 @@ When Phase 1 execution starts (after PATH A's commit `8badf605`):
 **Pre-Phase-1 (must happen first):**
 
 1. **Cut `mcp-common` PR** adding: `canonical_schemas.{agent,skill}.py` (Phase 4 prerequisites), `signing/skills_signer.py` (Phase 4), `signing/skills_signer/` (Phase 4); `traces/{endpoint_resolver,__init__}.py` (Phase 12); `discovery.py` + `catalog.py` + `ide/__init__.py` + `ide/pycharm_tools.py` + `health_tools.py` (Phase 1.5); `tools/observed_tool_span.py` (Phase 1).
-2. **Cut Oneiric PR** adding: `mcp/server_core.py` (Phase 1), `mcp/tools/adapter_registry.py` (Phase 1), `mcp/settings/oneiric.yaml` (Phase 1); `adapters/cache/persistent_kv.py` (Phase 6); `http/routes/substrate.py` (Phase 7); fix `adapters/observability/settings.py:9` literal (Phase 10).
-3. **Cut Akosha PR** adding: `mcp/tools/query_local_traces_fitness.py` (Phase 5); decide pgvector fate (Phase 10).
-4. **Cut Mahavishnu PR** adding: `mcp/tools/ecosystem_state.py` (Phase 3); `core/ecosystem_state_store.py` (Phase 3); flip ingesters/otel_ingester.py:38 (Phase 5); commit/decide `adapters/pgvector_adapter.py` (Phase 10); `mahavishnu/bodai_hook_bridge.py` (Phase 12).
-5. **Cut Crackerjack PR** adding: `mcp/tools/agent_registry.py` + `mcp/tools/skill_registry.py` (Phase 4); `mcp/profiles.py` mandatory_groups update (Phase 4).
-6. **Cut the retired component's deletions** (Phase 8): its `mcp/` and `skills_signer/` trees, slim `pyproject.toml`, CHANGELOG/CLAUDE.md cleanup, MIGRATION.md.
+1. **Cut Oneiric PR** adding: `mcp/server_core.py` (Phase 1), `mcp/tools/adapter_registry.py` (Phase 1), `mcp/settings/oneiric.yaml` (Phase 1); `adapters/cache/persistent_kv.py` (Phase 6); `http/routes/substrate.py` (Phase 7); fix `adapters/observability/settings.py:9` literal (Phase 10).
+1. **Cut Akosha PR** adding: `mcp/tools/query_local_traces_fitness.py` (Phase 5); decide pgvector fate (Phase 10).
+1. **Cut Mahavishnu PR** adding: `mcp/tools/ecosystem_state.py` (Phase 3); `core/ecosystem_state_store.py` (Phase 3); flip ingesters/otel_ingester.py:38 (Phase 5); commit/decide `adapters/pgvector_adapter.py` (Phase 10); `mahavishnu/bodai_hook_bridge.py` (Phase 12).
+1. **Cut Crackerjack PR** adding: `mcp/tools/agent_registry.py` + `mcp/tools/skill_registry.py` (Phase 4); `mcp/profiles.py` mandatory_groups update (Phase 4).
+1. **Cut the retired component's deletions** (Phase 8): its `mcp/` and `skills_signer/` trees, slim `pyproject.toml`, CHANGELOG/CLAUDE.md cleanup, MIGRATION.md.
 
 **Phase 1 execution prerequisites:**
 
@@ -242,7 +242,7 @@ ______________________________________________________________________
 **Recommended next session work (in order):**
 
 1. Cut the cross-repo PRs (mcp-common, Oneiric, Akosha, Mahavishnu, Crackerjack) — 1-2 sessions
-2. Regenerate Phases 1-11 TDD scaffold from this spec — 1 session
-3. Begin Phase 1 execution — dependent on (1) and (2)
+1. Regenerate Phases 1-11 TDD scaffold from this spec — 1 session
+1. Begin Phase 1 execution — dependent on (1) and (2)
 
 **No spec rewrite needed.** Apply the PATH A commit `8badf605`; defer the rest via the working backlog above.

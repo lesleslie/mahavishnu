@@ -244,13 +244,13 @@ Monitor auto-restart events using:
    sudo journalctl -u mahavishnu -f
    ```
 
-2. **Supervisorctl (supervisord):**
+1. **Supervisorctl (supervisord):**
 
    ```bash
    sudo supervisorctl tail -f mahavishnu
    ```
 
-3. **SLO Metrics:**
+1. **SLO Metrics:**
 
    - Track uptime percentage
    - Monitor restart frequency
@@ -304,10 +304,10 @@ sudo journalctl -u mahavishnu-health -f
 ## Best Practices
 
 1. **Set appropriate resource limits** - Prevent memory leaks from affecting the host
-2. **Monitor restart frequency** - Excessive restarts indicate application issues
-3. **Use health checks** - Integrate with monitoring systems (Prometheus, Grafana)
-4. **Log everything** - Centralized logging helps diagnose issues
-5. **Test crash recovery** - Verify auto-restart works before production deployment
+1. **Monitor restart frequency** - Excessive restarts indicate application issues
+1. **Use health checks** - Integrate with monitoring systems (Prometheus, Grafana)
+1. **Log everything** - Centralized logging helps diagnose issues
+1. **Test crash recovery** - Verify auto-restart works before production deployment
 
 ## Integration with Monitoring
 
@@ -334,10 +334,10 @@ groups:
 ## Security Considerations
 
 1. **Run as non-root user** - Service files use dedicated `mahavishnu` user
-2. **Restrict file permissions** - Only user can write to application directory
-3. **Enable NoNewPrivileges** - Prevent privilege escalation
-4. **Use PrivateTmp** - Isolate /tmp directory
-5. **Protect system directories** - Read-only access to critical paths
+1. **Restrict file permissions** - Only user can write to application directory
+1. **Enable NoNewPrivileges** - Prevent privilege escalation
+1. **Use PrivateTmp** - Isolate /tmp directory
+1. **Protect system directories** - Read-only access to critical paths
 
 ## Conclusion
 

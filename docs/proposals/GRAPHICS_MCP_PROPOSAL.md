@@ -20,9 +20,9 @@ Current graphics MCP servers have limitations:
 A FastMCP-based server that:
 
 1. Supports multiple graphics backends (GIMP, Inkscape, Blender, ImageMagick)
-2. Provides both stdio and HTTP transport
-3. Uses Oneiric for configuration
-4. Follows mcp-common patterns for consistency
+1. Provides both stdio and HTTP transport
+1. Uses Oneiric for configuration
+1. Follows mcp-common patterns for consistency
 
 ## Architecture
 
@@ -407,17 +407,17 @@ class ApplicationWorker(BaseWorker):
 ## Security Considerations
 
 1. **Path Validation**: All file paths validated against allowed directories
-2. **File Size Limits**: Configurable max file size to prevent DoS
-3. **Sandbox Mode**: Optional container execution for untrusted operations
-4. **Rate Limiting**: Prevent abuse via operation rate limits
+1. **File Size Limits**: Configurable max file size to prevent DoS
+1. **Sandbox Mode**: Optional container execution for untrusted operations
+1. **Rate Limiting**: Prevent abuse via operation rate limits
 
 ## Next Steps
 
 1. Create repository: `graphics-mcp`
-2. Set up project structure with mcp-common patterns
-3. Implement Pillow backend as proof of concept
-4. Add ImageMagick backend for CLI operations
-5. Integrate with Mahavishnu worker system
+1. Set up project structure with mcp-common patterns
+1. Implement Pillow backend as proof of concept
+1. Add ImageMagick backend for CLI operations
+1. Integrate with Mahavishnu worker system
 
 ## References
 

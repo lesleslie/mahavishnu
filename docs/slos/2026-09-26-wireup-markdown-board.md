@@ -45,9 +45,9 @@ State sidecar consistency:
 ## Critical alerts (round-4 ops gap-fix)
 
 1. **`markdown_board_watcher_up == 0 for 2m`** → page (per spec)
-2. **`markdown_board_watcher_restarts_total` rate climbing** (3+ restarts in 5m) → warn
-3. **`markdown_board_card_age_seconds{section="ready"} > 600 for 10m`** → warn (cards stuck in ready)
-4. **`markdown_board_dispatch_total{section="ready", result="error"}` rate > 0.1/s for 5m** → page
+1. **`markdown_board_watcher_restarts_total` rate climbing** (3+ restarts in 5m) → warn
+1. **`markdown_board_card_age_seconds{section="ready"} > 600 for 10m`** → warn (cards stuck in ready)
+1. **`markdown_board_dispatch_total{section="ready", result="error"}` rate > 0.1/s for 5m** → page
 
 ## macOS flock caveat
 

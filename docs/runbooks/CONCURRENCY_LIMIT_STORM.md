@@ -30,21 +30,21 @@ effective_limit = worker_count × settings.concurrency_limits.by_category[<categ
 **Diagnosis:**
 
 1. Check the active dispatch count: `curl http://localhost:8680/metrics | grep task_domain_concurrency`
-2. Cross-reference with `task_domain_rate_limited_total` to find which domain is hot
-3. Check whether the limit is appropriate:
+1. Cross-reference with `task_domain_rate_limited_total` to find which domain is hot
+1. Check whether the limit is appropriate:
    ```bash
    # Get current limit
    cat settings/mahavishnu.yaml | grep -A2 concurrency_limit
    # Get worker count (see formula above)
    ```
-4. Check whether recent config changes raised or lowered limits: `git log -p settings/mahavishnu.yaml | head -30`
+1. Check whether recent config changes raised or lowered limits: `git log -p settings/mahavishnu.yaml | head -30`
 
 **Recovery:**
 
 1. **If limits are too aggressive** (recent lowering): revert `settings/mahavishnu.yaml` and restart
-2. **If legitimate load spike**: increase `concurrency_limit` for the affected category. **Divide target_total by worker_count first** to avoid over-allocation
-3. **If one domain is monopolizing workers**: investigate why other domains can't acquire slots. The gate's `_shard_locks` LRUCache bounds memory, but contention is real under spike conditions
-4. **If the gate is misbehaving** (denies when slots available): check the `LRUCache(maxsize=1024)` eviction — if the lock for a held `(category, pool_id)` was evicted, `release()` returns early and the slot leaks. Restart the worker to clear the leak.
+1. **If legitimate load spike**: increase `concurrency_limit` for the affected category. **Divide target_total by worker_count first** to avoid over-allocation
+1. **If one domain is monopolizing workers**: investigate why other domains can't acquire slots. The gate's `_shard_locks` LRUCache bounds memory, but contention is real under spike conditions
+1. **If the gate is misbehaving** (denies when slots available): check the `LRUCache(maxsize=1024)` eviction — if the lock for a held `(category, pool_id)` was evicted, `release()` returns early and the slot leaks. Restart the worker to clear the leak.
 
 **Verification:**
 
@@ -63,16 +63,16 @@ effective_limit = worker_count × settings.concurrency_limits.by_category[<categ
 **Diagnosis:**
 
 1. Check whether multiple worker processes share the same `(category, pool_id)` — if so, drift is expected (per-process scope is documented)
-2. Check whether the lock was evicted mid-acquire:
+1. Check whether the lock was evicted mid-acquire:
    - `LRUCache(maxsize=1024)` — if the same key is acquired >1024 times before the original holder releases, the lock may be evicted
    - Look for `release()` returning early in the logs (it logs nothing on early-return — add a metric if investigating)
-3. Check whether the gate is being modified by external code: `git log --all -S "ConcurrencyGate"` for recent changes
+1. Check whether the gate is being modified by external code: `git log --all -S "ConcurrencyGate"` for recent changes
 
 **Recovery:**
 
 1. **If drift is per-process expected** (multi-worker pool): no action needed; the metric exists to make this visible, not to alert
-2. **If drift is unintended** (single-worker setup): restart Mahavishnu; the gate's `_counters` dict is per-process and a restart resets it
-3. **If drift is from lock eviction**: increase `LRUCache(maxsize=...)` to bound the working set; the eviction is benign but the metric is alarming
+1. **If drift is unintended** (single-worker setup): restart Mahavishnu; the gate's `_counters` dict is per-process and a restart resets it
+1. **If drift is from lock eviction**: increase `LRUCache(maxsize=...)` to bound the working set; the eviction is benign but the metric is alarming
 
 **Verification:**
 

@@ -16,7 +16,7 @@ when the event fires. We install two things:
    these are the operator-side files that normalize Qwen's JSON
    payload into the canonical envelope and delegate to
    `mahavishnu.bodai_hook_bridge.handle()`.
-2. **One settings.json registration** — registers each bridge
+1. **One settings.json registration** — registers each bridge
    with Qwen's hook dispatcher.
 
 After installation, every Qwen event lands on the unified Bodai
@@ -240,10 +240,10 @@ If nothing appears on the bus, check:
 
 1. `QWEN_PROJECT_DIR` is set in the shell that invoked Qwen
    (Qwen inherits the env from its parent shell).
-2. Redis is reachable from the Qwen shell context.
-3. `~/.qwen/settings.json` parses as JSON
+1. Redis is reachable from the Qwen shell context.
+1. `~/.qwen/settings.json` parses as JSON
    (`python -m json.tool ~/.qwen/settings.json`).
-4. Each bridge file is executable (`ls -la ~/.qwen/hooks/`).
+1. Each bridge file is executable (`ls -la ~/.qwen/hooks/`).
 
 ## Rollback
 

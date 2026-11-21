@@ -14,10 +14,13 @@ topic: shared-oneiric-substrate
 revision: v5
 owner: platform-team
 scope: cross-component substrate adoption via existing oneiric.adapters (akosha + session-buddy + mahavishnu + oneiric)
-related: docs/decisions/oneiric-substrate-extraction.md; docs/decisions/wire-up-contract.md; docs/decisions/mcp-backend-wiring-discipline.md; docs/specs/2026-04-26-config-consolidation-design.md; feedback-bodai-core-component-taxonomy.md
+related:
+  - docs/decisions/wire-up-contract.md
+  - docs/decisions/mcp-backend-wiring-discipline.md
+  - docs/specs/.archive/2026-04-26-config-consolidation-design.md
 partially_superseded_by:
-  - docs/plans/2026-10-15-oneiric-substrate-rollout.md  # active umbrella; consolidates Phases A, E1, E2
-  - docs/plans/2026-10-16-drop-ollama-favor-llama-server.md  # active; supersedes Phase D ollama adapter
+  - docs/plans/.archive/2026-10-15-oneiric-substrate-rollout.md  # active umbrella; consolidates Phases A, E1, E2
+  - docs/plans/.archive/2026-10-16-drop-ollama-favor-llama-server.md  # active; supersedes Phase D ollama adapter
 title: "Shared Oneiric Substrate - Design v5"
 ---
 

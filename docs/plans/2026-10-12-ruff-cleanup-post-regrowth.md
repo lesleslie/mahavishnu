@@ -11,7 +11,7 @@ blocks_on: []
 # plan supersedes for the 8 in-scope rules. The PLAN_INDEX sync script
 # tolerates the field but does not currently emit it; the field is
 # documentation-only.
-replaces: docs/plans/2026-07-29-ruff-cleanup-waves.md
+replaces: docs/plans/.archive/2026-07-29-ruff-cleanup-waves.md
 topic: ruff-cleanup-post-regrowth
 title: "Ruff Cleanup Post-Regrowth (2026-10-12)"
 ---

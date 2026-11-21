@@ -141,8 +141,8 @@ All repos have hooks installed for auto-indexing on git events.
 
 1. **Pydantic forward reference** (`models.py`): `datetime` was in `TYPE_CHECKING` block, causing `IndexWorkItem` initialization to fail. Fixed by importing `datetime` normally.
 
-2. **Async method handling** (`parser.py`): `_analyze_python_file()` is `async` and returns `None` (populates `analyzer.nodes` instead). The code was treating the return value as having `.nodes`. Fixed with `asyncio.run()` + direct node access.
+1. **Async method handling** (`parser.py`): `_analyze_python_file()` is `async` and returns `None` (populates `analyzer.nodes` instead). The code was treating the return value as having `.nodes`. Fixed with `asyncio.run()` + direct node access.
 
-3. **Path resolution** (`path_validation.py`): `get_registered_repos()` resolved `settings/repos_path` relative to `cwd` instead of the project directory. Fixed to use `Path(__file__)`-based resolution.
+1. **Path resolution** (`path_validation.py`): `get_registered_repos()` resolved `settings/repos_path` relative to `cwd` instead of the project directory. Fixed to use `Path(__file__)`-based resolution.
 
-4. **Git hook command** (`git_hooks.py`): Hook used `mahavishnu index --trigger` but the CLI expects `mahavishnu index repo --trigger`. Fixed the hook template.
+1. **Git hook command** (`git_hooks.py`): Hook used `mahavishnu index --trigger` but the CLI expects `mahavishnu index repo --trigger`. Fixed the hook template.

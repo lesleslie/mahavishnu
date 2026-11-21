@@ -265,13 +265,13 @@ pytest tests/unit/test_adapters/ -k "edge" -v
 Each test file follows a consistent structure:
 
 1. **Imports and Fixtures**: All necessary imports and shared test fixtures
-2. **Initialization Tests**: Verify proper adapter setup
-3. **Core Functionality Tests**: Test main execution paths
-4. **Error Handling Tests**: Verify graceful error handling
-5. **Retry Logic Tests**: Test tenacity-based retry mechanisms
-6. **Health Check Tests**: Verify health endpoint functionality
-7. **Integration Tests**: End-to-end workflow tests
-8. **Edge Case Tests**: Boundary conditions and unusual inputs
+1. **Initialization Tests**: Verify proper adapter setup
+1. **Core Functionality Tests**: Test main execution paths
+1. **Error Handling Tests**: Verify graceful error handling
+1. **Retry Logic Tests**: Test tenacity-based retry mechanisms
+1. **Health Check Tests**: Verify health endpoint functionality
+1. **Integration Tests**: End-to-end workflow tests
+1. **Edge Case Tests**: Boundary conditions and unusual inputs
 
 ### Test Naming Convention
 
@@ -351,10 +351,10 @@ The target coverage for adapter tests is **100%** of all execution paths:
 Tests use extensive mocking to avoid external dependencies:
 
 1. **LlamaIndex**: Mocked when unavailable to allow test execution
-2. **Prefect**: Mocked client and flow execution
-3. **Code Graph Analyzer**: Mocked for realistic analysis results
-4. **Quality Control**: Mocked for QC checks
-5. **LLM Providers**: Mocked to avoid API calls
+1. **Prefect**: Mocked client and flow execution
+1. **Code Graph Analyzer**: Mocked for realistic analysis results
+1. **Quality Control**: Mocked for QC checks
+1. **LLM Providers**: Mocked to avoid API calls
 
 ### Mock Implementation
 
@@ -387,27 +387,27 @@ async def test_async_functionality():
 ## Known Limitations
 
 1. **LlamaIndex Tests**: Require mocking of LlamaIndex imports if package not installed
-2. **Prefect Tests**: Mock Prefect client doesn't test actual Prefect server integration
-3. **Agno Tests**: Use mock agent when Agno package unavailable
-4. **Integration Tests**: Limited to mock-based integration, not end-to-end with real services
+1. **Prefect Tests**: Mock Prefect client doesn't test actual Prefect server integration
+1. **Agno Tests**: Use mock agent when Agno package unavailable
+1. **Integration Tests**: Limited to mock-based integration, not end-to-end with real services
 
 ## Future Enhancements
 
 1. **End-to-End Tests**: Add tests that run against real services (Prefect server)
-2. **Performance Tests**: Add benchmarks for concurrent processing
-3. **Property-Based Tests**: Add Hypothesis tests for input validation
-4. **Contract Tests**: Verify adapter interface compliance
-5. **Stress Tests**: Test behavior with large repositories and many concurrent operations
+1. **Performance Tests**: Add benchmarks for concurrent processing
+1. **Property-Based Tests**: Add Hypothesis tests for input validation
+1. **Contract Tests**: Verify adapter interface compliance
+1. **Stress Tests**: Test behavior with large repositories and many concurrent operations
 
 ## Contributing
 
 When adding new adapter features:
 
 1. Add corresponding tests in the appropriate test file
-2. Maintain the established test structure
-3. Update this README with new test descriptions
-4. Ensure 100% coverage of new code paths
-5. Add integration tests for complex workflows
+1. Maintain the established test structure
+1. Update this README with new test descriptions
+1. Ensure 100% coverage of new code paths
+1. Add integration tests for complex workflows
 
 ## Test Execution CI/CD
 

@@ -196,8 +196,8 @@ Recommended shape:
 ### Option A: Best default
 
 1. **New product repo** for the user-facing builder
-2. **FastBlocks** as the framework substrate
-3. **Mahavishnu** as orchestration backend
+1. **FastBlocks** as the framework substrate
+1. **Mahavishnu** as orchestration backend
 
 This is the recommended structure.
 

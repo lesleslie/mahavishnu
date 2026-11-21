@@ -42,12 +42,12 @@ Mahavishnu implements intelligent adaptive routing with statistical learning and
 Pre-built dashboard at `docs/grafana/Routing_Monitoring.json`:
 
 1. Open Grafana: `http://localhost:3000`
-2. Dashboards → Import → Upload `Routing_Monitoring.json`
-3. Select Prometheus datasource: the one pointing at your Prometheus
+1. Dashboards → Import → Upload `Routing_Monitoring.json`
+1. Select Prometheus datasource: the one pointing at your Prometheus
    server (`http://localhost:9090` for a native install). See
    `monitoring/QUICKSTART.md` — the datasource must exist before any of
    these panels can query anything.
-4. View 12 panels: routing decisions, success rates, latency percentiles, fallbacks, costs, budgets, A/B tests
+1. View 12 panels: routing decisions, success rates, latency percentiles, fallbacks, costs, budgets, A/B tests
 
 ## Metrics API
 

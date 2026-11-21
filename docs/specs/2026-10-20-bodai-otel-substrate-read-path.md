@@ -11,7 +11,7 @@ topic: substrate-otel
 title: "Bodai OTel Substrate — Read Path"
 parent_spec: docs/specs/2026-10-19-bodai-event-sourced-otel-architecture.md
 depends_on:
-  - docs/plans/2026-10-19-bodai-substrate-otel-v7-implementation.md
+  - docs/plans/.archive/implementation-reports/2026-10-19-bodai-substrate-otel-v7-implementation.md
 review: []
 ---
 
@@ -22,13 +22,23 @@ companion to the v7 substrate spec.
 **Repos in scope:** `akosha` (query surface, MCP tools, fitness projection), `mahavishnu` (one producer repointed), `oneiric` (substrate access only — read-only).
 **Blocked on:** the v7 substrate spec. The receiver must be ingesting before anything can query it.
 
-> **Note — 2026-11-07.** This spec's `depends_on:` pointed at
+> **Note — 2026-11-21.** This spec's `depends_on:` named
 > `docs/plans/2026-10-19-bodai-substrate-otel-v7-implementation.md`, which was
 > deleted on 2026-10-28 by commit `8f149717` ("chore: bump version to 0.37.0")
 > along with this spec's own implementation plan
 > (`docs/plans/2026-10-20-bodai-otel-substrate-read-path-implementation.md`).
-> Both have been **restored** from git history at `8f149717^` and the
-> `depends_on:` has been repointed at the restored plan.
+> Both were **restored** from git history at `8f149717^` on 2026-11-07
+> (`eaf9e162`), and then **archived again** on 2026-11-16 (`70c38a92`): the
+> documentation cleanup moved both shipped plans into
+> `docs/plans/.archive/implementation-reports/`, which `.gitignore` keeps out
+> of version control. The `depends_on:` now names the archived copy, which is
+> where both plans live.
+>
+> The consequence is worth stating plainly: an archived plan leaves version
+> control, so a tracked document that points into the archive resolves only
+> on the machine that performed the archival. `docs/plans/2026-11-07-archived-requirements-registry.md`
+> points into the archive the same way, and that is the convention this repo
+> follows — but it is a convention with a shelf life, not a durable link.
 
 ______________________________________________________________________
 

@@ -336,10 +336,10 @@ ______________________________________________________________________
 ## Need Help?
 
 1. **Quick Issues**: Check this guide
-2. **Usage Examples**: See `SESSION_BUDDY_POLLING_USAGE.md`
-3. **Architecture**: See `SESSION_BUDDY_POLLING_USAGE.md`
-4. **Full Details**: See `SESSION_BUDDY_POLLING_SUMMARY.md`
-5. **Source Code**: Check `session_buddy_poller.py` docstrings
+1. **Usage Examples**: See `SESSION_BUDDY_POLLING_USAGE.md`
+1. **Architecture**: See `SESSION_BUDDY_POLLING_USAGE.md`
+1. **Full Details**: See `SESSION_BUDDY_POLLING_SUMMARY.md`
+1. **Source Code**: Check `session_buddy_poller.py` docstrings
 
 ______________________________________________________________________
 

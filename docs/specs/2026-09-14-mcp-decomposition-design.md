@@ -12,7 +12,7 @@ resolved_by:
   - "Phase 5 task 8 (HotStore import flip on mahavishnu side) shipped via commit f12d1155"
   - "Phases 3, 4, 6, 7, 9, 10 and Phase 1 task 16 verified shipped per drift note 2026-10-17"
 partially_superseded_by:
-  - docs/plans/2026-10-15-mcp-server-fleet-modernization.md  # active umbrella; ships Phases 1, 4, 8
+  - docs/plans/.archive/2026-10-15-mcp-server-fleet-modernization.md  # active umbrella; ships Phases 1, 4, 8
   - docs/plans/2026-09-20-delete-all-legacy-named-code.md  # partial; Phase 4 crackerjack rename/delete
   - docs/plans/.archive/2026-09-20-bodai-layout-migration-and-registry-onboarding.md  # partial; Phase 1.5 wrapper consolidation
   - docs/adr/018-gateway-pattern-evaluation.md  # draft; Phase 11 gateway evaluation
@@ -22,7 +22,7 @@ blocks_on:
 related:
   - docs/plans/.archive/2026-09-14-bodai-serverless-readiness-and-component-substitution.md
   - docs/plans/.archive/2026-09-14-bodai-serverless-readiness-phase-1-fixes.md
-  - docs/plans/2026-07-26-mahavishnu-acp-server.md
+  - docs/plans/.archive/2026-07-26-mahavishnu-acp-server.md
   - docs/specs/.archive/2026-04-27-bodai-auth-standardization-design.md
   - docs/specs/.archive/2026-05-24-mcp-serverless-design.md
 title: "MCP Decomposition — Design Specification"

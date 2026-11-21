@@ -8,11 +8,11 @@ plugs the pipeline into the rest of the control plane.
 ## Table of Contents
 
 1. [Module Structure](#module-structure)
-2. [Public API](#public-api)
-3. [Internal Architecture](#internal-architecture)
-4. [Extension Pattern](#extension-pattern)
-5. [Testing Notes](#testing-notes)
-6. [Related Modules](#related-modules)
+1. [Public API](#public-api)
+1. [Internal Architecture](#internal-architecture)
+1. [Extension Pattern](#extension-pattern)
+1. [Testing Notes](#testing-notes)
+1. [Related Modules](#related-modules)
 
 ______________________________________________________________________
 
@@ -143,11 +143,11 @@ The Phase 3 streaming pipeline is composed of three layers:
 1. **Provider** (`local.py`, `remote.py`) — owns the orchestration:
    pick a storage adapter, build a streaming reader/writer, call into
    `storage_io` for serde, emit OTel metrics around each op.
-2. **Storage I/O** (`storage_io.py`) — pure serde. No awareness of
+1. **Storage I/O** (`storage_io.py`) — pure serde. No awareness of
    which adapter fed it bytes; receives a `chunk_reader` callable
    and yields a streaming file path on serialize. Cleanup is
    unconditional.
-3. **Storage adapter** (oneiric `LocalStorageAdapter`,
+1. **Storage adapter** (oneiric `LocalStorageAdapter`,
    `S3StorageAdapter`, `GCSStorageAdapter`, `AzureBlobStorageAdapter`)
    — exposes `save_stream` / `load_stream` so the storage I/O layer
    never needs a full blob in memory.
@@ -168,17 +168,17 @@ Cloudflare R2):
    in `oneiric/oneiric/adapters/storage/base.py`. The adapter is
    expected to chunk the payload, call the cloud SDK's multipart
    upload, and abort on any chunk-level failure.
-2. **Register the adapter kind.** Add the new kind to
+1. **Register the adapter kind.** Add the new kind to
    `BackendKind` (`base.py`). Add the matching label to
    `_ALLOWED_BACKEND_KINDS` in `mahavishnu/observability/bundle_integrity.py`.
-3. **Wire it into `registry.py`.** Add a resolver case mapping
+1. **Wire it into `registry.py`.** Add a resolver case mapping
    the capability name to the new provider class. The capability
    name follows the `worktree-provider/<kind>` convention.
-4. **Cover the metric labels.** Every code path that emits
+1. **Cover the metric labels.** Every code path that emits
    `streaming_op_total` must use the new backend kind label.
    CI guard test `tests/unit/test_observability_metrics.py::test_cardinality_budget`
    will reject unknown keys.
-5. **Add tests.** Provide both unit tests (mocked adapter) and an
+1. **Add tests.** Provide both unit tests (mocked adapter) and an
    integration test against the real cloud SDK. Use the
    `emulator` pattern from Phase B.6 if the cloud provider ships a
    local emulator; otherwise use `pytest-httpserver` or

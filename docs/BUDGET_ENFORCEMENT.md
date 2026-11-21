@@ -204,5 +204,5 @@ Tests live in:
 Exit criteria (all green):
 
 1. Budget enforced across `pool_route_execute` runs ✅
-2. Watchdog is multi-replica-safe via lease ✅
-3. MCP substrate unavailability does not crash the watchdog ✅
+1. Watchdog is multi-replica-safe via lease ✅
+1. MCP substrate unavailability does not crash the watchdog ✅

@@ -388,10 +388,10 @@ Planned features for future versions:
 When extending the admin shell:
 
 1. **Follow the two-layer architecture** - keep Oneiric reusable
-2. **Add tests** - maintain 100% test coverage
-3. **Document magic commands** - add help text
-4. **Use Rich formatting** - beautiful output matters
-5. **Graceful fallbacks** - work without Rich
+1. **Add tests** - maintain 100% test coverage
+1. **Document magic commands** - add help text
+1. **Use Rich formatting** - beautiful output matters
+1. **Graceful fallbacks** - work without Rich
 
 ## License
 

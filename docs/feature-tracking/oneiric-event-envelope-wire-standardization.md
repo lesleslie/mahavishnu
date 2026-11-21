@@ -85,8 +85,8 @@ CLI renders canonical source and queue-derived identifiers.
 The EventBridge producer is wired but not adopted. Promotion to `adopted` requires:
 
 1. Operator sets `MAHAVISHNU_EVENTBRIDGE_BRIDGE` to a concrete destination
-2. `MAHAVISHNU_EVENTBRIDGE_ENABLED` is true
-3. `MAHAVISHNU_EVENTBRIDGE_DRY_RUN` is false
+1. `MAHAVISHNU_EVENTBRIDGE_ENABLED` is true
+1. `MAHAVISHNU_EVENTBRIDGE_DRY_RUN` is false
 
 When all three hold for ≥1 day without `record_wire_conversion_failed` anomalies,
 mark the feature as `adopted`.
