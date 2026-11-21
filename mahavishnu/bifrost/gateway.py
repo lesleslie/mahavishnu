@@ -9,9 +9,9 @@ Two subtleties carried over deliberately:
 
 - Bifrost does **not** write the ready file; this module touches it once the
   port is actually bound. That file is the contract ``lifecycle`` gates on.
-- Readiness budget is 180s, not the original shell wrapper's 60s. Bifrost
-  >= 2.3.0 syncs the MCP library catalog at startup and cold cache takes
-  60-180s.
+- Readiness budget is :data:`READY_TIMEOUT_SECONDS` (600s), not the
+  original shell wrapper's 60s. Bifrost >= 2.3.0 syncs the MCP library
+  catalog at startup and a cold cache takes minutes on a loaded host.
 """
 
 from __future__ import annotations
@@ -48,6 +48,27 @@ APP_DIR: Path = Path(
 TRANSPORT_VERSION: str = os.environ.get(
     "BIFROST_TRANSPORT_VERSION", BIFROST_TRANSPORT_VERSION
 )
+
+#: How many times the supervisor re-launches the gateway when the launcher
+#: dies immediately.
+#:
+#: macOS evaluates an unsigned binary that carries ``com.apple.provenance``
+#: the first time it is exec'd, and denies that exec with EACCES while the
+#: assessment runs. The launcher's own exec test is what trips it, so the
+#: launcher dies within a second and the gateway never comes up. The
+#: assessment finishes on its own -- usually within a couple of minutes --
+#: and the next attempt succeeds. Relying on launchd's 30-second
+#: ``ThrottleInterval`` to retry turns a two-second problem into a
+#: two-minute outage, and ``mahavishnu bifrost restart`` burns its whole
+#: 660-second ready budget waiting on a file that waiting would never fix.
+LAUNCH_ATTEMPTS: int = 6
+
+#: A launcher that dies inside this many seconds failed to start; it did not
+#: time out. The distinction decides whether a retry is worth making.
+LAUNCH_FAILURE_SECONDS: float = 30.0
+
+#: Seconds to wait between launch attempts.
+LAUNCH_RETRY_BACKOFF_SECONDS: float = 5.0
 
 #: Repo root, resolved from this file rather than ``__file__`` of a script in
 #: ``scripts/`` -- the module now lives in the package.
@@ -285,6 +306,59 @@ def port_is_listening(port: int | None = None) -> bool:
     return bool(result.stdout.strip())
 
 
+def transport_cache_dir() -> Path:
+    """Where the npm launcher caches the transport binary for the pinned version.
+
+    Mirrors the launcher's own ``cacheDir()`` so this looks where the
+    launcher writes. The launcher names the file ``bifrost-http`` and then
+    appends the fallback index, so the file on disk is ``bifrost-http-0``.
+    """
+    if sys.platform == "darwin":
+        base = Path.home() / "Library" / "Caches"
+    elif sys.platform == "win32":
+        base = Path(os.environ.get("LOCALAPPDATA", "")) or (
+            Path.home() / "AppData" / "Local"
+        )
+    else:
+        base = Path(os.environ.get("XDG_CACHE_HOME", "")) or (Path.home() / ".cache")
+    return base / "bifrost" / TRANSPORT_VERSION / "bin"
+
+
+def cached_transport_binaries() -> list[Path]:
+    """The transport binaries the launcher has cached for the pinned version."""
+    directory = transport_cache_dir()
+    if not directory.is_dir():
+        return []
+    return sorted(p for p in directory.glob("bifrost-http*") if p.is_file())
+
+
+# req: REQ-BIFROST-049
+def ensure_transport_executable() -> list[Path]:
+    """Give the cached transport binaries their execute bit.
+
+    The npm launcher chmods the binary inside ``downloadBinary``, and the
+    download is skipped whenever the file already exists in the cache. A
+    binary that landed without its execute bit is therefore exec'd exactly
+    as it was found, on every boot, and fails with EACCES -- and because the
+    download is what would have fixed it, nothing upstream repairs it:
+    launchd retries the same unusable file every ``ThrottleInterval``.
+
+    Repairing the mode is cheap, idempotent, and safe. The file is a cache
+    entry the launcher re-downloads on demand, so touching its mode carries
+    no risk.
+    """
+    repaired: list[Path] = []
+    for binary in cached_transport_binaries():
+        try:
+            if binary.stat().st_mode & 0o111:
+                continue
+            binary.chmod(0o755)
+        except OSError:
+            continue
+        repaired.append(binary)
+    return repaired
+
+
 def launch_bifrost() -> subprocess.Popen[bytes]:
     """Spawn the Bifrost binary as a supervised subprocess."""
     APP_DIR.mkdir(parents=True, exist_ok=True)
@@ -319,6 +393,18 @@ def launch_bifrost() -> subprocess.Popen[bytes]:
         cmd: list[str] = ["node", str(cached), *bifrost_args]
     else:
         cmd = ["npx", "-y", "@maximhq/bifrost", *bifrost_args]
+
+    # The launcher chmods the transport binary only on the download path, and
+    # the download is skipped when the file is already cached -- so a cached
+    # binary that landed without its execute bit is exec'd as it was found
+    # and fails with EACCES on every boot. Repair the mode before spawning.
+    repaired = ensure_transport_executable()
+    if repaired:
+        print(
+            "bifrost-gateway: restored the execute bit on "
+            + ", ".join(str(p) for p in repaired),
+            file=sys.stderr,
+        )
 
     cmd = wrap_with_line_buffering(cmd)
 
@@ -362,6 +448,13 @@ def serve() -> int:
 
     This is what the LaunchAgent execs. Staying alive as the supervisor keeps
     launchd's KeepAlive seeing a healthy long-running process.
+
+    A launcher that dies before it binds is re-launched rather than left to
+    launchd's ``ThrottleInterval``: the denied exec it hit on 2026-11-20 was
+    transient, and waiting 30 seconds for launchd to retry turned a
+    two-second problem into a two-minute outage.
+
+    # req: REQ-BIFROST-049
     """
     asyncio.run(resolve_secrets())
     # Provision the gateway from the operator's credential store. Oneiric runs
@@ -377,9 +470,37 @@ def serve() -> int:
     # interpreter and execs a launcher that can stall on its own network
     # fetch; none of that time counts if the deadline is anchored after it.
     deadline = time.monotonic() + READY_TIMEOUT_SECONDS
-    proc = launch_bifrost()
-    try:
-        if not wait_for_ready(proc, timeout=max(1, int(deadline - time.monotonic()))):
+    for attempt in range(1, LAUNCH_ATTEMPTS + 1):
+        spawned_at = time.monotonic()
+        proc = launch_bifrost()
+        try:
+            if wait_for_ready(proc, timeout=max(1, int(deadline - time.monotonic()))):
+                return proc.wait() or 0
+            died_immediately = (
+                proc.poll() is not None
+                and (time.monotonic() - spawned_at) < LAUNCH_FAILURE_SECONDS
+            )
+            if died_immediately and attempt < LAUNCH_ATTEMPTS:
+                # The launcher died before it could bind. That is the
+                # signature of a denied exec rather than a slow boot, and
+                # the next attempt is worth making: macOS's first-exec
+                # assessment on a freshly downloaded binary is transient,
+                # and the attempt after it succeeds.
+                print(
+                    f"bifrost launcher exited immediately "
+                    f"(attempt {attempt} of {LAUNCH_ATTEMPTS}); retrying in "
+                    f"{LAUNCH_RETRY_BACKOFF_SECONDS:.0f}s",
+                    file=sys.stderr,
+                )
+                time.sleep(LAUNCH_RETRY_BACKOFF_SECONDS)
+                continue
+            if died_immediately:
+                print(
+                    f"bifrost launcher exited immediately "
+                    f"({LAUNCH_ATTEMPTS} attempts); see {LOG_OUT} and {LOG_ERR}",
+                    file=sys.stderr,
+                )
+                return proc.returncode or 1
             return_code = proc.returncode if proc.poll() is not None else 1
             print(
                 f"bifrost did not bind port {PORT} within {READY_TIMEOUT_SECONDS}s; "
@@ -387,6 +508,5 @@ def serve() -> int:
                 file=sys.stderr,
             )
             return return_code
-        return proc.wait() or 0
-    finally:
-        cleanup(proc)
+        finally:
+            cleanup(proc)

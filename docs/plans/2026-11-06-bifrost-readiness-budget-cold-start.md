@@ -10,6 +10,9 @@ title: "Make the Bifrost readiness budget clear the observed cold start"
 requirements:
   - id: REQ-BIFROST-045
     title: Readiness budget clears the worst observed cold start
+  - id: REQ-BIFROST-049
+    title: "A denied exec of the transport binary self-heals without an operator"
+    description: "When the launcher dies before it can bind the port — the signature of a denied exec rather than a slow boot — the supervisor re-launches it on its own cadence instead of waiting for launchd's 30-second ThrottleInterval, and repairs the execute bit on a cached transport binary that lost it. The gateway comes up without an operator reading a runbook."
 ---
 
 # Make the Bifrost readiness budget clear the observed cold start
