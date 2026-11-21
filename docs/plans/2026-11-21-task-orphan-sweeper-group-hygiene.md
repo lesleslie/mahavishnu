@@ -394,10 +394,21 @@ return means messages that were never acknowledged have just become
 unrecoverable. The listing that precedes the delete is inherently
 racy — a consumer can take delivery of a message in between. The
 consumer's own pending list is therefore re-read immediately before
-the delete, and a consumer that owns anything is left in place. The
-delete's return value is still captured, logged at ERROR, counted in
-`destroyed_messages_total`, and surfaced in the health payload, so a
-loss that slips past the re-check is visible rather than silent.
+the delete, and a consumer that owns anything is left in place.
+
+That re-check was itself a race: reading the pending list and
+deleting the consumer are two commands, so an `XREADGROUP` could
+interleave between them. The check and the delete are now **one
+atomic server-side operation** — a Lua script that calls `XPENDING`
+for that exact consumer and calls `XGROUP DELCONSUMER` only when the
+result is empty. Redis runs a script atomically, so no read can
+interleave. Verified against Redis 7.4 through the real code path: a
+consumer holding a pending message is left in place, and a consumer
+with none is removed.
+
+The delete's return value is still captured, logged at ERROR, counted
+in `destroyed_messages_total`, and surfaced in the health payload, so
+a loss that slips past the script is visible rather than silent.
 
 **H3 — the bound was on the scan, not the work.** The reclaim
 accumulated every claimed entry, and each entry costs several round

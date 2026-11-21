@@ -58,6 +58,8 @@ class _FakeRedis:
         self.autoclaim_calls: list[dict[str, Any]] = []
         self.group_creates: list[tuple[str, str, str, bool]] = []
         self.pending_reply: Any = ()
+        self.delconsumer_return: int = 0
+        self.evals: list[tuple[Any, Any, Any]] = []
 
     async def xreadgroup(
         self,
@@ -119,6 +121,20 @@ class _FakeRedis:
     async def xpending(self, *args: Any, **kwargs: Any) -> Any:
         """Pending entries of one consumer; empty by default."""
         return self.pending_reply
+
+    async def eval(self, script: Any, keys: Any = None, args: Any = None) -> Any:
+        """Model the atomic delete script.
+
+        Returns -1 when the consumer owns pending messages (left in
+        place), otherwise the number of pending messages the delete
+        destroyed -- zero, because the script only deletes an empty
+        consumer.
+        """
+        self.evals.append((script, keys, args))
+        if self.pending_reply:
+            return -1
+        self.deleted_consumers.append(str(args[1]) if args else "")
+        return self.delconsumer_return
 
     async def xgroup_create(
         self, key: str, groupname: str, identifier: str, mkstream: bool
@@ -597,9 +613,11 @@ class TestAPruneThatDestroysAMessage:
         from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
 
         class _RacingConsumer(_FakeRedis):
-            async def xgroup_delconsumer(
-                self, key: str, groupname: str, consumername: str
-            ) -> int:
+            async def eval(
+                self, script: Any, keys: Any = None, args: Any = None
+            ) -> Any:
+                self.evals.append((script, keys, args))
+                self.deleted_consumers.append(str(args[1]))
                 return 3
 
         client = _RacingConsumer()
@@ -651,26 +669,21 @@ class TestTheReclaimBoundsTheWork:
 
 
 class TestThePruneDoesNotDestroyAMessage:
-    """The listing above the delete is a snapshot.
+    """A consumer that owns a pending message is left in place.
 
-    A consumer that takes delivery of a message between the listing
-    and the delete would have that message destroyed by the delete --
-    it is neither acked nor redelivered, and it can never be
-    reclaimed. So the consumer's pending list is re-read immediately
-    before the delete, and a consumer that owns anything is left alone.
+    The check and the delete are one atomic server-side operation, so
+    the answer comes from the script rather than from a snapshot.
     """
 
     async def test_a_consumer_that_took_delivery_is_not_deleted(self) -> None:
         from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
 
-        class _RacingConsumer(_FakeRedis):
-            async def xpending(self, *args: Any, **kwargs: Any) -> Any:
-                return (("1-0", "mahavishnu-111", 0, 0),)
-
-        client = _RacingConsumer()
+        client = _FakeRedis()
         client.consumers_reply = (
             {b"name": b"mahavishnu-111", b"pending": 0, b"idle": 999_999},
         )
+        # The script sees a pending entry and refuses the delete.
+        client.pending_reply = (("1-0", "mahavishnu-111", 0, 0),)
         group = RedisStreamGroup(
             stream="bodai:events", group="g", consumer="mahavishnu-999", client=client
         )
@@ -685,11 +698,7 @@ class TestThePruneDoesNotDestroyAMessage:
     async def test_a_consumer_with_no_pending_is_still_deleted(self) -> None:
         from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
 
-        class _NoPending(_FakeRedis):
-            async def xpending(self, *args: Any, **kwargs: Any) -> Any:
-                return ()
-
-        client = _NoPending()
+        client = _FakeRedis()
         client.consumers_reply = (
             {b"name": b"mahavishnu-111", b"pending": 0, b"idle": 999_999},
         )
@@ -703,3 +712,69 @@ class TestThePruneDoesNotDestroyAMessage:
 
         assert result.removed == ["mahavishnu-111"]
         assert client.deleted_consumers == ["mahavishnu-111"]
+
+
+class TestThePruneIsAtomic:
+    """The check and the delete must be one server-side operation.
+
+    Reading the consumer's pending list and then deleting it are two
+    commands, so an XREADGROUP can interleave between them: the
+    consumer takes delivery of a message, and the delete destroys it.
+    A Lua script is atomic, so nothing can interleave.
+    """
+
+    async def test_a_consumer_holding_pending_is_not_deleted(self) -> None:
+        from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
+
+        class _AtomicPrune(_FakeRedis):
+            async def eval(self, *args: Any, **kwargs: Any) -> Any:
+                # The script returns -1 when the consumer owns anything.
+                return -1
+
+        client = _AtomicPrune()
+        client.consumers_reply = (
+            {b"name": b"mahavishnu-111", b"pending": 0, b"idle": 999_999},
+        )
+        group = RedisStreamGroup(
+            stream="bodai:events", group="g", consumer="mahavishnu-999", client=client
+        )
+
+        result = await group.prune_consumers(
+            keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
+        )
+
+        assert result.removed == []
+        assert client.deleted_consumers == []
+
+    async def test_the_delete_runs_through_the_script(self) -> None:
+        from mahavishnu.core.events.redis_stream_group import RedisStreamGroup
+
+        class _AtomicPrune(_FakeRedis):
+            def __init__(self) -> None:
+                super().__init__()
+                self.evals: list[tuple[Any, Any, Any]] = []
+
+            async def eval(self, script: Any, keys: Any = None, args: Any = None) -> Any:
+                self.evals.append((script, keys, args))
+                return 0
+
+        client = _AtomicPrune()
+        client.consumers_reply = (
+            {b"name": b"mahavishnu-111", b"pending": 0, b"idle": 999_999},
+        )
+        group = RedisStreamGroup(
+            stream="bodai:events", group="g", consumer="mahavishnu-999", client=client
+        )
+
+        result = await group.prune_consumers(
+            keep="mahavishnu-999", prefix="mahavishnu-", stale_after_ms=60_000
+        )
+
+        assert result.removed == ["mahavishnu-111"]
+        script, keys, args = client.evals[0]
+        assert "XPENDING" in script
+        assert "DELCONSUMER" in script
+        assert keys == ["bodai:events"]
+        assert args == ["g", "mahavishnu-111"]
+        # The delete never runs outside the script.
+        assert client.deleted_consumers == []

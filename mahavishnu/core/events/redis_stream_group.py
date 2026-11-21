@@ -66,6 +66,25 @@ DEFAULT_RECLAIM_COUNT = 512
 #: hold the event loop indefinitely on a very large pending list.
 DEFAULT_RECLAIM_MAX_ROUNDS = 64
 
+#: Delete a consumer, but only if it owns no pending messages.
+#:
+#: Reading the pending list and deleting the consumer are two commands,
+#: so an ``XREADGROUP`` can interleave between them: the consumer takes
+#: delivery of a message and the delete destroys it. A Lua script runs
+#: atomically, so nothing can interleave. The script returns the number
+#: of pending messages the consumer had (always zero, because it is
+#: only deleted when it owns nothing) or ``-1`` when the consumer was
+#: left alone.
+#:
+#: Verified against Redis 7.4: ``XPENDING`` and ``XGROUP DELCONSUMER``
+#: are both callable from a script.
+_DELETE_CONSUMER_IF_EMPTY = (
+    "local pending = redis.call('XPENDING', KEYS[1], ARGV[1], '-', '+', 1, ARGV[2]); "
+    "if #pending == 0 then "
+    "return redis.call('XGROUP', 'DELCONSUMER', KEYS[1], ARGV[1], ARGV[2]); "
+    "else return -1 end"
+)
+
 #: Upper bound on the entries one sweep hands back for processing.
 #:
 #: The scan continues past this cap -- the zombies beyond it are still
@@ -445,28 +464,32 @@ class RedisStreamGroup:
                 continue
             if int(_row_field(row, "idle", 0) or 0) < stale_after_ms:
                 continue
-            # Re-read the consumer's own pending list immediately before
-            # the delete. The listing above is a snapshot: a consumer
-            # that takes delivery of a message in between would have
-            # that message destroyed by the delete -- it is neither
-            # acked nor redelivered, and it can never be reclaimed. So
-            # a consumer that owns anything is left in place.
-            owned = await client.xpending(
-                self._stream, self._group, "-", "+", 1, None, name
-            )
-            if owned:
-                continue
-            lost = int(
-                await client.xgroup_delconsumer(self._stream, self._group, name) or 0
-            )
-            if lost:
-                logger.error(
-                    "redis_stream_group: xgroup_delconsumer destroyed %d pending "
-                    "message(s) for %s -- they were never acknowledged",
-                    lost,
-                    name,
+            # The check and the delete are one atomic server-side
+            # operation. The listing above is a snapshot, and two
+            # commands would let an XREADGROUP interleave between the
+            # check and the delete: the consumer takes delivery of a
+            # message and the delete destroys it -- neither acked nor
+            # redelivered, and never reclaimable.
+            outcome = int(
+                await client.eval(
+                    _DELETE_CONSUMER_IF_EMPTY,
+                    [self._stream],
+                    [self._group, name],
                 )
-                destroyed += lost
+                or 0
+            )
+            if outcome < 0:
+                # The consumer owns pending messages: it was left in
+                # place rather than risk losing one.
+                continue
+            if outcome:
+                logger.error(
+                    "redis_stream_group: deleting %s destroyed %d pending "
+                    "message(s) -- they were never acknowledged",
+                    name,
+                    outcome,
+                )
+                destroyed += outcome
             removed.append(name)
         return PruneResult(removed=removed, destroyed_messages=destroyed)
 
