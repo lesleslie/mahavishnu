@@ -13,6 +13,9 @@ requirements:
   - id: REQ-BIFROST-049
     title: "A denied exec of the transport binary self-heals without an operator"
     description: "When the launcher dies before it can bind the port — the signature of a denied exec rather than a slow boot — the supervisor re-launches it on its own cadence instead of waiting for launchd's 30-second ThrottleInterval, and repairs the execute bit on a cached transport binary that lost it. The gateway comes up without an operator reading a runbook."
+  - id: REQ-BIFROST-050
+    title: "Config-store write contention is visible to the operator"
+    description: "Bifrost's background jobs fail to take the config store's write lock when another writer holds it, and the failure is invisible: the gateway's /health reports db_pings ok because a ping tests connectivity and not contention, and nothing in the request path reads the sweeps. An operator running `mahavishnu bifrost status` sees how many background writes failed in the last 24 hours and when the most recent one was, without having to read the gateway's stderr."
 ---
 
 # Make the Bifrost readiness budget clear the observed cold start

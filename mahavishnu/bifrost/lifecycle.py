@@ -30,7 +30,12 @@ import time
 
 import typer
 
-from .gateway import PORT, READY_TIMEOUT_SECONDS, port_is_listening
+from .gateway import (
+    PORT,
+    READY_TIMEOUT_SECONDS,
+    config_store_contention,
+    port_is_listening,
+)
 from .models import HARNESSES, HarnessDescriptor
 from .paths import (
     BIFROST_CONFIG_DIR,
@@ -413,6 +418,16 @@ def status() -> None:
     typer.echo(listener.stdout.strip() or f"nothing listening on {PORT}")
     ready_state = str(READY_FILE) if READY_FILE.exists() else f"{READY_FILE} (missing)"
     typer.echo(f"ready file: {ready_state}")
+
+    contention, latest = config_store_contention()
+    if contention:
+        typer.echo(
+            f"config-store contention: {contention} background write(s) failed "
+            f"to take the lock in the last 24h (latest {latest}) -- the "
+            f"expired-flow sweeps and the pricing sync are losing the race"
+        )
+    else:
+        typer.echo("config-store contention: none in the last 24h")
 
     for harness in HARNESSES.values():
         apply(harness, "status")

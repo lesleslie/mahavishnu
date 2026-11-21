@@ -17,6 +17,7 @@ Two subtleties carried over deliberately:
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -304,6 +305,82 @@ def port_is_listening(port: int | None = None) -> bool:
     except OSError, subprocess.SubprocessError:
         return False
     return bool(result.stdout.strip())
+
+
+#: Bytes of the gateway's stderr log read from the end when counting
+#: config-store contention. The file grows without bound, and the failures
+#: cluster in time, so the tail is what carries the signal.
+CONTENTION_TAIL_BYTES = 4 * 1024 * 1024
+
+#: The failure text Bifrost emits when a background job cannot take the
+#: config store's write lock.
+CONTENTION_MARKER = "database is locked"
+
+_LOG_TIME_RE = re.compile(r'"time"\s*:\s*"([^"]+)"')
+
+
+def config_store_contention(window_hours: int = 24) -> tuple[int, str | None]:
+    """Count the config-store write failures the gateway logged recently.
+
+    Returns ``(count, most_recent_timestamp)``.
+
+    Bifrost's background jobs -- the expired-flow sweeps, the pricing and
+    model-parameter syncs, the virtual-key cleanup -- write to the config
+    store with no busy timeout, so a writer that cannot take the lock fails
+    immediately instead of waiting for it. When another writer holds the
+    lock, every one of those jobs fails on its next tick, and the failure
+    is invisible from the gateway's own surface: ``/health`` reports
+    ``db_pings: ok`` because a ping tests connectivity, not contention, and
+    nothing in the request path reads the sweeps.
+
+    The stderr log is the only place the failure is recorded, so that is
+    where this reads. It is a log scan rather than a first-class signal
+    because Bifrost exposes no such signal; the alternative is a condition
+    that only a human reading the log ever discovers.
+
+    # req: REQ-BIFROST-050
+    """
+    log = LOG_ERR
+    if not log.exists():
+        return 0, None
+
+    try:
+        with log.open("rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(0, size - CONTENTION_TAIL_BYTES))
+            chunk = handle.read()
+    except OSError:
+        return 0, None
+
+    # The seek can land mid-line; the first fragment is not a record.
+    text = chunk.decode("utf-8", errors="replace")
+    lines = text.splitlines()[1:] if size > CONTENTION_TAIL_BYTES else text.splitlines()
+
+    cutoff = time.time() - (window_hours * 3600)
+    count = 0
+    latest: str | None = None
+    latest_epoch = 0.0
+    for line in lines:
+        if CONTENTION_MARKER not in line:
+            continue
+        match = _LOG_TIME_RE.search(line)
+        if match is None:
+            continue
+        stamp = match.group(1)
+        try:
+            when = datetime.fromisoformat(stamp)
+        except ValueError:
+            continue
+        epoch = when.timestamp()
+        if epoch < cutoff:
+            continue
+        count += 1
+        if epoch > latest_epoch:
+            latest_epoch = epoch
+            latest = stamp
+
+    return count, latest
 
 
 def transport_cache_dir() -> Path:
