@@ -115,13 +115,13 @@ The worktree system uses a **provider pattern** for resilience:
    - Session state preservation
    - Advanced worktree features
 
-1. **DirectGitWorktreeProvider** (Fallback)
+2. **DirectGitWorktreeProvider** (Fallback)
 
    - Uses subprocess git commands
    - Always available (no external dependencies)
    - Activates automatically if Session-Buddy unavailable
 
-1. **MockWorktreeProvider** (Testing)
+3. **MockWorktreeProvider** (Testing)
 
    - Safe testing without real git operations
    - Used in all automated tests
@@ -645,9 +645,9 @@ Worktree management is compliant with:
 For issues or questions:
 
 1. Check logs: `~/.local/state/mahavishnu/audit.log`
-1. Check provider health: `mahavishnu worktree provider-health`
-1. Review safety status: `mahavishnu worktree safety-status`
-1. Report bugs with audit log excerpts
+2. Check provider health: `mahavishnu worktree provider-health`
+3. Review safety status: `mahavishnu worktree safety-status`
+4. Report bugs with audit log excerpts
 
 ## References
 

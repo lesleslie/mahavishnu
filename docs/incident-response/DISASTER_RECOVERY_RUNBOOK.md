@@ -10,13 +10,13 @@ ______________________________________________________________________
 ## Table of Contents
 
 1. [Overview](#overview)
-1. [Roles and Responsibilities](#roles-and-responsibilities)
-1. [Backup Strategy](#backup-strategy)
-1. [Disaster Scenarios](#disaster-scenarios)
-1. [Recovery Procedures](#recovery-procedures)
-1. [Verification Steps](#verification-steps)
-1. [Communication Plan](#communication-plan)
-1. [Post-Incident Review](#post-incident-review)
+2. [Roles and Responsibilities](#roles-and-responsibilities)
+3. [Backup Strategy](#backup-strategy)
+4. [Disaster Scenarios](#disaster-scenarios)
+5. [Recovery Procedures](#recovery-procedures)
+6. [Verification Steps](#verification-steps)
+7. [Communication Plan](#communication-plan)
+8. [Post-Incident Review](#post-incident-review)
 
 ______________________________________________________________________
 
@@ -120,9 +120,9 @@ ______________________________________________________________________
 Each backup includes:
 
 1. **Database dumps** (Session-Buddy, Akosha)
-1. **Configuration files** (YAML, environment, .mcp.json)
-1. **Workflow states** (Mahavishnu)
-1. **Metadata** (checksums, timestamps, file manifests)
+2. **Configuration files** (YAML, environment, .mcp.json)
+3. **Workflow states** (Mahavishnu)
+4. **Metadata** (checksums, timestamps, file manifests)
 
 ______________________________________________________________________
 
@@ -143,9 +143,9 @@ ______________________________________________________________________
 **Recovery Procedure**:
 
 1. [Verify failure](#step-1-verify-failure)
-1. [Check server status](#step-2-check-server-status)
-1. [Restart affected service](#step-3-restart-affected-service)
-1. [Verify recovery](#step-4-verify-recovery)
+2. [Check server status](#step-2-check-server-status)
+3. [Restart affected service](#step-3-restart-affected-service)
+4. [Verify recovery](#step-4-verify-recovery)
 
 ### Scenario 2: Database Corruption
 
@@ -162,10 +162,10 @@ ______________________________________________________________________
 **Recovery Procedure**:
 
 1. [Stop all affected services](#step-1-stop-all-affected-services)
-1. [Identify corruption scope](#step-2-identify-corruption-scope)
-1. [Restore from last good backup](#step-3-restore-from-last-good-backup)
-1. [Verify data integrity](#step-4-verify-data-integrity)
-1. [Restart services](#step-5-restart-services)
+2. [Identify corruption scope](#step-2-identify-corruption-scope)
+3. [Restore from last good backup](#step-3-restore-from-last-good-backup)
+4. [Verify data integrity](#step-4-verify-data-integrity)
+5. [Restart services](#step-5-restart-services)
 
 ### Scenario 3: Complete System Failure
 
@@ -182,11 +182,11 @@ ______________________________________________________________________
 **Recovery Procedure**:
 
 1. [Assess infrastructure](#step-1-assess-infrastructure)
-1. [Restore infrastructure](#step-2-restore-infrastructure)
-1. [Restore databases](#step-3-restore-databases)
-1. [Restore configurations](#step-4-restore-configurations)
-1. [Restart all services](#step-5-restart-all-services)
-1. [Verify system health](#step-6-verify-system-health)
+2. [Restore infrastructure](#step-2-restore-infrastructure)
+3. [Restore databases](#step-3-restore-databases)
+4. [Restore configurations](#step-4-restore-configurations)
+5. [Restart all services](#step-5-restart-all-services)
+6. [Verify system health](#step-6-verify-system-health)
 
 ### Scenario 4: Data Loss Event
 
@@ -203,11 +203,11 @@ ______________________________________________________________________
 **Recovery Procedure**:
 
 1. [Identify lost data scope](#step-1-identify-lost-data-scope)
-1. [Stop all writes](#step-2-stop-all-writes)
-1. [Select appropriate backup](#step-3-select-appropriate-backup)
-1. [Restore lost data](#step-4-restore-lost-data)
-1. [Verify restored data](#step-5-verify-restored-data)
-1. [Resume normal operations](#step-6-resume-normal-operations)
+2. [Stop all writes](#step-2-stop-all-writes)
+3. [Select appropriate backup](#step-3-select-appropriate-backup)
+4. [Restore lost data](#step-4-restore-lost-data)
+5. [Verify restored data](#step-5-verify-restored-data)
+6. [Resume normal operations](#step-6-resume-normal-operations)
 
 ______________________________________________________________________
 
@@ -534,8 +534,8 @@ pkill -KILL -f "mcp|mahavishnu|session-buddy"
 **Priority Order**:
 
 1. Session-Buddy (most critical)
-1. Akosha (memory aggregation)
-1. Other databases
+2. Akosha (memory aggregation)
+3. Other databases
 
 #### Step 4: Restore Configurations
 
@@ -575,28 +575,28 @@ cat repos.yaml
    session-buddy mcp start
    ```
 
-1. **Akosha** (depends on Session-Buddy)
+2. **Akosha** (depends on Session-Buddy)
 
    ```bash
    cd /Users/les/Projects/akosha
    akosha mcp start
    ```
 
-1. **Crackerjack** (quality control)
+3. **Crackerjack** (quality control)
 
    ```bash
    cd /Users/les/Projects/crackerjack
    crackerjack mcp start
    ```
 
-1. **Mahavishnu** (orchestration)
+4. **Mahavishnu** (orchestration)
 
    ```bash
    cd /Users/les/Projects/mahavishnu
    mahavishnu mcp start
    ```
 
-1. **Tool Servers** (can start in parallel)
+5. **Tool Servers** (can start in parallel)
 
    ```bash
    cd /Users/les/Projects/excalidraw-mcp
@@ -699,8 +699,8 @@ cat backup_*/metadata.json | jq '.timestamp, .databases_backed_up'
 **Options**:
 
 1. **Full restore**: Replace entire database
-1. **Partial restore**: Restore specific tables/records
-1. **Manual merge**: Combine current and backup data
+2. **Partial restore**: Restore specific tables/records
+3. **Manual merge**: Combine current and backup data
 
 **Full restore example**:
 
@@ -732,9 +732,9 @@ DETACH backup_db;
 **Verification Steps**:
 
 1. Check record counts
-1. Sample random records
-1. Verify with affected users
-1. Run data integrity checks
+2. Sample random records
+3. Verify with affected users
+4. Run data integrity checks
 
 ```bash
 # Record counts
@@ -934,19 +934,19 @@ ______________________________________________________________________
    - When did it happen?
    - How long did it last?
 
-1. **Root Cause Analysis** (15 minutes)
+2. **Root Cause Analysis** (15 minutes)
 
    - Why did it happen?
    - Contributing factors
    - Could it have been prevented?
 
-1. **Response Evaluation** (15 minutes)
+3. **Response Evaluation** (15 minutes)
 
    - What went well in the response?
    - What could have been better?
    - Were runbooks followed?
 
-1. **Action Items** (20 minutes)
+4. **Action Items** (20 minutes)
 
    - Preventive measures
    - Runbook improvements

@@ -88,10 +88,10 @@ ______________________________________________________________________
 Traditional OTel storage requires:
 
 1. **Docker** - Heavy containerization overhead
-1. **PostgreSQL** - Separate database service
-1. **pgvector extension** - Manual installation and configuration
-1. **Connection pooling** - asyncpg, connection management
-1. **Migrations** - Schema setup, extension installation
+2. **PostgreSQL** - Separate database service
+3. **pgvector extension** - Manual installation and configuration
+4. **Connection pooling** - asyncpg, connection management
+5. **Migrations** - Schema setup, extension installation
 
 ### The Native Solution
 
@@ -771,10 +771,10 @@ ______________________________________________________________________
 ### Optimization Tips
 
 1. **Use batch ingestion** - Process 100-500 traces per batch
-1. **Tune cache size** - Cache frequently accessed embeddings
-1. **Adjust similarity threshold** - Higher = fewer results, faster
-1. **Choose right embedding model** - Trade speed vs quality
-1. **Use in-memory mode** - For development/testing
+2. **Tune cache size** - Cache frequently accessed embeddings
+3. **Adjust similarity threshold** - Higher = fewer results, faster
+4. **Choose right embedding model** - Trade speed vs quality
+5. **Use in-memory mode** - For development/testing
 
 ______________________________________________________________________
 
@@ -992,9 +992,9 @@ ______________________________________________________________________
 ## Next Steps
 
 1. **Read the API Reference:** `docs/NATIVE_OTEL_API.md`
-1. **Run Examples:** `examples/native_otel_example.py`
-1. **Configure OTel Collector:** `config/otel-collector-config.yaml`
-1. **Integrate with Your App:** Use MCP tools for semantic search
+2. **Run Examples:** `examples/native_otel_example.py`
+3. **Configure OTel Collector:** `config/otel-collector-config.yaml`
+4. **Integrate with Your App:** Use MCP tools for semantic search
 
 ______________________________________________________________________
 

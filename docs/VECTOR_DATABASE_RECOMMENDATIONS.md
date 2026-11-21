@@ -20,7 +20,7 @@ Oneiric v0.3.12 includes comprehensive PostgreSQL and pgvector support:
    - Transaction support
    - Lifecycle hooks (init, health, cleanup)
 
-1. **pgvector Adapter**
+2. **pgvector Adapter**
 
    - Location: `oneiric.adapters.vector.pgvector`
    - Full vector operations (search, insert, upsert, delete, get, count)
@@ -315,39 +315,39 @@ export MAHAVISHNU_VECTOR_DB_PASSWORD="your-secure-password"
    pip install 'pgvector>=0.2.0'
    ```
 
-1. ✅ **Create VectorStore wrapper** (2-4 hours)
+2. ✅ **Create VectorStore wrapper** (2-4 hours)
 
    - Implement `mahavishnu/core/vector_store.py`
    - Add Mahavishnu-specific business logic
    - Add caching layer if needed
 
-1. ✅ **Update configuration** (1-2 hours)
+3. ✅ **Update configuration** (1-2 hours)
 
    - Add vector_db fields to `MahavishnuSettings`
    - Add `to_pgvector_settings()` method
    - Update `settings/mahavishnu.yaml`
 
-1. ✅ **Write integration tests** (4-6 hours)
+4. ✅ **Write integration tests** (4-6 hours)
 
    - Test file created: `tests/integration/test_oneiric_pgvector_adapter.py`
    - Test connection, CRUD operations
    - Test vector search and filtering
    - Test collection management
 
-1. ✅ **Initialize VectorStore in MahavishnuApp** (1-2 hours)
+5. ✅ **Initialize VectorStore in MahavishnuApp** (1-2 hours)
 
    - Add `self.vector_store: VectorStore | None = None`
    - Initialize in `_initialize_adapters()` if `vector_db_enabled`
    - Add health check to `/health` endpoint
 
-1. ✅ **Create MCP tools for vector operations** (4-6 hours)
+6. ✅ **Create MCP tools for vector operations** (4-6 hours)
 
    - `vector_search` - Search similar workflows
    - `vector_index_workflow` - Index workflow execution
    - `vector_delete_workflows` - Delete embeddings
    - `vector_health_check` - Check vector DB health
 
-1. ✅ **Update documentation** (2-3 hours)
+7. ✅ **Update documentation** (2-3 hours)
 
    - Document architecture decisions
    - Add usage examples
@@ -394,7 +394,7 @@ export MAHAVISHNU_VECTOR_DB_PASSWORD="your-secure-password"
    pip install 'pgvector>=0.2.0'
    ```
 
-1. **Verify installation**
+2. **Verify installation**
 
    ```bash
    python -c "
@@ -403,29 +403,29 @@ export MAHAVISHNU_VECTOR_DB_PASSWORD="your-secure-password"
    "
    ```
 
-1. **Set up test database**
+3. **Set up test database**
 
    - Create test database: `mahavishnu_test`
    - Install pgvector extension: `CREATE EXTENSION vector;`
 
-1. **Run integration tests**
+4. **Run integration tests**
 
    ```bash
    pytest tests/integration/test_oneiric_pgvector_adapter.py -v
    ```
 
-1. **Update implementation plan**
+5. **Update implementation plan**
 
    - Remove custom adapter tasks
    - Add Oneiric integration tasks
    - Update time estimates
 
-1. **Create VectorStore wrapper**
+6. **Create VectorStore wrapper**
 
    - Start with thin wrapper (Option 1)
    - Add business logic as needed (Option 2)
 
-1. **Update configuration**
+7. **Update configuration**
 
    - Add vector_db fields to MahavishnuSettings
    - Update settings/mahavishnu.yaml

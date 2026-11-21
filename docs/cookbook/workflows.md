@@ -45,7 +45,7 @@ with full worker + terminal-adapter wiring.
 1. `npx` on PATH — PiPool spawns one `npx @earendil-works/pi-coding-agent`
    subprocess per task. Node.js 18+ ships `npx`; verify with
    `which npx`.
-1. A Shepherd workspace initialized for the local pool. The pool's
+2. A Shepherd workspace initialized for the local pool. The pool's
    default writable root resolves to
    `~/.local/state/mahavishnu/worktrees/demo-pi-then-local-local/workspace`.
    Initialize it once per POOL (not per task) — `sp init` creates the
@@ -58,7 +58,7 @@ with full worker + terminal-adapter wiring.
    up, where the pool does not look for it, and the pool still fails with
    MHV-312. `sp init` is idempotent ("creates or reuses `.vcscore`"), so
    re-running it is safe.
-1. tmux binary on PATH (MahavishnuPool's default terminal adapter).
+3. tmux binary on PATH (MahavishnuPool's default terminal adapter).
 
 **The command**:
 
@@ -214,12 +214,12 @@ ______________________________________________________________________
      and the substrate, dispatches, returns structured result dict).
    - Add `@demo_app.command("workflow-<name>")` callback (Typer
      options + precondition gate + `asyncio.run(asyncio.wait_for(...))`).
-1. **Wire it up**:
+2. **Wire it up**:
    - Update the `=== DEMO SUB-COMMANDS ===` comment in
      `mahavishnu/_main_cli.py` to reflect the new count.
    - Update the stub-section comment in `demo_cli.py` to mention
      the new demo in the "promoted to live" tally.
-1. **Add tests**:
+3. **Add tests**:
    - 2 wireup invariant tests in
      `tests/unit/cli/test_cli_wireup_invariants.py`
      (one asserting a unique `--flag` in `--help`, one asserting the
@@ -228,11 +228,11 @@ ______________________________________________________________________
      `tests/unit/cli/test_demo_workflow_preconditions.py`
      (cover each branch: pass-with-probes, fail-without-probes,
      edge cases).
-1. **Add a recipe** to this file following the structure above
+4. **Add a recipe** to this file following the structure above
    (Goal, Substrates exercised, Prerequisites, The command, What
    you'll see, Troubleshooting, Notes). Add a row to the index.
-1. **Reference it** in `docs/CLI_REFERENCE.md` under the
+5. **Reference it** in `docs/CLI_REFERENCE.md` under the
    `### Workflow demos` block.
-1. **Run the merge gate**: `crackerjack run -v -f` from the worktree
+6. **Run the merge gate**: `crackerjack run -v -f` from the worktree
    before squash-merging to main. Squash-merge only your staged
    paths (don't sweep in the user's unrelated dirty files).

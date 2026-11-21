@@ -75,7 +75,7 @@ Both scripts are clean, well-structured, and free of dangerous constructs. The H
 ### Recommended priority
 
 1. **H-1 + L-3** — Make `eval-content-quality.py` return a meaningful exit code (~5 min fix).
-1. **M-1** — Add `encoding="utf-8"` to `rank-tools.py` line 35.
-1. **M-2** — Wrap per-file analysis in try/except with a warning to stderr.
-1. **M-3 + M-4** — Refactor `load_samples()` to raise exceptions instead of calling `sys.exit()`, and catch `PermissionError`.
-1. **L-2** — Remove or document `LABEL_THRESHOLDS`.
+2. **M-1** — Add `encoding="utf-8"` to `rank-tools.py` line 35.
+3. **M-2** — Wrap per-file analysis in try/except with a warning to stderr.
+4. **M-3 + M-4** — Refactor `load_samples()` to raise exceptions instead of calling `sys.exit()`, and catch `PermissionError`.
+5. **L-2** — Remove or document `LABEL_THRESHOLDS`.

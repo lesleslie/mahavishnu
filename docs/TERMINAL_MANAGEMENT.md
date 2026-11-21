@@ -415,12 +415,12 @@ async def interactive_session(session_id: str, adapter):
 The terminal management system uses a layered architecture:
 
 1. **Adapter Interface** (`TerminalAdapter`): Abstract interface for different backends (see `mahavishnu/terminal/adapters/base.py`)
-1. **tmux Adapter** (`TmuxAdapter`): Drives the system `tmux` binary
-1. **mock Adapter** (`MockAdapter`): In-memory adapter for tests
-1. **crow Adapter** (`CrowAdapter`): Bridges to the crow MCP server
-1. **Terminal Manager** (`TerminalManager`): High-level orchestration with concurrency control
-1. **MCP Tools**: 7 tools for Claude Code integration
-1. **CLI Commands**: User-friendly command-line interface
+2. **tmux Adapter** (`TmuxAdapter`): Drives the system `tmux` binary
+3. **mock Adapter** (`MockAdapter`): In-memory adapter for tests
+4. **crow Adapter** (`CrowAdapter`): Bridges to the crow MCP server
+5. **Terminal Manager** (`TerminalManager`): High-level orchestration with concurrency control
+6. **MCP Tools**: 7 tools for Claude Code integration
+7. **CLI Commands**: User-friendly command-line interface
 
 ## Concurrency Management
 
@@ -476,10 +476,10 @@ Use `mahavishnu terminal close all` to force cleanup. The MCP server also includ
 Planned features for future releases:
 
 1. **Session Persistence**: Save/restore terminal sessions
-1. **Output Filtering**: Filter output by patterns or regex
-1. **Session Templates**: Predefined session configurations
-1. **Multi-Host Support**: Launch sessions on remote machines
-1. **Output Parsing**: Structured output extraction
+2. **Output Filtering**: Filter output by patterns or regex
+3. **Session Templates**: Predefined session configurations
+4. **Multi-Host Support**: Launch sessions on remote machines
+5. **Output Parsing**: Structured output extraction
 
 ## See Also
 

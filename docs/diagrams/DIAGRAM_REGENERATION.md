@@ -45,17 +45,17 @@ ______________________________________________________________________
    sed -n '/```mermaid/,/```/p' /Users/les/Projects/mahavishnu/ARCHITECTURE.md | sed '1d;$d' > /tmp/arch_diagram.mmd
    ````
 
-1. **Open Mermaid Live Editor**:
+2. **Open Mermaid Live Editor**:
 
    - Go to: https://mermaid.live
    - Paste the contents of `/tmp/arch_diagram.mmd`
 
-1. **Export as PNG**:
+3. **Export as PNG**:
 
    - Click "Download PNG" or "Download SVG"
    - Save to `/Users/les/Projects/mahavishnu/docs/diagrams/system-architecture.png`
 
-1. **Optional: Generate high-resolution SVG**:
+4. **Optional: Generate high-resolution SVG**:
 
    - Choose SVG for vector format (better for scaling)
    - Convert to PNG using: `svgexport -o system-architecture.png`
@@ -90,7 +90,7 @@ pip install kaleido
    )
    ```
 
-1. **Run generation**:
+2. **Run generation**:
 
    ```bash
    cd /Users/les/Projects/mahavishnu
@@ -150,10 +150,10 @@ mermaid-cli -i /tmp/arch.mmd -o docs/diagrams/system-architecture.png -w 1600 -H
 ### For Windows/Linux GUI (Easiest):
 
 1. Extract Mermaid code from ARCHITECTUME.md (lines 199-270)
-1. Go to https://mermaid.live
-1. Paste code
-1. Download PNG
-1. Save to `docs/diagrams/system-architecture.png`
+2. Go to https://mermaid.live
+3. Paste code
+4. Download PNG
+5. Save to `docs/diagrams/system-architecture.png`
 
 ______________________________________________________________________
 
@@ -264,8 +264,8 @@ ______________________________________________________________________
 **Process (as run)**:
 
 1. Extracted Mermaid code from ARCHITECTURE.md (lines 197-275)
-1. Generated SVG via `mcp__mermaid__generate_mermaid_diagram` (outputType: svg)
-1. Converted to PNG using `rsvg-convert -w 1600 -h 1200`
+2. Generated SVG via `mcp__mermaid__generate_mermaid_diagram` (outputType: svg)
+3. Converted to PNG using `rsvg-convert -w 1600 -h 1200`
 
 **Note**: With the MCP server removed, regenerate via Method 3 (mermaid-cli):
 

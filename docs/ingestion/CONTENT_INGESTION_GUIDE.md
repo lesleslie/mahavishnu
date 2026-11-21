@@ -7,11 +7,11 @@ Complete guide for ingesting blogs, webpages, and books into your knowledge ecos
 Mahavishnu's content ingestion pipeline integrates with your existing MCP servers to:
 
 1. **Fetch** content from URLs or local files
-1. **Extract** and clean text from webpages, PDFs, EPUBs
-1. **Generate** embeddings using FastEmbed or OpenAI
-1. **Store** in Akosha knowledge graph with semantic search
-1. **Index** in Crackerjack for similarity search
-1. **Track** ingestion history in Session-Buddy
+2. **Extract** and clean text from webpages, PDFs, EPUBs
+3. **Generate** embeddings using FastEmbed or OpenAI
+4. **Store** in Akosha knowledge graph with semantic search
+5. **Index** in Crackerjack for similarity search
+6. **Track** ingestion history in Session-Buddy
 
 ## Installation
 
@@ -469,8 +469,8 @@ mahavishnu ingest file ./documents/report.pdf
 After ingesting content:
 
 1. **Search semantically** across all ingested content
-1. **Build RAG pipelines** using Akosha knowledge graph
-1. **Create embeddings** for your own documents
-1. **Query knowledge** with natural language
+2. **Build RAG pipelines** using Akosha knowledge graph
+3. **Create embeddings** for your own documents
+4. **Query knowledge** with natural language
 
 See [MCP_TOOLS_SPECIFICATION.md](../mcp/MCP_TOOLS_SPECIFICATION.md) for complete tool reference.

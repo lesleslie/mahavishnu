@@ -80,14 +80,14 @@ ______________________________________________________________________
    - Slack webhook URL
    - PagerDuty integration
 
-1. **Routes**
+2. **Routes**
 
    - Default receiver: `#alerts` Slack channel
    - Critical alerts: PagerDuty + `#critical-incidents`
    - Warning alerts: `#warnings` Slack channel
    - Service-specific routing
 
-1. **Receivers**
+3. **Receivers**
 
    - `default`: Slack + email
    - `critical`: PagerDuty + Slack critical incidents + SMS
@@ -95,12 +95,12 @@ ______________________________________________________________________
    - `mahavishnu-team`: Mahavishnu team channel
    - `session-buddy-team`: Session-Buddy team channel
 
-1. **Inhibition Rules**
+4. **Inhibition Rules**
 
    - Inhibit warnings if critical is firing
    - Inhibit all alerts during maintenance
 
-1. **Time Intervals**
+5. **Time Intervals**
 
    - Business hours vs off-hours routing
    - Maintenance windows
@@ -117,33 +117,33 @@ ______________________________________________________________________
    - High memory usage > 80% (P2)
    - Worker pool exhausted (P3)
 
-1. **Session-Buddy Alerts**
+2. **Session-Buddy Alerts**
 
    - Service down (P1)
    - DB pool exhausted (P1)
    - High error rate > 5% (P2)
    - DB size growing > 50%/day (P3)
 
-1. **Akosha Alerts**
+3. **Akosha Alerts**
 
    - Service down (P1)
    - PostgreSQL down (P1)
    - High memory usage > 80% (P2)
 
-1. **System Resource Alerts**
+4. **System Resource Alerts**
 
    - Disk space < 20% (P1)
    - CPU usage > 80% (P2)
    - Memory usage > 80% (P2)
    - Load average > 2x CPU count (P3)
 
-1. **Backup Alerts**
+5. **Backup Alerts**
 
    - Backup failed (P1)
    - Backup old > 24h (P2)
    - Backup size doubled in 7 days (P3)
 
-1. **Security Alerts**
+6. **Security Alerts**
 
    - Auth failure rate > 10% (P1)
    - High rate limit violations (P2)
@@ -158,8 +158,8 @@ ______________________________________________________________________
 **Setup**:
 
 1. Create Slack app: https://api.slack.com/apps
-1. Enable Incoming Webhooks
-1. Create webhooks for:
+2. Enable Incoming Webhooks
+3. Create webhooks for:
    - `#alerts`: General alerts
    - `#critical-incidents`: Critical alerts only
    - `#warnings`: Warning alerts only
@@ -177,8 +177,8 @@ export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 **Setup**:
 
 1. Configure SMTP credentials in `.env`
-1. Set notification email addresses
-1. Test email delivery
+2. Set notification email addresses
+3. Test email delivery
 
 **Test**:
 
@@ -191,9 +191,9 @@ echo "Test alert" | mail -s "AlertManager Test" oncall@example.com
 **Setup**:
 
 1. Create PagerDuty account: https://www.pagerduty.com/
-1. Create service: "Mahavishnu MCP"
-1. Get integration key
-1. Configure in `.env`
+2. Create service: "Mahavishnu MCP"
+3. Get integration key
+4. Configure in `.env`
 
 **Configure**:
 
@@ -377,9 +377,9 @@ ______________________________________________________________________
 **Check**:
 
 1. Prometheus is scraping targets: http://localhost:9090/targets
-1. Alert rules are loaded: http://localhost:9090/alerts
-1. Rule evaluation interval: `prometheus --enable-feature=promql-experimental-functions`
-1. Alert thresholds are appropriate
+2. Alert rules are loaded: http://localhost:9090/alerts
+3. Rule evaluation interval: `prometheus --enable-feature=promql-experimental-functions`
+4. Alert thresholds are appropriate
 
 **Debug**:
 
@@ -396,9 +396,9 @@ journalctl -u prometheus -f | grep "rule="
 **Check**:
 
 1. AlertManager is receiving alerts: http://localhost:9093/#/alerts
-1. Notification channels are configured correctly
-1. API keys/webhook URLs are valid
-1. Network connectivity to notification service
+2. Notification channels are configured correctly
+3. API keys/webhook URLs are valid
+4. Network connectivity to notification service
 
 **Debug**:
 
@@ -441,26 +441,26 @@ ______________________________________________________________________
    - Verify notifications are received
    - Check alert severity levels
 
-1. **Avoid Alert Fatigue**
+2. **Avoid Alert Fatigue**
 
    - Tune thresholds based on actual usage
    - Use appropriate severity levels
    - Set reasonable `for` durations
 
-1. **Document Alerts**
+3. **Document Alerts**
 
    - Update runbook URLs in alert annotations
    - Include troubleshooting steps
    - Document alert conditions clearly
 
-1. **Review and Iterate**
+4. **Review and Iterate**
 
    - Monthly alert rule review
    - Adjust thresholds based on metrics
    - Add new alerts as needed
    - Remove or silence noisy alerts
 
-1. **Use Alert Grouping**
+5. **Use Alert Grouping**
 
    - Group related alerts together
    - Reduce notification spam
@@ -473,10 +473,10 @@ ______________________________________________________________________
 ### Receiving an Alert
 
 1. **Acknowledge receipt** (respond to notification)
-1. **Assess severity** (P1: immediate, P2: 1 hour, P3: 4 hours)
-1. **Investigate** (use runbook, check metrics)
-1. **Resolve or escalate** (fix issue or escalate to next level)
-1. **Document** (update incident log, runbook if needed)
+2. **Assess severity** (P1: immediate, P2: 1 hour, P3: 4 hours)
+3. **Investigate** (use runbook, check metrics)
+4. **Resolve or escalate** (fix issue or escalate to next level)
+5. **Document** (update incident log, runbook if needed)
 
 ### Alert Silence
 

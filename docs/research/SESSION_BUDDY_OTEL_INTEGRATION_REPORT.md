@@ -22,11 +22,11 @@ ______________________________________________________________________
 ## Table of Contents
 
 1. [Session-Buddy Current Capabilities](#session-buddy-current-capabilities)
-1. [Mahavishnu OTel Infrastructure](#mahavishnu-otel-infrastructure)
-1. [Integration Options](#integration-options)
-1. [Configuration Requirements](#configuration-requirements)
-1. [Recommendations](#recommendations)
-1. [Implementation Roadmap](#implementation-roadmap)
+2. [Mahavishnu OTel Infrastructure](#mahavishnu-otel-infrastructure)
+3. [Integration Options](#integration-options)
+4. [Configuration Requirements](#configuration-requirements)
+5. [Recommendations](#recommendations)
+6. [Implementation Roadmap](#implementation-roadmap)
 
 ______________________________________________________________________
 
@@ -336,9 +336,9 @@ class MahavishnuSettings(BaseSettings):
 **Configuration Loading Order**:
 
 1. Default values (in code)
-1. `settings/mahavishnu.yaml` (committed)
-1. `settings/local.yaml` (gitignored)
-1. Environment variables: `MAHAVISHNU_{FIELD}`
+2. `settings/mahavishnu.yaml` (committed)
+3. `settings/local.yaml` (gitignored)
+4. Environment variables: `MAHAVISHNU_{FIELD}`
 
 ### 2.3 OpenTelemetry Collector
 
@@ -1121,21 +1121,21 @@ def continue_session_trace(session_id: str, operation: str):
    - Quality score trend (time series)
    - Top projects by activity
 
-1. **Workflow Velocity**:
+2. **Workflow Velocity**:
 
    - Commits per hour (gauge)
    - Checkpoints per session (histogram)
    - Files modified rate (counter)
    - Language distribution (pie chart)
 
-1. **Quality Metrics**:
+3. **Quality Metrics**:
 
    - Quality score distribution (histogram)
    - Quality trend direction (stat panel)
    - Most productive time of day (heatmap)
    - Tool usage frequency (bar chart)
 
-1. **Distributed Traces** (Jaeger):
+4. **Distributed Traces** (Jaeger):
 
    - Session lifecycle traces
    - Mahavishnu workflow traces

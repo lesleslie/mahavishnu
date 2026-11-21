@@ -9,17 +9,17 @@ ______________________________________________________________________
 
 ## Table of Contents
 
-1. [Overall Architecture](#1-overall-architecture)
-1. [Pool Management System](#2-pool-management-system)
-1. [Memory Aggregation Flow](#3-memory-aggregation-flow)
-1. [Authentication Architecture](#4-authentication-architecture)
-1. [Workflow Execution](#5-workflow-execution)
-1. [Performance Optimizations](#6-performance-optimizations)
-1. [Security Architecture](#7-security-architecture)
-1. [Testing Architecture](#8-testing-architecture)
-1. [Adapter Lifecycle](#9-adapter-lifecycle)
-1. [Dead Letter Queue](#10-dead-letter-queue)
-1. [Quality Metrics Timeline](#11-quality-metrics-timeline)
+01. [Overall Architecture](#1-overall-architecture)
+02. [Pool Management System](#2-pool-management-system)
+03. [Memory Aggregation Flow](#3-memory-aggregation-flow)
+04. [Authentication Architecture](#4-authentication-architecture)
+05. [Workflow Execution](#5-workflow-execution)
+06. [Performance Optimizations](#6-performance-optimizations)
+07. [Security Architecture](#7-security-architecture)
+08. [Testing Architecture](#8-testing-architecture)
+09. [Adapter Lifecycle](#9-adapter-lifecycle)
+10. [Dead Letter Queue](#10-dead-letter-queue)
+11. [Quality Metrics Timeline](#11-quality-metrics-timeline)
 
 ______________________________________________________________________
 

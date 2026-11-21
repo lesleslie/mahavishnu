@@ -203,9 +203,9 @@ ______________________________________________________________________
 The original integration plan spent significant effort analyzing how to integrate two systems. The trio review revealed this is unnecessary:
 
 1. **Hive is conceptware** - It demonstrates ideas but lacks production code
-1. **Bodai already has the infrastructure** - StatisticalRouter, AgentTeamManager, DependencyGraph
-1. **Only one gap exists** - Natural language goal parsing
-1. **That gap is small** - 100-150 lines of code, 2-3 days
+2. **Bodai already has the infrastructure** - StatisticalRouter, AgentTeamManager, DependencyGraph
+3. **Only one gap exists** - Natural language goal parsing
+4. **That gap is small** - 100-150 lines of code, 2-3 days
 
 **Recommendation:** Close the Hive integration plan. Implement GoalDrivenTeamFactory natively.
 
@@ -214,10 +214,10 @@ ______________________________________________________________________
 ## Next Steps
 
 1. [ ] Create `mahavishnu/engines/goal_team_factory.py`
-1. [ ] Add MCP tool `team_from_goal`
-1. [ ] Add CLI command `mahavishnu team create --goal`
-1. [ ] Update `docs/analysis/HIVE_BODAI_INTEGRATION_PLAN.md` with trio findings
-1. [ ] Archive Hive integration research (keep for reference, mark as rejected)
+2. [ ] Add MCP tool `team_from_goal`
+3. [ ] Add CLI command `mahavishnu team create --goal`
+4. [ ] Update `docs/analysis/HIVE_BODAI_INTEGRATION_PLAN.md` with trio findings
+5. [ ] Archive Hive integration research (keep for reference, mark as rejected)
 
 ______________________________________________________________________
 

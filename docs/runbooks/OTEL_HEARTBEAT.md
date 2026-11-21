@@ -363,10 +363,10 @@ second one and stop it.
 
 1. If a second akosha holds the lock, stop it (`launchctl bootout gui/$(id -u)/com.mcp.akosha` for the wrong one, then re-bootstrap the
    right one).
-1. If the file is corrupt, akosha's substrate-lift path rebuilds it — see
+2. If the file is corrupt, akosha's substrate-lift path rebuilds it — see
    the spec §8 (retention and rollover) and akosha's
    `docs/ops/OTEL_TEMPO_HOOK.md`.
-1. Restart akosha once the substrate is readable.
+3. Restart akosha once the substrate is readable.
 
 ### Verification
 
@@ -418,9 +418,9 @@ grep -i 'known_mcp_servers\|roster' ~/.local/state/mcp/logs/akosha.err | tail -1
 ### Recovery
 
 1. Restore the roster in `akosha/settings/akosha.yaml`.
-1. Restart akosha — the roster is boot-populated, so editing the file alone
+2. Restart akosha — the roster is boot-populated, so editing the file alone
    changes nothing.
-1. Verify the roster took effect **before** declaring victory: the absence
+3. Verify the roster took effect **before** declaring victory: the absence
    counters for every service should reappear, because the watcher starts
    asking about them again.
 

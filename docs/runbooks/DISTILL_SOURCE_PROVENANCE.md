@@ -29,7 +29,7 @@ The gate's allowlist is sourced from either:
 
 1. `MAHAVISHNU_PUBLISHER_ALLOWLIST` env var (path to a
    newline-delimited file, OR an inline comma-separated list).
-1. `distill.publisher_allowlist` in `settings/mahavishnu.yaml`.
+2. `distill.publisher_allowlist` in `settings/mahavishnu.yaml`.
 
 When both are configured the env var wins (matches the H6 reviewer
 gate). When neither is set the gate enters **bootstrap mode** — any

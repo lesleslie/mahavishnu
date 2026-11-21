@@ -547,8 +547,8 @@ ______________________________________________________________________
 **Solutions:**
 
 1. Verify server is running: Check if port 8690 is listening
-1. Check firewall settings
-1. Verify correct host/port
+2. Check firewall settings
+3. Verify correct host/port
 
 ### No Events Received
 
@@ -557,8 +557,8 @@ ______________________________________________________________________
 **Solutions:**
 
 1. Verify subscribed to correct channel
-1. Check if events are being broadcast
-1. Check server logs for errors
+2. Check if events are being broadcast
+3. Check server logs for errors
 
 ### Connection Drops
 
@@ -567,8 +567,8 @@ ______________________________________________________________________
 **Solutions:**
 
 1. Implement reconnection logic
-1. Check network stability
-1. Verify not exceeding rate limits
+2. Check network stability
+3. Verify not exceeding rate limits
 
 ______________________________________________________________________
 
@@ -588,8 +588,8 @@ ______________________________________________________________________
 Currently, WebSocket connections do not require authentication. This is suitable for local development. For production:
 
 1. Implement token-based authentication
-1. Use TLS/WSS for encrypted connections
-1. Validate channel subscriptions
+2. Use TLS/WSS for encrypted connections
+3. Validate channel subscriptions
 
 ### Authorization
 

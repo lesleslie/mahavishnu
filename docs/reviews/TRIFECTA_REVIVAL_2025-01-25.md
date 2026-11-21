@@ -176,8 +176,8 @@ ______________________________________________________________________
 **Immediate Actions Required:**
 
 1. 🔴 **CRITICAL:** Fix Messaging Types enum bug (5 minutes)
-1. 🟠 **HIGH:** Add test coverage for messaging types (2-3 hours)
-1. 🟡 **MEDIUM:** Update documentation (line count: 584 → 558)
+2. 🟠 **HIGH:** Add test coverage for messaging types (2-3 hours)
+3. 🟡 **MEDIUM:** Update documentation (line count: 584 → 558)
 
 **After fixes:** mcp-common will be **production-ready** (9/10)
 
@@ -252,20 +252,20 @@ analyzer = CodeGraphAnalyzer("/tmp")  # ✅ Works
 **Blockers:**
 
 1. 🔴 Test pass rate too low (59% vs 85% target)
-1. 🔴 Test coverage too low (15.81% vs 80% target)
-1. 🟡 PrefectAdapter non-functional (stub only)
-1. 🟡 AgnoAdapter non-functional (stub only)
-1. 🟡 No persistent vector storage
+2. 🔴 Test coverage too low (15.81% vs 80% target)
+3. 🟡 PrefectAdapter non-functional (stub only)
+4. 🟡 AgnoAdapter non-functional (stub only)
+5. 🟡 No persistent vector storage
 
 **Time to Production:** 2-3 weeks focused work
 
 **Next 5 Files to Fix:**
 
 1. `tests/integration/test_mcp_tools.py` - Fix mock configs (2 hours)
-1. `mahavishnu/core/repo_manager.py` - Fix path validation (1 hour)
-1. `mahavishnu/core/resilience.py` - Fix operation logging (2 hours)
-1. `tests/unit/test_repo_manager.py` - Update validation tests (1 hour)
-1. `mahavishnu/engines/prefect_adapter.py` - Real orchestration (8-12 hours)
+2. `mahavishnu/core/repo_manager.py` - Fix path validation (1 hour)
+3. `mahavishnu/core/resilience.py` - Fix operation logging (2 hours)
+4. `tests/unit/test_repo_manager.py` - Update validation tests (1 hour)
+5. `mahavishnu/engines/prefect_adapter.py` - Real orchestration (8-12 hours)
 
 ______________________________________________________________________
 
@@ -504,9 +504,9 @@ ______________________________________________________________________
 ### Immediate Actions (Today)
 
 1. ✅ **COMPLETED:** Fix mcp-common Messaging Types bug (5 minutes)
-1. ✅ **COMPLETED:** Install mcp-common 0.5.2 with CodeGraphAnalyzer
-1. ✅ **COMPLETED:** Verify all adapters can import CodeGraphAnalyzer
-1. ⏳ **IN PROGRESS:** Fix Mahavishnu test failures (aim for 80%+ pass rate)
+2. ✅ **COMPLETED:** Install mcp-common 0.5.2 with CodeGraphAnalyzer
+3. ✅ **COMPLETED:** Verify all adapters can import CodeGraphAnalyzer
+4. ⏳ **IN PROGRESS:** Fix Mahavishnu test failures (aim for 80%+ pass rate)
 
 ### Week 1: Foundation Fixes (Current Week)
 
@@ -616,15 +616,15 @@ ______________________________________________________________________
 **Key Findings:**
 
 1. ✅ **Critical blocker resolved:** CodeGraphAnalyzer production-ready (558 lines, 81% coverage)
-1. ❌ **New critical bug:** mcp-common Messaging Types broken (5-minute fix)
-1. 🟡 **Mahavishnu:** 59% test pass rate, needs 2-3 weeks work
-1. 🟡 **Session Buddy:** 5 features at 15-60% complete, needs 2-3 weeks work
+2. ❌ **New critical bug:** mcp-common Messaging Types broken (5-minute fix)
+3. 🟡 **Mahavishnu:** 59% test pass rate, needs 2-3 weeks work
+4. 🟡 **Session Buddy:** 5 features at 15-60% complete, needs 2-3 weeks work
 
 **Immediate Next Steps:**
 
 1. Fix mcp-common Messaging Types bug (5 minutes) ⏳ **NEXT**
-1. Fix Mahavishnu test failures to 80%+ pass rate (12-20 hours)
-1. Implement Session Buddy Phase 1 features in parallel (18-20 hours)
+2. Fix Mahavishnu test failures to 80%+ pass rate (12-20 hours)
+3. Implement Session Buddy Phase 1 features in parallel (18-20 hours)
 
 **Realistic Timeline:**
 

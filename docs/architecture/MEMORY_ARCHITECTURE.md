@@ -56,13 +56,13 @@ ______________________________________________________________________
 ## Table of Contents
 
 1. [Storage Inventory](#1-storage-inventory)
-1. [MCP Write Surface](#2-mcp-write-surface)
-1. [MCP Read Surface](#3-mcp-read-surface)
-1. [Cross-Component Visibility](#4-cross-component-visibility)
-1. [Integration Contract](#5-integration-contract)
-1. [Sample Queries](#6-sample-queries)
-1. [Diagrams](#7-diagrams)
-1. [Operational Notes](#8-operational-notes)
+2. [MCP Write Surface](#2-mcp-write-surface)
+3. [MCP Read Surface](#3-mcp-read-surface)
+4. [Cross-Component Visibility](#4-cross-component-visibility)
+5. [Integration Contract](#5-integration-contract)
+6. [Sample Queries](#6-sample-queries)
+7. [Diagrams](#7-diagrams)
+8. [Operational Notes](#8-operational-notes)
 
 ______________________________________________________________________
 
@@ -280,9 +280,9 @@ should run `python -m mahavishnu.scripts.migrate_legacy_data` to copy.
 `pydantic_settings.YamlConfigSettingsSource`. Precedence order:
 
 1. `oneiric://defaults` — Oneiric-bundled defaults
-1. `${REPO}/settings/mahavishnu.yaml` — committed configuration
-1. `${REPO}/settings/local.yaml` — gitignored operator overrides
-1. Environment variables `MAHAVISHNU_*` (nested fields via `__` separator,
+2. `${REPO}/settings/mahavishnu.yaml` — committed configuration
+3. `${REPO}/settings/local.yaml` — gitignored operator overrides
+4. Environment variables `MAHAVISHNU_*` (nested fields via `__` separator,
    e.g. `MAHAVISHNU_POOLS__ENABLED=true`)
 
 Top-level config groups (each `extra="forbid"`):
@@ -415,8 +415,8 @@ document.
 Resolution precedence:
 
 1. `MAHAVISHNU_TOOL_PROFILE` env var (`full` / `standard` / `minimal`)
-1. `settings/local.yaml` `tool_profile:` field
-1. Default = `FULL` (no reduction)
+2. `settings/local.yaml` `tool_profile:` field
+3. Default = `FULL` (no reduction)
 
 The `discover_tools(query=, capability=)` meta-tool is always registered
 and returns `{loaded_tools, not_loaded_tools, profile, profile_methods_scheduled, hint}`
@@ -529,16 +529,16 @@ ecosystem. Five components coordinate:
 1. **`PoolSelector`** (`mahavishnu/pools/manager.py:73`): `ROUND_ROBIN`,
    `LEAST_LOADED`, `RANDOM`, `AFFINITY`, `PEER_AFFINITY`. The selector
    decision is recorded via `_persist_routing_decision`.
-1. **`CallerKind`** (`mahavishnu/pools/manager.py:64`): `ULTRA_CODE`,
+2. **`CallerKind`** (`mahavishnu/pools/manager.py:64`): `ULTRA_CODE`,
    `CLAUDE_CODE`, `WORKFLOW`, `CLI`, `UNKNOWN`. Unknown strings at the MCP
    wire boundary are coerced to `UNKNOWN` via `coerce_caller_kind` —
    callers cannot inflate quota by sending novel strings.
-1. **`PeerRouteResolver`** (`mahavishnu/pools/peer_routing.py`): reads
+3. **`PeerRouteResolver`** (`mahavishnu/pools/peer_routing.py`): reads
    `pool: <pool_id>` hint from Session-Buddy's `user_models.representation_text`.
-1. **`RoutingFitnessReader`** (`mahavishnu/pools/routing_fitness.py`): reads
+4. **`RoutingFitnessReader`** (`mahavishnu/pools/routing_fitness.py`): reads
    `routing_fitness/{tc}/{selector}` from the shared KV substrate, picks the best selector
    per task class.
-1. **`PoolManager._enforce_caller_quota`** (`mahavishnu/pools/manager.py`):
+5. **`PoolManager._enforce_caller_quota`** (`mahavishnu/pools/manager.py`):
    per-`CallerKind` fixed-window quota with `max_per_window=60` (default).
 
 ### Pool types and what they delegate to
@@ -645,8 +645,8 @@ short-circuit to `LEAST_LOADED` whenever:
 
 1. The peer has no `user_models` row for `(peer_id, project_id)` —
    `representation_text` is `None` or empty.
-1. The peer model row exists but contains no `pool: <id>` hint.
-1. The ACL provider returns `None` or a dict without
+2. The peer model row exists but contains no `pool: <id>` hint.
+3. The ACL provider returns `None` or a dict without
    `peer_models:read: True`. **The ACL check MUST happen BEFORE the
    `peer_context` call** — see
    `tests/integration/test_pool_routing_peer_affinity.py::test_peer_affinity_no_acl_falls_back_to_least_loaded`.
@@ -986,12 +986,12 @@ Three diagrams are embedded above and persisted with this document:
    operational stores plus settings layers and the dead-letter / queue
    side channels. Green = authoritative write targets; yellow =
    ephemeral in-process / dead-letter; blue = XDG-compliant local state.
-1. **Pool routing flow** (this section) — `sequenceDiagram` showing
+2. **Pool routing flow** (this section) — `sequenceDiagram` showing
    prompt → `PoolManager.route_task` → selector → caller-kind quota →
    ACL check (ADR-014) → peer resolver → pool → worker → Mahavishnu KV
    `workflow-results/{id}/` persistence. Captures the five contract
    invariants.
-1. **Tool profile gate** (this section) — `flowchart` of how
+3. **Tool profile gate** (this section) — `flowchart` of how
    `MAHAVISHNU_TOOL_PROFILE` filters the registration entries of the active
    tier (37 under FULL, 15 under STANDARD, 3 under MINIMAL).
 

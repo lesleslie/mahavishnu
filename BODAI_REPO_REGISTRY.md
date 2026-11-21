@@ -23,20 +23,20 @@ machine-independent and safe to publish.
 Resolve the projects root in this order:
 
 1. `$BODAI_PROJECTS_ROOT` — explicit override.
-1. The parent of this repository — this file lives at
+2. The parent of this repository — this file lives at
    `<projects root>/mahavishnu/BODAI_REPO_REGISTRY.md`.
-1. `~/Projects` — the standard developer layout.
+3. `~/Projects` — the standard developer layout.
 
 A repo's location is then `<projects root>/<Path column>`.
 
 ## Discovery process (per Phase 0.0)
 
 1. Read MEMORY.md for inventory hints (e.g., `bodai-mcp-servers-not-mycelium-core.md`)
-1. `ls ~/Projects/` for git repos
-1. For each candidate, read `pyproject.toml` head; confirm Bodai-authored + Python-pinned
-1. Document in `settings/ecosystem.yaml` (gitignored per-machine catalog) — copy [`settings/ecosystem.yaml.example`](settings/ecosystem.yaml.example) and populate
-1. Add registry-only annotations (Phase, FastMCP pin, provenance) to [`settings/registry_metadata.yaml`](settings/registry_metadata.yaml)
-1. **Verification step** — every entry below is generated from the YAML files above; run `python3 scripts/regen_bodai_registry.py --check` to detect registry-vs-source drift.
+2. `ls ~/Projects/` for git repos
+3. For each candidate, read `pyproject.toml` head; confirm Bodai-authored + Python-pinned
+4. Document in `settings/ecosystem.yaml` (gitignored per-machine catalog) — copy [`settings/ecosystem.yaml.example`](settings/ecosystem.yaml.example) and populate
+5. Add registry-only annotations (Phase, FastMCP pin, provenance) to [`settings/registry_metadata.yaml`](settings/registry_metadata.yaml)
+6. **Verification step** — every entry below is generated from the YAML files above; run `python3 scripts/regen_bodai_registry.py --check` to detect registry-vs-source drift.
 
 A repo is **Bodai-maintained** if: (a) `pyproject.toml` exists, (b) author = `Les Leslie`
 (variants: `les@wedgwoodwebworks.com`, `les@wedgwood.us`, `les@lesleslie.com`) or the

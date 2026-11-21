@@ -50,8 +50,7 @@ on Nov 13 and Nov 17 the browser accounted for 65 and 120 requests against
 **What it does and does not break.** It does **not** break provider
 resolution — `could not auto resolve a provider` has zero occurrences, and
 the `text-embedding-3-large` round trip resolves and embeds normally. It
-does **not** break the model catalogue: the `falling back onto the static
-datasheet` message has not appeared since 2026-04-08, months before this
+does **not** break the model catalogue: the `falling back onto the static datasheet` message has not appeared since 2026-04-08, months before this
 started. What it *does* leave undone is **housekeeping**: expired OAuth
 flows, expired temp tokens, expired per-user header flows, expired virtual
 keys and old push-relay deliveries are not deleted on their sweep schedule,
@@ -70,8 +69,7 @@ attribute it to whatever change happens to be running.** Three rules follow.
    `db_pings: ok` while the sweeps are failing, because a ping tests
    connectivity and not contention, and nothing in the request path reads
    the sweeps. The only place the failure is recorded is the gateway's
-   stderr, so that is where the fleet reads it: `mahavishnu bifrost
-   status` reports the count of failed background writes in the last 24
+   stderr, so that is where the fleet reads it: `mahavishnu bifrost status` reports the count of failed background writes in the last 24
    hours and the timestamp of the most recent one.
 3. **Do not try to fix it from here.** `busy_timeout` is per-connection and
    lives upstream; the fleet does not write the config store at all (only
@@ -80,8 +78,7 @@ attribute it to whatever change happens to be running.** Three rules follow.
    should wait on `SQLITE_BUSY` rather than fail — so that is a report to
    `maximhq/bifrost`, not a patch here.
 
-**What would change this assessment.** A `could not auto resolve a
-provider` or `falling back onto the static datasheet` line appearing
+**What would change this assessment.** A `could not auto resolve a provider` or `falling back onto the static datasheet` line appearing
 alongside the lock errors would move this from hygiene to availability, and
 the report would become urgent rather than informational.
 

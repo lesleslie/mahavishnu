@@ -315,10 +315,11 @@ def collect_metrics(
     Example:
         mahavishnu metrics collect --create-issues --min-coverage 80
     """
-    # Import here to avoid circular dependency. Resolved at runtime via sys.path;
-    # static analysis cannot see the empty-file script stubs at scripts/*.py.
+    # Import here to avoid circular dependency. NOTE: scripts/collect_metrics.py
+    # is a zero-byte stub in this repo, so the module resolves but exposes no
+    # ``main``; the directive records that known gap rather than hiding it.
     from scripts.collect_metrics import (
-        main as collect_main,  # ty: ignore[import-not-found]
+        main as collect_main,  # ty: ignore[missing-module-member]
     )
 
     # Set up sys.argv to pass arguments to the collect script
@@ -373,8 +374,10 @@ def generate_report(
 
     # For now, delegate to collect_metrics
     # TODO: Generate more comprehensive reports with historical data
+    # NOTE: scripts/collect_metrics.py is a zero-byte stub, so this import
+    # cannot resolve at runtime. The directive records that known gap.
     from scripts.collect_metrics import (
-        main as collect_main,  # ty: ignore[import-not-found]
+        main as collect_main,  # ty: ignore[missing-module-member]
     )
 
     sys.argv = ["collect_metrics", f"--output={format}"]
@@ -445,10 +448,11 @@ def show_status(
     table.add_column("Files", style="blue")
     table.add_column("Status", style="yellow")
 
-    # Collect coverage data. Resolved at runtime via sys.path; static analysis
-    # cannot see the empty-file script stub at scripts/collect_metrics.py.
+    # Collect coverage data. NOTE: scripts/collect_metrics.py is a zero-byte
+    # stub, so this import cannot resolve at runtime. The directive records
+    # that known gap.
     from scripts.collect_metrics import (
-        get_coverage_from_file,  # ty: ignore[import-not-found]
+        get_coverage_from_file,  # ty: ignore[missing-module-member]
     )
 
     for repo_data in repos:
@@ -608,10 +612,11 @@ def generate_dashboard(
 
     console.print("[cyan]📊 Generating Metrics Dashboard[/cyan]\n")
 
-    # Import dashboard generator. Resolved at runtime via sys.path; static analysis
-    # cannot see the empty-file script stub at scripts/generate_metrics_dashboard.py.
+    # Import dashboard generator. NOTE: scripts/generate_metrics_dashboard.py is
+    # a zero-byte stub, so this import cannot resolve at runtime. The directive
+    # records that known gap.
     from scripts.generate_metrics_dashboard import (
-        main as dashboard_main,  # ty: ignore[import-not-found]
+        main as dashboard_main,  # ty: ignore[missing-module-member]
     )
 
     # Set up sys.argv

@@ -732,9 +732,9 @@ mahavishnu team create --goal "Test the auth module" --run --task "Test login fl
 ## How It Works
 
 1. **Parse Goal**: Analyze natural language to extract intent and required skills
-1. **Select Mode**: Choose collaboration mode based on intent
-1. **Create Members**: Assign specialists based on detected skills
-1. **Execute**: Run the team on your task
+2. **Select Mode**: Choose collaboration mode based on intent
+3. **Create Members**: Assign specialists based on detected skills
+4. **Execute**: Run the team on your task
 
 ## Writing Effective Goals
 
@@ -1087,8 +1087,8 @@ ______________________________________________________________________
 After 100+ team executions:
 
 1. Extend StatisticalRouter for team configs
-1. Multi-dimensional quality scoring
-1. A/B testing for configurations
+2. Multi-dimensional quality scoring
+3. A/B testing for configurations
 
 ______________________________________________________________________
 

@@ -100,9 +100,9 @@ See `diagrams/EMBEDDING_ARCHITECTURE.md` for the canonical layered-config diagra
 **Priority Order** (higher overrides lower):
 
 1. ✅ **Environment Variables** (highest priority)
-1. ✅ **settings/local.yaml** (local development)
-1. ✅ **settings/mahavishnu.yaml** (committed defaults)
-1. ✅ **Pydantic defaults** (fallback)
+2. ✅ **settings/local.yaml** (local development)
+3. ✅ **settings/mahavishnu.yaml** (committed defaults)
+4. ✅ **Pydantic defaults** (fallback)
 
 ______________________________________________________________________
 

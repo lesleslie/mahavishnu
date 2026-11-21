@@ -5,10 +5,10 @@ This runbook provides step-by-step procedures for deploying the Mahavishnu Task 
 ## Table of Contents
 
 1. [Pre-Deployment Checklist](#pre-deployment-checklist)
-1. [Deployment Procedures](#deployment-procedures)
-1. [Post-Deployment Verification](#post-deployment-verification)
-1. [Rollback Procedures](#rollback-procedures)
-1. [Common Issues](#common-issues)
+2. [Deployment Procedures](#deployment-procedures)
+3. [Post-Deployment Verification](#post-deployment-verification)
+4. [Rollback Procedures](#rollback-procedures)
+5. [Common Issues](#common-issues)
 
 ______________________________________________________________________
 

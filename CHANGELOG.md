@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.40.1] - 2026-11-21
+
+### Added
+
+- bifrost: Surface the config-store write contention in the status
+
+### Changed
+
+- Chore/dedupe-slash-commands -> main
+- Docs/reference-integrity -> main
+- docs: Format this repository's markdown for the first time
+- Fix/command-frontmatter -> main
+- Fix/mermaid-guard-policy -> main
+- Fix/mermaid-guard-required -> main
+- Fix/mermaid-jsdom-lockfile-pin -> main
+- Fix/prune-atomic -> main
+- Fix/prune-race -> main
+- Fix/sweeper-group-hygiene -> main
+- Fix/sweeper-hygiene-hardening -> main
+- Pin the transport to v2.6.0
+
+### Fixed
+
+- bifrost: Re-launch the gateway when the transport binary is denied an exec
+- config: Read the task_orphan_sweeper block from settings
+
+### Documentation
+
+- Add the fleet memory retrieval quality plan
+- plan: Correct the rerank diagram to name the cross-encoder form
+- plan: Correct the storage arithmetic and the 3072 argument
+- plan: Record the Bifrost allowlist change and what remains
+- plan: Record the embedding model's shelf life and the FastEmbed scope
+- plan: Record the width-parameter trap and the corpus width measurement
+- plan: Settle the fleet width at 1024, and record the evidence
+- plan: State the width rule correctly, and why 3072 is not the answer
+- plan: Switch the fleet model to text-embedding-3-large and add the rerank stage
+- Record the proven round trip and the cached-binary exec-bit trap
+- specs: Add the fleet session-start status banners spec
+
 ## [Unreleased]
 
 ### Internal

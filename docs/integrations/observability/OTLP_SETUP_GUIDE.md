@@ -4,16 +4,16 @@ Complete guide for configuring OTLP (OpenTelemetry Protocol) ingestion from exte
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
-1. [Architecture Overview](#architecture-overview)
-1. [Ingestion Methods](#ingestion-methods)
-1. [Client Configuration](#client-configuration)
-1. [Claude-Specific Setup](#claude-specific-setup)
-1. [Qwen-Specific Setup](#qwen-specific-setup)
-1. [General Python Applications](#general-python-applications)
-1. [Testing and Validation](#testing-and-validation)
-1. [Troubleshooting](#troubleshooting)
-1. [Production Checklist](#production-checklist)
+01. [Quick Start](#quick-start)
+02. [Architecture Overview](#architecture-overview)
+03. [Ingestion Methods](#ingestion-methods)
+04. [Client Configuration](#client-configuration)
+05. [Claude-Specific Setup](#claude-specific-setup)
+06. [Qwen-Specific Setup](#qwen-specific-setup)
+07. [General Python Applications](#general-python-applications)
+08. [Testing and Validation](#testing-and-validation)
+09. [Troubleshooting](#troubleshooting)
+10. [Production Checklist](#production-checklist)
 
 ______________________________________________________________________
 
@@ -939,20 +939,20 @@ ______________________________________________________________________
    docker-compose -f docker-compose.buildpacks.yml logs otel-collector | grep -i "span"
    ```
 
-1. **Verify Jaeger exporter configuration:**
+2. **Verify Jaeger exporter configuration:**
 
    ```bash
    # Check collector config
    cat config/otel-collector-config.yaml | grep -A 5 "jaeger:"
    ```
 
-1. **Test Jaeger connection:**
+3. **Test Jaeger connection:**
 
    ```bash
    docker exec -it $(docker ps -q -f name=jaeger) nc -zv localhost 14250
    ```
 
-1. **Check exporter logs:**
+4. **Check exporter logs:**
 
    ```bash
    docker-compose -f docker-compose.buildpacks.yml logs otel-collector | grep -i "exporter"
@@ -973,19 +973,19 @@ ______________________________________________________________________
    docker-compose -f docker-compose.buildpacks.yml ps otel-collector
    ```
 
-1. **Check ports are exposed:**
+2. **Check ports are exposed:**
 
    ```bash
    netstat -tuln | grep 4317  # Should show LISTEN
    netstat -tuln | grep 4318  # Should show LISTEN
    ```
 
-1. **Verify endpoint URL:**
+3. **Verify endpoint URL:**
 
    - Use `http://localhost:4317` (not `https://`)
    - For Docker networking, use service name: `http://otel-collector:4317`
 
-1. **Restart collector:**
+4. **Restart collector:**
 
    ```bash
    docker-compose -f docker-compose.buildpacks.yml restart otel-collector
@@ -1006,7 +1006,7 @@ ______________________________________________________________________
    curl http://localhost:9090/api/v1/targets
    ```
 
-1. **Verify remote write is working:**
+2. **Verify remote write is working:**
 
    ```bash
    curl -X POST http://localhost:9090/api/v1/write -d '
@@ -1015,7 +1015,7 @@ ______________________________________________________________________
    '
    ```
 
-1. **Check collector metrics:**
+3. **Check collector metrics:**
 
    ```bash
    curl http://localhost:8888/metrics
@@ -1036,19 +1036,19 @@ ______________________________________________________________________
    curl http://localhost:9200/_cluster/health
    ```
 
-1. **Check index exists:**
+2. **Check index exists:**
 
    ```bash
    curl http://localhost:9200/_cat/indices?v
    ```
 
-1. **Test index creation:**
+3. **Test index creation:**
 
    ```bash
    curl -X PUT http://localhost:9200/mahavishnu-logs-test
    ```
 
-1. **Check Elasticsearch logs:**
+4. **Check Elasticsearch logs:**
 
    ```bash
    docker-compose -f docker-compose.buildpacks.yml logs elasticsearch
@@ -1069,13 +1069,13 @@ ______________________________________________________________________
    cat config/otel-collector-config.yaml | grep -A 5 "filelog:"
    ```
 
-1. **Check file permissions:**
+2. **Check file permissions:**
 
    ```bash
    ls -la /var/log/mahavishnu/sessions/
    ```
 
-1. **Verify volume mount in docker-compose:**
+3. **Verify volume mount in docker-compose:**
 
    ```yaml
    services:
@@ -1084,7 +1084,7 @@ ______________________________________________________________________
          - /var/log/mahavishnu/sessions:/var/log/mahavishnu/sessions:ro
    ```
 
-1. **Test file accessibility from container:**
+4. **Test file accessibility from container:**
 
    ```bash
    docker exec -it $(docker ps -q -f name=otel-collector) ls -la /var/log/mahavishnu/sessions/
@@ -1108,7 +1108,7 @@ ______________________________________________________________________
        send_batch_size: 5000  # Decrease batch size
    ```
 
-1. **Enable memory limiter:**
+2. **Enable memory limiter:**
 
    ```yaml
    processors:
@@ -1118,7 +1118,7 @@ ______________________________________________________________________
        spike_limit_percentage: 20
    ```
 
-1. **Increase container memory:**
+3. **Increase container memory:**
 
    ```yaml
    services:
@@ -1143,7 +1143,7 @@ ______________________________________________________________________
    - Claude: `http://localhost:4319`
    - Qwen: `http://localhost:4321`
 
-1. **Set resource attributes:**
+2. **Set resource attributes:**
 
    ```python
    resource = Resource.create(
@@ -1154,7 +1154,7 @@ ______________________________________________________________________
    )
    ```
 
-1. **Verify in Jaeger:**
+3. **Verify in Jaeger:**
 
    - Search by service name
    - Filter by `telemetry.source` tag

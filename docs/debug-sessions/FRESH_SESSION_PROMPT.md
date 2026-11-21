@@ -42,7 +42,7 @@ Debug why the official MCP client transport doesn't work while direct httpx does
 
    Specifically the `_maybe_extract_session_id_from_response()` method at line 173 and how the session_id is propagated.
 
-1. **Server session manager** (in Akosha's venv):
+2. **Server session manager** (in Akosha's venv):
 
    ```
    /Users/les/Projects/akosha/.venv/lib/python3.13/site-packages/mcp/server/streamable_http_manager.py
@@ -50,7 +50,7 @@ Debug why the official MCP client transport doesn't work while direct httpx does
 
    How it handles the initialize request and returns the session ID header.
 
-1. **Mahavishnu client**:
+3. **Mahavishnu client**:
 
    ```
    /Users/les/Projects/mahavishnu/mahavishnu/mcp/bodai_component_client.py
@@ -62,16 +62,16 @@ Debug why the official MCP client transport doesn't work while direct httpx does
 
 1. **Add debug logging** to `streamable_http.py` around session ID extraction to trace what's happening
 
-1. **Check the timing** - is the session ID being extracted but then overwritten/lost before `get_session_id()` is called?
+2. **Check the timing** - is the session ID being extracted but then overwritten/lost before `get_session_id()` is called?
 
-1. **Compare the two approaches**:
+3. **Compare the two approaches**:
 
    - Working: direct httpx POST → extract header → use session ID
    - Not working: streamable_http_client → __aenter__() → get_session_id() returns None
 
-1. **Check for anyio task group issues** - the `post_writer` task runs in a different task than the main code. Could there be a race condition?
+4. **Check for anyio task group issues** - the `post_writer` task runs in a different task than the main code. Could there be a race condition?
 
-1. **Verify the initialized notification** is being sent correctly after initialize()
+5. **Verify the initialized notification** is being sent correctly after initialize()
 
 ### Test Script
 
@@ -104,7 +104,7 @@ The `streamable_http_client()` yields `(read_stream, write_stream, get_session_i
 ### Known Fixes Applied Earlier
 
 1. Fixed `register_otel_query_tools` in Akosha to accept `app` instead of `registry`
-1. Updated the call site in `__init__.py`
+2. Updated the call site in `__init__.py`
 
 ### Environment
 

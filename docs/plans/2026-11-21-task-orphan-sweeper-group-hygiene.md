@@ -49,8 +49,7 @@ Concretely, after this ships:
    that died before acknowledging them — and, at the root, make the
    sweeper read the stream at all.
 2. Purge PEL entries whose stream data has been trimmed away. These
-   are permanently un-ackable and make every `XPENDING`/`XINFO
-   CONSUMERS` call more expensive forever.
+   are permanently un-ackable and make every `XPENDING`/`XINFO CONSUMERS` call more expensive forever.
 3. Keep the consumer table bounded by pruning consumers that no
    longer exist.
 4. Make `/health` tell the truth about the sweeper's state.
@@ -137,8 +136,7 @@ removed them.
 
 ### 4.5 D4 — health reports `healthy` while all of the above holds
 
-`TaskOrphanSweeper.health()` returned `self._consecutive_read_failures
-< 3` — it said nothing about the group. The live payload was
+`TaskOrphanSweeper.health()` returned `self._consecutive_read_failures < 3` — it said nothing about the group. The live payload was
 `task_orphan_sweeper: {"ok": true, "status": "healthy"}` while 18,198
 entries were pending and 437 consumers had leaked. The sweeper's
 docstring promised `entities_count` / `cycles_total` / `errors_total`
@@ -202,6 +200,7 @@ dependency is introduced.
 consumer group — the thing the adapter should have been.
 
 **Tasks:**
+
 - New `mahavishnu/core/events/redis_stream_group.py`:
   - `read()` — normalises coredis's reply, **decoding the stream key
     and the field names/values to text**, which is the D0 fix.
@@ -238,6 +237,7 @@ consumer group — the thing the adapter should have been.
 re-processes what it reclaims.
 
 **Tasks:**
+
 - `TaskOrphanSweeper` owns a `RedisStreamGroup` for its group.
 - `init()` runs one hygiene pass (reclaim, then prune) before the read
   loop starts.
@@ -275,6 +275,7 @@ holding pending is kept, and `health()` degrades on hygiene failure.
 in a bad state, and starts carrying the counters.
 
 **Tasks:**
+
 - `TaskOrphanSweeper.feed_state()` — the feed owns the shape of its
   own numbers, mirroring `plan_index`'s `as_dict()`, so the health
   endpoint never has to know which attribute holds which counter.
@@ -292,8 +293,7 @@ counters, and that a sweeper whose hygiene keeps failing reports
   which shares the builder).
 - **Returns to / updates**: the `checks.task_orphan_sweeper` entry of
   the `/health` body.
-- **Demonstrable by**: `curl -s http://127.0.0.1:8680/health | jq
-  .checks.task_orphan_sweeper`.
+- **Demonstrable by**: `curl -s http://127.0.0.1:8680/health | jq .checks.task_orphan_sweeper`.
 - **Rollback signal**: `/health` flipping to `degraded` in a healthy
   fleet — the sweeper's counters would be miscounting.
 - **Observability added**: `pending_total`, `consumers_total`,
@@ -305,6 +305,7 @@ counters, and that a sweeper whose hygiene keeps failing reports
 **Goal:** The live group's garbage is actually removed.
 
 **Tasks:**
+
 - Run one hygiene pass against the live group (reclaim → prune).
 - Re-measure: `XPENDING` and `XINFO CONSUMERS` before/after.
 - Record the before/after numbers in this plan.

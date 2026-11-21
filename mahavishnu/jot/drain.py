@@ -440,8 +440,12 @@ async def _mcp_trigger_workflow(
     """
     try:
         # Imported lazily to avoid module-load cost when drain is unused.
+        # NOTE: the workflow tools are FastMCP-registered closures defined
+        # inline in ``FastMCPServer._register_tools`` -- they are not module
+        # attributes, so this import cannot resolve at runtime. The directive
+        # below records that known gap rather than hiding it.
         from mahavishnu.mcp.server_core import (
-            mahavishnu_trigger_workflow,  # ty: ignore[import-not-found]
+            mahavishnu_trigger_workflow,  # ty: ignore[missing-module-member]
         )
 
         result: dict[str, object] = await mahavishnu_trigger_workflow(
@@ -460,8 +464,11 @@ async def _mcp_trigger_workflow(
 async def _mcp_get_workflow_status(workflow_id: str) -> dict[str, object]:
     """Thin wrapper over mahavishnu.mcp.server_core.mahavishnu_get_workflow_status."""
     try:
+        # Same closure caveat as ``_mcp_trigger_workflow``: this tool is
+        # registered inline on the FastMCP server, not exported as a module
+        # attribute, so the import cannot resolve at runtime.
         from mahavishnu.mcp.server_core import (
-            mahavishnu_get_workflow_status,  # ty: ignore[import-not-found]
+            mahavishnu_get_workflow_status,  # ty: ignore[missing-module-member]
         )
 
         result: dict[str, object] = await mahavishnu_get_workflow_status(

@@ -587,3 +587,9 @@ def serve() -> int:
             return return_code
         finally:
             cleanup(proc)
+
+    # Every attempt above returns: the retry branch ``continue``s only while
+    # ``attempt < LAUNCH_ATTEMPTS``, so the final attempt always returns. ty
+    # cannot prove that from the loop shape alone, so the implicit ``None``
+    # return needs an explicit exit to satisfy the ``-> int`` contract.
+    return 1

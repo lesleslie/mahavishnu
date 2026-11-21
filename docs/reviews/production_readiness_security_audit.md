@@ -82,9 +82,9 @@ http_auth = (None,)  # ⚠️ Add authentication if needed
 **Recommendation:**
 
 1. Generate proper SSL certificates or use self-signed certs with correct CA path
-1. Configure `ca_certs` with actual certificate file path
-1. Implement certificate renewal strategy
-1. Add OpenSearch authentication credentials
+2. Configure `ca_certs` with actual certificate file path
+3. Implement certificate renewal strategy
+4. Add OpenSearch authentication credentials
 
 ______________________________________________________________________
 
@@ -150,8 +150,8 @@ auth:
 **Recommendation:**
 
 1. Enable authentication in production: `auth.enabled: true`
-1. Set `MAHAVISHNU_AUTH_SECRET` environment variable (32+ chars)
-1. This requirement is **SATISFIED** ✅
+2. Set `MAHAVISHNU_AUTH_SECRET` environment variable (32+ chars)
+3. This requirement is **SATISFIED** ✅
 
 ______________________________________________________________________
 
@@ -216,13 +216,13 @@ $ brew list opensearch | grep security
    ```bash
    opensearch-plugin install opensearch-security
    ```
-1. Configure security plugin with:
+2. Configure security plugin with:
    - Admin credentials
    - SSL/TLS certificates
    - Role-based access control
    - Audit logging
-1. Enable encryption at rest in `opensearch.yml`
-1. Restart OpenSearch and validate
+3. Enable encryption at rest in `opensearch.yml`
+4. Restart OpenSearch and validate
 
 **This requirement is NOT SATISFIED** ❌
 
@@ -298,16 +298,16 @@ async def log_event(self, level: str, message: str, attributes: Dict[str, Any]):
    - Security event logging
    - Audit trail management
    - Compliance reporting
-1. Log all security-relevant events:
+2. Log all security-relevant events:
    - Authentication: login, logout, failed attempts
    - Authorization: permission checks, denials
    - User management: create, update, delete
    - Configuration changes
    - Data access
-1. Create dedicated audit index in OpenSearch
-1. Implement audit log protection (tamper-evident)
-1. Add audit log rotation and retention policy
-1. Create audit report generation
+3. Create dedicated audit index in OpenSearch
+4. Implement audit log protection (tamper-evident)
+5. Add audit log rotation and retention policy
+6. Create audit report generation
 
 **This requirement is NOT SATISFIED** ❌
 
@@ -336,12 +336,12 @@ ______________________________________________________________________
    - Code: `self.secret = config.auth_secret or "fallback_secret_for_testing"`
    - Risk: Production systems may use weak default secret
 
-1. **MEDIUM SEVERITY:**
+2. **MEDIUM SEVERITY:**
 
    - Multiple issues with hardcoded credentials or weak crypto defaults
    - No proper input validation on some user inputs
 
-1. **LOW SEVERITY:**
+3. **LOW SEVERITY:**
 
    - Minor code quality issues
    - Some unused imports
@@ -449,19 +449,19 @@ ______________________________________________________________________
    - Likelihood: HIGH (anyone can access)
    - Risk: Data breach, compliance violation
 
-1. **No Audit Logging** (HIGH)
+2. **No Audit Logging** (HIGH)
 
    - Impact: Cannot detect security breaches
    - Likelihood: HIGH (no visibility)
    - Risk: Undetected breaches, compliance violation
 
-1. **TLS Not Operational** (HIGH)
+3. **TLS Not Operational** (HIGH)
 
    - Impact: Data transmitted in clear text
    - Likelihood: MEDIUM (connection will fail, forcing http)
    - Risk: Data interception, credential theft
 
-1. **Authentication Disabled by Default** (MEDIUM)
+4. **Authentication Disabled by Default** (MEDIUM)
 
    - Impact: No access control if deployed as-is
    - Likelihood: HIGH (human error)
@@ -475,7 +475,7 @@ ______________________________________________________________________
    - Likelihood: LOW (requires misconfiguration)
    - Risk: Authentication bypass
 
-1. **No Encryption at Rest** (MEDIUM)
+2. **No Encryption at Rest** (MEDIUM)
 
    - Impact: Data accessible if storage compromised
    - Likelihood: MEDIUM
@@ -501,21 +501,21 @@ ______________________________________________________________________
    # Configure admin credentials, SSL, roles
    ```
 
-1. **Implement Audit Logging**
+2. **Implement Audit Logging**
 
    - Create `mahavishnu/core/audit.py`
    - Log all security events (auth, authz, config changes)
    - Create audit index in OpenSearch
    - Add audit report generation
 
-1. **Configure TLS Properly**
+3. **Configure TLS Properly**
 
    - Generate SSL certificates (self-signed or CA-signed)
    - Update `ca_certs` path in configuration
    - Verify TLS connectivity
    - Implement certificate renewal
 
-1. **Enable Authentication**
+4. **Enable Authentication**
 
    - Set `auth.enabled: true` in production config
    - Require `MAHAVISHNU_AUTH_SECRET` environment variable
@@ -528,17 +528,17 @@ ______________________________________________________________________
    - Remove hardcoded fallback secret
    - Require explicit secret configuration
 
-1. **Configure OpenSearch Authentication**
+2. **Configure OpenSearch Authentication**
 
    - Add username/password to OpenSearch client
    - Use environment variables for credentials
 
-1. **Implement Encryption at Rest**
+3. **Implement Encryption at Rest**
 
    - Enable node-level encryption in OpenSearch
    - Configure encrypted storage volumes
 
-1. **Add Security Monitoring**
+4. **Add Security Monitoring**
 
    - Integrate monitoring alerts for security events
    - Add anomaly detection
@@ -552,19 +552,19 @@ ______________________________________________________________________
    - Certificate rotation
    - Multi-certificate support
 
-1. **Enhance Audit Logging**
+2. **Enhance Audit Logging**
 
    - Tamper-evident audit logs
    - Audit log forwarding to SIEM
    - Compliance report generation
 
-1. **Security Testing**
+3. **Security Testing**
 
    - Regular penetration testing
    - Security code reviews
    - Dependency vulnerability scanning
 
-1. **Compliance Certification**
+4. **Compliance Certification**
 
    - SOC2 Type II audit
    - HIPAA assessment
@@ -598,14 +598,14 @@ ______________________________________________________________________
    - Repository-level permissions
    - Production-ready code quality
 
-1. **Authentication System**
+2. **Authentication System**
 
    - JWT with proper validation
    - Token expiration
    - Multi-method support
    - Cross-project auth
 
-1. **Code Quality**
+3. **Code Quality**
 
    - Well-structured codebase
    - Good separation of concerns
@@ -619,19 +619,19 @@ ______________________________________________________________________
    - Must be installed and configured
    - Blocker for production deployment
 
-1. **Audit Logging** (HIGH)
+2. **Audit Logging** (HIGH)
 
    - Must be implemented
    - Required for compliance
    - Essential for security monitoring
 
-1. **TLS/HTTPS** (HIGH)
+3. **TLS/HTTPS** (HIGH)
 
    - Must be operational
    - Certificates must be configured
    - Connection security required
 
-1. **Authentication Default** (MEDIUM)
+4. **Authentication Default** (MEDIUM)
 
    - Should be enabled by default
    - Or require explicit opt-in
@@ -646,10 +646,10 @@ The system has good security foundations (RBAC, JWT) but critical gaps remain. T
 **Before Production:**
 
 1. Install OpenSearch Security Plugin
-1. Implement audit logging
-1. Configure TLS with proper certificates
-1. Enable authentication by default
-1. Fix high-severity Bandit issue
+2. Implement audit logging
+3. Configure TLS with proper certificates
+4. Enable authentication by default
+5. Fix high-severity Bandit issue
 
 **Estimated Time to Production-Ready:** 2-3 weeks of focused security work.
 
@@ -660,12 +660,12 @@ ______________________________________________________________________
 ### Files Reviewed
 
 1. `/Users/les/Projects/mahavishnu/mahavishnu/core/auth.py` - JWT authentication
-1. `/Users/les/Projects/mahavishnu/mahavishnu/core/permissions.py` - RBAC implementation
-1. `/Users/les/Projects/mahavishnu/mahavishnu/core/opensearch_integration.py` - OpenSearch client
-1. `/Users/les/Projects/mahavishnu/mahavishnu/core/monitoring.py` - Monitoring/alerting
-1. `/Users/les/Projects/mahavishnu/settings/mahavishnu.yaml` - Configuration
-1. `/Users/les/Projects/mahavishnu/PROGRESS.md` - Progress tracking
-1. `/usr/local/etc/opensearch/opensearch.yml` - OpenSearch config
+2. `/Users/les/Projects/mahavishnu/mahavishnu/core/permissions.py` - RBAC implementation
+3. `/Users/les/Projects/mahavishnu/mahavishnu/core/opensearch_integration.py` - OpenSearch client
+4. `/Users/les/Projects/mahavishnu/mahavishnu/core/monitoring.py` - Monitoring/alerting
+5. `/Users/les/Projects/mahavishnu/settings/mahavishnu.yaml` - Configuration
+6. `/Users/les/Projects/mahavishnu/PROGRESS.md` - Progress tracking
+7. `/usr/local/etc/opensearch/opensearch.yml` - OpenSearch config
 
 ### Security Scan Reports
 
@@ -673,7 +673,7 @@ ______________________________________________________________________
 
    - 7 issues found (1 HIGH, 2 MEDIUM, 4 LOW)
 
-1. **Safety Report:** `/Users/les/Projects/mahavishnu/safety_report.json`
+2. **Safety Report:** `/Users/les/Projects/mahavishnu/safety_report.json`
 
    - No dependency vulnerabilities found
 

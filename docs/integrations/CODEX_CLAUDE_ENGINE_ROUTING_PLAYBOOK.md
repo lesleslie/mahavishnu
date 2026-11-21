@@ -11,20 +11,20 @@ Codex and Claude are **capable** of using Mahavishnu engines, but they typically
 ## Prerequisites
 
 1. Mahavishnu MCP server reachable.
-1. Repository catalog configured (`settings/repos.yaml` or `settings/ecosystem.yaml`).
-1. Engine adapters configured/enabled in `settings/mahavishnu.yaml`.
-1. Optional: PostgreSQL metrics configured via `MAHAVISHNU_PERSISTENCE__POSTGRES_URL` for historical engine usage.
+2. Repository catalog configured (`settings/repos.yaml` or `settings/ecosystem.yaml`).
+3. Engine adapters configured/enabled in `settings/mahavishnu.yaml`.
+4. Optional: PostgreSQL metrics configured via `MAHAVISHNU_PERSISTENCE__POSTGRES_URL` for historical engine usage.
 
 ## Routing Policy (Recommended)
 
 Use these defaults in both Codex and Claude:
 
 1. If task touches more than one repo: route through Mahavishnu.
-1. If task requires async/concurrent execution: use pool routing/worker orchestration.
-1. If task is single-file/single-repo and low-risk: local execution is fine.
-1. Prefer `pool_route_execute` / `mahavishnu pool route` for generic execution.
-1. Prefer `trigger_workflow` for structured orchestration workflows.
-1. Prefer repository messaging tools for cross-repo handoffs.
+2. If task requires async/concurrent execution: use pool routing/worker orchestration.
+3. If task is single-file/single-repo and low-risk: local execution is fine.
+4. Prefer `pool_route_execute` / `mahavishnu pool route` for generic execution.
+5. Prefer `trigger_workflow` for structured orchestration workflows.
+6. Prefer repository messaging tools for cross-repo handoffs.
 
 ## Codex Snippet (AGENTS.md)
 
@@ -84,5 +84,5 @@ mahavishnu metrics engines --source auto --output table
 ## Operational Notes
 
 1. If `metrics engines` shows zeros, that usually means no persisted history yet, or no live `/metrics` exposure from the running server.
-1. For durable usage/success analytics, configure PostgreSQL metrics persistence and query with `--source postgres`.
-1. Keep environment-specific secrets (DSNs, auth tokens) in environment variables, not checked-in docs/config.
+2. For durable usage/success analytics, configure PostgreSQL metrics persistence and query with `--source postgres`.
+3. Keep environment-specific secrets (DSNs, auth tokens) in environment variables, not checked-in docs/config.

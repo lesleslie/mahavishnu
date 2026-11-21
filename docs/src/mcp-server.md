@@ -124,6 +124,6 @@ export MAHAVISHNU_AUTH_SECRET="your-secret-minimum-32-characters"
 ## Next Steps
 
 1. Implement core orchestration tools (estimated 1 week)
-1. Add adapter discovery and health checks
-1. Implement QC integration with Crackerjack
-1. Add Session-Buddy checkpoint integration
+2. Add adapter discovery and health checks
+3. Implement QC integration with Crackerjack
+4. Add Session-Buddy checkpoint integration

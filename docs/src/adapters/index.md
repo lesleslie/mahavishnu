@@ -60,6 +60,6 @@ adapters:
 ## Next Steps
 
 1. Complete Prefect adapter with flow construction and state management
-1. Complete Agno adapter with agent lifecycle and tool integration
-1. Add comprehensive error handling to both adapters
-1. Implement progress tracking and streaming
+2. Complete Agno adapter with agent lifecycle and tool integration
+3. Add comprehensive error handling to both adapters
+4. Implement progress tracking and streaming

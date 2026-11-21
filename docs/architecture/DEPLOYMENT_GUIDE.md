@@ -9,12 +9,12 @@ ______________________________________________________________________
 ## Table of Contents
 
 1. [Deployment Overview](#deployment-overview)
-1. [Option 1: Mahavishnu as MCP Server for Claude Code](#option-1-mahavishnu-as-mcp-server-for-claude-code)
-1. [Option 2: Mahavishnu Embedded in Qwen Sessions](#option-2-mahavishnu-embedded-in-qwen-sessions)
-1. [Option 3: Hybrid Deployment (Both Claude Code and Qwen)](#option-3-hybrid-deployment-both-claude-code-and-qwen)
-1. [Subscription Authentication Setup](#subscription-authentication-setup)
-1. [Configuration Examples](#configuration-examples)
-1. [Troubleshooting](#troubleshooting)
+2. [Option 1: Mahavishnu as MCP Server for Claude Code](#option-1-mahavishnu-as-mcp-server-for-claude-code)
+3. [Option 2: Mahavishnu Embedded in Qwen Sessions](#option-2-mahavishnu-embedded-in-qwen-sessions)
+4. [Option 3: Hybrid Deployment (Both Claude Code and Qwen)](#option-3-hybrid-deployment-both-claude-code-and-qwen)
+5. [Subscription Authentication Setup](#subscription-authentication-setup)
+6. [Configuration Examples](#configuration-examples)
+7. [Troubleshooting](#troubleshooting)
 
 ______________________________________________________________________
 
@@ -883,9 +883,9 @@ ______________________________________________________________________
 **Solutions:**
 
 1. Check MAHAVISHNU_SUBSCRIPTION_AUTH_SECRET is set
-1. Verify subscription token is valid
-1. Check token expiration
-1. Ensure subscription_auth_enabled=true
+2. Verify subscription token is valid
+3. Check token expiration
+4. Ensure subscription_auth_enabled=true
 
 ```bash
 # Debug auth
@@ -921,8 +921,8 @@ print(f'Result: {result}')
 **Solutions:**
 
 1. Install Mahavishnu in development mode
-1. Ensure Python version is 3.10+
-1. Check virtual environment
+2. Ensure Python version is 3.10+
+3. Check virtual environment
 
 ```bash
 # In Qwen session or terminal
@@ -948,8 +948,8 @@ python -c "from mahavishnu.core import MahavishnuApp; print('OK')"
 **Solutions:**
 
 1. Check port conflicts
-1. Verify dependencies installed
-1. Check logs for specific errors
+2. Verify dependencies installed
+3. Check logs for specific errors
 
 ```bash
 # Check dependencies
@@ -975,8 +975,8 @@ mahavishnu mcp health
 **Solutions:**
 
 1. Verify PostgreSQL is running
-1. Check connection pool settings
-1. Test database connection
+2. Check connection pool settings
+3. Test database connection
 
 ```bash
 # Test PostgreSQL connection
@@ -1009,7 +1009,7 @@ asyncio.run(test())
 **Solutions:**
 
 1. Ensure FastEmbed model is downloaded (or use a remote OpenAI endpoint)
-1. Check base URL
+2. Check base URL
 
 ```bash
 # Test embedding generation via llama-server
@@ -1111,10 +1111,10 @@ ______________________________________________________________________
 ### Key Takeaways
 
 1. **Claude Code**: Requires subscription token, uses MCP protocol
-1. **Qwen**: Free tier, no subscription required, Python library
-1. **Hybrid**: Best of both, requires client detection
-1. **Authentication**: JWT-based with subscription metadata
-1. **Configuration**: Single codebase, deployment-specific settings
+2. **Qwen**: Free tier, no subscription required, Python library
+3. **Hybrid**: Best of both, requires client detection
+4. **Authentication**: JWT-based with subscription metadata
+5. **Configuration**: Single codebase, deployment-specific settings
 
 ______________________________________________________________________
 

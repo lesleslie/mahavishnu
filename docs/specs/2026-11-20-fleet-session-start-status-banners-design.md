@@ -4,7 +4,7 @@ role: canonical
 kind: spec
 date: 2026-11-20
 last_reviewed: 2026-11-21
-superseded_by: null
+superseded_by:
 blocks_on: []
 topic: fleet-session-status
 title: "Fleet SessionStart Status Banners"
@@ -98,7 +98,7 @@ $ printf '{"hook_event_name":"SessionStart","source":"startup"}' \
 Claude Code 2.1.330's renderer, extracted from the binary:
 
 ```js
-function en(e){ return e.replace(/\r\n?|[\v\f\u0085  ]/g,"\n").split("\n").map(r=>Yn(Ig(Lr(r)))) }
+function en(e){ return e.replace(/\r\n?|[\v\f\u0085]/g,"\n").split("\n").map(r=>Yn(Ig(Lr(r)))) }
 function At(e){ let r=`${en(e.hookName).join(" ")} says: `; return en(e.content).map(o=>r+o).join("\n") }
 function Oqo(e){ return {type:"system", subtype:"informational", content:At(e), level:"notice"} }
 ```

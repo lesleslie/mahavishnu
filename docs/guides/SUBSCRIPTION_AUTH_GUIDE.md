@@ -9,12 +9,12 @@ ______________________________________________________________________
 ## Table of Contents
 
 1. [Authentication Overview](#authentication-overview)
-1. [Subscription Token Structure](#subscription-token-structure)
-1. [Token Creation](#token-creation)
-1. [Token Validation](#token-validation)
-1. [Integration Guide](#integration-guide)
-1. [Security Best Practices](#security-best-practices)
-1. [Troubleshooting](#troubleshooting)
+2. [Subscription Token Structure](#subscription-token-structure)
+3. [Token Creation](#token-creation)
+4. [Token Validation](#token-validation)
+5. [Integration Guide](#integration-guide)
+6. [Security Best Practices](#security-best-practices)
+7. [Troubleshooting](#troubleshooting)
 
 ______________________________________________________________________
 
@@ -839,7 +839,7 @@ AuthenticationError: Invalid subscription token: missing required fields
 **Solutions:**
 
 1. **Token was created as standard JWT (not subscription)**
-1. **Use create_claude_subscription_token() or create_codex_subscription_token() instead**
+2. **Use create_claude_subscription_token() or create_codex_subscription_token() instead**
 
 ```python
 # WRONG: Standard JWT

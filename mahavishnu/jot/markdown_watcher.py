@@ -232,9 +232,14 @@ async def _default_dispatch(card: dict) -> None:
     Imports are deferred so importing this module does not require
     the mcp tool surface (keeps tests cheap and avoids loading MCP at
     module import time).
+
+    NOTE: ``mahavishnu_pool_route_execute`` is a FastMCP-registered closure
+    defined inline in ``register_pool_tools`` -- it is not a module
+    attribute, so this import cannot resolve at runtime. The directive
+    below records that known gap rather than hiding it.
     """
     from mahavishnu.mcp.tools.pool_tools import (
-        mahavishnu_pool_route_execute,  # ty: ignore[import-not-found]
+        mahavishnu_pool_route_execute,  # ty: ignore[missing-module-member]
     )
 
     prompt = str(card.get("prompt", ""))

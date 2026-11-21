@@ -7,7 +7,7 @@ last_reviewed: 2026-11-20
 topic: fleet-memory-retrieval
 plan_kind: implementation
 blocks_on:
-  - mahavishnu/docs/plans/2026-11-19-fleet-standardisation.md
+  - docs/plans/2026-11-19-fleet-standardisation.md
 related_plans:
   - mahavishnu/docs/adr/020-bodai-ecosystem-memory-architecture.md
   - mahavishnu/docs/plans/2026-11-19-fleet-standardisation.md

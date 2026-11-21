@@ -87,11 +87,11 @@ Mahavishnu includes an opt-in, review-gated learning pipeline that turns
 recurring execution patterns into governed skill proposals:
 
 1. **Observe** - Collect task outcomes and execution evidence from Session-Buddy.
-1. **Store** - Persist evidence for later retrieval and analysis.
-1. **Retrieve** - Use Akosha and Session-Buddy to find related goals, repositories, and prior evidence.
-1. **Synthesize** - Cluster recurring patterns and produce sanitized `SkillDraft` artifacts.
-1. **Review** - Run metadata, trigger-condition, security, and optional Crackerjack quality checks.
-1. **Promote** - Human-approved drafts can be activated, deprecated, or rolled back through the skill governance registry.
+2. **Store** - Persist evidence for later retrieval and analysis.
+3. **Retrieve** - Use Akosha and Session-Buddy to find related goals, repositories, and prior evidence.
+4. **Synthesize** - Cluster recurring patterns and produce sanitized `SkillDraft` artifacts.
+5. **Review** - Run metadata, trigger-condition, security, and optional Crackerjack quality checks.
+6. **Promote** - Human-approved drafts can be activated, deprecated, or rolled back through the skill governance registry.
 
 The pipeline is disabled by default; enable it with `learning.enabled: true` or
 `MAHAVISHNU_LEARNING__ENABLED=true`. It never auto-activates a skill: automated
@@ -345,11 +345,11 @@ For more workflows, see the [Getting Started Guide](docs/GETTING_STARTED.md).
 A typical async orchestration path looks like this:
 
 1. Load repositories from `settings/ecosystem.yaml`.
-1. Classify task intent and select an engine and worker strategy.
-1. Route execution to the best pool (`least_loaded`, `round_robin`, `random`, or `affinity`).
-1. Execute concurrently on workers (or delegated pools) with async task handling.
-1. Emit coordination and repository-messaging events for downstream repos and services.
-1. Observe health and status, then apply retries/backoff where configured.
+2. Classify task intent and select an engine and worker strategy.
+3. Route execution to the best pool (`least_loaded`, `round_robin`, `random`, or `affinity`).
+4. Execute concurrently on workers (or delegated pools) with async task handling.
+5. Emit coordination and repository-messaging events for downstream repos and services.
+6. Observe health and status, then apply retries/backoff where configured.
 
 Minimal example (Python):
 
@@ -587,11 +587,11 @@ See [MCP Tools Reference](docs/mcp/MCP_TOOLS_REFERENCE.md) for complete document
 Mahavishnu uses a layered configuration system:
 
 1. Default values in Pydantic models
-1. `settings/mahavishnu.yaml` (committed to git)
-1. `settings/local.yaml` (gitignored, local overrides)
-1. `$XDG_CONFIG_HOME/mahavishnu/config.yaml` (user configuration)
-1. `$XDG_CONFIG_HOME/mahavishnu/local.yaml` (user-local overrides)
-1. Environment variables: `MAHAVISHNU_{GROUP}__{FIELD}`
+2. `settings/mahavishnu.yaml` (committed to git)
+3. `settings/local.yaml` (gitignored, local overrides)
+4. `$XDG_CONFIG_HOME/mahavishnu/config.yaml` (user configuration)
+5. `$XDG_CONFIG_HOME/mahavishnu/local.yaml` (user-local overrides)
+6. Environment variables: `MAHAVISHNU_{GROUP}__{FIELD}`
 
 Oneiric uses `~/.config` when `XDG_CONFIG_HOME` is not set, so the default
 user configuration locations are `~/.config/mahavishnu/config.yaml` and
@@ -742,12 +742,12 @@ mahavishnu/
 We welcome contributions! Please follow these steps:
 
 1. Fork the repository
-1. Create a feature branch: `git checkout -b feature/amazing-feature`
-1. Make your changes
-1. Run validation with [Crackerjack](https://github.com/lesleslie/crackerjack): `crackerjack run --run-tests`
-1. Commit your changes: `git commit -m 'Add amazing feature'`
-1. Push to branch: `git push origin feature/amazing-feature`
-1. Submit a pull request
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes
+4. Run validation with [Crackerjack](https://github.com/lesleslie/crackerjack): `crackerjack run --run-tests`
+5. Commit your changes: `git commit -m 'Add amazing feature'`
+6. Push to branch: `git push origin feature/amazing-feature`
+7. Submit a pull request
 
 ## License
 

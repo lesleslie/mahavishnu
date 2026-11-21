@@ -57,7 +57,7 @@ Supporting pieces:
    in `workers/manager.py` catches `AppleContainerUnsupported` and falls
    through to `E2BSandboxWorker` (see
    `docs/feature-tracking/e2b-sandbox-worker.md`).
-1. **Hardware verification** (authored on Intel; cannot run here) — verify
+2. **Hardware verification** (authored on Intel; cannot run here) — verify
    on an Apple silicon Mac with macOS 26+ and `container` 1.0+:
    - [ ] `container system status` is the right liveness probe (and its
      exit code semantics); adjust `_probe_runtime` if the subcommand
@@ -69,7 +69,7 @@ Supporting pieces:
      tolerates list/object forms and `status`/`state` keys; pin the real
      schema once observed and tighten the parser.
    - [ ] `container stop` on a `--rm` container fully removes the VM.
-1. **Docker-path deprecation**: once verified, decide the removal schedule
+3. **Docker-path deprecation**: once verified, decide the removal schedule
    for `ContainerWorker` (Docker/Podman/OrbStack) per the
    containers-to-microVMs plan discussion (2026-07-26 session).
 

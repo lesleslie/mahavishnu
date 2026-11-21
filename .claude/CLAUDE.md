@@ -56,9 +56,9 @@ is not required. See `removed-scripts.md` for an example.
 ## Principles
 
 1. Keep instructions short and specific.
-1. Favor reusable files over duplicated guidance.
-1. Treat archived or backup content as non-primary context.
-1. Preserve the MCP-first structure of the repo.
+2. Favor reusable files over duplicated guidance.
+3. Treat archived or backup content as non-primary context.
+4. Preserve the MCP-first structure of the repo.
 
 - **Database Excellence**: Complete coverage (PostgreSQL, MySQL, SQLite, Redis, Vector DBs)
 - **Modern Protocols**: WebSocket for real-time + gRPC for high-performance communication

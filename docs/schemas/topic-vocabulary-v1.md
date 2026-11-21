@@ -56,7 +56,6 @@ supplemental additions layer for Mahavishnu-specific topics.
 | `lifecycle-hooks` | Oneiric activation, health-check, hot-swap, rollback, and cleanup hook contracts. |
 | `decision-index` | `.claude/decisions/` README index file (canonical decision inventory). |
 | `deployability-discipline` | Bodai deployability rule: standalone-by-default, harness-agnostic interface, serverless-deployable runtime. See `oneiric/docs/adr/0001-deployability-discipline.md` (proposed 2026-09-26). |
-
 | `acp-v15-followups` | Mahavishnu topic: acp-v15-followups. |
 | `adapter-composition` | Mahavishnu topic: adapter-composition. |
 | `agno-failover-gateway` | Mahavishnu topic: agno-failover-gateway. |

@@ -503,9 +503,9 @@ If Mahavishnu pools are unhealthy or unreachable, **surface the unavailability t
 Recommended behavior when Mahavishnu is down:
 
 1. Run `mcp__mahavishnu__mahavishnu_pool_health` to confirm the failure mode (degraded vs. unreachable).
-1. Tell the user: "Mahavishnu is unavailable; doing this locally without observability. Proceed?"
-1. If the user agrees, proceed locally but emit a structured note in the conversation: `[vishnu] local fallback — no observability for {task}`.
-1. Queue the task for replay: write a marker to `~/.mahavishnu/fallback-queue/{task-id}.json` so an operator can replay it through Mahavishnu later.
+2. Tell the user: "Mahavishnu is unavailable; doing this locally without observability. Proceed?"
+3. If the user agrees, proceed locally but emit a structured note in the conversation: `[vishnu] local fallback — no observability for {task}`.
+4. Queue the task for replay: write a marker to `~/.mahavishnu/fallback-queue/{task-id}.json` so an operator can replay it through Mahavishnu later.
 
 This policy harmonizes with the `mahavishnu-orchestrator` subagent's "fail-loud, no silent fallback" rule and the `/vishnu` skill's "ask the user" rule. One consistent posture across all surfaces.
 
@@ -581,8 +581,8 @@ See `docs/security/SECURITY_CHECKLIST.md` for comprehensive security guidelines.
 Mahavishnu supports multiple authentication providers through `MultiAuthHandler`:
 
 1. **Claude Code subscription** - Automatic detection via subscription check
-1. **Qwen free service** - Fallback authentication
-1. **Custom JWT** - Manual JWT token authentication
+2. **Qwen free service** - Fallback authentication
+3. **Custom JWT** - Manual JWT token authentication
 
 Configuration in `settings/mahavishnu.yaml`:
 
@@ -683,7 +683,7 @@ Mahavishnu can ingest and semantically search OpenTelemetry traces:
 **Storage Options**:
 
 1. **DuckDB** (zero-dependency, in-memory or file-based)
-1. **PostgreSQL + pgvector** (production, persistent, vector similarity)
+2. **PostgreSQL + pgvector** (production, persistent, vector similarity)
 
 **Semantic Search**: Embeds trace spans with fastembed for semantic search
 
@@ -721,7 +721,7 @@ The `examples/` directory contains runnable examples for key features:
 
 1. **All adapters are production-ready** - Prefect, LlamaIndex (0.14.x), and Agno are fully implemented
 
-1. **WebSocket servers run on separate ports**:
+2. **WebSocket servers run on separate ports**:
 
    - Mahavishnu: 8690 (orchestration events)
    - Pool events: 8691 (pool status updates)
@@ -729,15 +729,15 @@ The `examples/` directory contains runnable examples for key features:
    - Akosha: 8692 (pattern detection)
    - Crackerjack: 8686 (test execution)
 
-1. **MCP tools are organized by domain** - Each file in `mcp/tools/` serves a specific domain
+3. **MCP tools are organized by domain** - Each file in `mcp/tools/` serves a specific domain
 
-1. **All CLI sub-commands are modular** - Each has its own file in `cli/` or matching module
+4. **All CLI sub-commands are modular** - Each has its own file in `cli/` or matching module
 
-1. **Authentication is multi-provider** - Claude Code, Qwen, or custom JWT
+5. **Authentication is multi-provider** - Claude Code, Qwen, or custom JWT
 
-1. **Configuration is layered** - Oneiric loads from defaults → YAML → env vars
+6. **Configuration is layered** - Oneiric loads from defaults → YAML → env vars
 
-1. **Terminal adapters are pluggable** - `mahavishnu/terminal/adapters/` resolves the active backend via `adapter_preference` (default `tmux`). `crow` requires `crow_enabled: true` plus the crow-mcp server; `mock` is the always-available in-process adapter used by the test suite.
+7. **Terminal adapters are pluggable** - `mahavishnu/terminal/adapters/` resolves the active backend via `adapter_preference` (default `tmux`). `crow` requires `crow_enabled: true` plus the crow-mcp server; `mock` is the always-available in-process adapter used by the test suite.
 
 ## Process Discipline
 
@@ -933,16 +933,16 @@ When Crackerjack MCP is available, prefer using it for quality status, job track
 When a request spans multiple repositories or needs concurrent execution:
 
 1. Resolve target repos from the configured repository catalog.
-1. Route via Mahavishnu pool/workflow tools instead of manual per-repo shell loops.
-1. Use `least_loaded` as the default selector unless the user requests another strategy.
-1. Emit workflow and repository status updates for downstream repos when coordination is involved.
-1. Report engine choice and execution outcome in the final response.
+2. Route via Mahavishnu pool/workflow tools instead of manual per-repo shell loops.
+3. Use `least_loaded` as the default selector unless the user requests another strategy.
+4. Emit workflow and repository status updates for downstream repos when coordination is involved.
+5. Report engine choice and execution outcome in the final response.
 
 Default command sequence:
 
 1. `mahavishnu metrics engines --source auto --output table`
-1. `mahavishnu pool route --prompt "<task>" --selector least_loaded`
-1. If workflow semantics are needed, use workflow-triggering tools instead of ad hoc loops.
+2. `mahavishnu pool route --prompt "<task>" --selector least_loaded`
+3. If workflow semantics are needed, use workflow-triggering tools instead of ad hoc loops.
 
 ## Crackerjack-Compliant Code
 

@@ -62,10 +62,10 @@
 The following alerts MUST fire to PagerDuty / Slack:
 
 1. **`pool_route_execute_total{result="error"} rate > 0.05/s for 5m`** → Slack + page on-call
-1. **`task_domain_concurrency_drift_total rate > 0.01/s for 5m`** → Slack + page on-call
-1. **disk usage from worktrees > 80% of the disk quota** (`df -h`) → Slack
-1. **`markdown_board_watcher_up == 0 for 2m`** → Slack + page on-call
-1. **`eventbridge_publish_total{result="error"} rate > 0.1/s for 5m`** → Slack + page on-call
+2. **`task_domain_concurrency_drift_total rate > 0.01/s for 5m`** → Slack + page on-call
+3. **disk usage from worktrees > 80% of the disk quota** (`df -h`) → Slack
+4. **`markdown_board_watcher_up == 0 for 2m`** → Slack + page on-call
+5. **`eventbridge_publish_total{result="error"} rate > 0.1/s for 5m`** → Slack + page on-call
 
 ## Runbooks
 
