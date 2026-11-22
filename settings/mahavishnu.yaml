@@ -50,17 +50,19 @@ llm:
   base_url: http://localhost:8081  # llama-server (llama.cpp) API endpoint
 
 # Agno adapter LLM routing.
-# MiniMax is the primary provider (matching settings/models.yaml
-# `default_provider`); the local llama-server is only the fallback, so a
-# machine without MiniMax credentials degrades to local instead of failing.
+# MiniMax is the primary provider. The local llama-server fallback was
+# removed on 2026-11-22: this deployment is cloud-only and nothing listens
+# on :8081. The dead tier cost ~30ms per attempt and folded a misleading
+# "connection refused" into every cloud-outage error message. The adapter
+# now fails fast on the primary.
 # `base_url` is deliberately unset — each provider resolves its own endpoint
 # (llama-server -> :8081; cloud providers -> the Bifrost gateway when it is
 # routed, otherwise their public API).
 agno:
   llm:
     provider: minimax
-    fallback_providers:
-      - llama_server
+    # Empty on purpose (cloud-only). Re-enable by adding `- llama_server`.
+    fallback_providers: []
     temperature: 0.7
     max_tokens: 4096
 

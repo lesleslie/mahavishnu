@@ -13,7 +13,7 @@
 #
 # Provider chain:
 #   1. minimax  - MiniMax M3 (primary cloud, API key required)
-#   2. llama_server - llama.cpp server with qwen3-8b-q4_k_m (local, no auth)
+#   2. llama_server - llama.cpp server (local, no auth) -- DISABLED 2026-11-22
 #
 # Related files:
 #   - mahavishnu/core/model_routing.py - routing tables and the loader
@@ -88,12 +88,30 @@ minimax:
     "MiniMax-M3.1-Flash": "low"
 
 # =============================================================================
-# LOCAL PROVIDERS (no auth required, always available when running)
+# LOCAL PROVIDERS (no auth required)
 # =============================================================================
 
-# llama-server (llama.cpp) - Secondary local provider with qwen3-8b-q4_k_m
+# llama-server (llama.cpp) - Local provider with qwen3-8b-q4_k_m
+#
+# DISABLED (2026-11-22): this deployment is cloud-only. No llama.cpp server
+# listens on :8081. Leaving llama_server in a fallback chain meant every call
+# carried a dead tier that failed with ECONNREFUSED (measured 2026-11-22:
+# 5.7ms to connect, 28.6ms for a full HTTP attempt) and folded a misleading
+# "connection refused" into every cloud-outage error message.
+#
+# What `enabled: false` does on its own: NOTHING yet. The routing loader
+# (`mahavishnu/core/model_routing.py::_effective_routing`) reads only
+# `task_routing` from this file; it has no notion of an `enabled` flag. The
+# live chain switches are:
+#   - settings/mahavishnu.yaml -> agno.llm.fallback_providers  (Agno adapter)
+#   - mahavishnu/workers/cloud_worker.py -> fallback_order      (cloud worker)
+# This flag records the operator's intent for when the loader learns to
+# honor it.
+#
+# The `task_routing` block below MUST stay: `TestRoutingCoverage` asserts
+# that this provider block exists and names every TaskCategory.
 llama_server:
-  enabled: true
+  enabled: false
   require_auth: false
   base_url: "http://localhost:8081"
   priority: 2
