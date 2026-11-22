@@ -715,6 +715,28 @@ class WorktreeCoordinator:
             for wt in worktrees:
                 wt_path = wt.get("path")
                 branch = wt.get("branch")
+                if not wt_path:
+                    continue
+
+                # A DETACHED worktree has no branch, so the premise of
+                # this prune -- "the branch was deleted, so the worktree
+                # is stale" -- does not hold. Removing it would
+                # discard whatever uncommitted work it holds, and that
+                # work is unrecoverable: there is no branch to recover
+                # it from.
+                #
+                # The state is read from git, not from the provider's
+                # report, so the guard does not depend on any provider
+                # convention. ``git branch --show-current`` prints
+                # nothing for a detached worktree.
+                current_branch = await self._get_worktree_branch(str(wt_path))
+                if not current_branch or current_branch == "unknown":
+                    logger.info(f"Skipping detached worktree: {wt_path}")
+                    continue
+                if not branch:
+                    # The provider reported no branch; git says there
+                    # is one. Trust git, and use what it says.
+                    branch = current_branch
 
                 # Check if branch still exists
                 if not await self._branch_exists(str(repo.path), branch):

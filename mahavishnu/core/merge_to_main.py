@@ -1457,11 +1457,27 @@ def _run_cleanup(worktree_root: Path) -> tuple[int, str]:
     to ``EXIT_CLEANUP_FAILURE = 5`` and writes a sticky marker via
     ``.review-state.json`` to prevent re-attempt per spec §4.2.
 
+    ``--path`` scopes the sweep to the worktree this pipeline just
+    merged. Without it the command sweeps EVERY configured repository
+    and removes, unattended, on every merge — which is not what stage
+    6 is for ("cleanup the ephemeral worktree"), and which the
+    worktree policy decision reserves for explicit invocation. The
+    classifier's own guards (dirty status, the lock guard) bound what
+    a sweep can remove, but they are not a substitute for the operator
+    deciding that an unattended fleet sweep should happen at all.
+
     Private helper (leading underscore) so the test suite can
     monkeypatch it without touching the public API.
     """
     cleanup_result = subprocess.run(  # nosec B603 — argv-list, no shell
-        ["mahavishnu", "worktree", "prune-merged", "--json"],
+        [
+            "mahavishnu",
+            "worktree",
+            "prune-merged",
+            "--path",
+            str(worktree_root),
+            "--json",
+        ],
         cwd=worktree_root,
         capture_output=True,
         text=True,

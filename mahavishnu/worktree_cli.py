@@ -173,8 +173,18 @@ def list_worktrees(
             total = result.get("total_count", len(worktrees))
             typer.echo(f"📋 Worktrees ({total} total):")
             for wt in worktrees:
-                status_icon = "✅" if wt.get("exists") else "❌"
-                typer.echo(f"  {status_icon} {wt['path']} ({wt['branch']})")
+                # The existence is read from the PATH, not from an
+                # ``exists`` field on the entry: no provider supplies
+                # one, so ``wt.get("exists")`` was always None and
+                # every worktree was marked ❌. That went unnoticed
+                # while the listing was always empty -- the provider's
+                # porcelain parser matched nothing git emits, so the
+                # command reported "0 total" and the loop never ran.
+                status_icon = "✅" if Path(wt["path"]).exists() else "❌"
+                # A detached worktree reports no branch (None), the
+                # convention ``worktree_scan`` already uses.
+                branch = wt.get("branch") or "(detached)"
+                typer.echo(f"  {status_icon} {wt['path']} ({branch})")
         else:
             typer.echo(f"❌ Failed: {result.get('error', 'Unknown error')}", err=True)
             raise typer.Exit(code=1)
@@ -445,6 +455,11 @@ def prune_merged_worktrees(
     ttl_days: int = typer.Option(
         0, "--ttl-days", min=0, help="Only consider worktrees last touched > N days ago"
     ),
+    only_path: str = typer.Option(
+        None,
+        "--path",
+        help="Only consider this one worktree path (used by the merge cycle)",
+    ),
     include_dirty: bool = typer.Option(
         False,
         "--include-dirty",
@@ -485,6 +500,16 @@ def prune_merged_worktrees(
         candidates = await _scan_prune_candidates(
             repos, coordinator, include_dirty, ttl_days, json_output
         )
+        if only_path is not None:
+            # Restrict the sweep to one worktree. The merge cycle's
+            # stage 6 uses this: it must clean up the worktree it just
+            # merged, not sweep every repository on the machine. A
+            # fleet-wide unattended sweep is a different operation and
+            # needs the operator's hand on it.
+            wanted = str(Path(only_path).expanduser().resolve())
+            candidates = [
+                c for c in candidates if str(c.worktree_path.resolve()) == wanted
+            ]
 
         if not candidates:
             typer.echo(

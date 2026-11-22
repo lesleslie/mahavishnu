@@ -386,6 +386,7 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 | Path | Date | Status | Role | Kind | Topic | Title |
 |---|---|---|---|---|---|---|
 | [`docs/plans/2026-11-21-fleet-session-start-status-banners.md`](2026-11-21-fleet-session-start-status-banners.md) | 2026-11-21 | `active` | `implementation` | | `fleet-session-status` | Fleet SessionStart Status Banners — Implementation Plan |
+| [`docs/plans/2026-11-21-prune-squash-merged-detection.md`](2026-11-21-prune-squash-merged-detection.md) | 2026-11-21 | `active` | `implementation` | | `worktree-prune` | Prune sweep recognises squash-merged branches and every worktree git knows about |
 | [`docs/plans/2026-11-21-merge-review-convergence.md`](2026-11-21-merge-review-convergence.md) | 2026-11-21 | `active` | `canonical` | | `merge-review` | Merge Review Convergence — stop paying for reviews the code does not need |
 | [`docs/plans/2026-11-21-task-orphan-sweeper-group-hygiene.md`](2026-11-21-task-orphan-sweeper-group-hygiene.md) | 2026-11-21 | `active` | `canonical` | | `redis-stream-consumer-groups` | Task-orphan sweeper group hygiene — reclaim, prune, honest health |
 | [`docs/plans/2026-11-20-fleet-memory-retrieval-quality.md`](2026-11-20-fleet-memory-retrieval-quality.md) | 2026-11-20 | `draft` | `implementation` | | `fleet-memory-retrieval` | Fleet Memory Retrieval Quality — make the memory layer measurable, then make it good |

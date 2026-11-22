@@ -84,6 +84,101 @@ def test_classify_merge_status_handles_squash_merged_branch(tmp_path: Path) -> N
     assert classify_merge_status(wt) == "merged"
 
 
+@pytest.mark.req(["REQ-PRUNE-001"])
+def test_classify_merge_status_handles_multi_commit_squash_merged_branch(
+    tmp_path: Path,
+) -> None:
+    """A squash of MORE THAN ONE commit is merged too.
+
+    This is the case the single-commit test above cannot reach.
+    ``git cherry`` compares patch-ids, and a squash of N commits
+    produces one commit whose diff is the union of N diffs -- a
+    combination that matches none of the individual patch-ids. Every
+    commit of the branch therefore shows ``+`` and the branch reads
+    as ``not_merged`` even though its content is in ``main``.
+
+    The single-commit case works by accident: with one commit the
+    squash commit's diff IS that commit's diff, so the patch-ids
+    match. That accident is what made the multi-commit case look
+    like it was covered.
+    """
+    repo = tmp_path / "repo"
+    wt = tmp_path / "wt"
+    init_repo(repo)
+    run_git("checkout", "-b", "feat", cwd=repo)
+    for name in ("one", "two", "three"):
+        (repo / f"{name}.txt").write_text(f"{name}\n")
+        run_git("add", f"{name}.txt", cwd=repo)
+        run_git("commit", "-m", name, cwd=repo)
+    run_git("checkout", "main", cwd=repo)
+    run_git("merge", "--squash", "feat", cwd=repo)
+    run_git("commit", "-m", "squash feat", cwd=repo)
+    run_git("worktree", "add", str(wt), "feat", cwd=repo)
+
+    # The premise of the test: the patch-ids really do not match.
+    cherry = run_git("cherry", "main", cwd=wt)
+    assert cherry.stdout.strip().startswith("+")
+
+    assert classify_merge_status(wt) == "merged"
+
+
+@pytest.mark.req(["REQ-PRUNE-001"])
+def test_classify_merge_status_reports_not_merged_when_the_branch_adds_content(
+    tmp_path: Path,
+) -> None:
+    """Squash-merged, then one more commit: the branch is NOT merged.
+
+    The content-equivalence signal must not fire on a branch that
+    still carries something ``main`` does not have.
+    """
+    repo = tmp_path / "repo"
+    wt = tmp_path / "wt"
+    init_repo(repo)
+    run_git("checkout", "-b", "feat", cwd=repo)
+    for name in ("one", "two"):
+        (repo / f"{name}.txt").write_text(f"{name}\n")
+        run_git("add", f"{name}.txt", cwd=repo)
+        run_git("commit", "-m", name, cwd=repo)
+    run_git("checkout", "main", cwd=repo)
+    run_git("merge", "--squash", "feat", cwd=repo)
+    run_git("commit", "-m", "squash feat", cwd=repo)
+    run_git("worktree", "add", str(wt), "feat", cwd=repo)
+    # A commit that is NOT in main, made on the branch tip so the
+    # worktree's HEAD is the one that carries it.
+    (wt / "extra.txt").write_text("extra\n")
+    run_git("add", "extra.txt", cwd=wt)
+    run_git("commit", "-m", "extra", cwd=wt)
+
+    assert classify_merge_status(wt) == "not_merged"
+
+
+@pytest.mark.req(["REQ-PRUNE-001"])
+def test_classify_merge_status_reports_not_merged_for_a_clean_unmerged_branch(
+    tmp_path: Path,
+) -> None:
+    """A branch that merges cleanly but CHANGES main is not merged.
+
+    ``git merge-tree --write-tree`` exits 0 for this branch too -- the
+    merge is clean. Only the resulting tree differs from ``main``'s.
+    Both conditions are required, so the exit code alone must not be
+    read as "merged".
+    """
+    repo = tmp_path / "repo"
+    wt = tmp_path / "wt"
+    init_repo(repo)
+    run_git("checkout", "-b", "feat", cwd=repo)
+    (repo / "feat.txt").write_text("feat\n")
+    run_git("add", "feat.txt", cwd=repo)
+    run_git("commit", "-m", "feat", cwd=repo)
+    run_git("checkout", "main", cwd=repo)
+    run_git("worktree", "add", str(wt), "feat", cwd=repo)
+
+    merge_tree = run_git("merge-tree", "--write-tree", "main", "HEAD", cwd=wt)
+    assert merge_tree.returncode == 0, "the merge is clean -- only the tree differs"
+
+    assert classify_merge_status(wt) == "not_merged"
+
+
 def test_classify_merge_status_handles_merge_commit_branch(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     wt = tmp_path / "wt"
@@ -151,6 +246,118 @@ class FakeCoordinator:
     async def remove_worktree(self, **kwargs: object) -> dict[str, object]:
         self.calls.append(kwargs)
         return self.responses.pop(0)
+
+
+class ListingCoordinator:
+    """A coordinator that reports a worktree list of its own choosing."""
+
+    def __init__(self, paths: list[str], *, fail: bool = False) -> None:
+        self.paths = paths
+        self.fail = fail
+
+    async def list_worktrees(self, **kwargs: object) -> dict[str, object]:
+        if self.fail:
+            raise RuntimeError("coordinator unavailable")
+        return {
+            "success": True,
+            "worktrees": [{"path": path} for path in self.paths],
+        }
+
+
+@pytest.mark.asyncio
+@pytest.mark.req(["REQ-PRUNE-002"])
+async def test_find_merged_worktrees_finds_worktrees_the_coordinator_omits(
+    tmp_path: Path,
+) -> None:
+    """Git is the ground truth for which worktrees exist.
+
+    The coordinator's registry can lag behind the filesystem: it
+    reported Session-Buddy as unhealthy during a prune sweep and fell
+    back to a local listing that covered the agent-scoped worktrees
+    but not the repo-scoped ones. Consulting only the coordinator made
+    the sweep blind to a whole class of worktrees -- it found nothing
+    to prune while merged worktrees sat on disk.
+    """
+    repo = tmp_path / "repo"
+    wt = tmp_path / "wt"
+    init_repo(repo)
+    run_git("checkout", "-b", "feat", cwd=repo)
+    (repo / "feat.txt").write_text("feat\n")
+    run_git("add", "feat.txt", cwd=repo)
+    run_git("commit", "-m", "feat", cwd=repo)
+    run_git("checkout", "main", cwd=repo)
+    run_git("merge", "--squash", "feat", cwd=repo)
+    run_git("commit", "-m", "squash feat", cwd=repo)
+    run_git("worktree", "add", str(wt), "feat", cwd=repo)
+
+    # The coordinator knows about some OTHER path, not this worktree.
+    coordinator = ListingCoordinator([str(tmp_path / "somewhere-else")])
+    found = await find_merged_worktrees(repo, repo_nickname="mh", coordinator=coordinator)
+
+    assert [str(c.worktree_path) for c in found] == [str(wt)]
+    assert found[0].merge_status == "merged"
+
+
+@pytest.mark.asyncio
+@pytest.mark.req(["REQ-PRUNE-002"])
+async def test_find_merged_worktrees_survives_a_failing_coordinator(
+    tmp_path: Path,
+) -> None:
+    """A coordinator outage must not silence the sweep.
+
+    The enumeration used to return an EMPTY list when the coordinator
+    raised, which made the direct git fallback unreachable: a
+    transient registry outage silently pruned nothing at all.
+    """
+    repo = tmp_path / "repo"
+    wt = tmp_path / "wt"
+    init_repo(repo)
+    run_git("checkout", "-b", "feat", cwd=repo)
+    (repo / "feat.txt").write_text("feat\n")
+    run_git("add", "feat.txt", cwd=repo)
+    run_git("commit", "-m", "feat", cwd=repo)
+    run_git("checkout", "main", cwd=repo)
+    run_git("merge", "--squash", "feat", cwd=repo)
+    run_git("commit", "-m", "squash feat", cwd=repo)
+    run_git("worktree", "add", str(wt), "feat", cwd=repo)
+
+    coordinator = ListingCoordinator([], fail=True)
+    found = await find_merged_worktrees(repo, repo_nickname="mh", coordinator=coordinator)
+
+    assert [str(c.worktree_path) for c in found] == [str(wt)]
+
+
+@pytest.mark.req(["REQ-PRUNE-003"])
+@pytest.mark.asyncio
+async def test_find_merged_worktrees_skips_a_locked_worktree(tmp_path: Path) -> None:
+    """A locked worktree is never offered for removal.
+
+    ``git worktree lock`` is the fleet's existing "do not touch this"
+    marker. Before this guard the only thing standing between a live
+    session's worktree and automatic removal was the dirty check --
+    which a CLEAN session passes straight through. A lock is not a
+    recency signal (locked worktrees here are up to a fortnight old);
+    it is a statement that removal was refused, and the sweep honours
+    it unconditionally.
+    """
+    repo = tmp_path / "repo"
+    wt = tmp_path / "wt"
+    init_repo(repo)
+    run_git("checkout", "-b", "feat", cwd=repo)
+    (repo / "feat.txt").write_text("feat\n")
+    run_git("add", "feat.txt", cwd=repo)
+    run_git("commit", "-m", "feat", cwd=repo)
+    run_git("checkout", "main", cwd=repo)
+    run_git("merge", "--squash", "feat", cwd=repo)
+    run_git("commit", "-m", "squash feat", cwd=repo)
+    run_git("worktree", "add", str(wt), "feat", cwd=repo)
+
+    # Unlocked: the sweep sees it.
+    unlocked = await find_merged_worktrees(repo)
+    assert [str(c.worktree_path) for c in unlocked] == [str(wt)]
+
+    run_git("worktree", "lock", str(wt), cwd=repo)
+    assert await find_merged_worktrees(repo) == []
 
 
 class FakeAudit:
@@ -318,6 +525,39 @@ def test_cli_prune_merged_lists_candidates(
     )
     assert result.exit_code == 0
     assert "feat/x" in result.stdout
+
+
+def test_cli_prune_merged_path_restricts_the_sweep_to_one_worktree(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``--path`` narrows the sweep to a single worktree.
+
+    The merge cycle's stage 6 uses it. Without it, stage 6 swept every
+    configured repository and removed, unattended, on every merge --
+    which is not what stage 6 is for, and which the worktree policy
+    decision reserves for explicit invocation.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    wanted = tmp_path / "wt"
+    other = tmp_path / "other"
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        lambda *a, **kw: [cli_candidate(wanted), cli_candidate(other)],
+    )
+
+    result = CliRunner().invoke(
+        worktree_app,
+        ["prune-merged", "--repo", "fake", "--path", str(wanted), "--dry-run"],
+    )
+    assert result.exit_code == 0
+    assert str(wanted) in result.stdout
+    assert str(other) not in result.stdout
 
 
 def test_cli_prune_merged_threads_resolved_nickname(

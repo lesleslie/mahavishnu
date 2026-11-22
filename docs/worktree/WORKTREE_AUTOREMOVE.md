@@ -11,7 +11,7 @@ audience: operators
 removing worktrees whose changes are already represented on the repository's
 main branch. SessionEnd and cron automation are deferred and are not installed
 or permitted by the current policy amendment
-(`docs/decisions/worktree-autoremove-policy.md`).
+(`docs/decisions/2026-10-13-worktree-policy.md`).
 
 This command is **the only** way to remove worktrees through Mahavishnu. It
 classifies candidates using multi-signal merge detection, requires a clean
@@ -51,6 +51,10 @@ mahavishnu worktree prune-merged --repo=oneiric --include-dirty \
 # Combined TTL + dry-run + JSON
 mahavishnu worktree prune-merged --ttl-days=30 --dry-run --json
 
+# Restrict the sweep to ONE worktree (this is what the merge cycle's
+# stage 6 does: it removes the worktree it just merged, and nothing else)
+mahavishnu worktree prune-merged --path=/path/to/worktree --dry-run
+
 # JSON output after an apply
 mahavishnu worktree prune-merged --repo=oneiric --json
 
@@ -85,10 +89,36 @@ order:
    commits (`git log --merges`). If any exist, classify `undetermined`. This
    guards against `git cherry`'s `revs.max_parents = 1` filter that would
    hide unmerged conflict-resolution merge commits.
-4. **Patch equivalence** — `git cherry <branch>`. With no `+` lines, classify
+4. **Content equivalence** — `git merge-tree --write-tree <branch> HEAD`.
+   This computes the merge in memory and asks the question that matters:
+   *would merging HEAD into `<branch>` change anything?* It exits 0 on a
+   clean merge and prints the resulting tree. When that tree equals
+   `<branch>`'s tree, the merge is a no-op — every change HEAD carries is
+   already present — so the branch is `merged`, whatever produced it. Exit 0
+   alone is **not** enough: a branch with genuinely new content also merges
+   cleanly, and its resulting tree differs. Both conditions are required.
+   This is the signal that sees a squash of **any** number of commits; see
+   the note on `git cherry` below.
+5. **Patch equivalence** — `git cherry <branch>`. With no `+` lines, classify
    `merged`. With any `+` lines, classify `not_merged`. This handles
-   squash-merges, rebases, and cherry-picks.
-5. **Error fallback** — any subprocess error or timeout returns `undetermined`.
+   squash-merges, rebases, and cherry-picks — but only where the content
+   signal above has not already decided.
+6. **Error fallback** — any subprocess error or timeout returns `undetermined`.
+
+> **Why a content signal is needed.** `git cherry` compares *patch-ids*, and a
+> patch-id is computed per commit. Merging N commits produces **one** commit
+> whose diff is the union of the N diffs — a combination that matches none
+> of the individual patch-ids. Every commit of a squash-merged branch
+> therefore shows `+`, and the branch reads `not_merged` even though its
+> content is on `main`. A squash of a **single** commit works by accident
+> (the squash commit's diff *is* that commit's diff), which is why a
+> one-commit test fixture passed while the multi-commit case — the fleet's
+> normal case — did not.
+
+> **Locked worktrees are never removed.** `git worktree lock` is the fleet's
+> existing "do not touch this" marker. The sweep skips a locked worktree
+> unconditionally: the lock is the refusal, and there is no
+> `--include-locked` escape hatch.
 
 The classifier **fails closed**. `not_merged` and `undetermined` candidates
 are never eligible.
@@ -220,9 +250,20 @@ cd /Users/les/Projects/mahavishnu
 uv run --quiet mahavishnu worktree prune-merged --dry-run --json | head -100
 ```
 
-**Expected output**: JSON with a `candidates` array listing the 19 merged-clean
-worktrees across the 8 repos. Each entry has `branch`, `worktree_path`,
-`behind`, `merge_status`, `dirty_status`, `last_touched_at`.
+**Expected output**: JSON with a `candidates` array listing the merged and
+clean worktrees the sweep would remove. Each entry has `branch`,
+`worktree_path`, `behind`, `merge_status`, `dirty_status`, `last_touched_at`.
+
+**How many to expect**: whatever the repository actually holds — the count is
+not a fixed number, and it is not 19. Before 2026-11-21 the sweep's
+enumeration was blind (the local provider's porcelain parser matched nothing
+git emits, so it reported zero worktrees for every repository) and the
+classifier mis-read a squash of more than one commit as "not merged". Both
+are fixed, so the sweep now sees the worktrees that were always there. On
+the mahavishnu repository at that point: 27 worktrees classified `merged`,
+22 of them dirty and 19 of those locked, leaving 5 clean, merged and
+unlocked. Expect the count to track the repository, not a number in this
+document.
 
 **If it fails**: Check `~/.local/state/mahavishnu/audit.log` for the failure
 reason. Common issues:
@@ -344,19 +385,30 @@ commits (the merge-commit guard classifies this as `undetermined`).
 cd <worktree-path>
 git merge-base --is-ancestor HEAD main && echo "merged by ancestry"
 git log main..HEAD --merges --oneline    # any output = undetermined
-git cherry main                          # any "+" = not_merged
+git merge-tree --write-tree main HEAD    # exit 0 + tree == main's tree = merged
+git cherry main                          # any "+" = not_merged (last resort)
 git status --short                       # any output = dirty
 ```
 
-If `git cherry` shows `+` lines but `git log main..HEAD --merges` is empty,
-the worktree should classify as `not_merged` (correct refusal). If you
-believe it is actually merged, open an issue with the full output.
+`git cherry` showing `+` lines is **not** by itself proof that a worktree is
+unmerged. A branch merged by a squash of more than one commit always shows
+`+`, because the squash commit's patch-id matches none of the individual
+commits' — see the note on `git cherry` above. The content signal decides
+first: `git merge-tree --write-tree main HEAD` exits 0 **and** prints a tree
+equal to `main`'s tree when the worktree's content is already on `main`.
+
+So: `git cherry` shows `+` lines, `git log main..HEAD --merges` is empty, and
+`git merge-tree` produces a tree **different** from `main`'s → the worktree
+is genuinely `not_merged`, and that refusal is correct. If `git merge-tree`
+produces `main`'s own tree, the worktree is merged and the sweep should
+offer it.
 
 ## Cross-references
 
-- **Policy**: `docs/decisions/worktree-autoremove-policy.md`
-- **Original rule**: `docs/decisions/session-worktree-defaults.md` Rule 2
-- **Plan**: `docs/plans/2026-07-26-worktree-autoremove.md`
+- **Policy**: `docs/decisions/2026-10-13-worktree-policy.md` (the consolidated
+  record; it carries the explicit-CLI amendment to the "never auto-remove"
+  rule and its 2026-11-21 amendments)
+- **Plan**: `docs/plans/2026-11-21-prune-squash-merged-detection.md`
 - **Core module**: `mahavishnu/core/worktree_prune_merged.py`
 - **CLI**: `mahavishnu/worktree_cli.py` (`prune-merged_worktrees`)
 - **General worktree docs**: `./WORKTREE_MANAGEMENT.md`

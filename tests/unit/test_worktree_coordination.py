@@ -1050,6 +1050,11 @@ class TestWorktreeCoordinator:
                         "path": "/worktrees/test-repo/active-branch",
                         "branch": "active-branch",
                     },
+                    {
+                        # A DETACHED worktree: no branch at all.
+                        "path": "/worktrees/test-repo/detached",
+                        "branch": None,
+                    },
                 ],
             }
         )
@@ -1065,12 +1070,27 @@ class TestWorktreeCoordinator:
         coordinator._branch_exists = AsyncMock(
             side_effect=lambda repo, branch: branch == "active-branch"
         )
+        # The detached worktree's state is read from git, not from the
+        # provider's report. ``branch --show-current`` prints nothing
+        # for a detached worktree.
+        coordinator._get_worktree_branch = AsyncMock(
+            side_effect=lambda path: "" if path.endswith("/detached") else "some-branch"
+        )
 
         result = await coordinator.prune_worktrees(repo_nickname="test-repo")
 
         assert result["success"] is True
         assert result["pruned_count"] == 1
         assert result["repo_nickname"] == "test-repo"
+
+        # The detached worktree was NOT removed: it has no branch, so
+        # "the branch was deleted" does not apply to it, and removing
+        # it would discard unrecoverable uncommitted work.
+        removed = [
+            str(call.kwargs["worktree_path"])
+            for call in mock_provider.remove_worktree.call_args_list
+        ]
+        assert "/worktrees/test-repo/detached" not in removed
 
     # =========================================================================
     # Safety Status Tests

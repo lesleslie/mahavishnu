@@ -49,6 +49,90 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _parse_worktree_porcelain(stdout: str) -> list[dict[str, Any]]:
+    """Parse ``git worktree list --porcelain`` output.
+
+    Git emits one BLOCK per worktree, not one line per worktree::
+
+        worktree /path/to/wt
+        HEAD 1a2b3c4
+        branch refs/heads/feature
+        locked initializing
+        prunable gitdir file points to non-existent location
+
+    The parser this replaces expected four space-separated fields on a
+    single line (``path branch commit status``). Git never emits that:
+    every line of the real output has exactly TWO parts. The old
+    predicate -- keep a line only when it has four or more parts --
+    therefore matched nothing, and the provider reported ZERO
+    worktrees for every repository.
+
+    That is not a cosmetic difference. ``mahavishnu worktree list``
+    reported "0 total" while ``git worktree list`` reported 75, the
+    prune sweep had no candidates to consider, and the coordinator's
+    fallback provider contributed nothing to any enumeration.
+
+    The tests did not catch it because they fed the parser a
+    four-field line of their own invention -- a format git does not
+    produce -- so the suite agreed with the bug.
+
+    ``branch`` is reported as the short name (``refs/heads/x`` ->
+    ``x``); a DETACHED worktree reports ``None``, the same convention
+    ``worktree_scan`` uses. A detached worktree must not be given a
+    fake branch name: the coordinator's ``prune_worktrees`` asks
+    ``git branch --list <branch>`` whether the branch still exists,
+    and a name that resolves to nothing reads as "the branch was
+    deleted" — which force-removes the worktree and discards whatever
+    uncommitted work it holds. A detached worktree has no branch to
+    have been deleted.
+
+    A locked worktree carries ``status`` ``"locked"`` rather than
+    ``"ok"``.
+
+    # Implements: REQ-PRUNE-004
+    """
+    worktrees: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+
+    for raw_line in stdout.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        key, _, value = line.partition(" ")
+        if key == "worktree":
+            if current is not None:
+                worktrees.append(current)
+            current = {
+                "path": value,
+                "branch": "",
+                "commit": "",
+                "status": "ok",
+            }
+            continue
+        if current is None:
+            # A field before any ``worktree`` line: not a block we can
+            # attribute to a worktree, so it carries no information.
+            continue
+        if key == "HEAD":
+            current["commit"] = value
+        elif key == "branch":
+            current["branch"] = value.removeprefix("refs/heads/")
+        elif key == "detached":
+            current["branch"] = None
+        elif key == "locked":
+            current["status"] = "locked"
+        elif key == "prunable" and current["status"] == "ok":
+            # A prunable worktree's administrative files are gone --
+            # the branch it held may be unreachable. A LOCKED worktree
+            # stays "locked": the lock is the stronger statement, and
+            # it is the one that says "do not remove".
+            current["status"] = "prunable"
+
+    if current is not None:
+        worktrees.append(current)
+    return worktrees
+
+
 # ---------------------------------------------------------------------------
 # Module-level helpers (Phase 3 Task C.6)
 # ---------------------------------------------------------------------------
@@ -351,21 +435,7 @@ class DirectGitWorktreeProvider(WorktreeProvider):
                 raise WorktreeOperationError(f"Failed to list worktrees: {error_msg}")
 
             # Parse porcelain output
-            worktrees = []
-            for line in stdout.decode().splitlines():
-                if not line.strip():
-                    continue
-
-                parts = line.split()
-                if len(parts) >= 4:
-                    worktrees.append(
-                        {
-                            "path": parts[0],
-                            "branch": parts[1],
-                            "commit": parts[2],
-                            "status": parts[3] if len(parts) > 3 else "ok",
-                        }
-                    )
+            worktrees = _parse_worktree_porcelain(stdout.decode())
 
             logger.info(f"Listed {len(worktrees)} worktrees")
 
@@ -1297,20 +1367,7 @@ async def _list_worktrees_via_git(
         if process.returncode != 0:
             error_msg = stderr.decode() if stderr else "Unknown error"
             raise WorktreeOperationError(f"Failed to list worktrees: {error_msg}")
-        worktrees = []
-        for line in stdout.decode().splitlines():
-            if not line.strip():
-                continue
-            parts = line.split()
-            if len(parts) >= 4:
-                worktrees.append(
-                    {
-                        "path": parts[0],
-                        "branch": parts[1],
-                        "commit": parts[2],
-                        "status": parts[3] if len(parts) > 3 else "ok",
-                    }
-                )
+        worktrees = _parse_worktree_porcelain(stdout.decode())
         return {
             "success": True,
             "worktrees": worktrees,

@@ -15,7 +15,9 @@ The multi-signal merge classifier uses:
   1. ``git merge-base --is-ancestor HEAD <branch>`` (handles linear FF + true merge commits)
   2. If ancestry check fails, scan ``main..HEAD`` for merge commits; if any exist,
      return ``undetermined`` (because git cherry excludes merge commits)
-  3. Otherwise, ``git cherry <branch>`` (handles squash, rebase, cherry-pick)
+  3. ``git merge-tree --write-tree <branch> HEAD`` (handles a squash of ANY
+     number of commits -- see ``_content_already_in_branch``)
+  4. Otherwise, ``git cherry <branch>`` (handles squash, rebase, cherry-pick)
 """
 
 from __future__ import annotations
@@ -90,6 +92,59 @@ def _run_git(
     )
 
 
+def _content_already_in_branch(worktree_path: Path, branch: str) -> bool:
+    """Return True when the worktree's HEAD adds nothing to ``branch``.
+
+    ``git cherry`` answers "is this commit's patch-id present
+    upstream?". Patch-ids are computed per commit, so they cannot see a
+    squash: merging N commits produces ONE commit whose diff is the
+    union of the N diffs, and that union matches none of the
+    individual patch-ids. Every one of the N commits therefore shows
+    ``+`` and a squash-merged branch reads as ``not_merged``. (A squash
+    of a SINGLE commit happens to work, because then the squash
+    commit's diff IS that commit's diff -- which is why the
+    single-commit case was covered and the multi-commit case was
+    not.)
+
+    ``git merge-tree --write-tree <branch> HEAD`` asks the question
+    that actually matters: "would merging HEAD into ``branch`` change
+    anything?". It computes the merge without touching the index or
+    the working tree, exits 0 when the merge is clean, and prints the
+    resulting tree on its first line. When that tree equals
+    ``branch``'s tree, the merge is a no-op -- every change HEAD
+    carries is already present in ``branch`` -- and the branch is
+    merged, whatever produced it.
+
+    Exit 0 alone is NOT enough. A branch with genuinely new content
+    also merges cleanly, and its resulting tree differs from
+    ``branch``'s. Both conditions are required.
+
+    Returns False on any failure (a conflicting merge, an unknown
+    revision, an old git without ``--write-tree``), leaving the
+    caller's remaining signals to decide.
+
+    # Implements: REQ-PRUNE-001
+    """
+    try:
+        merged = _run_git(
+            worktree_path, "merge-tree", "--write-tree", branch, "HEAD", text=True
+        )
+    except subprocess.TimeoutExpired, OSError:
+        return False
+    if merged.returncode != 0:
+        # A conflict (exit 1), or an unknown option/revision. Either
+        # way there is no clean merge to reason about, so this signal
+        # carries no verdict.
+        return False
+    result_tree = merged.stdout.splitlines()[0].strip() if merged.stdout.strip() else ""
+    if not result_tree:
+        return False
+    branch_tree = _git_output(worktree_path, "rev-parse", f"{branch}^{{tree}}")
+    if branch_tree is None:
+        return False
+    return result_tree == branch_tree
+
+
 def classify_merge_status(
     worktree_path: Path,
     *,
@@ -125,6 +180,13 @@ def classify_merge_status(
                 return "undetermined"
             if merges.stdout.strip():
                 return "undetermined"
+            # Content equivalence, BEFORE the cherry fallback: the
+            # cherry signal cannot see a multi-commit squash, so it
+            # must not get the last word on one. This only ever
+            # upgrades a branch to "merged"; every earlier
+            # "undetermined" is left alone.
+            if _content_already_in_branch(worktree_path, branch):
+                return "merged"
             cherry = _run_git(worktree_path, "cherry", branch, text=True)
             if cherry.returncode != 0:
                 return "undetermined"
@@ -189,25 +251,93 @@ def _direct_worktree_paths(repo_path: Path) -> list[Path]:
     ]
 
 
+def _locked_worktree_paths(repo_path: Path) -> set[Path]:
+    """Return the worktrees git reports as locked.
+
+    ``git worktree lock`` is the fleet's existing "do not touch this"
+    marker. The agent-scoped worktrees carry it from creation (the
+    reason git records is ``initializing``), and an operator locks one
+    to keep it out of a sweep. A lock is not a recency signal --
+    locked worktrees here are up to a fortnight old -- it is a
+    statement that removal was refused.
+
+    The sweep must honour it. Before this guard, the only thing
+    standing between a live session's worktree and automatic removal
+    was the dirty check, which a clean session passes straight
+    through.
+
+    The merge cycle's OWN worktree is not locked, so this guard does
+    not stop stage 6 from cleaning up after itself -- and it does stop
+    it from touching anyone else's.
+
+    # Implements: REQ-PRUNE-003
+    """
+    try:
+        result = _run_git(repo_path, "worktree", "list", "--porcelain", text=True)
+    except subprocess.TimeoutExpired, OSError:
+        return set()
+    if result.returncode != 0:
+        return set()
+    locked: set[Path] = set()
+    current: Path | None = None
+    for line in result.stdout.splitlines():
+        if line.startswith("worktree "):
+            current = Path(line.removeprefix("worktree "))
+        elif line.startswith("locked") and current is not None:
+            locked.add(current)
+    return locked
+
+
 async def _candidate_worktree_paths(
     repo_path: Path,
     repo_nickname: str | None,
     coordinator: WorktreeCoordinator | None,
 ) -> list[Path]:
-    """Enumerate the worktree paths to inspect for this repository."""
-    if coordinator is not None:
-        try:
-            listed = await coordinator.list_worktrees(repo_nickname=repo_nickname)
-        except Exception:  # candidate enumeration — broad catch to return empty candidates when coordinator is unavailable  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
-            return []
-        if not listed.get("success"):
-            return []
-        return [
-            Path(entry["path"])
-            for entry in listed.get("worktrees", [])
-            if isinstance(entry, dict) and entry.get("path")
-        ]
-    return _direct_worktree_paths(repo_path)
+    """Enumerate the worktree paths to inspect for this repository.
+
+    Git is the ground truth for which worktrees exist on disk, so the
+    direct listing is ALWAYS consulted. The coordinator's registry is
+    unioned in on top of it: it knows about worktrees created through
+    Session-Buddy that a local listing may not carry yet.
+
+    Consulting only the coordinator -- as this did -- made the sweep
+    blind. The coordinator's provider registry reports Session-Buddy
+    as unhealthy and falls back to the local provider, and the local
+    provider's porcelain parser matched NOTHING git emits: it kept a
+    line only when the line had four or more space-separated fields,
+    and every line of ``git worktree list --porcelain`` has exactly
+    two. The provider therefore returned an empty list for EVERY
+    repository, so the sweep found nothing to prune while merged
+    worktrees sat on disk. (The parser is fixed alongside this change
+    -- ``_parse_worktree_porcelain`` in the local provider -- but the
+    pruner does not depend on that fix: git is consulted directly.)
+
+    Worse, a coordinator failure returned an EMPTY list -- the direct
+    fallback below was unreachable, so a transient registry outage
+    silently pruned nothing.
+
+    A path the coordinator reports but git does not know is harmless:
+    ``classify_merge_status`` and ``_git_dirty_count`` both return
+    ``undetermined`` for a path git cannot resolve, and an
+    ``undetermined`` candidate is never removed.
+
+    # Implements: REQ-PRUNE-002
+    """
+    paths = list(_direct_worktree_paths(repo_path))
+    if coordinator is None:
+        return paths
+    try:
+        listed = await coordinator.list_worktrees(repo_nickname=repo_nickname)
+    except Exception:  # candidate enumeration — broad catch to fall back to the git listing when the coordinator is unavailable  # background task — broad catch is the documented contract  # noqa: BLE001, RUF100
+        return paths
+    if not listed.get("success"):
+        return paths
+    for entry in listed.get("worktrees", []):
+        if isinstance(entry, dict) and entry.get("path"):
+            candidate = Path(entry["path"])
+            if candidate not in paths:
+                paths.append(candidate)
+    return paths
 
 
 def _within_ttl(last_touched_at: str | None, ttl_days: int) -> bool:
@@ -230,9 +360,15 @@ def _prune_candidate_for(
     include_dirty: bool,
     ttl_days: int,
     registry_lookup: Callable[[str], str | None] | None,
+    locked_paths: set[Path] | None = None,
 ) -> WorktreePruneCandidate | None:
     """Return the prune candidate for one worktree, or None when filtered out."""
     if worktree_path.resolve() == repo_path.resolve():
+        return None
+    if locked_paths and worktree_path in locked_paths:
+        # A locked worktree is one removal was refused for. Skipping it
+        # is unconditional -- there is no ``--include-locked`` escape
+        # hatch, because the lock IS the refusal.
         return None
     branch = _git_current_branch(worktree_path)
     if branch is None or branch in {main_branch, "master"}:
@@ -278,6 +414,7 @@ async def find_merged_worktrees(
     paths = await _candidate_worktree_paths(repo_path, repo_nickname, coordinator)
 
     resolved_nickname = repo_nickname or repo_path.name
+    locked_paths = _locked_worktree_paths(repo_path)
     candidates: list[WorktreePruneCandidate] = []
     for worktree_path in paths:
         candidate = _prune_candidate_for(
@@ -288,6 +425,7 @@ async def find_merged_worktrees(
             include_dirty=include_dirty,
             ttl_days=ttl_days,
             registry_lookup=registry_lookup,
+            locked_paths=locked_paths,
         )
         if candidate is not None:
             candidates.append(candidate)

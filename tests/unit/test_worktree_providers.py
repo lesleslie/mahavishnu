@@ -503,7 +503,12 @@ class TestDirectGitRemoveWorktree:
 class TestDirectGitListWorktrees:
     async def test_success(self):
         provider = DirectGitWorktreeProvider()
-        output = b"/repo/main main abc123 ok\n/repo/feature feature def456 ok\n"
+        # Real porcelain: one BLOCK per worktree.
+        output = (
+            b"worktree /repo/main\nHEAD abc123\nbranch refs/heads/main\n"
+            b"\n"
+            b"worktree /repo/feature\nHEAD def456\nbranch refs/heads/feature\n"
+        )
         process = _make_process(stdout=output)
 
         with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)):
@@ -526,7 +531,11 @@ class TestDirectGitListWorktrees:
 
     async def test_skips_empty_lines(self):
         provider = DirectGitWorktreeProvider()
-        output = b"/repo/main main abc123 ok\n\n\n/repo/feat feat def456 ok\n"
+        output = (
+            b"worktree /repo/main\nHEAD abc123\nbranch refs/heads/main\n"
+            b"\n\n"
+            b"worktree /repo/feat\nHEAD def456\nbranch refs/heads/feat\n"
+        )
         process = _make_process(stdout=output)
 
         with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)):

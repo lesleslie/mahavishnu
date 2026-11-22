@@ -1190,7 +1190,15 @@ class TestListWorktreesViaGit:
         }
 
     async def test_parses_multiple_worktrees(self):
-        output = b"/a/wt1 main commit1 ok\n/a/wt2 feat commit2 dirty\n/a/wt3 dev commit3 prunable\n"
+        # Real porcelain: one BLOCK per worktree, not one line each.
+        output = (
+            b"worktree /a/wt1\nHEAD commit1\nbranch refs/heads/main\n"
+            b"\n"
+            b"worktree /a/wt2\nHEAD commit2\nbranch refs/heads/feat\n"
+            b"\n"
+            b"worktree /a/wt3\nHEAD commit3\nbranch refs/heads/dev\n"
+            b"prunable gitdir file points to non-existent location\n"
+        )
         process = _fake_process(stdout=output)
         with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)):
             result = await _list_worktrees_via_git("git", Path("/a"))
@@ -1198,8 +1206,10 @@ class TestListWorktreesViaGit:
         assert result["worktrees"][0]["branch"] == "main"
         assert result["worktrees"][2]["status"] == "prunable"
 
-    async def test_skips_blank_and_short_lines(self):
-        output = b"\n\n/a/wt only_three_parts\n\n/a/wt main commit ok\n"
+    async def test_skips_blank_and_headerless_lines(self):
+        # A field before any ``worktree`` line belongs to no worktree,
+        # so it carries no information and is dropped.
+        output = b"\n\nHEAD stray\n\nworktree /a/wt\nHEAD commit\nbranch refs/heads/b\n"
         process = _fake_process(stdout=output)
         with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)):
             result = await _list_worktrees_via_git("git", Path("/r"))

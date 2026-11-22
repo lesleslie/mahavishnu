@@ -31,6 +31,7 @@ from mahavishnu.core.worktree_providers.local import (
     DirectGitWorktreeProvider,
     HealthReport,
     LocalWorktreeProvider,
+    _parse_worktree_porcelain,
     supports_streaming,
 )
 from typing import TYPE_CHECKING
@@ -262,8 +263,31 @@ class TestListWorktrees:
         assert result["worktrees"] == []
 
     async def test_parses_valid_porcelain_output(self):
+        """Parse the format git ACTUALLY emits.
+
+        ``git worktree list --porcelain`` emits one BLOCK per worktree,
+        not one line per worktree::
+
+            worktree /repo/main
+            HEAD abc123
+            branch refs/heads/main
+
+        The fixture this test used to carry was a four-field line
+        (``/repo/main main abc123 ok``) -- a format git does not
+        produce. The parser it matched never saw a real line, and the
+        provider reported zero worktrees for every repository. The
+        fixture is the format, not the implementation's assumption.
+        """
         p = DirectGitWorktreeProvider()
-        output = b"/repo/main main abc123 ok\n/repo/feat feature def456 dirty\n"
+        output = (
+            b"worktree /repo/main\n"
+            b"HEAD abc123\n"
+            b"branch refs/heads/main\n"
+            b"\n"
+            b"worktree /repo/feat\n"
+            b"HEAD def456\n"
+            b"branch refs/heads/feature\n"
+        )
         process = _fake_process(stdout=output)
         with patch(
             "asyncio.create_subprocess_exec",
@@ -277,11 +301,57 @@ class TestListWorktrees:
         assert first["branch"] == "main"
         assert first["commit"] == "abc123"
         assert first["status"] == "ok"
+        assert result["worktrees"][1]["branch"] == "feature"
+
+    async def test_reports_a_locked_worktree_as_locked(self):
+        """A ``locked`` line is the fleet's "do not touch this" marker."""
+        p = DirectGitWorktreeProvider()
+        output = (
+            b"worktree /repo/live\n"
+            b"HEAD abc123\n"
+            b"branch refs/heads/live\n"
+            b"locked initializing\n"
+        )
+        process = _fake_process(stdout=output)
+        with patch(
+            "asyncio.create_subprocess_exec",
+            AsyncMock(return_value=process),
+        ):
+            result = await p.list_worktrees(Path("/repo"))
+
+        assert len(result["worktrees"]) == 1
+        assert result["worktrees"][0]["status"] == "locked"
+
+    async def test_reports_a_detached_worktree(self):
+        """A detached worktree reports NO branch -- not a fake one.
+
+        The coordinator's ``prune_worktrees`` asks
+        ``git branch --list <branch>`` whether the branch still
+        exists. A name that resolves to nothing reads as "the branch
+        was deleted", which force-removes the worktree and discards
+        whatever uncommitted work it holds. A detached worktree has no
+        branch to have been deleted, so it must report ``None`` --
+        the convention ``worktree_scan`` already uses.
+        """
+        p = DirectGitWorktreeProvider()
+        output = b"worktree /repo/det\nHEAD abc123\ndetached\n"
+        process = _fake_process(stdout=output)
+        with patch(
+            "asyncio.create_subprocess_exec",
+            AsyncMock(return_value=process),
+        ):
+            result = await p.list_worktrees(Path("/repo"))
+
+        assert result["worktrees"][0]["branch"] is None
 
     async def test_skips_blank_lines(self):
         p = DirectGitWorktreeProvider()
         # blank line should be skipped
-        output = b"/r/a branch1 commit1 ok\n\n/r/b branch2 commit2 ok\n"
+        output = (
+            b"worktree /r/a\nHEAD commit1\nbranch refs/heads/branch1\n"
+            b"\n"
+            b"worktree /r/b\nHEAD commit2\nbranch refs/heads/branch2\n"
+        )
         process = _fake_process(stdout=output)
         with patch(
             "asyncio.create_subprocess_exec",
@@ -290,20 +360,18 @@ class TestListWorktrees:
             result = await p.list_worktrees(Path("/r"))
         assert len(result["worktrees"]) == 2
 
-    async def test_skips_lines_with_too_few_parts(self):
+    async def test_ignores_fields_before_any_worktree_line(self):
         p = DirectGitWorktreeProvider()
-        # Lines with < 4 parts are silently ignored
-        output = (
-            b"only_one\ntwo parts\nthree parts here\n/r/full path branch commit ok\n"
-        )
+        # A field with no worktree to attribute it to carries nothing.
+        output = b"HEAD stray\n\nworktree /r/full\nHEAD commit\nbranch refs/heads/b\n"
         process = _fake_process(stdout=output)
         with patch(
             "asyncio.create_subprocess_exec",
             AsyncMock(return_value=process),
         ):
             result = await p.list_worktrees(Path("/r"))
-        # Only 1 valid worktree line (4 parts present)
         assert len(result["worktrees"]) == 1
+        assert result["worktrees"][0]["path"] == "/r/full"
 
     async def test_provider_name_in_result(self):
         p = DirectGitWorktreeProvider()
@@ -1016,3 +1084,100 @@ class TestHealthStreamingProbe:
 class TestMaxConcurrentWorktreeStreams:
     def test_constant_is_eight(self):
         assert MAX_CONCURRENT_WORKTREE_STREAMS == 8
+
+
+# ---------------------------------------------------------------------------
+# The porcelain parser against REAL git output
+# ---------------------------------------------------------------------------
+
+
+class TestPorcelainParserAgainstRealGit:
+    """The parser, exercised against git's own output.
+
+    Every other test in this file feeds the parser a fixture. A
+    fixture can only prove the parser agrees with the fixture -- and
+    the fixture that shipped here was a format git does not produce,
+    which is how a parser that matched nothing stayed green.
+
+    This class runs the REAL command against the REAL repository, so
+    a change to git's output format shows up as a failure here
+    instead of as a silently empty listing in production.
+    """
+
+    def _repo_root(self) -> Path:
+        return Path(__file__).resolve().parents[2]
+
+    @pytest.mark.req(["REQ-PRUNE-004"])
+    def test_the_real_command_output_is_parsed(self):
+        """``git worktree list --porcelain`` yields real worktrees.
+
+        Before the parser was fixed this was ZERO for every
+        repository: the old predicate kept a line only when it had
+        four or more space-separated fields, and every line of the
+        real output has exactly two.
+        """
+        import subprocess
+
+        root = self._repo_root()
+        result = subprocess.run(
+            ["git", "-C", str(root), "worktree", "list", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        parsed = _parse_worktree_porcelain(result.stdout)
+
+        assert parsed, "the parser returned nothing for real git output"
+        paths = [entry["path"] for entry in parsed]
+        assert str(root) in paths
+        # The entry for THIS checkout must agree with git about which
+        # branch it is on -- the worktree list is asked of the worktree
+        # itself, so the entry carries the worktree's branch, not
+        # ``main``.
+        #
+        # ``git branch --show-current`` prints NOTHING for a detached
+        # checkout, and the parser reports no branch for one, so the
+        # two agree on both cases. (``rev-parse --abbrev-ref HEAD``
+        # would print the literal "HEAD" instead.)
+        expected = subprocess.run(
+            ["git", "-C", str(root), "branch", "--show-current"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        ).stdout.strip()
+        here = next(e for e in parsed if e["path"] == str(root))
+        assert here["branch"] == (expected or None)
+        assert here["commit"]
+        assert here["status"] in {"ok", "locked"}
+
+    def test_every_parsed_entry_has_the_same_shape(self):
+        """Every entry has the same shape, whatever the repository holds.
+
+        The assertions are about the PARSER, not about this machine: how
+        many worktrees a checkout has, and whether any of them is
+        detached, are properties of the environment. A test that
+        required more than one worktree would fail on a fresh clone.
+        """
+        import subprocess
+
+        result = subprocess.run(
+            ["git", "-C", str(self._repo_root()), "worktree", "list", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        parsed = _parse_worktree_porcelain(result.stdout)
+
+        assert parsed
+        for entry in parsed:
+            assert set(entry) == {"path", "branch", "commit", "status"}
+            assert entry["path"].startswith("/")
+            # A DETACHED worktree reports no branch -- that is the
+            # point of the None, and it is why the coordinator must
+            # read the detached state from git rather than trusting a
+            # branch name.
+            assert entry["branch"] is None or entry["branch"]
+            assert entry["commit"]

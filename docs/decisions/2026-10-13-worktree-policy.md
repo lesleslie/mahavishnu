@@ -33,6 +33,13 @@ The 2026-09-07 sweep of 31 active Bodai repos found 117 extra worktrees (108 non
 
 Five existing decisions touch worktree policy: `session-worktree-defaults.md` (Rule 2: never auto-remove), `worktree-autoremove-policy.md` (Rule 2 amendment + Rule 4: --force-reason for dirty merged), `worktree-autoremove-v4-followup.md` (draft, NOT a permission grant), `2026-08-28-cross-repo-fanout-cwd-isolation.md` (cross-repo fanout cleanup), `mahavishnu-tool-preference-policy.md` (unrelated). None address today's findings.
 
+> **On the paths below.** The first three of those decisions were later
+> consolidated into this document, and their former paths no longer resolve.
+> They are named here as history: the content they carried is in this
+> document, under § Amendment to session-worktree-defaults.md Rule 2 and
+> § Worktree Auto-Remove v4 Follow-up. A path reference to a decision
+> that no longer exists is not a live link — read this document.
+
 ## Why this decision
 
 This doc is **additive**. The five existing decisions stay intact. Cross-references are bidirectional: see § Cross-references for the back-links added in the same commit.
@@ -143,7 +150,40 @@ The scope of this amendment:
 - Excludes: any cron or scheduled automation
 - Excludes: any removal of un-merged worktrees
 
-The phrase "merged" in this amendment means the worktree's branch has been fully merged into the main branch using the multi-signal check defined in `mahavishnu/core/worktree_prune_merged.py` (ancestry via `git merge-base --is-ancestor`, merge-commit guard, and patch-equivalence via `git cherry`).
+The phrase "merged" in this amendment means the worktree's branch has been fully merged into the main branch using the multi-signal check defined in `mahavishnu/core/worktree_prune_merged.py` (ancestry via `git merge-base --is-ancestor`, merge-commit guard, content-equivalence via `git merge-tree --write-tree`, and patch-equivalence via `git cherry` as the final fallback).
+
+**Amendment (2026-11-21) — the deciding signal for a squash.** `git cherry`
+compares patch-ids, and a patch-id is computed per commit: merging N commits
+produces ONE commit whose diff is the union of N diffs, and that union
+matches none of the individual patch-ids. Every commit of a squash-merged
+branch therefore shows `+`, and a branch merged by a multi-commit squash — the
+fleet's normal case — was classified `not_merged` and never pruned. The
+content signal (`git merge-tree --write-tree <branch> HEAD`, merged only when
+the merge is a no-op **and** the resulting tree equals `<branch>`'s tree) now
+decides a squash, and `git cherry` remains only as the last resort. Any
+future automation built to this decision must use the same signal, or it will
+ship the multi-commit-squash bug this amendment removes.
+
+**Amendment (2026-11-21) — locked worktrees.** A worktree git reports as
+locked (`git worktree list --porcelain`, a `locked` line) is never removed.
+The lock is the fleet's existing "do not touch this" marker, and the sweep
+honours it unconditionally — there is no override flag.
+
+**Note for the operator (2026-11-21) — the sweep's reach.** This decision
+permits *explicit* invocation of the CLI and excludes unattended automation.
+The merge pipeline's stage 6 nevertheless ran `mahavishnu worktree prune-merged --json` with no `--repo` and no `--ttl-days`, so every merge
+swept every configured repository. That sweep was nearly inert until
+2026-11-21 — the enumeration returned nothing for every repository — and
+from that date it was effective: its measured radius on this repository was 5
+clean, merged, unlocked worktrees, of which 3 belonged to other sessions.
+
+**Amendment (2026-11-21) — stage 6 is scoped.** The merge cycle's stage 6 now
+passes `--path <the worktree it just merged>`, so it removes exactly that
+worktree and nothing else. The unattended fleet-wide sweep is gone: the
+operator's explicit invocation of `mahavishnu worktree prune-merged` is the
+only path that sweeps every repository, which is what this decision
+permits. The lock guard and the dirty check remain as the second and third
+lines of defence.
 
 ## Context
 
@@ -177,6 +217,8 @@ cron, or other unattended invocation. The amended rule is recorded in
 | Threat | Mitigation |
 |---|---|
 | An unmerged merge commit is hidden from `git cherry` | Check ancestry, then refuse branches containing merge commits in `main..HEAD`, before using patch equivalence. |
+| A squash-merged branch is misread as unmerged because `git cherry` compares per-commit patch-ids | The content signal (`git merge-tree --write-tree`) decides a squash before `git cherry` is consulted; it requires the merge to be a no-op **and** the resulting tree to equal the branch's tree. |
+| A live session's clean worktree is removed by an automatic sweep | A locked worktree is never a candidate; the dirty check excludes the rest. |
 | A Git status command fails and a dirty worktree is treated as clean | Dirty status is tri-state; `undetermined` is always excluded. |
 | A nickname differs from the repository folder name | CLI resolves the repository once and passes its canonical nickname through the helper to the coordinator. |
 | A partial sweep looks successful to automation or the shell | Any failed result produces CLI exit code 1 after complete output. |
