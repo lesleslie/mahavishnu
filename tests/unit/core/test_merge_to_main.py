@@ -15,6 +15,7 @@ from mahavishnu.core.merge_to_main import (
     _CODE_QUALITY_AGENT,
     AGENT_POOL,
     CRACKERJACK_INVOCATION,
+    EXIT_CLEANUP_FAILURE,
     EXIT_CRACKERJACK_FAILURE,
     EXIT_OK,
     EXIT_REBASE_CONFLICT,
@@ -443,6 +444,57 @@ def test_run_pipeline_proceeds_when_review_three_pass(
 
     rc = run_pipeline(tmp_path, branch="feat-test", base="main")
     assert rc == EXIT_OK
+
+
+def test_run_pipeline_reports_cleanup_failure_after_a_successful_merge(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A non-zero cleanup rc is EXIT_CLEANUP_FAILURE — and it lands late.
+
+    ``prune-merged --path`` exits non-zero when the named worktree is
+    owned by no configured repository, when the owning repository's
+    scan fails, and when the scan succeeds but yields no candidate for
+    a worktree that still exists. All three happen AFTER the squash
+    merge and the push have already succeeded, so exit 5 means "the
+    merge stands, the cleanup did not happen" — the operator has to
+    verify. It does NOT mean the merge failed.
+
+    The REASON reaches stderr: the CLI's diagnostic is the only place
+    it exists, and the pipeline used to discard it, which left exit 5
+    as a code to look up rather than a diagnosis.
+    """
+    verdicts = [
+        {"agent": "python-pro", "decision": "pass", "note": "ok"},
+        {"agent": "critical-audit-specialist", "decision": "pass", "note": "ok"},
+        {"agent": "performance-review-specialist", "decision": "pass", "note": "ok"},
+    ]
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=verdicts)
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._run_cleanup",
+        lambda *args, **kwargs: (
+            1,
+            "No configured repository owns the worktree at /tmp/wt",
+        ),
+    )
+    logged: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "mahavishnu.core.merge_to_main._write_merge_log",
+        lambda *args, **kwargs: logged.append(kwargs),
+    )
+
+    rc = run_pipeline(tmp_path, branch="feat-test", base="main")
+    assert rc == EXIT_CLEANUP_FAILURE
+    assert logged, "the cleanup failure must reach the audit log"
+    assert logged[0]["cleanup_performed"] is False
+    assert logged[0]["outcome"] == "cleanup_failed"
+    assert "No configured repository owns the worktree" in capsys.readouterr().err
+    # The DURABLE trail carries the reason too. It used to record only
+    # that the cleanup failed, which left the reason in transient
+    # stderr -- the operator's record said "something went wrong" and
+    # nothing else.
+    assert "No configured repository owns the worktree" in str(
+        logged[0]["cleanup_error"]
+    )
 
 
 def test_run_pipeline_iterates_when_no_progress(

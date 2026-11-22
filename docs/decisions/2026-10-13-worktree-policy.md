@@ -203,6 +203,50 @@ never happened while the worktree stayed on disk. A filter that matches
 nothing is the absence of an answer, and only "there was nothing to do"
 may answer with success.
 
+The same rule covers a FAILED scan. Under `--path` the whole result
+rests on one repository's scan — the owning one — so a scan that raises
+is an unknown answer, and the run exits non-zero with the diagnostic on
+stderr, including under `--json`, where the JSON payload would otherwise
+be the only thing on stdout and the failure would be invisible. Without
+`--path` the leniency stands, because the fleet-wide sweep is the
+operator's explicit invocation and one unreadable repository must not
+cost the other twenty-five; the result there does not rest on a single
+scan. The leniency is about the EXIT CODE, not about the silence: the
+diagnostic is emitted on stderr in both modes, because stderr cannot
+corrupt the JSON stdout contract, and suppressing it made a `--json`
+fleet sweep read as "this repository has no worktrees" — a short
+candidate list with no explanation anywhere.
+
+A git failure has to REACH that rule rather than being absorbed below
+it. The enumeration used to swallow a failed `git worktree list` and
+return no paths, which is indistinguishable from "this repository has
+no worktrees" — so the sweep reported nothing to do and the merge cycle
+read that as a cleanup that had happened. Enumeration failures now
+raise, and it is the caller that decides: skip the repository and say
+so (fleet sweep), or fail (scoped sweep).
+
+The third unknown answer is a scan that SUCCEEDS and yields no removal
+candidate for a worktree that still exists. That is not "there was
+nothing to do" — the caller named one worktree, it is still on disk,
+and it was not removed. Under `--path` the run exits non-zero. A dry run
+is exempt: there, "what would you remove?" is legitimately answered
+with "nothing", and the worktree is not supposed to be gone yet.
+
+And a path that is NOT THERE is the one answer that may exit zero: the
+worktree is gone, so the desired end state is already reached, and
+there is nothing to remove. A path that exists but that git cannot
+attribute is a different case — an unknown answer — and stays an error.
+
+The reason has to reach the operator, in both places it can. The
+pipeline prints the CLI's stderr, and the merge-log entry carries one
+line of it, because the durable record used to say only "the cleanup
+failed" and leave the reason in transient output. The SessionEnd
+hook's pointer is equally conditional: it points at
+`.review-state.json` only when a sticky marker was actually written
+for the stage that failed. The cleanup path writes none, so pointing
+an operator at that file sent them looking for a reason that was not
+there.
+
 ## Context
 
 `session-worktree-defaults.md` Rule 2 prohibits automatic removal of

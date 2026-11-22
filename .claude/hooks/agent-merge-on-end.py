@@ -263,10 +263,24 @@ def run_hook(
         sys.stderr.flush()
 
     if result.returncode != 0:
-        _log(
-            f"merge_to_main exited {result.returncode} in {worktree_path!r}; "
-            f"see .review-state.json for the failed stage"
-        )
+        # The pointer has to be true for the stage that actually
+        # failed. The stage-5 consolidation gate writes a sticky
+        # marker into .review-state.json; the stage-6 cleanup path
+        # does NOT (there is nothing sticky about a worktree that is
+        # still there -- retrying it is right), and its reason was
+        # printed to stderr above. Pointing an operator at a file
+        # that holds nothing for this stage sends them looking.
+        if is_sticky_failed(worktree_path):
+            _log(
+                f"merge_to_main exited {result.returncode} in {worktree_path!r}; "
+                f"see .review-state.json for the failed stage"
+            )
+        else:
+            _log(
+                f"merge_to_main exited {result.returncode} in {worktree_path!r}; "
+                f"no sticky marker was written for this stage -- the reason "
+                f"is on stderr above"
+            )
     return result.returncode
 
 

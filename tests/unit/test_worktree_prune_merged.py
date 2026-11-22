@@ -8,6 +8,7 @@ import pytest
 from mahavishnu.core.worktree_prune_merged import (
     WorktreePruneCandidate,
     WorktreePruner,
+    WorktreeScanError,
     classify_merge_status,
     find_merged_worktrees,
     owning_repo_path,
@@ -561,6 +562,18 @@ class CliApp:
         pass
 
 
+def cli_worktree(tmp_path: Path) -> Path:
+    """A worktree path that EXISTS on disk.
+
+    A real worktree is a directory on disk, and the CLI's ``--path``
+    contract asks "is there a worktree here?" -- so a fixture naming a
+    path that does not exist is testing the wrong thing entirely.
+    """
+    path = tmp_path / "wt"
+    path.mkdir(exist_ok=True)
+    return path
+
+
 def cli_candidate(path: Path, nickname: str = "fake") -> WorktreePruneCandidate:
     return WorktreePruneCandidate(
         repo_path=path.parent,
@@ -624,6 +637,7 @@ def test_cli_prune_merged_path_restricts_the_sweep_to_one_worktree(
     repo.path.mkdir()
     patch_cli_app(monkeypatch, CliApp([repo]))
     wanted = tmp_path / "wt"
+    wanted.mkdir(exist_ok=True)  # a real worktree exists on disk
     other = tmp_path / "other"
     # The sweep only scans the repository that OWNS the worktree, and
     # the owner is asked of git -- these are mock paths, so the answer
@@ -671,6 +685,7 @@ def test_cli_prune_merged_scans_only_the_repository_that_owns_the_worktree(
         repo.path.mkdir()
     patch_cli_app(monkeypatch, CliApp([owner, other]))
     wanted = tmp_path / "wt"
+    wanted.mkdir(exist_ok=True)  # a real worktree exists on disk
     monkeypatch.setattr(
         "mahavishnu.worktree_cli.owning_repo_path",
         lambda _path: owner.path.resolve(),
@@ -716,7 +731,7 @@ def test_cli_prune_merged_fails_when_no_repository_owns_the_path(
 
     result = CliRunner().invoke(
         worktree_app,
-        ["prune-merged", "--path", str(tmp_path / "wt"), "--dry-run"],
+        ["prune-merged", "--path", str(cli_worktree(tmp_path)), "--dry-run"],
     )
     assert result.exit_code == 1
     assert "owns" in result.stderr
@@ -749,10 +764,309 @@ def test_cli_prune_merged_fails_when_the_owner_is_not_configured(
 
     result = CliRunner().invoke(
         worktree_app,
-        ["prune-merged", "--path", str(tmp_path / "wt"), "--dry-run"],
+        ["prune-merged", "--path", str(cli_worktree(tmp_path)), "--dry-run"],
     )
     assert result.exit_code == 1
     assert "owns" in result.stderr
+
+
+def test_cli_prune_merged_fails_when_the_owners_scan_raises(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Under ``--path`` a failed scan is an ERROR, not an empty result.
+
+    Under ``--path`` the whole result rests on ONE repository's scan:
+    the owning one. A scan that raises means the answer is unknown, not
+    that there is nothing to do. The merge cycle reads a zero exit code
+    as "cleanup performed", so the run has to fail -- and the
+    diagnostic is emitted even under ``--json``, where the JSON payload
+    would otherwise be the only thing on stdout and would look like an
+    empty sweep.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.owning_repo_path",
+        lambda _path: repo.path.resolve(),
+    )
+
+    def explode(*args: object, **kwargs: object) -> list[object]:
+        raise RuntimeError("git exploded")
+
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        explode,
+    )
+
+    result = CliRunner().invoke(
+        worktree_app,
+        ["prune-merged", "--path", str(cli_worktree(tmp_path)), "--dry-run"],
+    )
+    assert result.exit_code == 1
+    assert "git exploded" in result.stderr
+
+
+def test_cli_prune_merged_fails_when_the_owners_scan_raises_under_json(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The diagnostic survives ``--json``.
+
+    The merge cycle's stage 6 calls the command with ``--json``, so
+    this is the path that matters. Without the diagnostic on stderr,
+    the JSON payload would be the only thing on stdout and the failure
+    would be invisible.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.owning_repo_path",
+        lambda _path: repo.path.resolve(),
+    )
+
+    def explode(*args: object, **kwargs: object) -> list[object]:
+        raise RuntimeError("git exploded")
+
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        explode,
+    )
+
+    result = CliRunner().invoke(
+        worktree_app,
+        ["prune-merged", "--path", str(cli_worktree(tmp_path)), "--json"],
+    )
+    assert result.exit_code == 1
+    assert "git exploded" in result.stderr
+
+
+def test_cli_prune_merged_keeps_a_fleet_sweep_lenient(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Without ``--path`` a bad repo does not abort the sweep.
+
+    The fleet-wide sweep is the operator's explicit invocation, and one
+    unreadable repository must not cost the other twenty-five. This is
+    the documented contract, and it is the one place where the
+    fail-loud rule deliberately does NOT apply: the result does not rest
+    on a single scan.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repos = [CliRepo(tmp_path / "one", "one"), CliRepo(tmp_path / "two", "two")]
+    for repo in repos:
+        repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp(repos))
+    scanned: list[str] = []
+
+    def scan(repo_path: Path, **kwargs: object) -> list[object]:
+        nickname = str(kwargs.get("repo_nickname"))
+        scanned.append(nickname)
+        if nickname == "one":
+            raise RuntimeError("git exploded")
+        return []
+
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        scan,
+    )
+
+    result = CliRunner().invoke(worktree_app, ["prune-merged", "--dry-run"])
+    assert result.exit_code == 0
+    assert scanned == ["one", "two"], "the second repo is still scanned"
+
+
+def test_cli_prune_merged_reports_a_fleet_scan_failure_under_json(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The fleet sweep's diagnostic survives ``--json``.
+
+    The sweep stays lenient -- it exits 0 and carries on -- but the
+    reason has to be somewhere. stderr cannot corrupt the JSON stdout
+    contract, and suppressing the message made a ``--json`` fleet sweep
+    read as "this repository has no worktrees": a short candidate list
+    with no explanation anywhere.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repos = [CliRepo(tmp_path / "one", "one"), CliRepo(tmp_path / "two", "two")]
+    for repo in repos:
+        repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp(repos))
+
+    def scan(repo_path: Path, **kwargs: object) -> list[object]:
+        if str(kwargs.get("repo_nickname")) == "one":
+            raise RuntimeError("git exploded")
+        return []
+
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        scan,
+    )
+
+    result = CliRunner().invoke(worktree_app, ["prune-merged", "--json"])
+    assert result.exit_code == 0, "the fleet sweep stays lenient"
+    assert "git exploded" in result.stderr
+    assert "git exploded" not in result.stdout, "stdout stays machine-readable"
+
+
+def test_cli_prune_merged_succeeds_when_the_worktree_is_already_gone(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A path that is not there is the ONE answer that may exit zero.
+
+    The worktree is not there, so the desired end state is already
+    reached -- there is nothing to remove. A path that EXISTS but that
+    git cannot attribute is a different case: an unknown answer, and
+    still an error.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    missing = tmp_path / "already-removed"
+
+    def explode(*args: object, **kwargs: object) -> list[object]:
+        raise AssertionError("a missing path must not be scanned")
+
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        explode,
+    )
+
+    result = CliRunner().invoke(
+        worktree_app,
+        ["prune-merged", "--path", str(missing)],
+    )
+    assert result.exit_code == 0
+    assert "nothing to remove" in result.stdout
+
+
+@pytest.mark.asyncio
+async def test_find_merged_worktrees_raises_when_git_cannot_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A git failure is an UNKNOWN answer, not an empty listing.
+
+    The enumeration used to swallow the failure and return no paths --
+    indistinguishable from "this repository has no worktrees". The
+    sweep then reported nothing to do, and the merge cycle read that
+    as a cleanup that had happened. The failure has to travel up to
+    the caller, which decides what to do with it: the fleet-wide sweep
+    skips the repository and says so, and a scoped sweep fails.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def failing_run_git(
+        *args: object, **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            args=["git", "worktree", "list"],
+            returncode=128,
+            stdout="",
+            stderr="fatal: not a git repository",
+        )
+
+    monkeypatch.setattr(
+        "mahavishnu.core.worktree_prune_merged._run_git",
+        failing_run_git,
+    )
+
+    with pytest.raises(WorktreeScanError):
+        await find_merged_worktrees(repo)
+
+
+def test_cli_prune_merged_fails_when_git_cannot_list(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Under ``--path`` a git failure reaches the operator with its reason."""
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.owning_repo_path",
+        lambda _path: repo.path.resolve(),
+    )
+
+    def explode(*args: object, **kwargs: object) -> list[object]:
+        raise WorktreeScanError("cannot list the worktrees of /tmp/repo: fatal")
+
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        explode,
+    )
+
+    result = CliRunner().invoke(
+        worktree_app,
+        ["prune-merged", "--path", str(cli_worktree(tmp_path)), "--dry-run"],
+    )
+    assert result.exit_code == 1
+    assert "cannot list the worktrees" in result.stderr
+
+
+def test_cli_prune_merged_fails_when_the_named_worktree_was_not_removed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The third unknown answer: the scan ran and produced no candidate.
+
+    The named worktree still exists, so it was NOT removed -- and the
+    merge cycle reads exit 0 as "cleanup performed". A dry run is
+    exempt: there, "what would you remove?" is legitimately answered
+    with "nothing", and the worktree is not supposed to be gone yet.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    wanted = tmp_path / "wt"
+    wanted.mkdir(exist_ok=True)  # a real worktree exists on disk
+    wanted.mkdir(exist_ok=True)
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.owning_repo_path",
+        lambda _path: repo.path.resolve(),
+    )
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        lambda *a, **kw: [],
+    )
+
+    result = CliRunner().invoke(
+        worktree_app,
+        ["prune-merged", "--path", str(wanted)],
+    )
+    assert result.exit_code == 1
+    assert "No removal candidate" in result.stderr
+
+    # A dry run is exempt: it previews, it does not remove.
+    preview = CliRunner().invoke(
+        worktree_app,
+        ["prune-merged", "--path", str(wanted), "--dry-run"],
+    )
+    assert preview.exit_code == 0
 
 
 def test_cli_prune_merged_threads_resolved_nickname(

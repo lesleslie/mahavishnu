@@ -36,6 +36,19 @@ if TYPE_CHECKING:
     from mahavishnu.core.worktree_coordination import WorktreeCoordinator
 
 
+class WorktreeScanError(RuntimeError):
+    """Raised when git cannot report a repository's worktrees.
+
+    This is an UNKNOWN answer, not an empty one. The enumeration step
+    used to swallow the failure and return no paths, which is
+    indistinguishable from "this repository has no worktrees" -- so
+    the sweep reported nothing to do, and the merge cycle read that as
+    a cleanup that had happened. A git failure has to travel up to the
+    caller, which can then decide what to do with it: the fleet-wide
+    sweep skips the repository and says so, and a scoped sweep fails.
+    """
+
+
 @dataclass(frozen=True)
 class WorktreePruneCandidate:
     """A worktree that is a candidate for removal."""
@@ -267,14 +280,18 @@ def _worktree_listing(repo_path: Path) -> tuple[list[Path], set[Path]]:
 
     # Implements: REQ-PRUNE-003
 
-    Returns ``([], set())`` when git cannot be run or fails.
+    Raises :class:`WorktreeScanError` when git cannot be run or fails.
     """
     try:
         result = _run_git(repo_path, "worktree", "list", "--porcelain", text=True)
-    except subprocess.TimeoutExpired, OSError:
-        return [], set()
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        raise WorktreeScanError(
+            f"cannot list the worktrees of {repo_path}: {exc}"
+        ) from exc
     if result.returncode != 0:
-        return [], set()
+        raise WorktreeScanError(
+            f"git worktree list failed for {repo_path}: {result.stderr.strip()}"
+        )
 
     paths: list[Path] = []
     locked: set[Path] = set()
@@ -680,6 +697,7 @@ __all__ = [
     "WorktreePruneCandidate",
     "WorktreePruneResult",
     "WorktreePruner",
+    "WorktreeScanError",
     "classify_merge_status",
     "find_merged_worktrees",
     "owning_repo_path",

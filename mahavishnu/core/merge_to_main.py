@@ -1334,6 +1334,7 @@ def _write_merge_log(
     push_result: str,
     cleanup_performed: bool,
     outcome: str,
+    cleanup_error: str | None = None,
 ) -> None:
     """Write the dev-log entry for a merge that ran to a terminal outcome.
 
@@ -1346,6 +1347,12 @@ def _write_merge_log(
     `docs/decisions/2026-10-03-mainautopush.md`: ``ok``, ``diverged``,
     ``error:<message>``, ``no_remote`` — plus ``skipped`` for an
     operator-deferred push (``--no-push``).
+
+    ``cleanup_error`` carries the reason a cleanup failed. The entry
+    used to record only that the cleanup failed, which left the reason
+    in transient stderr — the operator's durable trail said "something
+    went wrong" and nothing else. One line is enough: the full
+    diagnostic is on stderr, and this is the copy that survives.
 
     Local file is canonical; the session-buddy mirror is best-effort
     (existing ``dev_log.write_entry()`` behavior).
@@ -1373,6 +1380,9 @@ def _write_merge_log(
         f"Push result: {push_result}\n"
         f"Cleanup performed: {cleanup_performed}\n"
     )
+    if cleanup_error:
+        metadata["cleanup_error"] = cleanup_error
+        body += f"Cleanup error: {cleanup_error}\n"
     write_entry(metadata, body, mirror_to_session_buddy=True)
 
 
@@ -1447,6 +1457,22 @@ def _default_dispatcher(
     return dispatch_review(agent, prompt, worktree=worktree)
 
 
+def _one_line_reason(stderr: str | None) -> str | None:
+    """Return the first non-empty line of a diagnostic, or None.
+
+    The dev-log entry is YAML frontmatter plus a Markdown body, so a
+    multi-line diagnostic does not belong there. One line carries the
+    reason; the full text is on stderr, where it was printed.
+    """
+    if not stderr:
+        return None
+    for line in stderr.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return None
+
+
 def _run_cleanup(worktree_root: Path) -> tuple[int, str]:
     """Stage 6: route through the existing ``mahavishnu worktree prune-merged``.
 
@@ -1454,8 +1480,17 @@ def _run_cleanup(worktree_root: Path) -> tuple[int, str]:
     (NOT silent removal). The CLI emits JSON on success and refuses
     ``not_merged`` worktrees (which is the desired fail-loud behavior
     for the merge cycle). The call site maps any non-zero returncode
-    to ``EXIT_CLEANUP_FAILURE = 5`` and writes a sticky marker via
-    ``.review-state.json`` to prevent re-attempt per spec §4.2.
+    to ``EXIT_CLEANUP_FAILURE = 5`` and prints the CLI's stderr, so
+    the reason for the failure reaches the operator rather than
+    arriving as a bare exit code.
+
+    **There is no sticky marker on this path.** The ``.review-state.json``
+    marker is written by the stage-5 consolidation gate (the
+    held-back path), not by a cleanup failure. A cleanup failure
+    therefore leaves no marker, and stage 6 is re-attempted on the next
+    SessionEnd. That is deliberate -- the worktree is still there, so
+    retrying it is the right thing -- but it means the failure is not
+    sticky, and the docstring used to claim otherwise.
 
     ``--path`` scopes the sweep to the worktree this pipeline just
     merged. Without it the command sweeps EVERY configured repository
@@ -1465,6 +1500,19 @@ def _run_cleanup(worktree_root: Path) -> tuple[int, str]:
     classifier's own guards (dirty status, the lock guard) bound what
     a sweep can remove, but they are not a substitute for the operator
     deciding that an unattended fleet sweep should happen at all.
+
+    **A non-zero return code has more than one cause.** The CLI exits
+    non-zero when the named worktree is owned by no configured
+    repository, when the owning repository's scan fails, and when the
+    scan succeeds but yields no removal candidate for a worktree that
+    still exists. The first is a configuration gap — the repository is
+    not in ``settings/repos.yaml``, so the cleanup was never possible —
+    and the other two are unknown answers. All three land on
+    ``EXIT_CLEANUP_FAILURE = 5``, and all three land AFTER the squash
+    merge and the push have already succeeded: the merge itself
+    stands, and the operator is told the cleanup did not happen.
+    That is the intended reading of exit 5 ("the user must verify"),
+    not a failed merge.
 
     Private helper (leading underscore) so the test suite can
     monkeypatch it without touching the public API.
@@ -1763,8 +1811,20 @@ def run_pipeline(
     # the squash-commit gets orphaned.
     cleanup_performed = False
     if not no_cleanup and not held_back:
-        cleanup_rc, _cleanup_stderr = _run_cleanup(worktree_root)
+        cleanup_rc, cleanup_stderr = _run_cleanup(worktree_root)
         if cleanup_rc != 0:
+            # The REASON reaches the operator. Exit 5 says "the cleanup
+            # did not happen"; without the reason it is a code to look
+            # up rather than a diagnosis. The CLI's own diagnostic is
+            # on stderr, and it is the only place it exists.
+            if cleanup_stderr.strip():
+                print(cleanup_stderr.rstrip(), file=sys.stderr)
+            else:
+                print(
+                    "[merge_to_main] cleanup failed with no diagnostic "
+                    "(prune-merged exited non-zero and said nothing)",
+                    file=sys.stderr,
+                )
             _write_merge_log(
                 worktree_root,
                 branch,
@@ -1772,6 +1832,7 @@ def run_pipeline(
                 push_result=push_result,
                 cleanup_performed=False,
                 outcome="cleanup_failed",
+                cleanup_error=_one_line_reason(cleanup_stderr),
             )
             return EXIT_CLEANUP_FAILURE
         cleanup_performed = True

@@ -364,11 +364,14 @@ async def _scan_prune_candidates(
     with the path filter applied afterwards, against roughly a second
     once the scan itself is scoped.
 
-    A ``--path`` that no repository owns is an ERROR, not an empty
-    result. The merge cycle's cleanup treats a zero return code as
-    ``cleanup_performed: true``; a silent no-op would have the merge
-    report a cleanup that never happened while the worktree stayed on
-    disk.
+    Under ``--path`` the leniency is withdrawn, because the whole
+    result rests on ONE repository's scan: a scan that raises is an
+    unknown answer, not "there is nothing to do", and the run exits
+    non-zero. The same applies to a ``--path`` that no repository owns
+    -- an ERROR, not an empty result. The merge cycle's cleanup treats
+    a zero return code as ``cleanup_performed: true``; a silent no-op
+    would have the merge report a cleanup that never happened while the
+    worktree stayed on disk.
     """
     registry = SessionWorktreeRegistry()
 
@@ -421,8 +424,27 @@ async def _scan_prune_candidates(
             )
             candidates.extend(await found if inspect.isawaitable(found) else found)
         except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
-            if not json_output:
+            if only_path is not None:
+                # Under --path the whole result rests on ONE
+                # repository's scan, and this is the OWNING
+                # repository: a failure here means the answer is
+                # unknown, not that there is nothing to do. The
+                # merge cycle reads a zero exit code as "cleanup
+                # performed", so the run has to fail -- and the
+                # diagnostic is emitted even under --json, because
+                # the JSON payload would otherwise be the only
+                # thing on stdout and it would look like an empty
+                # sweep.
                 typer.echo(f"Error scanning {repo_info.nickname}: {exc}", err=True)
+                raise typer.Exit(code=1)
+            # The fleet sweep stays LENIENT -- one unreadable
+            # repository does not abort the other twenty-five -- but
+            # the diagnostic is emitted in BOTH modes. stderr cannot
+            # corrupt the JSON stdout contract, and suppressing the
+            # message made a --json fleet sweep read as "this
+            # repository has no worktrees": a short candidate list
+            # with no explanation anywhere.
+            typer.echo(f"Error scanning {repo_info.nickname}: {exc}", err=True)
     if only_path is not None and not owner_scanned:
         typer.echo(
             f"No configured repository owns the worktree at {only_path} "
@@ -550,18 +572,51 @@ def prune_merged_worktrees(
             raise typer.Exit(code=1)
 
         repos = _resolve_prune_repos(repo, repo_manager)
+        resolved_only_path = (
+            Path(only_path).expanduser().resolve() if only_path is not None else None
+        )
+        if resolved_only_path is not None and not resolved_only_path.exists():
+            # Nothing to do: the worktree is not there, so the desired
+            # end state is already reached. This is the ONE answer
+            # that may exit zero. A path that EXISTS but that git
+            # cannot attribute is a different case -- an unknown
+            # answer -- and is still an error below.
+            typer.echo(
+                json.dumps({"candidates": [], "would_remove": 0})
+                if json_output
+                else f"No worktree at {resolved_only_path}; nothing to remove."
+            )
+            return
         candidates = await _scan_prune_candidates(
             repos,
             coordinator,
             include_dirty,
             ttl_days,
             json_output,
-            only_path=Path(only_path).expanduser().resolve()
-            if only_path is not None
-            else None,
+            only_path=resolved_only_path,
         )
 
         if not candidates:
+            if (
+                resolved_only_path is not None
+                and not dry_run
+                and resolved_only_path.exists()
+            ):
+                # The third unknown answer. The scan ran and SUCCEEDED,
+                # but it produced no candidate for the one worktree
+                # that was named -- the worktree is still on disk and
+                # was not removed. That is not "there was nothing to
+                # do": the caller asked for a removal that did not
+                # happen. A dry run is exempt, because there the
+                # answer to "what would you remove?" is legitimately
+                # "nothing".
+                typer.echo(
+                    f"No removal candidate for {resolved_only_path}: it still "
+                    f"exists, but the classifier did not mark it as a "
+                    f"merged, clean worktree.",
+                    err=True,
+                )
+                raise typer.Exit(code=1)
             typer.echo(
                 json.dumps({"candidates": [], "would_remove": 0})
                 if json_output

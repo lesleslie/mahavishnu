@@ -70,7 +70,16 @@ branches are detected as merged by the multi-signal classifier.
   repository owns is an error (exit 1, diagnostic on stderr) rather than
   an empty result — the merge cycle reads a zero exit code as "cleanup
   performed", and a silent no-op would have the merge report a cleanup
-  that never happened.
+  that never happened. The same rule covers a failed scan (including a
+  `git worktree list` that could not be run — enumeration failures
+  raise rather than returning no paths, which is indistinguishable from
+  "this repository has no worktrees") and a scan that succeeds but
+  yields no removal candidate for a worktree that still exists. A dry
+  run is exempt from the last one: there, "what would you remove?" is
+  legitimately answered with "nothing". Without `--path` the sweep
+  stays lenient — one unreadable repository does not abort the other
+  twenty-five — because the fleet-wide result does not rest on a single
+  scan.
 - A **detached worktree is never force-removed**. The provider's list
   feeds `WorktreeCoordinator.prune_worktrees`, which force-removes any
   worktree whose branch no longer resolves; a detached worktree reported

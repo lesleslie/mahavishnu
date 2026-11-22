@@ -239,7 +239,7 @@ and skip a locked worktree in `_prune_candidate_for`, unconditionally.
 #### Integration Contract
 
 - **Triggered from**: `find_merged_worktrees` →
-  `_locked_worktree_paths` → `_prune_candidate_for` in
+  `_worktree_listing` → `_prune_candidate_for` in
   `mahavishnu/core/worktree_prune_merged.py`.
 - **Returns to / updates**: the candidate list; a locked worktree is absent
   from it, so `WorktreePruner.remove` never sees it.
@@ -292,10 +292,59 @@ The skip for a non-owning repository also happens BEFORE the "no canonical
 nickname" check: a repository this sweep has no reason to scan must not be
 able to abort the run.
 
+**A failed scan is the same kind of answer.** Under `--path` the whole
+result rests on ONE repository's scan — the owning one — so a scan that
+raises is an unknown answer, not "there is nothing to do", and the run
+exits 1 with the diagnostic on stderr (even under `--json`, where the
+JSON payload would otherwise be the only thing on stdout and the failure
+would be invisible). Without `--path` the leniency stays: the
+fleet-wide sweep is the operator's explicit invocation, and one
+unreadable repository must not cost the other twenty-five. That is the
+one place where the fail-loud rule deliberately does not apply, because
+the result does not rest on a single scan.
+
+For that rule to fire, the failure has to REACH the CLI. The
+enumeration used to absorb a failed `git worktree list` and return no
+paths — indistinguishable from "this repository has no worktrees" — so
+the sweep reported nothing to do and the merge cycle read that as a
+cleanup that had happened. Enumeration failures now raise
+`WorktreeScanError`, and the caller decides: skip the repository and say
+so (fleet sweep), or fail (scoped sweep).
+
+The third unknown answer is a scan that SUCCEEDS and yields no removal
+candidate for a worktree that still exists. That is not "there was
+nothing to do" — the caller named one worktree, it is still on disk, and
+it was not removed. Under `--path` the run exits 1. A dry run is exempt:
+there, "what would you remove?" is legitimately answered with "nothing",
+and the worktree is not supposed to be gone yet.
+
+And the reason has to reach the operator. `_run_cleanup` returns
+`(rc, stderr)`, and the pipeline used to discard the stderr, so exit 5
+arrived with no explanation — a code to look up rather than a
+diagnosis. The pipeline now prints it, and the merge-log entry carries
+one line of it, because the durable record used to say only "the cleanup
+failed" and leave the reason in transient output. The SessionEnd
+hook's pointer to `.review-state.json` is now conditional on a sticky
+marker actually having been written for the stage that failed: the
+cleanup path writes none, so pointing an operator at that file sent
+them looking for a reason that was not there.
+
+Two more answers, both settled in the same direction:
+
+- **A path that is not there** is the one answer that may exit zero —
+  the worktree is gone, so the desired end state is already reached.
+  A path that EXISTS but that git cannot attribute stays an error.
+- **The fleet sweep's diagnostic is emitted in `--json` mode too.** The
+  leniency there is about the exit code, not about the silence: stderr
+  cannot corrupt the JSON on stdout, and suppressing the message made a
+  `--json` sweep read as "this repository has no worktrees" — a short
+  candidate list with no explanation anywhere.
+
 **Exit criteria:** `mahavishnu worktree prune-merged --path <wt> --dry-run`
 lists only that worktree and scans only the repository that owns it; a
-`--path` no repository owns exits 1; stage 6 removes its own worktree and
-nothing else.
+`--path` no repository owns exits 1; a failed scan under `--path` exits 1;
+a scan that yields no candidate for a worktree that still exists exits 1;
+stage 6 removes its own worktree and nothing else.
 
 #### Integration Contract
 
@@ -307,7 +356,8 @@ nothing else.
   `pytest tests/unit/test_worktree_prune_merged.py::test_cli_prune_merged_path_restricts_the_sweep_to_one_worktree`,
   `::test_find_merged_worktrees_only_path_classifies_one_worktree`,
   `::test_cli_prune_merged_scans_only_the_repository_that_owns_the_worktree`,
-  and the two `::test_cli_prune_merged_fails_when_*` cases.
+  the `::test_cli_prune_merged_fails_when_*` cases, and
+  `pytest tests/unit/core/test_merge_to_main.py::test_run_pipeline_reports_cleanup_failure_after_a_successful_merge`.
 - **Rollback signal**: a merge leaves behind a worktree it merged (the
   pipeline reports `cleanup_performed: false`), or a sweep removes a
   worktree the merge cycle did not merge.
@@ -345,7 +395,8 @@ skip such a worktree.
   helper; `classify_merge_status` gains the content signal ahead of the
   cherry fallback; `_candidate_worktree_paths` unions the coordinator's
   list with git's and falls back to git on failure;
-  `_locked_worktree_paths` plus the lock guard in `_prune_candidate_for`.
+  `_worktree_listing` (paths and the locked subset, from one porcelain
+  call) plus the lock guard in `_prune_candidate_for`.
 - [x] `mahavishnu/core/worktree_providers/local.py` —
   `_parse_worktree_porcelain` reads git's block format; both former
   parser sites use it.

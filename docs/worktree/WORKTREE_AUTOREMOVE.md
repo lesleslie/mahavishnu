@@ -193,6 +193,35 @@ zero return code as "cleanup performed", so a silent no-op would have the
 merge report a cleanup that never happened while the worktree stayed on
 disk.
 
+A **failed scan** is the same kind of answer. Under `--path` the whole
+result rests on the owning repository's scan, so a scan that raises exits
+1 with the diagnostic on stderr — including under `--json`, where the JSON
+payload would otherwise be the only thing on stdout and the failure would
+be invisible. Without `--path` the sweep stays lenient: one unreadable
+repository does not abort the other twenty-five.
+
+Three things are unknown answers under `--path`, and all three exit
+non-zero:
+
+1. **No repository owns the path** — git cannot say who owns it, or the
+   owner is not among the configured repositories.
+2. **The owning repository's scan failed** — including a `git worktree list` that could not be run. Enumeration failures raise rather than
+   returning no paths, because "no paths" is indistinguishable from
+   "this repository has no worktrees".
+3. **The scan succeeded and produced no removal candidate for a worktree
+   that still exists** — the worktree was not removed. A dry run is
+   exempt: there, "what would you remove?" is legitimately answered with
+   "nothing".
+
+A path that is **not there** is the one answer that exits zero: the
+worktree is gone, so there is nothing to remove.
+
+Without `--path` the fleet sweep stays lenient — one unreadable
+repository does not abort the other twenty-five — but the diagnostic is
+still emitted on stderr, in `--json` mode too. stderr cannot corrupt
+the JSON on stdout, and suppressing the message made a `--json` sweep
+read as "this repository has no worktrees".
+
 ### Audit log attribution
 
 Every applied sweep writes structured events to
