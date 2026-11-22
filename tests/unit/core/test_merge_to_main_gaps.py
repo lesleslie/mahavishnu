@@ -432,6 +432,44 @@ class TestSuccessDevLog:
         assert "outcome: merged" in text
         assert "result: ok" in text
 
+    def test_run_pipeline_skips_the_cleanup_when_asked(
+        self, dev_log_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``--no-cleanup`` leaves the worktree alone — and says so.
+
+        The flag had no test at all, so nothing asserted what the
+        dev-log entry says when the cleanup was skipped. An operator
+        reading ``cleanup_performed: false`` on a successful merge
+        needs to know whether that means "skipped on request" or
+        "skipped because something went wrong".
+        """
+        monkeypatch.setattr(merge_to_main, "run_squash_merge", lambda *a, **k: (0, ""))
+        monkeypatch.setattr(merge_to_main, "run_push", lambda *a, **k: (0, ""))
+        monkeypatch.setattr(merge_to_main, "_origin_remote_exists", lambda: True)
+        cleanup_calls: list[bool] = []
+        monkeypatch.setattr(
+            merge_to_main,
+            "_run_cleanup",
+            lambda *a, **k: (cleanup_calls.append(True) or 0, ""),
+        )
+
+        rc = run_pipeline(
+            dev_log_dir,
+            branch="feat/x",
+            review_mode="none",
+            no_crackerjack=True,
+            no_consolidation_gate=True,
+            no_cleanup=True,
+        )
+
+        assert rc == EXIT_OK
+        assert cleanup_calls == [], "cleanup must not run when it was not asked for"
+        entries = list(dev_log_dir.rglob("*.md"))
+        assert len(entries) == 1
+        text = entries[0].read_text()
+        assert "outcome: merged" in text
+        assert "cleanup_performed: false" in text
+
     def test_run_pipeline_records_push_divergence(
         self, dev_log_dir: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

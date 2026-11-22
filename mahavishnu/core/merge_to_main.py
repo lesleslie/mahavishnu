@@ -1614,6 +1614,245 @@ def _resolve_branch(worktree_root: Path, branch_override: str | None) -> str:
     return branch_result.stdout.strip() or "main"
 
 
+def _run_review_stage(
+    worktree_root: Path,
+    branch: str,
+    base: str,
+    review_mode: str,
+) -> int | None:
+    """Stage 2 — ensemble review (REQ-004).
+
+    Returns the exit code when the stage failed, or ``None`` when the
+    pipeline may continue.
+
+    ``review_mode == "none"`` skips the stage entirely (user
+    responsibility; explicit opt-in required per the slash-command
+    contract).
+    """
+    if review_mode == "none":
+        return None
+
+    from .merge_review_dispatcher import build_review_prompt, ensure_review_pool
+
+    # The repository the branch belongs to. The pool forks the
+    # reviewer's isolated worktree from it, and it resolves that
+    # from the prompt — without it the pool falls back to its own
+    # working directory, so a merge reviewing a branch in another
+    # repository asked for a worktree of a branch that does not
+    # exist there. The main checkout is the right answer: it is
+    # the same repository the branch belongs to, and it is inside
+    # the operator's allowed repository roots (a worktree under
+    # ``~/.local/state`` is not).
+    repo_root = _find_main_checkout_path(worktree_root)
+    if repo_root is None:
+        print(
+            "[merge_to_main] cannot locate the main checkout of "
+            f"{worktree_root}; the review needs the repository the "
+            "branch belongs to",
+            file=sys.stderr,
+        )
+        # Stage 2 could not run, so this is a review failure. The
+        # rebase-conflict code means "stage 4 could not land the
+        # merge", and reporting that here sent the operator
+        # looking for a conflict that does not exist.
+        return EXIT_REVIEW_FAILURE
+
+    prompt = build_review_prompt(branch, base, worktree_root, repo_root)
+    # The three reviewers run concurrently, so each gets its own
+    # checkout: the repo's rule for parallel agents on one repo is
+    # worktree isolation, and a reviewer that ran ``git stash`` in
+    # the shared checkout on 2026-11-06 disturbed another
+    # reviewer's work. ``on_completion="discard"`` — a reviewer
+    # must not merge anything back.
+    #
+    # ``base_branch`` is the branch **under review**, not the merge
+    # base. The worktree is created from that ref, so a checkout of
+    # the merge base would put the reviewer on the trunk's code and
+    # not on the code it was asked to judge — the reviewer would
+    # have to read the diff by absolute path to see the change at
+    # all. The branch is created *from* the reviewed ref (the
+    # worktree manager makes a new branch), so the reviewed branch
+    # staying checked out elsewhere is not a conflict.
+    worktree_options: dict[str, Any] = {
+        "isolation": "worktree",
+        "base_branch": branch,
+        "on_completion": "discard",
+    }
+    # Isolation needs a pool whose worker session starts in the
+    # worktree, and only a one-shot SHELL worker does that. The
+    # auto-spawned pool is a pre-spawned shepherd pool, which
+    # cannot, so without this the dispatch below finds no pool
+    # able to honour the directory and every merge stops at stage
+    # 2 with an instruction to spawn one by hand. The pipeline
+    # knows it needs the capability, so the pipeline provides it.
+    if not ensure_review_pool():
+        # The dispatch would fail with the router's generic
+        # message, and the remedy that message names is a no-op
+        # when a pool of that name already exists in the wrong
+        # form. Say what actually happened instead.
+        print(
+            "[merge_to_main] could not provision a pool that can "
+            "isolate the review; the review was not dispatched",
+            file=sys.stderr,
+        )
+        return EXIT_REVIEW_FAILURE
+    verdicts = run_review(
+        domain_specialist="python-pro",
+        generalist_pool=AGENT_POOL,
+        prompt=prompt,
+        dispatcher=partial(_default_dispatcher, worktree=worktree_options),
+    )
+    verdict = aggregate_verdicts(verdicts)
+    print(_format_verdicts(verdicts), file=sys.stderr)
+    if verdict in {"iterate", "block"}:
+        return EXIT_REVIEW_FAILURE
+    return None
+
+
+def _run_crackerjack_stage(worktree_root: Path, no_crackerjack: bool) -> int | None:
+    """Stage 3 — crackerjack gate (REQ-013).
+
+    Returns the exit code when the gate failed, or ``None`` when the
+    pipeline may continue.
+    """
+    if no_crackerjack:
+        # Explicit operator opt-out (fail-loud bypass per
+        # `feedback-bodai-push-is-user-controlled`). Logged here, not
+        # silently — the dev-log entry captures the bypass.
+        print(
+            "[merge_to_main] --no-crackerjack set: skipping stage 3 "
+            "crackerjack gate (operator-approved bypass; per "
+            "docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md)",
+            file=sys.stderr,
+        )
+        return None
+    gate_rc, _gate_stderr = run_crackerjack_gate(worktree_root)
+    if gate_rc != 0:
+        return EXIT_CRACKERJACK_FAILURE
+    return None
+
+
+def _run_consolidation_stage(
+    worktree_root: Path,
+    branch: str,
+    base: str,
+    no_consolidation_gate: bool,
+) -> bool:
+    """Stage 4.5 — pre-push consolidation gate (per new decision doc).
+
+    Returns ``True`` when the push was **held back**: the sticky-failure
+    marker is written, stages 5 and 6 are skipped, and the pipeline
+    stops with ``EXIT_OK``. Held back is not a failure — the squash
+    landed locally and a later run pushes it.
+    """
+    if no_consolidation_gate:
+        return False
+    gate_clear, held_back_siblings, ineligible_commits = _run_consolidation_gate(
+        worktree_root,
+        base,
+    )
+    if gate_clear:
+        return False
+    _write_held_back_log(
+        worktree_root,
+        branch,
+        base,
+        held_back_siblings,
+        ineligible_commits,
+    )
+    _write_sticky_failure_marker(
+        worktree_root,
+        branch,
+        held_back_siblings,
+        ineligible_commits,
+    )
+    print(
+        f"[merge_to_main] push held back: pre-push consolidation gate "
+        f"(siblings={len(held_back_siblings)}, "
+        f"ineligible={len(ineligible_commits)}); "
+        f"see dev-log entry and .review-state.json for details",
+        file=sys.stderr,
+    )
+    return True
+
+
+def _run_push_stage(
+    worktree_root: Path,
+    branch: str,
+    base: str,
+    no_push: bool,
+) -> tuple[str, int | None]:
+    """Stage 5 — auto-push (skippable via ``--no-push``; spec §4.6).
+
+    Returns ``(push_result, exit_code)``. The exit code is ``None``
+    when the push succeeded or was skipped.
+
+    The dev-log entry for a failed push is written here: the entry
+    records the push result, and the result is not known to the
+    caller any more once the stage has returned.
+    """
+    if no_push:
+        return "skipped", None
+    push_rc, _push_stderr = run_push("main")
+    if push_rc != 0:
+        _write_merge_log(
+            worktree_root,
+            branch,
+            base,
+            push_result="diverged",
+            cleanup_performed=False,
+            outcome="push_failed",
+        )
+        return "diverged", EXIT_PUSH_DIVERGENCE
+    return ("ok" if _origin_remote_exists() else "no_remote"), None
+
+
+def _run_cleanup_stage(
+    worktree_root: Path,
+    branch: str,
+    base: str,
+    push_result: str,
+    no_cleanup: bool,
+    held_back: bool,
+) -> tuple[bool, int | None]:
+    """Stage 6 — cleanup (skippable via ``--no-cleanup``; spec REQ-012).
+
+    Returns ``(cleanup_performed, exit_code)``. The exit code is
+    ``None`` when the cleanup ran clean or was skipped.
+
+    ALSO skipped when the consolidation gate held back (stage 4.5):
+    the branch and worktree must remain until the push lands;
+    otherwise the squash-commit gets orphaned.
+    """
+    if no_cleanup or held_back:
+        return False, None
+    cleanup_rc, cleanup_stderr = _run_cleanup(worktree_root)
+    if cleanup_rc != 0:
+        # The REASON reaches the operator. Exit 5 says "the cleanup
+        # did not happen"; without the reason it is a code to look
+        # up rather than a diagnosis. The CLI's own diagnostic is
+        # on stderr, and it is the only place it exists.
+        if cleanup_stderr.strip():
+            print(cleanup_stderr.rstrip(), file=sys.stderr)
+        else:
+            print(
+                "[merge_to_main] cleanup failed with no diagnostic "
+                "(prune-merged exited non-zero and said nothing)",
+                file=sys.stderr,
+            )
+        _write_merge_log(
+            worktree_root,
+            branch,
+            base,
+            push_result=push_result,
+            cleanup_performed=False,
+            outcome="cleanup_failed",
+            cleanup_error=_one_line_reason(cleanup_stderr),
+        )
+        return False, EXIT_CLEANUP_FAILURE
+    return True, None
+
+
 def run_pipeline(
     worktree_root: Path,
     *,
@@ -1660,97 +1899,14 @@ def run_pipeline(
     branch = _resolve_branch(worktree_root, branch)
 
     # Stage 2 — ensemble review (REQ-004).
-    if review_mode != "none":
-        from .merge_review_dispatcher import build_review_prompt, ensure_review_pool
-
-        # The repository the branch belongs to. The pool forks the
-        # reviewer's isolated worktree from it, and it resolves that
-        # from the prompt — without it the pool falls back to its own
-        # working directory, so a merge reviewing a branch in another
-        # repository asked for a worktree of a branch that does not
-        # exist there. The main checkout is the right answer: it is
-        # the same repository the branch belongs to, and it is inside
-        # the operator's allowed repository roots (a worktree under
-        # ``~/.local/state`` is not).
-        repo_root = _find_main_checkout_path(worktree_root)
-        if repo_root is None:
-            print(
-                "[merge_to_main] cannot locate the main checkout of "
-                f"{worktree_root}; the review needs the repository the "
-                "branch belongs to",
-                file=sys.stderr,
-            )
-            # Stage 2 could not run, so this is a review failure. The
-            # rebase-conflict code means "stage 4 could not land the
-            # merge", and reporting that here sent the operator
-            # looking for a conflict that does not exist.
-            return EXIT_REVIEW_FAILURE
-
-        prompt = build_review_prompt(branch, base, worktree_root, repo_root)
-        # The three reviewers run concurrently, so each gets its own
-        # checkout: the repo's rule for parallel agents on one repo is
-        # worktree isolation, and a reviewer that ran ``git stash`` in
-        # the shared checkout on 2026-11-06 disturbed another
-        # reviewer's work. ``on_completion="discard"`` — a reviewer
-        # must not merge anything back.
-        #
-        # ``base_branch`` is the branch **under review**, not the merge
-        # base. The worktree is created from that ref, so a checkout of
-        # the merge base would put the reviewer on the trunk's code and
-        # not on the code it was asked to judge — the reviewer would
-        # have to read the diff by absolute path to see the change at
-        # all. The branch is created *from* the reviewed ref (the
-        # worktree manager makes a new branch), so the reviewed branch
-        # staying checked out elsewhere is not a conflict.
-        worktree_options: dict[str, Any] = {
-            "isolation": "worktree",
-            "base_branch": branch,
-            "on_completion": "discard",
-        }
-        # Isolation needs a pool whose worker session starts in the
-        # worktree, and only a one-shot SHELL worker does that. The
-        # auto-spawned pool is a pre-spawned shepherd pool, which
-        # cannot, so without this the dispatch below finds no pool
-        # able to honour the directory and every merge stops at stage
-        # 2 with an instruction to spawn one by hand. The pipeline
-        # knows it needs the capability, so the pipeline provides it.
-        if not ensure_review_pool():
-            # The dispatch would fail with the router's generic
-            # message, and the remedy that message names is a no-op
-            # when a pool of that name already exists in the wrong
-            # form. Say what actually happened instead.
-            print(
-                "[merge_to_main] could not provision a pool that can "
-                "isolate the review; the review was not dispatched",
-                file=sys.stderr,
-            )
-            return EXIT_REVIEW_FAILURE
-        verdicts = run_review(
-            domain_specialist="python-pro",
-            generalist_pool=AGENT_POOL,
-            prompt=prompt,
-            dispatcher=partial(_default_dispatcher, worktree=worktree_options),
-        )
-        verdict = aggregate_verdicts(verdicts)
-        print(_format_verdicts(verdicts), file=sys.stderr)
-        if verdict in {"iterate", "block"}:
-            return EXIT_REVIEW_FAILURE
+    review_rc = _run_review_stage(worktree_root, branch, base, review_mode)
+    if review_rc is not None:
+        return review_rc
 
     # Stage 3 — crackerjack gate (REQ-013).
-    if no_crackerjack:
-        # Explicit operator opt-out (fail-loud bypass per
-        # `feedback-bodai-push-is-user-controlled`). Logged here, not
-        # silently — the dev-log entry captures the bypass.
-        print(
-            "[merge_to_main] --no-crackerjack set: skipping stage 3 "
-            "crackerjack gate (operator-approved bypass; per "
-            "docs/decisions/2026-10-14-fast-hooks-vs-comprehensive.md)",
-            file=sys.stderr,
-        )
-    else:
-        gate_rc, _gate_stderr = run_crackerjack_gate(worktree_root)
-        if gate_rc != 0:
-            return EXIT_CRACKERJACK_FAILURE
+    crackerjack_rc = _run_crackerjack_stage(worktree_root, no_crackerjack)
+    if crackerjack_rc is not None:
+        return crackerjack_rc
 
     # Stage 4 — squash-merge (spec §4.5).
     squash_rc, _squash_stderr = run_squash_merge(worktree_root, base, branch)
@@ -1759,83 +1915,31 @@ def run_pipeline(
 
     # Stage 4.5 — pre-push consolidation gate (per new decision doc).
     # Held back = sticky-failure marker, stage 6 skipped, EXIT_OK.
-    held_back = False
-    if not no_consolidation_gate:
-        gate_clear, held_back_siblings, ineligible_commits = _run_consolidation_gate(
-            worktree_root,
-            base,
-        )
-        if not gate_clear:
-            held_back = True
-            _write_held_back_log(
-                worktree_root,
-                branch,
-                base,
-                held_back_siblings,
-                ineligible_commits,
-            )
-            _write_sticky_failure_marker(
-                worktree_root,
-                branch,
-                held_back_siblings,
-                ineligible_commits,
-            )
-            print(
-                f"[merge_to_main] push held back: pre-push consolidation gate "
-                f"(siblings={len(held_back_siblings)}, "
-                f"ineligible={len(ineligible_commits)}); "
-                f"see dev-log entry and .review-state.json for details",
-                file=sys.stderr,
-            )
-            return EXIT_OK
+    held_back = _run_consolidation_stage(
+        worktree_root,
+        branch,
+        base,
+        no_consolidation_gate,
+    )
+    if held_back:
+        return EXIT_OK
 
     # Stage 5 — auto-push (skippable via --no-push; spec §4.6).
-    push_result = "skipped"
-    if not no_push:
-        push_rc, _push_stderr = run_push("main")
-        if push_rc != 0:
-            _write_merge_log(
-                worktree_root,
-                branch,
-                base,
-                push_result="diverged",
-                cleanup_performed=False,
-                outcome="push_failed",
-            )
-            return EXIT_PUSH_DIVERGENCE
-        push_result = "ok" if _origin_remote_exists() else "no_remote"
+    push_result, push_rc = _run_push_stage(worktree_root, branch, base, no_push)
+    if push_rc is not None:
+        return push_rc
 
     # Stage 6 — cleanup (skippable via --no-cleanup; spec REQ-012).
-    # ALSO skipped when the consolidation gate held back (stage 4.5):
-    # the branch and worktree must remain until the push lands; otherwise
-    # the squash-commit gets orphaned.
-    cleanup_performed = False
-    if not no_cleanup and not held_back:
-        cleanup_rc, cleanup_stderr = _run_cleanup(worktree_root)
-        if cleanup_rc != 0:
-            # The REASON reaches the operator. Exit 5 says "the cleanup
-            # did not happen"; without the reason it is a code to look
-            # up rather than a diagnosis. The CLI's own diagnostic is
-            # on stderr, and it is the only place it exists.
-            if cleanup_stderr.strip():
-                print(cleanup_stderr.rstrip(), file=sys.stderr)
-            else:
-                print(
-                    "[merge_to_main] cleanup failed with no diagnostic "
-                    "(prune-merged exited non-zero and said nothing)",
-                    file=sys.stderr,
-                )
-            _write_merge_log(
-                worktree_root,
-                branch,
-                base,
-                push_result=push_result,
-                cleanup_performed=False,
-                outcome="cleanup_failed",
-                cleanup_error=_one_line_reason(cleanup_stderr),
-            )
-            return EXIT_CLEANUP_FAILURE
-        cleanup_performed = True
+    cleanup_performed, cleanup_rc = _run_cleanup_stage(
+        worktree_root,
+        branch,
+        base,
+        push_result,
+        no_cleanup,
+        held_back,
+    )
+    if cleanup_rc is not None:
+        return cleanup_rc
 
     _write_merge_log(
         worktree_root,

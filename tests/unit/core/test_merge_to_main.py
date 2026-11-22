@@ -1802,7 +1802,7 @@ def test_run_pipeline_stops_when_the_review_pool_cannot_be_provisioned(
 
 
 def test_run_pipeline_reports_a_missing_main_checkout_as_a_review_failure(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Stage 2 could not run, so it is a review failure.
 
@@ -1810,6 +1810,13 @@ def test_run_pipeline_reports_a_missing_main_checkout_as_a_review_failure(
     and reporting that here sent the operator looking for a conflict
     that does not exist.
     """
+    # The stub comes FIRST: it patches ``_find_main_checkout_path`` to
+    # return a Path, and ``monkeypatch.setattr`` is last-write-wins. With
+    # the order reversed, the stub replaced the ``None`` this test is
+    # about and the review ran against ``/tmp/review-repo`` instead —
+    # the test still passed, but for the wrong reason: an empty
+    # verdict list also aggregates to a review failure.
+    _stub_helpers_for_pipeline(monkeypatch, verdicts=[])
     monkeypatch.setattr(
         "mahavishnu.core.merge_to_main._find_main_checkout_path",
         lambda *args, **kwargs: None,
@@ -1818,9 +1825,11 @@ def test_run_pipeline_reports_a_missing_main_checkout_as_a_review_failure(
         "mahavishnu.core.merge_review_dispatcher.ensure_review_pool",
         lambda *args, **kwargs: True,
     )
-    _stub_helpers_for_pipeline(monkeypatch, verdicts=[])
 
     rc = run_pipeline(tmp_path, branch="feat-test", base="main")
 
     assert rc == EXIT_REVIEW_FAILURE
     assert rc != EXIT_REBASE_CONFLICT
+    # The exit code alone does not identify the branch: the review
+    # fails for several reasons. The diagnostic names this one.
+    assert "cannot locate the main checkout" in capsys.readouterr().err
