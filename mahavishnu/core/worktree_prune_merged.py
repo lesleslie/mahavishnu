@@ -237,61 +237,95 @@ def _git_behind(worktree_path: Path, main_branch: str) -> int:
         return 0
 
 
-def _direct_worktree_paths(repo_path: Path) -> list[Path]:
-    try:
-        result = _run_git(repo_path, "worktree", "list", "--porcelain", text=True)
-    except subprocess.TimeoutExpired, OSError:
-        return []
-    if result.returncode != 0:
-        return []
-    return [
-        Path(line.removeprefix("worktree "))
-        for line in result.stdout.splitlines()
-        if line.startswith("worktree ")
-    ]
+def _worktree_listing(repo_path: Path) -> tuple[list[Path], set[Path]]:
+    """Return the worktree paths and the locked subset, from ONE call.
 
+    ``git worktree list --porcelain`` was run twice per repository per
+    sweep -- once for the paths, once for the lock state -- and the
+    sweep runs over every configured repository. One call answers both
+    questions.
 
-def _locked_worktree_paths(repo_path: Path) -> set[Path]:
-    """Return the worktrees git reports as locked.
+    Paths are RESOLVED on the way out, and that matters for three
+    reasons: the lock check compares the resolved path against the
+    candidate's path, and a path spelled differently (``/var/...``
+    against ``/private/var/...``) would otherwise slip past the guard;
+    the coordinator's registry paths are resolved the same way, so the
+    de-duplication holds; and the TTL lookup matches the registry's
+    spelling, so the TTL guard does not silently degrade to a no-op.
 
-    ``git worktree lock`` is the fleet's existing "do not touch this"
-    marker. The agent-scoped worktrees carry it from creation (the
-    reason git records is ``initializing``), and an operator locks one
-    to keep it out of a sweep. A lock is not a recency signal --
-    locked worktrees here are up to a fortnight old -- it is a
-    statement that removal was refused.
+    **The locked subset** is the fleet's existing "do not touch this"
+    marker. ``git worktree lock`` is what the agent-scoped worktrees
+    carry from creation (git records the reason as ``initializing``),
+    and an operator locks one to keep it out of a sweep. A lock is not
+    a recency signal -- locked worktrees are up to a fortnight old --
+    it is a statement that removal was refused, and the sweep honours
+    it unconditionally.
 
-    The sweep must honour it. Before this guard, the only thing
-    standing between a live session's worktree and automatic removal
-    was the dirty check, which a clean session passes straight
-    through.
-
-    The merge cycle's OWN worktree is not locked, so this guard does
-    not stop stage 6 from cleaning up after itself -- and it does stop
-    it from touching anyone else's.
+    The merge cycle's OWN worktree is not locked, so the guard does not
+    stop stage 6 from cleaning up after itself -- and it does stop it
+    from touching anyone else's.
 
     # Implements: REQ-PRUNE-003
+
+    Returns ``([], set())`` when git cannot be run or fails.
     """
     try:
         result = _run_git(repo_path, "worktree", "list", "--porcelain", text=True)
     except subprocess.TimeoutExpired, OSError:
-        return set()
+        return [], set()
     if result.returncode != 0:
-        return set()
+        return [], set()
+
+    paths: list[Path] = []
     locked: set[Path] = set()
     current: Path | None = None
     for line in result.stdout.splitlines():
         if line.startswith("worktree "):
-            current = Path(line.removeprefix("worktree "))
+            current = Path(line.removeprefix("worktree ")).resolve()
+            paths.append(current)
         elif line.startswith("locked") and current is not None:
             locked.add(current)
-    return locked
+    return paths, locked
+
+
+def _direct_worktree_paths(repo_path: Path) -> list[Path]:
+    return _worktree_listing(repo_path)[0]
+
+
+def owning_repo_path(worktree_path: Path) -> Path | None:
+    """Return the main checkout that owns a worktree.
+
+    A worktree usually lives OUTSIDE its repository's directory -- the
+    fleet's are under ``~/.local/state/mahavishnu/worktrees/`` -- so
+    the owning repository cannot be found by looking at the path's
+    parents. ``git rev-parse --git-common-dir`` answers it: from any
+    worktree it reports the MAIN checkout's ``.git``, whose parent is
+    the repository.
+
+    Returns None when the path is not a worktree of a repository, or
+    when git cannot be run.
+    """
+    common_dir = _git_output(
+        worktree_path, "rev-parse", "--path-format=absolute", "--git-common-dir"
+    )
+    if not common_dir:
+        return None
+    # RESOLVED, so it matches the repository paths it is compared
+    # against: git reports the main checkout's path as recorded, and a
+    # symlinked checkout (``/tmp`` against ``/private/tmp``) would
+    # otherwise read as "no repository owns this".
+    git_dir = Path(common_dir).resolve()
+    if git_dir.name != ".git":
+        # A bare repository's common dir IS the repository.
+        return git_dir
+    return git_dir.parent
 
 
 async def _candidate_worktree_paths(
     repo_path: Path,
     repo_nickname: str | None,
     coordinator: WorktreeCoordinator | None,
+    git_paths: list[Path] | None = None,
 ) -> list[Path]:
     """Enumerate the worktree paths to inspect for this repository.
 
@@ -321,9 +355,14 @@ async def _candidate_worktree_paths(
     ``undetermined`` for a path git cannot resolve, and an
     ``undetermined`` candidate is never removed.
 
+    ``git_paths`` lets the caller pass a listing it already has, so
+    the porcelain command runs once per repository rather than twice.
+
     # Implements: REQ-PRUNE-002
     """
-    paths = list(_direct_worktree_paths(repo_path))
+    paths = (
+        list(git_paths) if git_paths is not None else _direct_worktree_paths(repo_path)
+    )
     if coordinator is None:
         return paths
     try:
@@ -334,7 +373,13 @@ async def _candidate_worktree_paths(
         return paths
     for entry in listed.get("worktrees", []):
         if isinstance(entry, dict) and entry.get("path"):
-            candidate = Path(entry["path"])
+            # RESOLVED, like the git listing above. The de-duplication
+            # compares against resolved paths, so an unresolved registry
+            # path would register the same worktree twice -- classified
+            # twice, and reported twice. The TTL guard reads the
+            # registry by path, so the two sides must agree on the
+            # spelling too.
+            candidate = Path(entry["path"]).resolve()
             if candidate not in paths:
                 paths.append(candidate)
     return paths
@@ -365,10 +410,14 @@ def _prune_candidate_for(
     """Return the prune candidate for one worktree, or None when filtered out."""
     if worktree_path.resolve() == repo_path.resolve():
         return None
-    if locked_paths and worktree_path in locked_paths:
+    if locked_paths and worktree_path.resolve() in locked_paths:
         # A locked worktree is one removal was refused for. Skipping it
         # is unconditional -- there is no ``--include-locked`` escape
         # hatch, because the lock IS the refusal.
+        #
+        # Both sides are resolved: the locked set is built from
+        # resolved paths, and a candidate's path may arrive spelled
+        # differently (``/var/...`` against ``/private/var/...``).
         return None
     branch = _git_current_branch(worktree_path)
     if branch is None or branch in {main_branch, "master"}:
@@ -409,12 +458,26 @@ async def find_merged_worktrees(
     ttl_days: int = 0,
     registry_lookup: Callable[[str], str | None] | None = None,
     coordinator: WorktreeCoordinator | None = None,
+    only_path: Path | None = None,
 ) -> list[WorktreePruneCandidate]:
-    """Identify fail-closed merged-worktree removal candidates."""
-    paths = await _candidate_worktree_paths(repo_path, repo_nickname, coordinator)
+    """Identify fail-closed merged-worktree removal candidates.
+
+    ``only_path`` narrows the sweep to ONE worktree, and it does so
+    BEFORE the classification, not after it. Classifying a worktree
+    costs a handful of git subprocesses (``git status`` alone measured
+    0.26 s), so filtering after the fact still pays for every
+    worktree in the repository. The merge cycle's cleanup uses this:
+    it must clean up the worktree it just merged, and nothing else.
+    """
+    paths, locked_paths = _worktree_listing(repo_path)
+    paths = await _candidate_worktree_paths(
+        repo_path, repo_nickname, coordinator, git_paths=paths
+    )
 
     resolved_nickname = repo_nickname or repo_path.name
-    locked_paths = _locked_worktree_paths(repo_path)
+    if only_path is not None:
+        wanted = only_path.resolve()
+        paths = [p for p in paths if p.resolve() == wanted]
     candidates: list[WorktreePruneCandidate] = []
     for worktree_path in paths:
         candidate = _prune_candidate_for(
@@ -619,4 +682,5 @@ __all__ = [
     "WorktreePruner",
     "classify_merge_status",
     "find_merged_worktrees",
+    "owning_repo_path",
 ]

@@ -64,7 +64,13 @@ branches are detected as merged by the multi-signal classifier.
   configured repository, unattended, on every merge — which the policy
   decision reserves for explicit operator invocation. An explicit
   `mahavishnu worktree prune-merged` is the only path that sweeps
-  everything.
+  everything. The `--path` filter applies to the *scan*, not only to the
+  removal set: the repositories that cannot contain the path are skipped
+  outright, so their worktrees are never classified. A `--path` that no
+  repository owns is an error (exit 1, diagnostic on stderr) rather than
+  an empty result — the merge cycle reads a zero exit code as "cleanup
+  performed", and a silent no-op would have the merge report a cleanup
+  that never happened.
 - A **detached worktree is never force-removed**. The provider's list
   feeds `WorktreeCoordinator.prune_worktrees`, which force-removes any
   worktree whose branch no longer resolves; a detached worktree reported

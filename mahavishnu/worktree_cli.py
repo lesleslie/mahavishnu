@@ -19,6 +19,7 @@ from .core.worktree_prune_merged import (
     WorktreePruneResult,
     classify_merge_status,
     find_merged_worktrees,
+    owning_repo_path,
 )
 from .core.worktree_scan import scan_worktrees_with_status
 from .core.worktree_session_registry import SessionWorktreeRegistry
@@ -344,23 +345,67 @@ async def _scan_prune_candidates(
     include_dirty: bool,
     ttl_days: int,
     json_output: bool,
+    only_path: Path | None = None,
 ):
     """Collect merged-worktree candidates across the selected repos.
 
     A repo whose scan raises is reported on stderr (unless JSON output
     was requested) and skipped, so one bad repo does not abort the whole
-    sweep. A repo without a canonical nickname is fatal.
+    sweep. A repo without a canonical nickname is fatal -- but only for
+    a repo this sweep actually has to scan.
+
+    ``only_path`` names ONE worktree. The repos that cannot contain it
+    are skipped entirely, and the repository that does contain it is
+    scanned for that path alone. Scanning is where the cost is: a
+    worktree costs a handful of git subprocesses to classify
+    (``git status`` alone measured 0.26 s), so a fleet-wide sweep that
+    is later filtered down to one path still paid for every worktree in
+    every repository. Measured: 83.9 s for a fleet-wide dry run, 39.5 s
+    with the path filter applied afterwards, against roughly a second
+    once the scan itself is scoped.
+
+    A ``--path`` that no repository owns is an ERROR, not an empty
+    result. The merge cycle's cleanup treats a zero return code as
+    ``cleanup_performed: true``; a silent no-op would have the merge
+    report a cleanup that never happened while the worktree stayed on
+    disk.
     """
     registry = SessionWorktreeRegistry()
 
     def registry_lookup(worktree_path: str) -> str | None:
+        wanted = Path(worktree_path).resolve()
         for entry in registry.list_active(state=None):
-            if entry.get("worktree_path") == worktree_path:
+            recorded = entry.get("worktree_path")
+            if not recorded:
+                continue
+            # RESOLVED on both sides: the candidate's path is resolved
+            # and the registry records its own spelling, and the TTL
+            # guard must not degrade to a no-op over two spellings of
+            # one path.
+            if Path(recorded).resolve() == wanted:
                 return entry.get("last_seen_at") or entry.get("abandoned_at")
         return None
 
+    # The owner is loop-invariant: the worktree does not change hands
+    # between repositories, and the owner is asked of GIT rather than
+    # inferred from the path -- a worktree lives outside its
+    # repository's directory, so the path's parents say nothing.
+    owner: Path | None = None
+    if only_path is not None:
+        resolved_owner = owning_repo_path(only_path)
+        if resolved_owner is None:
+            typer.echo(f"No repository owns the worktree at {only_path}", err=True)
+            raise typer.Exit(code=1)
+        owner = resolved_owner
+
     candidates = []
+    owner_scanned = False
     for repo_info in repos:
+        if only_path is not None:
+            # Only the repository that OWNS the worktree can hold it.
+            if owner is None or Path(repo_info.path).resolve() != owner:
+                continue
+            owner_scanned = True
         if not getattr(repo_info, "nickname", None):
             typer.echo(f"Repo has no canonical nickname: {repo_info.name}", err=True)
             raise typer.Exit(code=1)
@@ -372,11 +417,19 @@ async def _scan_prune_candidates(
                 include_dirty=include_dirty,
                 ttl_days=ttl_days,
                 registry_lookup=registry_lookup,
+                only_path=only_path,
             )
             candidates.extend(await found if inspect.isawaitable(found) else found)
         except Exception as exc:  # CLI entry point — broad catch is the documented contract  # noqa: BLE001, RUF100
             if not json_output:
                 typer.echo(f"Error scanning {repo_info.nickname}: {exc}", err=True)
+    if only_path is not None and not owner_scanned:
+        typer.echo(
+            f"No configured repository owns the worktree at {only_path} "
+            f"(git reports {owner})",
+            err=True,
+        )
+        raise typer.Exit(code=1)
     return candidates
 
 
@@ -455,7 +508,7 @@ def prune_merged_worktrees(
     ttl_days: int = typer.Option(
         0, "--ttl-days", min=0, help="Only consider worktrees last touched > N days ago"
     ),
-    only_path: str = typer.Option(
+    only_path: str | None = typer.Option(
         None,
         "--path",
         help="Only consider this one worktree path (used by the merge cycle)",
@@ -498,18 +551,15 @@ def prune_merged_worktrees(
 
         repos = _resolve_prune_repos(repo, repo_manager)
         candidates = await _scan_prune_candidates(
-            repos, coordinator, include_dirty, ttl_days, json_output
+            repos,
+            coordinator,
+            include_dirty,
+            ttl_days,
+            json_output,
+            only_path=Path(only_path).expanduser().resolve()
+            if only_path is not None
+            else None,
         )
-        if only_path is not None:
-            # Restrict the sweep to one worktree. The merge cycle's
-            # stage 6 uses this: it must clean up the worktree it just
-            # merged, not sweep every repository on the machine. A
-            # fleet-wide unattended sweep is a different operation and
-            # needs the operator's hand on it.
-            wanted = str(Path(only_path).expanduser().resolve())
-            candidates = [
-                c for c in candidates if str(c.worktree_path.resolve()) == wanted
-            ]
 
         if not candidates:
             typer.echo(

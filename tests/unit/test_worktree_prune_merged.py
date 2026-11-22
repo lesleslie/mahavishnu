@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -9,8 +10,8 @@ from mahavishnu.core.worktree_prune_merged import (
     WorktreePruner,
     classify_merge_status,
     find_merged_worktrees,
+    owning_repo_path,
 )
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -360,6 +361,84 @@ async def test_find_merged_worktrees_skips_a_locked_worktree(tmp_path: Path) -> 
     assert await find_merged_worktrees(repo) == []
 
 
+@pytest.mark.asyncio
+async def test_find_merged_worktrees_only_path_classifies_one_worktree(
+    tmp_path: Path,
+) -> None:
+    """``only_path`` narrows the scan BEFORE the classification.
+
+    Classifying a worktree costs a handful of git subprocesses --
+    ``git status --short`` alone measured 0.26 s -- so filtering after
+    the fact still pays for every worktree in the repository. The
+    merge cycle's cleanup uses this, and it is the difference between
+    a fleet-wide sweep (83.9 s) and a scoped one (10.9 s, of which
+    about 10 s is the CLI's own startup).
+    """
+    repo = tmp_path / "repo"
+    wanted = tmp_path / "wanted"
+    other = tmp_path / "other"
+    init_repo(repo)
+    for name in ("one", "two"):
+        run_git("checkout", "-b", f"feat-{name}", cwd=repo)
+        (repo / f"{name}.txt").write_text(f"{name}\n")
+        run_git("add", f"{name}.txt", cwd=repo)
+        run_git("commit", "-m", name, cwd=repo)
+    run_git("checkout", "main", cwd=repo)
+    for name in ("one", "two"):
+        run_git("merge", "--squash", f"feat-{name}", cwd=repo)
+        run_git("commit", "-m", f"squash {name}", cwd=repo)
+    run_git("worktree", "add", str(wanted), "feat-one", cwd=repo)
+    run_git("worktree", "add", str(other), "feat-two", cwd=repo)
+
+    everything = await find_merged_worktrees(repo)
+    assert {str(c.worktree_path) for c in everything} == {str(wanted), str(other)}
+
+    scoped = await find_merged_worktrees(repo, only_path=wanted)
+    assert [str(c.worktree_path) for c in scoped] == [str(wanted)]
+
+
+def test_owning_repo_path_finds_the_repository_of_a_worktree(tmp_path: Path) -> None:
+    """The owning repository is asked of git, not inferred from the path.
+
+    A worktree lives OUTSIDE its repository's directory -- the fleet's
+    are under ``~/.local/state/mahavishnu/worktrees/`` -- so the path's
+    parents say nothing about who owns it.
+    """
+    repo = tmp_path / "repo"
+    wt = tmp_path / "elsewhere" / "wt"
+    init_repo(repo)
+    (tmp_path / "elsewhere").mkdir()
+    run_git("checkout", "-b", "feat", cwd=repo)
+    (repo / "feat.txt").write_text("feat\n")
+    run_git("add", "feat.txt", cwd=repo)
+    run_git("commit", "-m", "feat", cwd=repo)
+    # The branch must be free before it can be checked out elsewhere.
+    run_git("checkout", "main", cwd=repo)
+    run_git("worktree", "add", str(wt), "feat", cwd=repo)
+
+    assert owning_repo_path(wt) == repo.resolve()
+
+
+def test_owning_repo_path_is_none_for_a_plain_directory(tmp_path: Path) -> None:
+    plain = tmp_path / "not-a-repo"
+    plain.mkdir()
+    assert owning_repo_path(plain) is None
+
+
+def test_owning_repo_path_handles_a_bare_repository(tmp_path: Path) -> None:
+    """A bare repository's common dir IS the repository.
+
+    ``git rev-parse --git-common-dir`` reports the bare repo's own
+    directory rather than a ``.git`` inside it, so the parent rule
+    would point one level too high.
+    """
+    bare = tmp_path / "bare.git"
+    bare.mkdir()
+    run_git("init", "--bare", str(bare), cwd=tmp_path)
+
+    assert owning_repo_path(bare) == bare.resolve()
+
+
 class FakeAudit:
     def __init__(self) -> None:
         self.partial_calls: list[tuple[object, ...]] = []
@@ -546,9 +625,21 @@ def test_cli_prune_merged_path_restricts_the_sweep_to_one_worktree(
     patch_cli_app(monkeypatch, CliApp([repo]))
     wanted = tmp_path / "wt"
     other = tmp_path / "other"
+    # The sweep only scans the repository that OWNS the worktree, and
+    # the owner is asked of git -- these are mock paths, so the answer
+    # is stubbed.
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.owning_repo_path",
+        lambda _path: repo.path.resolve(),
+    )
     monkeypatch.setattr(
         "mahavishnu.worktree_cli.find_merged_worktrees",
-        lambda *a, **kw: [cli_candidate(wanted), cli_candidate(other)],
+        lambda *a, **kw: [
+            c
+            for c in (cli_candidate(wanted), cli_candidate(other))
+            if kw.get("only_path") is None
+            or c.worktree_path.resolve() == kw["only_path"].resolve()
+        ],
     )
 
     result = CliRunner().invoke(
@@ -558,6 +649,110 @@ def test_cli_prune_merged_path_restricts_the_sweep_to_one_worktree(
     assert result.exit_code == 0
     assert str(wanted) in result.stdout
     assert str(other) not in result.stdout
+
+
+def test_cli_prune_merged_scans_only_the_repository_that_owns_the_worktree(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``--path`` scans ONE repository -- the one that owns the worktree.
+
+    The scoping has to happen BEFORE the scan, not after it. A
+    repository that cannot hold the worktree is skipped outright, so
+    its worktrees are never classified -- which is where the fleet-wide
+    cost used to be paid.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    owner = CliRepo(tmp_path / "owner", "owner")
+    other = CliRepo(tmp_path / "other", "other")
+    for repo in (owner, other):
+        repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([owner, other]))
+    wanted = tmp_path / "wt"
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.owning_repo_path",
+        lambda _path: owner.path.resolve(),
+    )
+    scanned: list[str] = []
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        lambda *a, **kw: scanned.append(kw["repo_nickname"]) or [],
+    )
+
+    result = CliRunner().invoke(
+        worktree_app, ["prune-merged", "--path", str(wanted), "--dry-run"]
+    )
+    assert result.exit_code == 0
+    assert scanned == ["owner"]
+
+
+def test_cli_prune_merged_fails_when_no_repository_owns_the_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A ``--path`` that no repository owns is an ERROR, not an empty result.
+
+    The merge cycle's stage 6 reads a zero return code as
+    ``cleanup_performed: true``. A silent no-op would have the merge
+    report a cleanup that never happened while the worktree stayed on
+    disk.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.owning_repo_path",
+        lambda _path: None,
+    )
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        lambda *a, **kw: [],
+    )
+
+    result = CliRunner().invoke(
+        worktree_app,
+        ["prune-merged", "--path", str(tmp_path / "wt"), "--dry-run"],
+    )
+    assert result.exit_code == 1
+    assert "owns" in result.stderr
+
+
+def test_cli_prune_merged_fails_when_the_owner_is_not_configured(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The owner is known, but no configured repository is it.
+
+    The worktree survives either way, so the run must not report
+    success: the same false ``cleanup_performed: true`` the previous
+    case guards against.
+    """
+    from typer.testing import CliRunner
+
+    from mahavishnu.worktree_cli import worktree_app
+
+    repo = CliRepo(tmp_path / "repo", "fake")
+    repo.path.mkdir()
+    patch_cli_app(monkeypatch, CliApp([repo]))
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.owning_repo_path",
+        lambda _path: (tmp_path / "unconfigured").resolve(),
+    )
+    monkeypatch.setattr(
+        "mahavishnu.worktree_cli.find_merged_worktrees",
+        lambda *a, **kw: [],
+    )
+
+    result = CliRunner().invoke(
+        worktree_app,
+        ["prune-merged", "--path", str(tmp_path / "wt"), "--dry-run"],
+    )
+    assert result.exit_code == 1
+    assert "owns" in result.stderr
 
 
 def test_cli_prune_merged_threads_resolved_nickname(

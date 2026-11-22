@@ -175,6 +175,24 @@ The CLI is fail-closed in three layers:
 intentional — clean removals rely on branch + reflog for recovery; backups
 are reserved for the riskier forced-dirty path.
 
+### `--path` scoping
+
+`--path` names ONE worktree, and it scopes the **scan**, not only the
+removal set. The repositories that cannot contain the path are skipped
+outright — the owning repository is asked of git
+(`git rev-parse --git-common-dir`), because a worktree lives outside its
+repository's directory and its path's parents say nothing about who owns
+it. A repository that cannot hold the worktree is never classified at
+all, which is where a fleet-wide sweep spends its time.
+
+A `--path` that **no repository owns** is an ERROR, not an empty result:
+the command writes a diagnostic to stderr and exits 1. Two cases are
+errors — git cannot name an owner at all, and git names an owner that is
+not among the configured repositories. The merge cycle's stage 6 reads a
+zero return code as "cleanup performed", so a silent no-op would have the
+merge report a cleanup that never happened while the worktree stayed on
+disk.
+
 ### Audit log attribution
 
 Every applied sweep writes structured events to

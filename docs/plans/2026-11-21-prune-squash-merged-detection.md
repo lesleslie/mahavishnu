@@ -257,8 +257,45 @@ and skip a locked worktree in `_prune_candidate_for`, unconditionally.
 worktree, and have stage 6 of the merge pipeline pass the worktree it just
 merged.
 
+The filter has to apply to the **scan**, not only to the removal set.
+Classifying a worktree costs a handful of git subprocesses — `git status --short` alone measured 0.26 s — so a filter applied after the sweep still
+pays for every worktree in every repository. `only_path` therefore reaches
+`find_merged_worktrees`, and the repositories that cannot contain the path
+are skipped: the owning repository is asked of git
+(`git rev-parse --git-common-dir`), because a worktree lives OUTSIDE its
+repository's directory and its path's parents say nothing about who owns
+it.
+
+Measured on this machine (26 configured repositories, 76 worktrees in this
+one):
+
+| run | before | after |
+|---|---|---|
+| fleet-wide dry run | 83.9 s | 36.3 s |
+| `--path` dry run | 39.5 s | 10.9 s |
+| repositories scanned with `--path` | 26 | 1 |
+
+About 10 s of the scoped run is the CLI's own startup (import 3.0 s,
+`MahavishnuApp.load()` 7.2 s), not the sweep.
+
+A `--path` that **no repository owns** is an ERROR, not an empty result: the
+run exits 1 with a stderr diagnostic. The merge cycle reads a zero return
+code from stage 6 as `cleanup_performed: true`, so a silent no-op would have
+the merge report a cleanup that never happened while the worktree stayed on
+disk. Two cases are errors: git cannot say who owns the path at all, and
+git names an owner that is not among the configured repositories. The
+owning repository is also resolved ONCE, before the repository loop — the
+question is loop-invariant, and answering it per repository re-ran a git
+subprocess for every configured repo.
+
+The skip for a non-owning repository also happens BEFORE the "no canonical
+nickname" check: a repository this sweep has no reason to scan must not be
+able to abort the run.
+
 **Exit criteria:** `mahavishnu worktree prune-merged --path <wt> --dry-run`
-lists only that worktree; stage 6 removes its own worktree and nothing else.
+lists only that worktree and scans only the repository that owns it; a
+`--path` no repository owns exits 1; stage 6 removes its own worktree and
+nothing else.
 
 #### Integration Contract
 
@@ -267,7 +304,10 @@ lists only that worktree; stage 6 removes its own worktree and nothing else.
 - **Returns to / updates**: the worktree's removal, and the `cleanup_performed`
   flag in the pipeline's result.
 - **Demonstrable by**:
-  `pytest tests/unit/test_worktree_prune_merged.py::test_cli_prune_merged_path_restricts_the_sweep_to_one_worktree`.
+  `pytest tests/unit/test_worktree_prune_merged.py::test_cli_prune_merged_path_restricts_the_sweep_to_one_worktree`,
+  `::test_find_merged_worktrees_only_path_classifies_one_worktree`,
+  `::test_cli_prune_merged_scans_only_the_repository_that_owns_the_worktree`,
+  and the two `::test_cli_prune_merged_fails_when_*` cases.
 - **Rollback signal**: a merge leaves behind a worktree it merged (the
   pipeline reports `cleanup_performed: false`), or a sweep removes a
   worktree the merge cycle did not merge.

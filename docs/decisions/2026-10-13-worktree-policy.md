@@ -185,6 +185,24 @@ only path that sweeps every repository, which is what this decision
 permits. The lock guard and the dirty check remain as the second and third
 lines of defence.
 
+**Amendment (2026-11-22) — a scoped sweep fails loudly.** `--path` scopes
+the SCAN, not only the removal set: the repositories that cannot contain
+the named worktree are skipped outright, so their worktrees are never
+classified. The owning repository is asked of git
+(`git rev-parse --git-common-dir`), because a worktree lives outside its
+repository's directory and its path's parents say nothing about who owns
+it.
+
+A `--path` that no repository owns is an ERROR, not an empty result: the
+command writes a diagnostic to stderr and exits non-zero. Two cases are
+errors — git cannot name an owner at all, and git names an owner that is
+not among the configured repositories. The reason is this decision's own
+logic: the merge cycle reads a zero return code from stage 6 as "cleanup
+performed", so a silent no-op would have a merge report a cleanup that
+never happened while the worktree stayed on disk. A filter that matches
+nothing is the absence of an answer, and only "there was nothing to do"
+may answer with success.
+
 ## Context
 
 `session-worktree-defaults.md` Rule 2 prohibits automatic removal of
@@ -211,6 +229,9 @@ cron, or other unattended invocation. The amended rule is recorded in
    `MAHAVISHNU_WORKTREE_AUTOPRUNE_DAYS` gate are outside this amendment.
    They require a new decision after the CLI passes the plan's Wave 4 manual
    testing sequence.
+6. `--path` names one worktree and scopes the scan to the repository that
+   owns it. A `--path` that no configured repository owns exits non-zero
+   with a diagnostic; it never reports an empty sweep as a success.
 
 ## Threat model
 
